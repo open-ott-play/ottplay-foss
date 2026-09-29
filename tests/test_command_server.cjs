@@ -109,7 +109,7 @@ for (const input of [
 ]) {
     assert.throws(() => normalize(input), undefined, input);
 }
-function harness(protocol = "http:") {
+function harness(protocol = "http:", execute) {
     const jobs = new Map();
     const requests = [];
     const saved = [];
@@ -140,7 +140,8 @@ function harness(protocol = "http:") {
             if (behavior.outcome !== "deferred") delivered.push(command);
             if (behavior.onDispatch) behavior.onDispatch();
             return behavior.outcome;
-        }
+        },
+        execute
     );
     function next() {
         assert.equal(jobs.size, 1, "only one retry/poll timer is scheduled");
@@ -539,11 +540,13 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
 (async () => {
     const t = harness();
     let resolveNative;
+    let nativeRequest;
     const completed = [];
     const transport = createCommandServerTransport(
         t.w,
-        () =>
+        (value) =>
             new Promise((resolve) => {
+                nativeRequest = value;
                 resolveNative = resolve;
             })
     );
@@ -607,6 +610,94 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     xhr.onload();
     assert.deepEqual({ ...completed[1] }, { body: "denied", status: 403 });
     assert.equal(t.jobs.size, 0);
+    const secure = {
+        ...request,
+        body: undefined,
+        method: "GET",
+        secureControl: true,
+        url: "https://host/api/pairings?id=" + "a".repeat(32),
+    };
+    const cancelNativeSecure = transport(secure, () => {});
+    assert.equal(nativeRequest.secureControl, true);
+    assert.equal(nativeRequest.url, secure.url);
+    cancelNativeSecure();
+    const secureResults = [];
+    const acceptSecure = (value) => secureResults.push(value);
+    browserTransport(secure, acceptSecure);
+    assert.equal(secureResults.at(-1).error, "secure_control_unavailable");
+    const originalXhr = xhr;
+    let fetched;
+    let resolveFetch;
+    let rejectFetch;
+    t.w.Request = Request;
+    t.w.fetch = (value) => {
+        fetched = value;
+        return new Promise((resolve, reject) => {
+            resolveFetch = resolve;
+            rejectFetch = reject;
+        });
+    };
+    browserTransport(secure, acceptSecure);
+    assert.equal(secureResults.at(-1).error, "secure_control_unavailable");
+    assert.equal(fetched, undefined, "uncancellable Fetch never starts");
+    secureResults.pop();
+    t.w.AbortController = AbortController;
+    const cancelFetch = browserTransport(secure, acceptSecure);
+    assert.equal(fetched.redirect, "error");
+    assert.equal(fetched.credentials, "omit");
+    assert.equal(fetched.url, secure.url);
+    assert.equal(fetched.headers.get("Authorization"), "Bearer " + token);
+    cancelFetch();
+    assert.equal(fetched.signal.aborted, true);
+    resolveFetch(new Response("{}", { status: 200 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+        secureResults.length,
+        1,
+        "late secure fetch responses are ignored"
+    );
+    browserTransport(secure, acceptSecure);
+    rejectFetch(new TypeError("redirect blocked"));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(secureResults.at(-1), undefined);
+    browserTransport(secure, acceptSecure);
+    t.next();
+    assert.equal(
+        fetched.signal.aborted,
+        true,
+        "secure fetch timeout aborts request"
+    );
+    resolveFetch(new Response("{}", { status: 200 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(secureResults.length, 3);
+    browserTransport(secure, acceptSecure);
+    resolveFetch(new Response('{"status":"pending"}', { status: 202 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(
+        { ...secureResults.at(-1) },
+        {
+            body: '{"status":"pending"}',
+            status: 202,
+        }
+    );
+    const previousFetch = fetched;
+    for (const url of [
+        "http://host/api/pairings",
+        "https://user:pass@host/api/pairings",
+        "https://host/api/pairings#fragment",
+    ])
+        browserTransport({ ...secure, url }, acceptSecure);
+    assert.equal(fetched, previousFetch, "invalid secure URLs are never sent");
+    t.w.Request = function () {};
+    browserTransport(secure, acceptSecure);
+    assert.equal(secureResults.at(-1).error, "secure_control_unavailable");
+    assert.equal(
+        fetched,
+        previousFetch,
+        "a Request polyfill ignoring redirect is rejected"
+    );
+    assert.equal(xhr, originalXhr, "secure requests never fall back to XHR");
+    assert.equal(t.jobs.size, 0);
     console.log(
         "PASS command server: ES5, address/auth policy, independent consent, ACK retry/dedup, revocation, backoff, native/XHR cancellation and timeouts"
     );
@@ -614,3 +705,450 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     console.error(error);
     process.exitCode = 1;
 });
+
+// Request execution is invalidated by reconnects, and network delay cannot
+// revive a request whose server deadline has already passed.
+{
+    let completeWork;
+    let cancellations = 0;
+    let executions = 0;
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        completeWork = done;
+        return () => cancellations++;
+    });
+    const id = "a".repeat(32);
+    rpc.connect({ address: "https://server.example/base" });
+    rpc.respond({
+        commands: [],
+        requests: [
+            { action: "status", expires_at: clock / 1000 + 5, id, params: {} },
+        ],
+        server_time: clock / 1000,
+    });
+    assert.equal(executions, 1);
+    rpc.controller.configure({
+        address: "https://server.example/base",
+        enabled: false,
+        token,
+    });
+    assert.equal(cancellations, 1);
+    completeWork({ data: { volume: 22 }, status: "ok" });
+    assert.equal(rpc.jobs.size, 0, "revoked work cannot enqueue a response");
+    rpc.connect();
+    const serverTime = clock / 1000;
+    clock += 3000;
+    rpc.respond({
+        commands: [],
+        requests: [
+            { action: "status", expires_at: serverTime + 1, id, params: {} },
+        ],
+        server_time: serverTime,
+    });
+    assert.equal(executions, 1, "expired request is never dispatched");
+    rpc.next();
+    rpc.respond({
+        commands: [],
+        requests: [
+            { action: "status", expires_at: clock / 1000 + 30, id, params: {} },
+        ],
+        server_time: clock / 1000,
+    });
+    completeWork({ data: { volume: 22 }, status: "ok" });
+    rpc.next();
+    assert.equal(
+        rpc.requests.at(-1).request.url,
+        "http://server.local:8081/api/responses"
+    );
+    rpc.respond({ error: "expired" }, 404);
+    rpc.next();
+    assert.match(rpc.requests.at(-1).request.url, /delivery=ack$/);
+    console.log(
+        "PASS RPC transport cancellation, server-relative expiry and expired-result recovery"
+    );
+}
+
+// A malformed result must become an explicit rejection, not strand the poller
+// after its execution timer was already cleared.
+for (const value of [
+    null,
+    { data: undefined, status: "ok" },
+    { data: { value: 1 }, status: "unknown" },
+    {
+        data: (() => {
+            const cyclic = {};
+            cyclic.self = cyclic;
+            return cyclic;
+        })(),
+        status: "ok",
+    },
+]) {
+    const rpc = harness("http:", (_request, done) => done(value));
+    rpc.connect();
+    rpc.respond({
+        commands: [],
+        requests: [
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "b".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    });
+    assert.equal(
+        rpc.next(),
+        0,
+        "malformed completion still schedules a response"
+    );
+    const result = JSON.parse(rpc.requests.at(-1).request.body);
+    assert.equal(result.status, "rejected");
+    assert.match(result.data.error, /result/i);
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.method, "GET");
+}
+
+// Cache the serialized snapshot. Native/provider code can retain and mutate
+// its result object after calling done; a lost ACK must retry the same bytes.
+{
+    const result = { data: { volume: 35 }, status: "ok" };
+    let executions = 0;
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        done(result);
+    });
+    const envelope = {
+        commands: [],
+        requests: [
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "c".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    };
+    rpc.connect();
+    rpc.respond(envelope);
+    result.data.volume = 70;
+    rpc.next();
+    const body = rpc.requests.at(-1).request.body;
+    assert.equal(JSON.parse(body).data.volume, 35);
+    rpc.respond({}, 503);
+    result.data.volume = 90;
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    rpc.respond(envelope);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    assert.equal(executions, 1, "replayed request uses its immutable result");
+}
+
+// Known queued work is fetched as soon as the prior result is acknowledged.
+// Eight quick requests previously accumulated seven seconds of idle delay.
+{
+    const rpc = harness("http:", (_request, done) =>
+        done({ data: {}, status: "ok" })
+    );
+    const requests = Array.from({ length: 8 }, (_, i) => ({
+        action: "status",
+        expires_at: 5030,
+        id: i.toString(16).padStart(32, "0"),
+        params: {},
+    }));
+    rpc.connect();
+    let idleDelay = 0;
+    while (requests.length) {
+        rpc.respond({
+            commands: [],
+            requests: requests.slice(),
+            server_time: 5000,
+        });
+        assert.equal(rpc.next(), 0);
+        rpc.respond({ status: "ok" });
+        requests.shift();
+        const delay = rpc.next();
+        if (requests.length) idleDelay += delay;
+        else
+            assert.equal(
+                delay,
+                1000,
+                "empty queues keep the normal poll interval"
+            );
+    }
+    assert.equal(
+        idleDelay,
+        0,
+        "known work never waits for the idle poll interval"
+    );
+}
+console.log(
+    "PASS RPC malformed results, immutable retries and burst drain latency"
+);
+
+// A queue can expire or become invalid between draining polls. Its old backlog
+// hint must not turn an empty/malformed response into a zero-delay polling loop.
+for (const pending of [[], [{ expires_at: 5030, id: "invalid" }]]) {
+    const rpc = harness("http:", (_request, done) =>
+        done({ data: {}, status: "ok" })
+    );
+    rpc.connect();
+    rpc.respond({
+        commands: [],
+        requests: ["d", "e"].map((id) => ({
+            action: "status",
+            expires_at: 5030,
+            id: id.repeat(32),
+            params: {},
+        })),
+        server_time: 5000,
+    });
+    rpc.next();
+    rpc.respond({ status: "ok" });
+    assert.equal(rpc.next(), 0);
+    rpc.respond({ commands: [], requests: pending, server_time: 5000 });
+    assert.equal(
+        rpc.next(),
+        1000,
+        "stale backlog does not cause a busy poll loop"
+    );
+}
+
+// Native/provider cancellation must not block revocation or prevent the timeout
+// rejection from being delivered. A late success cannot replace that rejection.
+for (const revoke of [false, true]) {
+    let done;
+    let cancellations = 0;
+    const rpc = harness("http:", (_request, complete) => {
+        done = complete;
+        return () => {
+            cancellations++;
+            throw new Error("native cancellation failed");
+        };
+    });
+    rpc.connect();
+    rpc.respond({
+        commands: [],
+        requests: [
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "f".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    });
+    if (revoke) {
+        rpc.controller.configure({
+            address: "server.local",
+            enabled: false,
+            token,
+        });
+        done({ data: {}, status: "ok" });
+        assert.equal(rpc.jobs.size, 0);
+        assert.equal(rpc.controller.status().enabled, false);
+    } else {
+        assert.equal(rpc.next(), 30000);
+        done({ data: {}, status: "ok" });
+        rpc.next();
+        const result = JSON.parse(rpc.requests.at(-1).request.body);
+        assert.equal(result.status, "rejected");
+        assert.match(result.data.error, /timed out/);
+    }
+    assert.equal(cancellations, 1);
+}
+
+// Some commands can synchronously reload/reconfigure the player. The old
+// execution must not install a cancellation callback onto the new generation.
+{
+    let executions = 0;
+    let oldCancellations = 0;
+    let newCancellations = 0;
+    let oldDone;
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        if (executions === 1) {
+            oldDone = done;
+            rpc.connect();
+            return () => oldCancellations++;
+        }
+        return () => newCancellations++;
+    });
+    const envelope = {
+        commands: [],
+        requests: [
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "a".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    };
+    rpc.connect();
+    rpc.respond(envelope);
+    assert.equal(oldCancellations, 1);
+    assert.equal(rpc.jobs.size, 0, "old execution timer is retired");
+    rpc.respond(envelope);
+    oldDone({ data: {}, status: "ok" });
+    rpc.controller.configure({
+        address: "server.local",
+        enabled: false,
+        token,
+    });
+    assert.equal(oldCancellations, 1);
+    assert.equal(newCancellations, 1);
+    assert.equal(rpc.jobs.size, 0);
+}
+console.log(
+    "PASS RPC backlog expiry and exception-safe cancellation/reconfiguration"
+);
+
+// Even if a stale intermediary repeats an acknowledged batch, cached work is
+// not executed again and the retry cadence falls back to the idle interval.
+{
+    let executions = 0;
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        done({ data: {}, status: "ok" });
+    });
+    const envelope = {
+        commands: [],
+        requests: ["1", "2"].map((id) => ({
+            action: "status",
+            expires_at: 5030,
+            id: id.repeat(32),
+            params: {},
+        })),
+        server_time: 5000,
+    };
+    rpc.connect();
+    rpc.respond(envelope);
+    rpc.next();
+    rpc.respond({ status: "ok" });
+    assert.equal(rpc.next(), 0);
+    for (let i = 0; i < 3; i++) {
+        rpc.respond(envelope);
+        rpc.next();
+        rpc.respond({ status: "ok" });
+        assert.equal(
+            rpc.next(),
+            1000,
+            "cached replay is not evidence of progress"
+        );
+    }
+    assert.equal(executions, 1);
+}
+
+// Result byte limits survive non-ASCII data and JSON escaping; cache eviction
+// is bounded by both retained characters and IDs, independently of reconnects.
+{
+    let executions = 0;
+    let payload = "";
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        done({ data: { payload }, status: "ok" });
+    });
+    const ask = (id) => {
+        rpc.connect();
+        rpc.respond({
+            commands: [],
+            requests: [
+                {
+                    action: "channels",
+                    expires_at: 5030,
+                    id: id.toString(16).padStart(32, "0"),
+                    params: {},
+                },
+            ],
+            server_time: 5000,
+        });
+        rpc.next();
+        return rpc.requests.at(-1).request.body;
+    };
+    for (const text of ["я".repeat(800000), "\\".repeat(400000)]) {
+        payload = text;
+        const body = ask(executions + 1);
+        assert.ok(Buffer.byteLength(body) < 2 * 1024 * 1024);
+        assert.equal(JSON.parse(body).status, "rejected");
+        assert.match(JSON.parse(body).data.error, /too large/);
+    }
+    payload = "x".repeat(600000);
+    for (let id = 10; id < 14; id++)
+        assert.equal(JSON.parse(ask(id)).status, "ok");
+    let before = executions;
+    ask(13);
+    assert.equal(executions, before, "newest large response is retained");
+    ask(10);
+    assert.equal(
+        executions,
+        before + 1,
+        "character budget evicts oldest response before 50 IDs"
+    );
+    payload = "small";
+    for (let id = 100; id < 151; id++) ask(id);
+    before = executions;
+    ask(150);
+    assert.equal(executions, before, "newest small response is retained");
+    ask(100);
+    assert.equal(
+        executions,
+        before + 1,
+        "ID budget evicts the oldest small response"
+    );
+}
+
+// A result serializer can re-enter configuration just like a native callback.
+// Nothing from the retired identity may be queued or cached in the new one.
+{
+    let executions = 0;
+    const rpc = harness("http:", (_request, done) => {
+        executions++;
+        done({
+            data:
+                executions === 1
+                    ? {
+                          toJSON() {
+                              rpc.connect({ address: "other.local" });
+                              return { volume: 1 };
+                          },
+                      }
+                    : { volume: 2 },
+            status: "ok",
+        });
+    });
+    const envelope = {
+        commands: [],
+        requests: [
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "3".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    };
+    rpc.connect();
+    rpc.respond(envelope);
+    assert.equal(rpc.jobs.size, 0);
+    rpc.respond(envelope);
+    assert.equal(
+        executions,
+        2,
+        "new identity cannot see the retired result cache"
+    );
+    rpc.next();
+    assert.match(rpc.requests.at(-1).request.url, /other\.local/);
+    assert.equal(JSON.parse(rpc.requests.at(-1).request.body).data.volume, 2);
+}
+console.log(
+    "PASS RPC cached-replay cadence, response/cache bounds and identity isolation"
+);

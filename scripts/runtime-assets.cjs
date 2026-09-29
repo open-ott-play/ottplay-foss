@@ -4,7 +4,7 @@ const { isManagedProviderScript } = require("./provider-assets.cjs");
 function isRetiredRuntimeScript(filename) {
     return (
         isManagedProviderScript(filename) ||
-        /(?:^|\/)stb\/core\.js$/.test(filename.replace(/\\/g, "/"))
+        /(?:^|\/)devices\/legacy-core\.js$/.test(filename.replace(/\\/g, "/"))
     );
 }
 

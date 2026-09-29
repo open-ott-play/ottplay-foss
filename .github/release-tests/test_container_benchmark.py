@@ -340,7 +340,7 @@ class SmokeTests(TemporaryTest):
 
     def smoke(self, *, wrong_bytes=False, wrong_config=False):
         calls, requests = [], []
-        web = {"index.html": b"<html>player</html>", "dist/stbPlayer.js": b"var player = true;"}
+        web = {"index.html": b"<html>player</html>", "dist/player.js": b"var player = true;"}
         inspected = {
             "config_digest": CONFIG,
             "critical_web_files": {name: hashlib.sha256(raw).hexdigest() for name, raw in web.items()},
@@ -365,6 +365,7 @@ class SmokeTests(TemporaryTest):
             patch.object(benchmark, "command", side_effect=fake_command),
             patch.object(benchmark, "docker_daemon_host", return_value="unix:///selected-context.sock"),
             patch.object(benchmark, "build_opener") as opener,
+            patch.object(benchmark, "epg_image_check", return_value={"passed": True}) as epg,
         ):
             opener.return_value.open.side_effect = response
             if wrong_config or wrong_bytes:
@@ -373,6 +374,8 @@ class SmokeTests(TemporaryTest):
             else:
                 receipt = benchmark.smoke_archive(self.directory / "native.oci.tar", "linux/arm64", inspected)
                 self.assertEqual(receipt["servedSha256"], inspected["critical_web_files"])
+                self.assertEqual(receipt["epgPerformance"], {"passed": True})
+                epg.assert_called_once()
         self.assertEqual(calls[-2][:3], ["docker", "rm", "--force"])
         self.assertEqual(calls[-1][:3], ["docker", "image", "rm"])
         self.assertEqual(calls[0][-1].split(":")[0], "docker-daemon")

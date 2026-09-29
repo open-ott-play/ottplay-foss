@@ -50,7 +50,7 @@ exports.run = function (profile, input) {
     };
     require("./operator-fixture-host.cjs")(ctx);
     vm.runInContext(
-        declarations("prov/" + profile + "/prov.js")
+        declarations("providers/" + profile + "/provider.js")
             .map((row) => row.text)
             .join("\n"),
         ctx

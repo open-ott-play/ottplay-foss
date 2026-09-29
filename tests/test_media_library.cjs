@@ -14,6 +14,74 @@ test("Scalar navigation reads and highlights never copy a catalog", () => {
     require("./helpers/media-read-cost.cjs").assertMediaReadContract(fixture());
 });
 
+test("Scoped internal snapshots detach metadata and preserve full public snapshots", () => {
+    const c = fixture();
+    require("./helpers/media-read-cost.cjs").trackMediaSnapshots(c);
+    let reads = 0;
+    let rendered;
+    const library = c.__ottMediaLibrary.create({
+        describe: (rows) => rows,
+        items: () => [],
+        load: (route, done) =>
+            done([
+                {
+                    payload: {
+                        get title() {
+                            reads++;
+                            return route.title;
+                        },
+                    },
+                    ref: { itemId: route.title, sourceId: "scope-fixture" },
+                    title: route.title,
+                },
+            ]),
+        render: (view) => {
+            rendered = view;
+        },
+    });
+    library.open({ kind: "catalog", target: "parent", title: "Parent" });
+    library.open({ kind: "catalog", target: "child", title: "Child" });
+    assert.equal(rendered.frames[0].items.length, 0);
+    assert.equal(rendered.frame.items[0].title, "Child");
+    reads = 0;
+    const navigation = library.snapshot("none");
+    assert.equal(reads, 0, "Navigation reads no ancestor or current payloads");
+    navigation.frame.route.title = "Poisoned route";
+    const current = library.snapshot("current");
+    assert.equal(reads, 1, "Current scope reads only the visible page");
+    assert.equal(current.frame.route.title, "Child");
+    current.frame.items[0].payload.title = "Poisoned current item";
+    reads = 0;
+    const all = library.snapshot();
+    assert.equal(reads, 2, "Public default still detaches every page");
+    assert.equal(all.frames[0].items[0].payload.title, "Parent");
+    assert.equal(all.frame.items[0].payload.title, "Child");
+});
+
+test("Filter and paging copy costs exclude ancestor payloads at catalog scale", () => {
+    const { mediaFilterCost } = require("./helpers/media-filter-cost.cjs");
+    for (const rows of [300, 1000]) {
+        const depth = 6;
+        const cost = mediaFilterCost({ depth, rows, samples: 1 });
+        assert(
+            cost.filterOpen.objects <= depth * 4,
+            "Opening the editor must copy only page metadata"
+        );
+        assert(
+            cost.show.objects <= rows * 19 + depth * 4,
+            "Rendering must detach current UI and provider projections only"
+        );
+        assert(
+            cost.filterApplyAndClear.objects <= rows * 30 + depth * 40,
+            "Refiltering must not clone retained parent pages"
+        );
+        assert(
+            cost.nextAndBack.objects <= rows * 50 + depth * 40,
+            "Paging cost must not include prior pages' payloads"
+        );
+    }
+});
+
 test("Facade highlight and screen release read revision without detached snapshots", () => {
     const c = fixture();
     const counts = require("./helpers/media-read-cost.cjs").trackMediaSnapshots(
@@ -647,7 +715,8 @@ test("Rejected nonthrowing writes cannot publish journal changes or claim import
     ]);
     f.providerSetItem = () => {};
     f.mediaList(-1);
-    assert.equal(f.listArray.length, 0);
+    assert.equal(f.listArray.length, 1);
+    assert.equal(f.listArray[0].__ottMediaFilter, true);
     assert(
         !Object.keys(f.stored).some(
             (key) => key.indexOf("mediaJournalLegacyOwner") === 0
@@ -675,4 +744,462 @@ test("Synchronous source replacement during storage reads cannot publish the old
     );
 });
 
+function episodeFixture(ids = [30, 2, 11]) {
+    const c = fixture();
+    c.catalogs[""] = ids.map((id) => ({
+        __ottMediaSequence: true,
+        id,
+        request: { fid: id },
+        title: "Episode " + id,
+    }));
+    c.catalogs[""].splice(1, 0, {
+        playlist_url: "elsewhere",
+        title: "Navigation",
+    });
+    c.resolutions = [];
+    c.providerMediaClient = {
+        cancel() {},
+        resolve(item, done, automatic) {
+            c.resolutions.push({ automatic, item });
+            const resolved = {
+                ...item,
+                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+            };
+            if (c.defer) c.pendingEpisode = () => done(resolved);
+            else done(resolved);
+        },
+    };
+    c.closeList = () => c.__ottMedia.cancel();
+    c.stbStop = () => {
+        c.__ottMedia.cancelAuto();
+        c.__ottClassicPlayback.command({ type: "stop" });
+    };
+    c.finishEpisode = () => {
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    };
+    c.mediaList(null);
+    c.selectMedia(0);
+    return c;
+}
+
+test("Episode completion preserves provider order, resolves fresh URLs and loops last to first", () => {
+    const c = episodeFixture();
+    c.settings.stopPlay = true;
+    const first = c.__ottMedia.current();
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 599,
+        type: "position",
+    });
+    c.__ottMedia.checkpoint(first.ref, 599, true);
+    c.finishEpisode();
+    assert.equal(
+        c.documentState().history.find((row) => row.itemId === first.ref.itemId)
+            .position,
+        0,
+        "The next episode's departure checkpoint cannot restore the completed position"
+    );
+    c.finishEpisode();
+    c.finishEpisode();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [30, 2, 11, 30]
+    );
+    assert.deepEqual(
+        c.resolutions.map((row) => row.automatic),
+        [false, true, true, true]
+    );
+    assert.deepEqual(
+        c.calls.filter((row) => row[0] === "play").map((row) => row[1]),
+        ["30-1.mp4", "2-2.mp4", "11-3.mp4", "30-4.mp4"]
+    );
+    assert(
+        !c.calls.some((row) => row[0] === "confirm"),
+        "automatic restarts do not prompt to resume"
+    );
+    assert.equal(
+        c.documentState().history.find((row) => row.itemId === first.ref.itemId)
+            .position,
+        0
+    );
+});
+
+test("Automatic episode completion preserves a reopened browsing menu", () => {
+    const c = episodeFixture();
+    const browsing = [{ title: "Reopened browsing menu" }];
+    c.listArray = c.listDataArray = browsing;
+    c.closeList = () => {
+        c.__ottMedia.cancelAuto();
+        assert.fail("Automatic playback must not dismiss the current menu");
+    };
+    c.finishEpisode();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [30, 2]
+    );
+    assert.strictEqual(c.listArray, browsing);
+    assert.strictEqual(c.listDataArray, browsing);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 2);
+});
+
+test("A synchronous Stop during the next episode's journal write cancels its playback", () => {
+    const c = fixture();
+    const write = c.providerSetItem;
+    let armed = false;
+    c.providerSetItem = (key, value) => {
+        write(key, value);
+        if (
+            armed &&
+            key.startsWith("mediaJournal.v1:") &&
+            JSON.parse(value).history[0]?.itemId === "provider:2"
+        ) {
+            armed = false;
+            c.__ottMedia.cancelAuto();
+            c.__ottClassicPlayback.command({ type: "stop" });
+        }
+    };
+    c.catalogs[""] = [
+        { __ottMediaSequence: true, id: 1, stream_url: "one.mp4" },
+        { __ottMediaSequence: true, id: 2, stream_url: "two.mp4" },
+    ];
+    c.mediaList(null);
+    c.selectMedia(0);
+    const first = c.__ottMedia.current();
+    armed = true;
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(armed, false, "The cancellation ran inside the journal write");
+    assert.strictEqual(c.__ottMedia.current(), first);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+});
+
+test("Single episode loops; ordinary films and saved collections never become episode queues", () => {
+    const single = episodeFixture([7]);
+    single.finishEpisode();
+    assert.deepEqual(
+        single.resolutions.map((row) => row.item.id),
+        [7, 7]
+    );
+    const movie = fixture();
+    movie.mediaList(null);
+    movie.selectMedia(0);
+    movie.__ottClassicPlayback.command({ type: "stop" });
+    movie.__ottMedia.ended(movie.__ottClassicPlayback.snapshot().generation);
+    assert.equal(movie.calls.filter((row) => row[0] === "play").length, 1);
+    for (const collection of [-1, -2]) {
+        const c = episodeFixture();
+        c.__ottMedia.favorite(c.__ottMedia.current().payload);
+        c.mediaList(collection);
+        c.selectMedia(0);
+        const count = c.resolutions.length;
+        c.finishEpisode();
+        assert.equal(c.resolutions.length, count);
+    }
+});
+
+test("Duplicate completion, Stop, Back, source replacement and manual selection revoke auto resolve", () => {
+    for (const cancel of ["stop", "back", "source", "select"]) {
+        const c = episodeFixture();
+        c.defer = true;
+        c.finishEpisode();
+        const done = c.pendingEpisode;
+        const generation = c.__ottClassicPlayback.snapshot().generation;
+        c.__ottMedia.ended(generation);
+        assert.equal(c.resolutions.length, 2, "completion dispatches once");
+        if (cancel === "stop") c.stbStop();
+        else if (cancel === "back") c.__ottMedia.back();
+        else if (cancel === "source") c.providerGetItem = () => null;
+        else {
+            c.defer = false;
+            c.__ottMedia.select(3);
+        }
+        const plays = c.calls.filter((row) => row[0] === "play").length;
+        done();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            plays,
+            cancel
+        );
+    }
+});
+
+test("Auto-next respects parental access and Stop or navigation revokes a pending PIN", () => {
+    for (const action of ["allow", "stop", "back"]) {
+        const c = fixture();
+        c.catalogs[""] = [
+            { __ottMediaSequence: true, id: 1, stream_url: "one.mp4" },
+            {
+                __ottMediaSequence: true,
+                adult: 1,
+                id: 2,
+                stream_url: "two.mp4",
+            },
+        ];
+        c.mediaList(null);
+        c.selectMedia(0);
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+        assert.equal(typeof c.unlock, "function");
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+        if (action === "stop") c.__ottMedia.cancelAuto();
+        if (action === "back") c.__ottMedia.back();
+        c.parentAccess = true;
+        c.unlock();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            action === "allow" ? 2 : 1
+        );
+    }
+});
+
+function applyTitleFilter(c, value) {
+    c.__ottMedia.filter();
+    c.editvar = value;
+    c.setEdit();
+}
+
+test("Title filter matches series and films while preserving navigation across pages and Back", () => {
+    const c = fixture();
+    c.catalogs[""] = [{ playlist_url: "series", title: "Cartoon series" }];
+    c.catalogs.series = [
+        { __ottMediaFilterable: true, playlist_url: "cats", title: "Три кота" },
+        {
+            __ottMediaFilterable: true,
+            playlist_url: "other",
+            title: "Другой сериал",
+        },
+        { stream_url: "movie.mp4", title: "Три кота: фильм" },
+        { stream_url: "other.mp4", title: "Другой фильм" },
+        { playlist_url: "page2", title: "Next" },
+        { playlist_url: "search", search_on: 1, title: "Search" },
+    ];
+    c.catalogs.page2 = [
+        { __ottMediaFilterable: true, playlist_url: "other2", title: "Другие" },
+        { playlist_url: "page3", title: "Next" },
+    ];
+    c.catalogs.page3 = [
+        {
+            __ottMediaFilterable: true,
+            playlist_url: "more",
+            title: "ТРИ КОТА — новое",
+        },
+    ];
+    c.mediaList(null);
+    applyTitleFilter(c, "  ТРИ   КОТ  ");
+    c.selectMedia(0);
+    assert.deepEqual(plain(c.listArray.map((row) => row.title)), [
+        "Три кота",
+        "Три кота: фильм",
+        "Next",
+        "Search",
+        "Filter: ТРИ   КОТ",
+    ]);
+    c.selectMedia(2);
+    assert.deepEqual(plain(c.listArray.map((row) => row.title)), [
+        "Next",
+        "Filter: ТРИ   КОТ",
+    ]);
+    c.selectMedia(0);
+    assert.equal(c.listArray[0].title, "ТРИ КОТА — новое");
+    c.__ottMedia.back();
+    c.__ottMedia.back();
+    assert.equal(c.__ottMedia.snapshot().filter, "ТРИ   КОТ");
+    assert.equal(c.listArray.length, 5);
+    const fetches = c.calls.filter((call) => call[0] === "fetch").length;
+    applyTitleFilter(c, "");
+    assert.equal(
+        c.listArray.length,
+        7,
+        "clear restores the already loaded full page"
+    );
+    assert.equal(c.calls.filter((call) => call[0] === "fetch").length, fetches);
+});
+
+test("Filter preserves selected identity, rejects stale editors and resets with the source", () => {
+    const c = fixture();
+    c.catalogs[""] = [
+        { id: 1, stream_url: "a", title: "Other" },
+        { id: 2, stream_url: "b", title: "Ёжик" },
+    ];
+    c.mediaList(null);
+    c.__ottMedia.highlight(1, c.__ottMedia.snapshot().revision);
+    applyTitleFilter(c, "еж");
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 0);
+    assert.equal(c.listArray[0].id, 2);
+    c.__ottMedia.filter();
+    const stale = c.setEdit;
+    applyTitleFilter(c, "other");
+    c.editvar = "stale";
+    stale();
+    assert.equal(c.__ottMedia.snapshot().filter, "other");
+    c.__ottMedia.filter();
+    const retired = c.setEdit;
+    c.providerGetItem = () => null;
+    c.mediaList(null);
+    c.editvar = "retired";
+    retired();
+    assert.equal(c.__ottMedia.snapshot().filter, "");
+    assert.equal(c.listArray[0].title, "Other");
+    const filter = c.listArray.find((row) => row.__ottMediaFilter);
+    c.__ottMedia.favorite(filter);
+    assert.equal(c.medFavorites.length, 0);
+});
+
+test("Filtering retains incremental page ownership and never leaks the unfiltered catalog", () => {
+    const c = fixture();
+    let publish;
+    c.getMediaArray = (_target, done) => {
+        publish = done.publish;
+        c.mediaRecords = [
+            { id: 1, stream_url: "a", title: "Other" },
+            { id: 2, stream_url: "b", title: "Match" },
+        ];
+        done();
+    };
+    c.mediaList(null);
+    applyTitleFilter(c, "match");
+    publish(
+        [
+            { id: 1, stream_url: "a", title: "Other" },
+            { id: 3, stream_url: "c", title: "Match fresh" },
+        ],
+        "Updated",
+        1
+    );
+    assert.equal(c.listArray[0].id, 3);
+    assert.equal(
+        c.__ottMedia.snapshot().frame.selected,
+        0,
+        "provider raw selection maps to its filtered item"
+    );
+    const view = c.__ottMedia.snapshot();
+    assert.equal(view.frame.catalog, undefined);
+    assert.equal(c.mediaRecords.filter((row) => row.stream_url).length, 2);
+    assert(!c.mediaRecords.some((row) => row.__ottMediaFilter));
+    c.listArray[0].title = "Poisoned projection";
+    applyTitleFilter(c, "");
+    assert.equal(c.listArray[1].title, "Match fresh");
+});
+
+test("Applying a filter cancels a pending manual resolver and rejects its late result", () => {
+    const c = fixture();
+    let pending;
+    let cancellations = 0;
+    c.providerMediaClient = {
+        cancel() {
+            cancellations++;
+        },
+        resolve(_item, done) {
+            pending = done;
+        },
+    };
+    c.catalogs[""] = [
+        { id: 1, stream_url: "first.mp4", title: "First" },
+        { id: 2, stream_url: "other.mp4", title: "Other" },
+    ];
+    c.mediaList(null);
+    c.selectMedia(0);
+    const before = cancellations;
+    applyTitleFilter(c, "other");
+    assert(cancellations > before, "The pending transport is cancelled");
+    assert.equal(pending.isCurrent(), false);
+    pending({ id: 1, stream_url: "late.mp4", title: "First" });
+    assert.equal(c.calls.filter((call) => call[0] === "play").length, 0);
+    assert.equal(c.listArray[0].id, 2);
+});
+
+test("Incremental provider appends retain hidden media without copying view controls", () => {
+    const c = fixture();
+    let publish;
+    c.getMediaArray = (_target, done) => {
+        publish = done.publish;
+        c.mediaRecords = [
+            { id: 1, stream_url: "a", title: "Other" },
+            { id: 2, stream_url: "b", title: "Match" },
+        ];
+        done();
+    };
+    c.mediaList(null);
+    applyTitleFilter(c, "match");
+    assert.deepEqual(plain(c.mediaRecords.map((row) => row.id)), [1, 2]);
+    c.mediaRecords.push({ id: 3, stream_url: "c", title: "Match fresh" });
+    publish(c.mediaRecords, "Updated", 2);
+    for (const route of ["history", "favorites"])
+        assert.equal(
+            c.listArray.filter((row) => row.__ottMediaRoute === route).length,
+            1,
+            "Incremental results must not duplicate " + route
+        );
+    assert.equal(c.listArray.filter((row) => row.__ottMediaFilter).length, 1);
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 1);
+    assert.equal(c.listArray[1].id, 3);
+    applyTitleFilter(c, "");
+    assert.deepEqual(
+        plain(c.listArray.filter((row) => row.id).map((row) => row.id)),
+        [1, 2, 3]
+    );
+});
+
+test("Title filtering leaves explicit episodes and their autoplay order intact", () => {
+    const c = episodeFixture();
+    c.stbStop();
+    applyTitleFilter(c, "Episode 30");
+    assert.deepEqual(
+        plain(
+            c.listArray
+                .filter((row) => row.__ottMediaSequence)
+                .map((row) => row.id)
+        ),
+        [30, 2, 11]
+    );
+    c.selectMedia(0);
+    c.finishEpisode();
+    c.finishEpisode();
+    assert.deepEqual(
+        c.resolutions.slice(-3).map((row) => row.item.id),
+        [30, 2, 11]
+    );
+});
+
+test("Saving the Filter row focuses the first matching media instead of the control", () => {
+    const c = fixture();
+    c.catalogs[""] = [
+        { id: 1, stream_url: "a", title: "Other" },
+        { id: 2, stream_url: "b", title: "Match" },
+    ];
+    c.mediaList(null);
+    c.selectMedia(c.listArray.findIndex((row) => row.__ottMediaFilter));
+    c.editvar = "match";
+    c.setEdit();
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 0);
+    assert.equal(c.listArray[0].id, 2);
+    c.selectMedia(c.listArray.findIndex((row) => row.__ottMediaFilter));
+    c.editvar = "";
+    c.setEdit();
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 0);
+    assert.equal(c.listArray[0].id, 1);
+});
+
+test("Saved episode entries remain filterable in history and favorites", () => {
+    const c = episodeFixture();
+    c.finishEpisode();
+    c.__ottMedia.favorite(c.listArray.find((row) => row.id === 30));
+    c.__ottMedia.favorite(c.listArray.find((row) => row.id === 2));
+    for (const target of [-1, -2]) {
+        c.__ottMedia.open(target);
+        applyTitleFilter(c, "Episode 30");
+        assert.deepEqual(
+            plain(c.listArray.filter((row) => row.id).map((row) => row.id)),
+            [30]
+        );
+        applyTitleFilter(c, "no matching title");
+        assert.equal(c.listArray.length, 1);
+        assert.equal(c.listArray[0].__ottMediaFilter, true);
+        applyTitleFilter(c, "");
+        assert.equal(c.listArray.filter((row) => row.id).length, 2);
+    }
+});
+
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
+require("./test_media_filter_ownership.cjs");

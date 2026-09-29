@@ -183,6 +183,8 @@ Run on **macOS / Windows / Linux** desktop window. Skip rows that need credentia
 - [ ] With menus closed, press `L` to enter fullscreen, then `L` again to restore the original window size without clicking or opening Menu
 - [ ] Repeat `L` → `Escape` several times; Escape exits fullscreen without opening the app-exit dialog, and the next key still reaches the player
 - [ ] Repeat after clicking the video and after opening/closing Menu; keyboard behavior must not depend on the overlay
+- [ ] On macOS Tahoe, enter fullscreen with dark video or black letterboxing: all four outer screen edges must be free of a gray 1px window rim, including after switching focus away and back
+- [ ] Exit fullscreen: the normal window shadow returns; repeat `L` → `L` and `L` → `Escape` without losing the original size or keyboard focus
 
 On macOS, this checks native WebView focus as well as fullscreen geometry.
 Tao changes the window style when entering/exiting simple fullscreen and can
@@ -190,6 +192,11 @@ make its container NSView the first responder. The fullscreen command must
 restore focus to the WebView on the macOS main dispatch queue after the deferred
 style update; otherwise exit can steal focus again. A DOM keyboard test or
 focusing only the native window does not verify this behavior.
+
+Simple fullscreen must also disable the native window shadow. macOS Tahoe
+includes a gray edge in that shadow even when the window fills the screen;
+changing CSS borders does not remove it. Restore the shadow after returning
+to windowed mode. See [SDL's corresponding fix](https://github.com/libsdl-org/SDL/pull/15005).
 
 ### B. Playback
 

@@ -10,9 +10,75 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.net.HttpURLConnection
 import java.net.URL
+import okhttp3.OkHttpClient
+import okhttp3.CookieJar
+import okhttp3.Authenticator
+import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
+import java.io.ByteArrayOutputStream
 
 @CapacitorPlugin(name = "StalkerPortal")
 class StalkerPortalPlugin : Plugin() {
+
+    private val swopClient = OkHttpClient.Builder()
+        .followRedirects(false).followSslRedirects(false)
+        .cookieJar(CookieJar.NO_COOKIES)
+        .authenticator(Authenticator.NONE).proxyAuthenticator(Authenticator.NONE)
+        .proxy(java.net.Proxy.NO_PROXY)
+        .callTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS)
+        .build()
+
+
+    /** Archived bridge fixture; the standalone Android app has its own transport. */
+    @PluginMethod
+    fun swopRequest(call: PluginCall) {
+        Thread {
+            try {
+                val raw = call.getString("url") ?: error("missing url")
+                require(Regex("^https://([A-Za-z0-9.-]+|\\[[0-9a-fA-F:]+\\])(:[0-9]{1,5})?/swop/(session|val)$").matches(raw))
+                val uri = java.net.URI(raw)
+                require(uri.host != null && uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null)
+                require(uri.port == -1 || uri.port in 1..65535)
+                val body = call.getString("body") ?: error("missing body")
+                val bytes = body.toByteArray(Charsets.UTF_8)
+                require(bytes.size <= 65536)
+                val json = org.json.JSONTokener(body)
+                require(json.nextValue() is org.json.JSONObject && json.nextClean() == '\u0000')
+                val clientId = call.getString("clientId") ?: error("missing identity")
+                require(Regex("^[A-Za-z0-9._:-]{1,128}$").matches(clientId))
+                // Explicit native assertion about the relay, not browser proof/auth.
+                val origin = "https://" + uri.host + if (uri.port != -1 && uri.port != 443) ":${uri.port}" else ""
+                val request = Request.Builder().url(raw)
+                    .header("Origin", origin).header("Accept", "application/json")
+                    .header("X-Swop-Client-Id", clientId)
+                    .post(bytes.toRequestBody("application/json".toMediaType())).build()
+                swopClient.newCall(request).execute().use { response ->
+                    require(response.code !in 300..399)
+                    val responseBody = response.body ?: error("missing response")
+                    require(responseBody.contentLength() <= 65536)
+                    val output = ByteArrayOutputStream()
+                    responseBody.byteStream().use { stream ->
+                        val buffer = ByteArray(4096)
+                        while (true) {
+                            val read = stream.read(buffer)
+                            if (read == -1) break
+                            require(output.size() + read <= 65536)
+                            output.write(buffer, 0, read)
+                        }
+                    }
+                    val text = Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(output.toByteArray())).toString()
+                    call.resolve(JSObject().put("status", response.code).put("statusText", response.message)
+                        .put("body", text).put("headers", "Content-Type: application/json\r\n"))
+                }
+            } catch (error: Exception) {
+                call.reject("Native remote text entry request failed",
+                    if (error is java.io.InterruptedIOException) "timeout" else null)
+            }
+        }.start()
+    }
 
     private fun isAllowedUrl(url: String): Boolean {
         return url.contains("/stalker_portal/api/") ||

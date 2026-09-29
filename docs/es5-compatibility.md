@@ -34,10 +34,11 @@ regenerated and audited again before staging. Staged copies are also validated. 
 assets. See [External library upgrades](external-library-upgrades.md).
 
 Device IDs used by remote text input are generated with WebCrypto or `msCrypto`.
-Engines without those APIs still boot the player and retain existing IDs. New
-installations on those engines need a provisioned client ID in `/local/swop.json`
-to use remote text input; they never generate an access credential with
-`Math.random`.
+Engines without those APIs still boot the player and retain existing IDs. The
+same-origin `/swop` installation relay obtains a securely generated client ID
+from the Worker for such engines; the player saves it for later sessions.
+Direct legacy Worker configurations still need a provisioned client ID in
+`/local/swop.json`. Access credentials never use `Math.random`.
 
 The vendored Shaka Player 3.3.19 retains its license and runtime polyfills. Its
 six exponentiation expressions use `Math.pow` and its four object spreads use

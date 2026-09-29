@@ -33,6 +33,12 @@ const { inspectBundleSets, measureBundle, writeBundleReport } = classicRequire(
 const { stageNativeRuntime } = classicRequire(
     resolve(__dirname, "scripts/native-runtime.cjs")
 );
+const { stage: stageHostedEpg } = classicRequire(
+    resolve(__dirname, "scripts/hosted-epg.cjs")
+);
+const { stageHostedSwop } = classicRequire(
+    resolve(__dirname, "scripts/hosted-swop.cjs")
+);
 const { configureNativeDev } = classicRequire(
     resolve(__dirname, "scripts/native-dev.cjs")
 );
@@ -90,28 +96,34 @@ function copyRuntimeAssets(
             return (
                 info.isDirectory() ||
                 (info.isFile() &&
-                    /\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
+                    (/\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
                         name
-                    ))
+                    ) ||
+                        /^(?:pako|sax)-LICENSE$/.test(name)))
             );
         },
         recursive: true,
     });
 }
 
-// Full displays icon.png at startup; the Play distribution excludes that artwork.
+// Full displays the player logo at startup; Play excludes that artwork.
 // Keep packaged assets explicit instead of copying every source image.
 function stagePlayerAssets(
     source: string,
     destination: string,
     flavor = "full"
 ): void {
-    rmSync(destination, { force: true, recursive: true });
-    mkdirSync(destination, { recursive: true });
+    for (const directory of ["styles", "images", "locales"]) {
+        rmSync(join(destination, directory), { force: true, recursive: true });
+        mkdirSync(join(destination, directory), { recursive: true });
+    }
     if (flavor !== "full" && flavor !== "play") {
         throw new Error("Unknown player asset distribution: " + flavor);
     }
-    const files = flavor === "play" ? ["1280.css"] : ["1280.css", "icon.png"];
+    const files =
+        flavor === "play"
+            ? ["styles/player.css"]
+            : ["styles/player.css", "images/player-logo.png"];
     for (const file of files) {
         const asset = join(source, file);
         if (!existsSync(asset)) {
@@ -119,9 +131,12 @@ function stagePlayerAssets(
         }
         copyRuntimeAssets(asset, join(destination, file));
     }
-    for (const file of readdirSync(source)) {
-        if (/^_.*\.js$/i.test(file)) {
-            copyRuntimeAssets(join(source, file), join(destination, file));
+    for (const file of readdirSync(join(source, "locales"))) {
+        if (/^[a-z]+(?:-[a-z]+)*\.js$/.test(file)) {
+            copyRuntimeAssets(
+                join(source, "locales", file),
+                join(destination, "locales", file)
+            );
         }
     }
 }
@@ -137,7 +152,7 @@ function autoPlaybackScript(srcRoot: string): string {
 // Capacitor serves the nested /dist scripts; flat build copies are unused.
 function removeDuplicatePlayerAssets(directory: string): void {
     for (const file of [
-        "stbPlayer.js",
+        "player.js",
         ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
             (kind) => "provider-" + kind + ".js"
         ),
@@ -151,11 +166,11 @@ function removeDuplicatePlayerAssets(directory: string): void {
 }
 
 // Stage a Mode A-like web root for Tauri Mode B (frontendDist).
-// Boot resolves host + "/dist/stbPlayer.js", "/stb/...", "/fonts/...", etc.
-// Vite still writes Mode A artifacts to dist/ (stbPlayer.js + index.html);
+// Boot resolves host + "/dist/player.js", "/devices/...", "/fonts/...", etc.
+// Vite still writes Mode A artifacts to dist/ (player.js + index.html);
 // Tauri serves the *contents* of frontendDist as "/", so we nest
-// dist/stbPlayer.js inside the stage dir instead of pointing at ../dist.
-// Capacitor's separate dist-mobile stage preserves /dist/stbPlayer.js too;
+// dist/player.js inside the stage dir instead of pointing at ../dist.
+// Capacitor's separate dist-mobile stage preserves /dist/player.js too;
 // its contents are served from the web root, like the Tauri stage.
 function stageTauriFrontend(
     srcRoot: string,
@@ -183,11 +198,11 @@ function stageTauriFrontend(
         autoPlaybackScript(srcRoot)
     );
 
-    // Nested dist/stbPlayer.js so /dist/stbPlayer.js resolves
-    const bundleSrc = join(distDir, "stbPlayer.js");
+    // Nested dist/player.js so /dist/player.js resolves
+    const bundleSrc = join(distDir, "player.js");
     if (existsSync(bundleSrc)) {
         mkdirSync(join(stageDir, "dist"), { recursive: true });
-        cpSync(bundleSrc, join(stageDir, "dist", "stbPlayer.js"));
+        cpSync(bundleSrc, join(stageDir, "dist", "player.js"));
         for (const kind of Object.keys(CLASSIC_PROVIDER_BUNDLES)) {
             const file = "provider-" + kind + ".js";
             cpSync(join(distDir, file), join(stageDir, "dist", file));
@@ -195,15 +210,14 @@ function stageTauriFrontend(
     }
 
     // Preserve nested vendor paths (lg/webos, samsung/tizen, etc.).
-    const stbDir = join(srcRoot, "stb");
+    const stbDir = join(srcRoot, "devices");
     if (existsSync(stbDir)) {
-        copyRuntimeAssets(stbDir, join(stageDir, "stb"));
+        copyRuntimeAssets(stbDir, join(stageDir, "devices"));
     }
 
-    // stbPlayer: CSS, images, language packs (_*.js)
-    const stbPlayerSrc = join(srcRoot, "stbPlayer");
-    if (existsSync(stbPlayerSrc)) {
-        stagePlayerAssets(stbPlayerSrc, join(stageDir, "stbPlayer"));
+    stagePlayerAssets(srcRoot, stageDir);
+    for (const directory of ["hosted", "swop-input"]) {
+        copyRuntimeAssets(join(distDir, directory), join(stageDir, directory));
     }
 
     // js player libs
@@ -223,8 +237,8 @@ function stageTauriFrontend(
         }
     }
 
-    // fonts/ + prov/ (full trees used at runtime)
-    for (const dir of ["fonts", "prov"] as const) {
+    // fonts/ + providers/ (full trees used at runtime)
+    for (const dir of ["fonts", "providers"] as const) {
         const src = join(srcRoot, dir);
         if (existsSync(src)) {
             copyRuntimeAssets(src, join(stageDir, dir));
@@ -350,6 +364,17 @@ export default defineConfig(({ mode }) => ({
                     ? resolve(androidOutput!)
                     : resolve(__dirname, "dist");
                 mkdirSync(outDir, { recursive: true });
+                // Retire old public paths even when rebuilding an existing dist.
+                for (const retired of [
+                    "stbPlayer",
+                    "stb",
+                    "prov",
+                    "stbPlayer.js",
+                ])
+                    rmSync(join(outDir, retired), {
+                        force: true,
+                        recursive: true,
+                    });
 
                 let bundle = assembleClassic(
                     androidFlavor ? androidCompileRoot : __dirname,
@@ -360,14 +385,14 @@ export default defineConfig(({ mode }) => ({
                 const version = pkg.version || "local";
                 bundle = bundle.replace(/__OTTP_VERSION__/g, version);
 
-                const outPath = join(outDir, "stbPlayer.js");
+                const outPath = join(outDir, "player.js");
                 // Optimize local implementation details while preserving the classic ABI.
                 console.log("Step 3: optimize ES5 classic bundle...");
                 const result = await optimizeClassic(
                     bundle,
                     CLASSIC_PLAYER_NAME_POLICY
                 );
-                const size = measureBundle(result.code, "dist/stbPlayer.js");
+                const size = measureBundle(result.code, "dist/player.js");
                 writeFileSync(outPath, result.code);
                 // Emit each implementation once; the selected provider loader
                 // fetches its family without downloading every other factory.
@@ -439,17 +464,17 @@ export default defineConfig(({ mode }) => ({
                     cpSync(join(__dirname, "favicon.ico"), favicon);
                 }
 
-                // Native roots retain the /dist/stbPlayer.js bootstrap URL.
+                // Native roots retain the /dist/player.js bootstrap URL.
                 // Prepare the nested copy before staging Capacitor separately
                 // into dist-mobile and applying its native transformations.
                 rmSync(join(outDir, "dist"), { force: true, recursive: true });
                 mkdirSync(join(outDir, "dist"), { recursive: true });
-                cpSync(outPath, join(outDir, "dist", "stbPlayer.js"));
+                cpSync(outPath, join(outDir, "dist", "player.js"));
                 for (const kind of providerKinds) {
                     const file = "provider-" + kind + ".js";
                     cpSync(join(outDir, file), join(outDir, "dist", file));
                 }
-                console.log("Nested Cap contract: dist/dist/stbPlayer.js");
+                console.log("Nested Cap contract: dist/dist/player.js");
                 // Retire media left by older builds; demo streams now live on here.now.
                 rmSync(join(outDir, "demo"), { force: true, recursive: true });
                 // Older Mode A packaging wrote release archives into Capacitor's
@@ -462,8 +487,13 @@ export default defineConfig(({ mode }) => ({
                 }
 
                 // Ship the same local device and library fallbacks in Capacitor as on the web.
-                for (const dir of ["fonts", "prov", "stb", "js"] as const) {
-                    if (dir === "stb" && androidFlavor === "play") {
+                for (const dir of [
+                    "fonts",
+                    "providers",
+                    "devices",
+                    "js",
+                ] as const) {
+                    if (dir === "devices" && androidFlavor === "play") {
                         // Android uses its device shim and the HTML5 PC fallback.
                         // Do not ship legacy branded/device-specific shells.
                         for (const device of ["android", "pc"]) {
@@ -474,7 +504,7 @@ export default defineConfig(({ mode }) => ({
                         }
                         continue;
                     }
-                    if (dir === "prov" && androidFlavor === "play") {
+                    if (dir === "providers" && androidFlavor === "play") {
                         stagePlayProviders(__dirname, join(outDir, dir));
                         continue;
                     }
@@ -488,51 +518,40 @@ export default defineConfig(({ mode }) => ({
                     }
                 }
 
-                // Cap webDir must also ship stbPlayer language packs (_*.js) +
-                // CSS/images. Previously only stageTauriFrontend got them, so
-                // Cap iOS loaded /stbPlayer/_eng.js → 404 → "lang loading fail".
-                const stbPlayerSrc = join(__dirname, "stbPlayer");
-                if (existsSync(stbPlayerSrc)) {
-                    const dest = join(outDir, "stbPlayer");
-                    stagePlayerAssets(
-                        stbPlayerSrc,
-                        dest,
-                        androidFlavor || "full"
-                    );
-                    if (androidFlavor === "play") {
-                        // This translation belongs to the excluded legacy adapter.
-                        const locale = join(dest, "_eng.js");
-                        writeFileSync(
-                            locale,
-                            readFileSync(locale, "utf8").replace(
-                                /^\s*"Loading from Edem API\.\.\.":.*\r?\n/m,
-                                ""
-                            )
-                        );
-                    }
-                    console.log(
-                        "Copied Cap stbPlayer assets → dist/stbPlayer/"
+                // All targets receive the same styles, logo and language packs.
+                stagePlayerAssets(__dirname, outDir, androidFlavor || "full");
+                stageHostedEpg(outDir);
+                await stageHostedSwop(
+                    outDir,
+                    androidCompileRoot || resolve(__dirname, "build")
+                );
+                if (androidFlavor === "play") {
+                    // This translation belongs to the excluded legacy adapter.
+                    const locale = join(outDir, "locales/english.js");
+                    writeFileSync(
+                        locale,
+                        readFileSync(locale, "utf8").replace(
+                            /^\s*"Loading from Edem API\.\.\.":.*\r?\n/m,
+                            ""
+                        )
                     );
                 }
 
                 // Stage Mode A-like tree for Tauri Mode B (src-tauri/frontend).
-                // Mode A companion still serves dist/stbPlayer.js + repo-root
-                // stb/fonts/prov/js — URL shapes unchanged.
+                // Mode A companion still serves dist/player.js + repo-root
+                // devices/fonts/providers/js — URL shapes unchanged.
                 if (androidFlavor) {
                     stageNativeRuntime(outDir, "capacitor");
                     // The retained legacy Android export also applies native
                     // transformations before its final size gate.
+                    measureBundle(readFileSync(outPath), "android/player.js");
                     measureBundle(
-                        readFileSync(outPath),
-                        "android/stbPlayer.js"
-                    );
-                    measureBundle(
-                        readFileSync(join(outDir, "dist/stbPlayer.js")),
-                        "android/dist/stbPlayer.js"
+                        readFileSync(join(outDir, "dist/player.js")),
+                        "android/dist/player.js"
                     );
                     inspectBundleSets(
                         outDir,
-                        ["stbPlayer.js", "dist/stbPlayer.js"],
+                        ["player.js", "dist/player.js"],
                         providerKinds
                     );
                     return;
@@ -542,7 +561,7 @@ export default defineConfig(({ mode }) => ({
                         __dirname,
                         result.report,
                         CLASSIC_MAIN_MODULES,
-                        ["dist/stbPlayer.js"]
+                        ["dist/player.js"]
                     );
                     execFileSync(
                         process.execPath,

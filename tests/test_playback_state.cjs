@@ -317,7 +317,7 @@ function fixture() {
 // Remote pause/resume also updates owned state when a native adapter replaces core methods.
 {
     const c = fixture();
-    include(c, "src/keyhandler/index.ts", ["toggleMainPlayback"]);
+    include(c, "src/key-handler/index.ts", ["toggleMainPlayback"]);
     c._ = (text) => text;
     c.stbIsPlaying = () => !c.video.paused;
     c.stbPause = () => {

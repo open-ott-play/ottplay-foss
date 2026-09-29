@@ -198,7 +198,7 @@ try {
         VOLUME_UP: "VOL_UP",
     };
     for (const adapter of ["pc", "android"]) {
-        const source = read(`src/stb/${adapter}/stb.ts`);
+        const source = read(`src/devices/${adapter}/device.ts`);
         const keyMap = vm.runInNewContext(
             "(" + /var \w*Keys = (\{[\s\S]*?\});/.exec(source)[1] + ")"
         );

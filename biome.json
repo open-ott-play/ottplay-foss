@@ -161,7 +161,7 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**",
-      "stb/**",
+      "devices/**",
       "biome.json",
       "package.json",
       "tsconfig.json",
@@ -177,7 +177,8 @@
       "!vendor/glib-0.18.5/.cargo_vcs_info.json",
       "!vendor/tao-0.35.3/**",
       "!vendor/wry-0.55.1/**",
-      "!vendor/ottplay-core.js"
+      "!vendor/ottplay-core.js",
+      "!vendor/hosted-epg/**"
     ]
   },
   "formatter": {

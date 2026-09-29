@@ -108,6 +108,9 @@ jobs:
       - name: Install browsers for device and native UI checks
         run: npx playwright install --with-deps chromium webkit
 
+      - name: Test hosted EPG worker and persistent cache
+        run: npm run test:hosted:browser
+
       - name: Test device boot and remote navigation in Chromium
         run: npm run test:devices:browser
 
@@ -180,8 +183,20 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: Test isolated container workspace and lockfile inputs
         run: python3 tests/test_container_workspace.py
-      - name: Test core and server without desktop system dependencies
+      - name: Test core and server including shared XMLTV differential contracts
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Enforce release server EPG performance budgets
+        run: |
+          cargo build --locked --release -p ottplay-server
+          python3 scripts/check-epg-performance.py --server target/release/ottplay-server --output reports/epg/performance.json
+      - name: Preserve EPG performance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: epg-performance
+          path: reports/epg/performance.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Verify published GLib source and security backport
         run: node scripts/check-glib-backport.cjs
       - name: Verify native drag pasteboard dependency guards

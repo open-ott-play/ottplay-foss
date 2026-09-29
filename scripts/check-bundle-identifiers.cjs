@@ -78,7 +78,7 @@ function checkBundleIdentifiers(code) {
 if (require.main === module) {
     try {
         const file =
-            process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js");
+            process.argv[2] || path.join(__dirname, "../dist/player.js");
         checkBundleIdentifiers(fs.readFileSync(file, "utf8"));
         console.log(
             "OK: classic ES5 AST retains all 6 required global declarations/publications"

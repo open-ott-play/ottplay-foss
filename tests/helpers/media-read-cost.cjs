@@ -7,9 +7,9 @@ function trackMediaSnapshots(host) {
         const library = create(ports);
         const snapshot = library.snapshot;
         const select = library.select;
-        library.snapshot = () => {
+        library.snapshot = (...args) => {
             counts.snapshots++;
-            return snapshot();
+            return snapshot(...args);
         };
         library.select = (index) => {
             counts.selects++;

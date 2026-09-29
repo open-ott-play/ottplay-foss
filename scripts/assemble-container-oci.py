@@ -20,7 +20,7 @@ MANIFEST = "application/vnd.oci.image.manifest.v1+json"
 ATTESTATION = "application/vnd.docker.attestation.manifest.v1+json"
 PLATFORMS = {"linux/amd64", "linux/arm64"}
 WEB_FILES = {"app/index.html", "app/favicon.ico", "app/build-info.json"}
-WEB_DIRS = {"app/dist", "app/fonts", "app/js", "app/stb", "app/stbPlayer", "app/prov"}
+WEB_DIRS = {"app/dist", "app/fonts", "app/js", "app/devices", "app/styles", "app/images", "app/locales", "app/providers"}
 LAYER_TYPES = {
     "application/vnd.oci.image.layer.v1.tar",
     "application/vnd.oci.image.layer.v1.tar+gzip",
@@ -245,7 +245,7 @@ class NativeArchive:
                 }
             result.update(changes)
         require(
-            "app/index.html" in result and "app/dist/stbPlayer.js" in result, "Image has no complete player web root"
+            "app/index.html" in result and "app/dist/player.js" in result, "Image has no complete player web root"
         )
         return result
 
@@ -273,7 +273,7 @@ def inspect_native(path, platform, version, revision):
             "predicate_types": sorted(item.predicates),
             "web_files": len(item.web),
             "web_manifest_sha256": sha256(canonical(item.web)),
-            "critical_web_files": {name: item.web["app/" + name] for name in ["index.html", "dist/stbPlayer.js"]},
+            "critical_web_files": {name: item.web["app/" + name] for name in ["index.html", "dist/player.js"]},
         }
 
 

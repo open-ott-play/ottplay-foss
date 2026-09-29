@@ -31,6 +31,8 @@
     "allow-get-epg",
     "allow-proxy-fetch",
     "allow-proxy-http",
+    "allow-discover-control-servers",
+    "allow-swop-http",
     "allow-set-fullscreen",
     "allow-toggle-fullscreen",
     "allow-prevent-sleep",

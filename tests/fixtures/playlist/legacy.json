@@ -2,139 +2,139 @@
   "baseline": "7d47b0ca391e4b1d1fe282cb4bf11a2bfe17e80a",
   "parsers": [
     {
-      "file": "prov/all4you/prov.js",
+      "file": "providers/all4you/provider.js",
       "name": "_all4you_parseM3U"
     },
     {
-      "file": "prov/bestlist/prov.js",
+      "file": "providers/bestlist/provider.js",
       "name": "_bestlist_parseM3U"
     },
     {
-      "file": "prov/bestlist/stalker/prov.js",
+      "file": "providers/bestlist/stalker/provider.js",
       "name": "_bestlist_stalker_parseM3U"
     },
     {
-      "file": "prov/cbilling/prov.js",
+      "file": "providers/cbilling/provider.js",
       "name": "_cbilling_parseM3U"
     },
     {
-      "file": "prov/d/maxtv/prov.js",
+      "file": "providers/d/maxtv/provider.js",
       "name": "_d_maxtv_parseM3U"
     },
     {
-      "file": "prov/diamondtv/prov.js",
+      "file": "providers/diamondtv/provider.js",
       "name": "_diamondtv_parseM3U"
     },
     {
-      "file": "prov/dosug/prov.js",
+      "file": "providers/dosug/provider.js",
       "name": "_dosug_parseM3U"
     },
     {
-      "file": "prov/dragon/prov.js",
+      "file": "providers/dragon/provider.js",
       "name": "_dragon_parseM3U"
     },
     {
-      "file": "prov/drvao/prov.js",
+      "file": "providers/drvao/provider.js",
       "name": "_drvao_parseM3U"
     },
     {
-      "file": "prov/fabryka/prov.js",
+      "file": "providers/fabryka/provider.js",
       "name": "_fabryka_parseM3U"
     },
     {
-      "file": "prov/fox/prov.js",
+      "file": "providers/fox/provider.js",
       "name": "_fox_parseM3U"
     },
     {
-      "file": "prov/fxml/prov.js",
+      "file": "providers/fxml/provider.js",
       "name": "_fxml_parseM3U"
     },
     {
-      "file": "prov/great/prov.js",
+      "file": "providers/great/provider.js",
       "name": "_great_parseM3U"
     },
     {
-      "file": "prov/ipstream/prov.js",
+      "file": "providers/ipstream/provider.js",
       "name": "_ipstream_parseM3U"
     },
     {
-      "file": "prov/iptv-ott.ru/prov.js",
+      "file": "providers/iptv-ott.ru/provider.js",
       "name": "_iptv_ott_ru_parseM3U"
     },
     {
-      "file": "prov/korona/prov.js",
+      "file": "providers/korona/provider.js",
       "name": "_korona_parseM3U"
     },
     {
-      "file": "prov/moidom/prov.js",
+      "file": "providers/moidom/provider.js",
       "name": "_moidom_parseM3U"
     },
     {
-      "file": "prov/newlook/prov.js",
+      "file": "providers/newlook/provider.js",
       "name": "_newlook_parseM3U"
     },
     {
-      "file": "prov/ottg/prov.js",
+      "file": "providers/ottg/provider.js",
       "name": "_ottg_parseM3U"
     },
     {
-      "file": "prov/ottprime/prov.js",
+      "file": "providers/ottprime/provider.js",
       "name": "_ottprime_parseM3U"
     },
     {
-      "file": "prov/polmedia/prov.js",
+      "file": "providers/polmedia/provider.js",
       "name": "_polmedia_parseM3U"
     },
     {
-      "file": "prov/prost/prov.js",
+      "file": "providers/prost/provider.js",
       "name": "_prost_parseM3U"
     },
     {
-      "file": "prov/raduga/prov.js",
+      "file": "providers/raduga/provider.js",
       "name": "_raduga_parseM3U"
     },
     {
-      "file": "prov/rd/prov.js",
+      "file": "providers/rd/provider.js",
       "name": "_rd_parseM3U"
     },
     {
-      "file": "prov/russkoetv/prov.js",
+      "file": "providers/russkoetv/provider.js",
       "name": "_russkoetv_parseM3U"
     },
     {
-      "file": "prov/shara.club/prov.js",
+      "file": "providers/shara.club/provider.js",
       "name": "_shara_club_parseM3U"
     },
     {
-      "file": "prov/sharavoz/prov.js",
+      "file": "providers/sharavoz/provider.js",
       "name": "_sharavoz_parseM3U"
     },
     {
-      "file": "prov/shocktv/prov.js",
+      "file": "providers/shocktv/provider.js",
       "name": "_shocktv_parseM3U"
     },
     {
-      "file": "prov/tabox/prov.js",
+      "file": "providers/tabox/provider.js",
       "name": "_tabox_parseM3U"
     },
     {
-      "file": "prov/top/prov.js",
+      "file": "providers/top/provider.js",
       "name": "_top_parseM3U"
     },
     {
-      "file": "prov/topiptv/prov.js",
+      "file": "providers/topiptv/provider.js",
       "name": "_topiptv_parseM3U"
     },
     {
-      "file": "prov/tvclub/prov.js",
+      "file": "providers/tvclub/provider.js",
       "name": "_tvclub_parseM3U"
     },
     {
-      "file": "prov/ultifl1x/prov.js",
+      "file": "providers/ultifl1x/provider.js",
       "name": "_ultifl1x_parseM3U"
     },
     {
-      "file": "prov/vidok/prov.js",
+      "file": "providers/vidok/provider.js",
       "name": "_vidok_parseM3U"
     }
   ],

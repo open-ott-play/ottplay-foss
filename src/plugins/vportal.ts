@@ -26,6 +26,33 @@ export function parseVPortalLink(value: unknown): VPortalLink | null {
     return { key: match[1], url: endpoint };
 }
 
+/** A hosted installation publishes exact provider routes, never an open relay. */
+export function hostedVPortalRoute(
+    endpoint: string,
+    profile: any
+): string | null {
+    if (
+        !profile ||
+        profile.version !== 1 ||
+        !profile.vportal ||
+        !Array.isArray(profile.vportal.routes)
+    )
+        return null;
+    var selected: string | null = null;
+    for (var index = 0; index < profile.vportal.routes.length; index++) {
+        var route = profile.vportal.routes[index];
+        if (!route || route.upstream !== endpoint) continue;
+        if (
+            selected !== null ||
+            typeof route.path !== "string" ||
+            !/^\/vportal\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(route.path)
+        )
+            return null;
+        selected = route.path;
+    }
+    return selected;
+}
+
 interface VPortalCompletion {
     isCurrent?: () => boolean;
     (): void;
@@ -42,7 +69,7 @@ export interface VPortalClient {
     dispose(): void;
     load(target: any, callback: VPortalCompletion): void;
     play(item: any): void;
-    resolve(item: any, done: (item: any) => void): void;
+    resolve(item: any, done: (item: any) => void, automatic?: boolean): void;
 }
 
 /** The provider owns this instance, so replacing its settings invalidates all work. */
@@ -61,6 +88,7 @@ export function createVPortalClient(
     var dialogHandler: any = null;
     var previousDialogHandler: any = null;
     var qualityHandler: any = null;
+    var preferredQuality = "";
 
     function translate(text: string): string {
         return typeof w._ === "function" ? w._(text) : text;
@@ -166,9 +194,17 @@ export function createVPortalClient(
         var body = copyRequest(params);
         body.app = "ott-play";
         body.key = portal.key;
+        var hosted = !native && w.__OTTPLAY_HOSTED__ !== undefined;
+        var endpoint: string | null =
+            String(w.host || "").replace(/\/$/, "") + "/vportal/api";
+        if (native) endpoint = portal.url;
+        else if (hosted)
+            endpoint = hostedVPortalRoute(portal.url, w.__OTTPLAY_HOSTED__);
         var finished = false;
         showBusy();
         try {
+            if (!endpoint)
+                throw new Error("VPortal endpoint is not configured");
             var xhr = jq.ajax({
                 complete: function (): void {
                     finished = true;
@@ -179,7 +215,7 @@ export function createVPortalClient(
                 },
                 contentType: "application/json; charset=UTF-8",
                 data: JSON.stringify(
-                    native ? body : { params: body, url: portal.url }
+                    native || hosted ? body : { params: body, url: portal.url }
                 ),
                 dataType: "json",
                 error: function (_xhr: any, status: string): void {
@@ -191,9 +227,7 @@ export function createVPortalClient(
                 },
                 timeout: 30000,
                 type: "POST",
-                url: native
-                    ? portal.url
-                    : String(w.host || "").replace(/\/$/, "") + "/vportal/api",
+                url: endpoint,
                 vportalRequest: true,
             });
             if (!finished && isCurrent(token)) pending = xhr;
@@ -237,9 +271,12 @@ export function createVPortalClient(
             ),
             title: title,
         };
+        if (item.type === "multistream") record.__ottMediaFilterable = true;
         sourceTarget(record);
         if (item.adult || (parent && parent.adult)) record.adult = 1;
         if (item.type === "stream") {
+            if (parent && parent.type === "multistream")
+                record.__ottMediaSequence = true;
             if (item.request && typeof item.request === "object")
                 record.request = copyRequest(item.request);
             record.stream_url = validStream(item.url)
@@ -408,7 +445,11 @@ export function createVPortalClient(
         );
     }
 
-    function play(item: any, resolved?: (item: any) => void): void {
+    function play(
+        item: any,
+        resolved?: (item: any) => void,
+        automatic = false
+    ): void {
         var token = revision + 1;
         cancel();
         if (!item || !isCurrent(token)) return;
@@ -466,7 +507,13 @@ export function createVPortalClient(
                     reportError();
                     return;
                 }
-                if (names.length < 2 || typeof w.showSelectBox !== "function") {
+                if (
+                    automatic ||
+                    names.length < 2 ||
+                    typeof w.showSelectBox !== "function"
+                ) {
+                    if (automatic && names.indexOf(preferredQuality) !== -1)
+                        url = variants[preferredQuality];
                     start(url);
                     return;
                 }
@@ -478,8 +525,10 @@ export function createVPortalClient(
                     selected,
                     names.map(metadataText),
                     function (index: number) {
-                        if (index >= 0 && index < names.length)
+                        if (current() && index >= 0 && index < names.length) {
+                            preferredQuality = names[index];
                             start(variants[names[index]]);
+                        }
                     },
                     -1,
                     !!resolved
@@ -528,8 +577,12 @@ export function createVPortalClient(
         },
         load: load,
         play: play,
-        resolve: function (item: any, done: (item: any) => void) {
-            play(item, done);
+        resolve: function (
+            item: any,
+            done: (item: any) => void,
+            automatic?: boolean
+        ) {
+            play(item, done, automatic);
         },
     };
 }

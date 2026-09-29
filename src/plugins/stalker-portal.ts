@@ -7,7 +7,7 @@ import { nativeWebFallback } from "./web-fallback";
  * Stalker portal + host_ott swop shim — Mode B native HTTP transport.
  *
  * Covers:
- * - Stalker provider scripts (`prov/stalker/prov.js`) POST JSON-RPC to
+ * - Stalker provider scripts (`providers/stalker/provider.js`) POST JSON-RPC to
  *   `<portal>/stalker_portal/api/` (and `/stalker_portal/stream/` text).
  * - Dealer/cloud entry (`edit_dealer_remote`, cloud settings) POST
  *   form-urlencoded bodies to `host_ott/swop/a.php`.
@@ -48,9 +48,20 @@ export interface StalkerPortalPlugin {
         contentType: string;
         setCookie?: string[];
     }>;
+    /** Dedicated bounded SWOP relay request; never uses provider cookies. */
+    swopRequest(opts: {
+        url: string;
+        body: string;
+        clientId: string;
+    }): Promise<NativeHttpResponse>;
 }
 
 class StalkerPortalWeb implements StalkerPortalPlugin {
+    swopRequest(): Promise<NativeHttpResponse> {
+        return nativeWebFallback(function () {
+            throw new Error("Native SWOP unavailable");
+        });
+    }
     httpRequest(): Promise<NativeHttpResponse> {
         return nativeWebFallback(function () {
             throw new Error(

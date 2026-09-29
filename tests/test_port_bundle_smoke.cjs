@@ -57,7 +57,7 @@ assert.throws(
 // No network requests or media decoding run. Selected controller timers are
 // driven explicitly through fake host ports after loading the complete artifact.
 const bundlePath = path.resolve(
-    process.argv[2] || path.join(__dirname, "../dist/stbPlayer.js")
+    process.argv[2] || path.join(__dirname, "../dist/player.js")
 );
 const bundle = fs.readFileSync(bundlePath, "utf8");
 const playDistribution = process.argv.includes("--play");
@@ -2210,12 +2210,18 @@ async function main() {
         w.ott_device = expected;
         vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
         assert.equal(
+            w.__OTT_CONTROL_DISCOVERY_VERSION__,
+            1,
+            "discovery deployment capability is installed"
+        );
+        assert.equal(typeof w.__ottControlDiscovery.start, "function");
+        assert.equal(
             w.ott_device,
             expected,
             pathname + ": bundle must preserve the boot device selection"
         );
         // This is the device URL requested by HTML after the bundle's onload.
-        const adapterPath = "stb/" + w.ott_device + "/stb.js";
+        const adapterPath = "devices/" + w.ott_device + "/device.js";
         const adapter = fs.readFileSync(
             path.join(__dirname, "..", adapterPath),
             "utf8"

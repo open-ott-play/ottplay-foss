@@ -53,7 +53,7 @@ exports.run = function (profile, input, baseline) {
     if (baseline) {
         const text = cp.execFileSync(
             "git",
-            ["show", "HEAD:prov/" + profile + "/prov.js"],
+            ["show", "HEAD:providers/" + profile + "/provider.js"],
             { encoding: "utf8" }
         );
         const tree = ts.createSourceFile(
@@ -66,7 +66,7 @@ exports.run = function (profile, input, baseline) {
             .filter(ts.isFunctionDeclaration)
             .map((row) => row.getText(tree));
     } else
-        functions = declarations("prov/" + profile + "/prov.js").map(
+        functions = declarations("providers/" + profile + "/provider.js").map(
             (row) => row.text
         );
     vm.runInContext(functions.join("\n"), ctx);

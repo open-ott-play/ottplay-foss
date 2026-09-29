@@ -24,6 +24,7 @@
     ["tests/test_ios_command_queue.py"],
     ["tests/test_ios_demo_media.py"],
     ["tests/test_ios_proxy.py"],
+    ["tests/test_native_swop_swift.py"],
     ["tests/test_native_epg_cache.py", "--platform", "ios"],
     ["tests/test_native_xmltv_records.py", "--platform", "ios"],
     ["tests/test_native_media_lifecycle.py", "--platform", "ios"]

@@ -55,6 +55,10 @@ function classicMediaRuntime(): any {
     var checkpointTime = 0;
     var checkpointItem = "";
     var rendering = false;
+    var filterText = "";
+    var pendingStart: any = null;
+    var automaticRequest: any = null;
+    var automaticGeneration = 0;
     function bindScreen() {
         var screen = w.__ottClassicScreenPort;
         var owner = screen && screen.listOwner();
@@ -82,7 +86,7 @@ function classicMediaRuntime(): any {
         var titles: { [key: string]: number } = Object.create(null);
         return records
             .filter(function (row) {
-                return row && typeof row === "object";
+                return row && typeof row === "object" && !row.__ottMediaFilter;
             })
             .map(function (row) {
                 var payload = copy(row);
@@ -196,12 +200,17 @@ function classicMediaRuntime(): any {
     }
     function project(view: MediaLibraryView, render = true) {
         if (!current()) return;
+        (view as any).filter = filterText;
         var frame = view.frame;
-        w.mediaRecords = frame
-            ? frame.items.map(function (item) {
-                  return copy(item.payload);
-              })
-            : [];
+        // Provider codecs may append incremental rows to this full-page projection.
+        w.mediaRecords = library
+            .catalog()
+            .filter(function (item: MediaLibraryItem) {
+                return !item.payload.__ottMediaRoute;
+            })
+            .map(function (item: MediaLibraryItem) {
+                return item.payload;
+            });
         w.mediaName = frame ? frame.route.title : "";
         w.mediaNames = view.frames.map(function (row) {
             return row.route.title;
@@ -245,7 +254,7 @@ function classicMediaRuntime(): any {
             }
             var records = w.mediaRecords;
             var title = w.mediaName;
-            project(library.snapshot(), false);
+            project(library.snapshot("none"), false);
             done(copy(records || []), title);
         };
         complete.isCurrent = function () {
@@ -276,10 +285,20 @@ function classicMediaRuntime(): any {
             title: "",
         });
     }
+    function normalizedFilter(value: string) {
+        return value
+            .toLowerCase()
+            .replace(/ё/g, "е")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
     library = w.__ottMediaLibrary.create({
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
-            if (library.snapshot().frames.length === 1 && w.sFavorites !== -1) {
+            if (
+                library.snapshot("none").frames.length === 1 &&
+                w.sFavorites !== -1
+            ) {
                 if (limit())
                     items.push({
                         payload: {
@@ -300,6 +319,30 @@ function classicMediaRuntime(): any {
             }
             return items;
         },
+        filter: function (items: MediaLibraryItem[], route: MediaRoute) {
+            if (route.kind === "variants") return items;
+            var query = normalizedFilter(filterText);
+            var result = items.filter(function (item) {
+                var payload = item.payload;
+                return (
+                    !query ||
+                    (route.kind === "catalog" && payload.__ottMediaSequence) ||
+                    !(
+                        payload.__ottMediaFilterable ||
+                        (!payload.playlist_url &&
+                            (payload.stream_url || payload.request))
+                    ) ||
+                    normalizedFilter(item.title).indexOf(query) !== -1
+                );
+            });
+            var title = w._("Filter") + ": " + filterText;
+            result.push({
+                payload: { __ottMediaFilter: true, title: title },
+                ref: { itemId: "view:filter", sourceId: source },
+                title: title,
+            });
+            return result;
+        },
         items: function (route: MediaRoute) {
             return route.kind === "variants"
                 ? describe(route.target || [], route)
@@ -308,18 +351,50 @@ function classicMediaRuntime(): any {
         load: load,
         render: project,
     });
-    function resolve(item: MediaLibraryItem) {
+    function sequenceFor(item: MediaLibraryItem) {
+        if (!item.payload.__ottMediaSequence) return null;
+        var frame = library.snapshot("current").frame;
+        if (!frame || frame.route.kind !== "catalog") return null;
+        var items = frame.items.filter(function (row: MediaLibraryItem) {
+            return (
+                row.payload.__ottMediaSequence &&
+                !row.payload.playlist_url &&
+                (row.payload.stream_url || row.payload.request)
+            );
+        });
+        var index = -1;
+        items.forEach(function (row: MediaLibraryItem, position: number) {
+            if (row.ref.itemId === item.ref.itemId) index = position;
+        });
+        return index < 0 ? null : { index: index, items: items };
+    }
+    function resolve(
+        item: MediaLibraryItem,
+        sequence: any = null,
+        automatic = false,
+        guard: () => boolean = current
+    ) {
+        if (!automatic) api.cancelAuto();
+        var request = {};
+        if (automatic) automaticRequest = request;
+        function valid() {
+            return (
+                current() &&
+                guard() &&
+                (!automatic || automaticRequest === request)
+            );
+        }
         library.resolve(
             function (done: any) {
                 bindScreen();
                 var abortLoad: any = null;
                 function accept(payload: any) {
-                    if (!done.isCurrent() || !current()) return;
+                    if (!done.isCurrent() || !valid()) return;
                     payload.__ottMediaRef = copy(item.ref);
                     delete payload.__ottMediaRefresh;
                     var client = w.providerMediaClient;
                     if (client && typeof client.resolve === "function")
-                        client.resolve(payload, done);
+                        client.resolve(payload, done, automatic);
                     else done(payload);
                 }
                 var origin = item.payload.__ottMediaOrigin;
@@ -349,9 +424,22 @@ function classicMediaRuntime(): any {
                 };
             },
             function (payload: any) {
-                if (!current() || !payload) return;
-                if (typeof w.closeList === "function") w.closeList();
-                w._playMedia(payload);
+                if (!valid() || !payload) return;
+                if (automatic) automaticRequest = null;
+                if (!automatic && typeof w.closeList === "function")
+                    w.closeList();
+                var start = {
+                    automatic: automatic,
+                    ref: item.ref,
+                    sequence: sequence,
+                    valid: guard,
+                };
+                pendingStart = start;
+                try {
+                    w._playMedia(payload);
+                } finally {
+                    if (pendingStart === start) pendingStart = null;
+                }
             }
         );
     }
@@ -362,9 +450,17 @@ function classicMediaRuntime(): any {
             if (!result && w.popupList) w.popupList(w.popMedia);
         },
         cancel: function () {
+            automaticGeneration++;
+            automaticRequest = null;
             library.close();
             if (current() && w.providerMediaClient)
                 w.providerMediaClient.cancel();
+        },
+        cancelAuto: function () {
+            automaticGeneration++;
+            if (!automaticRequest) return;
+            automaticRequest = null;
+            library.cancel();
         },
         capture: function () {
             var valid = library.capture();
@@ -381,6 +477,13 @@ function classicMediaRuntime(): any {
                 position < 0
             )
                 return;
+            if (
+                mediaClassicPlayback &&
+                mediaClassicPlayback.ended &&
+                mediaClassicPlayback.ref.itemId === ref.itemId &&
+                mediaClassicPlayback.ref.sourceId === ref.sourceId
+            )
+                position = 0;
             var now = Date.now();
             if (
                 !force &&
@@ -402,8 +505,55 @@ function classicMediaRuntime(): any {
                 collections();
             }
         },
+        ended: function (generation: number) {
+            var playback = mediaClassicPlayback;
+            var sequence = playback && playback.sequence;
+            var revision = automaticGeneration;
+            function valid() {
+                var state = w.__ottClassicPlayback.snapshot();
+                return (
+                    current() &&
+                    mediaClassicPlayback === playback &&
+                    automaticGeneration === revision &&
+                    state.generation === generation &&
+                    state.phase === "stopped" &&
+                    state.target &&
+                    state.target.kind === "vod" &&
+                    state.target.sourceId === source &&
+                    state.target.channelId === playback.ref.itemId
+                );
+            }
+            if (!sequence || playback.ended || !valid()) return;
+            playback.ended = true;
+            api.cancelAuto();
+            revision = automaticGeneration;
+            automaticRequest = {};
+            var admitted = library.capture();
+            api.checkpoint(playback.ref, 0, true);
+            var index = (sequence.index + 1) % sequence.items.length;
+            var item = sequence.items[index];
+            function proceed() {
+                if (admitted() && valid())
+                    resolve(
+                        item,
+                        { index: index, items: sequence.items },
+                        true,
+                        valid
+                    );
+            }
+            if (
+                Number(item.payload.adult) === 1 &&
+                w.sPSchannels &&
+                w.parentPIN !== "*" &&
+                !w.parentAccess
+            )
+                w.enterPinAndSetAccess(proceed);
+            else proceed();
+        },
         favorite: function (payload: any) {
-            var frame = library.snapshot().frame;
+            if (payload.__ottMediaFilter) return;
+            var admitted = api.capture();
+            var frame = library.snapshot("none").frame;
             var item = describe(
                 [payload],
                 frame ? frame.route : { kind: "catalog", target: "", title: "" }
@@ -414,20 +564,41 @@ function classicMediaRuntime(): any {
                 !journal.change(
                     removing ? "unfavorite" : "favorite",
                     entry(item)
-                )
+                ) ||
+                !admitted()
             )
                 return;
             collections();
-            if (removing) library.replaceItems(collectionItems("favorites"));
-            else if (w.showShift)
+            if (!admitted()) return;
+            if (removing) {
+                var items = collectionItems("favorites");
+                if (admitted()) library.replaceItems(items);
+            } else if (w.showShift)
                 w.showShift(item.title + w._(" added to favorites"));
+        },
+        filter: function () {
+            var frame = library.snapshot("none").frame;
+            if (!frame || frame.route.kind === "variants") return;
+            var admitted = library.capture();
+            w.editCaption = w._("Filter");
+            w.editvar = filterText;
+            w.setEdit = function () {
+                if (!current() || !admitted()) return;
+                var value = String(w.editvar || "").trim();
+                library.refilter(function () {
+                    automaticGeneration++;
+                    automaticRequest = null;
+                    filterText = value;
+                });
+            };
+            if (typeof w.showEditKey === "function") w.showEditKey();
         },
         highlight: function (index: number, revision: number) {
             if (current() && library.revision() === revision)
                 library.highlight(index);
         },
         open: function (target: any, title?: string) {
-            var view = library.snapshot();
+            var view = library.snapshot("none");
             if (target === null && view.frame) {
                 library.show();
                 return;
@@ -484,6 +655,16 @@ function classicMediaRuntime(): any {
                 return null;
             var item = describe([payload], { kind: "history", title: "" })[0];
             if (!item) return null;
+            var start =
+                pendingStart && pendingStart.ref.itemId === item.ref.itemId
+                    ? pendingStart
+                    : null;
+            function admitted() {
+                return (
+                    current() && (!start || !start.automatic || start.valid())
+                );
+            }
+            if (!admitted()) return null;
             var state = w.__ottClassicPlayback.snapshot();
             if (
                 state.target &&
@@ -500,24 +681,29 @@ function classicMediaRuntime(): any {
             ) {
                 return row.itemId === item.ref.itemId;
             })[0];
-            if (!current()) return null;
+            if (!admitted()) return null;
             item.payload.stream_url = url;
             journal.change("visit", entry(item));
-            if (!current()) return null;
+            if (!admitted()) return null;
             collections();
+            if (!admitted()) return null;
             var ticket = {};
             mediaClassicPlayback = {
                 payload: copy(item.payload),
                 ref: item.ref,
+                sequence: start && start.sequence,
                 ticket: ticket,
             };
             return {
                 item: item.payload,
                 ref: item.ref,
-                resume: w.OttPlayCore.mediaResumePosition(
-                    previous ? previous.position : 0,
-                    60
-                ),
+                resume:
+                    start && start.automatic
+                        ? 0
+                        : w.OttPlayCore.mediaResumePosition(
+                              previous ? previous.position : 0,
+                              60
+                          ),
                 valid: function () {
                     return (
                         current() &&
@@ -528,7 +714,7 @@ function classicMediaRuntime(): any {
             };
         },
         restoreProjection: function () {
-            project(library.snapshot(), false);
+            project(library.snapshot("none"), false);
         },
         select: function (index: number) {
             var item = library.select(index);
@@ -537,7 +723,8 @@ function classicMediaRuntime(): any {
             function proceed() {
                 if (!admitted()) return;
                 var payload = item.payload;
-                if (payload.__ottMediaRoute)
+                if (payload.__ottMediaFilter) api.filter();
+                else if (payload.__ottMediaRoute)
                     library.open({
                         kind: payload.__ottMediaRoute,
                         title: item.title,
@@ -554,7 +741,8 @@ function classicMediaRuntime(): any {
                             title: item.title,
                         });
                     else api.open(payload.playlist_url, item.title);
-                } else if (payload.stream_url || payload.request) resolve(item);
+                } else if (payload.stream_url || payload.request)
+                    resolve(item, sequenceFor(item));
                 else if (w.infoMedia) w.infoMedia();
             }
             if (
@@ -567,7 +755,11 @@ function classicMediaRuntime(): any {
             else proceed();
         },
         show: library.show,
-        snapshot: library.snapshot,
+        snapshot: function () {
+            var view = library.snapshot();
+            view.filter = filterText;
+            return view;
+        },
         sourceId: source,
     };
     mediaClassicInstance = api;
@@ -585,6 +777,9 @@ function classicMediaRuntime(): any {
         if (mediaClassicInstance) mediaClassicInstance.cancel();
         else if (host.providerMediaClient) host.providerMediaClient.cancel();
     },
+    cancelAuto: function () {
+        if (mediaClassicInstance) mediaClassicInstance.cancelAuto();
+    },
     capture: function () {
         return classicMediaRuntime().capture();
     },
@@ -598,8 +793,14 @@ function classicMediaRuntime(): any {
             ? mediaClassicPlayback
             : null;
     },
+    ended: function (generation: number) {
+        if (mediaClassicInstance) mediaClassicInstance.ended(generation);
+    },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
+    },
+    filter: function () {
+        classicMediaRuntime().filter();
     },
     highlight: function (index: number, revision: number) {
         classicMediaRuntime().highlight(index, revision);

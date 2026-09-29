@@ -27,7 +27,7 @@ determine what runs.
   owns screen models and disposal; [input-router.ts](../src/ui/input-router.ts)
   dispatches commands. [classic-screen-port.ts](../src/ui/classic-screen-port.ts)
   owns the retained list/editor/modal properties. `ui/index.ts` still renders
-  DOM and `keyhandler/index.ts` retains device input integration. See
+  DOM and `key-handler/index.ts` retains device input integration. See
   [Screen ownership](screen-ownership.md).
 - **Settings and access:** [settings/store.ts](../src/settings/store.ts) owns
   validated values and drafts; [settings/index.ts](../src/settings/index.ts)
@@ -51,7 +51,7 @@ determine what runs.
   See [Guide architecture](guide-architecture.md).
 - **Decoder resources:** [device/media-backend.ts](../src/device/media-backend.ts)
   owns main/PiP leases. [core/index.ts](../src/core/index.ts) supplies managed
-  HLS, Shaka and HTML media effects. Retained `stb/<device>/stb.js` scripts can
+  HLS, Shaka and HTML media effects. Retained `devices/<device>/device.js` scripts can
   instead supply their hardware transport. [device/adapter.ts](../src/device/adapter.ts)
   is their explicit ingress. See [Media backend](media-backend.md) and
   [device integration](device-media-backend.md).
@@ -68,7 +68,7 @@ core repository; a host lifetime or rendering change belongs here.
 
 [index.html](../index.html) loads the blocking runtime prelude, shared core and
 media dependencies. It then loads the player bundle, the selected
-`stb/<device>/stb.js`, and calls `startPlayer()`. There is no parallel DOM-ready
+`devices/<device>/device.js`, and calls `startPlayer()`. There is no parallel DOM-ready
 auto-start path. A missing shared-core API produces a boot failure, not a local
 replacement of that algorithm.
 
@@ -235,7 +235,7 @@ and [M3U/VPortal](m3u-vportal.md).
 
 [provider-assets.cjs](../scripts/provider-assets.cjs) derives managed IDs from
 that same inventory. [runtime-assets.cjs](../scripts/runtime-assets.cjs) excludes
-their `prov.js` fixtures and `stb/core.js` from delivered roots. These files are
+their `provider.js` fixtures and `devices/legacy-core.js` from delivered roots. These files are
 used only by tests. Metadata/logos and device adapters have separate staging rules.
 
 The **Full** distribution also supports an explicit dealer extension that can
@@ -247,7 +247,7 @@ policy admits only its four managed profiles and excludes the dealer extension,
 so its compiler removes this script loader/interception code while retaining the
 provider and catalog lifetime registry used by those drivers. A built-in profile
 whose registry/factory is missing fails startup; it cannot fall back to an excluded
-historical `prov.js`. Only a Full extension ID outside the built-in inventory can
+historical `provider.js`. Only a Full extension ID outside the built-in inventory can
 use the compatibility script loader.
 
 The Full extension cannot undo code already evaluated, arbitrary global writes,
@@ -463,7 +463,7 @@ For a Play frontend change, build into separate temporary output/compile roots
 with `OTTPLAY_ANDROID_FLAVOR=play`, `OTTPLAY_ANDROID_OUTPUT` and
 `OTTPLAY_ANDROID_COMPILE_ROOT`; normal `npm run build` is Full. Run
 `npm run test:android:policy`, then
-`node tests/test_port_bundle_smoke.cjs /absolute/output/stbPlayer.js --play` and
+`node tests/test_port_bundle_smoke.cjs /absolute/output/player.js --play` and
 the affected artifact suites against that output. Keep normal Full outputs
 available for the default three-artifact gates.
 

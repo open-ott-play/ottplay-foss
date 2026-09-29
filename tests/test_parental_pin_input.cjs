@@ -50,14 +50,14 @@ function functions(file, names) {
 }
 
 const code = bundle
-    ? functions("dist/stbPlayer.js", [
+    ? functions("dist/player.js", [
           "_enterPinCode",
           "dispatchKey",
           "keyHandler",
           "stbEventToKeyCode",
       ])
     : functions("src/channels/index.ts", ["_enterPinCode"]) +
-      functions("src/keyhandler/index.ts", ["dispatchKey", "keyHandler"]) +
+      functions("src/key-handler/index.ts", ["dispatchKey", "keyHandler"]) +
       functions("src/core/index.ts", ["stbEventToKeyCode"]);
 const adapters = {};
 for (const name of [
@@ -70,7 +70,7 @@ for (const name of [
     "dune",
     "mag",
 ]) {
-    const file = `src/stb/${name}/stb.ts`;
+    const file = `src/devices/${name}/device.ts`;
     const ast = ts.createSourceFile(
         file,
         read(file),

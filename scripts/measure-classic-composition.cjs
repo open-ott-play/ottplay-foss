@@ -190,16 +190,13 @@ async function measureComposition(root, comparison) {
     });
     if (typeof optimized.code !== "string")
         throw new Error("Optimizer returned no player code");
-    const emitted = fs.readFileSync(
-        path.join(root, "dist/stbPlayer.js"),
-        "utf8"
-    );
+    const emitted = fs.readFileSync(path.join(root, "dist/player.js"), "utf8");
     if (optimized.code !== emitted)
         throw new Error(
-            "Composition input does not match dist/stbPlayer.js; run npm run build first"
+            "Composition input does not match dist/player.js; run npm run build first"
         );
     const result = {
-        artifact: "dist/stbPlayer.js",
+        artifact: "dist/player.js",
         attribution:
             "Generated UTF-8 bytes belong to the preceding source-map segment; folded expressions can span modules. Unmapped bytes are explicit.",
         modules: attributeModules(emitted, optimized.decoded_map),

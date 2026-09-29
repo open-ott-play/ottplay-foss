@@ -67,13 +67,13 @@ function snapshot(ctx) {
         })
     );
 }
-function parsers(directory = "prov") {
+function parsers(directory = "providers") {
     return fs
         .readdirSync(path.join(root, directory), { withFileTypes: true })
         .flatMap((entry) => {
             const file = directory + "/" + entry.name;
             if (entry.isDirectory()) return parsers(file);
-            if (entry.name !== "prov.js") return [];
+            if (entry.name !== "provider.js") return [];
             return declarations(file)
                 .filter((row) => /_parseM3U$/.test(row.name))
                 .map((row) => ({ file, name: row.name }));
@@ -92,7 +92,7 @@ function generic(parser, input) {
 }
 function main(input, fallback = "48") {
     const ctx = context(),
-        top = declarations("prov/m3u/prov.js"),
+        top = declarations("providers/m3u/provider.js"),
         get = top.find((row) => row.name === "getChanelsArray");
     const local = get.node.body.statements
         .filter(ts.isFunctionDeclaration)
@@ -125,7 +125,7 @@ function main(input, fallback = "48") {
 module.exports = { declarations, generic, main, parsers };
 function operator(profile, input) {
     const ctx = context(),
-        file = "prov/" + profile + "/prov.js",
+        file = "providers/" + profile + "/provider.js",
         top = declarations(file);
     const get = top.find((row) => row.name === "getChanelsArray");
     const success = get.node.body.statements.find(
@@ -180,7 +180,7 @@ function operator(profile, input) {
 }
 function media(profile, input) {
     const ctx = context(),
-        top = declarations("prov/" + profile + "/prov.js");
+        top = declarations("providers/" + profile + "/provider.js");
     require("./operator-fixture-host.cjs")(ctx);
     ctx.mediaName = "";
     ctx.alert = (message) => ctx.errors.push(message);

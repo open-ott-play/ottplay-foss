@@ -1,7 +1,7 @@
 /**
  * Storage abstraction layer.
  *
- * Ported from stbPlayer.js (ottpStorage IIFE, laaMac, provider helpers).
+ * Ported from player.js (ottpStorage IIFE, laaMac, provider helpers).
  * Uses localStorage when available, falls back to cookies or session memory.
  * Provides provider-prefixed storage for multi-provider setups.
  *
@@ -276,7 +276,7 @@ function createCookieAdapter(): StorageAdapter {
  *
  * @remarks
  * The detection test mirrors `client_can.localstorage` from the original
- * stbPlayer.js. A single `try/catch` wraps `window.localStorage` access.
+ * player.js. A single `try/catch` wraps `window.localStorage` access.
  */
 export const storage: StorageAdapter = (() => {
     // Detect localStorage availability (mirrors client_can.localstorage)
@@ -302,7 +302,7 @@ export const storage: StorageAdapter = (() => {
 })();
 
 /**
- * Classic provider scripts (prov/<id>/prov.js) call bare
+ * Classic provider scripts (providers/<id>/provider.js) call bare
  * ottpStorage.del/has/hasValue. Concat const/let bindings stay script-local;
  * a global var plus window.ottpStorage must exist before loadChannels →
  * setPlayer (m3u overwrites global providerHasItemValue to use ottpStorage).

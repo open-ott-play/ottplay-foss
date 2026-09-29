@@ -165,7 +165,7 @@ function boot(options = {}) {
                 }
             } else if (tag.src.indexOf("shaka-player.compiled.js") !== -1)
                 context.shaka = { Player() {} };
-            else if (tag.src.indexOf("/dist/stbPlayer.js?") !== -1)
+            else if (tag.src.indexOf("/dist/player.js?") !== -1)
                 context.startPlayer = function () {
                     starts++;
                 };
@@ -320,7 +320,9 @@ for (const device of ["hisense", "pc"]) {
         result.requests.some((url) => url.endsWith("/js/jquery-1.11.1.min.js"))
     );
     assert(
-        result.requests.some((url) => url.includes(`/stb/${device}/stb.js?`))
+        result.requests.some((url) =>
+            url.includes(`/devices/${device}/device.js?`)
+        )
     );
     assert.equal(
         result.context.deviceUUID,
@@ -370,7 +372,7 @@ for (const options of [
     );
     assert.equal(result.requests[3], mediaURL("hls.min.js"));
     assert.equal(result.requests[4], local("shaka-player.compiled.js"));
-    assert(result.requests[5].includes("/dist/stbPlayer.js?"));
+    assert(result.requests[5].includes("/dist/player.js?"));
     assert.equal(
         result.context.Hls.DefaultConfig.workerPath,
         mediaURL("hls.worker.js")
@@ -399,7 +401,11 @@ for (const options of [
         result.elements["boot-log"].textContent,
         /unavailable; using device playback/
     );
-    assert(result.requests.some((url) => url.includes("/stb/hisense/stb.js?")));
+    assert(
+        result.requests.some((url) =>
+            url.includes("/devices/hisense/device.js?")
+        )
+    );
 }
 for (const polyfillsFailure of ["network", "partial", "missing-version"]) {
     const result = boot({ polyfillsFailure });
@@ -439,7 +445,7 @@ for (const userAgent of [
         );
         assert(
             result.requests.some((url) =>
-                url.includes("/stb/lg/webos/stb.js?")
+                url.includes("/devices/lg/webos/device.js?")
             ),
             "LG boot must request the webOS remote and playback adapter"
         );
@@ -479,7 +485,7 @@ for (const device of [
             );
             assert(
                 result.requests.some((url) =>
-                    url.includes("/stb/" + device + "/stb.js?")
+                    url.includes("/devices/" + device + "/device.js?")
                 ),
                 "The requested adapter must retain the complete route platform"
             );

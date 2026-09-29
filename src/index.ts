@@ -1,4 +1,5 @@
 import { popupActionId } from "./compatibility/legacy-names";
+import { languageAssetPath, languageNames } from "./localization/assets";
 import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
@@ -42,6 +43,7 @@ import {
     createCommandServerTransport,
     normalizeCommandServerAddress,
 } from "./plugins/command-server";
+import { createControlDiscovery } from "./plugins/control-discovery";
 import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
@@ -157,7 +159,7 @@ import {
     settings,
 } from "./settings";
 import { cloudLoadSettings, cloudSendSettings } from "./settings/cloud";
-import { setSleepTimeout } from "./settings/sleepTimer";
+import { setSleepTimeout } from "./settings/sleep-timer";
 // Storage
 import {
     getMacAddress,
@@ -306,6 +308,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { executeRemoteRequest } from "./commands/remote-requests";
 // Key handler
 import {
     dispatchKey,
@@ -313,7 +316,7 @@ import {
     keys,
     ottBandViewportHeight,
     ottBottomInfoBandStart,
-} from "./keyhandler";
+} from "./key-handler";
 // Provider — only import what actually exists
 import {
     edit_dealer,
@@ -370,7 +373,7 @@ declare var parentPIN: string;
 // Hide menus list
 var hideMenus: string[] = [];
 
-// Sleep timer — now in src/settings/sleepTimer.ts (Phase C)
+// Sleep timer — now in src/settings/sleep-timer.ts (Phase C)
 // Info timeout
 var infoTimeout: any = null;
 
@@ -1008,7 +1011,7 @@ function setFontSize(): void {
         right: 20 * t + "px",
         top: 20 * e + "px",
     });
-    $("#launch").css({ "font-size": 16 * e + "px", padding: 100 * e + "px" });
+    $("#launch").css({ "font-size": 20 * e + "px", padding: 100 * e + "px" });
     $("logo").css({ margin: 100 * e + "px" });
     $("#listTime").css("font-size", 22 * e + "px");
     $("#list_s").css({ "font-size": 16 * e + "px" });
@@ -1503,7 +1506,7 @@ function onPlayerStart(): void {
  * Show the language selection list. New languages are appended so existing
  * language positions stay stable. Renders all packaged languages,
  * saves the selection to stb storage, loads the corresponding language
- * JS file from /stbPlayer/{code}.js, then proceeds to loadProv() or
+ * JS file from /locales/{language}.js, then proceeds to loadProv() or
  * optionsList depending on duneAddSettings availability.
  *
  * Side effects: Writes 'ottplaylang' to stb storage; dynamically loads
@@ -1546,40 +1549,21 @@ function selectLang(): void {
         "_aze",
         "_kaz",
     ];
-    var langNames = [
-        "English",
-        "Armenian - Հայերեն",
-        "Belarusian - Беларуская",
-        "Bulgarian - Български",
-        "French - Français",
-        "German - Deutsch",
-        "Greek - Ελληνικά",
-        "Hebrew - עברית",
-        "Hungarian - Magyar",
-        "Italian - Italiano",
-        "Latvian - Latviski",
-        "Lithuanian - Lietuvių",
-        "Polish - Polski",
-        "Portuguese - Português",
-        "Romanian - Română",
-        "Russian - Русский",
-        "Spanish - Español",
-        "Turkish - Türkçe",
-        "Ukrainian - Українська",
-        "Uzbek - O'zbekcha",
-        "Indonesian - Bahasa Indonesia",
-        "Vietnamese - Tiếng Việt",
-        "Malay - Bahasa Melayu",
-        "Dutch - Nederlands",
-        "Czech - Čeština",
-        "Swedish - Svenska",
-        "Azerbaijani - Azərbaycanca",
-        "Kazakh - Қазақша",
-    ];
     selIndex = langCodes.indexOf(stbGetItem("ottplaylang") || "");
     var prevSelIndex = selIndex;
     if (selIndex === -1) selIndex = 0;
-    listDataArray = langNames;
+    listDataArray = langCodes.map(function (code) {
+        return languageNames[code];
+    });
+    function resumeAfterLanguage(exit?: boolean): void {
+        if (typeof duneAddSettings !== "function") {
+            if (exit === true) {
+                closeList();
+                stbExit();
+            } else loadProv();
+        } else if (typeof (window as any).optionsList === "function")
+            (window as any).optionsList(selectLang);
+    }
     getListItemFn = function (item: any, _idx: number) {
         return "&nbsp;&nbsp;" + item;
     };
@@ -1587,36 +1571,18 @@ function selectLang(): void {
     listKeyHandlerFn = function (key: number): boolean {
         switch (key) {
             case keys.ENTER:
-                console.log(
-                    "TRACE selectLang ENTER prevSelIndex=" +
-                        prevSelIndex +
-                        " selIndex=" +
-                        selIndex
-                );
                 if (prevSelIndex === selIndex) {
-                    if (typeof duneAddSettings !== "function") loadProv();
-                    else if (typeof (window as any).optionsList === "function")
-                        (window as any).optionsList(selectLang);
+                    resumeAfterLanguage();
                 } else {
                     stbSetItem("ottplaylang", langCodes[selIndex]);
                     (window as any).keyStrings = {};
                     getScriptDOM(
                         hostUrl +
-                            "/stbPlayer/" +
-                            langCodes[selIndex] +
-                            ".js?" +
+                            languageAssetPath(langCodes[selIndex]) +
+                            "?" +
                             PLAYER_VERSION,
+                        resumeAfterLanguage,
                         function () {
-                            if (typeof duneAddSettings !== "function") {
-                                loadProv();
-                            } else if (
-                                typeof (window as any).optionsList ===
-                                "function"
-                            )
-                                (window as any).optionsList(selectLang);
-                        },
-                        function () {
-                            console.log("TRACE langJS load FAILED");
                             infoBox("Error: failed to load language.");
                         }
                     );
@@ -1625,26 +1591,21 @@ function selectLang(): void {
             case keys.EXIT:
                 if (typeof duneAddSettings === "function") return false;
             case keys.RETURN:
-                if (typeof duneAddSettings !== "function") {
-                    closeList();
-                    stbExit();
-                } else if (typeof (window as any).optionsList === "function")
-                    (window as any).optionsList(selectLang);
+                resumeAfterLanguage(true);
                 return true;
         }
         return false;
     };
-    var listDetailEl = document.getElementById("listDetail");
-    if (listDetailEl) listDetailEl.innerHTML = "";
-    var listCaptionEl = document.getElementById("listCaption");
-    if (listCaptionEl) listCaptionEl.innerHTML = _("Choose language");
-    var listFooterElement = document.getElementById("listPodval");
-    if (listFooterElement)
-        listFooterElement.innerHTML = renderButtonHint(
-            keys.RETURN,
-            strRETURN,
-            "Close"
-        );
+    function setLanguageHtml(id: string, html: string): void {
+        var element = document.getElementById(id);
+        if (element) element.innerHTML = html;
+    }
+    setLanguageHtml("listDetail", "");
+    setLanguageHtml("listCaption", _("Choose language"));
+    setLanguageHtml(
+        "listPodval",
+        renderButtonHint(keys.RETURN, strRETURN, "Close")
+    );
     var listPopUpEl = document.getElementById("listPopUp");
     if (listPopUpEl) listPopUpEl.style.display = "none";
     showPage();
@@ -1665,7 +1626,7 @@ function selectLang(): void {
  */
 export function startPlayer(): void {
     // Cap/Tauri boot leaves hostUrl ""; language packs + icons resolve via
-    // absolute "/stbPlayer/…". Prefer location.origin when present so nested
+    // absolute "/locales/…". Prefer location.origin when present so nested
     // Cap paths and capacitor://localhost match CSS/bundle host.
     try {
         if (!hostUrl) {
@@ -1700,7 +1661,7 @@ export function startPlayer(): void {
             launchEl.innerHTML +=
                 '<img src="' +
                 hostUrl +
-                "/stbPlayer/icon.png?" +
+                "/images/player-logo.png?" +
                 PLAYER_VERSION +
                 '" style="position: absolute; left: 100px; bottom:100px;" height="30%" alt=""/>';
         }
@@ -1804,7 +1765,7 @@ export function startPlayer(): void {
  */
 function onStbReady(): void {
     try {
-        // Merge device-specific key mappings from window.keys (set by stb/{device}/stb.js)
+        // Merge device-specific key mappings from window.keys (set by devices/{device}/device.js)
         if (typeof (window as any).keys !== "undefined") {
             Object.assign(keys, (window as any).keys);
         }
@@ -1821,6 +1782,7 @@ function onStbReady(): void {
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
             (window as any).ensureDeviceClientId();
+        (window as any).__ottControlDiscovery.start();
         if (typeof (window as any).applyLocalSwopConfig === "function")
             (window as any).applyLocalSwopConfig();
         initUIReferences();
@@ -1868,9 +1830,8 @@ function onStbReady(): void {
 
         console.log("TRACE lang=" + lang + ", loading langJS");
         getScriptDOM(
-            hostUrl + "/stbPlayer/" + lang + ".js?" + PLAYER_VERSION,
+            hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
             function () {
-                console.log("TRACE langJS loaded (onStbReady path)");
                 if (typeof duneAddSettings !== "function") loadProv();
                 else if (typeof (window as any).optionsList === "function")
                     (window as any).optionsList(selectLang);
@@ -1924,9 +1885,9 @@ declare var window: any;
 // Required by: index.html (the only caller).
 window.startPlayer = startPlayer;
 // @legacy-bridge: post-init hook — merges window.keys, loads settings, starts provider.
-// Required by: stb/{device}/stb.js for device-specific key mappings.
+// Required by: devices/{device}/device.js for device-specific key mappings.
 window.onStbReady = onStbReady;
-// @legacy-bridge: keyboard dispatch — called by stb/{device}/stb.js on key events.
+// @legacy-bridge: keyboard dispatch — called by devices/{device}/device.js on key events.
 window.keyHandler = keyHandler;
 window._doKey = dispatchKey;
 window.keys = keys;
@@ -2445,8 +2406,6 @@ function _playChannel(catIdx: number, chIdx: number): void {
             " url=" +
             getChannelUrl(channelId)
     );
-    updateChannelInfo(channelId);
-    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"
@@ -2456,6 +2415,8 @@ function _playChannel(catIdx: number, chIdx: number): void {
             type: "live",
         });
     else (window as any).playType = 0;
+    updateChannelInfo(channelId);
+    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (typeof setPlayer === "function") setPlayer();
     stbPlay(getChannelUrl(channelId));
     clearTimeout((window as any)._tmedia);
@@ -2613,18 +2574,24 @@ function nativeMediaMetadata(): {
     let positionSec: number | undefined;
     let seekable = false;
     try {
-        const chName =
-            (document.getElementById("channel") as HTMLElement | null)
-                ?.textContent ||
-            (document.getElementById("cname") as HTMLElement | null)
-                ?.textContent ||
-            "";
-        if (chName && chName.trim()) title = chName.trim();
         const w = window as any;
+        const playType = typeof w.playType === "number" ? w.playType : 0;
+        const media = playType < 0 && w.__ottMedia && w.__ottMedia.current();
+        const movie = (media && media.payload) || {};
+        const chName =
+            playType < 0
+                ? String(movie.title || "")
+                : (document.getElementById("channel") as HTMLElement | null)
+                      ?.textContent ||
+                  (document.getElementById("cname") as HTMLElement | null)
+                      ?.textContent ||
+                  "";
+        if (chName && chName.trim()) title = chName.trim();
         const curList = w.curList;
         const primaryIndex = w.primaryIndex;
         let chId: any;
         if (
+            playType >= 0 &&
             Array.isArray(curList) &&
             typeof primaryIndex === "number" &&
             curList[primaryIndex] != null
@@ -2638,28 +2605,22 @@ function nativeMediaMetadata(): {
                     artworkUrl = pic.trim();
                 }
             }
-            const ch =
-                (w.channels &&
-                    (w.channels[chId] || w.channels[String(chId)])) ||
-                null;
-            if (ch) {
-                const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
-                if (
-                    !artworkUrl &&
-                    icon &&
-                    typeof icon === "string" &&
-                    icon.trim()
-                ) {
-                    artworkUrl = icon.trim();
-                }
-                if (ch.channel_name && !chName) {
-                    title = String(ch.channel_name);
-                }
+        }
+        const ch =
+            playType < 0
+                ? movie
+                : chId != null && w.channels && w.channels[chId];
+        if (ch) {
+            const icon = ch.icon || ch.logo_30x30 || ch.logo || "";
+            if (!artworkUrl && typeof icon === "string" && icon.trim()) {
+                artworkUrl = icon.trim();
+            }
+            if (ch.channel_name && !chName) {
+                title = String(ch.channel_name);
             }
         }
         // Live IPTV (playType === 0): not seekable. Archive/VOD only when
         // duration is finite and usable.
-        const playType = typeof w.playType === "number" ? w.playType : 0;
         const dur =
             typeof w.stbGetLen === "function" ? Number(w.stbGetLen()) : NaN;
         const pos =
@@ -3346,7 +3307,7 @@ if (typeof window.__TAURI__ !== "undefined") {
 
         // WKWebView <video>/#vdiv often does not bubble click to body.onclick.
         // Capture on the video surface and run the same band logic as
-        // keyhandler body_onClick; stopPropagation avoids double-fire when
+        // key-handler body_onClick; stopPropagation avoids double-fire when
         // the event does bubble. List-open footer stays safe via overlay guard
         // + pointer-events:none on video while the list is open.
         document.addEventListener(
@@ -3683,7 +3644,7 @@ window._setSetup = function (
     (window as any).selIndex = 0;
     (window as any).getListItem = function (item: any, _idx: number): string {
         // Name|value must be flex children with INLINE styles. Class-only
-        // .item-label/.item-value fails in Tauri/WKWebView when 1280.css is
+        // .item-label/.item-value fails in Tauri/WKWebView when player.css is
         // late/missing/stale; :8443 looked "formatted" because the old markup
         // used inline width:23%/75% (floats are ignored under .item{display:flex}).
         // Same pattern as showPage()'s inline display:flex on .item.
@@ -5581,6 +5542,14 @@ var infoArr: any[] = [
         name: "Debug HUD",
     },
 ];
+if ((window as any).__OTTPLAY_HOSTED__) {
+    infoArr.push({
+        action: function () {
+            (window as any).__ottHostedEpg.showDiagnostics();
+        },
+        name: "EPG diagnostics",
+    });
+}
 if (isPlayDistribution()) {
     infoArr.push({
         action: function () {
@@ -5642,9 +5611,9 @@ window.strNEXT = strNEXT;
 window.strSubt = strSubt;
 window.strNew = strNew;
 // @legacy-bridge: TMDb.prepare + TMDb.search called by src/ui/index.js (concatenated
-// into dist/stbPlayer.js). Provider scripts may extend TMDb with their own .search().
+// into dist/player.js). Provider scripts may extend TMDb with their own .search().
 window.TMDb = TMDb;
-// NOTE: __cv/__av are set by index.html (lines 144-145) BEFORE dist/stbPlayer.js
+// NOTE: __cv/__av are set by index.html (lines 144-145) BEFORE dist/player.js
 // loads. Provider scripts (src/provider/index.ts) read them as bare globals. Do
 // not re-assign here — the HTML-injected values win.
 window.version = "<br/>Version: " + PLAYER_VERSION;
@@ -5719,8 +5688,43 @@ window.showPopup = showPopup;
         )
             throw new Error("Command server settings could not be saved");
     },
-    handleCommand
+    handleCommand,
+    executeRemoteRequest
 );
+
+(window as any).__ottControlDiscovery = createControlDiscovery(
+    window,
+    createCommandServerTransport(
+        window,
+        typeof window.__TAURI__ !== "undefined"
+            ? function (request: any): Promise<any> {
+                  return tauriInvoke("proxy_http", request);
+              }
+            : undefined
+    ),
+    function () {
+        return {
+            address: settings.commandServerAddress,
+            enabled: settings.commandServerEnabled === 1,
+            generation: (window as any).__ottCommandServer.status().generation,
+            token: settings.commandServerToken,
+        };
+    },
+    function (config: any) {
+        (window as any).__ottCommandServer.configure(config);
+        if (!(window as any).__ottCommandServer.status().enabled)
+            throw new Error("Approved command server could not be configured");
+    },
+    function () {
+        return String((window as any).deviceUUID || "");
+    },
+    typeof window.__TAURI__ !== "undefined"
+        ? function (): Promise<any> {
+              return tauriInvoke("discover_control_servers", {});
+          }
+        : undefined
+);
+(window as any).__OTT_CONTROL_DISCOVERY_VERSION__ = 1;
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so
@@ -5864,6 +5868,41 @@ if (
 window.settingsCommands = function (): void {
     var w = window as any;
     var commandServer = w.__ottCommandServer;
+    var discovery = w.__ottControlDiscovery;
+    function refreshDiscovery(): void {
+        if (!discovery || closed) return;
+        var status = discovery.status();
+        var label = document.getElementById("commandServerDiscoveryStatus");
+        if (label)
+            label.textContent =
+                w._(status.message, status.messageArgument) +
+                (status.code ? " " + status.code : "");
+        var cancel = document.getElementById(
+            "commandServerDiscoveryCancel"
+        ) as HTMLButtonElement | null;
+        if (cancel)
+            cancel.disabled = !/^(discovering|choose|pairing|waiting)$/.test(
+                status.state
+            );
+        var choices = document.getElementById("commandServerDiscoveryChoices");
+        if (!choices) return;
+        choices.textContent = "";
+        controls.length = Math.min(controls.length, 9);
+        controlActions.length = Math.min(controlActions.length, 9);
+        status.servers.forEach(function (server: any, index: number) {
+            var button = document.createElement("button");
+            button.textContent =
+                server.address +
+                (server.domain ? " (" + server.domain + ")" : "");
+            choices!.appendChild(button);
+            var at = controlActions.length;
+            controlActions.push(function () {
+                discovery.choose(index);
+            });
+            bindControl(button, at);
+        });
+        if (selectedControl >= controls.length) selectControl(3, false);
+    }
     function refreshServerStatus(): void {
         if (!commandServer) return;
         var status = commandServer.status();
@@ -5881,6 +5920,7 @@ window.settingsCommands = function (): void {
             button.textContent = w._(status.enabled ? "Disconnect" : "Connect");
     }
     if (commandServer) commandServer.subscribe(refreshServerStatus);
+    if (discovery) discovery.subscribe(refreshDiscovery);
     var changingHttpRemote = false;
     var httpRemoteError = false;
     var closed = false;
@@ -5895,6 +5935,9 @@ window.settingsCommands = function (): void {
         },
         toggleServer,
         function (): void {
+            if (discovery) discovery.start(true);
+        },
+        function (): void {
             editUrl(false);
         },
         function (): void {
@@ -5902,6 +5945,9 @@ window.settingsCommands = function (): void {
         },
         toggleHttpRemote,
         close,
+        function (): void {
+            if (discovery) discovery.cancel();
+        },
     ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
         var element = document.getElementById(id);
@@ -5968,6 +6014,7 @@ window.settingsCommands = function (): void {
     function close(): void {
         closed = true;
         if (commandServer) commandServer.subscribe(null);
+        if (discovery) discovery.subscribe(null);
         $("#listAbout").hide().text("");
         ["listCaption", "listDetail", "listPodval"].forEach(
             function (id, index) {
@@ -6059,6 +6106,11 @@ window.settingsCommands = function (): void {
             '<button id="commandServerConnect"><span class="btn">5</span> <span id="commandServerConnectLabel">' +
             text(w._("Connect")) +
             "</span></button><br/><br/>" +
+            '<button id="commandServerFind"><span class="btn">6</span> ' +
+            text(w._("Find command server")) +
+            '</button> <button id="commandServerDiscoveryCancel" disabled>' +
+            text(w._("Cancel pairing")) +
+            '</button><br/><span id="commandServerDiscoveryStatus" role="status"></span><div id="commandServerDiscoveryChoices"></div><br/>' +
             "<b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
@@ -6115,7 +6167,7 @@ window.settingsCommands = function (): void {
             text(uid) +
             "</span><br/><br/>" +
             "This ID identifies your player for commands from Home Assistant or other automation. " +
-            "For remote text entry (♥™), the Worker operator must allowlist this ID.<br/><br/>" +
+            "Remote text entry (♥™) uses the configured relay server's installation authorization; this ID identifies the player, not a credential.<br/><br/>" +
             "<b>Local command URL:</b><br/>" +
             text(lurl || "not set (local command polling disabled)") +
             "<br/><br/>" +
@@ -6146,6 +6198,11 @@ window.settingsCommands = function (): void {
         bindControl(document.getElementById("commandServerAddress")!, 0);
         bindControl(document.getElementById("commandServerToken")!, 1);
         bindControl(document.getElementById("commandServerConnect")!, 2);
+        bindControl(document.getElementById("commandServerFind")!, 3);
+        bindControl(
+            document.getElementById("commandServerDiscoveryCancel")!,
+            8
+        );
         var footerControls = footer
             ? footer.querySelectorAll("span[onclick]")
             : [];
@@ -6155,11 +6212,12 @@ window.settingsCommands = function (): void {
             if (footerControls[footerIndex])
                 bindControl(
                     footerControls[footerIndex] as HTMLElement,
-                    index + 3
+                    index + 4
                 );
         });
         selectControl(selectedControl, selectedControl >= 0);
         refreshServerStatus();
+        refreshDiscovery();
         var codeInput = document.getElementById(
             "localHttpDeviceCode"
         ) as HTMLInputElement | null;
@@ -6182,6 +6240,7 @@ window.settingsCommands = function (): void {
     }
 
     function editServer(secret: boolean): void {
+        if (discovery) discovery.cancel();
         var draft = beginSettingsDraft();
         $("#listAbout").hide();
         editSettingsText(
@@ -6239,6 +6298,7 @@ window.settingsCommands = function (): void {
         );
     }
     function toggleServer(): void {
+        if (discovery) discovery.cancel();
         if (commandServer)
             commandServer.configure({
                 address: settings.commandServerAddress,
@@ -6321,6 +6381,15 @@ window.settingsCommands = function (): void {
                           (e === w.keys.LEFT ? -1 : 1) +
                           controls.length) %
                       controls.length;
+            for (
+                var skip = 0;
+                skip < controls.length &&
+                (controls[next] as HTMLButtonElement).disabled;
+                skip++
+            )
+                next =
+                    (next + (e === w.keys.LEFT ? -1 : 1) + controls.length) %
+                    controls.length;
             selectControl(next, true);
             return true;
         }
@@ -6349,13 +6418,18 @@ window.settingsCommands = function (): void {
             toggleServer();
             return true;
         }
+        if (e === w.keys.N6 || e === 54) {
+            selectControl(3, false);
+            if (discovery) discovery.start(true);
+            return true;
+        }
         if (e === w.keys.ENTER || e === w.keys.N2 || e === 50) {
-            selectControl(e === w.keys.ENTER ? 3 : 4, false);
+            selectControl(e === w.keys.ENTER ? 4 : 5, false);
             editUrl(e !== w.keys.ENTER);
             return true;
         }
         if (e === w.keys.N1 || e === 49) {
-            selectControl(5, false);
+            selectControl(6, false);
             toggleHttpRemote();
             return true;
         }
@@ -6394,7 +6468,7 @@ optionsArr.push({ action: selectLang, name: "Change interface language" });
 // Mode B only: Tauri updater check (GitHub Releases latest.json). Mode A untouched.
 // Match other @tauri-apps usage: window.__TAURI__ / tauriInvoke — not import().
 // Dynamic import hits TS1323 (module:ES2015); static import is stripped by concat
-// and cannot resolve bare specifiers in the Mode A/B stbPlayer.js bundle.
+// and cannot resolve bare specifiers in the Mode A/B player.js bundle.
 if (typeof window.__TAURI__ !== "undefined") {
     void (async () => {
         try {

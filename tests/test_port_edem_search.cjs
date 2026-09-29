@@ -6,11 +6,11 @@ const vm = require("node:vm");
 const ts = require("typescript");
 
 const source = fs.readFileSync(
-    path.join(__dirname, "../prov/edem/prov.js"),
+    path.join(__dirname, "../providers/edem/provider.js"),
     "utf8"
 );
 const ast = ts.createSourceFile(
-    "prov.js",
+    "provider.js",
     source,
     ts.ScriptTarget.Latest,
     true

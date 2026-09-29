@@ -1975,7 +1975,7 @@ export function setEpgTimer(_channelId?: any, _time?: number): void {
 }
 
 /**
- * Alphabetical EPG list (mode=2). vs gold stbPlayer.js:6602.
+ * Alphabetical EPG list (mode=2). vs gold player.js:6602.
  * Not an alias — delegates to loadEpgListData(2, ...) then sorts by name.
  *
  * @param catIdx - Category index.
@@ -2161,6 +2161,9 @@ export function mediaKeyHandler(keyCode: number): boolean {
         case keys.ENTER:
             selectMedia(w.selIndex);
             return true;
+        case keys.BLUE:
+            w.__ottMedia.filter();
+            return true;
         case keys.N2:
         case keys.INFO:
             if (typeof w.infoMedia === "function") w.infoMedia();
@@ -2194,6 +2197,7 @@ export function mediaKeyHandler(keyCode: number): boolean {
         case keys.YELLOW:
             if (
                 item &&
+                !(item as any).__ottMediaFilter &&
                 hasTmdbService() &&
                 w.TMDb &&
                 typeof w.TMDb.search === "function"
@@ -2699,8 +2703,9 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
  * Key handler for the category list (buckets) view.
  * Supports:
  * - Number keys 1-9 for direct category jump.
- * - LEFT/RW/PREV → popup list or close.
- * - RIGHT/ENTER → open channels list for selected category.
+ * - LEFT/RIGHT → shared list paging (one visible page).
+ * - RW/PREV → popup list or close.
+ * - ENTER → open channels list for selected category.
  * - FF/NEXT → next category.
  * - RED/PLAY/PAUSE/PRECH → records list for category.
  * - RETURN → close.
@@ -2839,7 +2844,6 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             return true;
         }
 
-        case keys.LEFT:
         case keys.RW:
         case keys.PREV:
             if (typeof w.popupList === "function") {
@@ -2849,7 +2853,6 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             }
             return true;
 
-        case keys.RIGHT:
         case keys.ENTER:
             if (typeof w.channelsList === "function") {
                 w.channelsList(
@@ -3194,7 +3197,7 @@ export function showActionsDialog(): void {
  *  - Mutates window.mediaName and window.mediaSelects.
  *  - Calls window.mediaList with the search-suffixed playlist URL.
  *
- * Caller: selectMedia() in stbPlayer.js — invoked only when
+ * Caller: selectMedia() in player.js — invoked only when
  * `e.search_on` is truthy.
  */
 

@@ -13,7 +13,15 @@ const { gzipSync } = require("node:zlib");
 // Localized keyboard paging/case-safe cells, translated menus and eight new
 // selector entries add <1 KB after shared label reuse. Dictionaries stay external.
 // The optional PC2 engine port also fits within these measured budgets.
-const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
+// Owned episode looping and the natural-ended bridge add about 1.8 KB raw.
+// Persistent page-title filtering adds about 1.5 KB, including its TV editor.
+// Hosted EPG orchestration and encrypted same-Site input add ~14 KB raw;
+// gzip/XML parsing remains in separately loaded worker assets.
+// Visible hosted EPG diagnostics and retry add ~5.6 KB raw / 1.5 KB gzip.
+// Remote CLI queries, result delivery and provider adapters add ~9 KB raw.
+// Discovery, secure pairing and its UI measure 603103 raw / 182299 gzip
+// for web 1.1.50 on Node 22.23.3 (native gzip 182353). Retain release headroom.
+const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 183500 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -22,11 +30,15 @@ const BUDGET = Object.freeze({ bytes: 560000, gzipBytes: 168100 });
 // release suffix room without increasing the complete compressed budget.
 // Stalker recovery and settings re-entry measure 192100 gzip bytes in native
 // outputs on CI Node 22.23.2 (192106 with a beta version). Keep suffix headroom.
-const TOTAL_BUDGET = Object.freeze({ bytes: 623500, gzipBytes: 192200 });
+// VOD-owned native metadata and the late-guide guard measure 192222 on Node 22.
+// Include the VPortal automatic-quality resolver as part of episode looping.
+// The same candidate plus every provider totals 667727 / 206833 for web;
+// native variants total 667685 / 206887. All complete payloads remain bounded.
+const TOTAL_BUDGET = Object.freeze({ bytes: 671000, gzipBytes: 209000 });
 const ARTIFACTS = Object.freeze([
-    "dist/stbPlayer.js",
-    "src-tauri/frontend/dist/stbPlayer.js",
-    "dist-mobile/dist/stbPlayer.js",
+    "dist/player.js",
+    "src-tauri/frontend/dist/player.js",
+    "dist-mobile/dist/player.js",
 ]);
 
 function measureBundle(source, name, budget = BUDGET) {

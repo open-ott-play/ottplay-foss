@@ -123,7 +123,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 ports.emit(context, type, position, duration);
         }
         function observe(type?: string) {
-            if (!current()) return;
+            if (!current() || phase === "stopped") return;
             if (!engine) {
                 pendingEvents.push(type || "sample");
                 return;
@@ -148,8 +148,9 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 phase = "paused";
                 command("pause");
             } else if (type === "ended") {
+                if (!handle.active()) return;
                 phase = "stopped";
-                command("stop");
+                command("ended");
             }
             if (
                 sample.ready >= 1 &&

@@ -20,14 +20,14 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const bundles = {
-    capacitor: "dist-mobile/dist/stbPlayer.js",
-    server: "dist/stbPlayer.js",
-    tauri: "src-tauri/frontend/dist/stbPlayer.js",
+    capacitor: "dist-mobile/dist/player.js",
+    server: "dist/player.js",
+    tauri: "src-tauri/frontend/dist/player.js",
 };
 const styles = {
-    capacitor: "dist-mobile/stbPlayer/1280.css",
-    server: "stbPlayer/1280.css",
-    tauri: "src-tauri/frontend/stbPlayer/1280.css",
+    capacitor: "dist-mobile/styles/player.css",
+    server: "styles/player.css",
+    tauri: "src-tauri/frontend/styles/player.css",
 };
 for (const profile of ["tauri", "capacitor"]) {
     assert.equal(

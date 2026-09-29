@@ -6,9 +6,10 @@
 # MPEG-TS test fixtures are media, not TypeScript source.
 /tests/fixtures/media-runtime/*.ts binary
 
-# Receipt-pinned compiler output must have identical bytes on every host.
+# Receipt-pinned inputs must have identical bytes on every host.
 /vendor/ottplay-core.* -text
 /licenses/native/* -text
+/vendor/hosted-epg/** -text
 
 # Preserve the published bytes used by native dependency provenance checks.
 /vendor/wry-0.55.1/** -text

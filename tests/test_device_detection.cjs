@@ -30,10 +30,7 @@ const compiled = ts
 acorn.parse(compiled, { ecmaVersion: 5 });
 const detectors = [{ code: compiled, name: sourceFile }];
 if (process.argv.includes("--bundle")) {
-    const bundle = fs.readFileSync(
-        path.join(root, "dist/stbPlayer.js"),
-        "utf8"
-    );
+    const bundle = fs.readFileSync(path.join(root, "dist/player.js"), "utf8");
     const ast = acorn.parse(bundle, { ecmaVersion: 5 });
     const declarations = ast.body.filter(
         (node) =>
@@ -50,7 +47,7 @@ if (process.argv.includes("--bundle")) {
         code:
             bundle.slice(declaration.start, declaration.end) +
             "\nott_device = detectDevice();",
-        name: "dist/stbPlayer.js detector",
+        name: "dist/player.js detector",
     });
 }
 
@@ -62,16 +59,16 @@ function collectAdapters(directory, prefix = "") {
             result.push(
                 ...collectAdapters(path.join(directory, entry.name), relative)
             );
-        else if (entry.name === "stb.js") result.push(prefix);
+        else if (entry.name === "device.js") result.push(prefix);
     }
     return result.sort();
 }
-const adapters = collectAdapters(path.join(root, "stb"));
+const adapters = collectAdapters(path.join(root, "devices"));
 assert(adapters.length >= 24, "Include every currently shipped adapter");
 const adapterCode = new Map();
 for (const adapter of adapters) {
     const code = fs.readFileSync(
-        path.join(root, "stb", adapter, "stb.js"),
+        path.join(root, "devices", adapter, "device.js"),
         "utf8"
     );
     acorn.parse(code, { ecmaVersion: 5 });
@@ -149,7 +146,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
             requests.push(requestPath);
             if (requestPath === "/js/ottplay-core.js") {
                 assert.equal(context.OttPlayCore, core);
-            } else if (requestPath === "/dist/stbPlayer.js") {
+            } else if (requestPath === "/dist/player.js") {
                 bootDevice = context.ott_device;
                 vm.runInContext(detector.code, context, {
                     filename: detector.name,
@@ -171,7 +168,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
                 context.videojs = function () {};
             } else {
                 const adapterMatch = requestPath.match(
-                    /^\/stb\/(.+)\/stb\.js$/
+                    /^\/devices\/(.+)\/device\.js$/
                 );
                 assert(
                     adapterMatch,
@@ -267,8 +264,8 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     assert.deepEqual(requests, [
         "/js/ottplay-core.js",
         ...(fixture.expectedDevice === "pc2" ? ["/js/video.min.js"] : []),
-        "/dist/stbPlayer.js",
-        "/stb/" + fixture.expectedDevice + "/stb.js",
+        "/dist/player.js",
+        "/devices/" + fixture.expectedDevice + "/device.js",
     ]);
     for (const key of ["UP", "DOWN", "LEFT", "RIGHT", "ENTER", "RETURN"]) {
         assert.equal(typeof context.keys[key], "number", "Loaded key " + key);

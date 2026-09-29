@@ -1,4 +1,5 @@
 //! XMLTV fetch + parse + fuzzy match.
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
 
@@ -7,6 +8,11 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+
+#[cfg(test)]
+#[path = "xmltv_fetch_tests.rs"]
+mod fetch_tests;
+mod server_records;
 
 #[derive(Clone, Debug, Default)]
 pub struct Channel {
@@ -48,37 +54,74 @@ pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Prog
 
 async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
     let content: Vec<u8> = if source.starts_with("http://") || source.starts_with("https://") {
-        let builder = Client::builder().user_agent("OTT-play-FOSS/1.0");
-        let builder = if native {
-            builder.timeout(std::time::Duration::from_secs(60))
-        } else {
-            builder
-        };
-        let client = builder.build()?;
-        let resp = client.get(source).send().await?;
-        let resp = if native {
-            resp.error_for_status()?
-        } else {
-            resp
-        };
-        let bytes = resp.bytes().await?;
-        bytes.to_vec()
+        let client = Client::builder()
+            .user_agent("OTT-play-FOSS/1.0")
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .read_timeout(std::time::Duration::from_secs(60))
+            .timeout(std::time::Duration::from_secs(600))
+            .build()
+            .map_err(|error| fetch_failure(native, "HTTP client failed", error.into()))?;
+        fetch_remote(source, &client, native).await?
     } else {
-        std::fs::read(source)?
+        tokio::fs::read(source)
+            .await
+            .map_err(|error| fetch_failure(native, "source read failed", error.into()))?
     };
 
-    let is_gz = (!native && source.ends_with(".gz")) || content.starts_with(&[0x1f, 0x8b]);
-    let raw: Vec<u8> = if is_gz {
-        let mut d = GzDecoder::new(&content[..]);
-        let mut out = Vec::new();
-        d.read_to_end(&mut out)?;
-        out
-    } else {
-        content
-    };
+    let source_has_gz_extension = source.ends_with(".gz");
+    // XMLTV feeds can contain hundreds of megabytes of XML. Decompression and
+    // synchronous record reduction must not occupy an async request worker.
+    tokio::task::spawn_blocking(move || {
+        let is_gz = (!native && source_has_gz_extension) || content.starts_with(&[0x1f, 0x8b]);
+        let raw: Vec<u8> = if is_gz {
+            let mut d = GzDecoder::new(&content[..]);
+            let mut out = Vec::new();
+            d.read_to_end(&mut out)
+                .map_err(|error| fetch_failure(native, "gzip decode failed", error.into()))?;
+            out
+        } else {
+            content
+        };
+        let text = String::from_utf8_lossy(&raw);
+        parse_xmltv_impl(&text, native)
+            .map_err(|error| fetch_failure(native, "XMLTV parse failed", error))
+    })
+    .await
+    .map_err(|error| fetch_failure(native, "XMLTV worker failed", error.into()))?
+}
 
-    let text = String::from_utf8_lossy(&raw);
-    parse_xmltv_impl(&text, native)
+async fn fetch_remote(source: &str, client: &Client, native: bool) -> anyhow::Result<Vec<u8>> {
+    let response = client
+        .get(source)
+        .send()
+        .await
+        .and_then(reqwest::Response::error_for_status)
+        .map_err(|error| fetch_failure(native, "HTTP request failed", error.into()))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|error| fetch_failure(native, "HTTP body failed", error.into()))?;
+    Ok(bytes.to_vec())
+}
+
+// URLs, response bodies and nested error text can all contain credentials.
+// Native callers retain their existing detailed error contract.
+fn fetch_failure(native: bool, stage: &'static str, error: anyhow::Error) -> anyhow::Error {
+    if native {
+        return error;
+    }
+    if let Some(http) = error.downcast_ref::<reqwest::Error>() {
+        if let Some(status) = http.status() {
+            return anyhow::anyhow!("HTTP status {}", status.as_u16());
+        }
+        if http.is_timeout() {
+            return anyhow::anyhow!("HTTP timeout");
+        }
+        if http.is_connect() {
+            return anyhow::anyhow!("HTTP connection failed");
+        }
+    }
+    anyhow::anyhow!(stage)
 }
 
 /// Event-based XMLTV parser. Cheap; no DOM.
@@ -91,6 +134,19 @@ pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
 }
 
 fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
+    let records = if native {
+        Records::Shared(RecordTokens::new(true)?)
+    } else {
+        Records::Server(server_records::ServerRecords::default())
+    };
+    parse_xmltv_with_records(xml, native, records)
+}
+
+fn parse_xmltv_with_records(
+    xml: &str,
+    native: bool,
+    mut records: Records,
+) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
     // quick-xml 0.41 emits references separately. Preserve whitespace between
     // text/reference/CDATA events and trim once when the complete field closes.
@@ -98,8 +154,6 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
 
     let mut channels: Channels = HashMap::new();
     let mut programs: Programs = HashMap::new();
-
-    let mut records = RecordTokens::new(native)?;
 
     let mut buf = Vec::new();
     let mut depth = 0usize;
@@ -167,40 +221,26 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
         match event {
             Ok(Event::Start(element)) | Ok(Event::Empty(element)) => {
                 // Empty elements have always supplied only a start event here.
-                let mut row = vec![
-                    "start".into(),
-                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
-                ];
-                for key in ["id", "channel", "start", "stop", "src"] {
-                    if let Some(value) = attr(&element, key) {
-                        row.push(key.into());
-                        row.push(value);
-                    }
-                }
-                records.push(row, &mut channels, &mut programs)?;
+                records.start(&element, &mut channels, &mut programs)?;
             }
             Ok(Event::Text(text)) => {
                 records.text(
-                    text.decode()
-                        .map(|text| text.into_owned())
-                        .map_err(Into::into),
+                    text.decode().map_err(Into::into),
                     &mut channels,
                     &mut programs,
                 )?;
             }
             Ok(Event::CData(text)) => {
                 records.text(
-                    text.decode()
-                        .map(|text| text.into_owned())
-                        .map_err(Into::into),
+                    text.decode().map_err(Into::into),
                     &mut channels,
                     &mut programs,
                 )?;
             }
             Ok(Event::GeneralRef(reference)) => {
-                let decoded = (|| -> anyhow::Result<String> {
+                let decoded = (|| -> anyhow::Result<Cow<'_, str>> {
                     if let Some(character) = reference.resolve_char_ref()? {
-                        return Ok(character.to_string());
+                        return Ok(Cow::Owned(character.to_string()));
                     }
                     let name = reference.decode()?;
                     match quick_xml::escape::resolve_predefined_entity(&name) {
@@ -210,14 +250,9 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
                 })();
                 records.text(decoded, &mut channels, &mut programs)?;
             }
-            Ok(Event::End(element)) => records.push(
-                vec![
-                    "end".into(),
-                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
-                ],
-                &mut channels,
-                &mut programs,
-            )?,
+            Ok(Event::End(element)) => {
+                records.end(element.name().as_ref(), &mut channels, &mut programs)?
+            }
             Ok(Event::Eof) => break,
             Err(error) => {
                 // A prior batched decode error keeps its original precedence.
@@ -231,6 +266,9 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
 
     records.flush(&mut channels, &mut programs)?;
     if native {
+        let Records::Shared(records) = records else {
+            unreachable!("native custom feeds use the shared reducer");
+        };
         for entries in programs.values_mut() {
             let order = records
                 .core
@@ -248,6 +286,80 @@ fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Progra
         }
     }
     Ok((channels, programs))
+}
+
+// Both profiles share tokenization, attribute normalization and error handling.
+// Only the server's per-event record/calendar work avoids the QuickJS bridge.
+enum Records {
+    Server(server_records::ServerRecords),
+    Shared(RecordTokens),
+}
+
+impl Records {
+    fn start(
+        &mut self,
+        element: &quick_xml::events::BytesStart<'_>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Server(records) => {
+                records.start(element);
+                Ok(())
+            }
+            Self::Shared(records) => {
+                let mut row = vec![
+                    "start".into(),
+                    String::from_utf8_lossy(element.name().as_ref()).into_owned(),
+                ];
+                for key in ["id", "channel", "start", "stop", "src"] {
+                    if let Some(value) = attr(element, key) {
+                        row.push(key.into());
+                        row.push(value);
+                    }
+                }
+                records.push(row, channels, programs)
+            }
+        }
+    }
+
+    fn text(
+        &mut self,
+        value: anyhow::Result<Cow<'_, str>>,
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Server(records) => records.text(value),
+            Self::Shared(records) => records.text(value.map(Cow::into_owned), channels, programs),
+        }
+    }
+
+    fn end(
+        &mut self,
+        name: &[u8],
+        channels: &mut Channels,
+        programs: &mut Programs,
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Server(records) => {
+                records.end(name, channels, programs);
+                Ok(())
+            }
+            Self::Shared(records) => records.push(
+                vec!["end".into(), String::from_utf8_lossy(name).into_owned()],
+                channels,
+                programs,
+            ),
+        }
+    }
+
+    fn flush(&mut self, channels: &mut Channels, programs: &mut Programs) -> anyhow::Result<()> {
+        match self {
+            Self::Server(_) => Ok(()),
+            Self::Shared(records) => records.flush(channels, programs),
+        }
+    }
 }
 
 /// The bounded transport queue contains XML tokens and original decoder errors.
@@ -351,16 +463,19 @@ impl RecordTokens {
     }
 }
 
-fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
+fn attr_value<'a>(e: &'a quick_xml::events::BytesStart<'_>, key: &str) -> Option<Cow<'a, str>> {
     for a in e.attributes().flatten() {
         if a.key.as_ref() == key.as_bytes() {
             return a
                 .decoded_and_normalized_value(quick_xml::XmlVersion::Implicit1_0, e.decoder())
-                .ok()
-                .map(|v| v.into_owned());
+                .ok();
         }
     }
     None
+}
+
+fn attr(e: &quick_xml::events::BytesStart<'_>, key: &str) -> Option<String> {
+    attr_value(e, key).map(Cow::into_owned)
 }
 
 /// Parse XMLTV timestamps through the pinned shared core (seconds).
@@ -383,6 +498,17 @@ pub fn build_match_index(channels: &Channels) -> anyhow::Result<MatchIndex> {
     )
 }
 
+/// The HTTP companion can match any retained alias without discarding regional
+/// shift markers before the shared core's unique exact-name decision.
+pub fn build_http_match_index(channels: &Channels) -> anyhow::Result<MatchIndex> {
+    let rows = channels.iter().map(|(id, channel)| vec![id.clone(), channel.name.clone()]).collect();
+    let aliases = channels.iter().flat_map(|(id, channel)| {
+        let names = if channel.names.is_empty() { std::slice::from_ref(&channel.name) } else { &channel.names };
+        names.iter().map(move |name| vec![id.clone(), name.clone()])
+    }).collect();
+    MatchIndex::with_aliases(rows, aliases)
+}
+
 pub fn match_in_index(name: &str, index: &MatchIndex) -> anyhow::Result<Option<(String, f32)>> {
     index.match_name(name)
 }
@@ -398,6 +524,19 @@ pub fn strip_time_shift(name: &str) -> anyhow::Result<String> {
 pub fn extract_time_shift(name: &str) -> anyhow::Result<i64> {
     crate::shared_guide::text::<i32>("nativeGuideShift", name).map(i64::from)
 }
+
+#[cfg(test)]
+fn parse_xmltv_shared_reference(xml: &str) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_with_records(xml, false, Records::Shared(RecordTokens::new(false)?))
+}
+
+#[cfg(test)]
+#[path = "xmltv_differential_tests.rs"]
+mod differential_tests;
+
+#[cfg(test)]
+#[path = "http_alias_tests.rs"]
+mod http_alias_tests;
 
 #[cfg(test)]
 mod tests {

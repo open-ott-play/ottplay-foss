@@ -473,7 +473,7 @@ try {
     );
 
     for (const adapter of ["pc", "android"]) {
-        const source = read(`src/stb/${adapter}/stb.ts`);
+        const source = read(`src/devices/${adapter}/device.ts`);
         const object = /var \w*Keys = (\{[\s\S]*?\});/.exec(source);
         assert.ok(object, `${adapter}: real adapter key map exists`);
         const keyMap = vm.runInNewContext(`(${object[1]})`);
@@ -599,7 +599,10 @@ try {
             }),
             changeSelect: (delta) => moved.push(delta),
             console: { log() {} },
-            document: { activeElement: input },
+            document: {
+                activeElement: input,
+                getElementById: (id) => (id === "editvar" ? input : null),
+            },
             isEditMode: false,
             isListVisible: true,
             isSelectBox: false,
@@ -617,7 +620,7 @@ try {
         require("./helpers/screen-runtime.cjs")(player);
         vm.runInContext(
             playerFunctions("src/core/index.ts", ["stbEventToKeyCode"]) +
-                playerFunctions("src/keyhandler/index.ts", [
+                playerFunctions("src/key-handler/index.ts", [
                     "dispatchKey",
                     "keyHandler",
                 ]) +

@@ -3,11 +3,19 @@
 use rquickjs::function::{Constructor, This};
 use rquickjs::{Context, Ctx, FromJs, Function, Object, Runtime};
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 const CORE: &str = include_str!("../../../vendor/ottplay-core.js");
 
 #[derive(Clone)]
-pub struct GuideIndex(Context);
+pub struct GuideIndex(Context, Option<Arc<AliasNames>>);
+
+#[derive(Default)]
+struct AliasNames {
+    exact: HashMap<String, Vec<String>>,
+    canonical: HashMap<String, Vec<String>>,
+}
 
 /// Batched XML events cross the VM boundary; the shared core owns record state.
 pub struct GuideRecords(Context);
@@ -95,11 +103,14 @@ pub fn evict_source_set(count: usize, existing: bool) -> anyhow::Result<bool> {
     })
 }
 
-pub fn refresh_interval() -> anyhow::Result<u64> {
+pub fn refresh_interval(consecutive_failures: u32) -> anyhow::Result<u64> {
     scalar(|ctx| {
         core(&ctx)?
             .get::<_, Function>("nativeGuideRefreshInterval")?
-            .call(("rust-server",))
+            .call((
+                "rust-server",
+                consecutive_failures.min(i32::MAX as u32) as i32,
+            ))
     })
 }
 
@@ -157,11 +168,78 @@ impl GuideIndex {
             let index: Object = constructor.construct((rows, "rust", measure, precision))?;
             ctx.globals().set("guideIndex", index)
         })?;
-        Ok(Self(context))
+        Ok(Self(context, None))
+    }
+
+    /// HTTP snapshots retain every alias. The shared core owns normalization and
+    /// unique-name selection; these maps only index its keys by distinct IDs.
+    pub(crate) fn with_aliases(rows: Vec<Vec<String>>, aliases: Vec<Vec<String>>) -> anyhow::Result<Self> {
+        let mut index = Self::new(rows)?;
+        let keys: Vec<Vec<String>> = checked(&index.0, |ctx| {
+            let normalize: Function = ctx.eval(
+                "(function(core, rows) { return rows.map(function(row) { return [row[0], \
+                 core.normalizedChannelName(row[1]), core.canonicalChannelName(row[1])]; }); })",
+            )?;
+            normalize.call((core(&ctx)?, aliases))
+        })?;
+        let mut names = AliasNames::default();
+        for row in keys {
+            let [id, exact, canonical]: [String; 3] = row.try_into()
+                .map_err(|_| anyhow::anyhow!("Invalid shared guide alias keys"))?;
+            for (map, key) in [(&mut names.exact, exact), (&mut names.canonical, canonical)] {
+                if key.is_empty() { continue; }
+                let ids = map.entry(key).or_default();
+                if !ids.contains(&id) { ids.push(id.clone()); }
+            }
+        }
+        index.1 = Some(Arc::new(names));
+        Ok(index)
+    }
+
+    /// Reuse the loaded core when preparing playlist names on a new worker.
+    pub fn extract_time_shift(&self, name: &str) -> anyhow::Result<i64> {
+        checked(&self.0, |ctx| {
+            core(&ctx)?
+                .get::<_, Function>("nativeGuideShift")?
+                .call::<_, i32>((name, "rust"))
+        })
+        .map(i64::from)
+    }
+
+    pub fn strip_time_shift(&self, name: &str) -> anyhow::Result<String> {
+        checked(&self.0, |ctx| {
+            core(&ctx)?
+                .get::<_, Function>("nativeGuideStripShift")?
+                .call((name, "rust"))
+        })
+    }
+
+    pub fn slice(
+        &self,
+        times: Vec<Vec<f64>>,
+        now: i64,
+        archive: i64,
+        shift: i64,
+    ) -> anyhow::Result<Vec<Vec<f64>>> {
+        checked(&self.0, |ctx| slice_in(&ctx, times, now, archive, shift))
     }
 
     pub fn match_name(&self, name: &str) -> anyhow::Result<Option<(String, f32)>> {
         checked(&self.0, |ctx| {
+            if let Some(aliases) = &self.1 {
+                let api = core(&ctx)?;
+                let exact: String = api.get::<_, Function>("normalizedChannelName")?.call((name,))?;
+                let canonical: String = api.get::<_, Function>("canonicalChannelName")?.call((name,))?;
+                let exact = aliases.exact.get(&exact).cloned().unwrap_or_default();
+                let canonical = aliases.canonical.get(&canonical).cloned().unwrap_or_default();
+                if !exact.is_empty() || !canonical.is_empty() {
+                    let found: Option<String> = api.get::<_, Function>("chooseGuideChannel")?
+                        .call((Vec::<String>::new(), vec![exact], vec![canonical]))?;
+                    // An ambiguous exact alias must not fall through to a random
+                    // first normalized name in the legacy fuzzy index.
+                    return Ok(found.map(|id| (id, 1.0)));
+                }
+            }
             let index: Object = ctx.globals().get("guideIndex")?;
             let method: Function = index.get("match")?;
             let found: Option<Object> = method.call((This(index), name))?;
@@ -184,7 +262,7 @@ impl GuideRecords {
     pub fn new(native: bool) -> anyhow::Result<Self> {
         let context = context()?;
         checked(&context, |ctx| {
-            let trim = Function::new(ctx.clone(), |value: String| value.trim().to_owned())?;
+            let trim = rust_trim(&ctx)?;
             let identity = Function::new(ctx.clone(), |value: String| value)?;
             let constructor: Constructor = core(&ctx)?.get("XmltvRecords")?;
             let records: Object = constructor.construct((
@@ -214,25 +292,75 @@ impl GuideRecords {
     }
 }
 
+fn rust_trim<'js>(ctx: &Ctx<'js>) -> rquickjs::Result<Function<'js>> {
+    let host = Function::new(ctx.clone(), |value: String| value.trim().to_owned())?;
+    // Already-trimmed titles/descriptions should not copy their entire UTF-8
+    // payload into Rust and back. ECMAScript trim covers Rust White_Space except
+    // NEL (U+0085); its extra FEFF only sends an unchanged value to the fallback.
+    // Keep Rust authoritative whenever either primitive could remove anything.
+    let wrap: Function = ctx.eval(
+        "(function(trim) { return function(value) {\
+         if (value.charCodeAt(0) !== 133 && value.charCodeAt(value.length - 1) !== 133\
+             && value.trim() === value) return value;\
+         return trim(value); }; })",
+    )?;
+    wrap.call((host,))
+}
+
 pub fn slice(
     times: Vec<Vec<f64>>,
     now: i64,
     archive: i64,
     shift: i64,
 ) -> anyhow::Result<Vec<Vec<f64>>> {
-    scalar(|ctx| {
-        core(&ctx)?.get::<_, Function>("nativeGuideSlice")?.call((
-            times,
-            now as f64,
-            archive as f64,
-            shift as f64,
-        ))
-    })
+    scalar(|ctx| slice_in(&ctx, times, now, archive, shift))
+}
+
+fn slice_in(
+    ctx: &Ctx<'_>,
+    times: Vec<Vec<f64>>,
+    now: i64,
+    archive: i64,
+    shift: i64,
+) -> rquickjs::Result<Vec<Vec<f64>>> {
+    core(ctx)?.get::<_, Function>("nativeGuideSlice")?.call((
+        times,
+        now as f64,
+        archive as f64,
+        shift as f64,
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn record_trim_preserves_rust_unicode_boundaries() -> anyhow::Result<()> {
+        let context = context()?;
+        checked(&context, |ctx| {
+            let trim = rust_trim(&ctx)?;
+            let mut boundaries: Vec<char> = (0..=0x10ffff)
+                .filter_map(char::from_u32)
+                .filter(|c| c.is_whitespace())
+                .collect();
+            boundaries.extend(['\u{feff}', '\u{180e}', '\u{200b}', 'я', '🏆']);
+            for edge in boundaries {
+                for value in [
+                    format!("{edge}Новости 🏆{edge}"),
+                    format!("{edge}\u{feff}Новости\u{feff}{edge}"),
+                    format!("\u{feff}{edge}Новости{edge}\u{feff}"),
+                    format!("Новости{edge}культуры"),
+                ] {
+                    assert_eq!(trim.call::<_, String>((value.as_str(),))?, value.trim());
+                }
+            }
+            for value in ["", "  ", "\n\t\r", "Новости\nкультуры", "\u{85}\u{feff}\u{85}"] {
+                assert_eq!(trim.call::<_, String>((value,))?, value.trim());
+            }
+            Ok(())
+        })
+    }
 
     #[test]
     fn cloned_indexes_can_cross_worker_threads() -> anyhow::Result<()> {
@@ -241,15 +369,64 @@ mod tests {
             for _ in 0..8 {
                 let index = index.clone();
                 scope.spawn(move || {
+                    assert!(SCALAR.with(|slot| slot.borrow().is_none()));
                     for _ in 0..20 {
+                        assert_eq!(index.extract_time_shift("News +2").unwrap(), 2);
+                        let name = index.strip_time_shift("News +2").unwrap();
                         assert_eq!(
-                            index.match_name("News HD").unwrap(),
+                            index.match_name(&name).unwrap(),
                             Some(("id".into(), 1.0))
                         );
+                        assert_eq!(
+                            index.slice(vec![vec![1000.0, 2000.0]], 1500, 0, 0).unwrap(),
+                            vec![vec![0.0, 1000.0, 2000.0]]
+                        );
                     }
+                    // A fresh worker must not evaluate another complete core bundle.
+                    assert!(SCALAR.with(|slot| slot.borrow().is_none()));
                 });
             }
         });
+        Ok(())
+    }
+
+    #[test]
+    fn all_m3u_index_paths_reuse_the_core_on_fresh_workers() -> anyhow::Result<()> {
+        use crate::{m3u, xmltv};
+        use std::collections::HashMap;
+
+        let channels = HashMap::from([("news".into(), xmltv::Channel {
+            id: "news".into(), name: "News".into(), names: vec!["News".into()],
+            icon: "https://fixture.test/news.png".into(),
+        })]);
+        let index = xmltv::build_match_index(&channels)?;
+        std::thread::scope(|scope| -> anyhow::Result<()> {
+            let mut workers = Vec::new();
+            for _ in 0..8 {
+                let index = index.clone();
+                let channels = &channels;
+                workers.push(scope.spawn(move || -> anyhow::Result<()> {
+                    assert!(SCALAR.with(|slot| slot.borrow().is_none()));
+                    let input = r#"[{"id":"1","name":"News +2"}]"#;
+                    let body = "{}\n\t\n\n\t\n1-0-0-17~News%20%2B2";
+                    let mut map = HashMap::new();
+                    let mut shifts = HashMap::new();
+                    m3u::match_channels_with_index(
+                        serde_json::from_str(input)?, channels, &index, &mut map, &mut shifts,
+                    )?;
+                    m3u::match_logos_with_index(serde_json::from_str(input)?, channels, &index)?;
+                    m3u::match_channels_text_with_index(body, channels, &index, &mut map, &mut shifts)?;
+                    m3u::match_logos_text_with_index(body, channels, &index)?;
+                    assert_eq!(shifts[&m3u::compute_epg_hash("news|2")], 2);
+                    assert!(SCALAR.with(|slot| slot.borrow().is_none()));
+                    Ok(())
+                }));
+            }
+            for worker in workers {
+                worker.join().expect("M3U worker panicked")?;
+            }
+            Ok(())
+        })?;
         Ok(())
     }
 
@@ -274,6 +451,16 @@ mod tests {
         assert_eq!(index.match_name("яabc")?, Some(("first".into(), 0.6_f32)));
         assert_eq!(text::<String>("nativeGuideName", "First +𝟜h HD")?, "first");
         assert_eq!(text::<i32>("nativeGuideShift", "First +𝟜h")?, 0);
+        for name in ["", "News", "News +2", "News -12h HD", "First +𝟜h HD", "РЕН ТВ +7"] {
+            assert_eq!(
+                index.extract_time_shift(name)?,
+                i64::from(text::<i32>("nativeGuideShift", name)?)
+            );
+            assert_eq!(
+                index.strip_time_shift(name)?,
+                text::<String>("nativeGuideStripShift", name)?
+            );
+        }
         Ok(())
     }
 }

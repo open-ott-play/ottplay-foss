@@ -5,6 +5,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
+const { keyboardCode } = require("./helpers/localized-keyboard.cjs");
 const root = path.resolve(__dirname, "..");
 function functions(file, names) {
     const source = ts.createSourceFile(
@@ -135,7 +136,6 @@ function fixture() {
     w.eval(
         functions("src/ui/index.ts", [
             "_changeEdit",
-            "escapeHtml",
             "infoBox",
             "confirmBox",
             "showSelectBox",
@@ -153,7 +153,9 @@ function fixture() {
             "backColorDialog",
         ])
     );
-    w.eval(functions("src/keyhandler/index.ts", ["keyHandler", "dispatchKey"]));
+    w.eval(
+        functions("src/key-handler/index.ts", ["keyHandler", "dispatchKey"])
+    );
     w.editKey = w.editKey2;
     return {
         close: () => dom.window.close(),
@@ -404,8 +406,19 @@ test("saved native key callback cannot save a replacement editor", ({ w }) => {
         newSaves = 0;
     w.editvar = "old";
     w.setEdit = () => oldSaves++;
-    w.showEditKey2();
-    const handler = w.document.getElementById("editvar").__ottEditKey2Handler;
+    let handler;
+    const events = w.EventTarget.prototype;
+    const add = events.addEventListener;
+    events.addEventListener = function (type, callback, options) {
+        if (this.id === "editvar" && type === "keydown") handler = callback;
+        return add.call(this, type, callback, options);
+    };
+    try {
+        w.showEditKey2();
+    } finally {
+        events.addEventListener = add;
+    }
+    assert.equal(typeof handler, "function");
     w.setEdit = () => newSaves++;
     w.editvar = "new";
     w.showEditKey2();
@@ -435,6 +448,459 @@ test("editor save reentry preserves replacement editor and callback", ({
     );
     w.editKey2(13);
     assert.equal(saved, 11);
+});
+function configureSwopEditor(w, mode) {
+    w.eval(keyboardCode());
+    Object.assign(w, {
+        ensureDeviceClientId: () => "test-device",
+        getSwopBaseUrl: () => "/swop",
+        makeQrSvg: () => "<svg></svg>",
+        ott_device: mode === "native" ? "pc" : "tizen",
+        POLL_MS: 2500,
+        SESSION_TIMEOUT_MS: 600000,
+        stbGetItem: () => "_eng",
+        wire: {
+            swopClientHeader: "X-Swop-Client-Id",
+            swopSessionPath: "/session",
+            swopValuePath: "/val",
+        },
+    });
+    w.eval(functions("src/swop/index.ts", ["swopHeaders", "swopLoadValue"]));
+    w.editKey = mode === "native" ? w.editKey2 : w.editKey1;
+    // Exercise the desktop redirect as well as the TV renderer.
+    w.showEditKey = w.showEditKey1;
+}
+test("native editor consumes its opening key until release and releases stale listeners", ({
+    w,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    const event = (type, code, repeat = false) =>
+        new w.KeyboardEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            keyCode: code,
+            repeat,
+        });
+    w.aboutKeyHandler = () => w.showEditKey2();
+    w.$("#listAbout").show();
+    w.keyHandler(event("keydown", 51));
+    const input = w.document.getElementById("editvar");
+    assert.equal(
+        port.keyEvent(),
+        null,
+        "dispatch context ends with the opening action"
+    );
+    assert.equal(input.readOnly, true);
+    for (const type of ["keydown", "keypress"]) {
+        const held = event(type, 51, true);
+        input.dispatchEvent(held);
+        assert.equal(
+            held.defaultPrevented,
+            true,
+            type + " cannot insert the shortcut digit"
+        );
+    }
+    input.dispatchEvent(event("keyup", 51));
+    assert.equal(input.readOnly, false);
+    assert.equal(w.document.activeElement, input);
+    const typed = event("keydown", 51);
+    input.dispatchEvent(typed);
+    assert.equal(
+        typed.defaultPrevented,
+        false,
+        "a fresh digit press remains normal typing"
+    );
+    w.editKey2(w.keys.EXIT);
+    w.$("#listAbout").show();
+    w.keyHandler(event("keydown", 52));
+    const previous = w.document.getElementById("editvar");
+    assert.equal(previous.readOnly, true);
+    w.showEditKey2();
+    const replacement = w.document.getElementById("editvar");
+    previous.dispatchEvent(event("keyup", 52));
+    assert.equal(w.document.activeElement, replacement);
+    assert.equal(replacement.readOnly, false);
+    const fresh = event("keydown", 52);
+    replacement.dispatchEvent(fresh);
+    assert.equal(
+        fresh.defaultPrevented,
+        false,
+        "retired opening-key capture cannot swallow later input"
+    );
+});
+test("forced native editor keeps its hidden settings parent and routes remote save", ({
+    w,
+    key,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    w.aboutKeyHandler = () => true;
+    w.$("#listAbout").show();
+    const parent = port.owner("about");
+    w.editKey1 = () =>
+        assert.fail("Native settings must not route to the graphical editor");
+    w.editKey = w.editKey1;
+    const saved = [];
+    w.setEdit = () => saved.push(w.editvar);
+    w.$("#listAbout").hide();
+    w.showEditKey2();
+    const editor = port.owner("editor");
+    key(w.keys.DOWN);
+    assert.equal(editor.active(), true);
+    assert.equal(
+        parent.active(),
+        true,
+        "hidden settings parent is suspended, not retired"
+    );
+    assert.equal(w.document.activeElement.id, "editRemoteInput");
+    key(w.keys.UP);
+    w.document.getElementById("editvar").value =
+        "https://fixture.invalid/control";
+    key(w.keys.ENTER);
+    assert.deepEqual(saved, ["https://fixture.invalid/control"]);
+    assert.equal(editor.active(), false);
+    assert.equal(parent.active(), true);
+    port.reconcile();
+    assert.equal(
+        parent.active(),
+        false,
+        "hidden foreground screens still retire normally"
+    );
+});
+test("native editor D-pad reaches remote input, keeps cursor keys, and hands off the draft once", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    let saves = 0;
+    const requests = [];
+    w.setEdit = () => saves++;
+    w.$.ajax = (request) => requests.push(request);
+    w.showEditKey2(undefined, true);
+    const input = w.document.getElementById("editvar");
+    const button = w.document.getElementById("editRemoteInput");
+    input.value = "https://fixture.invalid:8081/path?x=&y=3";
+    function press(target, key, keyCode, isComposing = false) {
+        const event = new w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            isComposing,
+            key,
+            keyCode,
+        });
+        target.dispatchEvent(event);
+        return event;
+    }
+    assert.equal(press(input, "ArrowLeft", 37).defaultPrevented, false);
+    assert.equal(
+        press(input, "ArrowDown", 40, true).defaultPrevented,
+        false,
+        "IME keeps candidate navigation"
+    );
+    assert.equal(w.document.activeElement, input);
+    assert.equal(press(input, "ArrowDown", 40).defaultPrevented, true);
+    assert.equal(w.document.activeElement, button);
+    press(button, "ArrowUp", 38);
+    assert.equal(w.document.activeElement, input);
+    press(input, "ArrowUp", 38);
+    assert.equal(w.document.activeElement, button);
+    press(button, "Enter", 13);
+    assert.equal(requests.length, 1);
+    assert.equal(JSON.parse(requests[0].data).draft, input.value);
+    assert.equal(saves, 0, "OK on remote input does not save the editor");
+    press(button, "Enter", 13);
+    assert.equal(
+        requests.length,
+        1,
+        "detached remote button cannot start another session"
+    );
+});
+function beginSwopEditor({ w, jobs }, mode, pendingSession = false) {
+    configureSwopEditor(w, mode);
+    const port = w.__ottClassicScreenPort;
+    const requests = [],
+        saves = [];
+    w.$.ajax = (request) => requests.push(request);
+    w.listKeyHandler = () => true;
+    port.commitList();
+    w.editCaption = "Search";
+    w.editvar = mode === "native" ? "before typing" : "initial draft";
+    let editor;
+    const save = () => {
+        // Channel search captures this original owner when opening the editor.
+        if (!port.acceptsEditorSave(editor)) return;
+        saves.push(w.editvar);
+    };
+    w.setEdit = save;
+    w.showEditKey(null, true);
+    editor = port.owner("editor");
+    const handler = w.editKey,
+        panel = port.savedPanel();
+    const button = w.document.getElementById("editRemoteInput");
+    if (mode === "native") {
+        assert.equal(button.textContent, "Remote text entry");
+        let bodyClicks = 0;
+        w.document.body.addEventListener("click", () => bodyClicks++);
+        const input = w.document.getElementById("editvar");
+        input.value = "initial draft";
+        button.click();
+        assert.equal(
+            bodyClicks,
+            0,
+            "remote button must not reach the body click-to-close router"
+        );
+        input.dispatchEvent(
+            new w.KeyboardEvent("keydown", { key: "Enter", keyCode: 13 })
+        );
+        button.dispatchEvent(
+            new w.KeyboardEvent("keydown", { key: "Escape", keyCode: 27 })
+        );
+        assert(
+            editor.active(),
+            "detached native controls cannot finish a pending remote session"
+        );
+    } else w.swopLoadValue();
+    assert.notEqual(w.editKey, handler);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, "/swop/session");
+    assert.equal(JSON.parse(requests[0].data).draft, "initial draft");
+    assert.deepEqual(saves, []);
+    assert.deepEqual(Object.keys(requests[0].headers), ["X-Swop-Client-Id"]);
+    if (pendingSession)
+        return { button, editor, handler, panel, port, requests, save, saves };
+    requests[0].success({
+        code: "ABCDEF",
+        entryCode: "ABCDEF-GHJKLM",
+        entryUrl: "https://swop.test/",
+        sessionToken: "test-read-token",
+        url: "https://swop.test/?c=ABCDEF&t=test-write-token",
+    });
+    const poll = jobs.find((job) => job.active && job.delay === 3000);
+    assert(poll, "session schedules the production poll callback");
+    poll.active = false;
+    poll.callback();
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].url, "/swop/val");
+    return { button, editor, handler, panel, port, requests, save, saves };
+}
+for (const platform of ["__TAURI__", "Capacitor"]) {
+    test(
+        platform +
+            " redirect exposes native remote input instead of the TV keyboard",
+        ({ w }) => {
+            configureSwopEditor(w, "TV");
+            w[platform] = {};
+            w.showEditKey();
+            assert(w.document.getElementById("editvar"));
+            assert.equal(
+                w.document.getElementById("editRemoteInput").textContent,
+                "Remote text entry"
+            );
+        }
+    );
+}
+test("Tauri fullscreen capture lets native remote-button Escape discard the editor", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    const fullscreenCalls = [],
+        saves = [];
+    w.__TAURI__ = {};
+    w.__ottTauriNativeFs = true;
+    w.stbSetTauriNativeFullscreen = (value) => fullscreenCalls.push(value);
+    w.eval(functions("src/core/index.ts", ["installTauriFsKeyCapture"]));
+    w.installTauriFsKeyCapture();
+    w.setEdit = () => saves.push(w.editvar);
+    w.showEditKey();
+    const owner = w.__ottClassicScreenPort.owner("editor");
+    const button = w.document.getElementById("editRemoteInput");
+    const escape = () =>
+        new w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            code: "Escape",
+            key: "Escape",
+            keyCode: 27,
+        });
+    button.focus();
+    button.dispatchEvent(escape());
+    assert.equal(owner.active(), false);
+    assert.deepEqual(saves, []);
+    assert.deepEqual(fullscreenCalls, []);
+    w.document.body.dispatchEvent(escape());
+    assert.deepEqual(
+        fullscreenCalls,
+        [false],
+        "Escape outside the editor still exits fullscreen"
+    );
+});
+for (const mode of ["native", "TV"]) {
+    test(
+        "SWOP " + mode + " resumes the original editor and Enter saves once",
+        (f) => {
+            const { w, key } = f;
+            const s = beginSwopEditor(f, mode);
+            const value = "Новости & café <2026>";
+            s.requests[1].success({ status: "ready", value });
+            assert.equal(s.port.owner("editor"), s.editor);
+            assert.equal(s.editor.model.save, s.save);
+            assert.equal(s.port.savedPanel(), s.panel);
+            assert.equal(w.editKey, s.handler);
+            assert.equal(w.editvar, value);
+            if (mode === "native") {
+                const input = w.document.getElementById("editvar");
+                assert.equal(input.value, value);
+                assert.equal(input.type, "password");
+                assert.equal(w.document.activeElement, input);
+                s.button.click();
+                assert.equal(
+                    s.requests.length,
+                    2,
+                    "retired button is detached"
+                );
+            } else {
+                const selected = w.document.getElementById("ik" + w._keyCur);
+                assert.equal(selected.textContent.trim(), "Ok");
+                assert(selected.style.backgroundColor);
+            }
+            key(w.keys.ENTER);
+            assert.deepEqual(s.saves, [value]);
+            assert.equal(s.editor.active(), false);
+            assert.equal(w.$("#listEdit").is(":visible"), false);
+            assert.equal(w.listCaptionElement.textContent, "Parent");
+            assert.equal(w.listFooterElement.textContent, "Footer");
+            key(w.keys.ENTER);
+            assert.deepEqual(s.saves, [value]);
+        }
+    );
+    test(
+        "SWOP " + mode + " cancel retains the editor and ignores a late result",
+        (f) => {
+            const { w, key } = f;
+            const s = beginSwopEditor(f, mode);
+            key(w.keys.RETURN);
+            assert.equal(s.port.owner("editor"), s.editor);
+            assert.equal(s.editor.model.save, s.save);
+            assert.equal(s.port.savedPanel(), s.panel);
+            assert.equal(w.editKey, s.handler);
+            assert.equal(w.editvar, "initial draft");
+            if (mode === "native")
+                assert.equal(
+                    w.document.getElementById("editvar").type,
+                    "password"
+                );
+            assert.equal(w.$("#listEdit").is(":visible"), true);
+            assert.deepEqual(s.saves, []);
+            s.requests[1].success({
+                status: "ready",
+                value: "late phone value",
+            });
+            assert.equal(w.editvar, "initial draft");
+            key(w.keys.RETURN);
+            assert.equal(s.editor.active(), false);
+            assert.equal(w.$("#listEdit").is(":visible"), false);
+            assert.equal(w.listCaptionElement.textContent, "Parent");
+            assert.deepEqual(s.saves, []);
+        }
+    );
+    test(
+        "SWOP " + mode + " resume without an editor cannot create one",
+        ({ w }) => {
+            configureSwopEditor(w, mode);
+            assert.doesNotThrow(() => w.showEditKey(null, undefined, true));
+            assert.equal(w.__ottClassicScreenPort.owner("editor"), undefined);
+            assert.equal(w.__ottScreens.current(), null);
+            assert.equal(w.$("#listEdit").is(":visible"), false);
+            assert.equal(w.listCaptionElement.textContent, "Parent");
+        }
+    );
+}
+test("native remote button reports unconfigured service without saving or leaving the field", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    const alerts = [];
+    w.alert = (message) => alerts.push(message);
+    w.getSwopBaseUrl = () => "";
+    w.$.ajax = () => assert.fail("unconfigured input must not make a request");
+    w.setEdit = () => assert.fail("opening remote input must not save");
+    w.showEditKey();
+    const input = w.document.getElementById("editvar");
+    input.value = "typed & <literal>";
+    w.document.getElementById("editRemoteInput").click();
+    assert.deepEqual(alerts, ["Remote text entry not configured"]);
+    assert.equal(w.document.getElementById("editvar"), input);
+    assert.equal(w.editvar, input.value);
+});
+for (const mode of ["native", "TV"]) {
+    test(
+        "SWOP " +
+            mode +
+            " owner cleanup rejects late session callbacks and stale input",
+        (f) => {
+            const { w, jobs } = f;
+            const s = beginSwopEditor(f, mode, true);
+            const staleKey = w.editKey;
+            w.setEdit = () =>
+                assert.fail("stale session cannot save replacement");
+            w.editvar = "replacement draft";
+            w.showEditKey();
+            const replacement = s.port.owner("editor");
+            const html = w.document.getElementById("listEdit").innerHTML;
+            const handler = w.editKey;
+            assert.equal(s.editor.active(), false);
+            assert.equal(
+                jobs.some((job) => job.active && job.delay === 600000),
+                false
+            );
+            s.requests[0].error({
+                responseJSON: { error: "late denial" },
+                status: 403,
+            });
+            s.requests[0].success({ code: "OLDOLD", sessionToken: "stale" });
+            jobs.forEach((job) => job.callback());
+            staleKey(w.keys.RETURN);
+            if (s.button) s.button.click();
+            assert.equal(s.port.owner("editor"), replacement);
+            assert.equal(w.editKey, handler);
+            assert.equal(w.editvar, "replacement draft");
+            assert.equal(w.document.getElementById("listEdit").innerHTML, html);
+            assert.equal(s.requests.length, 1);
+        }
+    );
+    test(
+        "SWOP " +
+            mode +
+            " invalidation cancels polls and ignores late ready/error callbacks",
+        (f) => {
+            const { w, jobs } = f;
+            const s = beginSwopEditor(f, mode);
+            s.port.invalidate();
+            w.editvar = "new source";
+            w.$("#listEdit").html("new screen").show();
+            s.requests[1].error({ status: 500 });
+            s.requests[1].success({ status: "ready", value: "stale value" });
+            jobs.forEach((job) => job.callback());
+            assert.equal(w.editvar, "new source");
+            assert.equal(w.$("#listEdit").text(), "new screen");
+            assert.equal(s.requests.length, 2);
+            assert.equal(
+                jobs.some((job) => job.active),
+                false
+            );
+        }
+    );
+}
+test("native SWOP timeout restores the typed draft and original save callback", (f) => {
+    const { w, jobs } = f;
+    const alerts = [];
+    w.alert = (message) => alerts.push(message);
+    const s = beginSwopEditor(f, "native", true);
+    jobs.find((job) => job.active && job.delay === 600000).callback();
+    assert.deepEqual(alerts, ["Remote session expired"]);
+    assert.equal(s.port.owner("editor"), s.editor);
+    assert.equal(s.editor.model.save, s.save);
+    assert.equal(w.document.getElementById("editvar").value, "initial draft");
+    assert.equal(w.document.getElementById("editvar").type, "password");
+    assert.deepEqual(s.saves, []);
 });
 test("source replacement retires dialogs, editor and scheduled list detail", ({
     w,

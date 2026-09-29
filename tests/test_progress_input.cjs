@@ -41,7 +41,7 @@ const code = ts
 acorn.parse(code, { ecmaVersion: 5 });
 function fixture(options = {}, jqueryFile = "js/jquery-1.11.1.min.js") {
     const dom = new JSDOM(
-        '<link href="1280.css"><div id="progress_div" style="width:200px;height:10px"></div><div id="progress_span"><span></span></div>',
+        '<link href="styles/player.css"><div id="progress_div" style="width:200px;height:10px"></div><div id="progress_span"><span></span></div>',
         { runScripts: "outside-only" }
     );
     const w = dom.window,

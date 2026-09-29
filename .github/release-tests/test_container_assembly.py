@@ -66,7 +66,7 @@ def native_entries(
     web = (
         {
             "app/index.html": b"player",
-            "app/dist/stbPlayer.js": b"var player = true;",
+            "app/dist/player.js": b"var player = true;",
             "app/js/runtime-polyfills.js": b"runtime",
         }
         if web is None
@@ -216,7 +216,7 @@ class AssemblyTests(unittest.TestCase):
             {"subject": "0" * 64},
             {"user": "root"},
             {"user": ""},
-            {"web": {"app/index.html": b"different", "app/dist/stbPlayer.js": b"different"}},
+            {"web": {"app/index.html": b"different", "app/dist/player.js": b"different"}},
         ]
         for arguments in cases:
             with self.subTest(arguments=arguments):
@@ -247,12 +247,12 @@ class AssemblyTests(unittest.TestCase):
                 self.assertFalse(self.output.exists())
 
     def test_web_whiteout_preserves_same_layer_replacement_and_rejects_links(self):
-        web = {"app/index.html": b"player", "app/dist/stbPlayer.js": b"var player = true;"}
+        web = {"app/index.html": b"player", "app/dist/player.js": b"var player = true;"}
         for platform, path in self.paths.items():
             entries, _ = native_entries(
                 platform.split("/")[1],
                 web={**web, "app/dist/old.js": b"obsolete"},
-                later_layers=({"app/dist/stbPlayer.js": web["app/dist/stbPlayer.js"], "app/dist/.wh..wh..opq": b""},),
+                later_layers=({"app/dist/player.js": web["app/dist/player.js"], "app/dist/.wh..wh..opq": b""},),
             )
             write_archive(path, entries)
         self.assertEqual(self.assemble()["web_files"], 2)

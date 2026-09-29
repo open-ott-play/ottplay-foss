@@ -364,6 +364,26 @@ jobs:
           org.opencontainers.image.revision=${{ steps.image-version.outputs.revision }}
 
           '
+    - name: Verify exact native image EPG performance
+      run: |
+        sudo apt-get update && sudo apt-get install -y skopeo
+        python3 scripts/check-container-epg.py \
+          --archive ottplay-container-${{ matrix.arch }}.oci.tar \
+          --platform linux/${{ matrix.arch }} \
+          --version '${{ steps.image-version.outputs.version }}' \
+          --revision '${{ steps.image-version.outputs.revision }}' \
+          --output build/reports/container-epg-${{ matrix.arch }}.json
+    - name: Preserve native EPG performance evidence
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: container-epg-${{ matrix.arch }}
+        path: |
+          build/reports/container-epg-${{ matrix.arch }}.json
+          epg-performance.json
+          epg-performance.log
+        if-no-files-found: ignore
+        retention-days: 14
     - name: Store native OCI input
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:

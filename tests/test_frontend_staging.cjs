@@ -69,34 +69,34 @@ try {
     write("src/demo/debug.ts");
     write("src/demo/logs/private.json");
     for (const name of [
-        "src/stb/lg/webos.js",
-        "src/stb/core.js",
-        "src/stb/tizen/config.json",
-        "src/stb/logs/pre_tool_use.json",
-        "src/stb/lg/.private/file.json",
-        "src/stb/lg/node_modules/dependency.js",
-        "src/stb/lg/build/source.js",
-        "src/stb/lg/.env",
-        "src/stb/lg/private.key",
+        "src/devices/lg/webos/device.js",
+        "src/devices/legacy-core.js",
+        "src/devices/tizen/config.json",
+        "src/devices/logs/pre_tool_use.json",
+        "src/devices/lg/.private/file.json",
+        "src/devices/lg/node_modules/dependency.js",
+        "src/devices/lg/build/source.js",
+        "src/devices/lg/.env",
+        "src/devices/lg/private.key",
         "src/fonts/player.woff2",
         "src/fonts/logs/debug.json",
-        "src/prov/provider.js",
-        "src/prov/about.html",
-        "src/prov/get_about.sh",
-        "src/prov/.hidden.json",
-        "src/stbPlayer/1280.css",
-        "src/stbPlayer/_eng.js",
-        "src/stbPlayer/_rus.js",
-        "src/stbPlayer/icon.png",
-        "src/stbPlayer/mute.png",
-        "src/stbPlayer/beta.png",
-        "src/stbPlayer/blue_short.png",
-        "src/stbPlayer/no_image.png",
-        "src/stbPlayer/future-unused-art.png",
-        "src/stbPlayer/logo.png",
-        "src/stbPlayer/debug.js",
-        "src/stbPlayer/logs/private.json",
-        "src/stbPlayer/.hidden.png",
+        "src/providers/provider.js",
+        "src/providers/about.html",
+        "src/providers/fetch-provider-descriptions.sh",
+        "src/providers/.hidden.json",
+        "src/styles/player.css",
+        "src/locales/english.js",
+        "src/locales/russian.js",
+        "src/images/player-logo.png",
+        "src/images/mute.png",
+        "src/images/beta.png",
+        "src/images/blue_short.png",
+        "src/images/no_image.png",
+        "src/images/future-unused-art.png",
+        "src/images/logo.png",
+        "src/images/debug.js",
+        "src/images/logs/private.json",
+        "src/images/.hidden.png",
         "src/js/hls.min.js",
         "src/js/jquery-1.11.1.min.js",
         "src/js/shaka-player.compiled.js",
@@ -109,8 +109,13 @@ try {
         "src/src-tauri/pip/pip.html",
         "src/src-tauri/pip/pip-player.js",
         "dist/index.html",
-        "dist/stbPlayer.js",
-        "stage/stb/logs/previous-build.json",
+        "dist/player.js",
+        "dist/hosted/epg-worker.js",
+        "dist/hosted/pako-LICENSE",
+        "dist/hosted/sax-LICENSE",
+        "dist/swop-input/index.html",
+        "dist/swop-input/app.js",
+        "stage/devices/logs/previous-build.json",
     ])
         write(name);
     for (const kind of Object.keys(CLASSIC_PROVIDER_BUNDLES)) {
@@ -126,15 +131,15 @@ try {
         path.join(fixture, "stage")
     );
     for (const name of [
-        "stb/lg/webos.js",
-        "stb/tizen/config.json",
+        "devices/lg/webos/device.js",
+        "devices/tizen/config.json",
         "fonts/player.woff2",
-        "prov/provider.js",
-        "prov/about.html",
-        "stbPlayer/1280.css",
-        "stbPlayer/_eng.js",
-        "stbPlayer/_rus.js",
-        "stbPlayer/icon.png",
+        "providers/provider.js",
+        "providers/about.html",
+        "styles/player.css",
+        "locales/english.js",
+        "locales/russian.js",
+        "images/player-logo.png",
         "js/hls.min.js",
         "js/jquery-1.11.1.min.js",
         "js/shaka-player.compiled.js",
@@ -144,6 +149,19 @@ try {
             fs.readFileSync(path.join(fixture, "stage", name), "utf8"),
             fs.readFileSync(path.join(fixture, "src", name), "utf8"),
             name
+        );
+    }
+    for (const name of [
+        "hosted/epg-worker.js",
+        "hosted/pako-LICENSE",
+        "hosted/sax-LICENSE",
+        "swop-input/index.html",
+        "swop-input/app.js",
+    ]) {
+        assert.equal(
+            fs.readFileSync(path.join(fixture, "stage", name), "utf8"),
+            fs.readFileSync(path.join(fixture, "dist", name), "utf8"),
+            "Hosted assets come from the checked build: " + name
         );
     }
     for (const name of ["pip.html", "pip-player.js"]) {
@@ -167,36 +185,36 @@ try {
         "Remote demo media must not enter native bundles"
     );
     for (const name of [
-        "stb/core.js",
-        "stb/logs",
-        "stb/lg/.private",
-        "stb/lg/node_modules",
-        "stb/lg/build",
-        "stb/lg/.env",
-        "stb/lg/private.key",
+        "devices/legacy-core.js",
+        "devices/logs",
+        "devices/lg/.private",
+        "devices/lg/node_modules",
+        "devices/lg/build",
+        "devices/lg/.env",
+        "devices/lg/private.key",
         "fonts/logs",
-        "prov/get_about.sh",
-        "prov/.hidden.json",
-        "stbPlayer/.hidden.png",
-        "stbPlayer/mute.png",
-        "stbPlayer/beta.png",
-        "stbPlayer/blue_short.png",
-        "stbPlayer/no_image.png",
-        "stbPlayer/future-unused-art.png",
-        "stbPlayer/logo.png",
-        "stbPlayer/debug.js",
-        "stbPlayer/logs",
+        "providers/fetch-provider-descriptions.sh",
+        "providers/.hidden.json",
+        "images/.hidden.png",
+        "images/mute.png",
+        "images/beta.png",
+        "images/blue_short.png",
+        "images/no_image.png",
+        "images/future-unused-art.png",
+        "images/logo.png",
+        "images/debug.js",
+        "images/logs",
         "js/browser-app",
     ])
         assert.equal(exists(`stage/${name}`), false, name);
-    assert.equal(exists("src/stb/logs/pre_tool_use.json"), true);
+    assert.equal(exists("src/devices/logs/pre_tool_use.json"), true);
     assert.equal(
         fs.readFileSync(path.join(fixture, "stage/index.html"), "utf8"),
         "dist/index.html"
     );
     assert.equal(
-        fs.readFileSync(path.join(fixture, "stage/dist/stbPlayer.js"), "utf8"),
-        "dist/stbPlayer.js"
+        fs.readFileSync(path.join(fixture, "stage/dist/player.js"), "utf8"),
+        "dist/player.js"
     );
     for (const kind of Object.keys(CLASSIC_PROVIDER_BUNDLES)) {
         const file = "provider-" + kind + ".js";
@@ -212,7 +230,7 @@ try {
     }
 
     const scripts = [
-        "stbPlayer.js",
+        "player.js",
         ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
             (kind) => "provider-" + kind + ".js"
         ),
@@ -235,25 +253,25 @@ try {
         );
     }
     assert.equal(exists("mobile/index.html"), true);
-    write("broken/stbPlayer.js", "first");
-    write("broken/dist/stbPlayer.js", "second");
+    write("broken/player.js", "first");
+    write("broken/dist/player.js", "second");
     assert.throws(
         () => context.removeDuplicatePlayerAssets(path.join(fixture, "broken")),
         /Mismatched native player copies/
     );
-    assert.equal(exists("broken/stbPlayer.js"), true);
+    assert.equal(exists("broken/player.js"), true);
 
     // Capacitor retains its dist root between builds; copying a tree must
     // remove already staged private/stale files, not merely filter new copies.
-    write("cap/stb/logs/old.json");
-    write("cap/stb/removed-adapter.js");
+    write("cap/devices/logs/old.json");
+    write("cap/devices/removed-adapter.js");
     context.copyRuntimeAssets(
-        path.join(fixture, "src/stb"),
-        path.join(fixture, "cap/stb")
+        path.join(fixture, "src/devices"),
+        path.join(fixture, "cap/devices")
     );
-    assert.equal(exists("cap/stb/logs"), false);
-    assert.equal(exists("cap/stb/removed-adapter.js"), false);
-    assert.equal(exists("cap/stb/lg/webos.js"), true);
+    assert.equal(exists("cap/devices/logs"), false);
+    assert.equal(exists("cap/devices/removed-adapter.js"), false);
+    assert.equal(exists("cap/devices/lg/webos/device.js"), true);
 
     // Browser installations need the complete manifest tree in production;
     // native distributions must also retire browser artwork from old output.
@@ -294,139 +312,155 @@ try {
 
     // A persistent Capacitor output can contain old permitted-looking files as
     // well as old artwork. Restage real files; do not merely skip future copies.
-    write("cap/stbPlayer/icon.png", "stale icon");
-    write("cap/stbPlayer/1280.css", "stale CSS");
-    write("cap/stbPlayer/_removed.js", "stale locale");
-    write("cap/stbPlayer/mute.png", "old unused art");
-    write("cap/stbPlayer/future-unused-art.png", "old unknown art");
-    write("cap/stbPlayer/logs/previous.json");
-    write("cap/stbPlayer/.private/previous.json");
+    write("cap/images/player-logo.png", "stale icon");
+    write("cap/styles/player.css", "stale CSS");
+    write("cap/locales/removed.js", "stale locale");
+    write("cap/images/mute.png", "old unused art");
+    write("cap/images/future-unused-art.png", "old unknown art");
+    write("cap/images/logs/previous.json");
+    write("cap/images/.private/previous.json");
+    write("cap/styles/private.css", "stale stylesheet");
+    write("cap/locales/logs/previous.json");
+    write("cap/keep-unrelated.txt", "unrelated output");
     context.stagePlayerAssets(
-        path.join(fixture, "src/stbPlayer"),
-        path.join(fixture, "cap/stbPlayer")
+        path.join(fixture, "src"),
+        path.join(fixture, "cap")
     );
-    assert.deepEqual(
-        fs.readdirSync(path.join(fixture, "cap/stbPlayer")).sort(),
-        fs.readdirSync(path.join(fixture, "stage/stbPlayer")).sort(),
-        "Capacitor restaging and the full Tauri staging produce the same player assets"
-    );
-    for (const name of ["icon.png", "1280.css", "_eng.js", "_rus.js"])
+    for (const directory of ["styles", "images", "locales"])
+        assert.deepEqual(
+            fs.readdirSync(path.join(fixture, "cap", directory)).sort(),
+            fs.readdirSync(path.join(fixture, "stage", directory)).sort(),
+            "Capacitor and full Tauri staging produce the same " + directory
+        );
+    for (const name of [
+        "images/player-logo.png",
+        "styles/player.css",
+        "locales/english.js",
+        "locales/russian.js",
+    ])
         assert.equal(
-            fs.readFileSync(path.join(fixture, "cap/stbPlayer", name), "utf8"),
-            fs.readFileSync(path.join(fixture, "src/stbPlayer", name), "utf8"),
+            fs.readFileSync(path.join(fixture, "cap", name), "utf8"),
+            fs.readFileSync(path.join(fixture, "src", name), "utf8"),
             "fresh player runtime bytes: " + name
         );
     for (const name of [
-        "_removed.js",
-        "mute.png",
-        "future-unused-art.png",
-        "logs",
-        ".private",
+        "locales/removed.js",
+        "locales/logs",
+        "styles/private.css",
+        "images/mute.png",
+        "images/future-unused-art.png",
+        "images/logs",
+        "images/.private",
     ])
-        assert.equal(
-            exists("cap/stbPlayer/" + name),
-            false,
-            "retired output: " + name
-        );
+        assert.equal(exists("cap/" + name), false, "retired output: " + name);
+    assert.equal(exists("cap/keep-unrelated.txt"), true);
 
     // Switching a previously staged Full directory to Play must retire the
     // startup image even while it remains available in the source tree.
     context.stagePlayerAssets(
-        path.join(fixture, "src/stbPlayer"),
-        path.join(fixture, "cap/stbPlayer"),
+        path.join(fixture, "src"),
+        path.join(fixture, "cap"),
         "play"
     );
     assert.equal(
-        exists("cap/stbPlayer/icon.png"),
+        exists("cap/images/player-logo.png"),
         false,
         "Play removes the stale Full startup image"
     );
     assert.equal(
-        exists("src/stbPlayer/icon.png"),
+        exists("src/images/player-logo.png"),
         true,
         "Play staging preserves the Full source image"
     );
     assert.deepEqual(
-        fs
-            .readdirSync(path.join(fixture, "cap/stbPlayer"))
-            .filter((name) => /\.(png|gif|jpe?g|webp|svg)$/i.test(name)),
+        exists("cap/images")
+            ? fs.readdirSync(path.join(fixture, "cap/images"))
+            : [],
         [],
         "Play stages no startup artwork"
     );
-    for (const name of ["1280.css", "_eng.js", "_rus.js"])
+    for (const name of [
+        "styles/player.css",
+        "locales/english.js",
+        "locales/russian.js",
+    ])
         assert.equal(
-            fs.readFileSync(path.join(fixture, "cap/stbPlayer", name), "utf8"),
-            fs.readFileSync(
-                path.join(fixture, "stage/stbPlayer", name),
-                "utf8"
-            ),
+            fs.readFileSync(path.join(fixture, "cap", name), "utf8"),
+            fs.readFileSync(path.join(fixture, "stage", name), "utf8"),
             "Play keeps required CSS and locale bytes: " + name
         );
 
     // Locales are discovered from current inputs, not a hard-coded language
     // list. Removing a previously staged locale must remove it from the output.
-    fs.unlinkSync(path.join(fixture, "src/stbPlayer/_rus.js"));
-    write("src/stbPlayer/_new-locale.js", "new locale bytes");
+    fs.unlinkSync(path.join(fixture, "src/locales/russian.js"));
+    write("src/locales/testlanguage.js", "new locale bytes");
+    write("src/locales/Uppercase.js", "invalid locale name");
+    write("src/locales/_legacy.js", "old locale name");
     context.stagePlayerAssets(
-        path.join(fixture, "src/stbPlayer"),
-        path.join(fixture, "cap/stbPlayer")
+        path.join(fixture, "src"),
+        path.join(fixture, "cap")
     );
-    assert.equal(exists("cap/stbPlayer/_rus.js"), false);
+    assert.equal(exists("cap/locales/russian.js"), false);
+    assert.equal(exists("cap/locales/Uppercase.js"), false);
+    assert.equal(exists("cap/locales/_legacy.js"), false);
     assert.equal(
         fs.readFileSync(
-            path.join(fixture, "cap/stbPlayer/_new-locale.js"),
+            path.join(fixture, "cap/locales/testlanguage.js"),
             "utf8"
         ),
         "new locale bytes"
     );
     assert.equal(
-        exists("src/stbPlayer/future-unused-art.png"),
+        exists("src/images/future-unused-art.png"),
         true,
         "staging leaves source artwork intact"
     );
 
-    // A similarly named image and a previous output icon cannot substitute for
-    // the actual startup icon. Missing required input must stop packaging.
-    write("missing-icon/1280.css");
-    write("missing-icon/_eng.js");
-    write("missing-icon/logo.png");
-    write("missing-icon-output/icon.png", "previous successful build");
+    // A similarly named image and a previous output logo cannot substitute for
+    // the actual startup logo. Missing required input must stop packaging.
+    write("missing-icon/styles/player.css");
+    write("missing-icon/locales/english.js");
+    write("missing-icon/images/logo.png");
+    write(
+        "missing-icon-output/images/player-logo.png",
+        "previous successful build"
+    );
     assert.throws(
         () =>
             context.stagePlayerAssets(
                 path.join(fixture, "missing-icon"),
                 path.join(fixture, "missing-icon-output")
             ),
-        /Missing player runtime asset: icon\.png/
+        /Missing player runtime asset: images\/player-logo\.png/
     );
-    assert.equal(exists("missing-icon-output/icon.png"), false);
-    assert.equal(exists("missing-icon-output/logo.png"), false);
+    assert.equal(exists("missing-icon-output/images/player-logo.png"), false);
+    assert.equal(exists("missing-icon-output/images/logo.png"), false);
 
     // The same source that is invalid for Full is sufficient for Play: its
     // startup does not request an icon. Old output must not supply a hidden one.
-    write("missing-icon-play/icon.png", "stale Full image");
+    write("missing-icon-play/images/player-logo.png", "stale Full image");
     context.stagePlayerAssets(
         path.join(fixture, "missing-icon"),
         path.join(fixture, "missing-icon-play"),
         "play"
     );
-    assert.equal(exists("missing-icon-play/icon.png"), false);
-    assert.equal(exists("missing-icon-play/logo.png"), false);
+    assert.equal(exists("missing-icon-play/images/player-logo.png"), false);
+    assert.equal(exists("missing-icon-play/images/logo.png"), false);
     assert.equal(
         fs.readFileSync(
-            path.join(fixture, "missing-icon-play/1280.css"),
+            path.join(fixture, "missing-icon-play/styles/player.css"),
             "utf8"
         ),
-        "missing-icon/1280.css"
+        "missing-icon/styles/player.css"
     );
     assert.equal(
         fs.readFileSync(
-            path.join(fixture, "missing-icon-play/_eng.js"),
+            path.join(fixture, "missing-icon-play/locales/english.js"),
             "utf8"
         ),
-        "missing-icon/_eng.js"
+        "missing-icon/locales/english.js"
     );
-    write("missing-css/_eng.js");
+    write("missing-css/locales/english.js");
     assert.throws(
         () =>
             context.stagePlayerAssets(
@@ -434,16 +468,24 @@ try {
                 path.join(fixture, "missing-css-play"),
                 "play"
             ),
-        /Missing player runtime asset: 1280\.css/
+        /Missing player runtime asset: styles\/player\.css/
     );
 
     // Both required assets and discovered locales must still pass through the
     // shared symlink guard instead of exposing a file outside the asset tree.
     write("outside-player.js", "private fixture");
-    for (const linkedAsset of ["icon.png", "_external.js"]) {
-        const source = "player-link-" + linkedAsset;
-        write(source + "/1280.css");
-        if (linkedAsset !== "icon.png") write(source + "/icon.png");
+    for (const linkedAsset of [
+        "images/player-logo.png",
+        "locales/external.js",
+    ]) {
+        const source = "player-link-" + path.basename(linkedAsset);
+        write(source + "/styles/player.css");
+        write(source + "/locales/english.js");
+        if (linkedAsset !== "images/player-logo.png")
+            write(source + "/images/player-logo.png");
+        fs.mkdirSync(path.dirname(path.join(fixture, source, linkedAsset)), {
+            recursive: true,
+        });
         fs.symlinkSync(
             path.join(fixture, "outside-player.js"),
             path.join(fixture, source, linkedAsset)
@@ -462,12 +504,12 @@ try {
     write("outside.json", "private fixture");
     fs.symlinkSync(
         path.join(fixture, "outside.json"),
-        path.join(fixture, "src/stb/public.json")
+        path.join(fixture, "src/devices/public.json")
     );
     assert.throws(
         () =>
             context.copyRuntimeAssets(
-                path.join(fixture, "src/stb"),
+                path.join(fixture, "src/devices"),
                 path.join(fixture, "rejected")
             ),
         /must not be a symlink/

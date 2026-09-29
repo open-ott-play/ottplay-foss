@@ -372,7 +372,7 @@ test("buttons help closes with Back and existing RETURN, while native cloud save
     try {
         w.eval(
             func("src/index.ts", "buttonsInfo") +
-                func("src/keyhandler/index.ts", "keyHandler") +
+                func("src/key-handler/index.ts", "keyHandler") +
                 cloudSource(bundleAst)
         );
         for (const key of [w.keys.EXIT, w.keys.RETURN]) {
@@ -525,7 +525,7 @@ test("real password action selects a secret editor; normal input restores text a
     try {
         w.eval(
             func("src/ui/index.ts", "showEditKey2") +
-                func("prov/xtream/prov.js", "editXtreamSettings") +
+                func("providers/xtream/provider.js", "editXtreamSettings") +
                 func("src/ui/index.ts", "renderButtonHint")
         );
         w.xtream = {
@@ -575,12 +575,79 @@ test("real password action selects a secret editor; normal input restores text a
         w.close();
     }
 });
+test("button hints reject executable key values and sanitize every badge while preserving icons", () => {
+    const w = fixture();
+    try {
+        w.eval(func("src/ui/index.ts", "renderButtonHint"));
+        for (const key of [
+            "13);window.__executed=1;//",
+            '13\" onmouseover=\"window.__executed=1',
+            "invalid",
+        ]) {
+            assert.equal(w.renderButtonHint(key, "Enter", "Confirm"), "");
+        }
+        const legacyIcon = '<span class="fontello">&#xe811;</span>';
+        const nativeBundle =
+            bundleAst && /\bsystem-icons\b/.test(bundleAst.text);
+        const icon = nativeBundle
+            ? require("../scripts/play-system-icons.cjs").transformPlaySystemIcons(
+                  legacyIcon
+              )
+            : legacyIcon;
+        const footer = w.document.getElementById("listPodval");
+        footer.innerHTML = w.renderButtonHint(
+            "13",
+            icon + hostile,
+            "<b>Confirm</b>" + hostile,
+            icon + hostile,
+            icon + hostile
+        );
+        assert.equal(
+            footer.querySelectorAll("script,[onerror],[onmouseover],svg")
+                .length,
+            0
+        );
+        const badges = footer.querySelectorAll(".btn");
+        assert.equal(badges.length, 3);
+        for (const badge of badges) {
+            const preserved = badge.querySelector(
+                nativeBundle ? "span.system-icons" : "span.fontello"
+            );
+            assert(preserved, "Every badge retains its platform icon");
+            const expected = w.document.createElement("div");
+            expected.innerHTML = icon;
+            assert.equal(preserved.textContent, expected.textContent);
+        }
+        const control = footer.querySelector('[role="button"]');
+        assert.equal(control.tabIndex, 0);
+        assert(control.getAttribute("aria-label").includes("Confirm"));
+        let pressed;
+        w._doKey = (key) => (pressed = key);
+        control.dispatchEvent(
+            new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                keyCode: 32,
+            })
+        );
+        assert.equal(pressed, 13);
+        assert.equal(w.__executed, undefined);
+    } finally {
+        w.close();
+    }
+});
 test("notifications and stream selectors sanitize metadata while preserving fixed legacy icon markup", () => {
     const w = fixture();
     try {
         const info = w.document.createElement("div");
         info.id = "info";
         w.document.body.appendChild(info);
+        const style = w.document.createElement("style");
+        style.textContent = fs
+            .readFileSync(path.join(root, "styles/player.css"), "utf8")
+            .match(/#info\s*\{[^}]*\}/)[0];
+        w.document.head.appendChild(style);
+        assert.equal(w.getComputedStyle(info).display, "none");
         w.channelNumberElement = w.document.createElement("div");
         w.document.body.appendChild(w.channelNumberElement);
         w.closeList = () => {};
@@ -589,6 +656,7 @@ test("notifications and stream selectors sanitize metadata while preserving fixe
                 func("src/ui/index.ts", "showSelectBox")
         );
         w.showShift("<b>Notice</b>" + hostile);
+        assert.notEqual(w.getComputedStyle(info).display, "none");
         assert(info.querySelector("b"));
         assert.equal(info.querySelectorAll("script,[onerror]").length, 0);
         const legacyIcon = '<span class="fontello">&#xe811;</span>';

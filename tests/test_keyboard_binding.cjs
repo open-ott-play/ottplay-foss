@@ -40,22 +40,22 @@ function compile(file) {
         .map((line) => line.replace(/^export /, ""))
         .join("\n");
 }
-const adapter = read("stb/samsung/tizen/stb.js");
+const adapter = read("devices/samsung/tizen/device.js");
 const typedCore = compile("src/core/index.ts");
-const typedHandlers = compile("src/keyhandler/index.ts");
+const typedHandlers = compile("src/key-handler/index.ts");
 const sourceHandlers =
     declarations(typedCore, ["stbEventToKeyCode"], "source") +
     declarations(typedHandlers, ["keyHandler"], "source");
 const cases = [
     { core: typedCore, handlers: sourceHandlers, name: "source" },
     {
-        core: read("stb/core.js"),
+        core: read("devices/legacy-core.js"),
         handlers: sourceHandlers,
         name: "legacy core",
     },
 ];
 if (process.argv.includes("--bundle")) {
-    const bundle = read("dist/stbPlayer.js");
+    const bundle = read("dist/player.js");
     cases.push({
         core: bundle,
         handlers: declarations(

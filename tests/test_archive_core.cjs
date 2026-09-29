@@ -11,9 +11,9 @@ const functions = new Map();
 for (const row of contracts.fixtures) {
     if (!functions.has(row.provider)) {
         const source = ts.createSourceFile(
-            "prov.js",
+            "provider.js",
             fs.readFileSync(
-                path.join(root, "prov", row.provider, "prov.js"),
+                path.join(root, "providers", row.provider, "provider.js"),
                 "utf8"
             ),
             ts.ScriptTarget.Latest,

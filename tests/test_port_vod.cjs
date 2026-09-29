@@ -122,6 +122,7 @@ function fixture() {
         isFinite,
         JSON,
         keys: {
+            BLUE: 406,
             DOWN: 40,
             ENTER: 13,
             EXIT: 27,
@@ -255,10 +256,12 @@ function fixture() {
                 "mediaList",
                 "showSelectBox",
                 "updateMediaInfo",
+                "updateChannelInfo",
+                "virtualTimeshiftProg",
                 "initBackgroundIntervals",
                 "_t2",
             ]) +
-            sourceFunctions("src/index.ts", ["_playMedia"]),
+            sourceFunctions("src/index.ts", ["_playMedia", "_playChannel"]),
         context
     );
     c.__ottRenderMedia = c.showMediaList1;
@@ -306,6 +309,82 @@ function fixture() {
 module.exports = { fixture, sourceFunctions };
 
 if (require.main === module) {
+    // The filter is reachable by remote shortcut and its active query stays visible.
+    {
+        const c = fixture();
+        c.mediaList(null);
+        let opened = 0;
+        c.__ottMedia.filter = () => opened++;
+        assert.equal(c.mediaKeyHandler(c.keys.BLUE), true);
+        assert.equal(opened, 1);
+        assert(c.elements["#listPodval"].innerHTML.includes("Filter"));
+        const view = c.__ottMedia.snapshot();
+        view.filter = "три кот <tag>";
+        c.showMediaList1(view);
+        assert(
+            c.elements["#listCaption"].textContent.includes(
+                "Filter: три кот <tag>"
+            ),
+            "The caption uses plain text for the active substring"
+        );
+        view.frame.route.kind = "variants";
+        view.filter = "";
+        c.showMediaList1(view);
+        assert(!c.elements["#listPodval"].innerHTML.includes("Filter"));
+        let tmdb = 0;
+        c.hasTmdbService = () => true;
+        c.TMDb = { search: () => tmdb++ };
+        c.listArray = [{ __ottMediaFilter: true, title: "Filter" }];
+        c.selIndex = 0;
+        assert.equal(c.mediaKeyHandler(c.keys.YELLOW), true);
+        assert.equal(tmdb, 0, "The filter control is not a TMDb movie query");
+        c.listArray = [{ title: "Film" }];
+        c.mediaKeyHandler(c.keys.YELLOW);
+        assert.equal(tmdb, 1);
+    }
+    // An outstanding TV guide callback must not overwrite the playing movie's OSD.
+    {
+        const c = fixture();
+        let guideReady;
+        c.channels = {
+            1: {
+                channel_name: "Previous TV",
+                logo: "https://example.invalid/tv.png",
+            },
+        };
+        c.observeCurrentProgramme = (_id, callback) => {
+            guideReady = callback;
+            return false;
+        };
+        c.updateChannelInfo(1);
+        assert.equal(c.elements["#channel_name"].textContent, "Previous TV");
+        c._playMedia({
+            id: 8,
+            logo_30x30: "https://example.invalid/movie.png",
+            stream_url: "movie.mp4",
+            title: "Selected movie",
+        });
+        c.updateMediaInfo();
+        const movieInfo = JSON.stringify(c.elements);
+        guideReady(1);
+        assert.equal(JSON.stringify(c.elements), movieInfo);
+        assert.equal(c.elements["#channel_name"].textContent, "Selected movie");
+        assert.equal(c.elements["#begin_time"].textContent, "2");
+        assert.equal(c.elements["#end_time"].textContent, "+8");
+
+        // Changing mode before rendering restores the previous channel on return.
+        c.ifParentalAccessChId = () => false;
+        c.getChannelUrl = () => "live.m3u8";
+        c.checkMedia = () => {};
+        c._playChannel(0, 0);
+        assert.equal(c.playType, 0);
+        assert.equal(c.elements["#channel_name"].textContent, "Previous TV");
+        assert.equal(
+            c.elements["#picon"].style.backgroundImage,
+            'url("https://example.invalid/tv.png")'
+        );
+        assert.equal(c.elements["#channel_number"].innerHTML, "1");
+    }
     // Root, folder, owned Back, local favorites/history, inline submenu.
     {
         const c = fixture();
@@ -334,7 +413,8 @@ if (require.main === module) {
         );
         assert.equal(c.listArray[0].title, "Nested movie");
         c.mediaKeyHandler(c.keys.GREEN);
-        assert.equal(c.listArray.length, 0);
+        assert.equal(c.listArray.length, 1);
+        assert.equal(c.listArray[0].__ottMediaFilter, true);
         assert.equal(c.documentState().favorites.length, 0);
         c.mediaKeyHandler(c.keys.RETURN);
         c.selIndex = 3;

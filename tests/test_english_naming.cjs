@@ -421,7 +421,7 @@ function testProviderLocalNames() {
             visit(source);
         }
     }
-    walk(path.join(repository, "prov"));
+    walk(path.join(repository, "providers"));
     assert.equal(settingsLists, 34);
     assert.equal(
         archiveTemplates,
@@ -439,7 +439,7 @@ function testFooterNaming() {
     );
     const style = dom.window.document.createElement("style");
     style.textContent = fs.readFileSync(
-        path.join(repository, "stbPlayer/1280.css"),
+        path.join(repository, "styles/player.css"),
         "utf8"
     );
     dom.window.document.head.appendChild(style);

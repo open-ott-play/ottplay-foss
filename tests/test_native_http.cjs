@@ -315,7 +315,7 @@ async function run(platform) {
         // Real OTTCLUB provider: complete must see the object parsed in success.
         testStage = "OTTCLUB provider callbacks";
         w.ottwww = "ottclub.example";
-        w.eval(functions("prov/ottclub/prov.js", ["getEPGchanel"]));
+        w.eval(functions("providers/ottclub/provider.js", ["getEPGchanel"]));
         const epg = await new Promise((resolve) =>
             w.getEPGchanel("bbc", (id, data) => resolve({ data, id }))
         );
@@ -399,7 +399,7 @@ async function run(platform) {
         };
         w.shserver = 1;
         w.chanels = { bbc: { rec: "1" } };
-        w.eval(functions("prov/shura/prov.js", ["getEPGchanel"]));
+        w.eval(functions("providers/shura/provider.js", ["getEPGchanel"]));
         const shura = await new Promise((resolve) =>
             w.getEPGchanel("bbc", (id, data) => resolve({ data, id }))
         );

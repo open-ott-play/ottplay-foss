@@ -140,7 +140,7 @@ function fixture() {
         w
     );
     vm.runInContext(
-        source("keyhandler/index.ts", [
+        source("key-handler/index.ts", [
             "toggleMainPlayback",
             "handleMainKey",
             "handleTouchMove",

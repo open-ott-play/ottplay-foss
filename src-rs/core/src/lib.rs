@@ -7,6 +7,7 @@ use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
 pub mod db;
+pub mod control_discovery;
 pub mod m3u;
 pub mod native_xmltv;
 mod proxy;
@@ -25,9 +26,11 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
     let refresh = shared_guide::GuideRefresh::new(urls.len())?;
     let mut all_channels: HashMap<String, xmltv::Channel> = HashMap::new();
     let mut all_programs: HashMap<String, Vec<xmltv::Programme>> = HashMap::new();
+    let mut failure = None;
 
     while refresh.action()? == "FETCH" {
-        let url = &urls[refresh.index()?];
+        let source_index = refresh.index()?;
+        let url = &urls[source_index];
         match xmltv::fetch_single(url).await {
             Ok((mut ch, pr)) => {
                 for id in refresh.unowned(ch.keys().cloned().collect())? {
@@ -42,7 +45,10 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                 refresh.advance(true, true)?;
             }
             Err(e) => {
-                tracing::warn!("XMLTV fetch failed for {url}: {e}");
+                // fetch_single returns only credential-free failure categories.
+                let error = anyhow::anyhow!("source {}: {e}", source_index + 1);
+                tracing::warn!("XMLTV fetch failed: {error}");
+                failure = Some(error);
                 refresh.advance(false, true)?;
             }
         }
@@ -58,7 +64,6 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
     };
 
     let mut pool = None;
-    let mut failure = None;
     loop {
         match refresh.action()?.as_str() {
             "OPEN_DATABASE" => match db::pool().await {
@@ -66,8 +71,8 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                     refresh.advance(true, opened.is_some())?;
                     pool = opened;
                 }
-                Err(error) => {
-                    failure = Some(error);
+                Err(_) => {
+                    failure = Some(anyhow::anyhow!("EPG database unavailable"));
                     refresh.advance(false, false)?;
                 }
             },
@@ -78,16 +83,21 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                 )
                 .await;
                 let succeeded = result.is_ok();
-                if let Err(error) = result {
-                    tracing::warn!("SQLite persist error: {error}");
+                if result.is_err() {
+                    tracing::warn!("EPG database write failed");
                 }
                 refresh.advance(succeeded, true)?;
             }
             "REPLACE" => return Ok(cache),
-            "FAIL" => return Err(failure.expect("shared core retained a database failure")),
+            "FAIL" => return Err(failure.expect("shared core retained a refresh failure")),
             _ => anyhow::bail!("Unexpected shared guide refresh action"),
         }
     }
+}
+
+/// Shared refresh policy; hosts count rejected refreshes and execute timers.
+pub fn epg_refresh_interval(consecutive_failures: u32) -> anyhow::Result<u64> {
+    shared_guide::refresh_interval(consecutive_failures)
 }
 
 /// Return EPG slice for `channel_id`.
@@ -104,10 +114,38 @@ pub async fn get_epg_slice(
     time_shift_hours: i64,
     archive_hours: i64,
 ) -> anyhow::Result<JsonValue> {
+    get_epg_slice_using(
+        cache, channel_id, time_shift_hours, archive_hours, shared_guide::slice,
+    )
+}
+
+/// Return a slice using the snapshot's existing shared-core context.
+/// This synchronous operation belongs on a blocking worker in async servers.
+pub fn get_epg_slice_with_index(
+    cache: &xmltv::XmltvCache,
+    index: &xmltv::MatchIndex,
+    _hash: &str,
+    channel_id: &str,
+    time_shift_hours: i64,
+    archive_hours: i64,
+) -> anyhow::Result<JsonValue> {
+    get_epg_slice_using(
+        cache, channel_id, time_shift_hours, archive_hours,
+        |times, now, archive, shift| index.slice(times, now, archive, shift),
+    )
+}
+
+fn get_epg_slice_using(
+    cache: &xmltv::XmltvCache,
+    channel_id: &str,
+    time_shift_hours: i64,
+    archive_hours: i64,
+    select: impl FnOnce(Vec<Vec<f64>>, i64, i64, i64) -> anyhow::Result<Vec<Vec<f64>>>,
+) -> anyhow::Result<JsonValue> {
     let now = chrono::Utc::now().timestamp();
     let programs = cache.programs.get(channel_id).map(Vec::as_slice).unwrap_or(&[]);
     let times = programs.iter().map(|p| vec![p.start as f64, p.stop as f64]).collect();
-    let rows = shared_guide::slice(times, now, archive_hours, time_shift_hours)?;
+    let rows = select(times, now, archive_hours, time_shift_hours)?;
     let epg_data: Vec<JsonValue> = rows.into_iter().map(|row| {
         let p = &programs[row[0] as usize];
         serde_json::json!({ "time": row[1] as i64, "time_to": row[2] as i64,
@@ -124,7 +162,7 @@ pub fn match_channel(name: &str, channels: &xmltv::Channels) -> anyhow::Result<O
 
 /// Background task: refresh XMLTV every 2h, update the shared cache.
 pub async fn background_refresh(xmltv_urls: Vec<String>, cache: Arc<RwLock<xmltv::XmltvCache>>) {
-    let seconds = match shared_guide::refresh_interval() {
+    let seconds = match shared_guide::refresh_interval(0) {
         Ok(seconds) => seconds,
         Err(error) => {
             tracing::warn!("XMLTV refresh policy failed: {error}");
@@ -196,6 +234,24 @@ mod tests {
             programs,
             fetched_at: now as u64,
         }
+    }
+
+    #[tokio::test]
+    async fn indexed_slice_preserves_archive_shift_and_missing_channel() -> anyhow::Result<()> {
+        let cache = sample_cache(chrono::Utc::now().timestamp());
+        let index = xmltv::build_match_index(&cache.channels)?;
+        for channel in ["ch1", "missing"] {
+            for archive in [0, 24, 144] {
+                for shift in [-12, 0, 2, 24] {
+                    assert_eq!(
+                        get_epg_slice_with_index(&cache, &index, "", channel, shift, archive)?,
+                        get_epg_slice(&cache, "", channel, shift, archive).await?,
+                        "channel={channel}, archive={archive}, shift={shift}"
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 
     #[tokio::test]

@@ -80,7 +80,7 @@ function stageNativeFonts(directory) {
     });
     fs.rmSync(path.join(directory, "fonts"), { force: true, recursive: true });
     fs.appendFileSync(
-        path.join(directory, "stbPlayer/1280.css"),
+        path.join(directory, "styles/player.css"),
         "\n/* Native shells use only fonts installed by the operating system. */\n" +
             "body { font-family: " +
             SYSTEM_FONTS[0].stack +

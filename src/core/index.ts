@@ -2,7 +2,7 @@
  * Core STB player — video element management, playback control,
  * fullscreen, PiP, aspect ratio, audio/subtitle tracks.
  *
- * Ported from stb/core.js.
+ * Ported from devices/legacy-core.js.
  */
 
 declare var Hls: any;
@@ -748,6 +748,13 @@ export function installTauriFsKeyCapture(): void {
                 ) {
                     return;
                 }
+                // The native editor owns Escape on its remote-input button,
+                // just as it does while its text field has focus.
+                if (t && t.id === "editRemoteInput") {
+                    var port = (window as any).__ottClassicScreenPort;
+                    var editor = port && port.owner("editor");
+                    if (editor && editor.foreground()) return;
+                }
             } catch (_t) {}
             var key = ev.key || "";
             var code = ev.code || "";
@@ -1426,6 +1433,8 @@ export function stbPlay(url: string, position?: number): void {
     getCoreMediaBackend().open({ position: position, url: url });
 }
 export function stbStop(): void {
+    var media = (window as any).__ottMedia;
+    if (media && media.cancelAuto) media.cancelAuto();
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     getCoreMediaBackend().stop();
@@ -2318,7 +2327,7 @@ export function stbToggleSubtitle(): void {
 
 /**
  * Apply the current zoomLevel to #video (CSS transform scale) and body.stb-zoom.
- * Overflow crop is on #vdiv (see 1280.css). HS5-safe: also sets -webkit-transform.
+ * Overflow crop is on #vdiv (see styles/player.css). HS5-safe: also sets -webkit-transform.
  */
 export function applyZoom(): void {
     var scale = zoomScales[zoomLevel] || 1;
@@ -2515,13 +2524,17 @@ export function getCoreMediaBackend(): any {
             duration: number
         ) {
             var playback = (window as any).__ottClassicPlayback;
-            if (playback)
+            if (playback) {
                 playback.command({
                     duration: duration,
                     generation: context.generation,
                     position: position,
-                    type: type,
+                    type: type === "ended" ? "stop" : type,
                 });
+                var media = (window as any).__ottMedia;
+                if (type === "ended" && context.kind === "vod" && media)
+                    media.ended(context.generation + 1);
+            }
         },
         open: openCoreEngineLease,
         resolve: function (url: string, done: (url: string | null) => void) {

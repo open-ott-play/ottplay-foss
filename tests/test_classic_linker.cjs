@@ -597,7 +597,7 @@ async function testWireProviderGlobals() {
     ]);
     const optimized = await optimizeClassic(linked);
     const provider = fs.readFileSync(
-        path.join(__dirname, "../prov/only4/prov.js"),
+        path.join(__dirname, "../providers/only4/provider.js"),
         "utf8"
     );
     for (const source of [linked, optimized.code]) {

@@ -61,6 +61,13 @@ Provider APIs keep ownership of EPG. Native XMLTV is selected only for M3U
 channels using the built-in local companion. An explicitly configured external
 EPG/matching backend keeps its original protocol and request body.
 
+For an external companion, relative EPG source prefixes returned by matching
+are resolved against that companion, not the player's origin. This includes
+the Rust companion's `local~/` response. Absolute and protocol-relative source
+prefixes retain their supplied origin. Use an absolute HTTP(S) URL for the
+configured external companion; native application origins do not necessarily
+have an HTTP(S) scheme to inherit.
+
 Native M3U metadata retains raw `tvg-id`, `tvg-name`, display name and ordered
 XMLTV URLs, including playlist source indexes and aliases. Matching checks exact
 IDs and names before fuzzy names. The first source defining a channel owns that

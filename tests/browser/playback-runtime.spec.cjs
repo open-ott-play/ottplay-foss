@@ -6,6 +6,663 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+async function nativeRemoteInputFixture(
+    page,
+    context,
+    baseURL,
+    configured = true
+) {
+    const origin = new URL(baseURL).origin;
+    const requests = [];
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname.startsWith("/swop/")) {
+            requests.push({
+                body: request.postDataJSON(),
+                headers: request.headers(),
+                path: url.pathname,
+            });
+            return route.fulfill({
+                json:
+                    url.pathname === "/swop/session"
+                        ? {
+                              code: "ABCDEF",
+                              entryCode: "ABCDEF-GHJKLM",
+                              entryUrl: "https://swop.test/",
+                              sessionToken: "synthetic-read-token",
+                              url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                          }
+                        : { status: "ready", value: "Phone text & <literal>" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate((enabled) => {
+        window.stbStop();
+        window.popupList();
+        window.sSwopBaseUrl = enabled ? "/swop" : "";
+        window.settings.swopBaseUrl = window.sSwopBaseUrl;
+        window.__nativeRemoteSaves = [];
+        window.editCaption = "Search";
+        window.editvar = "before typing";
+        window.setEdit = () => window.__nativeRemoteSaves.push(window.editvar);
+        window.showEditKey(null, true);
+        window.__nativeRemoteOwner =
+            window.__ottClassicScreenPort.owner("editor");
+    }, configured);
+    return { errors, requests };
+}
+
+test("native editor remote button sends typed draft, resumes and saves only on confirmation", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(page, context, baseURL);
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Typed draft & <literal>");
+    const remote = page.getByRole("button", {
+        exact: true,
+        name: "Remote text entry",
+    });
+    await field.press("Tab");
+    await expect(remote).toBeFocused();
+    await remote.press("Shift+Tab");
+    await expect(field).toBeFocused();
+    await field.press("Tab");
+    await remote.press("Enter");
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests[0].body.draft).toBe("Typed draft & <literal>");
+    expect(fixture.requests[0].path).toBe("/swop/session");
+    await expect(field).toHaveValue("Phone text & <literal>");
+    await expect(field).toHaveAttribute("type", "password");
+    await expect(field).toBeFocused();
+    expect(
+        await page.evaluate(
+            () =>
+                window.__nativeRemoteOwner ===
+                window.__ottClassicScreenPort.owner("editor")
+        )
+    ).toBe(true);
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests.map((request) => request.path)).toEqual([
+        "/swop/session",
+        "/swop/val",
+    ]);
+    expect(
+        fixture.requests.every((request) => !request.headers.authorization)
+    ).toBe(true);
+    await field.press("Enter");
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([
+        "Phone text & <literal>",
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("native editor remote cancel preserves typing and Escape discards without saving", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(page, context, baseURL);
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Keep this draft");
+    await page
+        .getByRole("button", { exact: true, name: "Remote text entry" })
+        .click();
+    await expect(page.locator(".swop-code")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(field).toHaveValue("Keep this draft");
+    await expect(field).toHaveAttribute("type", "password");
+    await field.press("Escape");
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests.length).toBe(1);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("native editor remote button explains missing configuration and keeps the field", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(
+        page,
+        context,
+        baseURL,
+        false
+    );
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Local draft");
+    await page
+        .getByRole("button", { exact: true, name: "Remote text entry" })
+        .click();
+    await expect(field).toHaveValue("Local draft");
+    await expect(page.locator("#info")).toHaveText(
+        "Remote text entry not configured"
+    );
+    await expect(page.locator("#info")).toBeVisible();
+    expect(fixture.requests).toEqual([]);
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.errors).toEqual([]);
+});
+
+async function episodeFixture(page, context, baseURL, holdNext = false) {
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    const resolutions = [];
+    const manifests = [];
+    let releaseNext;
+    const nextResponse = new Promise((resolve) => {
+        releaseNext = resolve;
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname === "/vportal/api") {
+            const { params } = request.postDataJSON();
+            if (params.cmd === "play") {
+                const revision = resolutions.push(params.id);
+                if (holdNext && revision === 2) await nextResponse;
+                const media = (quality) =>
+                    "https://media.test/" +
+                    params.id +
+                    "/" +
+                    quality +
+                    "/index.m3u8?revision=" +
+                    revision;
+                return route.fulfill({
+                    json: {
+                        url: media("SD"),
+                        variants: { HD: media("HD"), SD: media("SD") },
+                    },
+                });
+            }
+            return route.fulfill({
+                json: {
+                    items: [1, 2].map((id) => ({
+                        request: { cmd: "play", id },
+                        title: "Episode " + id,
+                        type: "stream",
+                    })),
+                    title: "Fixture series",
+                    type: "multistream",
+                },
+            });
+        }
+        if (
+            url.hostname === "media.test" ||
+            url.pathname.startsWith("/demo/")
+        ) {
+            const segment = url.pathname.endsWith(".ts");
+            if (url.hostname === "media.test" && !segment)
+                manifests.push(url.pathname + url.search);
+            return route.fulfill({
+                body: fs.readFileSync(
+                    path.join(
+                        mediaRoot,
+                        segment ? "segment00.ts" : "index.m3u8"
+                    )
+                ),
+                contentType: segment
+                    ? "video/mp2t"
+                    : "application/vnd.apple.mpegurl",
+                headers: { "Access-Control-Allow-Origin": "*" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto(process.env.OTTP_EPISODE_ENTRY || "/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate(() => {
+        window.stbStop();
+        window.__ottMedia.cancel();
+        window.host = location.origin;
+        window.p_pref = "episode-browser-fixture";
+        window.m3uArr = null;
+        window.ottplayDemoActive = false;
+        window.sFavorites = 1;
+        window.sMedCount = 2;
+        window.parentPIN = "";
+        window.settings.stopPlay = true;
+        const saved = {};
+        window.providerGetItem = (key) => saved[key] || null;
+        window.providerSetItem = (key, value) => {
+            saved[key] = value;
+        };
+        const client = window.createVPortalClient(
+            "portal::[key:SYNTHETIC_FIXTURE_KEY]http://portal.invalid/api/v1/",
+            { sourceId: "browser-fixture", title: "VPortal" }
+        );
+        window.providerMediaClient = client;
+        window.getMediaArray = client.load;
+        window.playMedia = client.play;
+        const sourceId = window.__ottSourceIdentity.media(window);
+        // An unfinished second episode must not interrupt automatic playback
+        // with the manual resume prompt or start from its saved position.
+        saved["mediaJournal.v1:" + sourceId] = JSON.stringify({
+            favorites: [],
+            history: [
+                {
+                    itemId: 'request:{"cmd":"play","id":2}',
+                    payload: { title: "Fixture series - Episode 2" },
+                    position: 90,
+                    sourceId,
+                },
+            ],
+            sourceId,
+            version: 1,
+        });
+        window.__episodeEvents = [];
+        document.querySelector("video").addEventListener("ended", (event) => {
+            window.__episodeEvents.push({ trusted: event.isTrusted });
+        });
+        window.__episodePickers = 0;
+        const showSelectBox = window.showSelectBox;
+        window.showSelectBox = function (...args) {
+            window.__episodePickers++;
+            return showSelectBox.apply(this, args);
+        };
+        window.__ottMedia.open("");
+    });
+    await page.waitForFunction(() => {
+        const view = window.__ottMedia.snapshot();
+        return (
+            !view.loading &&
+            view.frame?.items.filter((item) => item.payload.__ottMediaSequence)
+                .length === 2
+        );
+    });
+    expect(
+        await page.evaluate(() =>
+            window.__ottMedia
+                .snapshot()
+                .frame.items.filter((item) => item.payload.__ottMediaSequence)
+                .map((item) => ({
+                    sequence: item.payload.__ottMediaSequence,
+                    title: item.title,
+                }))
+        )
+    ).toEqual([
+        { sequence: true, title: "Fixture series - Episode 1" },
+        { sequence: true, title: "Fixture series - Episode 2" },
+    ]);
+    await page.evaluate(() => window.__ottMedia.select(0));
+    await expect(page.locator("#numprog")).toContainText("HD");
+    await page.evaluate(() => {
+        window._doKey(window.keys.DOWN);
+        window._doKey(window.keys.ENTER);
+    });
+    await pauseEpisode(page, 1);
+    return { errors, manifests, releaseNext, resolutions };
+}
+
+async function pauseEpisode(page, id) {
+    await page.waitForFunction((episode) => {
+        const state = window.__ottClassicPlayback.snapshot();
+        const video = document.querySelector("video");
+        if (
+            state.phase !== "playing" ||
+            state.target?.channelId !==
+                'request:{"cmd":"play","id":' + episode + "}" ||
+            video.readyState < 2
+        )
+            return false;
+        window.stbPause();
+        return true;
+    }, id);
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    await expect(page.locator("#numprog")).toBeHidden();
+}
+
+async function finishEpisode(page) {
+    await page.evaluate(() => {
+        const video = document.querySelector("video");
+        if (!Number.isFinite(video.duration))
+            throw new Error("Missing HLS duration");
+        window.stbSetPosTime(video.duration - 0.15);
+        window.stbContinue();
+    });
+}
+
+test("natural episode completion resolves the next episode and loops with fresh URLs", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL);
+    await finishEpisode(page);
+    await pauseEpisode(page, 2);
+    expect(fixture.resolutions).toEqual([1, 2]);
+    expect(
+        await page.evaluate(() => document.querySelector("video").currentTime)
+    ).toBeLessThan(1);
+    await finishEpisode(page);
+    await pauseEpisode(page, 1);
+    expect(fixture.resolutions).toEqual([1, 2, 1]);
+    expect(fixture.manifests).toEqual([
+        "/1/HD/index.m3u8?revision=1",
+        "/2/HD/index.m3u8?revision=2",
+        "/1/HD/index.m3u8?revision=3",
+    ]);
+    expect(await page.evaluate(() => window.__episodePickers)).toBe(1);
+    expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+        { trusted: true },
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("manual Stop cancels the pending automatic episode resolution", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL, true);
+    await finishEpisode(page);
+    await expect.poll(() => fixture.resolutions).toEqual([1, 2]);
+    const cancelled = page.waitForEvent("requestfailed", {
+        predicate: (request) =>
+            new URL(request.url()).pathname === "/vportal/api" &&
+            request.postDataJSON().params.id === 2,
+    });
+    await page.evaluate(() => window.stbStop());
+    await cancelled;
+    fixture.releaseNext();
+    await page.evaluate(
+        () =>
+            new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve))
+            )
+    );
+    expect(
+        await page.evaluate(() => window.__ottClassicPlayback.snapshot().phase)
+    ).toBe("stopped");
+    expect(fixture.manifests).toEqual(["/1/HD/index.m3u8?revision=1"]);
+    expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+async function titleFilterFixture(page, context, baseURL) {
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    const requests = [];
+    const swopRequests = [];
+    const query = "  ТРИ   КОТ  ";
+    const movie = (title, id) => ({
+        request: { cmd: "play", id },
+        title,
+        type: "stream",
+    });
+    const series = (title, id) => ({
+        request: { cmd: "series", id },
+        title,
+        type: "multistream",
+    });
+    const category = {
+        request: { cmd: "category", id: 1 },
+        title: "Мультфильмы",
+        type: "category",
+    };
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.origin === origin && url.pathname === "/vportal/api") {
+            const { params } = route.request().postDataJSON();
+            requests.push(params);
+            let items = [category];
+            if (params.cmd === "category")
+                items = params.offset
+                    ? [
+                          series("Три кота. Новые истории", 21),
+                          movie("Зимняя сказка", 22),
+                          { ...category, title: "Архив" },
+                      ]
+                    : [
+                          series("Три кота", 11),
+                          movie("ТРИ    КОТА: кино", 12),
+                          movie("Ежик в тумане", 13),
+                          series("Смешарики", 14),
+                          { ...category, title: "Все сезоны" },
+                          { request: { offset: 20 }, type: "next" },
+                      ];
+            return route.fulfill({
+                json: {
+                    controls: { search: true },
+                    items,
+                    type: "category",
+                },
+            });
+        }
+        if (url.origin === origin && url.pathname.startsWith("/swop/")) {
+            swopRequests.push({
+                body: route.request().postDataJSON(),
+                path: url.pathname,
+            });
+            return route.fulfill({
+                json:
+                    url.pathname === "/swop/session"
+                        ? {
+                              code: "ABCDEF",
+                              entryCode: "ABCDEF-GHJKLM",
+                              entryUrl: "https://swop.test/",
+                              sessionToken: "synthetic-read-token",
+                              url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                          }
+                        : { status: "ready", value: query },
+            });
+        }
+        // The demonstration provider only boots the shipped UI. Catalogue
+        // navigation never plays media or contacts an external provider.
+        if (url.origin === origin) return route.continue();
+        return route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto(process.env.OTTP_MEDIA_FILTER_ENTRY || "/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate(() => {
+        window.stbStop();
+        window.__ottMedia.cancel();
+        window.host = location.origin;
+        window.p_pref = "title-filter-browser-fixture";
+        window.m3uArr = null;
+        window.ottplayDemoActive = false;
+        window.sFavorites = 1;
+        window.sMedCount = 2;
+        window.parentPIN = "";
+        const saved = {};
+        window.providerGetItem = (key) => saved[key] || null;
+        window.providerSetItem = (key, value) => {
+            saved[key] = value;
+        };
+        const client = window.createVPortalClient(
+            "portal::[key:SYNTHETIC_FIXTURE_KEY]http://portal.invalid/api/v1/",
+            { sourceId: "filter-fixture", title: "VPortal" }
+        );
+        window.providerMediaClient = client;
+        window.getMediaArray = client.load;
+        window.playMedia = client.play;
+        // Use the real TV keyboard and remote router in the desktop browser.
+        window.ott_device = "lg/webos";
+        window.showEditKey = window.showEditKey1;
+        window.editKey = window.editKey1;
+        window.sSwopBaseUrl = "/swop";
+        window.__filterDocument = {};
+        window.__ottMedia.open("");
+    });
+    await page
+        .getByRole("button", { exact: true, name: "Мультфильмы" })
+        .click();
+    await expect(
+        page.getByRole("button", { exact: true, name: "Три кота" })
+    ).toBeVisible();
+    return { errors, requests, swopRequests };
+}
+
+async function confirmTitleFilter(page, query) {
+    await page.evaluate(() => window._doKey(window.keys.BLUE));
+    await expect(page.locator("#listEdit")).toBeVisible();
+    await page.evaluate((value) => {
+        window.editvar = value;
+        window._doKey(window.keys.BLUE);
+    }, query);
+    await expect(page.locator("#listEdit")).toBeHidden();
+}
+
+test("media title filter uses TV and SWOP confirmation and survives paging and Back", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await titleFilterFixture(page, context, baseURL);
+    const title = (name) => page.getByRole("button", { exact: true, name });
+    const initialRequests = fixture.requests.length;
+    await page.evaluate(() => window._doKey(window.keys.BLUE));
+    await expect(page.locator("#listEdit .osk-key").first()).toBeVisible();
+    await page.evaluate(() => window.swopLoadValue());
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    await expect
+        .poll(() => page.evaluate(() => window.editvar))
+        .toBe("  ТРИ   КОТ  ");
+    await page.evaluate(() => window._doKey(window.keys.ENTER));
+    await expect(page.locator("#listEdit")).toBeHidden();
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("ТРИ    КОТА: кино")).toBeVisible();
+    await expect(title("Смешарики")).toHaveCount(0);
+    await expect(title("Ежик в тумане")).toHaveCount(0);
+    for (const name of ["Все сезоны", "Next page", "Search"])
+        await expect(title(name)).toBeVisible();
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    expect(fixture.requests).toHaveLength(initialRequests);
+    expect(fixture.swopRequests.map((request) => request.path)).toEqual([
+        "/swop/session",
+        "/swop/val",
+    ]);
+
+    await title("Все сезоны").click();
+    await expect(page.locator("#listCaption")).toContainText("Все сезоны");
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("Смешарики")).toHaveCount(0);
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Next page")).toBeVisible();
+
+    await title("Next page").click();
+    await expect(title("Три кота. Новые истории")).toBeVisible();
+    await expect(title("Зимняя сказка")).toHaveCount(0);
+    await expect(title("Архив")).toBeVisible();
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    expect(fixture.requests.at(-1).offset).toBe(20);
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("Смешарики")).toHaveCount(0);
+
+    await confirmTitleFilter(page, "нет совпадений");
+    for (const name of [
+        "Три кота",
+        "ТРИ    КОТА: кино",
+        "Смешарики",
+        "Ежик в тумане",
+    ])
+        await expect(title(name)).toHaveCount(0);
+    for (const name of ["Все сезоны", "Next page", "Search"])
+        await expect(title(name)).toBeVisible();
+    await title("Next page").click();
+    await expect(title("Архив")).toBeVisible();
+    await expect(title("Три кота. Новые истории")).toHaveCount(0);
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Next page")).toBeVisible();
+
+    await confirmTitleFilter(page, "ЁЖ");
+    await expect(title("Ежик в тумане")).toBeVisible();
+    await expect(title("Три кота")).toHaveCount(0);
+    const filterRow = await page.evaluate(
+        () => window.listArray.find((item) => item.__ottMediaFilter).title
+    );
+    await title(filterRow).click();
+    await expect(page.locator("#listEdit")).toBeVisible();
+    await page.evaluate(() => {
+        window.editvar = "";
+        window._doKey(window.keys.BLUE);
+    });
+    await expect(page.locator("#listEdit")).toBeHidden();
+    for (const name of [
+        "Три кота",
+        "ТРИ    КОТА: кино",
+        "Смешарики",
+        "Ежик в тумане",
+    ])
+        await expect(title(name)).toBeVisible();
+    await expect(page.locator("#listCaption")).not.toContainText("ЁЖ");
+    expect(await page.evaluate(() => !!window.__filterDocument)).toBe(true);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("stale media title filter editors cannot change another list or source", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await titleFilterFixture(page, context, baseURL);
+    for (const replaceSource of [false, true]) {
+        await page.evaluate(() => {
+            window.__ottMedia.filter();
+            window.__lateFilterSave = window.setEdit;
+        });
+        await expect(page.locator("#listEdit")).toBeVisible();
+        await page.evaluate((replace) => {
+            if (replace) window.p_pref = "replacement-filter-fixture";
+            window.__ottMedia.open("");
+            window.editvar = "must not be applied";
+            window.__lateFilterSave();
+        }, replaceSource);
+        await page
+            .getByRole("button", { exact: true, name: "Мультфильмы" })
+            .click();
+        await expect(
+            page.getByRole("button", { exact: true, name: "Смешарики" })
+        ).toBeVisible();
+        await expect(page.locator("#listCaption")).not.toContainText(
+            "must not be applied"
+        );
+    }
+    expect(fixture.errors).toEqual([]);
+});
+
 for (const [guideIds, names] of [
     [
         ["one", "two", "three"],
@@ -165,7 +822,7 @@ test("built driver, media session and journal stay connected through playback", 
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("request", (request) => {
         const url = new URL(request.url());
-        if (/\/prov\/.+\/prov\.js$/.test(url.pathname))
+        if (/\/providers\/.+\/provider\.js$/.test(url.pathname))
             providerScripts.push(url.pathname);
     });
     await context.route("**/*", async (route) => {

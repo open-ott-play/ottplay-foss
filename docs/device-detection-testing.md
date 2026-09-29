@@ -2,7 +2,7 @@
 
 Device selection happens twice: in `index.html` before the bundle loads, then
 in `src/app/device.ts` inside the classic bundle. Both must select the same
-`stb/<device>/stb.js`. An explicit `/f/<device>/` path takes precedence over
+`devices/<device>/device.js`. An explicit `/f/<device>/` path takes precedence over
 user-agent and native API signals, including nested `lg/*` and `samsung/*` paths.
 
 ## Automated checks
@@ -52,6 +52,25 @@ These checks validate detection, loading and the existing adapter key contracts.
 Chromium UA emulation does not reproduce a TV's engine version, firmware,
 native services, decoder or DRM implementation. ES5 parsing separately protects
 the syntax requirements of older engines.
+
+## Magic Remote on a physical LG
+
+The browser tests cover hover, wheel, click and directional-key transitions.
+They cannot prove that LG firmware makes its native pointer visible. The player
+does not force that pointer on or off. LG switches to directional mode when an
+arrow is pressed; shaking the remote switches back to pointer mode.
+
+If the pointer is missing, first compare the LG Home screen with the player and
+record whether the player was opened by Media Station X or the TV browser.
+Then open **Information → Debug HUD** in the player. This enables diagnostics
+for the current page without restarting playback. The LG input line reports
+cursor visibility, document focus and input-event counts. Move the remote and
+click while watching the counts; `unknown` means no cursor-visibility event has
+been received, not that the pointer is hidden. Input diagnostics do not capture
+coordinates or typed text and never cancel events or change pointer mode.
+
+See LG's [Magic Remote guide](https://webostv.developer.lge.com/develop/guides/magic-remote)
+and [system UI visibility events](https://webostv.developer.lge.com/develop/guides/system-ui-visibility).
 
 ## Official LG webOS TV Simulator
 
@@ -147,13 +166,30 @@ Diagnostics are disabled in the Chromium CI matrix.
 In the [Simulator Inspector](https://webostv.developer.lge.com/develop/tools/simulator-dev-guide),
 record `navigator.userAgent`, `ott_device`, `keys.RETURN`, console errors and the
 loaded adapter request. Expect `lg/webos`, Back code 461 and
-`/stb/lg/webos/stb.js`. On a fresh profile, select a language and use the SDK's
+`/devices/lg/webos/device.js`. On a fresh profile, select a language and use the SDK's
 RCU Down, Back and OK buttons to check the first-run screen and language chooser.
-During playback, LG profiles default Left to action 1 (Menu). A saved Left
-assignment takes precedence, including action 14 (volume down); a correct LG
-profile alone does not prove its shortcut configuration. Other profiles retain
-the existing Left default of 14, and Right remains 13 (volume up). Assignments
-can be changed in **Settings > Button settings**.
+During playback, LG profiles default Left to action 1 (Menu). webOS defaults
+Right to action 10 (current-channel guide) and Back to action 1 (confirm
+exit). NetCast and other profiles retain Right action 13 (volume up) and
+Back action 0. Saved assignments always take precedence, including old
+volume or no-action assignments; detecting the correct profile does not reset
+these preferences. Other profiles retain Left action 14 (volume down).
+Assignments can be changed in **Settings > Button settings**.
+
+Exercise both Back delivery paths: a numeric 461 key event and actual browser
+history traversal. The adapter retains one same-page history entry, so Back
+closes the player menu instead of navigating away. In unobstructed playback,
+the default Back action asks for confirmation; an open playback infobar is
+hidden first. Cancel must keep the player usable, and confirmation must exit
+only once. LG documents this distinction in its
+[Back button guide](https://webostv.developer.lge.com/develop/guides/back-button).
+
+Channel switching accepts delivered codes 427/428, Page Up/Down codes 33/34,
+and named ChannelUp/ChannelDown or PageUp/PageDown events. Test both directions
+on the actual launch shell: LG's
+[Magic Remote guide](https://webostv.developer.lge.com/develop/guides/magic-remote)
+marks Channel Up/Down unavailable to web apps, so a browser-generated event
+does not establish that a physical TV or host forwards those buttons.
 On webOS, both **STB settings** and **Interface settings** hide the playback
 engine selector. Playback chooses native HLS when supported, Shaka for DASH
 manifests, and hls.js when native HLS is unavailable or fails the Auto probe.

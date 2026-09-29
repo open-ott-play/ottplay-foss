@@ -28,15 +28,22 @@ function tree(directory) {
             check(fs.readFileSync(file, "utf8"), path.relative(root, file));
     }
 }
-const bundle = path.join(root, "dist/stbPlayer.js");
+const bundle = path.join(root, "dist/player.js");
 if (!fs.existsSync(bundle)) {
-    console.error("Missing dist/stbPlayer.js; run the build first.");
+    console.error("Missing dist/player.js; run the build first.");
     process.exit(1);
 }
 // The server and its clients retain ES5. Native engines use independently
 // pinned current libraries and must not be compared with legacy vendor bytes.
 for (const directory of ["dist"]) tree(path.join(root, directory));
-for (const directory of ["stb", "prov", "js", "stbPlayer"])
+for (const directory of [
+    "devices",
+    "providers",
+    "js",
+    "styles",
+    "images",
+    "locales",
+])
     tree(path.join(root, directory));
 for (const html of ["index.html", "dist/index.html"]) {
     const text = fs.readFileSync(path.join(root, html), "utf8");
@@ -79,7 +86,7 @@ function checkCopies(directory) {
         }
     }
 }
-for (const directory of ["stb", "js", "prov"]) checkCopies(directory);
+for (const directory of ["devices", "js", "providers"]) checkCopies(directory);
 const serverOnly = process.argv.includes("--server-only");
 if (!serverOnly) {
     for (const directory of ["dist-mobile", "src-tauri/frontend"])

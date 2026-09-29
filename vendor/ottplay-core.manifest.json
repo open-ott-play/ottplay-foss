@@ -3,7 +3,7 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "ab7e601854dcc2dddc960f591942dba048e8592e2cd481bb63a4346f4dc79aa7",
+    "sha256": "d41bfc2864af2e7b425ac62ee9fd8f294070ad3fea60a967f5ca6d045093f4dc",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
       "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
@@ -32,7 +32,7 @@
       "src/commonMain/kotlin/play/ott/core/GuideFeed.kt": "513c5a49c378e22fbbd48ad00d2ee33925b01f0b9928cd1996432f533e996f43",
       "src/commonMain/kotlin/play/ott/core/GuideNames.kt": "4fb05f86b86d4ea2b34b8c31697fef307e790c7757c1fa3af7e20178b5f7a390",
       "src/commonMain/kotlin/play/ott/core/GuideSchedule.kt": "f66476d52e5eed2ba6f3de1412ff5c4e5244e530f4af73bc27367ee3a48509f9",
-      "src/commonMain/kotlin/play/ott/core/GuideTime.kt": "ad5b3458c584f207f535f1db064e76cbdeeb52f8bb1006cc0c205edfb061008a",
+      "src/commonMain/kotlin/play/ott/core/GuideTime.kt": "5324819bc60c54b5ed1a2a3d712f35896df7e911c72ce9268508bff66e436daf",
       "src/commonMain/kotlin/play/ott/core/GuideTimeline.kt": "f8c9eb8fa283c4bfae49dc2d7aaa82a570d9cc0c3efc232a6bfc5d56abb17139",
       "src/commonMain/kotlin/play/ott/core/LegacyChannelReference.kt": "e46fb4cc7eb4ac5256b749b4d22076b752b840c98ee7ca7b269d1f1f653ba2cf",
       "src/commonMain/kotlin/play/ott/core/LegacySettingsImport.kt": "cf6f33b9e8f2bffdc7ef963e20ae51afdc1560d625659d3c2a1df1172c813e7d",
@@ -41,7 +41,7 @@
       "src/commonMain/kotlin/play/ott/core/LibraryState.kt": "f544f6df044607c49f0f847ec5b5f4d641ed2d48b013083861a8fcccd3cfeecc",
       "src/commonMain/kotlin/play/ott/core/MediaState.kt": "adf7e59136af1fd28b6e8092ae82236399388c95bcd41204437c02f536280de8",
       "src/commonMain/kotlin/play/ott/core/NativeGuide.kt": "85f8c3c46fc050005d065c3b8eb35a4c55e2fbd62c874eb6a4afc296678a0e00",
-      "src/commonMain/kotlin/play/ott/core/NativeGuideRefresh.kt": "a8b7cd4741007d3cf6d4925392e8ab111e4037a40e4065fd7052b980ae507d3c",
+      "src/commonMain/kotlin/play/ott/core/NativeGuideRefresh.kt": "23a50c3784e5900581983000127f3261e59e853bd9b72bc5ed5cf018ac6901cd",
       "src/commonMain/kotlin/play/ott/core/NativeGuideSources.kt": "7ee58b9f235d854e7135479d863a9725bb55628896fba2f49aee30ab2f694fcb",
       "src/commonMain/kotlin/play/ott/core/NativeSourceLoad.kt": "cb165d2c95d0ce6ccc94422790236fddbebf3da0ffc488d89f1d4532aaffc1f9",
       "src/commonMain/kotlin/play/ott/core/OperatorCatalogs.kt": "61f9a74ce85c5b15abc42d9bc56d8e3106989e7fac261415ee722f6a036870a9",
@@ -67,7 +67,7 @@
       "src/commonMain/kotlin/play/ott/core/StalkerCatalog.kt": "7a7f60a1818891090eba4ee63ec754e0832a111ea8fb3f57c44c6a7a1fe14495",
       "src/commonMain/kotlin/play/ott/core/StalkerProtocol.kt": "644489d11f2d8819eba55c701c454d62a2d78035b5d623de95a9a2580facfa02",
       "src/commonMain/kotlin/play/ott/core/StreamingGuide.kt": "785423ca21dda0964509383199778eec40b6029eb5e376515716cd3f7dd59a60",
-      "src/commonMain/kotlin/play/ott/core/XmltvRecords.kt": "fd38e69f88242d8e81b2970fe53df558a4d740264e3cc03cb9c8f64c1261303f",
+      "src/commonMain/kotlin/play/ott/core/XmltvRecords.kt": "e71a7ac39a2b32426ba9d73f4bec2d29d9d6b011d973590b9ad5fd9ee48296da",
       "src/commonMain/kotlin/play/ott/core/XtreamCatalog.kt": "c1fbfacd51ea71a10cca603536f2b60c5d14ce0a3e1a0bfa91644c8b2f5836de",
       "src/commonMain/kotlin/play/ott/core/XtreamSession.kt": "9d92d2cfd49ab89ff49084dba6787829fd914587f15c1414af96faba9cda2f9b",
       "src/commonTest/kotlin/play/ott/core/ArchiveTest.kt": "a648fbf79e296172f50bd11387e92bcb0f9549ddbd961a927e8610e9e55b7951",
@@ -79,8 +79,8 @@
       "src/commonTest/kotlin/play/ott/core/GuideTest.kt": "369936429caf00934f15d58d26642d02ca7ef13832a5d70d2b90095e36d90b4f",
       "src/commonTest/kotlin/play/ott/core/GuideTimelineTest.kt": "54aafcd420dfc49cce774a972cc5af4cc3b09466053ccaad135ad1295464fa71",
       "src/commonTest/kotlin/play/ott/core/MediaStateTest.kt": "9a578f9b897f5ae8d22aa59fe7c4381fd109d7d4f5d02e5520b69c1d7e612aa2",
-      "src/commonTest/kotlin/play/ott/core/NativeGuideRefreshTest.kt": "3d205acedec384365cc71278dacc817961b2c1790a8c39d528eb328f4c59ee8c",
-      "src/commonTest/kotlin/play/ott/core/NativeGuideTest.kt": "531642ad0620ff1986ea8946d975cfa642a5d61226509e6ca2aa75b469b18800",
+      "src/commonTest/kotlin/play/ott/core/NativeGuideRefreshTest.kt": "dfc028aa04d63eca2246a347b828079591dbc53803b21a3249d48707ee4fe551",
+      "src/commonTest/kotlin/play/ott/core/NativeGuideTest.kt": "f7c168adccabb34296bad8b84b28e586b0b6849a3a8700550352ee549a5bf935",
       "src/commonTest/kotlin/play/ott/core/NativeSourceLoadTest.kt": "fd1d50c2d67e41deed054af7444b35c0aca0d282ab593b9eda8ea1d38294c118",
       "src/commonTest/kotlin/play/ott/core/NativeSourceTest.kt": "19cee073dfd86f456cb351ed8e94c14228d84acf4755a0ca70b67195bc1dea99",
       "src/commonTest/kotlin/play/ott/core/OperatorChannelSessionTest.kt": "5870ffde5d16f21ce8c85c86215119a018fc0c9d2f5aae4c92102d7949014b58",
@@ -98,7 +98,7 @@
       "src/commonTest/kotlin/play/ott/core/ProviderPlaylistScanningTest.kt": "50acf68c474673830540874d5a6d78eff4cdb08a3b9c10751df2b67d6fda76df",
       "src/commonTest/kotlin/play/ott/core/StalkerTest.kt": "c1a772283aad56e60b6cf3aaffcbfe84c44f8dee78e902031a9a699696dd58f7",
       "src/commonTest/kotlin/play/ott/core/StreamingGuideTest.kt": "9e73c3a373a7c1f1d64037caf0147064ae21caf88edbbf9913833fdde9c98a8b",
-      "src/commonTest/kotlin/play/ott/core/XmltvRecordsTest.kt": "5858fe4a8cc196045bfa5fa583f6ba3869a7a51e7dcef60fc26614947e01c7a6",
+      "src/commonTest/kotlin/play/ott/core/XmltvRecordsTest.kt": "c89a0b1c2036a82b740f8b40785c27aeab70c1f35e577acef52df4cd76824f00",
       "src/commonTest/kotlin/play/ott/core/XmltvWebRecordsTest.kt": "3f1043cccf43af541c87e5588794d1a3eac5192e7632b173fd68436d1ba75178",
       "src/commonTest/kotlin/play/ott/core/XtreamTest.kt": "d5c7c77c86d07ab472fcfbaae243d802bcbaa5c4ae8ca6f5adba9d4f5a840f46",
       "src/jsMain/kotlin/BrowserDurableStateExports.kt": "7a89a1a48bbedb25aa2d1fb4fe6baf1273015a78e25e96ab440302b1ebef5665",
@@ -113,7 +113,7 @@
       "src/jsMain/kotlin/LegacySettingsImportExports.kt": "18130c52ef58687bb824ee912431b8c586d64b160b2394db76c4673f02e01577",
       "src/jsMain/kotlin/LibraryStateExports.kt": "fbbc52e17e48035ee706a98b774fbe627b404d201826c05d41878c474d946891",
       "src/jsMain/kotlin/MediaStateExports.kt": "6e823e7f6155ba14ec4665519edaab7725f957fbb953ddf398b8dfa63ccd55d0",
-      "src/jsMain/kotlin/NativeGuideRefreshExports.kt": "16366d84dea01b2591c234205808d21320aff542ea3f8c2779cdf29509dbffc2",
+      "src/jsMain/kotlin/NativeGuideRefreshExports.kt": "a93daf43c798cc7b390e6e469469641b1526800daf78055bb09b2f1604f95104",
       "src/jsMain/kotlin/NativeSourceExports.kt": "92ecd63541911437b21db50184ea89c5f934a60b112cbf719a6680e0ed7717be",
       "src/jsMain/kotlin/OperatorExports.kt": "6a52cdd9a50e58ef008118f7b693809c0d5440d817723b5f22b72958b1084428",
       "src/jsMain/kotlin/ParentalStateExports.kt": "204f16b6e4d0de02a4c3dc4c89ea249fd870c955f787b604013ec181ccc5bf23",
@@ -134,16 +134,16 @@
   },
   "artifacts": {
     "ottplay-core.js": {
-      "sha256": "1341d7482fed74a6ec939dd076d13cb2460d0d477731ccf0f4b67c02d835325f",
-      "bytes": 530626
+      "sha256": "2b023f379336793fd44a31bde894070784ab33d6bc196bb0f596f9c363be4ea6",
+      "bytes": 531419
     },
     "ottplay-core.d.ts": {
-      "sha256": "87322576db6a09d27154a28d2de6128b49e818803312589d9c2645c943b18268",
-      "bytes": 27782
+      "sha256": "14f4677af15a6c1dda05cfbffb950a33fed18541dce01d5fc3a6ab3eb3ccced8",
+      "bytes": 27812
     },
     "ottplay-core.jar": {
-      "sha256": "9bfc2f07360acb2dc39308bf4bf7b6e7627cfb25ea3908539bc250220e61635d",
-      "bytes": 638458
+      "sha256": "d600debf5eb0c5a0b6589366263a33e05a3ce01c0fd586effa64b963b485e58c",
+      "bytes": 638981
     },
     "ottplay-core.LICENSE.txt": {
       "sha256": "1e72da3623b91daad1013e577c3611ad6ed314da508b757abe9a1b27a88a14cc",

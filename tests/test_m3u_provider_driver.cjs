@@ -1,5 +1,8 @@
 "use strict";
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 const fixture = require("./helpers/m3u-driver-fixture.cjs");
 const corrected = require("./helpers/playlist-corrected-expectations.cjs");
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -238,6 +241,164 @@ test("native XMLTV metadata carries source aliases while browser protocol stays 
             assert.equal(metadata.native_channels[id].tvg_name, "Native name");
         } else assert.deepEqual(metadata, {});
         assert(driver.stream(f.host.cList[0]));
+    }
+});
+
+test("relative guide sources use the matching HTTP companion while independent source origins remain intact", () => {
+    for (const native of [false, true])
+        for (const [companion, source, expected] of [
+            [
+                "http://companion.test:8080",
+                "/",
+                "http://companion.test:8080/epg/",
+            ],
+            [
+                "https://companion.test/prefix",
+                "/",
+                "https://companion.test/epg/",
+            ],
+            [
+                "https://companion.test/prefix",
+                "nested/",
+                "https://companion.test/prefix/nested/epg/",
+            ],
+            [
+                "https://companion.test/prefix/",
+                "",
+                "https://companion.test/prefix/epg/",
+            ],
+            [
+                "https://companion.test/prefix",
+                "../guide/",
+                "https://companion.test/guide/epg/",
+            ],
+            [
+                "https://companion.test",
+                "https://other.test:9443/data/",
+                "https://other.test:9443/data/epg/",
+            ],
+            [
+                "https://companion.test",
+                "//other.test/data/",
+                "//other.test/data/epg/",
+            ],
+        ]) {
+            const f = fixture({ native });
+            f.host.URL = f.dom.window.URL;
+            const { driver } = load(
+                f,
+                playlist.replace(
+                    "#EXTM3U",
+                    '#EXTM3U foss-tvg="!epg-server::' + companion + '"'
+                )
+            );
+            try {
+                const id = f.host.cList[0];
+                const request = f.requests.find((r) =>
+                    r.settings.url.endsWith("/match-channels")
+                );
+                assert.equal(
+                    request.settings.url,
+                    companion + "/m3u/match-channels"
+                );
+                request.resolve(
+                    "{}\n\t\n" + id + "~local~one\n\t\nlocal~" + source
+                );
+                assert.equal(driver.currentGuideUrl(id), expected + "one.json");
+                if (native)
+                    assert.equal(f.host.channels[id].epg_external, true);
+                let rows;
+                driver.guide(id, (value) => (rows = value));
+                const guide = f.requests.at(-1);
+                assert.equal(
+                    guide.settings.url,
+                    expected + "one.json?hours=48"
+                );
+                guide.resolve({
+                    epg_data: [
+                        {
+                            name: "Companion programme",
+                            time: 100,
+                            time_to: 200,
+                        },
+                    ],
+                });
+                assert.equal(rows[0].name, "Companion programme");
+            } finally {
+                driver.dispose();
+                f.dom.window.close();
+            }
+        }
+});
+
+test("malformed or non-HTTP companions preserve the existing request and error path", () => {
+    for (const companion of [
+        "http://[invalid",
+        "//companion.test",
+        "/companion",
+        "tauri://localhost",
+    ]) {
+        const f = fixture();
+        f.host.URL = f.dom.window.URL;
+        const { driver } = load(
+            f,
+            playlist.replace(
+                "#EXTM3U",
+                '#EXTM3U foss-tvg="!epg-server::' + companion + '"'
+            )
+        );
+        try {
+            const id = f.host.cList[0];
+            const request = f.requests.find((r) =>
+                r.settings.url.endsWith("/match-channels")
+            );
+            assert.equal(
+                request.settings.url,
+                companion + "/m3u/match-channels"
+            );
+            request.resolve("{}\n\t\n" + id + "~local~one\n\t\nlocal~/");
+            assert.equal(driver.currentGuideUrl(id), "/epg/one.json");
+            const callbacks = [];
+            driver.guide(id, (value) => callbacks.push(value));
+            f.requests.at(-1).reject();
+            assert.deepEqual(callbacks, [null]);
+        } finally {
+            driver.dispose();
+            f.dom.window.close();
+        }
+    }
+});
+
+test("the shipped legacy URL polyfill resolves a separate companion without a native URL constructor", () => {
+    const f = fixture();
+    f.host.URL = undefined;
+    vm.runInContext(
+        fs.readFileSync(
+            path.join(__dirname, "../js/runtime-polyfills.js"),
+            "utf8"
+        ),
+        f.host
+    );
+    assert.equal(typeof f.host.URL, "function");
+    const { driver } = load(
+        f,
+        playlist.replace(
+            "#EXTM3U",
+            '#EXTM3U foss-tvg="!epg-server::https://companion.test/service"'
+        )
+    );
+    try {
+        const id = f.host.cList[0];
+        f.requests
+            .find((r) => r.settings.url.endsWith("/match-channels"))
+            .resolve("{}\n\t\n" + id + "~local~one\n\t\nlocal~nested/");
+        assert.equal(
+            driver.currentGuideUrl(id),
+            "https://companion.test/service/nested/epg/one.json"
+        );
+    } finally {
+        driver.dispose();
+        f.dom.window.close();
     }
 });
 
@@ -852,6 +1013,121 @@ test("programmatic and raw portal replacement rotate media identity and reject r
         const count = f.requests.length;
         f.host.playMedia(item);
         assert.equal(f.requests.length, count);
+    }
+});
+
+test("hosted M3U owns XMLTV without companion requests and disposes stale guide sessions", () => {
+    const f = fixture();
+    let rows,
+        notify,
+        stopped = 0;
+    f.host.__ottHostedEpg = {
+        enabled: () => true,
+        open(entries, callback) {
+            rows = entries;
+            notify = callback;
+            return {
+                close() {
+                    stopped++;
+                },
+                guide(id, callback) {
+                    callback([
+                        {
+                            descr: "",
+                            name: "Hosted",
+                            time: 10000,
+                            time_to: 11000,
+                        },
+                    ]);
+                },
+            };
+        },
+    };
+    const { driver } = load(f);
+    assert.equal(
+        f.requests.length,
+        1,
+        "only the playlist is fetched; no matching POST"
+    );
+    assert.deepEqual(clone(rows[0].xmltv_urls), ["https://xml.test/main.xml"]);
+    const id = f.host.cList[0];
+    notify({ [id]: { logo: "https://logos.test/one.png" } });
+    let result;
+    driver.guide(id, (value) => (result = value));
+    assert.equal(result[0].name, "Hosted");
+    assert.equal(f.requests.length, 1, "guide comes from worker bridge");
+    driver.load(() => {});
+    assert.equal(stopped, 1);
+    notify({ [id]: { logo: "https://logos.test/stale.png" } });
+    assert.equal(
+        driver.logo(id),
+        "",
+        "old worker cannot publish into the new catalog"
+    );
+    f.requests[1].reject();
+    assert.equal(
+        f.requests.length,
+        2,
+        "hosted playlist failure never falls back to companion cp.php"
+    );
+    f.dom.window.close();
+});
+
+test("hosted M3U ignores retired companion directives and retains explicit provider JSON guides", () => {
+    const f = fixture();
+    let entries;
+    f.host.__ottHostedEpg = {
+        enabled: () => true,
+        open(rows) {
+            entries = rows;
+            return { close() {}, guide() {} };
+        },
+    };
+    const body = playlist
+        .replace(
+            "#EXTM3U",
+            '#EXTM3U foss-tvg="!epg-server::https://epg.2560801.xyz,!ico-server::https://epg.2560801.xyz,=provider::https://provider.test/guide/"'
+        )
+        .replace('tvg-id="one"', 'tvg-id="one" tvg-source="=provider"');
+    const { driver } = load(f, body);
+    try {
+        assert.equal(f.requests.length, 1, "no guide or logo companion POST");
+        assert.equal(
+            entries.length,
+            1,
+            "only the XMLTV channel enters the worker"
+        );
+        assert.equal(entries[0].id, f.host.cList[1]);
+        assert.equal(entries[0].epg_external, false);
+        assert.deepEqual(clone(entries[0].xmltv_urls), [
+            "https://xml.test/main.xml",
+        ]);
+        const id = f.host.cList[0];
+        assert.equal(f.host.channels[id].epg_src, "=provider");
+        let programme;
+        driver.guide(id, (rows) => (programme = rows));
+        assert.equal(
+            f.requests.length,
+            2,
+            "an explicit provider guide remains direct"
+        );
+        assert(
+            f.requests[1].settings.url.startsWith(
+                "https://provider.test/guide/"
+            )
+        );
+        f.requests[1].resolve({
+            epg_data: [{ name: "Provider guide", time: 100, time_to: 200 }],
+        });
+        assert.equal(programme[0].name, "Provider guide");
+        assert(
+            f.requests.every(
+                (request) => !request.settings.url.includes("2560801.xyz")
+            )
+        );
+    } finally {
+        driver.dispose();
+        f.dom.window.close();
     }
 });
 

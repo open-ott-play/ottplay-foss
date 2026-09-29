@@ -65,14 +65,14 @@ function assignment(file, name) {
 }
 
 const source = bundle
-    ? read("dist/stbPlayer.js")
+    ? read("dist/player.js")
     : ts.transpileModule(
           [
               read("src/channels/favorites-lists.ts").replace(
                   /^export\s+/gm,
                   ""
               ),
-              variable("src/keyhandler/index.ts", "keys"),
+              variable("src/key-handler/index.ts", "keys"),
               declarations("src/channels/index.ts", [
                   "addToFavorites",
                   "removeFromFavorites",

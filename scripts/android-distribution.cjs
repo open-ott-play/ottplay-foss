@@ -74,15 +74,19 @@ function stagePlayProviders(root, destination) {
     for (const id of PLAY_PROVIDERS) {
         const dir = path.join(destination, id);
         fs.mkdirSync(dir, { recursive: true });
-        if (!isManagedProviderScript(path.join(root, "prov", id, "prov.js")))
+        if (
+            !isManagedProviderScript(
+                path.join(root, "providers", id, "provider.js")
+            )
+        )
             fs.copyFileSync(
-                path.join(root, "prov", id, "prov.js"),
-                path.join(dir, "prov.js")
+                path.join(root, "providers", id, "provider.js"),
+                path.join(dir, "provider.js")
             );
         fs.writeFileSync(path.join(dir, "about.html"), descriptions[id] + "\n");
         if (id === "demo")
             fs.writeFileSync(
-                path.join(dir, "about_rus.html"),
+                path.join(dir, "about-ru.html"),
                 descriptions[id] + "\n"
             );
     }

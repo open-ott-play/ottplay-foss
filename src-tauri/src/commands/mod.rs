@@ -1,6 +1,8 @@
 pub mod native_hls;
+pub mod control_discovery;
 pub mod media_session;
 pub mod http;
+pub mod swop;
 pub mod m3u;
 pub mod misc;
 pub mod queue;

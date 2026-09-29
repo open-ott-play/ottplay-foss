@@ -19,7 +19,7 @@ import {
     requestMediaList,
 } from "../channels";
 import { updateCoreVideoInfo } from "../core";
-import { dispatchKey, keys, list_OnClick } from "../keyhandler";
+import { dispatchKey, keys, list_OnClick } from "../key-handler";
 import { translate as _ } from "../localization";
 import { settings } from "../settings";
 import { swopLoadValue } from "../swop";
@@ -261,11 +261,11 @@ export function uiInit(): void {
     var host = (window as any).__host || "";
     var version = (window as any).__av || "local";
 
-    if (!document.querySelector('link[href*="1280.css"]')) {
+    if (!document.querySelector('link[href*="styles/player.css"]')) {
         var link = document.createElement("link");
         link.rel = "stylesheet";
         link.type = "text/css";
-        link.href = host + "/stbPlayer/1280.css?" + version;
+        link.href = host + "/styles/player.css?" + version;
         document.head.appendChild(link);
     }
 
@@ -295,14 +295,6 @@ export function uiInit(): void {
     });
     $("#listEdit").on("hide.ottUi", function () {
         $("#listIn").show();
-        var editEl = document.getElementById(
-            "editvar"
-        ) as HTMLInputElement | null;
-        var handler = editEl && (editEl as any).__ottEditKey2Handler;
-        if (editEl && typeof handler === "function") {
-            editEl.removeEventListener("keydown", handler);
-            delete (editEl as any).__ottEditKey2Handler;
-        }
         $("#listEdit").text("");
     });
     $("#dialogbox").on("show.ottUi", function () {
@@ -1176,7 +1168,7 @@ export function showShift(message: string): void {
     var info = document.getElementById("info");
     if (info) {
         info.innerHTML = metadataHtml(message);
-        info.style.display = "";
+        info.style.display = "block";
     }
     setTimeout(function () {
         if (info) info.style.display = "none";
@@ -1208,20 +1200,11 @@ export function infoBox(message: string): void {
     );
 }
 
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
-
 /**
  * Show a confirmation dialog with Yes (ENTER) and No (RETURN) buttons.
  * Calls the appropriate callback based on the user's key press.
  *
- * @param message - HTML string for the dialog body.
+ * @param message - Text with newlines or attribute-free `<br>` tags for line breaks.
  * @param onYes - Callback invoked when ENTER is pressed.
  * @param onNo - Optional callback invoked for any non-ENTER key, including No/RETURN.
  * @returns void
@@ -1239,7 +1222,11 @@ export function confirmBox(
     $("#dialogbox")
         .html(
             "<center>" +
-                escapeHtml(_(message)) +
+                // Preserve line breaks without interpreting other message HTML.
+                metadataText(_(message)).replace(
+                    /&lt;br\s*\/?&gt;|\r\n?|\n/gi,
+                    "<br/>"
+                ) +
                 "<br/><br/>" +
                 renderButtonHint(keys.ENTER, strENTER, "Yes") +
                 renderButtonHint(keys.RETURN, strRETURN, "No") +
@@ -1398,7 +1385,8 @@ export function virtualTimeshiftProg(nowSec?: number): {
 }
 
 export function updateChannelInfo(channelId: number): void {
-    if (channelId == null) return;
+    // Guide callbacks can arrive after playback has switched to a movie.
+    if (channelId == null || (window as any).playType < 0) return;
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
     if (channelId !== curList[primaryIndex]) return;
@@ -1790,6 +1778,7 @@ export function renderButtonHint(
     num?: string,
     extra?: string
 ): string {
+    keyLabel = Number(keyLabel);
     if (!(description && keyLabel)) return "";
     description = metadataHtml(_(description));
     var cls = "btn";
@@ -1815,14 +1804,16 @@ export function renderButtonHint(
         if ("0123456789".indexOf(num!) !== -1) num = undefined;
         if ("0123456789".indexOf(extra!) !== -1) extra = undefined;
     }
-    var a = label ? '<div class="' + cls + '">' + label + "</div>&nbsp;" : "";
+    var a = label
+        ? '<div class="' + cls + '">' + metadataHtml(label) + "</div>&nbsp;"
+        : "";
     if (
         (window as any).sNoColorKeys &&
         [keys.RED, keys.GREEN, keys.YELLOW, keys.BLUE].indexOf(keyLabel) !== -1
     )
         a = "";
-    if (num) a += '<div class="btn">' + num + "</div>&nbsp;";
-    if (extra) a += '<div class="btn">' + extra + "</div>&nbsp;";
+    if (num) a += '<div class="btn">' + metadataHtml(num) + "</div>&nbsp;";
+    if (extra) a += '<div class="btn">' + metadataHtml(extra) + "</div>&nbsp;";
     if (!a) description = '<div class="btn">' + description + "</div>";
     return (
         '<span role="button" tabindex="0" aria-label="' +
@@ -2989,12 +2980,17 @@ var showEditKey: any = showEditKey1;
  * Sets up key symbols, color indicators, cursor position, and keyboard mode.
  *
  * @param _initKeys - Ignored (accepts any value for API compatibility with `showEdit`).
+ * @param resume - Redraw after SWOP without replacing the editor or its save callback.
  * @returns void
  * @sideeffect Calls `saveListPanelState()`. Modifies `_keysSymbol` entries. Sets `editPos`, `_keyCur`. Calls `_setPunct` and `showEdit`.
  * @analysis Checks `window.stbGetItem('ottplaylang') === '_eng'` to determine initial language.
  *             Color-key underlines are added to shift/lang/backspace/ok symbols if color keys are enabled.
  */
-export function showEditKey1(_initKeys: any, secret?: boolean): void {
+export function showEditKey1(
+    _initKeys: any,
+    secret?: boolean,
+    resume?: boolean
+): void {
     // Desktop / Tauri / Capacitor: always use the native <input> line. The
     // graphical OSK is for STB remotes; several call sites still invoke
     // showEditKey1 (or a stale window.showEditKey alias) directly.
@@ -3003,13 +2999,20 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
         typeof w.__TAURI__ !== "undefined" ||
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
     var isCap = typeof w.Capacitor !== "undefined";
-    if ((isPc || isCap) && typeof w.showEditKey2 === "function") {
-        w.showEditKey2(_initKeys, secret);
+    var port = w.__ottClassicScreenPort;
+    var previousEditor = resume && port.owner("editor");
+    var nativeResume =
+        previousEditor && previousEditor.model.nativeInputSecret !== undefined;
+    if (
+        (isPc || isCap || nativeResume) &&
+        typeof w.showEditKey2 === "function"
+    ) {
+        w.showEditKey2(_initKeys, secret, resume);
         return;
     }
-    saveListPanelState();
-    var editorOwner = (window as any).__ottClassicScreenPort.openEditor();
-    if (!editorOwner.active()) return;
+    if (!resume) saveListPanelState();
+    var editorOwner = resume ? previousEditor : port.openEditor();
+    if (!editorOwner || !editorOwner.active()) return;
     // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
     if (_ottplaylang() == "_eng") _keyE = true;
     _keysSymbol[1].s = _showLangKey()
@@ -3038,7 +3041,11 @@ export function showEditKey1(_initKeys: any, secret?: boolean): void {
     editPos = (window as any).editvar.length;
     var r = _keyCur >= _keys.length - 10 ? 14 : _keyCur;
     _setPunct(_keyP);
-    _keyCur = r >= 0 && r < _keys.length - 10 ? r : 14;
+    _keyCur = resume
+        ? _keys.length - 1
+        : r >= 0 && r < _keys.length - 10
+          ? r
+          : 14;
     showEdit();
 }
 
@@ -3335,11 +3342,25 @@ export function editKey1(e: number): void {
  */
 export function editKey2(code: number): void {
     var w = window as any;
+    var port = w.__ottClassicScreenPort;
+    var owner = port.owner("editor");
+    if (!owner || !owner.foreground()) return;
+    var input = document.getElementById("editvar");
+    var remote = document.getElementById("editRemoteInput");
+    if (code === w.keys.UP || code === w.keys.DOWN) {
+        var next = document.activeElement === remote ? input : remote;
+        if (next) next.focus();
+        return;
+    }
+    if (code === w.keys.ENTER && remote && document.activeElement === remote) {
+        remote.click();
+        return;
+    }
     if (code !== w.keys.ENTER && code !== w.keys.EXIT && code !== w.keys.RETURN)
         return;
     if (code === w.keys.ENTER)
         w.editvar = ($("#editvar").val() as string) || "";
-    w.__ottClassicScreenPort.finishEditor(code === w.keys.ENTER, function () {
+    port.finishEditor(code === w.keys.ENTER, function () {
         $("#listEdit").hide();
         if (typeof w.restoreListPanelState === "function")
             w.restoreListPanelState();
@@ -3351,79 +3372,159 @@ export function editKey2(code: number): void {
  * graphical on-screen keyboard.
  *
  * @param _initKeys - Optional array of initial key values (unused, for API compatibility).
+ * @param resume - Redraw after SWOP while retaining the current editor owner.
  * @returns void
  * @sideeffect Calls `window.saveListPanelState()` if available. Renders `#listEdit` with an `<input>` field
- *             and save/discard buttons. Focuses the input field.
+ *             with remote input and save/discard controls. Focuses the input field.
  */
-export function showEditKey2(_initKeys?: number[], secret?: boolean): void {
-    if (typeof (window as any).saveListPanelState === "function")
-        (window as any).saveListPanelState();
-    var editorOwner = (window as any).__ottClassicScreenPort.openEditor();
-    if (!editorOwner.active()) return;
-    var caption = (window as any).editCaption || "";
-    var val = (window as any).editvar || "";
-    var keys = (window as any).keys || {};
-    var strExit = (window as any).strEXIT || "Esc";
-    var strEnter = (window as any).strENTER || "ENTER";
-    if ((window as any).listCaptionElement)
-        (window as any).listCaptionElement.textContent = caption;
-    var html = metadataText(caption) + ":<br/><br/>";
+export function showEditKey2(
+    _initKeys?: number[],
+    secret?: boolean,
+    resume?: boolean
+): void {
+    var w = window as any;
+    if (!resume && typeof w.saveListPanelState === "function")
+        w.saveListPanelState();
+    var port = w.__ottClassicScreenPort;
+    var editorOwner = resume ? port.owner("editor") : port.openEditor();
+    if (!editorOwner || !editorOwner.active()) return;
+    if (!resume) editorOwner.model.nativeInputSecret = !!secret;
+    if (editorOwner.model.releaseNativeInput)
+        editorOwner.model.releaseNativeInput();
+    var caption = w.editCaption || "";
+    var val = w.editvar || "";
+    var keys = w.keys || {};
+    var strExit = w.strEXIT || "Esc";
+    var strEnter = w.strENTER || "ENTER";
+    if (w.listCaptionElement) w.listCaptionElement.textContent = caption;
+    var escapedCaption = metadataText(caption);
+    var hint =
+        w.renderButtonHint ||
+        function () {
+            return "";
+        };
+    var html = escapedCaption + ":<br/><br/>";
     html +=
         '<br/><input type="' +
-        (secret ? "password" : "text") +
+        (editorOwner.model.nativeInputSecret ? "password" : "text") +
         '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
-        metadataText(caption) +
+        escapedCaption +
         '" id="editvar" style="color:' +
-        ((window as any).curColor || "#fff") +
-        ';" autofocus><br/><br/>';
+        (w.curColor || "#fff") +
+        ';"><br/><br/>';
     html +=
-        "<br/>" +
-        (
-            (window as any).renderButtonHint ||
-            function () {
-                return "";
-            }
-        )(keys.EXIT || 27, strExit, "- return without save");
-    html +=
-        "<br/>" +
-        (
-            (window as any).renderButtonHint ||
-            function () {
-                return "";
-            }
-        )(keys.ENTER || 13, strEnter, "- save");
+        '<button type="button" id="editRemoteInput">' +
+        metadataText(_("Remote text entry")) +
+        "</button>";
+    html += "<br/>" + hint(keys.EXIT || 27, strExit, "- return without save");
+    html += "<br/>" + hint(keys.ENTER || 13, strEnter, "- save");
     $("#listEdit").show().html(html);
     var editEl = document.getElementById("editvar") as HTMLInputElement | null;
+    var remoteButton = document.getElementById("editRemoteInput");
+    function consumeEvent(event: Event): void {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     if (editEl) {
         // Assign the value as text: HTML entities in URLs/passwords must round-trip.
         editEl.value = String(val);
-        var prev = (editEl as any).__ottEditKey2Handler;
-        if (typeof prev === "function") {
-            editEl.removeEventListener("keydown", prev);
-        }
-        var onKeyDown = editorOwner.guard(function (ev: KeyboardEvent): void {
-            if (!editorOwner.foreground()) return;
-            if (ev.isComposing || ev.keyCode === 229) {
+        var openingEvent = port.keyEvent();
+        var openingCode =
+            openingEvent &&
+            openingEvent.type === "keydown" &&
+            (openingEvent.keyCode || openingEvent.which);
+        // LG can send keypress/repeats after a shortcut opens and focuses an
+        // editor. Keep the field read-only until that physical key is released.
+        editEl.readOnly = !!openingCode;
+        var openingListeners = function (enabled: boolean): void {
+            ["keydown", "keypress", "keyup"].forEach(function (type) {
+                w[enabled ? "addEventListener" : "removeEventListener"](
+                    type,
+                    openingKey,
+                    true
+                );
+            });
+        };
+        var releaseOpeningKey = function (): void {
+            openingCode = 0;
+            editEl!.readOnly = false;
+            openingListeners(false);
+        };
+        var openingKey = editorOwner.guard(function (ev: KeyboardEvent): void {
+            if (!openingCode || !editorOwner.foreground()) return;
+            if ((ev.keyCode || ev.which) !== openingCode) {
+                if (ev.type === "keydown") releaseOpeningKey();
+                return;
+            }
+            consumeEvent(ev);
+            if (ev.type === "keyup") {
+                releaseOpeningKey();
+                editEl!.focus();
+            }
+        });
+        if (openingCode) openingListeners(true);
+        var onInput = editorOwner.guard(function (
+            ev: KeyboardEvent | MouseEvent
+        ): void {
+            if (
+                !editorOwner.foreground() ||
+                document.getElementById("editvar") !== editEl
+            )
+                return;
+            if (ev.type === "click") {
+                consumeEvent(ev);
+                // Native typing lives in the input until save or remote handoff.
+                w.editvar = editEl!.value;
+                swopLoadValue();
+                return;
+            }
+            // The only other registered event is keydown.
+            var keyEvent = ev as KeyboardEvent;
+            if (keyEvent.isComposing || keyEvent.keyCode === 229) {
                 // Keep IME default handling, but do not let the window key router save.
                 ev.stopPropagation();
                 return;
             }
-            if (ev.key === "Enter" || ev.keyCode === 13) {
-                ev.preventDefault();
+            var command = 0;
+            if (
+                keyEvent.key === "ArrowUp" ||
+                keyEvent.keyCode === (keys.UP || 38) ||
+                keyEvent.key === "ArrowDown" ||
+                keyEvent.keyCode === (keys.DOWN || 40)
+            )
+                command = keys.DOWN || 40;
+            else if (keyEvent.key === "Enter" || keyEvent.keyCode === 13)
+                command = keys.ENTER || 13;
+            else if (keyEvent.key === "Escape" || keyEvent.keyCode === 27)
+                command = keys.EXIT || 27;
+            if (command) {
+                consumeEvent(ev);
+                editKey2(command);
+            } else if (
+                ev.currentTarget === remoteButton &&
+                (keyEvent.key === " " ||
+                    keyEvent.key === "Tab" ||
+                    keyEvent.keyCode === 9 ||
+                    keyEvent.keyCode === 32)
+            ) {
+                // Keep Space/Tab native; do not let the global router save.
                 ev.stopPropagation();
-                editKey2(keys.ENTER || 13);
-            } else if (ev.key === "Escape" || ev.keyCode === 27) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                editKey2(keys.EXIT || 27);
             }
         });
-        editorOwner.own(function () {
-            editEl!.removeEventListener("keydown", onKeyDown);
+        editorOwner.model.releaseNativeInput = editorOwner.own(function () {
+            releaseOpeningKey();
+            editEl!.removeEventListener("keydown", onInput);
+            if (remoteButton) {
+                remoteButton.removeEventListener("click", onInput);
+                remoteButton.removeEventListener("keydown", onInput);
+            }
         });
-        (editEl as any).__ottEditKey2Handler = onKeyDown;
-        editEl.addEventListener("keydown", onKeyDown);
-        editEl.focus();
+        editEl.addEventListener("keydown", onInput);
+        if (remoteButton) {
+            remoteButton.addEventListener("click", onInput);
+            remoteButton.addEventListener("keydown", onInput);
+        }
+        if (!openingCode) editEl.focus();
     }
 }
 
@@ -3508,9 +3609,10 @@ function showMediaList1(view?: any): void {
     var captionEl = document.getElementById("listCaption");
     if (captionEl)
         captionEl.textContent =
-            (w.mediaNames || []).join(" / ") ||
-            w.mediaName ||
-            w._("Media Library");
+            ((w.mediaNames || []).join(" / ") ||
+                w.mediaName ||
+                w._("Media Library")) +
+            (view.filter ? " — " + w._("Filter") + ": " + view.filter : "");
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
     var footerElement = document.getElementById("listPodval");
@@ -3537,6 +3639,9 @@ function showMediaList1(view?: any): void {
                             : ""
                   )) +
             w.renderButtonHint(w.keys.N2, w.strInfo, "Description", "2") +
+            (frame && frame.route.kind !== "variants"
+                ? w.renderButtonHint(w.keys.BLUE, "", "Filter")
+                : "") +
             (data.length && w.sFavorites !== -1 && depth > 1
                 ? w.renderButtonHint(
                       w.keys.GREEN,

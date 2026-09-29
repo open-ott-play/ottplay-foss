@@ -3,7 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { parse } = require("acorn");
-const code = fs.readFileSync(path.join(__dirname, "../stb/pc2/stb.js"), "utf8");
+const code = fs.readFileSync(
+    path.join(__dirname, "../devices/pc2/device.js"),
+    "utf8"
+);
 parse(code, { ecmaVersion: 5 });
 function emitter(target = {}) {
     const handlers = {};
@@ -114,6 +117,22 @@ function fixture() {
         sources,
         w,
     };
+}
+{
+    const f = fixture();
+    let owner = null;
+    f.w.__ottCoreBackend = () => ({ current: () => owner });
+    assert.equal(f.w.stbAudioTracksExists(), false);
+    assert.equal(f.w.stbSubtitleExists(), 0);
+    // A playback command invalidates the old engine before the next one opens.
+    owner = { tracks: () => null };
+    assert.equal(f.w.stbAudioTracksExists(), false);
+    assert.equal(f.w.stbSubtitleExists(), 0);
+    owner = f.open();
+    f.ready[0]();
+    assert.equal(f.w.stbAudioTracksExists(), true);
+    assert.equal(f.w.stbSubtitleExists(), 1);
+    owner.dispose();
 }
 {
     const f = fixture(),

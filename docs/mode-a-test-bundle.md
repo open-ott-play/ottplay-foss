@@ -9,9 +9,21 @@ Build the same package locally with `npm run build && npm run package:modea`.
 The archive and checksum are written to `build/packages/`, outside the `dist/`
 web root used by Capacitor, so mobile applications do not embed the archive.
 Extract it into a Mode A companion's web root or a static host. The latter needs
-an index fallback for `/f/<device>/` while keeping `/dist`, `/stb`, `/js`,
-`/stbPlayer`, `/fonts` and `/prov` at the root. Proxy, EPG and other companion APIs
+an index fallback for `/f/<device>/` while keeping `/dist`, `/devices`, `/js`,
+`/styles`, `/images`, `/locales`, `/fonts` and `/providers` at the root. Proxy, EPG and other companion APIs
 still require a backend; the static archive does not include that server.
+
+For example, an M3U header can select a separate matching/EPG companion with
+`foss-tvg="!epg-server::https://guide.example"`. The companion must be reachable
+from the device and permit the browser's cross-origin requests. An HTTPS player
+also needs an HTTPS companion. This setting selects the FOSS companion API; it
+is not a raw XMLTV URL. A static host such as here.now does not supply that API
+unless a backend has been configured separately.
+
+Check both channel matching and actual programme intervals when diagnosing an
+empty guide. A loaded XMLTV feed can omit a channel or have no programme covering
+the current time; a successful health check or total programme count alone does
+not establish guide coverage for the selected playlist.
 
 The Rust companion serves the player index for `/f`, `/f/`, and nested device
 paths, so these URLs work without creating per-device directories.

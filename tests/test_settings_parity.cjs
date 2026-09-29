@@ -302,7 +302,7 @@ function fixture(
     vm.runInContext(
         compile(
             fs.readFileSync(
-                path.join(root, "src/settings/sleepTimer.ts"),
+                path.join(root, "src/settings/sleep-timer.ts"),
                 "utf8"
             )
         ),
@@ -487,8 +487,8 @@ for (const device of [
             );
             assert.equal(
                 w.defaultSettings().arFun,
-                13,
-                "Right stays unchanged"
+                device === "lg/webos" ? 10 : 13,
+                "webOS Right opens the guide; other defaults stay unchanged"
             );
             vm.runInContext("loadSettings();", w);
             assert.equal(typed().alFun, expected, "Absent stored Left mapping");
@@ -597,6 +597,59 @@ assert.equal(
 console.log(
     "OK: LG Left defaults to Menu, other platforms retain volume and explicit mappings survive save/reset"
 );
+
+for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
+    for (const [field, legacy, webosDefault, otherDefault, explicit] of [
+        ["arFun", "sARfun", 10, 13, [0, 1, 10, 13, 19]],
+        ["eFun", "sEfun", 1, 0, [0, 1, 2, 3, 4]],
+    ]) {
+        const { w, typed, stored } = fixture();
+        w.ott_device = device;
+        const fallback = device === "lg/webos" ? webosDefault : otherDefault;
+        vm.runInContext("loadSettings();", w);
+        assert.equal(
+            typed()[field],
+            fallback,
+            field + ": detected platform default"
+        );
+        assert.equal(w[legacy], fallback, field + ": legacy alias");
+        assert.equal(
+            stored.has(legacy),
+            false,
+            field + ": defaults are not persisted"
+        );
+        for (const value of explicit) {
+            stored.set(legacy, String(value));
+            vm.runInContext(
+                "loadSettings(); saveSettings(settings); loadSettings();",
+                w
+            );
+            assert.equal(
+                typed()[field],
+                value,
+                field + ": explicit mapping survives reload"
+            );
+            assert.equal(
+                w[legacy],
+                value,
+                field + ": legacy alias preserves mapping"
+            );
+            assert.equal(
+                w.defaultSettings()[field],
+                fallback,
+                field + ": reset uses platform default"
+            );
+        }
+        stored.clear();
+        vm.runInContext("loadSettings();", w);
+        assert.equal(
+            typed()[field],
+            fallback,
+            field + ": cleared preference restores default"
+        );
+    }
+}
+console.log("OK: webOS guide/exit defaults preserve explicit remote mappings");
 
 // webOS hides engine details in both menus and ignores an old manual preference
 // at runtime, while preserving it in storage for another platform.

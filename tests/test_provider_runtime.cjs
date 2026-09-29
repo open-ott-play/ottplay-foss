@@ -554,7 +554,7 @@ for (const cleanupOwner of ["provider", "catalog"]) {
     require("./helpers/private-runtime.cjs")(host, "src/provider/runtime.ts");
     vm.runInContext(
         providerFixture
-            .declarations("prov/xtream/prov.js")
+            .declarations("providers/xtream/provider.js")
             .filter((row) =>
                 ["getChanelsArray", "xtreamCore"].includes(row.name)
             )

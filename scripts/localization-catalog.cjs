@@ -8,6 +8,26 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
+// Read the same exported contract used by both player entry points. Keeping the
+// stored identifiers here would let packaged filenames and runtime loading drift.
+const languageAssetModule = { exports: {} };
+vm.runInNewContext(
+    ts.transpileModule(
+        fs.readFileSync(path.join(root, "src/localization/assets.ts"), "utf8"),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText,
+    languageAssetModule,
+    { timeout: 1000 }
+);
+const { languageNames, languageAssetPath } = languageAssetModule.exports;
+const languageAssets = Object.fromEntries(
+    Object.keys(languageNames).map((code) => [code, languageAssetPath(code)])
+);
 const metadataKeys = new Set(["alhabet", "lang"]);
 const expressionPrinter = ts.createPrinter({ removeComments: true });
 
@@ -95,7 +115,7 @@ function collectSourceKeys(repository = root) {
                 .line + 1;
         locations.get(value).push(`${file}:${line}`);
     }
-    for (const file of ["src", "stb", "prov"].flatMap((directory) =>
+    for (const file of ["src", "devices", "providers"].flatMap((directory) =>
         filesIn(path.join(repository, directory), /\.(?:ts|js)$/)
     )) {
         const relative = path.relative(repository, file).replace(/\\/g, "/");
@@ -227,7 +247,7 @@ function collectSourceKeys(repository = root) {
                     collect(node.arguments[2]);
                 if (
                     (relative === "src/index.ts" ||
-                        relative === "prov/edem/prov.js") &&
+                        relative === "providers/edem/provider.js") &&
                     method === "it"
                 )
                     collect(node.arguments[1]);
@@ -244,6 +264,11 @@ function collectSourceKeys(repository = root) {
                 if (
                     relative === "src/plugins/command-server.ts" &&
                     method === "update"
+                )
+                    collect(node.arguments[1]);
+                if (
+                    relative === "src/plugins/control-discovery.ts" &&
+                    ["notify", "finish"].includes(method)
                 )
                     collect(node.arguments[1]);
                 if (
@@ -318,7 +343,10 @@ function collectSourceKeys(repository = root) {
                                     collect(property.initializer);
                 }
                 if (
-                    relative === "src/plugins/command-server.ts" &&
+                    [
+                        "src/plugins/command-server.ts",
+                        "src/plugins/control-discovery.ts",
+                    ].includes(relative) &&
                     id === "message"
                 )
                     collect(node.initializer);
@@ -422,7 +450,9 @@ function validateDictionary(reference, translated, file) {
     return errors;
 }
 function audit({ englishOnly = false } = {}) {
-    const reference = readDictionary(path.join(root, "stbPlayer/_eng.js"));
+    const reference = readDictionary(
+        path.join(root, languageAssetPath("_eng"))
+    );
     const inventory = collectSourceKeys();
     const errors = [];
     const boundaries = JSON.parse(
@@ -444,7 +474,7 @@ function audit({ englishOnly = false } = {}) {
             errors.push(
                 `English catalog lacks source key ${JSON.stringify(key)} (${inventory.locations.get(key)?.[0] || "metadata"})`
             );
-    const locales = filesIn(path.join(root, "stbPlayer"), /^_[a-z]{3}\.js$/);
+    const locales = filesIn(path.join(root, "locales"), /\.js$/);
     for (const file of locales) {
         const dictionary = readDictionary(file);
         // English is the union contract: legacy keys may not silently disappear.
@@ -463,7 +493,7 @@ function audit({ englishOnly = false } = {}) {
             );
     }
     if (!englishOnly) {
-        let codes, names;
+        let codes;
         visit(parse(path.join(root, "src/index.ts")), (node) => {
             if (
                 !ts.isVariableDeclaration(node) ||
@@ -473,13 +503,11 @@ function audit({ englishOnly = false } = {}) {
                 return;
             if (name(node.name) === "langCodes")
                 codes = node.initializer.elements.map((entry) => entry.text);
-            if (name(node.name) === "langNames")
-                names = node.initializer.elements.map((entry) => entry.text);
         });
         if (
             !codes ||
-            !names ||
-            codes.length !== names.length ||
+            codes.length !== Object.keys(languageNames).length ||
+            codes.some((code) => !Object.hasOwn(languageNames, code)) ||
             new Set(codes).size !== codes.length
         )
             errors.push(
@@ -487,14 +515,36 @@ function audit({ englishOnly = false } = {}) {
             );
         else {
             const files = new Set(
-                locales.map((file) => path.basename(file, ".js"))
+                locales.map((file) => "/locales/" + path.basename(file))
             );
+            const paths = Object.values(languageAssets);
+            if (new Set(paths).size !== paths.length)
+                errors.push(
+                    "Language identifiers must resolve to distinct assets"
+                );
             for (const code of codes)
-                if (!files.has(code))
+                if (
+                    !Object.hasOwn(languageAssets, code) ||
+                    !files.has(languageAssets[code])
+                )
                     errors.push(`Language selector asset missing: ${code}`);
-            for (const code of files)
+            for (const [code, file] of Object.entries(languageAssets)) {
+                if (!/^[A-Z][a-z]+(?: - .+)?$/.test(languageNames[code]))
+                    errors.push(
+                        `Language label needs an English asset name: ${code}`
+                    );
                 if (!codes.includes(code))
                     errors.push(`Locale asset absent from selector: ${code}`);
+                if (!/^\/locales\/[a-z]+(?:-[a-z]+)*\.js$/.test(file))
+                    errors.push(
+                        `Locale asset must use an English filename: ${file}`
+                    );
+            }
+            for (const file of files)
+                if (!paths.includes(file))
+                    errors.push(
+                        `Locale asset absent from language map: ${file}`
+                    );
         }
     }
     return {
@@ -534,6 +584,8 @@ module.exports = {
     audit,
     collectSourceKeys,
     htmlTags,
+    languageAssetPath,
+    languageAssets,
     metadataKeys,
     placeholders,
     readDictionary,

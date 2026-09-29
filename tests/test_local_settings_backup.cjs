@@ -141,7 +141,9 @@ for (const profile of ["typescript", "static-core"]) {
                 : ["saveOpt", "loadOpt"];
         vm.runInContext(
             functions(
-                profile === "typescript" ? "src/core/index.ts" : "stb/core.js",
+                profile === "typescript"
+                    ? "src/core/index.ts"
+                    : "devices/legacy-core.js",
                 names
             ),
             c
