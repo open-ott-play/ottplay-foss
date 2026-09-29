@@ -4,6 +4,26 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
 const sharedCore = require("./helpers/shared-core-runtime.cjs");
+const casingCode = ts.transpileModule(
+    fs.readFileSync("src/utils/caseless.ts", "utf8"),
+    {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }
+).outputText;
+acorn.parse(casingCode, { ecmaVersion: 5 });
+const casingContext = vm.createContext({ exports: {} });
+// The helper needs no normalization, locale, code-point or modern string APIs.
+vm.runInContext(
+    "String.prototype.normalize = String.prototype.toLocaleLowerCase = " +
+        "String.prototype.toLocaleUpperCase = String.prototype.codePointAt = " +
+        "String.fromCodePoint = undefined;",
+    casingContext
+);
+vm.runInContext(casingCode, casingContext);
+const { caselessKey } = casingContext.exports;
 const now = Math.floor(Date.now() / 1000);
 const entries = {
     a: [{ name: "НОВОСТИ дня", time: now - 60, time_to: now + 600 }],
@@ -76,7 +96,9 @@ const ctx = {
                       return true;
                   },
               }
-            : { handleCommand: () => "accepted" },
+            : name === "../utils/caseless"
+              ? casingContext.exports
+              : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };
@@ -87,6 +109,197 @@ function call(action, params = {}) {
     return new Promise((resolve) =>
         ctx.exports.executeRemoteRequest({ action, params }, resolve)
     );
+}
+function checkUnicodeReference() {
+    const reference = new Map();
+    const fixture = fs.readFileSync(
+        "tests/fixtures/unicode/CaseFolding-17.0.0.txt",
+        "utf8"
+    );
+    for (const line of fixture.split("\n")) {
+        const [point, status, mapping] = line.split("#")[0].split(";");
+        if (!status || !["C", "F"].includes(status.trim())) continue;
+        reference.set(
+            Number.parseInt(point, 16),
+            String.fromCodePoint(
+                ...mapping
+                    .trim()
+                    .split(/\s+/)
+                    .map((v) => Number.parseInt(v, 16))
+            )
+        );
+    }
+    const canonical = (value) =>
+        Array.from(value, (c) => reference.get(c.codePointAt(0)) || c).join("");
+    assert.equal(reference.size, 1585, "pin the complete Unicode 17 C/F data");
+    for (let point = 0; point <= 0x10ffff; point++) {
+        const original = String.fromCodePoint(point);
+        const folded = reference.get(point) || original;
+        const actual = caselessKey(original);
+        assert.equal(
+            actual,
+            caselessKey(folded),
+            "C/F pair U+" + point.toString(16)
+        );
+        assert.equal(
+            canonical(actual),
+            folded,
+            "no additional equivalence U+" + point.toString(16)
+        );
+    }
+    assert.equal(caselessKey("\ud800x\udfff"), "\ud800X\udfff");
+    console.log(
+        "PASS remote Unicode 17 C/F pairs and negative equivalence: 1114112 codepoints"
+    );
+}
+function unicodeRequests(names) {
+    let played;
+    const folded = [];
+    const ids = names.map((_, i) => "Mixed_ID_" + i);
+    const queryHost = {
+        ...host,
+        __ottClassicGuide: {
+            peek: (id) => [
+                {
+                    name: names[ids.indexOf(id)],
+                    time: now - 1,
+                    time_to: now + 60,
+                },
+            ],
+            source: () => "unicode",
+        },
+        cats: { one: ids },
+        catsArray: ["one"],
+        channels: Object.fromEntries(
+            ids.map((id, i) => [id, { channel_name: names[i] }])
+        ),
+        cList: ids,
+        playChannel: (...args) => (played = args),
+    };
+    const queryContext = vm.createContext({
+        ...ctx,
+        exports: {},
+        require: (name) =>
+            name === "../utils/caseless"
+                ? {
+                      caselessKey: (value) => {
+                          folded.push(value);
+                          return caselessKey(value);
+                      },
+                  }
+                : ctx.require(name),
+        window: queryHost,
+    });
+    sharedCore(queryContext, { vendorOnly: true });
+    vm.runInContext(code, queryContext);
+    return {
+        folded,
+        get played() {
+            return played;
+        },
+        run(action, query) {
+            let result;
+            queryContext.exports.executeRemoteRequest(
+                { action, params: { query, search: query } },
+                (value) => (result = value)
+            );
+            assert.ok(result, "small cached catalogue replies synchronously");
+            return result;
+        },
+    };
+}
+function checkUnicodeRequests() {
+    for (const [title, query] of [
+        ["Straße", "STRASSE"],
+        ["STRAẞE", "strasse"],
+        ["ΟΣ", "οσ"],
+        ["Ος", "οσ"],
+        ["Первый Новости", "ПЕРВЫЙ НОВОСТИ"],
+        ["İx", "i\u0307x"],
+        ["ıx", "ıX"],
+        ["ıΣıΣ", "ıσıσ"],
+        ["ΟΣ'Α", "οσ'α"],
+        ["Երևան", "երեւան"],
+        ["ᾼΣ", "αισ"],
+        ["\u{10400} Channel", "\u{10428} CHANNEL"],
+    ]) {
+        const f = unicodeRequests([title]);
+        const channels = f.run("channels", query).data.channels;
+        assert.equal(channels.length, 1, title);
+        assert.equal(channels[0].name, title, "preserve channel spelling");
+        assert.equal(channels[0].id, "Mixed_ID_0", "preserve channel ID case");
+        const programs = f.run("programs", query).data.programs;
+        assert.equal(programs.length, 1, title);
+        assert.equal(programs[0].title, title, "preserve programme spelling");
+        assert.equal(programs[0].channel, title);
+        const play = f.run("play", query);
+        assert.equal(play.status, "ok", title);
+        assert.equal(play.data.channel.name, title);
+        assert.deepEqual(f.played, [0, 0]);
+    }
+    for (const [title, query] of [
+        ["ıx", "ix"],
+        ["ix", "ıx"],
+        ["İx", "ix"],
+        ["ix", "İx"],
+        ["café", "cafe"],
+        ["café", "cafe\u0301"],
+        ["ＡＢＣ", "abc"],
+        ["абв", "abv"],
+        ["άλφα", "αλφα"],
+        ["Maßstab", "MASSTAB"],
+        ["և", "եվ"],
+        ["ĳ", "ij"],
+        ["Α\u0345\u0301", "Α\u0301\u0345"],
+    ]) {
+        const f = unicodeRequests([title]);
+        assert.equal(f.run("channels", query).data.channels.length, 0, title);
+        assert.equal(f.run("programs", query).data.programs.length, 0, title);
+        assert.equal(f.run("play", query).status, "rejected", title);
+        assert.equal(f.played, undefined);
+    }
+    const ambiguous = unicodeRequests(["Straße", "STRASSE"]);
+    const rejected = ambiguous.run("play", "strasse");
+    assert.equal(rejected.status, "rejected");
+    assert.equal(
+        rejected.data.matches.length,
+        2,
+        "folded exact matches remain ambiguous"
+    );
+    assert.equal(ambiguous.played, undefined);
+    assert.equal(ambiguous.run("play", "2").data.channel.name, "STRASSE");
+    const substring = unicodeRequests(["Die Straße HD"]);
+    assert.equal(substring.run("play", "STRASSE").status, "ok");
+    for (const [title, query] of [
+        ["İ", "i"],
+        ["xևy", "ւy"],
+        ["X\u0345Y", "ιy"],
+    ]) {
+        assert.notEqual(caselessKey(title), caselessKey(query));
+        const f = unicodeRequests([title]);
+        assert.equal(f.run("channels", query).data.channels.length, 1);
+        assert.equal(f.run("programs", query).data.programs.length, 1);
+        assert.equal(
+            f.run("play", query).status,
+            "ok",
+            "expansion substrings remain valid"
+        );
+    }
+    assert.equal(
+        substring.run("CHANNELS", "STRASSE").status,
+        "unsupported",
+        "action IDs stay exact"
+    );
+    const once = unicodeRequests(["One", "Two", "Needle"]);
+    for (const action of ["channels", "programs", "play"]) {
+        once.folded.length = 0;
+        once.run(action, "nEeDlE");
+        assert.equal(
+            once.folded.filter((value) => value === "nEeDlE").length,
+            1,
+            action + " folds the query once across the catalogue"
+        );
+    }
 }
 function checkPendingGuideSnapshot() {
     let pending, result;
@@ -453,6 +666,8 @@ async function checkStatusDiagnostics() {
 
 (async () => {
     await checkStatusDiagnostics();
+    checkUnicodeReference();
+    checkUnicodeRequests();
     checkPendingGuideSnapshot();
     checkGuideBatchingAndCancellation();
     checkGuideSelectionAndReload();
@@ -485,6 +700,17 @@ async function checkStatusDiagnostics() {
     assert.equal(saved.username, "new");
     assert.equal(loaded, 1);
     assert.ok(!JSON.stringify(r).includes("secret"));
+    r = await call("provider_settings", {
+        provider: "XTREAM",
+        settings: { password: "different" },
+    });
+    assert.equal(
+        r.status,
+        "rejected",
+        "provider setting IDs remain case-sensitive"
+    );
+    assert.equal(saved.password, "secret");
+    assert.equal(loaded, 1);
     r = await call("provider_settings", {
         provider: "stalker",
         settings: { mac: "00:00:00:00:00:01" },
