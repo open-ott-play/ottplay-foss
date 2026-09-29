@@ -1295,21 +1295,33 @@ export function showSelectBox(
         owner.model.focus = focus;
         if (immediate) choose(focus);
         if (!owner.active()) return;
-        var html = "";
-        labels.forEach(function (label, index) {
-            html +=
-                '<div style="' +
-                (index === focus
-                    ? "color:" + w.curColor + ";background-color:" + w.curColorB
-                    : "") +
-                '" onclick="_doKey(' +
-                (-100 + index) +
-                ');">&nbsp;&nbsp;' +
-                metadataHtml(label) +
-                "&nbsp;&nbsp;</div>";
-        });
         if (channelNumberElement) {
-            channelNumberElement.innerHTML = html;
+            channelNumberElement.innerHTML = "";
+            labels.forEach(function (label, index) {
+                var row = document.createElement("div");
+                row.setAttribute("role", "button");
+                row.setAttribute("aria-pressed", String(index === focus));
+                row.tabIndex = index === focus ? 0 : -1;
+                row.innerHTML =
+                    "&nbsp;&nbsp;" + metadataHtml(label) + "&nbsp;&nbsp;";
+                if (index === focus) {
+                    row.style.color = w.curColor;
+                    row.style.backgroundColor = w.curColorB;
+                }
+                // Native CSP rejects inline handlers/styles; consume the click
+                // before the video surface can open its menu underneath us.
+                row.onclick = function (event) {
+                    event.stopPropagation();
+                    if (owner.foreground()) w._doKey(-100 + index, event);
+                };
+                row.onkeydown = function (event) {
+                    if (event.keyCode === 13 || event.keyCode === 32) {
+                        event.preventDefault();
+                        row.onclick!(event as any);
+                    }
+                };
+                channelNumberElement!.appendChild(row);
+            });
             channelNumberElement.style.display = "";
         }
         clearTimeout(timer);
