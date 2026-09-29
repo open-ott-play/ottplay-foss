@@ -66,10 +66,16 @@ interface VPortalOptions {
 
 export interface VPortalClient {
     cancel(): void;
+    cancelAutomatic(): void;
     dispose(): void;
     load(target: any, callback: VPortalCompletion): void;
     play(item: any): void;
     resolve(item: any, done: (item: any) => void, automatic?: boolean): void;
+}
+
+interface VPortalRequestLane {
+    pending: any;
+    revision: number;
 }
 
 /** The provider owns this instance, so replacing its settings invalidates all work. */
@@ -82,9 +88,9 @@ export function createVPortalClient(
     var portal = parsed;
     var w = window as any;
     var jq = w.jQuery || w.$;
-    var revision = 0;
+    var foreground: VPortalRequestLane = { pending: null, revision: 0 };
+    var background: VPortalRequestLane = { pending: null, revision: 0 };
     var disposed = false;
-    var pending: any = null;
     var dialogHandler: any = null;
     var previousDialogHandler: any = null;
     var qualityHandler: any = null;
@@ -94,10 +100,13 @@ export function createVPortalClient(
         return typeof w._ === "function" ? w._(text) : text;
     }
 
-    function isCurrent(token: number): boolean {
+    function isCurrent(
+        token: number,
+        lane: VPortalRequestLane = foreground
+    ): boolean {
         return (
             !disposed &&
-            token === revision &&
+            token === lane.revision &&
             (!options.isCurrent || options.isCurrent())
         );
     }
@@ -113,14 +122,23 @@ export function createVPortalClient(
         }
     }
 
-    function cancel(): void {
-        var token = ++revision;
-        var request = pending;
-        pending = null;
+    function cancelAutomatic(): void {
+        ++background.revision;
+        var request = background.pending;
+        background.pending = null;
         if (request && typeof request.abort === "function") request.abort();
-        if (token !== revision) return;
+    }
+
+    function cancel(): void {
+        var token = ++foreground.revision;
+        var request = foreground.pending;
+        foreground.pending = null;
+        // Invalidate both lanes before abort callbacks can start newer work.
+        cancelAutomatic();
+        if (request && typeof request.abort === "function") request.abort();
+        if (token !== foreground.revision) return;
         hideBusy();
-        if (token !== revision) return;
+        if (token !== foreground.revision) return;
         var picker = qualityHandler;
         qualityHandler = null;
         if (picker && w.selectBoxKeyHandler === picker) {
@@ -150,10 +168,11 @@ export function createVPortalClient(
             .show();
     }
 
-    function reportError(): void {
+    function reportError(automatic = false): void {
         // API errors can echo the request key. Never display or log their bodies.
-        if (typeof w.alert === "function")
-            w.alert(translate("VPortal request failed"));
+        var notify = automatic ? w.showShift : w.alert;
+        if (typeof notify === "function")
+            notify.call(w, translate("VPortal request failed"));
     }
 
     function copyRequest(value: any): any {
@@ -183,7 +202,8 @@ export function createVPortalClient(
         token: number,
         accept: (data: any) => void,
         complete: () => void,
-        guard: () => boolean
+        guard: () => boolean,
+        lane: VPortalRequestLane = foreground
     ): void {
         var native = Boolean(
             w.__TAURI__ ||
@@ -201,16 +221,17 @@ export function createVPortalClient(
         else if (hosted)
             endpoint = hostedVPortalRoute(portal.url, w.__OTTPLAY_HOSTED__);
         var finished = false;
-        showBusy();
+        var automatic = lane === background;
+        if (!automatic) showBusy();
         try {
             if (!endpoint)
                 throw new Error("VPortal endpoint is not configured");
             var xhr = jq.ajax({
                 complete: function (): void {
                     finished = true;
-                    if (!isCurrent(token)) return;
-                    pending = null;
-                    hideBusy();
+                    if (!isCurrent(token, lane)) return;
+                    lane.pending = null;
+                    if (!automatic) hideBusy();
                     complete();
                 },
                 contentType: "application/json; charset=UTF-8",
@@ -219,22 +240,22 @@ export function createVPortalClient(
                 ),
                 dataType: "json",
                 error: function (_xhr: any, status: string): void {
-                    if (isCurrent(token) && guard() && status !== "abort")
-                        reportError();
+                    if (isCurrent(token, lane) && guard() && status !== "abort")
+                        reportError(automatic);
                 },
                 success: function (data: any): void {
-                    if (isCurrent(token)) accept(data);
+                    if (isCurrent(token, lane)) accept(data);
                 },
                 timeout: 30000,
                 type: "POST",
                 url: endpoint,
                 vportalRequest: true,
             });
-            if (!finished && isCurrent(token)) pending = xhr;
+            if (!finished && isCurrent(token, lane)) lane.pending = xhr;
         } catch (_error) {
-            if (!isCurrent(token)) return;
-            hideBusy();
-            if (guard()) reportError();
+            if (!isCurrent(token, lane)) return;
+            if (!automatic) hideBusy();
+            if (guard()) reportError(automatic);
             complete();
         }
     }
@@ -299,7 +320,7 @@ export function createVPortalClient(
     }
 
     function load(target: any, callback: VPortalCompletion): void {
-        var token = revision + 1;
+        var token = foreground.revision + 1;
         cancel();
         if (!isCurrent(token)) return;
         var view = w._mediaLoadState;
@@ -450,20 +471,25 @@ export function createVPortalClient(
         resolved?: (item: any) => void,
         automatic = false
     ): void {
-        var token = revision + 1;
-        cancel();
-        if (!item || !isCurrent(token)) return;
+        var lane = automatic ? background : foreground;
+        var token = lane.revision + 1;
+        if (automatic) cancelAutomatic();
+        else cancel();
+        if (!item || !isCurrent(token, lane)) return;
         if (
             options.sourceId &&
             (item.request || item.vportalSource) &&
             item.vportalSource !== options.sourceId
         ) {
-            reportError();
+            reportError(automatic);
             return;
         }
         var view = w._mediaLoadState;
         function current(): boolean {
-            return isCurrent(token) && view === w._mediaLoadState;
+            return (
+                isCurrent(token, lane) &&
+                (automatic || view === w._mediaLoadState)
+            );
         }
         function start(url: string): void {
             if (!current() || !validStream(url)) return;
@@ -488,7 +514,7 @@ export function createVPortalClient(
             function (): void {
                 if (!current()) return;
                 if (!result || result.type === "error") {
-                    if (result) reportError();
+                    if (result) reportError(automatic);
                     return;
                 }
                 var variants = result.variants;
@@ -504,7 +530,7 @@ export function createVPortalClient(
                       ? variants[names[0]]
                       : "";
                 if (!url) {
-                    reportError();
+                    reportError(automatic);
                     return;
                 }
                 if (
@@ -534,7 +560,7 @@ export function createVPortalClient(
                     !!resolved
                 );
                 // showSelectBox closes the old list, which deliberately cancels pending work.
-                token = revision;
+                token = foreground.revision;
                 view = w._mediaLoadState;
                 var picker = w.selectBoxKeyHandler;
                 qualityHandler = function (code: number): boolean {
@@ -565,12 +591,14 @@ export function createVPortalClient(
                     );
                 else w.selectBoxKeyHandler = qualityHandler;
             },
-            current
+            current,
+            lane
         );
     }
 
     return {
         cancel: cancel,
+        cancelAutomatic: cancelAutomatic,
         dispose: function (): void {
             disposed = true;
             cancel();
