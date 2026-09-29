@@ -681,7 +681,7 @@ function createM3uProviderDriver(
             if (!scope.active() || !current(token)) return;
             transport.send(
                 scope,
-                { timeout: 5000, url: url },
+                { dataType: "text", timeout: 5000, url: url },
                 parse,
                 function () {
                     if (!current(token)) return;
@@ -699,7 +699,9 @@ function createM3uProviderDriver(
                             data: { url: "@" + slot.www },
                             dataType: "text",
                             method: "post",
-                            timeout: 15000,
+                            // Allow the companion's 60-second upstream playlist
+                            // budget plus time to deliver its response.
+                            timeout: 65000,
                             url: ports.relay + "/m3u/cp.php",
                         },
                         parse,

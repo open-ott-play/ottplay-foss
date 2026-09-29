@@ -1094,22 +1094,164 @@ fn parse_cp_proxy_params(body: &[u8]) -> Option<ottplay_core::m3u::ProxyParams> 
 async fn cp_proxy_handler(body: Bytes) -> Result<(StatusCode, HeaderMap, Vec<u8>), StatusCode> {
     let params = parse_cp_proxy_params(&body).ok_or(StatusCode::BAD_REQUEST)?;
     match ottplay_core::m3u::proxy_stream(params).await {
-        Ok((mut headers, body)) => {
-            headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
-            headers.insert(
-                "access-control-allow-methods",
-                HeaderValue::from_static("GET, POST, OPTIONS"),
-            );
-            headers.insert(
-                "access-control-allow-headers",
-                HeaderValue::from_static("*"),
-            );
-            Ok((StatusCode::OK, headers, body))
-        }
+        Ok((headers, body)) => Ok((StatusCode::OK, cp_response_headers(&headers), body)),
         Err(e) => {
             tracing::warn!("[PROXY] FAIL: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
+    }
+}
+
+fn cp_response_headers(upstream: &HeaderMap) -> HeaderMap {
+    // reqwest has already removed the upstream transfer framing. Axum must
+    // frame this buffered body itself; forwarding Transfer-Encoding makes the
+    // response invalid. Only retain representation metadata, never upstream
+    // connection headers or cookies belonging to a different origin.
+    let mut headers = HeaderMap::new();
+    for name in ["content-type", "content-encoding"] {
+        for value in upstream.get_all(name) {
+            headers.append(name, value.clone());
+        }
+    }
+    // This POST endpoint can also be opened by a form navigation. Isolate any
+    // upstream HTML from the player's origin while leaving XHR text unchanged.
+    headers.insert(
+        "content-security-policy",
+        HeaderValue::from_static("sandbox"),
+    );
+    headers.insert(
+        "x-content-type-options",
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
+    headers.insert(
+        "access-control-allow-methods",
+        HeaderValue::from_static("GET, POST, OPTIONS"),
+    );
+    headers.insert("access-control-allow-headers", HeaderValue::from_static("*"));
+    headers
+}
+
+#[cfg(test)]
+mod cp_proxy_tests {
+    use super::*;
+    use std::io::{Read, Write};
+
+    #[tokio::test]
+    async fn buffered_gzip_response_has_local_framing_and_no_upstream_cookies() {
+        let playlist = b"#EXTM3U\n#EXTINF:-1,Fixture\nhttps://stream.example/live\n";
+        let mut encoder =
+            flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(playlist).unwrap();
+        let compressed = encoder.finish().unwrap();
+        let mut upstream = HeaderMap::new();
+        for (name, value) in [
+            ("content-type", "application/vnd.apple.mpegurl"),
+            ("content-encoding", "gzip"),
+            ("content-length", "99999"),
+            ("transfer-encoding", "chunked"),
+            ("connection", "x-upstream-hop, close"),
+            ("x-upstream-hop", "fixture"),
+            ("set-cookie", "provider-session=fixture; Path=/"),
+            ("access-control-allow-origin", "https://provider.example"),
+        ] {
+            upstream.insert(name, HeaderValue::from_static(value));
+        }
+        let expected = compressed.clone();
+        let app = Router::new().route(
+            "/",
+            get(move || {
+                let headers = cp_response_headers(&upstream);
+                let body = compressed.clone();
+                async move { (StatusCode::OK, headers, body) }
+            }),
+        );
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let response = reqwest::Client::builder()
+            .no_proxy()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .unwrap()
+            .get(format!("http://{address}/"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let headers = response.headers();
+        assert_eq!(headers["content-type"], "application/vnd.apple.mpegurl");
+        assert_eq!(headers["content-encoding"], "gzip");
+        assert_eq!(headers["content-security-policy"], "sandbox");
+        assert_eq!(headers["x-content-type-options"], "nosniff");
+        assert_eq!(headers["access-control-allow-origin"], "*");
+        for name in [
+            "transfer-encoding",
+            "connection",
+            "x-upstream-hop",
+            "set-cookie",
+        ] {
+            assert!(!headers.contains_key(name), "{name}");
+        }
+        assert_eq!(response.content_length(), Some(expected.len() as u64));
+        let received = response.bytes().await.unwrap();
+        assert_eq!(received.as_ref(), expected);
+        let mut decoded = Vec::new();
+        flate2::read::GzDecoder::new(received.as_ref())
+            .read_to_end(&mut decoded)
+            .unwrap();
+        assert_eq!(decoded, playlist);
+        server.abort();
+    }
+
+    #[test]
+    fn representation_encodings_preserve_their_order() {
+        let mut upstream = HeaderMap::new();
+        upstream.append("content-encoding", HeaderValue::from_static("gzip"));
+        upstream.append("content-encoding", HeaderValue::from_static("br"));
+        let headers = cp_response_headers(&upstream);
+        let values: Vec<_> = headers.get_all("content-encoding").iter().collect();
+        assert_eq!(values, ["gzip", "br"]);
+    }
+
+    #[tokio::test]
+    async fn upstream_html_cannot_relax_the_local_document_sandbox() {
+        let mut upstream = HeaderMap::new();
+        upstream.insert(
+            "content-type",
+            HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        upstream.append(
+            "content-security-policy",
+            HeaderValue::from_static("sandbox allow-scripts allow-same-origin"),
+        );
+        upstream.append(
+            "content-security-policy",
+            HeaderValue::from_static("default-src * 'unsafe-inline' 'unsafe-eval'"),
+        );
+        upstream.insert(
+            "x-content-type-options",
+            HeaderValue::from_static("unsafe"),
+        );
+        let payload = "<script>window.stolen = localStorage.getItem('profiles')</script>";
+        let response = (StatusCode::OK, cp_response_headers(&upstream), payload).into_response();
+        assert_eq!(
+            response.headers()["content-type"],
+            "text/html; charset=utf-8",
+        );
+        assert_eq!(response.headers()["content-security-policy"], "sandbox");
+        assert_eq!(
+            response.headers().get_all("content-security-policy").iter().count(),
+            1,
+        );
+        assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+        assert_eq!(
+            axum::body::to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap()
+                .as_ref(),
+            payload.as_bytes(),
+        );
     }
 }
 

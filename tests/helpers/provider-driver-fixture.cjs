@@ -164,6 +164,9 @@ function integrationFixture(id, initial = {}) {
     const w = f.host;
     const scripts = [],
         timers = new Map();
+    const panels = Object.create(null);
+    const deadlines = new Map();
+    let now = 0;
     let nextTimer = 0,
         completed = 0,
         ajaxWrites = 0;
@@ -176,7 +179,12 @@ function integrationFixture(id, initial = {}) {
         },
     });
     const jquery = w.$;
-    const hostQuery = () => {
+    const hostQuery = (selector) => {
+        const panel =
+            panels[selector] ||
+            (panels[selector] = {
+                visible: selector === "#launch",
+            });
         const chain = {
             append() {
                 return chain;
@@ -187,9 +195,23 @@ function integrationFixture(id, initial = {}) {
             css() {
                 return chain;
             },
-            hide() {},
-            is: () => true,
+            hide() {
+                selector.split(",").forEach((name) => {
+                    const target = panels[name] || (panels[name] = {});
+                    target.visible = false;
+                });
+                return chain;
+            },
+            html(value) {
+                panel.html = value;
+                return chain;
+            },
+            is: () => panel.visible,
             on() {
+                return chain;
+            },
+            show() {
+                panel.visible = true;
                 return chain;
             },
         };
@@ -209,6 +231,7 @@ function integrationFixture(id, initial = {}) {
         cancelMediaLoad() {},
         cancelPortChannelIdMigration() {},
         clearTimeout: (id) => timers.delete(id),
+        closeList() {},
         console: {
             error: (error) => {
                 throw error;
@@ -254,11 +277,13 @@ function integrationFixture(id, initial = {}) {
         },
         selectProvaider() {},
         setPlayerMode() {},
-        setTimeout: (callback) => {
+        setTimeout: (callback, delay = 0) => {
             const id = ++nextTimer;
             timers.set(id, callback);
+            deadlines.set(id, now + delay);
             return id;
         },
+        stbIsPlaying: () => false,
     });
     w.storage = {
         del: (key) => f.saved.delete(key),
@@ -307,12 +332,28 @@ function integrationFixture(id, initial = {}) {
     require("./english-source-fixture.cjs").attachSourceAliases(w);
     return {
         ...f,
+        advanceTimers(milliseconds) {
+            const until = now + milliseconds;
+            for (;;) {
+                const next = [...timers.keys()].sort(
+                    (a, b) => deadlines.get(a) - deadlines.get(b)
+                )[0];
+                if (next === undefined || deadlines.get(next) > until) break;
+                now = deadlines.get(next);
+                const callback = timers.get(next);
+                timers.delete(next);
+                deadlines.delete(next);
+                callback();
+            }
+            now = until;
+        },
         get ajaxWrites() {
             return ajaxWrites;
         },
         get completed() {
             return completed;
         },
+        panels,
         scripts,
         timers,
     };
