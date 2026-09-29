@@ -305,6 +305,35 @@ export function uiInit(): void {
                 top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
     });
+    var dialogRoot = document.getElementById("dialogbox");
+    if (dialogRoot && !(dialogRoot as any).__ottDialogButtonsBound) {
+        (dialogRoot as any).__ottDialogButtonsBound = true;
+        var dispatchDialogButton = function (event: Event): void {
+            var target = event.target as Node | null;
+            if (target && target.nodeType !== 1) target = target.parentNode;
+            var button = target && $(target).closest("span[data-ott-key]")[0];
+            if (!button || !dialogRoot!.contains(button)) return;
+            // Consume before checking ownership so an obsolete control cannot
+            // activate its inline fallback or the video surface underneath.
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            var w = window as any;
+            var owner = w.__ottClassicScreenPort.owner("dialog");
+            var key = Number(button.getAttribute("data-ott-key"));
+            if (owner && owner.foreground() && key && isFinite(key))
+                w._doKey(key, event);
+        };
+        dialogRoot.addEventListener("click", dispatchDialogButton, true);
+        dialogRoot.addEventListener(
+            "keydown",
+            function (event: KeyboardEvent): void {
+                if (event.keyCode === 13 || event.keyCode === 32)
+                    dispatchDialogButton(event);
+            },
+            true
+        );
+    }
 
     // Click on info bar toggles channel info display
     $infoBar.on("click.ottUi", function (e: any) {
@@ -1830,6 +1859,8 @@ export function renderButtonHint(
     return (
         '<span role="button" tabindex="0" aria-label="' +
         metadataText(description.replace(/<[^>]*>/g, " ")) +
+        '" data-ott-key="' +
+        keyLabel +
         '" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();event.stopPropagation();this.click();}" onclick="event.stopPropagation();_doKey(' +
         keyLabel +
         ');">' +

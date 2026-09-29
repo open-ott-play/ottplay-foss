@@ -275,6 +275,58 @@ async function fixturePage(browser, profile, initialSettings, language) {
 
 for (const profile of ["server", "tauri"]) {
     test(
+        profile + " confirmation buttons keep their meaning under CSP",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    // Reinitialization must not bind another activation handler.
+                    window.uiInit();
+                    window.uiInit();
+                    window.stbBindKeyHandler();
+                    window.closeList();
+                });
+                for (const answer of ["No", "Yes"]) {
+                    for (const action of ["click", "Enter", "Space"]) {
+                        await page.evaluate(() => {
+                            window.__fixtureViolations = [];
+                            window.__dialogAnswers = [];
+                            window.confirmBox(
+                                "Continue watching?",
+                                () => window.__dialogAnswers.push("Yes"),
+                                () => window.__dialogAnswers.push("No")
+                            );
+                        });
+                        const button = page
+                            .locator("#dialogbox")
+                            .getByRole("button", { exact: true, name: answer });
+                        if (action === "click")
+                            await button.locator(".btn").click();
+                        else {
+                            await button.focus();
+                            await page.keyboard.press(action);
+                        }
+                        await expect(page.locator("#dialogbox")).toBeHidden();
+                        await expect(page.locator("#list_window")).toBeHidden();
+                        expect(
+                            await page.evaluate(() => window.__dialogAnswers)
+                        ).toEqual([answer]);
+                        expect(
+                            await page.evaluate(
+                                () => window.__fixtureViolations
+                            )
+                        ).toEqual([]);
+                    }
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
         profile + " quality picker consumes clicks and preserves resume input",
         async ({ browser }) => {
             const fixture = await fixturePage(browser, profile);
