@@ -179,72 +179,154 @@ sudo rpm -i ottplay-foss_*.rpm
 
 ### iOS Installation
 
-iOS requires sideloading since the app is not on the App Store. Two options:
+iOS requires signing before installation on a physical device. Use AltStore
+Classic for the unsigned release IPA, or build and sign from source with Xcode.
+TestFlight requires a separate invitation, when offered.
 
-#### Option 1: AltStore (Recommended for personal use)
+#### Option 1: AltStore Classic (Recommended for personal use)
 
-AltStore allows sideloading apps with a free Apple ID (no paid developer account needed).
+AltServer runs on your computer; AltStore Classic runs on your iPhone/iPad and
+imports the IPA. A free Apple Account is sufficient.
 
 **Prerequisites:**
 
-- iPhone/iPad running iOS 14 or later
-- A free [Apple ID](https://appleid.apple.com/)
-- AltServer installed on your Mac or PC
+- iPhone/iPad running **iOS/iPadOS 15 or later** for the current OTT-play build.
+- A Mac or Windows PC with AltServer and a USB data cable.
+- An Apple Account for signing and internet access for the release download.
 
-**Step 1: Install AltServer**
+**Step 1: Set up AltStore once**
 
-1. Download AltServer for your platform:
-   - **macOS**: Download from [AltStore.io](https://altstore.io/) or via Homebrew:
-     ```bash
-     brew install --cask altstore
-     ```
-   - **Windows**: Download from [AltStore.io](https://altstore.io/)
+1. Install AltServer using its official [macOS setup](https://faq.altstore.io/altstore-classic/how-to-install-altstore-macos)
+   or [Windows setup](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows).
+   Start it and use its menu-bar/system-tray icon.
+2. Connect the device by USB, unlock it and accept the computer/device trust
+   prompts. On a Mac, check that the device appears in Finder.
+3. In the **AltServer menu → Install AltStore**, select your device and complete
+   the signing-account prompts. Wait for the installation notification.
+4. On the device, open **Settings → General → VPN & Device Management** and
+   trust the developer entry for your signing account if requested. On iOS 16+,
+   enable **Settings → Privacy & Security → Developer Mode** and complete the
+   device's restart/confirmation prompts.
+5. Open AltStore on the device. If it is already installed and working, skip
+   this setup and keep AltServer running for the import below.
 
-2. Start AltServer (it runs in the menu bar/system tray)
+**Step 2: Import the selected release on the iPhone/iPad**
 
-**Step 2: Install AltStore on your device**
+1. Choose an exact tag from [all releases](https://github.com/open-ott-play/ottplay-foss/releases)
+   and download its `ottplay-foss-ios-unsigned.ipa` in Safari on the device.
+   The [latest release shortcut](https://github.com/open-ott-play/ottplay-foss/releases/latest)
+   selects a stable release; use the full list when you intend to install a beta.
+2. Save the IPA to Files. In **AltStore → My Apps → +**, select that file.
+   You can also transfer a downloaded IPA from your Mac with AirDrop and save it
+   to Files before importing it. Opening the IPA on the Mac is not this import step.
+3. Keep AltServer running and the USB cable connected while AltStore signs and
+   installs the app. For an update, use the same signing account as the existing
+   installation; do not delete the app as a first troubleshooting step.
+4. Wait for the import to finish, check OTT-play in **My Apps**, then launch it.
 
-1. Open AltServer on your Mac/PC
-2. Connect your iPhone/iPad via USB
-3. On iOS: Go to Settings → General → Device Management → tap your Apple ID
-4. Trust the profile if prompted
+**Alternative: import the release URL directly**
 
-**Step 3: Sideload the app**
+With AltStore already installed, enter this pattern in **Safari on the iPhone**,
+replacing `TAG` with the exact release tag, and accept **Open in AltStore**:
 
-1. Download the `.ipa` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
-2. Double-click the `.ipa` to open it in AltStore
-3. Select your connected device
-4. Wait for installation to complete
+```text
+altstore://install?url=https://github.com/open-ott-play/ottplay-foss/releases/download/TAG/ottplay-foss-ios-unsigned.ipa
+```
 
-**Refresh requirement:** AltStore apps expire after 7 days. Keep AltServer running to auto-refresh, or right-click AltStore icon → Refresh apps.
+This uses AltStore's [install URL handler](https://github.com/altstoreio/AltStore/blob/develop/AltStore/SceneDelegate.swift).
+It avoids an ambiguous Files/Recents entry when several downloads share the same
+filename. The URL must point to the IPA asset, not the release page.
 
-**Step 4: Trust the app**
+For example, the following import was verified on **2026-09-29** with AltStore 2.3
+and AltServer 1.8.1. This is a fixed historical example, not a latest-version link:
 
-1. On iOS: Settings → General → VPN & Device Management
-2. Find "OttPlay FOSS" under your Apple ID
-3. Tap Trust → Confirm
+```text
+altstore://install?url=https://github.com/open-ott-play/ottplay-foss/releases/download/v1.1.51-beta.9/ottplay-foss-ios-unsigned.ipa
+```
+
+**Refresh:** Free-account installs expire after seven days. Keep AltServer
+reachable and use **AltStore → My Apps → Refresh All** before expiry. Background
+refresh also needs access to AltServer; see [AltStore's refresh instructions](https://faq.altstore.io/altstore-classic/your-altstore).
+
+#### Verify the installed version before retrying
+
+An AirDrop “Sent” message confirms transfer only. An AltStore progress bar confirms
+that import started. A lost Mirroring/USB connection does not establish that
+installation failed: check the installed app before submitting the IPA again.
+
+On a Mac with Xcode installed and selected as the active developer directory,
+inspect the device without reinstalling:
+
+```bash
+xcrun devicectl list devices
+# Substitute the identifier from the device list.
+xcrun devicectl device info apps --device '<device-identifier>' \
+  --filter "bundleIdentifier BEGINSWITH 'play.ott.foss'" \
+  --timeout 20 --json-output /tmp/ottplay-installed-apps.json
+```
+
+In the JSON's `result.apps`, find OTT-play (`bundleIdentifier` starts with
+`play.ott.foss`) and compare both `version` and `bundleVersion` with the selected
+IPA's `CFBundleShortVersionString` and `CFBundleVersion`. An AltStore signing-account
+suffix on the bundle identifier is expected. Keep the device report local.
+
+The verified beta.9 example reports **version `1.1.51`, build `2.2.66`**.
+This confirms installation; opening the app, Cloudflare sign-in, playlist loading,
+playback and PiP are separate device checks.
+
+#### Troubleshooting iOS installation
+
+- **AltServer has no window, or opening it through automation times out:**
+  use its menu-bar/system-tray icon. It is a background app. Repeated attempts
+  to open a normal app window do not perform an IPA import.
+- **“Could not find AltServer” or the USB device is unavailable:** verify that
+  AltServer is running, unlock the phone and check the computer/device trust
+  prompts. Check Finder visibility on a Mac. If the connection dropped, reconnect
+  when safe, then check the installed version before retrying. Follow
+  [AltStore's connectivity troubleshooting](https://faq.altstore.io/altstore-classic/troubleshooting-guide)
+  if it persists. If the phone provides the computer's internet connection,
+  coordinate any cable or network change so other work is not interrupted.
+- **iPhone Mirroring says “iPhone in Use” or remains “Connecting”:** use the
+  physical phone to finish setup, or lock its screen and leave it near the unlocked
+  Mac to mirror it. Unlocking the phone ends Mirroring; USB trust/setup may need
+  it unlocked first. If one reconnect still stalls, quit Mirroring and continue
+  on the phone. See [Apple's Mirroring requirements](https://support.apple.com/en-us/120421).
+  Mirroring is optional for installation.
+- **A URL loses Latin letters or turns into Cyrillic in Mirroring:** switch the
+  **Mac input source to ABC/English**, clear the field and enter the complete URL
+  again. Inspect the address before submitting it. This occurred during the
+  verified installation with the Russian Mac input source selected.
+- **Clipboard paste into Mirroring hangs or inserts unexpected text:** clear
+  the field and type with ABC/English, or enter the URL directly on the phone.
+  Do not submit a partially pasted URL. Paste failed in our installation session;
+  it is not a prerequisite for the direct-URL method.
+- **Files/Recents shows several identical IPA names:** select the exact download
+  location or use the tagged direct URL above. A local copy may be renamed to
+  include its tag/build for clarity; renaming does not change its contents.
+- **The installed app will not open:** follow any developer-trust or Developer
+  Mode prompt on the phone. Check the expiry in AltStore and refresh if needed.
+  Record the actual error if it still fails; a connection error alone is not a
+  reason to delete and reinstall the app.
+- **OTT-play opens, but a protected playlist fails on cellular:** installation
+  and source authentication are separate. Use **Settings → Manage settings →
+  Source access** to sign in to a configured source, then reload the playlist.
+  Complete biometric/passkey or email-code prompts on the physical device when
+  required. The source must support the [iOS Access integration](docs/ios-source-access.md);
+  installing the app does not bypass an IP allowlist.
 
 #### Option 2: TestFlight (If available)
 
-If a TestFlight beta is available:
-
-1. Accept the TestFlight invite
-2. Install TestFlight from App Store
-3. Open the beta link and tap "Install"
+If a TestFlight invitation is published, install TestFlight from the App Store,
+open that invitation on the device and tap **Install**. A GitHub IPA download
+does not provide a TestFlight invitation.
 
 #### Option 3: Xcode (For developers)
 
-1. Download `.ipa` from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
-2. Connect your device via USB
-3. Open Xcode → Window → Devices and Simulators
-4. Select your device → Click "+" → Select the `.ipa`
-5. On first install, enable "Trust this app" in device settings
-
-**Troubleshooting iOS:**
-
-- App won't open: Settings → General → Device Management → Trust the app
-- AltStore offline: Ensure AltServer is running and device connected
-- Refresh failed: Check internet connection, try again
+Follow [Build and open](docs/capacitor-mobile.md#build-and-open), select the **App**
+target in Xcode, configure your development team under **Signing & Capabilities**,
+choose the connected device and build/run. Complete device trust and Developer
+Mode prompts as required. Importing the unsigned release IPA into Xcode's Devices
+window does not supply the missing signing identity or provisioning profile.
 
 ---
 
