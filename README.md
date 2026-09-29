@@ -313,6 +313,17 @@ playback and PiP are separate device checks.
   Complete biometric/passkey or email-code prompts on the physical device when
   required. The source must support the [iOS Access integration](docs/ios-source-access.md);
   installing the app does not bypass an IP allowlist.
+- **Sign-in no longer appears, but the channel list is empty:** a valid saved
+  session is reused without another prompt. After an earlier failed load or a
+  server-side fix, reload the playlist or fully close and reopen the app once.
+  If it still fails, verify that the source returns a playlist rather than an
+  HTML login page or JSON error. Record the displayed error and HTTP status;
+  do not share source URLs containing credentials, cookies or Access tokens.
+- **Channels load, but video buffers or reports `SRC_NOT_FOUND`:** playlist
+  loading and video playback are separate checks. Retry the channel once after
+  sign-in; if it persists, check the HLS manifest and segment responses and the
+  stream's codec support. The error alone does not establish that switching
+  engines or reinstalling the app will help.
 
 #### Option 2: TestFlight (If available)
 

@@ -92,7 +92,8 @@ enum AccessMediaPolicy {
         return code
     }
 
-    static func rewriteManifest(_ text: String, base: URL, rewrite: (URL) -> URL?) -> String {
+    static func rewriteManifest(_ text: String, base: URL, maxBytes: Int = 8 * 1024 * 1024,
+                                rewrite: (URL) -> URL?) throws -> String {
         func replace(_ value: String) -> String {
             guard let url = URL(string: value, relativeTo: base)?.absoluteURL else { return value }
             // The rewritten manifest lives on HTTP loopback. External network-
@@ -101,19 +102,52 @@ enum AccessMediaPolicy {
             return (rewrite(url) ?? url).absoluteString
         }
         let expression = try! NSRegularExpression(pattern: "(?:^|[, :])(?:URI|SERVER-URI)=\"([^\"]*)\"")
-        return text.components(separatedBy: "\n").map { line in
+        guard maxBytes >= 0 else { throw AccessMediaFailure.unavailable }
+        var result = "", count = 0
+        func append<T: StringProtocol>(_ value: T) throws {
+            let size = value.utf8.count
+            guard size <= maxBytes - count else { throw AccessMediaFailure.unavailable }
+            result.append(contentsOf: value)
+            count += size
+        }
+        func appendLine(_ line: String) throws {
             if line.hasPrefix("#") {
-                var result = line
-                for match in expression.matches(in: line, range: NSRange(line.startIndex..., in: line)).reversed() {
-                    if let range = Range(match.range(at: 1), in: result) {
-                        result.replaceSubrange(range, with: replace(String(result[range])))
+                var cursor = line.startIndex
+                var failure: Error?
+                expression.enumerateMatches(in: line, range: NSRange(line.startIndex..., in: line)) { match, _, stop in
+                    guard let match, let range = Range(match.range(at: 1), in: line) else { return }
+                    do {
+                        try append(line[cursor..<range.lowerBound])
+                        try append(replace(String(line[range])))
+                        cursor = range.upperBound
+                    } catch {
+                        failure = error
+                        stop.pointee = true
                     }
                 }
-                return result
+                if let failure { throw failure }
+                try append(line[cursor...])
+            } else {
+                let value = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                try append(value.isEmpty ? line : replace(value))
             }
-            let value = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            return value.isEmpty ? line : replace(value)
-        }.joined(separator: "\n")
+        }
+        // Short relative URIs can expand many times into capability URLs. Bound
+        // the rewritten representation independently of the 2 MiB input limit,
+        // while allowing long VOD playlists to grow beyond that input budget.
+        // Scan bytes to preserve the existing CRLF/final-newline handling,
+        // without keeping an array of every original and rewritten line alive.
+        let bytes = text.utf8
+        var start = bytes.startIndex
+        while start < bytes.endIndex {
+            let end = bytes[start...].firstIndex(of: 10) ?? bytes.endIndex
+            let hasNewline = end != bytes.endIndex
+            try appendLine(String(decoding: bytes[start..<end], as: UTF8.self))
+            if hasNewline { try append("\n") }
+            if !hasNewline { break }
+            start = bytes.index(after: end)
+        }
+        return result
     }
 }
 

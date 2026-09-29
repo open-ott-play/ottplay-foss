@@ -132,7 +132,13 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             let http = response as? HTTPURLResponse
             let status = http?.statusCode ?? 0
             let contentType = response.mimeType ?? "application/octet-stream"
-            let body = String(data: data, encoding: .utf8) ?? ""
+            guard let body = String(data: data, encoding: .utf8) else {
+                // A decode failure must not become a successful empty catalogue.
+                DispatchQueue.main.async {
+                    call.reject("portalRequest failed: response is not valid UTF-8", "invalid_response")
+                }
+                return
+            }
             var setCookie: [String] = []
             var responseHeaders = ""
             if let fields = http?.allHeaderFields {

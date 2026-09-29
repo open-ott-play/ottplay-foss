@@ -78,7 +78,10 @@ Binary media is streamed with backpressure;
 HEAD, byte ranges and content ranges are preserved. A single isolated upstream
 session reuses its connection pool, with credentials and redirect decisions
 scoped to each task. Low-latency HLS reload directives reach upstream without
-rewriting the original signed query. Manifest buffering is bounded to 2 MiB.
+rewriting the original signed query. Upstream manifest buffering is bounded to
+2 MiB, and rewritten output to 8 MiB. Rewriting stops at the output limit rather
+than first allocating every expanded URL; long manifests within that separate
+budget remain supported.
 Loopback URLs are not saved as channel identities; reconnects prepare the
 original source again.
 
@@ -107,6 +110,11 @@ request's native work and login waiter, while other consumers continue.
 Signing out cancels protected downloads already in progress. Manual sign-in
 from **Source access** is independent of a download's deadline and remains
 available when entering an email code needs longer than an AJAX caller allows.
+
+Native text responses with invalid UTF-8 fail explicitly instead of becoming
+empty successful responses. The M3U loader rejects empty bodies and obvious
+HTML/JSON responses with a playlist-processing error; a valid empty M3U remains
+an empty catalogue. Neither error includes the response body or source credentials.
 
 ## Verification
 

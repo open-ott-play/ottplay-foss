@@ -588,10 +588,22 @@ function createM3uProviderDriver(
             }
             function parse(text: any): void {
                 if (!scope.active() || !current(token)) return;
+                // Do not mistake an empty response or login/API document for an
+                // empty playlist. Keep headerless lists and M3U comments valid.
+                if (
+                    typeof text !== "string" ||
+                    /^\s*$/.test(text) ||
+                    /^\s*(?:#[^\r\n]*(?:\r?\n|\r(?!\n))\s*)*(?:<|\{|\[)/.test(
+                        text
+                    )
+                ) {
+                    complete("m3u-processing");
+                    return;
+                }
                 var parsed: any, plan: any;
                 try {
                     parsed = ports.core.parseProviderPlaylist(
-                        String(text || ""),
+                        text,
                         "m3u",
                         ports.m3u.hashUrl,
                         parseInt(String(slot.rechours), 10)

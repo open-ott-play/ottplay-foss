@@ -316,7 +316,9 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
         if error != nil { fail(502); return }
         if isManifest, original?.httpMethod != "HEAD" {
             guard let text = String(data: body, encoding: .utf8), text.hasPrefix("#EXTM3U"), let base = response?.url else { fail(502); return }
-            let manifest = AccessMediaPolicy.rewriteManifest(text, base: base) { self.proxy.localURL($0) }
+            guard let manifest = try? AccessMediaPolicy.rewriteManifest(text, base: base, rewrite: { self.proxy.localURL($0) }) else {
+                fail(502); return
+            }
             sendHeaders(manifest: true); sendChunk(Data(manifest.utf8))
         } else {
             sendHeaders(manifest: false)

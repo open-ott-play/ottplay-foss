@@ -66,6 +66,126 @@ test("14 captured M3U catalogs and matching request bodies retain legacy channel
     }
 });
 
+test("invalid playlist responses fail once without exposing their body or starting matching", () => {
+    const privateBody = "PRIVATE_RESPONSE_FIXTURE";
+    const bodies = [
+        "<!doctype html><html>" + privateBody + "</html>",
+        "\ufeff \r\n<html>" + playlist + "</html>",
+        "# upstream comment\r\n\n <html>" + privateBody + "</html>",
+        "# upstream comment\r<html>" + privateBody + "</html>",
+        '\n {"error":"' + privateBody + '"}',
+        '\ufeff# upstream comment\n ["' + privateBody + '"]',
+        "",
+        " \t\r\n\ufeff",
+        null,
+        undefined,
+        false,
+        42,
+        [],
+        { error: privateBody },
+        {
+            toString() {
+                throw new Error("Responses must not be coerced to text");
+            },
+        },
+    ];
+    for (const route of ["direct", "proxy", "local"])
+        for (const body of bodies) {
+            const f = fixture(
+                route === "local"
+                    ? {
+                          config: {
+                              active: 0,
+                              M3Us: [{ www: "/sdcard/list.m3u" }],
+                          },
+                          readFile: () => body,
+                      }
+                    : {}
+            );
+            try {
+                const driver = f.start();
+                const outcomes = [];
+                driver.load((catalog, error) =>
+                    outcomes.push({ count: catalog.ids.length, error })
+                );
+                if (route !== "local") {
+                    if (route === "proxy") f.requests[0].reject();
+                    const request = f.requests.at(-1);
+                    request.resolve(body);
+                    request.resolve(playlist);
+                    request.reject();
+                }
+                assert.deepEqual(outcomes, [
+                    { count: 0, error: "m3u-processing" },
+                ]);
+                assert.equal(
+                    f.requests.length,
+                    route === "local" ? 0 : route === "proxy" ? 2 : 1,
+                    "Invalid content must not start guide/logo matching or a retry"
+                );
+            } finally {
+                f.dom.window.close();
+            }
+        }
+    const f = fixture();
+    try {
+        load(f, bodies[0]);
+        assert.deepEqual(f.errors, ["Failed to load channel list!"]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("playlist validation preserves headers, comments, BOM, bare URLs and empty M3U documents", () => {
+    for (const [body, count] of [
+        [playlist, 2],
+        [playlist.slice(playlist.indexOf("\n") + 1), 2],
+        ["\ufeff" + playlist.replace(/\n/g, "\r\n"), 2],
+        ["# leading comment\r\n\r\n" + playlist, 2],
+        ["# leading comment\r\n".repeat(10000) + playlist, 2],
+        ["#EXTM3U", 0],
+        ['\ufeff#EXTM3U url-tvg="https://xml.test/main.xml"\r\n# comment\n', 0],
+        ["# comment only\n", 0],
+        ["https://cdn.test/unadorned.m3u8\n", 0],
+    ]) {
+        const f = fixture();
+        try {
+            const driver = f.start();
+            const outcomes = [];
+            driver.load((catalog, error) =>
+                outcomes.push({ count: catalog.ids.length, error })
+            );
+            f.host.resolveValidationResponse = () =>
+                f.requests[0].resolve(body);
+            vm.runInContext("resolveValidationResponse()", f.host, {
+                timeout: 5000,
+            });
+            assert.deepEqual(outcomes, [{ count, error: undefined }]);
+        } finally {
+            f.dom.window.close();
+        }
+    }
+});
+
+test("cancelled playlist responses cannot report validation errors into a replacement load", () => {
+    const f = fixture();
+    try {
+        const driver = f.start();
+        const outcomes = [];
+        driver.load(() => outcomes.push("old"));
+        const previous = f.requests[0];
+        driver.load((catalog, error) =>
+            outcomes.push({ count: catalog.ids.length, error })
+        );
+        previous.resolve("<html>expired login</html>");
+        assert.deepEqual(outcomes, []);
+        f.requests.at(-1).resolve(playlist);
+        assert.deepEqual(outcomes, [{ count: 2, error: undefined }]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
 test("15 slots normalize corrupt configurations and preserve per-slot history/journal namespaces", () => {
     for (const raw of [
         "invalid",
