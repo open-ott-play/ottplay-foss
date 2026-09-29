@@ -20,7 +20,7 @@ function ottDebugIsEnabled(): boolean {
         )
             return true;
         var q = typeof location !== "undefined" ? location.search || "" : "";
-        if (/(?:^|[?&])debug=(?:1|true)(?:&|$)/.test(q)) return true;
+        if (/(?:^\?|&)debug=(?:1|true)(?:&|$)/.test(q)) return true;
     } catch (_e) {}
     return false;
 }
