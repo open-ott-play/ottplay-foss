@@ -1,5 +1,27 @@
 # EPG diagnostics on the hosted player
 
+## Server-prepared public EPG
+
+A publisher can explicitly select the versioned server transport for the fixed
+public `epg-one` feed. The TV then downloads channel mappings and small JSON
+programme windows on demand; the Rust service downloads and parses XMLTV.
+See the [server API and deployment contract](hosted-epg-server.md).
+
+Diagnostics identifies the transport. In server mode, initial readiness and
+elapsed time describe channel matching, not the download of every programme or
+the latency of the first visible guide. Measure first usable programme rows
+separately when comparing desktop or physical-TV startup.
+
+The server transport retains bounded last-good programme windows in IndexedDB
+and preserves them through transient service failures. An HTTP 409 triggers one
+rematch against the new generation; cold HTTP 503 and network failures are
+reported with bounded retries. A service failure never implicitly starts a
+full public XMLTV download on the TV. Explicit custom or mixed-source profiles
+retain the XMLTV worker and its existing source precedence; their URLs are not
+submitted to the public EPG service.
+
+## XMLTV processing on the device
+
 The decompressed-input limit is 512 MiB of UTF-8 XML. Count bytes in the
 incrementally decoded chunks, not `string.length * 2`: the latter incorrectly
 rejected the 457,465,999-byte public feed on 2026-09-28 because its cumulative

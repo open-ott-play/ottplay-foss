@@ -1438,6 +1438,20 @@ let body = zlib.gzipSync(base),
     calls = 0,
     holdFeed = false;
 const heldResponses = new Set();
+let diagnosticsCalls = 0,
+    diagnosticsStatus = 200,
+    holdDiagnostics = false;
+let diagnosticsBody = generated["epg-diagnostics.js"];
+const heldDiagnostics = new Set();
+function releaseDiagnostics() {
+    for (const response of heldDiagnostics) response.end(diagnosticsBody);
+    heldDiagnostics.clear();
+}
+async function waitDiagnostics(expected) {
+    for (let i = 0; i < 200 && diagnosticsCalls < expected; i++)
+        await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(diagnosticsCalls, expected);
+}
 const server = http.createServer((request, response) => {
     const name = new URL(request.url, "http://fixture").pathname;
     if (name === "/") {
@@ -1453,6 +1467,17 @@ const server = http.createServer((request, response) => {
             response.on("close", () => heldResponses.delete(response));
             response.write(body.subarray(0, 10));
         } else response.end(body);
+        return;
+    }
+    if (name === "/hosted/epg-diagnostics.js") {
+        diagnosticsCalls++;
+        response.statusCode = diagnosticsStatus;
+        response.setHeader("Content-Type", "text/javascript");
+        response.setHeader("Cache-Control", "no-store");
+        if (holdDiagnostics) {
+            heldDiagnostics.add(response);
+            response.on("close", () => heldDiagnostics.delete(response));
+        } else response.end(diagnosticsBody);
         return;
     }
     if (name.startsWith("/hosted/") && generated[name.slice(8)]) {
@@ -2192,7 +2217,181 @@ const server = http.createServer((request, response) => {
         await page.waitForFunction(
             () => __ottHostedEpg.diagnostics().phase === "error"
         );
+        // The optional panel never steals a later screen or survives a cancelled request.
+        const noLatePanel = async () => {
+            releaseDiagnostics();
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            assert.equal(await page.locator("#listAbout pre").count(), 0);
+            assert.equal(
+                await page.locator('script[src*="epg-diagnostics.js"]').count(),
+                0
+            );
+        };
+        const beginDiagnostics = async () => {
+            await page.evaluate(() => {
+                delete window.__ottHostedEpgDiagnostics;
+                __ottHostedEpg.showDiagnostics();
+            });
+        };
+        holdDiagnostics = true;
+        let expectedDiagnostics = diagnosticsCalls + 1;
+        await beginDiagnostics();
         await page.evaluate(() => __ottHostedEpg.showDiagnostics());
+        await waitDiagnostics(expectedDiagnostics);
+        await page.keyboard.press("Escape");
+        await noLatePanel();
+        assert.equal(
+            diagnosticsCalls,
+            expectedDiagnostics,
+            "concurrent opens share one asset request"
+        );
+
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.evaluate(() => {
+            window.aboutKeyHandler = () => true;
+            document.getElementById("listAbout").textContent = "Another screen";
+        });
+        await noLatePanel();
+        assert.equal(
+            await page.locator("#listAbout").innerText(),
+            "Another screen"
+        );
+        await page.evaluate(() => {
+            window.aboutKeyHandler = null;
+            $("#listAbout").hide().empty();
+        });
+
+        for (const action of ["retry", "close"]) {
+            expectedDiagnostics++;
+            await beginDiagnostics();
+            await waitDiagnostics(expectedDiagnostics);
+            await page.evaluate((action) => epgSession[action](), action);
+            await noLatePanel();
+            if (action === "close")
+                await page.evaluate(() => {
+                    window.epgSession = __ottHostedEpg.open(
+                        [
+                            {
+                                channel_name: "РЕН ТВ HD",
+                                id: "diagnostics",
+                                rec: 168,
+                            },
+                        ],
+                        () => {}
+                    );
+                });
+            await page.waitForFunction(
+                () => __ottHostedEpg.diagnostics().phase === "error"
+            );
+        }
+
+        // A stalled asset request is bounded even though no Worker timeout is involved.
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.waitForFunction(
+            () => lastNotice.includes("could not load"),
+            null,
+            { timeout: 15000 }
+        );
+        await noLatePanel();
+        holdDiagnostics = false;
+        diagnosticsStatus = 503;
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.waitForFunction(() => lastNotice.includes("could not load"));
+        await noLatePanel();
+
+        diagnosticsStatus = 200;
+        diagnosticsBody = "window.__ottHostedEpgDiagnostics={version:0};";
+        expectedDiagnostics++;
+        await beginDiagnostics();
+        await waitDiagnostics(expectedDiagnostics);
+        await page.waitForFunction(() => lastNotice.includes("could not load"));
+        await noLatePanel();
+        diagnosticsBody = generated["epg-diagnostics.js"];
+
+        for (const url of [
+            "https://private.invalid/ui.js",
+            "//private.invalid/ui.js",
+            "/\\private.invalid/ui.js",
+        ]) {
+            await page.evaluate((url) => {
+                delete window.__ottHostedEpgDiagnostics;
+                __OTTPLAY_HOSTED__.epg.diagnosticsUrl = url;
+                __ottHostedEpg.showDiagnostics();
+            }, url);
+            assert.equal(
+                diagnosticsCalls,
+                expectedDiagnostics,
+                "diagnostics URLs cannot escape the publisher origin"
+            );
+            assert.match(
+                await page.evaluate(() => lastNotice),
+                /could not load/
+            );
+        }
+        await page.evaluate(() => {
+            delete __OTTPLAY_HOSTED__.epg.diagnosticsUrl;
+        });
+
+        const diagnosticsStyle = fs
+            .readFileSync(path.join(root, "styles/player.css"), "utf8")
+            .match(/\.hosted-epg-diagnostics\s*\{[^}]+\}/)[0];
+        await page.addStyleTag({ content: diagnosticsStyle });
+        await page.evaluate(() => {
+            document.getElementById("listAbout").style.cssText =
+                "height:500px;font-size:20px;font-family:Arial";
+            __ottHostedEpg.showDiagnostics();
+        });
+        await page.waitForSelector("#listAbout pre");
+        assert.deepEqual(
+            await page.locator("#listAbout pre").evaluate((element) => {
+                const style = getComputedStyle(element);
+                return [
+                    style.fontFamily,
+                    style.fontSize,
+                    style.height,
+                    style.overflow,
+                    style.touchAction,
+                    style.whiteSpace,
+                ];
+            }),
+            ["Arial", "16px", "400px", "auto", "pan-y", "pre-wrap"],
+            "the shared stylesheet preserves the diagnostics panel layout"
+        );
+        await page.evaluate(() => {
+            window.originalDiagnosticsModule = __ottHostedEpgDiagnostics;
+            window.originalDiagnosticsHandler = aboutKeyHandler;
+        });
+        await page.addScriptTag({
+            content: generated["epg-diagnostics.js"].toString(),
+        });
+        assert.equal(
+            await page.evaluate(
+                () => __ottHostedEpgDiagnostics === originalDiagnosticsModule
+            ),
+            true,
+            "late duplicate script execution preserves the active module"
+        );
+        const loadedDiagnosticsCalls = diagnosticsCalls;
+        await page.evaluate(() => __ottHostedEpg.showDiagnostics());
+        assert.equal(await page.locator("#listAbout pre").count(), 1);
+        assert.equal(
+            await page.evaluate(
+                () => aboutKeyHandler === originalDiagnosticsHandler
+            ),
+            true,
+            "reopening after duplicate registration does not nest another panel"
+        );
+        assert.equal(
+            diagnosticsCalls,
+            loadedDiagnosticsCalls,
+            "registered diagnostics module is reused"
+        );
         let details = await page.locator("#listAbout").innerText();
         assert.match(details, /HTTP 503/);
         assert.match(details, /EPG_HTTP/);

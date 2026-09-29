@@ -1254,3 +1254,12 @@ body {
 #videopip {
     object-position: center center;
 }
+
+.hosted-epg-diagnostics {
+    height: 80%;
+    overflow: auto;
+    font-family: inherit;
+    font-size: 0.8em;
+    white-space: pre-wrap;
+    touch-action: pan-y;
+}

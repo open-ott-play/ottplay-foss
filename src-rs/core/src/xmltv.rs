@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 #[path = "xmltv_fetch_tests.rs"]
 mod fetch_tests;
 mod server_records;
+mod hosted_records;
 
 #[derive(Clone, Debug, Default)]
 pub struct Channel {
@@ -133,19 +134,32 @@ pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
     parse_xmltv_impl(xml, true)
 }
 
+/// Public-feed server profile for the hosted web client. Preserves alias order,
+/// first metadata/first nonempty fields, strict browser timestamps and duplicates.
+pub fn parse_xmltv_hosted(xml: &str) -> anyhow::Result<(Channels, Programs, Vec<Vec<String>>)> {
+    anyhow::ensure!(xml.len() <= 512 * 1024 * 1024, "EPG_XML_LIMIT");
+    let mut records = Records::Hosted(hosted_records::HostedRecords::default());
+    let (channels, mut programs) = parse_xmltv_with_records(xml, false, &mut records)?;
+    for rows in programs.values_mut() {
+        rows.sort_by_key(|row| (row.start, row.stop));
+    }
+    let Records::Hosted(records) = records else { unreachable!() };
+    Ok((channels, programs, records.aliases))
+}
+
 fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
-    let records = if native {
+    let mut records = if native {
         Records::Shared(RecordTokens::new(true)?)
     } else {
         Records::Server(server_records::ServerRecords::default())
     };
-    parse_xmltv_with_records(xml, native, records)
+    parse_xmltv_with_records(xml, native, &mut records)
 }
 
 fn parse_xmltv_with_records(
     xml: &str,
     native: bool,
-    mut records: Records,
+    records: &mut Records,
 ) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
     // quick-xml 0.41 emits references separately. Preserve whitespace between
@@ -159,10 +173,11 @@ fn parse_xmltv_with_records(
     let mut depth = 0usize;
     let mut root_seen = false;
     let mut root_closed = false;
+    let hosted = matches!(records, Records::Hosted(_));
     loop {
         let event = reader.read_event_into(&mut buf);
         let validation = (|| -> anyhow::Result<()> {
-            if native {
+            if native || hosted {
                 // quick_xml can return EOF after complete channels inside an unclosed root.
                 // Such a partial download must never replace the native cache.
                 match &event {
@@ -175,6 +190,7 @@ fn parse_xmltv_with_records(
                             root_seen = true;
                         }
                         depth += 1;
+                        anyhow::ensure!(!hosted || depth <= 16, "EPG_XML_DEPTH");
                     }
                     Ok(Event::Empty(element)) if depth == 0 => {
                         anyhow::ensure!(
@@ -183,6 +199,9 @@ fn parse_xmltv_with_records(
                         );
                         root_seen = true;
                         root_closed = true;
+                    }
+                    Ok(Event::Empty(_)) if hosted => {
+                        anyhow::ensure!(depth < 16, "EPG_XML_DEPTH");
                     }
                     Ok(Event::End(element)) => {
                         anyhow::ensure!(depth > 0, "Unexpected XMLTV closing element");
@@ -219,6 +238,14 @@ fn parse_xmltv_with_records(
             return Err(error);
         }
         match event {
+            Ok(Event::DocType(value)) if hosted => {
+                let value = value.decode()?;
+                anyhow::ensure!(hosted_records::inert_doctype(&value), "EPG_XML_DTD");
+            }
+            Ok(Event::Empty(element)) if hosted => {
+                records.start(&element, &mut channels, &mut programs)?;
+                records.end(element.name().as_ref(), &mut channels, &mut programs)?;
+            }
             Ok(Event::Start(element)) | Ok(Event::Empty(element)) => {
                 // Empty elements have always supplied only a start event here.
                 records.start(&element, &mut channels, &mut programs)?;
@@ -292,6 +319,7 @@ fn parse_xmltv_with_records(
 // Only the server's per-event record/calendar work avoids the QuickJS bridge.
 enum Records {
     Server(server_records::ServerRecords),
+    Hosted(hosted_records::HostedRecords),
     Shared(RecordTokens),
 }
 
@@ -303,6 +331,7 @@ impl Records {
         programs: &mut Programs,
     ) -> anyhow::Result<()> {
         match self {
+            Self::Hosted(records) => records.start(element),
             Self::Server(records) => {
                 records.start(element);
                 Ok(())
@@ -330,6 +359,7 @@ impl Records {
         programs: &mut Programs,
     ) -> anyhow::Result<()> {
         match self {
+            Self::Hosted(records) => records.text(value),
             Self::Server(records) => records.text(value),
             Self::Shared(records) => records.text(value.map(Cow::into_owned), channels, programs),
         }
@@ -342,6 +372,7 @@ impl Records {
         programs: &mut Programs,
     ) -> anyhow::Result<()> {
         match self {
+            Self::Hosted(records) => records.end(channels, programs),
             Self::Server(records) => {
                 records.end(name, channels, programs);
                 Ok(())
@@ -356,7 +387,7 @@ impl Records {
 
     fn flush(&mut self, channels: &mut Channels, programs: &mut Programs) -> anyhow::Result<()> {
         match self {
-            Self::Server(_) => Ok(()),
+            Self::Server(_) | Self::Hosted(_) => Ok(()),
             Self::Shared(records) => records.flush(channels, programs),
         }
     }
@@ -527,7 +558,7 @@ pub fn extract_time_shift(name: &str) -> anyhow::Result<i64> {
 
 #[cfg(test)]
 fn parse_xmltv_shared_reference(xml: &str) -> anyhow::Result<(Channels, Programs)> {
-    parse_xmltv_with_records(xml, false, Records::Shared(RecordTokens::new(false)?))
+    parse_xmltv_with_records(xml, false, &mut Records::Shared(RecordTokens::new(false)?))
 }
 
 #[cfg(test)]

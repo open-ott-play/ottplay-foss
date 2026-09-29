@@ -1,5 +1,6 @@
 mod debug_api;
 mod control_discovery;
+mod hosted_epg;
 mod msx;
 mod stalker_api;
 mod swop;
@@ -251,6 +252,9 @@ async fn main() -> anyhow::Result<()> {
         _ => None,
     };
     let listeners = bind_listeners(&cli.host, &http_ports, &https_ports).await?;
+    if hosted_epg::enabled()? {
+        return serve_listeners(listeners, hosted_epg::start()?, tls_config).await;
+    }
     // HTTP startup must not wait for external EPG.
     spawn_epg_refresh(epg_urls());
     Lazy::force(&TMDB_KEY);
