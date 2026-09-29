@@ -22,7 +22,15 @@ const code = {
         "// Tauri Mode B: frameless window"
     ),
 };
-function fixture(platform = "tauri") {
+function fixture(
+    platform = "tauri",
+    metadata = () => ({
+        durationSec: 300,
+        positionSec: 30,
+        seekable: true,
+        title: "Movie",
+    })
+) {
     const calls = [],
         timers = new Map(),
         timerKinds = new Map(),
@@ -31,7 +39,8 @@ function fixture(platform = "tauri") {
     let nextTimer = 0,
         playing = false,
         nativeWindow,
-        engineEvent;
+        engineEvent,
+        metadataReads = 0;
     function receiver(owner, method) {
         // Browser timer functions can reject the ports object as an illegal
         // receiver even though the previous arrow-function stubs accepted it.
@@ -53,12 +62,10 @@ function fixture(platform = "tauri") {
             timerDelays.delete(id);
         },
         console: { warn() {} },
-        nativeMediaMetadata: () => ({
-            durationSec: 300,
-            positionSec: 30,
-            seekable: true,
-            title: "Movie",
-        }),
+        nativeMediaMetadata() {
+            metadataReads++;
+            return metadata();
+        },
         setInterval(fn, delay) {
             receiver(this, "setInterval");
             const id = ++nextTimer;
@@ -181,6 +188,9 @@ function fixture(platform = "tauri") {
             }
             callback();
         },
+        get metadataReads() {
+            return metadataReads;
+        },
         playing() {
             engineEvent("playing");
         },
@@ -229,7 +239,70 @@ test("Tauri continue reports the actual toggle and cancels stale position interv
     assert.equal(calls.length, count);
     assert.equal(timers.size, 0);
 });
-for (const platform of ["tauri", "capacitor"])
+for (const platform of ["tauri", "capacitor"]) {
+    test(
+        platform + " reads one consistent metadata snapshot per position tick",
+        () => {
+            let position = 0;
+            let seekable = true;
+            const f = fixture(platform, () => ({
+                durationSec: 300,
+                positionSec: ++position,
+                seekable,
+                title: "Movie",
+            }));
+            f.w.stbPlay("movie.mp4");
+            f.playing();
+            f.fire("timeout");
+            const beforeTick = f.metadataReads;
+            const beforeCalls = f.calls.length;
+            f.fire("interval");
+            assert.equal(f.metadataReads, beforeTick + 1);
+            assert.equal(f.calls.length, beforeCalls + 1);
+            assert.equal(f.calls.at(-1)[1].positionSec, beforeTick + 1);
+            seekable = false;
+            f.fire("interval");
+            assert.equal(f.metadataReads, beforeTick + 2);
+            assert.equal(
+                f.calls.length,
+                beforeCalls + 1,
+                "Live position is not sent"
+            );
+        }
+    );
+    for (const transition of ["stop", "pause", "replace"])
+        test(
+            platform +
+                " discards a position snapshot that triggers " +
+                transition,
+            () => {
+                let interrupt = null;
+                const f = fixture(platform, () => {
+                    const action = interrupt;
+                    interrupt = null;
+                    if (action) action();
+                    return { seekable: true, title: "Movie" };
+                });
+                f.w.stbPlay("movie.mp4");
+                f.playing();
+                f.fire("timeout");
+                interrupt = () => {
+                    if (transition === "replace")
+                        f.w.stbPlay("replacement.mp4");
+                    else if (transition === "pause") f.w.stbPause();
+                    else f.w.stbStop();
+                };
+                const beforeCalls = f.calls.length;
+                f.fire("interval");
+                assert.ok(
+                    !f.calls
+                        .slice(beforeCalls)
+                        .some(([type]) => type === "update_media_session"),
+                    "An obsolete snapshot cannot override the new lifecycle state"
+                );
+                assert.equal(f.timers.size, transition === "replace" ? 1 : 0);
+            }
+        );
     test(
         platform +
             " media-session timers retain Window through the playback lifecycle",
@@ -266,6 +339,7 @@ for (const platform of ["tauri", "capacitor"])
             ]);
         }
     );
+}
 let failures = 0;
 for (const [name, fn] of cases) {
     try {
