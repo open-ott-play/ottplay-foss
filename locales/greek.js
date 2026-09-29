@@ -749,6 +749,8 @@ var keyStrings = {
     "Show when switching": "Εμφάνιση κατά την αλλαγή καναλιών",
     "Sleep timer": "Χρονοδιακόπτης ύπνου",
     "Sort channels": "Ταξινόμηση καναλιών",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Πάροχος πύλης Stalker",
     "Stalker portal settings": "Ρυθμίσεις πύλης Stalker",
     "Stalker portals": "Πύλες Stalker",

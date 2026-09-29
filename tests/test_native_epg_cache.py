@@ -111,7 +111,7 @@ class URLSession {
         init(_ action: @escaping () -> Void) { self.action = action }
         func resume() { action() }
     }
-    func dataTask(with url: URL, completionHandler: @escaping (Data?, Any?, Error?) -> Void) -> Task {
+    func dataTask(with url: URL, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> Task {
         requests += 1
         requestUrls.append(url.absoluteString)
         return Task {

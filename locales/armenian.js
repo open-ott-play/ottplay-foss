@@ -739,6 +739,8 @@ var keyStrings = {
     "Show when switching": "Ցուցադրել ալիքները փոխելիս",
     "Sleep timer": "Քնի ժամանակաչափ",
     "Sort channels": "Դասավորել ալիքները",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
     "Stalker portal settings": "Stalker պորտալի կարգավորումներ",
     "Stalker portals": "Stalker պորտալներ",

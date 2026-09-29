@@ -1,6 +1,5 @@
 import { nativePromiseToJq } from "./jquery-bridge";
-import { resolveNativePlugin } from "./native-bridge";
-import type { NativeHttpResponse } from "./native-http";
+import { resolveNativePlugin, tauriInvoke } from "./native-bridge";
 import { nativeWebFallback } from "./web-fallback";
 
 /**
@@ -28,6 +27,9 @@ import { nativeWebFallback } from "./web-fallback";
  */
 
 export interface StalkerPortalPlugin {
+    cancelHttpRequest?(opts: {
+        requestId: string;
+    }): Promise<{ cancelled: boolean }>;
     /** Generic raw-text HTTP for provider JSON/JSONP requests in the native app. */
     httpRequest(opts: {
         url: string;
@@ -35,6 +37,7 @@ export interface StalkerPortalPlugin {
         body?: string;
         headers?: Record<string, string>;
         timeoutMs?: number;
+        requestId?: string;
     }): Promise<NativeHttpResponse>;
     portalRequest(opts: {
         url: string;
@@ -42,6 +45,8 @@ export interface StalkerPortalPlugin {
         body?: string;
         contentType?: string;
         headers?: Record<string, string>;
+        requestId?: string;
+        timeoutMs?: number;
     }): Promise<{
         status: number;
         body: string;
@@ -124,160 +129,6 @@ function isShimmedUrl(url: string): boolean {
     );
 }
 
-function tauriInvoke<T>(
-    command: string,
-    args: Record<string, unknown>
-): Promise<T> {
-    const core = (window as any).__TAURI__?.core;
-    if (core?.invoke) {
-        return core.invoke(command, args) as Promise<T>;
-    }
-    return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
-}
-
-/** Mode-B-only cookie jar: host → cookie-pair map (name → name=value). */
-type CookieJar = Record<string, Record<string, string>>;
-
-function getCookieJar(): CookieJar {
-    const w = window as any;
-    if (!w.__ottStalkerCookieJar) w.__ottStalkerCookieJar = {};
-    return w.__ottStalkerCookieJar as CookieJar;
-}
-
-function hostKeyFromUrl(url: string): string {
-    try {
-        const u = new URL(url);
-        return u.protocol + "//" + u.host;
-    } catch (_e) {
-        return url;
-    }
-}
-
-function parseSetCookieToPairs(setCookie: string[]): Record<string, string> {
-    const out: Record<string, string> = {};
-    for (const raw of setCookie || []) {
-        if (!raw) continue;
-        const first = String(raw).split(";")[0].trim();
-        const eq = first.indexOf("=");
-        if (eq <= 0) continue;
-        const name = first.slice(0, eq).trim();
-        if (!name) continue;
-        out[name] = first;
-    }
-    return out;
-}
-
-function mergeSetCookie(url: string, setCookie: string[] | undefined): void {
-    if (!setCookie || !setCookie.length) return;
-    const jar = getCookieJar();
-    const host = hostKeyFromUrl(url);
-    if (!jar[host]) jar[host] = {};
-    const pairs = parseSetCookieToPairs(setCookie);
-    for (const name of Object.keys(pairs)) {
-        jar[host][name] = pairs[name];
-    }
-}
-
-function cookieHeaderForUrl(url: string): string {
-    const jar = getCookieJar();
-    const host = hostKeyFromUrl(url);
-    const map = jar[host];
-    if (!map) return "";
-    const parts: string[] = [];
-    for (const name of Object.keys(map)) {
-        parts.push(map[name]);
-    }
-    return parts.join("; ");
-}
-
-/**
- * Encode ajax `data` the way jQuery would for the target URL.
- * Stalker JSON-RPC uses JSON bodies; swop/a.php uses form-urlencoded
- * (jQuery default for object `data` without `contentType: application/json`).
- * Mag load.php callers typically pass query strings / form bodies themselves.
- */
-function encodeAjaxBody(
-    opts: any,
-    url: string
-): { body: string | undefined; contentType: string } {
-    const swop = isHostOttSwopUrl(url);
-    const mag = isMagLoadPhpUrl(url);
-    const explicitCt =
-        typeof opts.contentType === "string" ? opts.contentType : "";
-    const defaultCt = swop
-        ? "application/x-www-form-urlencoded; charset=UTF-8"
-        : mag
-          ? "application/x-www-form-urlencoded; charset=UTF-8"
-          : "application/json";
-    const contentType = explicitCt || defaultCt;
-
-    if (typeof opts.data === "string") {
-        return { body: opts.data, contentType };
-    }
-    if (opts.data == null) {
-        return { body: undefined, contentType };
-    }
-    if (typeof opts.data === "object") {
-        const wantForm =
-            swop ||
-            mag ||
-            contentType.indexOf("application/x-www-form-urlencoded") !== -1;
-        if (wantForm) {
-            const $ = (window as any).$;
-            try {
-                if ($ && typeof $.param === "function") {
-                    return { body: $.param(opts.data), contentType };
-                }
-            } catch (_e) {}
-            // Minimal fallback if $.param missing
-            try {
-                const parts: string[] = [];
-                for (const key of Object.keys(opts.data)) {
-                    const val = opts.data[key];
-                    parts.push(
-                        encodeURIComponent(key) +
-                            "=" +
-                            encodeURIComponent(val == null ? "" : String(val))
-                    );
-                }
-                return { body: parts.join("&"), contentType };
-            } catch (_e2) {
-                return { body: undefined, contentType };
-            }
-        }
-        try {
-            return { body: JSON.stringify(opts.data), contentType };
-        } catch (_e3) {
-            return { body: undefined, contentType };
-        }
-    }
-    return { body: undefined, contentType };
-}
-
-/** Collect ajax headers + jar Cookie when caller did not set Cookie. */
-function collectRequestHeaders(
-    opts: any,
-    url: string
-): Record<string, string> | undefined {
-    const out: Record<string, string> = {};
-    const src = opts.headers;
-    if (src && typeof src === "object") {
-        for (const key of Object.keys(src)) {
-            const val = src[key];
-            if (val == null) continue;
-            out[key] = String(val);
-        }
-    }
-    const hasCookie = Object.keys(out).some(
-        (k) => k.toLowerCase() === "cookie"
-    );
-    if (!hasCookie) {
-        const fromJar = cookieHeaderForUrl(url);
-        if (fromJar) out.Cookie = fromJar;
-    }
-    return Object.keys(out).length ? out : undefined;
-}
-
 /**
  * Install `$.ajax` wrapper that routes Stalker portal + host_ott swop + Mag
  * path-shaped URLs through native transport. Other URLs keep the previous
@@ -296,6 +147,156 @@ export function setupStalkerPortalShim(): void {
     if ((window as any).__ottStalkerPortalShim) return;
     (window as any).__ottStalkerPortalShim = true;
     const origAjax = $.ajax.bind($);
+
+    /** Mode-B-only cookie jar: host → cookie-pair map (name → name=value). */
+    type CookieJar = Record<string, Record<string, string>>;
+
+    function getCookieJar(): CookieJar {
+        const w = window as any;
+        if (!w.__ottStalkerCookieJar) w.__ottStalkerCookieJar = {};
+        return w.__ottStalkerCookieJar as CookieJar;
+    }
+
+    function hostKeyFromUrl(url: string): string {
+        try {
+            const u = new URL(url);
+            return u.protocol + "//" + u.host;
+        } catch (_e) {
+            return url;
+        }
+    }
+
+    function parseSetCookieToPairs(
+        setCookie: string[]
+    ): Record<string, string> {
+        const out: Record<string, string> = {};
+        for (const raw of setCookie || []) {
+            if (!raw) continue;
+            const first = String(raw).split(";")[0].trim();
+            const eq = first.indexOf("=");
+            if (eq <= 0) continue;
+            const name = first.slice(0, eq).trim();
+            if (!name) continue;
+            out[name] = first;
+        }
+        return out;
+    }
+
+    function mergeSetCookie(
+        url: string,
+        setCookie: string[] | undefined
+    ): void {
+        if (!setCookie || !setCookie.length) return;
+        const jar = getCookieJar();
+        const host = hostKeyFromUrl(url);
+        if (!jar[host]) jar[host] = {};
+        const pairs = parseSetCookieToPairs(setCookie);
+        for (const name of Object.keys(pairs)) {
+            jar[host][name] = pairs[name];
+        }
+    }
+
+    function cookieHeaderForUrl(url: string): string {
+        const jar = getCookieJar();
+        const host = hostKeyFromUrl(url);
+        const map = jar[host];
+        if (!map) return "";
+        const parts: string[] = [];
+        for (const name of Object.keys(map)) {
+            parts.push(map[name]);
+        }
+        return parts.join("; ");
+    }
+
+    /**
+     * Encode ajax `data` the way jQuery would for the target URL.
+     * Stalker JSON-RPC uses JSON bodies; swop/a.php uses form-urlencoded
+     * (jQuery default for object `data` without `contentType: application/json`).
+     * Mag load.php callers typically pass query strings / form bodies themselves.
+     */
+    function encodeAjaxBody(
+        opts: any,
+        url: string
+    ): { body: string | undefined; contentType: string } {
+        const swop = isHostOttSwopUrl(url);
+        const mag = isMagLoadPhpUrl(url);
+        const explicitCt =
+            typeof opts.contentType === "string" ? opts.contentType : "";
+        const defaultCt = swop
+            ? "application/x-www-form-urlencoded; charset=UTF-8"
+            : mag
+              ? "application/x-www-form-urlencoded; charset=UTF-8"
+              : "application/json";
+        const contentType = explicitCt || defaultCt;
+
+        if (typeof opts.data === "string") {
+            return { body: opts.data, contentType };
+        }
+        if (opts.data == null) {
+            return { body: undefined, contentType };
+        }
+        if (typeof opts.data === "object") {
+            const wantForm =
+                swop ||
+                mag ||
+                contentType.indexOf("application/x-www-form-urlencoded") !== -1;
+            if (wantForm) {
+                const $ = (window as any).$;
+                try {
+                    if ($ && typeof $.param === "function") {
+                        return { body: $.param(opts.data), contentType };
+                    }
+                } catch (_e) {}
+                // Minimal fallback if $.param missing
+                try {
+                    const parts: string[] = [];
+                    for (const key of Object.keys(opts.data)) {
+                        const val = opts.data[key];
+                        parts.push(
+                            encodeURIComponent(key) +
+                                "=" +
+                                encodeURIComponent(
+                                    val == null ? "" : String(val)
+                                )
+                        );
+                    }
+                    return { body: parts.join("&"), contentType };
+                } catch (_e2) {
+                    return { body: undefined, contentType };
+                }
+            }
+            try {
+                return { body: JSON.stringify(opts.data), contentType };
+            } catch (_e3) {
+                return { body: undefined, contentType };
+            }
+        }
+        return { body: undefined, contentType };
+    }
+
+    /** Collect ajax headers + jar Cookie when caller did not set Cookie. */
+    function collectRequestHeaders(
+        opts: any,
+        url: string
+    ): Record<string, string> | undefined {
+        const out: Record<string, string> = {};
+        const src = opts.headers;
+        if (src && typeof src === "object") {
+            for (const key of Object.keys(src)) {
+                const val = src[key];
+                if (val == null) continue;
+                out[key] = String(val);
+            }
+        }
+        const hasCookie = Object.keys(out).some(
+            (k) => k.toLowerCase() === "cookie"
+        );
+        if (!hasCookie) {
+            const fromJar = cookieHeaderForUrl(url);
+            if (fromJar) out.Cookie = fromJar;
+        }
+        return Object.keys(out).length ? out : undefined;
+    }
 
     function parseResponseBody(
         body: string,

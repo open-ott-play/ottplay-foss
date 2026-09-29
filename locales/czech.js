@@ -727,6 +727,8 @@ var keyStrings = {
     "Show when switching": "Zobrazit při přepínání kanálů",
     "Sleep timer": "Časovač vypnutí",
     "Sort channels": "Řadit kanály",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Poskytovatel portálu Stalker",
     "Stalker portal settings": "Nastavení portálu Stalker",
     "Stalker portals": "Portály Stalker",

@@ -221,6 +221,7 @@ try {
         "playCoreMedia",
         "cancelCoreSeek",
         "cancelCoreAutoPlayback",
+        "cancelCoreSourcePreparation",
         "cancelCoreNativeHls",
         "destroyCoreShaka",
         "resetCoreNativeBitrate",
@@ -261,6 +262,7 @@ try {
         console,
         coreDeviceEffects: {},
         coreMediaBackend: null,
+        coreSourcePreparationCancel: null,
         hlsInstance: {
             destroy() {
                 destroyed++;

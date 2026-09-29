@@ -742,6 +742,8 @@ var keyStrings = {
     "Show when switching": "Megjelenítés csatornaváltáskor",
     "Sleep timer": "Elalvásidőzítő",
     "Sort channels": "Csatornák rendezése",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portálszolgáltató",
     "Stalker portal settings": "Stalker portál beállításai",
     "Stalker portals": "Stalker portálok",

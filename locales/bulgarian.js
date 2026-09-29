@@ -737,6 +737,8 @@ var keyStrings = {
     "Show when switching": "Показване при смяна на канала",
     "Sleep timer": "Таймер за заспиване",
     "Sort channels": "Сортиране на канали",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Доставчик на портал Stalker",
     "Stalker portal settings": "Настройки на портала Stalker",
     "Stalker portals": "Портали Stalker",

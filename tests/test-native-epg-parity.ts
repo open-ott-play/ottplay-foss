@@ -4,7 +4,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 // Execute the actual classic-bundle functions, not a reimplementation of their contracts.
-function functions(path: string, names: string[]) {
+function functions(path: string, names: string[], owner?: string) {
     const source = fs.readFileSync(
         new URL("../" + path, import.meta.url),
         "utf8"
@@ -15,7 +15,14 @@ function functions(path: string, names: string[]) {
         ts.ScriptTarget.Latest,
         true
     );
-    const nodes = file.statements.filter(
+    const scope = owner
+        ? file.statements.find(
+              (node): node is ts.FunctionDeclaration =>
+                  ts.isFunctionDeclaration(node) && node.name?.text === owner
+          )?.body
+        : file;
+    assert.ok(scope, path + ": missing function scope " + owner);
+    const nodes = scope.statements.filter(
         (node) =>
             ts.isFunctionDeclaration(node) &&
             names.includes(node.name?.text || "")
@@ -308,7 +315,11 @@ assert.match(
 matcher.window.location = { href: "capacitor://localhost/index.html" };
 matcher.URL = URL;
 vm.runInContext(
-    functions("src/plugins/m3u-proxy.ts", ["isLocalCapacitorCompanionUrl"]),
+    functions(
+        "src/plugins/m3u-proxy.ts",
+        ["isLocalCapacitorCompanionUrl"],
+        "setupCapacitorCompanionShim"
+    ),
     matcher
 );
 assert.equal(matcher.isLocalCapacitorCompanionUrl("/m3u/match-channels"), true);

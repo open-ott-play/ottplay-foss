@@ -713,6 +713,8 @@ var keyStrings = {
     "Show when switching": "הצג בעת החלפת ערוצים",
     "Sleep timer": "טיימר שינה",
     "Sort channels": "מיין ערוצים",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "ספק פורטל Stalker",
     "Stalker portal settings": "הגדרות פורטל Stalker",
     "Stalker portals": "פורטלי Stalker",
