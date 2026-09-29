@@ -1037,6 +1037,138 @@ test.describe("LG Magic Remote pointer and button transitions", () => {
             "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/120.0 Safari/537.36 WebAppManager",
     });
 
+    test("status RPC reports opt-in diagnostics from the shipped LG player", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForMagicRemote(
+            page,
+            context,
+            baseURL,
+            "lg/webos",
+            false
+        );
+        const controller = baseURL + "/__diagnostics-controller";
+        const token = "browser-diagnostics-device-code-1234567890";
+        const privateValue = "private-input-and-debug-value";
+        const queued = [];
+        const responses = [];
+        const methods = [];
+        // Keep the shipped controller, remote dispatcher and response transport.
+        // Only the same-origin controller service is replaced with local replies.
+        await context.route(controller + "/**", async (route) => {
+            const request = route.request();
+            const url = new URL(request.url());
+            methods.push(request.method());
+            expect(request.headers().authorization).toBe("Bearer " + token);
+            let body;
+            if (url.pathname.endsWith("/api/responses")) {
+                expect(request.method()).toBe("POST");
+                responses.push(request.postDataJSON());
+                body = { status: "ok" };
+            } else {
+                expect(url.pathname).toBe(
+                    "/__diagnostics-controller/api/webhook/commands"
+                );
+                expect(url.search).toBe("?delivery=ack");
+                expect(request.method()).toBe("GET");
+                const serverTime = Date.now() / 1000;
+                body = {
+                    commands: [],
+                    requests: queued.splice(0).map((id) => ({
+                        action: "status",
+                        expires_at: serverTime + 30,
+                        id,
+                        params: {},
+                    })),
+                    server_time: serverTime,
+                };
+            }
+            await route.fulfill({
+                body: JSON.stringify(body),
+                contentType: "application/json",
+            });
+        });
+        const disabledId = "1".repeat(32);
+        queued.push(disabledId);
+        await page.evaluate(
+            ({ address, token }) => {
+                window.__ottCommandServer.configure({
+                    address,
+                    enabled: true,
+                    token,
+                });
+            },
+            { address: controller, token }
+        );
+        await expect.poll(() => responses.length).toBe(1);
+        expect(responses[0]).toMatchObject({ id: disabledId, status: "ok" });
+        expect(responses[0].data.diagnostics).toEqual({
+            epg: { available: true, enabled: false },
+            input: { available: true, enabled: false },
+            version: 1,
+        });
+        expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(
+            false
+        );
+        await expect(page.locator("#ott_debug_hud")).toHaveCount(0);
+
+        await page.evaluate((secret) => {
+            window.closeList();
+            // Public HUD opt-in installs the real adapter's passive listeners.
+            window.__ottDebug.toggleHud();
+            window.__ottDebug.push("sys", "fixture", secret);
+            document.dispatchEvent(
+                new CustomEvent("cursorStateChange", {
+                    detail: { privateValue: secret, visibility: true },
+                })
+            );
+            document.dispatchEvent(
+                new CustomEvent("webOSMouse", {
+                    detail: { privateValue: secret, type: "Enter" },
+                })
+            );
+            window.dispatchEvent(new Event("focus"));
+        }, privateValue);
+        await expect(page.locator("#ott_debug_hud")).toBeVisible();
+        await page.mouse.move(1100, 650);
+        await page.mouse.down();
+        await page.mouse.up();
+        await page.mouse.wheel(0, 120);
+        const enabledId = "2".repeat(32);
+        queued.push(enabledId);
+        await expect.poll(() => responses.length).toBe(2);
+        expect(responses[1]).toMatchObject({ id: enabledId, status: "ok" });
+        const diagnostics = responses[1].data.diagnostics;
+        expect(diagnostics).toEqual({
+            epg: { available: true, enabled: false },
+            input: {
+                area: "in",
+                available: true,
+                click: expect.any(Number),
+                cursor: "on",
+                down: expect.any(Number),
+                enabled: true,
+                focus: "on",
+                move: expect.any(Number),
+                page: "visible",
+                wheel: expect.any(Number),
+            },
+            version: 1,
+        });
+        for (const name of ["move", "down", "click", "wheel"])
+            expect(diagnostics.input[name]).toBeGreaterThan(0);
+        expect(JSON.stringify(responses)).not.toContain(token);
+        expect(JSON.stringify(responses)).not.toContain(privateValue);
+        expect(methods).toContain("GET");
+        expect(methods).toContain("POST");
+        expect(await page.evaluate(() => window.__testCursor.changes)).toEqual(
+            []
+        );
+        expect(errors).toEqual([]);
+    });
+
     for (const visible of [true, false]) {
         test(
             "webOS boot preserves a " +

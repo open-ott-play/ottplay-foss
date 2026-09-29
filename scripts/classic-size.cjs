@@ -29,7 +29,11 @@ const { gzipSync } = require("node:zlib");
 // by 119 bytes and add 210 gzip bytes to native output on Node 22.23.2. The beta
 // artifact measures 183726 gzip bytes; allow this reviewed feature cost and
 // version suffix headroom while retaining raw and complete-payload limits.
-const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 184000 });
+// Producer-owned EPG/LG remote snapshots add 863 raw / 277 gzip bytes over
+// published beta.7 (605567 / 183673 on Node 22.23.2). The measured candidate
+// is 606430 / 183950 for web and 606388 / 184004 for native. Allocate 500 raw
+// and 50 gzip entry bytes for this reviewed feature and version suffix room.
+const BUDGET = Object.freeze({ bytes: 606500, gzipBytes: 184050 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -42,7 +46,8 @@ const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 184000 });
 // Include the VPortal automatic-quality resolver as part of episode looping.
 // The same candidate plus every provider totals 667727 / 206833 for web;
 // native variants total 667685 / 206887. All complete payloads remain bounded.
-const TOTAL_BUDGET = Object.freeze({ bytes: 671000, gzipBytes: 209000 });
+// The same bounded diagnostics addition needs 100 raw complete-payload bytes.
+const TOTAL_BUDGET = Object.freeze({ bytes: 671100, gzipBytes: 209000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

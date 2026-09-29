@@ -759,6 +759,7 @@ function bridgeFixture() {
         diagnostics: () =>
             JSON.parse(JSON.stringify(host.__ottHostedEpg.diagnostics())),
         host,
+        remoteSnapshot: () => host.__ottHostedEpg.remoteSnapshot(),
         send(value, worker = workers[workers.length - 1]) {
             worker.onmessage({ data: value });
         },
@@ -977,6 +978,19 @@ function bridgeFixture() {
         duringDownload.timings,
         "reading live diagnostics cannot count a stage twice"
     );
+    const remote = f.remoteSnapshot();
+    assert.deepEqual(JSON.parse(JSON.stringify(remote)), {
+        available: true,
+        elapsedMs: 31000,
+        enabled: true,
+        failedPhase: null,
+        phase: "download",
+        timingsMs: { cache: 1000, download: 30000, parse: 0 },
+    });
+    remote.phase = "private_mutation";
+    remote.timingsMs.download = -1;
+    assert.equal(f.remoteSnapshot().phase, "download");
+    assert.equal(f.remoteSnapshot().timingsMs.download, 30000);
     f.send({ phase: "download", source: 0, type: "progress" });
     f.advance(20000);
     f.send({ phase: "parse", source: 0, type: "progress" });
@@ -992,12 +1006,21 @@ function bridgeFixture() {
         download: 60000,
         parse: 35000,
     });
+    const completed = JSON.parse(JSON.stringify(f.remoteSnapshot()));
+    assert.equal(completed.phase, "ready");
+    assert.equal(completed.elapsedMs, 96000);
+    assert.deepEqual(completed.timingsMs, {
+        cache: 1000,
+        download: 60000,
+        parse: 35000,
+    });
     f.advance(7200000);
     assert.deepEqual(
         f.diagnostics().timings,
         { cache: 1000, download: 60000, parse: 35000 },
         "completed stage durations freeze alongside total elapsed time"
     );
+    assert.deepEqual(JSON.parse(JSON.stringify(f.remoteSnapshot())), completed);
     f.send({ phase: "cache", type: "progress" });
     f.advance(50);
     f.send({ phase: "waiting", type: "progress" });
@@ -1019,6 +1042,9 @@ function bridgeFixture() {
         2000,
         "failure freezes timing"
     );
+    assert.equal(f.remoteSnapshot().phase, "error");
+    assert.equal(f.remoteSnapshot().failedPhase, "download");
+    assert.equal(f.remoteSnapshot().elapsedMs, 3100);
     f.session.retry();
     f.send({ type: "closed" });
     f.advance(80);
@@ -1030,8 +1056,96 @@ function bridgeFixture() {
     );
     f.session.close();
 }
+{
+    const f = bridgeFixture();
+    f.session.close();
+    const idle = JSON.parse(JSON.stringify(f.remoteSnapshot()));
+    assert.deepEqual(idle, {
+        available: true,
+        elapsedMs: null,
+        enabled: true,
+        failedPhase: null,
+        phase: "idle",
+        timingsMs: { cache: 0, download: 0, parse: 0 },
+    });
+    for (const native of ["Capacitor", "__TAURI__"]) {
+        f.host[native] = {};
+        assert.deepEqual(JSON.parse(JSON.stringify(f.remoteSnapshot())), {
+            available: true,
+            enabled: false,
+        });
+        delete f.host[native];
+    }
+    delete f.host.__OTTPLAY_HOSTED__;
+    assert.deepEqual(JSON.parse(JSON.stringify(f.remoteSnapshot())), {
+        available: true,
+        enabled: false,
+    });
+}
+{
+    const f = bridgeFixture();
+    f.host.__OTTPLAY_HOSTED__.epg.source =
+        "https://private_user:private_password@private-host.invalid/private-file.xml?token=private_query";
+    const session = f.host.__ottHostedEpg.open(
+        [{ id: "private_channel", name: "private_name" }],
+        () => {}
+    );
+    assert.ok(JSON.stringify(f.diagnostics()).includes("private-host.invalid"));
+    const expectedKeys = [
+        "available",
+        "elapsedMs",
+        "enabled",
+        "failedPhase",
+        "phase",
+        "timingsMs",
+    ].sort();
+    for (const invalid of [
+        "private_phase",
+        "cache download",
+        "ready\n",
+        {},
+        [],
+        null,
+        0,
+    ]) {
+        f.send({ phase: invalid, source: "private_source", type: "progress" });
+        let value = f.remoteSnapshot();
+        assert.equal(value.phase, null);
+        assert.deepEqual(Object.keys(value).sort(), expectedKeys);
+        assert.ok(!JSON.stringify(value).includes("private"));
+        f.send({
+            code: "private_error",
+            phase: invalid,
+            type: "error",
+        });
+        value = f.remoteSnapshot();
+        assert.equal(value.phase, "error");
+        assert.equal(value.failedPhase, null);
+        assert.deepEqual(Object.keys(value).sort(), expectedKeys);
+        assert.ok(!JSON.stringify(value).includes("private"));
+    }
+    session.close();
+}
+for (const invalidClockDelta of [
+    NaN,
+    Infinity,
+    -1000001,
+    1.5,
+    9007199254740992,
+]) {
+    const f = bridgeFixture();
+    f.advance(invalidClockDelta);
+    const value = f.remoteSnapshot();
+    assert.equal(value.elapsedMs, null);
+    for (const number of Object.values(value.timingsMs))
+        assert.ok(
+            number === null || (Number.isSafeInteger(number) && number >= 0),
+            "Remote durations contain only nonnegative safe integers or null"
+        );
+    f.session.close();
+}
 console.log(
-    "PASS hosted EPG bridge close/retry, generation notifications and refresh elapsed time"
+    "PASS hosted EPG bridge close/retry, generation notifications, refresh elapsed time and private remote snapshots"
 );
 // An EPG screen can finish empty before the first hosted index arrives. Use the
 // real bridge, GuideService and GuideScreen, controlling only transport delivery.

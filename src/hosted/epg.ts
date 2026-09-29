@@ -19,6 +19,37 @@
         status.phaseStarted = Date.now();
         status.phase = next;
     }
+    // Dedicated transport DTO: the local diagnostics API also contains source labels.
+    function remoteSnapshot(): any {
+        var value: any = { available: true, enabled: !!settings() };
+        if (!value.enabled) return value;
+        function count(number: any): number | null {
+            return typeof number === "number" &&
+                number >= 0 &&
+                number <= 9007199254740991 &&
+                Math.floor(number) === number
+                ? number
+                : null;
+        }
+        function state(name: any): string | null {
+            return "idle starting waiting cache download parse ready error"
+                .split(" ")
+                .indexOf(name) >= 0
+                ? name
+                : null;
+        }
+        var times = timings();
+        Object.keys(times).forEach(function (key: string) {
+            times[key] = count(times[key]);
+        });
+        value.phase = state(status.phase);
+        value.failedPhase = state(status.failedPhase);
+        value.elapsedMs = count(
+            (status.finished || Date.now()) - status.started
+        );
+        value.timingsMs = times;
+        return value;
+    }
     function seconds(value: number): string {
         return (value / 1000).toFixed(1) + " s";
     }
@@ -529,6 +560,7 @@
             return !!settings();
         },
         open: open,
+        remoteSnapshot: remoteSnapshot,
         showDiagnostics: showDiagnostics,
     };
 })(window);

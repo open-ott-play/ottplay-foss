@@ -230,6 +230,31 @@ stbInit = function () {
     var downs = 0;
     var clicks = 0;
     var wheels = 0;
+    function inputCount(value) {
+        return typeof value === "number" &&
+            value >= 0 &&
+            value <= 9007199254740991 &&
+            value % 1 === 0
+            ? value
+            : null;
+    }
+    // Read-only status queries must not opt in or expose unobserved zero counts.
+    window.__ottDebugInputSnapshot = function () {
+        if (!started) return { available: true, enabled: false };
+        var page = document.visibilityState;
+        return {
+            area: area,
+            available: true,
+            click: inputCount(clicks),
+            cursor: cursor,
+            down: inputCount(downs),
+            enabled: true,
+            focus: focus,
+            move: inputCount(moves),
+            page: page === "visible" || page === "hidden" ? page : "unknown",
+            wheel: inputCount(wheels),
+        };
+    };
     window.__ottDebugInputInit = function () {
         if (started || !document.addEventListener) return;
         started = true;
