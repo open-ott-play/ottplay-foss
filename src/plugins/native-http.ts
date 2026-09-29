@@ -148,10 +148,7 @@ function installNativeHttpTransport(
                     };
                     if (cancel) {
                         requestId =
-                            "http-" +
-                            Date.now().toString(36) +
-                            "-" +
-                            (++nativeHttpSequence).toString(36);
+                            "http-" + Date.now() + "-" + ++nativeHttpSequence;
                         args.requestId = requestId;
                     }
                     request(args).then(

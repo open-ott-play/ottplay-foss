@@ -1,6 +1,6 @@
 import { popupActionId } from "./compatibility/legacy-names";
 import { languageAssetPath, languageNames } from "./localization/assets";
-import { prepareAccessMedia } from "./plugins/access-media";
+import { accessMediaPlugin, prepareAccessMedia } from "./plugins/access-media";
 import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
@@ -4731,12 +4731,7 @@ window.settingsManage = function (): void {
             action: w.saveOpt,
             name: w._("Save settings to storage") || "Save settings to storage",
         });
-    var sourceAccess =
-        w.Capacitor &&
-        typeof w.Capacitor.getPlatform === "function" &&
-        w.Capacitor.getPlatform() === "ios" &&
-        w.Capacitor.Plugins &&
-        w.Capacitor.Plugins.AccessMedia;
+    var sourceAccess = accessMediaPlugin();
     if (sourceAccess)
         w.listArray.push({
             action: function () {

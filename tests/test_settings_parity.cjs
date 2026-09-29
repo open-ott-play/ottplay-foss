@@ -216,6 +216,12 @@ function fixture(
     w.window = w;
     vm.createContext(w);
     require("./helpers/shared-core-runtime.cjs")(w);
+    vm.runInContext(
+        compile(
+            selectedSource("src/plugins/access-media.ts", ["accessMediaPlugin"])
+        ),
+        w
+    );
     const policy = compile(
         selectedSource(
             "src/provider/index.ts",
@@ -338,6 +344,28 @@ function fixture(
 }
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
+}
+
+// Source access uses the same native capability for playback and Settings.
+for (const profile of ["server", "capacitor-ios", "capacitor-android"]) {
+    const { w, calls } = fixture(profile);
+    if (w.Capacitor)
+        w.Capacitor.Plugins = {
+            AccessMedia: { manage: () => calls.push("source-access") },
+        };
+    w.settingsManage();
+    const access = w.listArray.find((item) => item.name === "Source access");
+    assert.equal(Boolean(access), profile === "capacitor-ios");
+    if (access) {
+        access.action();
+        assert.equal(calls.at(-1), "source-access");
+        delete w.Capacitor.Plugins.AccessMedia;
+        w.settingsManage();
+        assert.equal(
+            w.listArray.some((item) => item.name === "Source access"),
+            false
+        );
+    }
 }
 
 // Row construction must preserve extension-visible translation order, receiver
