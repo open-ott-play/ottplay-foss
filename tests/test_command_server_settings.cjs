@@ -560,6 +560,9 @@ console.log(
         assert.ok(poll);
         h.jobs.delete(poll[0]);
         poll[1].fn();
+        const panel = h.w.document.getElementById("remoteSettingsContent");
+        const focusedControl = h.w.document.getElementById("commandServerFind");
+        focusedControl.focus();
         h.requests[2].respond({
             address: "https://other.example",
             device_id: "fixture-device",
@@ -569,6 +572,26 @@ console.log(
         await new Promise((resolve) => setImmediate(resolve));
         assert.equal(h.stored.get("commandServerToken"), token);
         assert.equal(h.stored.get("commandServerEnabled"), "1");
+        assert.equal(
+            h.w.document.getElementById("remoteSettingsContent"),
+            panel,
+            "approval updates the existing settings panel"
+        );
+        assert.equal(
+            h.w.document.activeElement,
+            focusedControl,
+            "approval retains the focused remote control"
+        );
+        assert.equal(
+            h.w.document.getElementById("commandServerAddressValue")
+                .textContent,
+            "https://other.example/api/webhook/commands"
+        );
+        assert.equal(
+            h.w.document.getElementById("commandServerTokenPresence")
+                .textContent,
+            "saved on this device"
+        );
         assert.equal(h.requests[3].headers.Authorization, "Bearer " + token);
         assert.ok(
             ![...h.stored.values()].some((value) => value.includes(secret)),
@@ -585,6 +608,87 @@ console.log(
         );
     } finally {
         h.destroy();
+    }
+    const editing = fixture();
+    try {
+        editing.w.__OTT_CONTROL_DISCOVERY_URL__ =
+            "https://control.example/api/control-discovery";
+        editing.open();
+        editing.w.aboutKeyHandler(54);
+        editing.requests[0].respond({
+            servers: [
+                {
+                    address: "https://control.example/ott-control",
+                    domain: "example",
+                    id: "home._ottplay-ctrl._tcp.example.",
+                },
+            ],
+            version: 1,
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+        const secret = "s".repeat(32);
+        editing.requests[1].respond(
+            { code: "ABC12345", expires_in: 600, id: "a".repeat(32), secret },
+            201
+        );
+        await new Promise((resolve) => setImmediate(resolve));
+        const panel = editing.w.document.getElementById(
+            "remoteSettingsContent"
+        );
+        editing.w.document
+            .getElementById("listPodval")
+            .querySelectorAll("span[onclick]")[1]
+            .click();
+        const input = editing.w.document.getElementById("editvar");
+        const draft = "https://draft.example/local?unsaved=yes";
+        input.value = draft;
+        input.focus();
+        const storedUrl = editing.stored.get("sLocalCmdUrl");
+        const poll = [...editing.jobs].find(([, job]) => job.delay === 2000);
+        assert.ok(poll);
+        editing.jobs.delete(poll[0]);
+        poll[1].fn();
+        editing.requests[2].respond({
+            address: "https://control.example/ott-control",
+            device_id: "fixture-device",
+            status: "approved",
+            token,
+        });
+        await new Promise((resolve) => setImmediate(resolve));
+        assert.equal(
+            editing.w.document.getElementById("remoteSettingsContent"),
+            panel
+        );
+        assert.equal(
+            editing.w.document.getElementById("editvar"),
+            input,
+            "background approval does not recreate the active editor"
+        );
+        assert.equal(editing.w.document.activeElement, input);
+        assert.equal(
+            input.value,
+            draft,
+            "background approval preserves the unsaved local URL"
+        );
+        assert.equal(editing.stored.get("sLocalCmdUrl"), storedUrl);
+        assert.equal(
+            editing.w.document.getElementById("listAbout").style.display,
+            "none"
+        );
+        assert.equal(
+            editing.w.document.getElementById("commandServerAddressValue")
+                .textContent,
+            "https://control.example/ott-control/api/webhook/commands"
+        );
+        assert.equal(
+            editing.w.document.getElementById("commandServerTokenPresence")
+                .textContent,
+            "saved on this device"
+        );
+        assert.ok(!editing.w.document.body.innerHTML.includes(token));
+        assert.ok(!editing.w.document.body.innerHTML.includes(secret));
+    } finally {
+        editing.destroy();
     }
     console.log(
         "PASS discovery settings: shortcut/D-pad selection, visible approval code, private credentials, secure Fetch and manual revocation"
