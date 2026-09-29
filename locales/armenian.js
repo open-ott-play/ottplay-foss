@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "API սերվերի URL",
     "Applying HTTP remote settings...":
         "HTTP հեռակառավարման կարգավորումների կիրառում...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Հաստատեք %1-ի կոդը՝ օգտագործելով ott approve NAME CODE հրամանը՝",
     Archive: "Արխիվ",
     "Archive - begin": "Արխիվ — սկիզբ",
     "Archive hours": "Արխիվի ժամեր",
@@ -109,6 +111,7 @@ var keyStrings = {
     "Call PiP": "Բացել PiP-ը",
     "Call PiP / PiP exchange": "Բացել PiP-ը / փոխանակել PiP-ը",
     Cancel: "Չեղարկել",
+    "Cancel pairing": "Չեղարկել զուգակցումը",
     "Cannot delete the last category": "Վերջին կատեգորիան հնարավոր չէ ջնջել",
     Category: "Կատեգորիա",
     "Category selection": "Կատեգորիայի ընտրություն",
@@ -146,6 +149,15 @@ var keyStrings = {
     "Command server": "Հրամանների սերվեր",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Հրամանների սերվերի հասցե, սարքի մուտքի կոդ, տեղային HTTP կառավարման և հեռակա տեքստի մուտքագրման կարգավորումներ",
+    "Command server discovery canceled.":
+        "Հրամանների սերվերի որոնումը չեղարկվել է։",
+    "Command server discovery has not started.":
+        "Հրամանների սերվերի որոնումը դեռ չի սկսվել։",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Հրամանների սերվերի որոնումը հասանելի չէ։ Կրկին փորձելու համար ընտրեք «Գտնել հրամանների սերվերը»։",
+    "Command server discovery timed out.":
+        "Հրամանների սերվերի որոնման սպասման ժամանակը սպառվել է։",
+    "Command server found.": "Հրամանների սերվերը գտնվել է։",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Կարգավորեք All4you.tv-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -224,6 +236,10 @@ var keyStrings = {
     "Copy category": "Պատճենել կատեգորիան",
     "Copy JSON": "Պատճենել JSON-ը",
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Չհաջողվեց ստեղծել զուգակցման հարցում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Could not save the approved command server settings.":
+        "Չհաջողվեց պահպանել հրամանների սերվերի հաստատված կարգավորումները։",
     "Could not update HTTP remote control.":
         "Չհաջողվեց թարմացնել HTTP հեռակառավարման կարգավորումները։",
     Country: "Երկիր",
@@ -243,6 +259,8 @@ var keyStrings = {
     "Device info:": "Սարքի տվյալներ՝",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) ցուցակների համար պահանջվում է սարքի MAC հասցեն",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Սարքի UUID-ն դեռ պատրաստ չէ։ Կրկին փորձելու համար ընտրեք «Գտնել հրամանների սերվերը»։",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV կարգավորումներ",
     Director: "Ռեժիսոր",
@@ -399,6 +417,8 @@ var keyStrings = {
         "Այս սարքը չի աջակցում ֆայլի ընտրությանը",
     Filter: "Զտիչ",
     Filters: "Զտիչներ",
+    "Find command server": "Գտնել հրամանների սերվերը",
+    "Finding command servers...": "Հրամանների սերվերների որոնում...",
     "First Run Setup": "Առաջին գործարկման կարգավորում",
     "Font type": "Տառատեսակ",
     "For download settings file open":
@@ -506,6 +526,8 @@ var keyStrings = {
     "Next TV program": "Հաջորդ հաղորդում",
     No: "Ոչ",
     "No channel name": "Ալիքի անուն չկա",
+    "No command server was found on this network.":
+        "Այս ցանցում հրամանների սերվեր չի գտնվել։",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Պահպանված կարգավորումներ չեն գտնվել",
@@ -535,6 +557,14 @@ var keyStrings = {
     on: "միացված",
     "on ": "միացված ",
     "or scan": "կամ սկանավորեք",
+    "Pairing approved. Command server configured.":
+        "Զուգակցումը հաստատվել է։ Հրամանների սերվերը կարգավորված է։",
+    "Pairing expired. Find the server again to retry.":
+        "Զուգակցման ժամկետը լրացել է։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Զուգակցման սերվերը հասանելի չէ։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Զուգակցումը մերժվել է կամ ստացվել է անվավեր հաստատում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
     "Parental control": "Ծնողական վերահսկողություն",
     Password: "Գաղտնաբառ",
     Pause: "Դադար",
@@ -610,6 +640,7 @@ var keyStrings = {
     "Rename to": "Վերանվանել որպես",
     "Repeat parental code": "Կրկին մուտքագրեք ծնողական կոդը",
     "Request sended!": "Հարցումն ուղարկված է։",
+    "Requesting approval for %1": "Հաստատում է պահանջվում %1-ի համար",
     "Restart player": "Վերագործարկել նվագարկիչը",
     "Restart stream": "Վերագործարկել հոսքը",
     "Restart stream / Live": "Վերագործարկել հոսքը / ուղիղ եթեր",
@@ -667,12 +698,16 @@ var keyStrings = {
     "Set parental code": "Սահմանել ծնողական կոդը",
     "Set timer?": "Սահմանե՞լ ժամանակաչափ։",
     Settings: "Կարգավորումներ",
+    "Settings changed. Discovery was canceled.":
+        "Կարգավորումները փոխվել են։ Որոնումը չեղարկվել է։",
     "Settings could not be saved": "Չհաջողվեց պահպանել կարգավորումները",
     "Settings loaded from storage": "Կարգավորումները բեռնված են պահոցից",
     "Settings STB": "STB կարգավորումներ",
     "Settings saved": "Կարգավորումները պահպանված են",
     "Settings saved to storage": "Կարգավորումները պահպանված են պահոցում",
     "Settings sended!": "Կարգավորումներն ուղարկված են։",
+    "Several command servers were found. Select one below.":
+        "Գտնվել են հրամանների մի քանի սերվերներ։ Ստորև ընտրեք դրանցից մեկը։",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings":
         "Shara.club (ClubTV.pro) կարգավորումներ",
@@ -726,8 +761,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox կարգավորումներ",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Հրամանների սերվերի որոնման URL-ն անվավեր է։",
     "The device ID in the address is invalid.":
         "Հասցեում սարքի ID-ն անվավեր է։",
+    "The discovery response is invalid.": "Որոնման պատասխանը անվավեր է։",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Այս դիտարկիչը չի կարող անվտանգ կատարել ավտոմատ զուգակցում։ Թարմացրեք այն կամ ձեռքով մուտքագրեք հրամանների սերվերի կարգավորումները։",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Այս դիտարկիչը չունի որոնման պրոֆիլ։ Մուտքագրեք սերվերի հասցեն կամ կարգավորեք տեղակայման պրոֆիլը։",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Այս HTTPS նվագարկիչը չի կարող միանալ HTTP սերվերին։ Օգտագործեք HTTPS սերվեր կամ բացեք նվագարկիչը HTTP-ով։",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -803,45 +845,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз կարգավորումներ",
     "↑↓ Scroll": "↑↓ Ոլորել",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };

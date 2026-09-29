@@ -69,6 +69,8 @@ var keyStrings = {
     "API server URL": "URL van API-server",
     "Applying HTTP remote settings...":
         "Instellingen voor HTTP-afstandsbediening toepassen…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Keur de code voor %1 goed met ott approve NAME CODE:",
     Archive: "Archief",
     "Archive - begin": "Archief — begin",
     "Archive hours": "Archiefuren",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "PiP openen",
     "Call PiP / PiP exchange": "PiP openen / PiP wisselen",
     Cancel: "Annuleren",
+    "Cancel pairing": "Koppeling annuleren",
     "Cannot delete the last category":
         "De laatste categorie kan niet worden verwijderd",
     Category: "Categorie",
@@ -148,6 +151,15 @@ var keyStrings = {
     "Command server": "Opdrachtserver",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adres van opdrachtserver, toegangscode voor apparaat, lokale HTTP-bediening en tekstinvoer op afstand",
+    "Command server discovery canceled.":
+        "Zoeken naar een opdrachtserver geannuleerd.",
+    "Command server discovery has not started.":
+        "Het zoeken naar een opdrachtserver is nog niet gestart.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Zoeken naar een opdrachtserver is niet beschikbaar. Kies Opdrachtserver zoeken om het opnieuw te proberen.",
+    "Command server discovery timed out.":
+        "De wachttijd voor het zoeken naar een opdrachtserver is verstreken.",
+    "Command server found.": "Opdrachtserver gevonden.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configureer All4you.tv via Instellingen -> Providerinstellingen",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -227,6 +239,10 @@ var keyStrings = {
     "Copy JSON": "JSON kopiëren",
     "Could not connect to the server.":
         "Kan geen verbinding maken met de server.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Kan geen koppelingsverzoek aanmaken. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Could not save the approved command server settings.":
+        "Kan de goedgekeurde opdrachtserverinstellingen niet opslaan.",
     "Could not update HTTP remote control.":
         "Kan HTTP-afstandsbediening niet bijwerken.",
     Country: "Land",
@@ -246,6 +262,8 @@ var keyStrings = {
     "Device info:": "Apparaatgegevens:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Voor KBC-afspeellijsten (Kinoboom) is het MAC-adres van het apparaat vereist",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "De UUID van het apparaat is nog niet gereed. Kies Opdrachtserver zoeken om het opnieuw te proberen.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Instellingen voor Diamond TV",
     Director: "Regisseur",
@@ -404,6 +422,8 @@ var keyStrings = {
         "Bestandsselectie wordt niet ondersteund op dit apparaat",
     Filter: "Filter",
     Filters: "Filters",
+    "Find command server": "Opdrachtserver zoeken",
+    "Finding command servers...": "Opdrachtservers zoeken...",
     "First Run Setup": "Eerste configuratie",
     "Font type": "Lettertype",
     "For download settings file open":
@@ -511,6 +531,8 @@ var keyStrings = {
     "Next TV program": "Volgend programma",
     No: "Nee",
     "No channel name": "Geen zendernaam",
+    "No command server was found on this network.":
+        "Geen opdrachtserver gevonden op dit netwerk.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Geen opgeslagen instellingen gevonden",
@@ -540,6 +562,14 @@ var keyStrings = {
     on: "aan",
     "on ": "aan ",
     "or scan": "of scan",
+    "Pairing approved. Command server configured.":
+        "Koppeling goedgekeurd. Opdrachtserver geconfigureerd.",
+    "Pairing expired. Find the server again to retry.":
+        "De koppeling is verlopen. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "De koppelingsserver is niet beschikbaar. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "De koppeling is geweigerd of er is een ongeldige goedkeuring ontvangen. Zoek de server opnieuw om het nogmaals te proberen.",
     "Parental control": "Ouderlijk toezicht",
     Password: "Wachtwoord",
     Pause: "Pauze",
@@ -613,6 +643,7 @@ var keyStrings = {
     "Rename to": "Hernoemen naar",
     "Repeat parental code": "Ouderlijke code opnieuw invoeren",
     "Request sended!": "Verzoek verzonden!",
+    "Requesting approval for %1": "Goedkeuring aanvragen voor %1",
     "Restart player": "Speler herstarten",
     "Restart stream": "Stream herstarten",
     "Restart stream / Live": "Stream herstarten / live",
@@ -670,12 +701,16 @@ var keyStrings = {
     "Set parental code": "Ouderlijke code instellen",
     "Set timer?": "Timer instellen?",
     Settings: "Instellingen",
+    "Settings changed. Discovery was canceled.":
+        "Instellingen gewijzigd. Het zoeken is geannuleerd.",
     "Settings could not be saved": "Instellingen konden niet worden opgeslagen",
     "Settings loaded from storage": "Instellingen geladen uit opslag",
     "Settings STB": "STB-instellingen",
     "Settings saved": "Instellingen opgeslagen",
     "Settings saved to storage": "Instellingen bewaard in opslag",
     "Settings sended!": "Instellingen verzonden!",
+    "Several command servers were found. Select one below.":
+        "Meerdere opdrachtservers gevonden. Kies er hieronder één.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings":
         "Instellingen voor Shara.club (ClubTV.pro)",
@@ -728,8 +763,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Instellingen voor Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "De zoek-URL voor de opdrachtserver is ongeldig.",
     "The device ID in the address is invalid.":
         "De apparaat-ID in het adres is ongeldig.",
+    "The discovery response is invalid.":
+        "Het antwoord op het zoekverzoek is ongeldig.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Deze browser kan niet veilig automatisch koppelen. Werk de browser bij of voer de opdrachtserverinstellingen handmatig in.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Deze browser heeft geen zoekprofiel. Voer een serveradres in of configureer het implementatieprofiel.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Deze HTTPS-speler kan geen verbinding maken met een HTTP-server. Gebruik een HTTPS-server of open de speler via HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -805,45 +848,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Instellingen voor Шаравоз",
     "↑↓ Scroll": "↑↓ Scrollen",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };

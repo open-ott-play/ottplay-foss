@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "API sunucusu URL'si",
     "Applying HTTP remote settings...":
         "HTTP uzaktan kumanda ayarları uygulanıyor...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "%1 için kodu ott approve NAME CODE ile onaylayın:",
     Archive: "Arşiv",
     "Archive - begin": "Arşiv — başlangıç",
     "Archive hours": "Arşiv saatleri",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "PiP aç",
     "Call PiP / PiP exchange": "PiP aç / PiP yer değiştir",
     Cancel: "İptal",
+    "Cancel pairing": "Eşleştirmeyi iptal et",
     "Cannot delete the last category": "Son kategori silinemez",
     Category: "Kategori",
     "Category selection": "Kategori seçimi",
@@ -147,6 +150,15 @@ var keyStrings = {
     "Command server": "Komut sunucusu",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Komut sunucusu adresi, cihaz erişim kodu, yerel HTTP denetimi ve uzaktan metin girişi ayarları",
+    "Command server discovery canceled.":
+        "Komut sunucusu araması iptal edildi.",
+    "Command server discovery has not started.":
+        "Komut sunucusu araması henüz başlamadı.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Komut sunucusu araması kullanılamıyor. Yeniden denemek için Komut sunucusunu bul seçeneğini kullanın.",
+    "Command server discovery timed out.":
+        "Komut sunucusu araması zaman aşımına uğradı.",
+    "Command server found.": "Komut sunucusu bulundu.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv için Ayarlar -> Sağlayıcı Ayarları bölümünü kullanın",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -225,6 +237,10 @@ var keyStrings = {
     "Copy category": "Kategoriyi kopyala",
     "Copy JSON": "JSON kopyala",
     "Could not connect to the server.": "Sunucuya bağlanılamadı.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Eşleştirme isteği oluşturulamadı. Yeniden denemek için sunucuyu tekrar bulun.",
+    "Could not save the approved command server settings.":
+        "Onaylanan komut sunucusu ayarları kaydedilemedi.",
     "Could not update HTTP remote control.":
         "HTTP uzaktan kumanda ayarları güncellenemedi.",
     Country: "Ülke",
@@ -243,6 +259,8 @@ var keyStrings = {
     "Device info:": "Cihaz bilgileri:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) listeleri için cihaz MAC adresi gerekli",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Cihaz UUID’si henüz hazır değil. Yeniden denemek için Komut sunucusunu bul seçeneğini kullanın.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV ayarları",
     Director: "Yönetmen",
@@ -399,6 +417,8 @@ var keyStrings = {
         "Bu cihazda dosya seçimi desteklenmiyor",
     Filter: "Filtre",
     Filters: "Filtreler",
+    "Find command server": "Komut sunucusunu bul",
+    "Finding command servers...": "Komut sunucuları aranıyor...",
     "First Run Setup": "İlk çalıştırma kurulumu",
     "Font type": "Yazı tipi",
     "For download settings file open": "Ayar dosyasını indirmek için açın:",
@@ -505,6 +525,8 @@ var keyStrings = {
     "Next TV program": "Sonraki program",
     No: "Hayır",
     "No channel name": "Kanal adı yok",
+    "No command server was found on this network.":
+        "Bu ağda komut sunucusu bulunamadı.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Kaydedilmiş ayar bulunamadı",
@@ -534,6 +556,14 @@ var keyStrings = {
     on: "açık",
     "on ": "açık ",
     "or scan": "veya tarayın",
+    "Pairing approved. Command server configured.":
+        "Eşleştirme onaylandı. Komut sunucusu yapılandırıldı.",
+    "Pairing expired. Find the server again to retry.":
+        "Eşleştirme süresi doldu. Yeniden denemek için sunucuyu tekrar bulun.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Eşleştirme sunucusuna ulaşılamıyor. Yeniden denemek için sunucuyu tekrar bulun.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Eşleştirme reddedildi veya geçersiz bir onay döndürüldü. Yeniden denemek için sunucuyu tekrar bulun.",
     "Parental control": "Ebeveyn denetimi",
     Password: "Parola",
     Pause: "Duraklat",
@@ -606,6 +636,7 @@ var keyStrings = {
     "Rename to": "Yeni ad",
     "Repeat parental code": "Ebeveyn kodunu yeniden girin",
     "Request sended!": "İstek gönderildi!",
+    "Requesting approval for %1": "%1 için onay isteniyor",
     "Restart player": "Oynatıcıyı yeniden başlat",
     "Restart stream": "Akışı yeniden başlat",
     "Restart stream / Live": "Akışı yeniden başlat / canlı",
@@ -662,12 +693,16 @@ var keyStrings = {
     "Set parental code": "Ebeveyn kodunu ayarla",
     "Set timer?": "Zamanlayıcı ayarlansın mı?",
     Settings: "Ayarlar",
+    "Settings changed. Discovery was canceled.":
+        "Ayarlar değişti. Arama iptal edildi.",
     "Settings could not be saved": "Ayarlar kaydedilemedi",
     "Settings loaded from storage": "Ayarlar depolamadan yüklendi",
     "Settings STB": "STB Ayarları",
     "Settings saved": "Ayarlar kaydedildi",
     "Settings saved to storage": "Ayarlar depolamaya kaydedildi",
     "Settings sended!": "Ayarlar gönderildi!",
+    "Several command servers were found. Select one below.":
+        "Birden fazla komut sunucusu bulundu. Aşağıdan birini seçin.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) ayarları",
     ShockTv: "ShockTv",
@@ -718,8 +753,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ayarları",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Komut sunucusu keşif URL’si geçersiz.",
     "The device ID in the address is invalid.":
         "Adresteki cihaz kimliği geçersiz.",
+    "The discovery response is invalid.": "Arama yanıtı geçersiz.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Bu tarayıcı güvenli otomatik eşleştirme yapamıyor. Tarayıcıyı güncelleyin veya komut sunucusu ayarlarını elle girin.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Bu tarayıcının keşif profili yok. Bir sunucu adresi girin veya dağıtım profilini yapılandırın.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Bu HTTPS oynatıcı bir HTTP sunucusuna bağlanamaz. HTTPS sunucusu kullanın veya oynatıcıyı HTTP üzerinden açın.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -793,45 +835,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз ayarları",
     "↑↓ Scroll": "↑↓ Kaydır",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };

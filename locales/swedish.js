@@ -69,6 +69,8 @@ var keyStrings = {
     "API server URL": "API-serverns URL",
     "Applying HTTP remote settings...":
         "Tillämpar inställningar för HTTP-fjärrkontroll…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Godkänn koden för %1 med ott approve NAME CODE:",
     Archive: "Arkiv",
     "Archive - begin": "Arkiv — början",
     "Archive hours": "Arkivtimmar",
@@ -109,6 +111,7 @@ var keyStrings = {
     "Call PiP": "Öppna PiP",
     "Call PiP / PiP exchange": "Öppna PiP / växla PiP",
     Cancel: "Avbryt",
+    "Cancel pairing": "Avbryt parkoppling",
     "Cannot delete the last category": "Den sista kategorin kan inte tas bort",
     Category: "Kategori",
     "Category selection": "Välj kategori",
@@ -146,6 +149,15 @@ var keyStrings = {
     "Command server": "Kommandoserver",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Kommandoserverns adress, enhetens åtkomstkod, lokal HTTP-styrning och fjärrinmatning av text",
+    "Command server discovery canceled.":
+        "Sökningen efter kommandoserver avbröts.",
+    "Command server discovery has not started.":
+        "Sökningen efter kommandoserver har inte startat.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Sökning efter kommandoserver är inte tillgänglig. Välj ”Hitta kommandoserver” för att försöka igen.",
+    "Command server discovery timed out.":
+        "Tidsgränsen för sökning efter kommandoserver överskreds.",
+    "Command server found.": "Kommandoserver hittades.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurera All4you.tv under Inställningar -> Leverantörsinställningar",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -224,6 +236,10 @@ var keyStrings = {
     "Copy category": "Kopiera kategori",
     "Copy JSON": "Kopiera JSON",
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Kunde inte skapa en parkopplingsbegäran. Sök efter servern igen för att försöka på nytt.",
+    "Could not save the approved command server settings.":
+        "Kunde inte spara de godkända inställningarna för kommandoservern.",
     "Could not update HTTP remote control.":
         "Kunde inte uppdatera HTTP-fjärrkontrollen.",
     Country: "Land",
@@ -243,6 +259,8 @@ var keyStrings = {
     "Device info:": "Enhetsinformation:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Enhetens MAC-adress krävs för KBC-spellistor (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Enhetens UUID är inte klart. Välj ”Hitta kommandoserver” för att försöka igen.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV-inställningar",
     Director: "Regissör",
@@ -399,6 +417,8 @@ var keyStrings = {
         "Filval stöds inte på den här enheten",
     Filter: "Filter",
     Filters: "Filter",
+    "Find command server": "Hitta kommandoserver",
+    "Finding command servers...": "Söker efter kommandoservrar…",
     "First Run Setup": "Förstagångsinställning",
     "Font type": "Typsnitt",
     "For download settings file open":
@@ -507,6 +527,8 @@ var keyStrings = {
     "Next TV program": "Nästa program",
     No: "Nej",
     "No channel name": "Kanalnamn saknas",
+    "No command server was found on this network.":
+        "Ingen kommandoserver hittades i det här nätverket.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Inga sparade inställningar hittades",
@@ -536,6 +558,14 @@ var keyStrings = {
     on: "på",
     "on ": "vid ",
     "or scan": "eller skanna",
+    "Pairing approved. Command server configured.":
+        "Parkopplingen godkändes. Kommandoservern är konfigurerad.",
+    "Pairing expired. Find the server again to retry.":
+        "Tiden för parkoppling gick ut. Sök efter servern igen för att försöka på nytt.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Parkopplingsservern är inte tillgänglig. Sök efter servern igen för att försöka på nytt.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Parkopplingen avvisades eller gav ett ogiltigt godkännande. Sök efter servern igen för att försöka på nytt.",
     "Parental control": "Föräldrakontroll",
     Password: "Lösenord",
     Pause: "Paus",
@@ -609,6 +639,7 @@ var keyStrings = {
     "Rename to": "Byt namn till",
     "Repeat parental code": "Ange föräldrakoden igen",
     "Request sended!": "Begäran skickad!",
+    "Requesting approval for %1": "Begär godkännande för %1",
     "Restart player": "Starta om spelaren",
     "Restart stream": "Starta om strömmen",
     "Restart stream / Live": "Starta om strömmen / direktsändning",
@@ -665,12 +696,16 @@ var keyStrings = {
     "Set parental code": "Ställ in föräldrakod",
     "Set timer?": "Ställa in timer?",
     Settings: "Inställningar",
+    "Settings changed. Discovery was canceled.":
+        "Inställningarna ändrades. Sökningen avbröts.",
     "Settings could not be saved": "Inställningarna kunde inte sparas",
     "Settings loaded from storage": "Inställningar inlästa från lagring",
     "Settings STB": "Enhetsinställningar",
     "Settings saved": "Inställningarna sparades",
     "Settings saved to storage": "Inställningar sparade i lagring",
     "Settings sended!": "Inställningarna skickades!",
+    "Several command servers were found. Select one below.":
+        "Flera kommandoservrar hittades. Välj en nedan.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro)-inställningar",
     ShockTv: "ShockTv",
@@ -721,8 +756,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox-inställningar",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL:en för att söka kommandoserver är ogiltig.",
     "The device ID in the address is invalid.":
         "Enhets-ID:t i adressen är ogiltigt.",
+    "The discovery response is invalid.": "Svaret på sökningen är ogiltigt.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Den här webbläsaren stöder inte säker automatisk parkoppling. Uppdatera den eller ange kommandoserverns inställningar manuellt.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Den här webbläsaren saknar sökprofil. Ange en serveradress eller konfigurera distributionsprofilen.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Denna HTTPS-spelare kan inte ansluta till en HTTP-server. Använd en HTTPS-server eller öppna spelaren via HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -797,45 +839,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз-inställningar",
     "↑↓ Scroll": "↑↓ Rulla",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };

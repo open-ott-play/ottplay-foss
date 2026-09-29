@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL pelayan API",
     "Applying HTTP remote settings...":
         "Menggunakan tetapan kawalan jauh HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Luluskan kod untuk %1 dengan ott approve NAME CODE:",
     Archive: "Arkib",
     "Archive - begin": "Arkib — mula",
     "Archive hours": "Jam arkib",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "Buka PiP",
     "Call PiP / PiP exchange": "Buka PiP / tukar PiP",
     Cancel: "Batal",
+    "Cancel pairing": "Batalkan pemasangan",
     "Cannot delete the last category": "Tidak boleh memadam kategori terakhir",
     Category: "Kategori",
     "Category selection": "Pilih kategori",
@@ -147,6 +150,13 @@ var keyStrings = {
     "Command server": "Pelayan arahan",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Alamat pelayan arahan, kod akses peranti, kawalan HTTP setempat dan tetapan input teks jauh",
+    "Command server discovery canceled.": "Carian pelayan arahan dibatalkan.",
+    "Command server discovery has not started.":
+        "Carian pelayan arahan belum bermula.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Carian pelayan arahan tidak tersedia. Gunakan Cari pelayan arahan untuk mencuba semula.",
+    "Command server discovery timed out.": "Carian pelayan arahan tamat masa.",
+    "Command server found.": "Pelayan arahan ditemui.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurasikan All4you.tv dalam Tetapan -> Tetapan penyedia",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -225,6 +235,10 @@ var keyStrings = {
     "Copy category": "Salin kategori",
     "Copy JSON": "Salin JSON",
     "Could not connect to the server.": "Tidak dapat menyambung ke pelayan.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Tidak dapat membuat permintaan pemasangan. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Could not save the approved command server settings.":
+        "Tidak dapat menyimpan tetapan pelayan arahan yang diluluskan.",
     "Could not update HTTP remote control.":
         "Tidak dapat mengemas kini kawalan jauh HTTP.",
     Country: "Negara",
@@ -243,6 +257,8 @@ var keyStrings = {
     "Device info:": "Maklumat peranti:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "MAC peranti diperlukan untuk senarai main KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID peranti belum sedia. Gunakan Cari pelayan arahan untuk mencuba semula.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Tetapan Diamond TV",
     Director: "Pengarah",
@@ -398,6 +414,8 @@ var keyStrings = {
         "Pemilihan fail tidak disokong pada peranti ini",
     Filter: "Penapis",
     Filters: "Penapis",
+    "Find command server": "Cari pelayan arahan",
+    "Finding command servers...": "Mencari pelayan arahan...",
     "First Run Setup": "Persediaan kali pertama",
     "Font type": "Jenis fon",
     "For download settings file open": "Untuk memuat turun fail tetapan, buka",
@@ -504,6 +522,8 @@ var keyStrings = {
     "Next TV program": "Rancangan seterusnya",
     No: "Tidak",
     "No channel name": "Saluran tanpa nama",
+    "No command server was found on this network.":
+        "Tiada pelayan arahan ditemui pada rangkaian ini.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Tiada tetapan tersimpan ditemukan",
@@ -533,6 +553,14 @@ var keyStrings = {
     on: "hidup",
     "on ": "hidup ",
     "or scan": "atau imbas",
+    "Pairing approved. Command server configured.":
+        "Pemasangan diluluskan. Pelayan arahan telah dikonfigurasikan.",
+    "Pairing expired. Find the server again to retry.":
+        "Pemasangan telah tamat tempoh. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Pelayan pemasangan tidak tersedia. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Pemasangan ditolak atau kelulusan yang diterima tidak sah. Cari pelayan sekali lagi untuk mencuba semula.",
     "Parental control": "Kawalan ibu bapa",
     Password: "Kata laluan",
     Pause: "Jeda",
@@ -605,6 +633,7 @@ var keyStrings = {
     "Rename to": "Namakan semula kepada",
     "Repeat parental code": "Masukkan semula kod ibu bapa",
     "Request sended!": "Permintaan dihantar!",
+    "Requesting approval for %1": "Meminta kelulusan untuk %1",
     "Restart player": "Mulakan semula pemain",
     "Restart stream": "Mulakan semula strim",
     "Restart stream / Live": "Mulakan semula strim / langsung",
@@ -661,12 +690,16 @@ var keyStrings = {
     "Set parental code": "Tetapkan kod ibu bapa",
     "Set timer?": "Tetapkan pemasa?",
     Settings: "Tetapan",
+    "Settings changed. Discovery was canceled.":
+        "Tetapan telah berubah. Carian dibatalkan.",
     "Settings could not be saved": "Tetapan tidak dapat disimpan",
     "Settings loaded from storage": "Tetapan dimuatkan daripada storan",
     "Settings STB": "Tetapan STB",
     "Settings saved": "Tetapan disimpan",
     "Settings saved to storage": "Tetapan disimpan ke storan",
     "Settings sended!": "Tetapan dihantar!",
+    "Several command servers were found. Select one below.":
+        "Beberapa pelayan arahan ditemui. Pilih satu di bawah.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Tetapan Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -718,8 +751,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tetapan Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL carian pelayan arahan tidak sah.",
     "The device ID in the address is invalid.":
         "ID peranti dalam alamat tidak sah.",
+    "The discovery response is invalid.": "Respons carian tidak sah.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Pelayar ini tidak dapat melakukan pemasangan automatik dengan selamat. Kemas kini pelayar atau masukkan tetapan pelayan arahan secara manual.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Pelayar ini tiada profil carian. Masukkan alamat pelayan atau konfigurasikan profil penempatan.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Pemain HTTPS ini tidak dapat menyambung ke pelayan HTTP. Gunakan pelayan HTTPS atau buka pemain melalui HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -794,45 +834,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Tetapan Шаравоз",
     "↑↓ Scroll": "↑↓ Tatal",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };

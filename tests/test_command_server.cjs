@@ -612,8 +612,8 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     assert.equal(t.jobs.size, 0);
     const secure = {
         ...request,
-        method: "GET",
         body: undefined,
+        method: "GET",
         secureControl: true,
         url: "https://host/api/pairings?id=" + "a".repeat(32),
     };

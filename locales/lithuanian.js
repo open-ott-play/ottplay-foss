@@ -68,6 +68,8 @@ var keyStrings = {
     "API Server": "API serveris",
     "API server URL": "API serverio URL",
     "Applying HTTP remote settings...": "Taikomi HTTP valdymo nustatymai...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Patvirtinkite %1 kodą naudodami komandą ott approve NAME CODE:",
     Archive: "Archyvas",
     "Archive - begin": "Archyvas — pradžia",
     "Archive hours": "Archyvo valandos",
@@ -108,6 +110,7 @@ var keyStrings = {
     "Call PiP": "Atverti PiP",
     "Call PiP / PiP exchange": "Atverti PiP / sukeisti PiP",
     Cancel: "Atšaukti",
+    "Cancel pairing": "Atšaukti susiejimą",
     "Cannot delete the last category":
         "Paskutinės kategorijos pašalinti negalima",
     Category: "Kategorija",
@@ -146,6 +149,14 @@ var keyStrings = {
     "Command server": "Komandų serveris",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Komandų serverio adresas, įrenginio prieigos kodas, vietinio HTTP valdymo ir nuotolinės teksto įvesties nustatymai",
+    "Command server discovery canceled.": "Komandų serverio paieška atšaukta.",
+    "Command server discovery has not started.":
+        "Komandų serverio paieška dar nepradėta.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Komandų serverio paieška nepasiekiama. Norėdami bandyti dar kartą, pasirinkite „Rasti komandų serverį“.",
+    "Command server discovery timed out.":
+        "Komandų serverio paieškos laikas baigėsi.",
+    "Command server found.": "Komandų serveris rastas.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nustatykite All4you.tv skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -224,6 +235,10 @@ var keyStrings = {
     "Copy category": "Kopijuoti kategoriją",
     "Copy JSON": "Kopijuoti JSON",
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nepavyko sukurti susiejimo užklausos. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Could not save the approved command server settings.":
+        "Nepavyko išsaugoti patvirtintų komandų serverio nustatymų.",
     "Could not update HTTP remote control.":
         "Nepavyko atnaujinti HTTP valdymo nustatymų.",
     Country: "Šalis",
@@ -243,6 +258,8 @@ var keyStrings = {
     "Device info:": "Įrenginio informacija:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) grojaraščiams būtinas įrenginio MAC adresas",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Įrenginio UUID dar neparengtas. Norėdami bandyti dar kartą, pasirinkite „Rasti komandų serverį“.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV nustatymai",
     Director: "Režisierius",
@@ -401,6 +418,8 @@ var keyStrings = {
         "Šiame įrenginyje failų pasirinkimas nepalaikomas",
     Filter: "Filtras",
     Filters: "Filtrai",
+    "Find command server": "Rasti komandų serverį",
+    "Finding command servers...": "Ieškoma komandų serverių...",
     "First Run Setup": "Pirmojo paleidimo nustatymas",
     "Font type": "Šriftas",
     "For download settings file open":
@@ -508,6 +527,8 @@ var keyStrings = {
     "Next TV program": "Kita laida",
     No: "Ne",
     "No channel name": "Nėra kanalo pavadinimo",
+    "No command server was found on this network.":
+        "Šiame tinkle nerasta komandų serverio.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Išsaugotų nustatymų nerasta",
@@ -537,6 +558,14 @@ var keyStrings = {
     on: "įjungta",
     "on ": "įjungta ",
     "or scan": "arba nuskaitykite",
+    "Pairing approved. Command server configured.":
+        "Susiejimas patvirtintas. Komandų serveris sukonfigūruotas.",
+    "Pairing expired. Find the server again to retry.":
+        "Susiejimo galiojimo laikas baigėsi. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Susiejimo serveris nepasiekiamas. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Susiejimas atmestas arba gautas netinkamas patvirtinimas. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
     "Parental control": "Tėvų kontrolė",
     Password: "Slaptažodis",
     Pause: "Pristabdyti",
@@ -608,6 +637,7 @@ var keyStrings = {
     "Rename to": "Pervadinti į",
     "Repeat parental code": "Dar kartą įveskite tėvų kontrolės kodą",
     "Request sended!": "Užklausa išsiųsta!",
+    "Requesting approval for %1": "Prašoma patvirtinimo: %1",
     "Restart player": "Paleisti grotuvą iš naujo",
     "Restart stream": "Paleisti srautą iš naujo",
     "Restart stream / Live": "Paleisti srautą iš naujo / tiesiogiai",
@@ -664,12 +694,16 @@ var keyStrings = {
     "Set parental code": "Nustatyti tėvų kontrolės kodą",
     "Set timer?": "Nustatyti laikmatį?",
     Settings: "Nustatymai",
+    "Settings changed. Discovery was canceled.":
+        "Nustatymai pasikeitė. Paieška atšaukta.",
     "Settings could not be saved": "Nepavyko išsaugoti nustatymų",
     "Settings loaded from storage": "Nustatymai įkelti iš saugyklos",
     "Settings STB": "STB nustatymai",
     "Settings saved": "Nustatymai išsaugoti",
     "Settings saved to storage": "Nustatymai išsaugoti saugykloje",
     "Settings sended!": "Nustatymai išsiųsti!",
+    "Several command servers were found. Select one below.":
+        "Rasti keli komandų serveriai. Toliau pasirinkite vieną iš jų.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) nustatymai",
     ShockTv: "ShockTv",
@@ -720,8 +754,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox nustatymai",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Komandų serverio paieškos URL netinkamas.",
     "The device ID in the address is invalid.":
         "Įrenginio ID adrese netinkamas.",
+    "The discovery response is invalid.": "Paieškos atsakymas netinkamas.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Ši naršyklė negali saugiai atlikti automatinio susiejimo. Atnaujinkite ją arba įveskite komandų serverio nustatymus rankiniu būdu.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Ši naršyklė neturi paieškos profilio. Įveskite serverio adresą arba sukonfigūruokite diegimo profilį.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Šis HTTPS grotuvas negali prisijungti prie HTTP serverio. Naudokite HTTPS serverį arba atverkite grotuvą per HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -796,45 +837,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз nustatymai",
     "↑↓ Scroll": "↑↓ Slinkti",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };

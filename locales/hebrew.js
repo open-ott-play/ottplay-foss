@@ -68,6 +68,8 @@ var keyStrings = {
     "API Server": "שרת API",
     "API server URL": "כתובת שרת API",
     "Applying HTTP remote settings...": "החלת הגדרות השליטה דרך HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "יש לאשר את הקוד עבור %1 באמצעות ott approve NAME CODE:",
     Archive: "ארכיון",
     "Archive - begin": "ארכיון — התחלה",
     "Archive hours": "שעות ארכיון",
@@ -105,6 +107,7 @@ var keyStrings = {
     "Call PiP": "פתח PiP",
     "Call PiP / PiP exchange": "פתח PiP / החלף PiP",
     Cancel: "ביטול",
+    "Cancel pairing": "ביטול הצימוד",
     "Cannot delete the last category": "לא ניתן למחוק את הקטגוריה האחרונה",
     Category: "קטגוריה",
     "Category selection": "בחירת קטגוריה",
@@ -141,6 +144,12 @@ var keyStrings = {
     "Command server": "שרת פקודות",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "כתובת שרת הפקודות, קוד גישה למכשיר, שליטה מקומית דרך HTTP והגדרות הזנת טקסט מרחוק",
+    "Command server discovery canceled.": "חיפוש שרת הפקודות בוטל.",
+    "Command server discovery has not started.": "חיפוש שרת הפקודות טרם התחיל.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "חיפוש שרת הפקודות אינו זמין. יש לבחור ב״חיפוש שרת פקודות״ כדי לנסות שוב.",
+    "Command server discovery timed out.": "תם הזמן הקצוב לחיפוש שרת הפקודות.",
+    "Command server found.": "נמצא שרת פקודות.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "הגדר את All4you.tv בהגדרות -> הגדרות ספק",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -219,6 +228,10 @@ var keyStrings = {
     "Copy category": "העתק קטגוריה",
     "Copy JSON": "העתק JSON",
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "לא ניתן ליצור בקשת צימוד. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Could not save the approved command server settings.":
+        "לא ניתן לשמור את הגדרות שרת הפקודות שאושרו.",
     "Could not update HTTP remote control.":
         "לא ניתן לעדכן את הגדרות השליטה דרך HTTP.",
     Country: "מדינה",
@@ -237,6 +250,8 @@ var keyStrings = {
     "Device info:": "פרטי המכשיר:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "נדרשת כתובת MAC של המכשיר לפלייליסטים של KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "ה־UUID של המכשיר עדיין אינו מוכן. יש לבחור ב״חיפוש שרת פקודות״ כדי לנסות שוב.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "הגדרות Diamond TV",
     Director: "במאי",
@@ -390,6 +405,8 @@ var keyStrings = {
         "בחירת קבצים אינה נתמכת במכשיר זה",
     Filter: "מסנן",
     Filters: "מסננים",
+    "Find command server": "חיפוש שרת פקודות",
+    "Finding command servers...": "חיפוש שרתי פקודות...",
     "First Run Setup": "הגדרות הפעלה ראשונה",
     "Font type": "סוג גופן",
     "For download settings file open": "כדי להוריד את קובץ ההגדרות, פתח",
@@ -495,6 +512,8 @@ var keyStrings = {
     "Next TV program": "התוכנית הבאה",
     No: "לא",
     "No channel name": "אין שם ערוץ",
+    "No command server was found on this network.":
+        "לא נמצא שרת פקודות ברשת זו.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "לא נמצאו הגדרות שמורות",
@@ -524,6 +543,14 @@ var keyStrings = {
     on: "פעיל",
     "on ": "פעיל ",
     "or scan": "או סרוק",
+    "Pairing approved. Command server configured.":
+        "הצימוד אושר. שרת הפקודות הוגדר.",
+    "Pairing expired. Find the server again to retry.":
+        "תוקף הצימוד פג. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "שרת הצימוד אינו זמין. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "הצימוד נדחה או שהתקבל אישור לא תקין. יש לחפש שוב את השרת כדי לנסות שוב.",
     "Parental control": "בקרת הורים",
     Password: "סיסמה",
     Pause: "השהה",
@@ -593,6 +620,7 @@ var keyStrings = {
     "Rename to": "שנה שם ל-",
     "Repeat parental code": "הזן שוב קוד הורים",
     "Request sended!": "הבקשה נשלחה!",
+    "Requesting approval for %1": "בקשת אישור עבור %1",
     "Restart player": "הפעל מחדש את הנגן",
     "Restart stream": "הפעל מחדש את השידור",
     "Restart stream / Live": "הפעל שידור מחדש / שידור חי",
@@ -648,12 +676,15 @@ var keyStrings = {
     "Set parental code": "הגדר קוד הורים",
     "Set timer?": "להגדיר טיימר?",
     Settings: "הגדרות",
+    "Settings changed. Discovery was canceled.": "ההגדרות השתנו. החיפוש בוטל.",
     "Settings could not be saved": "לא ניתן לשמור את ההגדרות",
     "Settings loaded from storage": "ההגדרות נטענו מהאחסון",
     "Settings STB": "הגדרות STB",
     "Settings saved": "ההגדרות נשמרו",
     "Settings saved to storage": "ההגדרות נשמרו באחסון",
     "Settings sended!": "ההגדרות נשלחו!",
+    "Several command servers were found. Select one below.":
+        "נמצאו כמה שרתי פקודות. יש לבחור אחד למטה.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "הגדרות Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -703,7 +734,14 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "הגדרות Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "כתובת ה־URL לחיפוש שרת הפקודות אינה תקינה.",
     "The device ID in the address is invalid.": "מזהה המכשיר בכתובת אינו תקין.",
+    "The discovery response is invalid.": "תשובת החיפוש אינה תקינה.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "דפדפן זה אינו יכול לבצע צימוד אוטומטי באופן בטוח. יש לעדכן אותו או להזין ידנית את הגדרות שרת הפקודות.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "לדפדפן זה אין פרופיל חיפוש. יש להזין כתובת שרת או להגדיר את פרופיל הפריסה.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "נגן HTTPS זה אינו יכול להתחבר לשרת HTTP. השתמש בשרת HTTPS או פתח את הנגן דרך HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -776,45 +814,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "הגדרות Шаравоз",
     "↑↓ Scroll": "↑↓ גלילה",
-    "Find command server": "Find command server",
-    "Cancel pairing": "Cancel pairing",
-    "Command server discovery has not started.":
-        "Command server discovery has not started.",
-    "Settings changed. Discovery was canceled.":
-        "Settings changed. Discovery was canceled.",
-    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
-        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
-    "Requesting approval for %1": "Requesting approval for %1",
-    "Could not create a pairing request. Find the server again to retry.":
-        "Could not create a pairing request. Find the server again to retry.",
-    "Pairing expired. Find the server again to retry.":
-        "Pairing expired. Find the server again to retry.",
-    "Approve the code for %1 with ott approve NAME CODE:":
-        "Approve the code for %1 with ott approve NAME CODE:",
-    "Pairing server is unavailable. Find the server again to retry.":
-        "Pairing server is unavailable. Find the server again to retry.",
-    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
-        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
-    "Pairing approved. Command server configured.":
-        "Pairing approved. Command server configured.",
-    "Could not save the approved command server settings.":
-        "Could not save the approved command server settings.",
-    "The discovery response is invalid.": "The discovery response is invalid.",
-    "No command server was found on this network.":
-        "No command server was found on this network.",
-    "Command server found.": "Command server found.",
-    "Several command servers were found. Select one below.":
-        "Several command servers were found. Select one below.",
-    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
-        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
-    "The command server discovery URL is invalid.":
-        "The command server discovery URL is invalid.",
-    "Command server discovery is unavailable. Use Find command server to retry.":
-        "Command server discovery is unavailable. Use Find command server to retry.",
-    "Command server discovery canceled.": "Command server discovery canceled.",
-    "Device UUID is not ready. Use Find command server to retry.":
-        "Device UUID is not ready. Use Find command server to retry.",
-    "Finding command servers...": "Finding command servers...",
-    "Command server discovery timed out.":
-        "Command server discovery timed out.",
 };
