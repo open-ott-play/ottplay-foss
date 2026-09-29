@@ -229,6 +229,7 @@ stbInit = function () {
     var moves = 0;
     var downs = 0;
     var clicks = 0;
+    var wheels = 0;
     window.__ottDebugInputInit = function () {
         if (started || !document.addEventListener) return;
         started = true;
@@ -252,7 +253,9 @@ stbInit = function () {
                 " down=" +
                 downs +
                 " click=" +
-                clicks
+                clicks +
+                " wheel=" +
+                wheels
             );
         };
         function state() {
@@ -321,6 +324,12 @@ stbInit = function () {
             },
             true
         );
+        // The wheel also works in 5-way mode, with no mouse movement or click.
+        function wheel() {
+            wheels++;
+        }
+        document.addEventListener("wheel", wheel, true);
+        document.addEventListener("mousewheel", wheel, true);
     };
     if (window.__ottDebug && window.__ottDebug.enabled)
         window.__ottDebugInputInit();
