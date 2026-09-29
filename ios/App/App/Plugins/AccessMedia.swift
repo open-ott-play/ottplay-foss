@@ -44,6 +44,52 @@ private final class AccessMediaWaiterCancellation: @unchecked Sendable {
     }
 }
 
+// A callback caller may stop while shared discovery is still finishing. Settle
+// its callback once at cancellation/deadline, and let Task cancellation retire
+// its own login waiter or transport without disturbing other consumers.
+private final class AccessMediaRequest: @unchecked Sendable {
+    private let lock = NSLock()
+    private var completion: ((Data?, URLResponse?, Error?) -> Void)?
+    private var task: Task<Void, Never>?
+    private var deadline: Task<Void, Never>?
+    private var timedOut = false
+
+    init(_ completion: @escaping (Data?, URLResponse?, Error?) -> Void) { self.completion = completion }
+
+    func start(_ task: Task<Void, Never>, timeout: TimeInterval) {
+        let timeout = timeout.isFinite ? min(max(timeout, 0.001), 86400) : 15
+        lock.lock()
+        guard completion != nil else { lock.unlock(); task.cancel(); return }
+        self.task = task
+        deadline = Task {
+            do { try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000)) }
+            catch { return }
+            self.timeout()
+        }
+        lock.unlock()
+    }
+
+    private func timeout() {
+        lock.lock()
+        guard completion != nil else { lock.unlock(); return }
+        timedOut = true
+        let task = self.task
+        lock.unlock()
+        task?.cancel()
+    }
+
+    func finish(_ data: Data? = nil, _ response: URLResponse? = nil, _ error: Error? = nil) {
+        lock.lock()
+        let completion = self.completion
+        let deadline = self.deadline
+        let error = timedOut ? URLError(.timedOut) : error
+        self.completion = nil; self.task = nil; self.deadline = nil
+        lock.unlock()
+        deadline?.cancel()
+        completion?(data, response, error)
+    }
+}
+
 @MainActor
 final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProviding {
     static let shared = AccessMedia()
@@ -52,6 +98,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
     private var missing: [String: Date] = [:]
     private var discovery: [String: Task<AccessMediaDiscovery, Error>] = [:]
     private var logins: [String: AccessMediaLogin] = [:]
+    private var transfers: [UUID: Task<(Data, HTTPURLResponse), Error>] = [:]
     private var authentication: AccessMediaAuthentication?
     private var proxy: AccessMediaProxy?
     private var generation = 0
@@ -285,7 +332,10 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         return result
     }
 
-    func authorized(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedCookie: String? = nil) async throws -> URLRequest {
+    func authorized(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedCookie: String? = nil,
+                    generation expectedGeneration: Int? = nil) async throws -> URLRequest {
+        if let expectedGeneration, generation != expectedGeneration { throw AccessMediaFailure.cancelled }
+        try Task.checkCancellation()
         guard let url = request.url, let target = config.map(url) else { throw AccessMediaFailure.invalid }
         if let rejectedCookie, let current = entries[config.source_origin]?.session,
            rejectedCookie == "CF_Authorization=\(current.token)" { entries[config.source_origin]?.session = nil }
@@ -324,57 +374,86 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
             for waiter in login.waiters.values { waiter.continuation.resume(throwing: AccessMediaFailure.cancelled) }
             login.waiters = [:]
         }
+        for transfer in transfers.values { transfer.cancel() }
+        transfers.removeAll()
         proxy?.stop(); proxy = nil
         for origin in entries.keys { entries[origin]?.session = nil }
         try save()
     }
 
+    private func fetchProtected(_ request: URLRequest, generation: Int) async throws -> (Data, HTTPURLResponse) {
+        guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+        try Task.checkCancellation()
+        let id = UUID()
+        let pending = Task { try await self.fetch(request, 64 * 1024 * 1024) }
+        transfers[id] = pending
+        defer { transfers[id] = nil }
+        return try await withTaskCancellationHandler(operation: {
+            let result = try await pending.value
+            try Task.checkCancellation()
+            return result
+        }, onCancel: { pending.cancel() })
+    }
+
     // No credentials or ephemeral loopback URLs are written to JS settings/backups.
+    @discardableResult
     nonisolated static func fetch(_ request: URLRequest, discoverOnFailure: Bool = true,
-                                 completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
-        Task {
-            do {
-                guard let url = request.url else { throw AccessMediaFailure.invalid }
-                let generation = await shared.generation
-                var config = try await shared.configuration(for: url, discover: false)
-                if config == nil {
-                    let (data, response) = try await URLSession.shared.data(for: request)
-                    let http = response as? HTTPURLResponse
-                    let challenge = [401, 403].contains(http?.statusCode ?? 0) ||
-                        response.url?.host?.hasSuffix(".cloudflareaccess.com") == true
-                    if discoverOnFailure && request.httpMethod == "GET" && challenge {
-                        config = try await shared.configuration(for: url, discover: true)
-                    }
-                    if config == nil { completion(data, response, nil); return }
-                }
-                guard let config else { throw AccessMediaFailure.invalid }
-                var rejectedCookie: String?
-                for attempt in 0...1 {
-                    guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
-                    let authorized = try await shared.authorized(request, config: config, replacing: rejectedCookie)
-                    let (data, response) = try await AccessMediaHTTP.fetch(authorized)
-                    guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
-                    if [301, 302, 303, 307, 308, 401, 403].contains(response.statusCode) {
-                        if attempt == 0 { rejectedCookie = authorized.value(forHTTPHeaderField: "Cookie"); continue }
-                        throw AccessMediaFailure.login
-                    }
-                    // Access credentials must never cross the Capacitor bridge as response headers.
-                    var fields: [String: String] = [:]
-                    for (name, value) in response.allHeaderFields {
-                        let key = String(describing: name)
-                        if key.lowercased() != "set-cookie" && !key.lowercased().hasPrefix("cf-access-") {
-                            fields[key] = String(describing: value)
+                                 authenticationAllowance: TimeInterval = 300,
+                                 completion: @escaping (Data?, URLResponse?, Error?) -> Void) -> Task<Void, Never> {
+        let operation = AccessMediaRequest(completion)
+        let task = Task {
+            await withTaskCancellationHandler(operation: {
+                do {
+                    try Task.checkCancellation()
+                    guard let url = request.url else { throw AccessMediaFailure.invalid }
+                    let generation = await shared.generation
+                    var config = try await shared.configuration(for: url, discover: false)
+                    if config == nil {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        let http = response as? HTTPURLResponse
+                        let challenge = [401, 403].contains(http?.statusCode ?? 0) ||
+                            response.url?.host?.hasSuffix(".cloudflareaccess.com") == true
+                        if discoverOnFailure && request.httpMethod == "GET" && challenge {
+                            config = try await shared.configuration(for: url, discover: true)
                         }
+                        if config == nil { try Task.checkCancellation(); operation.finish(data, response); return }
                     }
-                    completion(data, HTTPURLResponse(url: url, statusCode: response.statusCode,
-                        httpVersion: "HTTP/1.1", headerFields: fields), nil)
-                    return
+                    guard let config else { throw AccessMediaFailure.invalid }
+                    var rejectedCookie: String?
+                    for attempt in 0...1 {
+                        guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
+                        let authorized = try await shared.authorized(request, config: config, replacing: rejectedCookie, generation: generation)
+                        let (data, response) = try await shared.fetchProtected(authorized, generation: generation)
+                        guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
+                        if [301, 302, 303, 307, 308, 401, 403].contains(response.statusCode) {
+                            if attempt == 0 { rejectedCookie = authorized.value(forHTTPHeaderField: "Cookie"); continue }
+                            throw AccessMediaFailure.login
+                        }
+                        // Access credentials must never cross the Capacitor bridge as response headers.
+                        var fields: [String: String] = [:]
+                        for (name, value) in response.allHeaderFields {
+                            let key = String(describing: name)
+                            if key.lowercased() != "set-cookie" && !key.lowercased().hasPrefix("cf-access-") {
+                                fields[key] = String(describing: value)
+                            }
+                        }
+                        operation.finish(data, HTTPURLResponse(url: url, statusCode: response.statusCode,
+                            httpVersion: "HTTP/1.1", headerFields: fields))
+                        return
+                    }
+                } catch {
+                    // Transport error descriptions can contain signed media URLs.
+                    operation.finish(nil, nil, error is CancellationError ? AccessMediaFailure.cancelled :
+                        (error as? URLError)?.code == .timedOut ? URLError(.timedOut) :
+                        error as? AccessMediaFailure ?? AccessMediaFailure.unavailable)
                 }
-            } catch {
-                // Transport error descriptions can contain signed media URLs.
-                completion(nil, nil, error as? AccessMediaFailure ?? AccessMediaFailure.unavailable)
-            }
+            }, onCancel: { operation.finish(nil, nil, AccessMediaFailure.cancelled) })
         }
+        // Network timeouts stay on URLRequest. Browser/email recovery gets a
+        // separate bounded allowance; an owning caller can still cancel at once.
+        let allowance = authenticationAllowance.isFinite ? min(max(authenticationAllowance, 0), 300) : 300
+        operation.start(task, timeout: request.timeoutInterval + allowance)
+        return task
     }
 
     func manage() {

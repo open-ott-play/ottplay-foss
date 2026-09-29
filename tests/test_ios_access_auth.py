@@ -28,18 +28,37 @@ public class CAPPluginCall: NSObject {
     let options: [String: Any]
     var result: [String: Any]?
     var error: String?
+    var errorCode: String?
+    var settlements = 0
     init(_ options: [String: Any]) { self.options = options }
     func getString(_ key: String) -> String? { options[key] as? String }
-    func resolve(_ result: [String: Any] = [:]) { self.result = result }
-    func reject(_ error: String) { self.error = error }
+    func getDouble(_ key: String) -> Double? { options[key] as? Double }
+    func getObject(_ key: String) -> Any? { options[key] }
+    func resolve(_ result: [String: Any] = [:]) { self.result = result; settlements += 1 }
+    func reject(_ error: String, _ code: String? = nil) { self.error = error; errorCode = code; settlements += 1 }
 }
 final class AccessMediaHTTP {
     static var requests = 0
+    static var handler: (@MainActor (URLRequest, Int) async throws -> (Data, HTTPURLResponse))?
     static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, HTTPURLResponse) {
         requests += 1
+        if let handler { return try await handler(request, limit) }
         throw AccessMediaFailure.unavailable
     }
 }
+final class URLSession {
+    static let shared = URLSession()
+    static var handler: (@MainActor (URLRequest) async throws -> (Data, URLResponse))?
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        guard let handler = Self.handler else { throw AccessMediaFailure.unavailable }
+        return try await handler(request)
+    }
+}
+struct Logger {
+    init(subsystem: String, category: String) {}
+    func debug(_ message: String) {}
+}
+enum NativeSwopRequest { static func start(_ call: CAPPluginCall) {} }
 
 let kSecClass = "class", kSecClassGenericPassword = "generic"
 let kSecAttrService = "service", kSecAttrAccount = "account"
@@ -73,16 +92,21 @@ class UIWindow {}
 class UIView { var window: UIWindow? = UIWindow() }
 class UIViewController: NSObject {
     let view = UIView()
-    func present(_ controller: UIViewController, animated: Bool) {}
+    var presented: UIViewController?
+    func present(_ controller: UIViewController, animated: Bool) { presented = controller }
 }
 class UIAlertController: UIViewController {
     enum Style { case alert }
+    var actions: [UIAlertAction] = []
     init(title: String?, message: String?, preferredStyle: Style) {}
-    func addAction(_ action: UIAlertAction) {}
+    func addAction(_ action: UIAlertAction) { actions.append(action) }
 }
 class UIAlertAction {
-    enum Style { case `default`, destructive, cancel }
-    init(title: String, style: Style, handler: ((UIAlertAction) -> Void)? = nil) {}
+    enum Style: Equatable { case `default`, destructive, cancel }
+    let style: Style
+    let handler: ((UIAlertAction) -> Void)?
+    init(title: String, style: Style, handler: ((UIAlertAction) -> Void)? = nil) { self.style = style; self.handler = handler }
+    func invoke() { handler?(self) }
 }
 class UIApplication {
     static let shared = UIApplication()
@@ -499,7 +523,160 @@ Task { @MainActor in
         await until { ASWebAuthenticationSession.opened.count == legacyCount + 1 }
         try AccessMedia.shared.signOut()
         await until { legacy.error != nil }
-        print("PASS: native auth deduplication/reuse/alias trust, per-waiter cancellation, late browser/exchange isolation, native prepare/cancel ownership and uppercase HTTPS")
+
+        let httpPlugin = StalkerPortalPlugin()
+        let timedLogin = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "timeoutMs": 30.0, "requestId": "short-network"])
+        let beforeTimedLogin = ASWebAuthenticationSession.opened.count
+        httpPlugin.httpRequest(timedLogin)
+        await until { ASWebAuthenticationSession.opened.count == beforeTimedLogin + 1 }
+        try await Task.sleep(nanoseconds: 80_000_000)
+        assert(timedLogin.error == nil && !ASWebAuthenticationSession.opened.last!.cancelled,
+            "A short network timeout must not dismiss a still-owned browser/email sign-in")
+        httpPlugin.cancelHttpRequest(CAPPluginCall(["requestId": "short-network"]))
+        await until { timedLogin.error != nil }
+        assert(timedLogin.errorCode == nil && timedLogin.settlements == 1)
+        await until { ASWebAuthenticationSession.opened.last!.cancelled }
+
+        var abandonedRequest = URLRequest(url: bridgeFixture.source)
+        abandonedRequest.timeoutInterval = 0.03
+        var abandonedCount = 0
+        var abandonedError: Error?
+        let abandoned = AccessMedia.fetch(abandonedRequest, authenticationAllowance: 0) { _, _, error in
+            Task { @MainActor in abandonedCount += 1; abandonedError = error }
+        }
+        await until { abandonedCount == 1 }
+        await abandoned.value
+        assert((abandonedError as? URLError)?.code == .timedOut && ASWebAuthenticationSession.opened.last!.cancelled,
+            "The separate overall deadline must still retire an abandoned caller's login exactly once")
+
+        let httpFirst = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "http-first"])
+        let httpSecond = CAPPluginCall(["url": bridgeFixture.config.source_origin + "/load.php", "requestId": "http-second"])
+        let beforeHttp = ASWebAuthenticationSession.opened.count
+        httpPlugin.httpRequest(httpFirst); httpPlugin.portalRequest(httpSecond)
+        await until { ASWebAuthenticationSession.opened.count == beforeHttp + 1 }
+        let httpDuplicate = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "http-first"])
+        httpPlugin.httpRequest(httpDuplicate)
+        await until { httpDuplicate.error != nil }
+        assert(httpDuplicate.error == "HTTP request is already pending" && httpFirst.error == nil)
+        let cancelHttpFirst = CAPPluginCall(["requestId": "http-first"])
+        httpPlugin.cancelHttpRequest(cancelHttpFirst)
+        await until { httpFirst.error != nil }
+        assert(cancelHttpFirst.result?["cancelled"] as? Bool == true && httpSecond.error == nil)
+        assert(!ASWebAuthenticationSession.opened.last!.cancelled)
+        let cancelHttpSecond = CAPPluginCall(["requestId": "http-second"])
+        httpPlugin.cancelHttpRequest(cancelHttpSecond)
+        await until { httpSecond.error != nil && ASWebAuthenticationSession.opened.last!.cancelled }
+        assert(httpFirst.settlements == 1 && httpSecond.settlements == 1)
+
+        let httpImmediate = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "http-immediate"])
+        let cancelHttpImmediate = CAPPluginCall(["requestId": "http-immediate"])
+        httpPlugin.httpRequest(httpImmediate); httpPlugin.cancelHttpRequest(cancelHttpImmediate)
+        await until { httpImmediate.error != nil }
+        assert(cancelHttpImmediate.result?["cancelled"] as? Bool == true && httpImmediate.settlements == 1)
+        let httpOld = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "http-reuse"])
+        httpPlugin.httpRequest(httpOld)
+        let cancelHttpOld = CAPPluginCall(["requestId": "http-reuse"])
+        let httpNew = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "http-reuse"])
+        httpPlugin.cancelHttpRequest(cancelHttpOld); httpPlugin.httpRequest(httpNew)
+        await until { httpOld.error != nil }
+        for _ in 0..<20 { await Task.yield() }
+        let cancelHttpNew = CAPPluginCall(["requestId": "http-reuse"])
+        httpPlugin.cancelHttpRequest(cancelHttpNew)
+        await until { httpNew.error != nil }
+        assert(cancelHttpNew.result?["cancelled"] as? Bool == true && httpNew.settlements == 1)
+        let badHttpID = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "bad\n"])
+        httpPlugin.httpRequest(badHttpID)
+        assert(badHttpID.error == "Invalid HTTP request identifier")
+
+        var downloadGate: CheckedContinuation<Void, Never>?
+        var downloadCancelled = false
+        AccessMediaHTTP.handler = { request, limit in
+            if request.url!.path == bridgeFixture.config.exchange_path {
+                return try await bridgeFixture.fetch(request, limit: limit)
+            }
+            try await withTaskCancellationHandler(operation: {
+                await withCheckedContinuation { downloadGate = $0 }
+                try Task.checkCancellation()
+            }, onCancel: {
+                Task { @MainActor in
+                    downloadCancelled = true
+                    let gate = downloadGate; downloadGate = nil; gate?.resume()
+                }
+            })
+            return (Data("fixture".utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
+        let downloadLoginCount = ASWebAuthenticationSession.opened.count
+        let prepareDownload = Task { try await AccessMedia.shared.preparedURL(bridgeFixture.source) }
+        await until { ASWebAuthenticationSession.opened.count == downloadLoginCount + 1 }
+        ASWebAuthenticationSession.opened.last!.succeed()
+        _ = try await prepareDownload.value
+        var callbackCount = 0
+        var downloadError: Error?
+        let download = AccessMedia.fetch(URLRequest(url: bridgeFixture.source), discoverOnFailure: false) { _, _, error in
+            Task { @MainActor in callbackCount += 1; downloadError = error }
+        }
+        await until { downloadGate != nil }
+        AccessMedia.shared.manage()
+        let settings = bridgeFixture.presenter.presented as! UIAlertController
+        settings.actions.first(where: { $0.style == .destructive })!.invoke()
+        await until { downloadCancelled && callbackCount == 1 }
+        await download.value
+        assert(callbackCount == 1 && downloadError as? AccessMediaFailure == .cancelled,
+            "Settings sign-out must cancel an active protected EPG/HTTP transfer and settle it once")
+
+        var publicGate: CheckedContinuation<Void, Never>?
+        var publicCancelled = false
+        URLSession.handler = { request in
+            await withTaskCancellationHandler(operation: {
+                await withCheckedContinuation { publicGate = $0 }
+            }, onCancel: { Task { @MainActor in publicCancelled = true } })
+            return (Data("public".utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
+        var publicCount = 0
+        let publicRequest = AccessMedia.fetch(URLRequest(url: URL(string: "https://public.fixture.invalid/epg.xml")!)) { data, _, error in
+            assert(data == Data("public".utf8) && error == nil)
+            Task { @MainActor in publicCount += 1 }
+        }
+        await until { publicGate != nil }
+        try AccessMedia.shared.signOut()
+        for _ in 0..<20 { await Task.yield() }
+        assert(!publicCancelled && publicCount == 0, "Source logout must not cancel unrelated public HTTP")
+        publicGate!.resume()
+        await publicRequest.value
+        await until { publicCount == 1 }
+
+        let timedDownloadLoginCount = ASWebAuthenticationSession.opened.count
+        let prepareTimedDownload = Task { try await AccessMedia.shared.preparedURL(bridgeFixture.source) }
+        await until { ASWebAuthenticationSession.opened.count == timedDownloadLoginCount + 1 }
+        ASWebAuthenticationSession.opened.last!.succeed()
+        _ = try await prepareTimedDownload.value
+        downloadCancelled = false
+        var timedRequest = URLRequest(url: bridgeFixture.source)
+        timedRequest.timeoutInterval = 0.03
+        var timedCount = 0
+        var timedError: Error?
+        let timedDownload = AccessMedia.fetch(timedRequest, authenticationAllowance: 0) { _, _, error in
+            Task { @MainActor in timedCount += 1; timedError = error }
+        }
+        await until { timedCount == 1 && downloadCancelled }
+        await timedDownload.value
+        assert(timedCount == 1 && (timedError as? URLError)?.code == .timedOut,
+            "A full request timeout cancels the protected transfer and preserves the timeout category exactly once")
+
+        let callbackAfterCompletion = CAPPluginCall(["requestId": "http-first"])
+        httpPlugin.cancelHttpRequest(callbackAfterCompletion)
+        await until { callbackAfterCompletion.result != nil }
+        assert(callbackAfterCompletion.result?["cancelled"] as? Bool == false)
+        reset()
+        let generationFixture = Fixture(), generationAccess = generationFixture.makeAccess()
+        try generationAccess.signOut()
+        let staleHttp = Task {
+            try await generationAccess.authorized(URLRequest(url: generationFixture.source), config: generationFixture.config, generation: 0)
+        }
+        await failure(staleHttp, .cancelled)
+        assert(ASWebAuthenticationSession.opened.isEmpty,
+            "A request queued before logout cannot start login after logout while crossing the actor")
+        print("PASS: native auth/bridge cancellation, protected HTTP logout/deadlines, public HTTP isolation, request ID ownership, generation guards and uppercase HTTPS")
         finished = true
     } catch { fatalError("Auth fixture failed: \(error)") }
 }
@@ -517,8 +694,11 @@ with tempfile.TemporaryDirectory(prefix="ottplay-auth-test-") as directory:
     (path / "AccessMedia.swift").write_text("import CoreFoundation\n" + production)
     policy = (sources / "AccessMediaPolicy.swift").read_text().split("// Used only for protected requests", 1)[0]
     (path / "AccessMediaPolicy.swift").write_text(policy)
+    portal = (sources / "StalkerPortalPlugin.swift").read_text().split("/// A separate capability:", 1)[0]
+    portal = portal.replace("import Capacitor\n", "").replace("import os.log\n", "").replace("#if os(iOS)", "#if true")
+    (path / "StalkerPortalPlugin.swift").write_text(portal)
     (path / "main.swift").write_text(SWIFT)
     subprocess.run(["swiftc", str(path / "AccessMediaPolicy.swift"),
-                    str(path / "AccessMedia.swift"), str(path / "main.swift"),
+                    str(path / "AccessMedia.swift"), str(path / "StalkerPortalPlugin.swift"), str(path / "main.swift"),
                     "-o", str(path / "test")], check=True)
     subprocess.run([str(path / "test")], check=True, timeout=35)

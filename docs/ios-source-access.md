@@ -71,7 +71,10 @@ Origin, method, headers and source origin are checked; the listener forwards
 only to discovered source/media origins. Manifests rewrite relative and
 same-source absolute URIs, including variants, audio, subtitles, keys, init
 maps, parts and preload hints. Other HTTPS origins retain their original URLs
-and never receive an Access cookie. Binary media is streamed with backpressure;
+and never receive an Access cookie. Network-path references (`//cdn/path`) are
+resolved against the upstream manifest, preserving HTTPS and signed queries
+when AVPlayer reads the rewritten manifest over local HTTP.
+Binary media is streamed with backpressure;
 HEAD, byte ranges and content ranges are preserved. A single isolated upstream
 session reuses its connection pool, with credentials and redirect decisions
 scoped to each task. Low-latency HLS reload directives reach upstream without
@@ -96,6 +99,14 @@ or restart playback. Closing a proxy connection also cancels its pending
 authorization. A clean TCP write-half-close remains supported, with the existing
 request deadlines bounding connections whose peer cannot be distinguished from
 a client waiting for its response.
+
+Native HTTP retains each request's network timeout and allows up to five extra
+minutes for discovery and interactive sign-in, with an overall deadline.
+Aborting or timing out an iOS playlist/provider AJAX request cancels that
+request's native work and login waiter, while other consumers continue.
+Signing out cancels protected downloads already in progress. Manual sign-in
+from **Source access** is independent of a download's deadline and remains
+available when entering an email code needs longer than an AJAX caller allows.
 
 ## Verification
 

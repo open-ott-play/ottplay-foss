@@ -57,6 +57,8 @@ final class Fixture: URLProtocol {
             data = Data("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\nlevel/list.m3u8\n".utf8)
         } else if path == "/level/list.m3u8" {
             data = Data("#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"../key\"\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:2,\nsegment.ts?secret=fixture\n#EXT-X-ENDLIST\n".utf8)
+        } else if path == "/external-refs.m3u8" {
+            data = Data("#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"//cdn.fixture.invalid/key?signature=a%2Fb%2B%3D&&=preserved\"\n#EXTINF:2,\n//cdn.fixture.invalid/segment.ts?signature=a%2Fb%2B%3D&&=preserved\n#EXT-X-ENDLIST\n".utf8)
         } else if path == "/level/segment.ts" {
             headers["Content-Type"] = "video/mp2t"
             if request.value(forHTTPHeaderField: "Range") == "bytes=1-2" {
@@ -203,6 +205,12 @@ Task { @MainActor in
         assert(rewritten.contains("https://media.fixture.invalid/steer.json"))
         assert(rewritten.contains("https://external.invalid/no-cookie.ts"))
 
+        let networkPath = "//cdn.fixture.invalid/segment.ts?signature=a%2Fb%2B%3D&&=preserved"
+        let external = AccessMediaPolicy.rewriteManifest(networkPath, base: source) { config.map($0) }
+        let resolvedExternal = URL(string: external, relativeTo: URL(string: "http://127.0.0.1:1234/media.m3u8")!)!.absoluteURL
+        assert(resolvedExternal.absoluteString == "https:" + networkPath,
+            "An unproxied network-path URI must not inherit HTTP from loopback")
+
         let proxy = try AccessMediaProxy(sessionConfiguration: Fixture.configuration)
         let local = try await proxy.url(for: source, config: config)
         let (masterData, masterResponse) = try await URLSession.shared.data(from: local)
@@ -234,6 +242,13 @@ Task { @MainActor in
         let keyURL = URL(string: String(playlist[Range(keyMatch.range(at: 1), in: playlist)!]))!
         let (keyBytes, _) = try await URLSession.shared.data(from: keyURL)
         assert(keyBytes == Data([1, 2, 3, 4]))
+        let externalLocal = try await proxy.url(for: URL(string: config.source_origin + "/external-refs.m3u8")!, config: config)
+        let (externalData, _) = try await URLSession.shared.data(from: externalLocal)
+        let externalManifest = String(data: externalData, encoding: .utf8)!
+        assert(externalManifest.contains("URI=\"https://cdn.fixture.invalid/key?signature=a%2Fb%2B%3D&&=preserved\""))
+        let externalSegment = externalManifest.components(separatedBy: "\n").first { !$0.isEmpty && !$0.hasPrefix("#") }!
+        assert(URL(string: externalSegment, relativeTo: externalLocal)!.absoluteURL.absoluteString == "https:" + networkPath)
+        assert(!externalManifest.contains("127.0.0.1"), "External resources must stay outside the credentialed proxy")
         let signed = URL(string: source.absoluteString + "?signature=a%2Fb%2B%3D&&=preserved&_HLS_msn=1")!
         var reload = URLComponents(url: try await proxy.url(for: signed, config: config), resolvingAgainstBaseURL: false)!
         reload.percentEncodedQuery = "_HLS_msn=12&_HLS_part=3&_HLS_skip=v2"

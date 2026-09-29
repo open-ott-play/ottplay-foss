@@ -28,6 +28,9 @@ import { nativeWebFallback } from "./web-fallback";
  */
 
 export interface StalkerPortalPlugin {
+    cancelHttpRequest?(opts: {
+        requestId: string;
+    }): Promise<{ cancelled: boolean }>;
     /** Generic raw-text HTTP for provider JSON/JSONP requests in the native app. */
     httpRequest(opts: {
         url: string;
@@ -35,6 +38,7 @@ export interface StalkerPortalPlugin {
         body?: string;
         headers?: Record<string, string>;
         timeoutMs?: number;
+        requestId?: string;
     }): Promise<NativeHttpResponse>;
     portalRequest(opts: {
         url: string;
@@ -42,6 +46,8 @@ export interface StalkerPortalPlugin {
         body?: string;
         contentType?: string;
         headers?: Record<string, string>;
+        requestId?: string;
+        timeoutMs?: number;
     }): Promise<{
         status: number;
         body: string;

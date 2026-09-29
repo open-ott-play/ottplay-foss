@@ -94,9 +94,11 @@ enum AccessMediaPolicy {
 
     static func rewriteManifest(_ text: String, base: URL, rewrite: (URL) -> URL?) -> String {
         func replace(_ value: String) -> String {
-            guard let url = URL(string: value, relativeTo: base)?.absoluteURL,
-                  let local = rewrite(url) else { return value }
-            return local.absoluteString
+            guard let url = URL(string: value, relativeTo: base)?.absoluteURL else { return value }
+            // The rewritten manifest lives on HTTP loopback. External network-
+            // path references must retain the upstream scheme, without gaining
+            // access to the credentialed proxy.
+            return (rewrite(url) ?? url).absoluteString
         }
         let expression = try! NSRegularExpression(pattern: "(?:^|[, :])(?:URI|SERVER-URI)=\"([^\"]*)\"")
         return text.components(separatedBy: "\n").map { line in
