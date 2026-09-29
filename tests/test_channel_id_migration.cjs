@@ -38,6 +38,9 @@ const c = {
             append() {
                 return this;
             },
+            hide() {
+                return this;
+            },
             is: () => true,
         };
     },
