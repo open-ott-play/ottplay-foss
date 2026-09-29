@@ -25,6 +25,15 @@ All four channel fields are strings, with at most 512 UTF-16 code units each.
 Local `id` must be nonempty and unique. A batch contains at most 2048 channels;
 HTTP body limit is 512 KiB. Unknown fields and sources are rejected.
 
+Matching has an eight-second server deadline after JSON validation, including
+waiting for the shared matcher. At most two requests are admitted and only one
+enters that matcher at a time; the other waits asynchronously. Expiry returns
+504 `EPG_TIMEOUT`, never partial mappings or an empty success. Dropping the HTTP
+request cancels its work. The web runtime checks cancellation and the deadline
+inside JavaScript as well as between channels; its temporary budget is cleared
+before another call can use the context. Admission remains held until running
+work actually stops. This does not evict or change the accepted EPG snapshot.
+
 ```json
 {"version":1,"source":"epg-one","generation":"opaque","fetchedAt":1790685238000,"refreshMs":7200000,"stale":false,"mappings":{"0":{"channelId":"18","shift":0,"logo":"https://cdn.epg.one/example.png"}}}
 ```
@@ -97,6 +106,7 @@ All responses, including failures, send `Cache-Control: no-store` and
 - 404 `EPG_CHANNEL`: unknown canonical channel or unavailable route.
 - 422 `EPG_CHANNEL_LIMIT`: complete requested history exceeds the budget.
 - 500 `EPG_INTERNAL`: internal computation failed; no provider data is exposed.
+- 504 `EPG_TIMEOUT`: matching exceeded its bounded processing/queue deadline.
 
 Download limits are 96 MiB compressed and 512 MiB decoded, with 30-second
 connect, 60-second read and 600-second total timeouts. Parsing, matching, query

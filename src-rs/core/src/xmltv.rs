@@ -515,6 +515,7 @@ pub fn parse_xmltv_time(ts: &str) -> anyhow::Result<i64> {
 }
 
 pub use crate::shared_guide::GuideIndex as MatchIndex;
+pub use crate::shared_guide::GuideMatchBudget as MatchBudget;
 
 pub fn normalize_name(name: &str) -> anyhow::Result<String> {
     crate::shared_guide::text("nativeGuideName", name)

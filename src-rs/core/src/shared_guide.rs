@@ -4,12 +4,67 @@ use rquickjs::function::{Constructor, This};
 use rquickjs::{Context, Ctx, FromJs, Function, Object, Runtime};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use std::time::{Duration, Instant};
 
 const CORE: &str = include_str!("../../../vendor/ottplay-core.js");
 
 #[derive(Clone)]
-pub struct GuideIndex(Context, Option<Arc<AliasNames>>);
+pub struct GuideIndex(
+    Context,
+    Option<Arc<AliasNames>>,
+    Option<Arc<GuideInterrupt>>,
+);
+
+/// A caller-owned wall-clock budget; dropping an HTTP request cancels its work.
+/// Only the hosted web adapter opts into it. It never changes matching rules.
+#[derive(Clone)]
+pub struct GuideMatchBudget {
+    deadline: Instant,
+    cancelled: Arc<AtomicBool>,
+}
+
+impl GuideMatchBudget {
+    pub fn new(duration: Duration) -> Self {
+        Self {
+            deadline: Instant::now() + duration,
+            cancelled: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    pub fn deadline(&self) -> Instant {
+        self.deadline
+    }
+
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Relaxed);
+    }
+
+    pub fn stopped(&self) -> bool {
+        self.cancelled.load(Ordering::Relaxed) || Instant::now() >= self.deadline
+    }
+
+    pub fn check(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(!self.stopped(), "Hosted guide match stopped");
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+struct GuideInterrupt {
+    active: Mutex<Option<GuideMatchBudget>>,
+}
+
+struct ActiveGuideBudget<'a>(&'a GuideInterrupt);
+
+impl Drop for ActiveGuideBudget<'_> {
+    fn drop(&mut self) {
+        *self.0.active.lock().unwrap_or_else(|error| error.into_inner()) = None;
+    }
+}
 
 #[derive(Default)]
 struct AliasNames {
@@ -35,14 +90,19 @@ fn checked<T>(
     context: &Context,
     action: impl for<'js> FnOnce(Ctx<'js>) -> rquickjs::Result<T>,
 ) -> anyhow::Result<T> {
-    context.with(|ctx| {
-        action(ctx.clone()).map_err(|error| {
-            // Never log exception text containing provider names, URLs or credentials.
-            if error.is_exception() {
-                let _ = ctx.catch();
-            }
-            anyhow::anyhow!("Shared guide runtime: {error}")
-        })
+    context.with(|ctx| checked_in(ctx, action))
+}
+
+fn checked_in<'js, T>(
+    ctx: Ctx<'js>,
+    action: impl FnOnce(Ctx<'js>) -> rquickjs::Result<T>,
+) -> anyhow::Result<T> {
+    action(ctx.clone()).map_err(|error| {
+        // Never log exception text containing provider names, URLs or credentials.
+        if error.is_exception() {
+            let _ = ctx.catch();
+        }
+        anyhow::anyhow!("Shared guide runtime: {error}")
     })
 }
 
@@ -168,7 +228,7 @@ impl GuideIndex {
             let index: Object = constructor.construct((rows, "rust", measure, precision))?;
             ctx.globals().set("guideIndex", index)
         })?;
-        Ok(Self(context, None))
+        Ok(Self(context, None, None))
     }
 
     /// Hosted HTTP clients retain the browser's ordered aliases, UTF-16 length
@@ -182,7 +242,69 @@ impl GuideIndex {
             let index: Object = constructor.construct((rows, "web", measure, precision))?;
             ctx.globals().set("guideIndex", index)
         })?;
-        Ok(Self(context, None))
+        // Install once outside Context::with: changing runtime callbacks while
+        // holding its mutex deadlocks. The active budget itself is swapped only
+        // while that same context is serialized and is cleared before unlocking.
+        let interrupt = Arc::new(GuideInterrupt::default());
+        let active = interrupt.clone();
+        context
+            .runtime()
+            .set_interrupt_handler(Some(Box::new(move || {
+                active
+                    .active
+                    .lock()
+                    .unwrap_or_else(|error| error.into_inner())
+                    .as_ref()
+                    .is_some_and(GuideMatchBudget::stopped)
+            })));
+        Ok(Self(context, None, Some(interrupt)))
+    }
+
+    fn with_web_budget<T>(
+        &self,
+        budget: &GuideMatchBudget,
+        action: impl for<'js> FnOnce(Ctx<'js>) -> rquickjs::Result<T>,
+    ) -> anyhow::Result<T> {
+        budget.check()?;
+        self.0.with(|ctx| {
+            budget.check()?;
+            let interrupt = self
+                .2
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Web guide budget requires web profile"))?;
+            *interrupt
+                .active
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()) = Some(budget.clone());
+            let _reset = ActiveGuideBudget(interrupt);
+            let result = checked_in(ctx, action);
+            // Interruption is an error even if JS happened to return no match.
+            budget.check()?;
+            result
+        })
+    }
+
+    /// Resolve and infer seconds with the unchanged web rules under one budget.
+    pub fn resolve_web_with_budget(
+        &self,
+        id: &str,
+        names: &[&str],
+        shift_name: &str,
+        budget: &GuideMatchBudget,
+    ) -> anyhow::Result<Option<(String, i64)>> {
+        self.with_web_budget(budget, |ctx| {
+            let index: Object = ctx.globals().get("guideIndex")?;
+            let method: Function = index.get("resolve")?;
+            let found: Option<String> = method.call((This(index), id, names.to_vec()))?;
+            found
+                .map(|id| {
+                    let hours: i32 = core(&ctx)?
+                        .get::<_, Function>("nativeGuideShift")?
+                        .call((shift_name, "web"))?;
+                    Ok((id, i64::from(hours) * 3600))
+                })
+                .transpose()
+        })
     }
 
     pub fn web_shift_seconds(&self, name: &str) -> anyhow::Result<i64> {
@@ -354,6 +476,113 @@ fn slice_in(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hosted_budget_interrupts_js_deadline_and_restores_the_index() -> anyhow::Result<()> {
+        let index = GuideIndex::web(vec![vec!["id".into(), "News".into()]])?;
+        let budget = GuideMatchBudget::new(Duration::from_millis(20));
+        let started = Instant::now();
+        assert!(index
+            .with_web_budget(&budget, |ctx| ctx.eval::<(), _>("for (;;) {}"))
+            .is_err());
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(index.2.as_ref().unwrap().active.lock().unwrap().is_none());
+        assert_eq!(index.resolve("id", &[])?, Some("id".into()));
+        let fresh = GuideMatchBudget::new(Duration::from_secs(1));
+        assert_eq!(
+            index.resolve_web_with_budget("id", &[], "News +7", &fresh)?,
+            Some(("id".into(), 25200))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn hosted_budget_cancels_active_js_and_does_not_cancel_another_call() -> anyhow::Result<()> {
+        let index = GuideIndex::web(vec![vec!["id".into(), "News".into()]])?;
+        let budget = GuideMatchBudget::new(Duration::from_secs(2));
+        let (entered, waiting) = std::sync::mpsc::channel();
+        let worker_index = index.clone();
+        let worker_budget = budget.clone();
+        let worker = std::thread::spawn(move || {
+            worker_index.with_web_budget(&worker_budget, |ctx| {
+                entered.send(()).unwrap();
+                ctx.eval::<(), _>("for (;;) {}")
+            })
+        });
+        waiting.recv_timeout(Duration::from_secs(1))?;
+        let started = Instant::now();
+        budget.cancel();
+        // This call contends for the same context, then must get its own budget.
+        let fresh = GuideMatchBudget::new(Duration::from_secs(1));
+        assert_eq!(
+            index.resolve_web_with_budget("id", &[], "News", &fresh)?,
+            Some(("id".into(), 0))
+        );
+        assert!(worker.join().unwrap().is_err());
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(!fresh.stopped());
+        // A pre-cancelled request must fail rather than report a cache miss.
+        assert!(index
+            .resolve_web_with_budget("missing", &[], "", &budget)
+            .is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn hosted_budget_interrupted_fuzzy_query_recovers_the_complete_best_match() -> anyhow::Result<()>
+    {
+        use std::sync::atomic::AtomicUsize;
+        let mut rows: Vec<Vec<String>> = (0..900)
+            .map(|i| {
+                vec![
+                    format!("early-{i}"),
+                    format!("Candidate Alpha padding words {i}"),
+                ]
+            })
+            .collect();
+        // The best non-exact match is last: a partial cached answer would be wrong.
+        rows.push(vec!["winner".into(), "Candidate Alpha X".into()]);
+        let index = GuideIndex::web(rows.clone())?;
+        let budget = GuideMatchBudget::new(Duration::from_secs(5));
+        let interrupt_once = Arc::new(AtomicBool::new(true));
+        let calls = Arc::new(AtomicUsize::new(0));
+        // Instrument the existing numeric-precision boundary, not the matcher:
+        // its first invocation proves that actual fuzzy scoring has started.
+        checked(&index.0, |ctx| {
+            let cancel = budget.clone();
+            let once = interrupt_once.clone();
+            let count = calls.clone();
+            let precision = Function::new(ctx.clone(), move |value: f64| {
+                count.fetch_add(1, Ordering::Relaxed);
+                if once.swap(false, Ordering::Relaxed) {
+                    cancel.cancel();
+                }
+                value
+            })?;
+            let measure = ctx.eval::<Function, _>("(function(value) { return value.length; })")?;
+            let constructor: Constructor = core(&ctx)?.get("NativeGuide")?;
+            let guide: Object = constructor.construct((rows.clone(), "web", measure, precision))?;
+            ctx.globals().set("guideIndex", guide)
+        })?;
+        let input = ["Candidate Alpha"];
+        assert!(index
+            .resolve_web_with_budget("", &input, input[0], &budget)
+            .is_err());
+        let interrupted_calls = calls.swap(0, Ordering::Relaxed);
+        assert!(interrupted_calls > 0);
+        let fresh_budget = GuideMatchBudget::new(Duration::from_secs(5));
+        let recovered = index.resolve_web_with_budget("", &input, input[0], &fresh_budget)?;
+        // If only the outer budget check had failed after completion, the first
+        // run would have made just as many scoring calls as this complete run.
+        assert!(interrupted_calls < calls.load(Ordering::Relaxed));
+        let fresh = GuideIndex::web(rows)?;
+        assert_eq!(
+            recovered,
+            fresh.resolve_web_with_budget("", &input, input[0], &fresh_budget)?
+        );
+        assert_eq!(recovered, Some(("winner".into(), 0)));
+        Ok(())
+    }
 
     #[test]
     fn record_trim_preserves_rust_unicode_boundaries() -> anyhow::Result<()> {
