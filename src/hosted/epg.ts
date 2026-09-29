@@ -443,6 +443,14 @@
                                 host.__ottClassicGuide.invalidate
                             )
                                 host.__ottClassicGuide.invalidate(true);
+                            // A completed empty screen no longer has a pending
+                            // guide consumer; refresh its current owned view.
+                            if (
+                                !disposed &&
+                                attempt === currentAttempt &&
+                                host.__ottClassicGuideScreen
+                            )
+                                host.__ottClassicGuideScreen.refresh();
                         }
                         report(
                             value.stale
