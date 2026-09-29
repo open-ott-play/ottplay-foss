@@ -587,6 +587,11 @@ test("native transport is inert without Tauri IPC or for unsupported URLs, witho
         "http://origin.invalid/play/live.php?extension=m3u8evil",
         "http://origin.invalid/play/live.php?other_extension=m3u8",
         "http://origin.invalid/video.mp4#?extension=m3u8",
+        "http://origin.invalid/video.mp4?title=movie.m3u8",
+        "http://origin.invalid/video.mp4?title=movie.m3u8&extension=mp4",
+        "http://origin.invalid/play/live.php&extension=m3u8",
+        "http://origin.invalid/play/live.php?extension=m3u8?token=1",
+        "http://origin.invalid/play/live.php?next=?extension=m3u8",
         "data:video/mpegurl,test",
     ])
         assert.equal(f.w.createNativeHlsTransport(url, options), null);
@@ -600,6 +605,8 @@ test("Auto routes query-selected HLS through native transport without changing s
     for (const url of [
         "http://origin.invalid/play/live.php?extension=m3u8",
         "http://origin.invalid/play/live.php?mac=02%3A00%3A00%3A00%3A00%3A01&stream=42&extension=m3u8&play_token=a%2Bb",
+        "https://origin.invalid/play/live.php?stream=42&extension=m3u8#player",
+        "https://origin.invalid/live.m3u8?play_token=a%2Bb%2f&duplicate=1&duplicate=2",
     ]) {
         const bridge = bridgeFixture();
         const f = fixture({ invoke: bridge.invoke });

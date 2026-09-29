@@ -24,6 +24,7 @@ async fn upstream(
         "/nested/video.m3u8" => "#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:42\n#EXT-X-MAP:URI=\"../init.bin\"\n#EXT-X-KEY:METHOD=AES-128,URI=\"../key.bin\"\n#EXTINF:2,\n../seg.ts?sample=main\n#EXTINF:4,\n../slow.ts\n#EXT-X-ENDLIST\n".to_string(),
         "/nested/audio/list.m3u8" => "#EXTM3U\n#EXTINF:2,\n../../audio.ts\n#EXT-X-ENDLIST\n".to_string(),
         "/reuse.m3u8" => format!("#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:{}\n#EXTINF:2,\nseg.ts\n",lab.sequence.load(Ordering::Relaxed)),
+        "/play/live.php" => "#EXTM3U\n#EXTINF:2,\n../seg.ts?token=synthetic%2B\n#EXT-X-ENDLIST\n".into(),
         "/range.m3u8" => "#EXTM3U\n#EXTINF:1,\n#EXT-X-BYTERANGE:10@0\nseg.ts\n#EXTINF:1,\n#EXT-X-BYTERANGE:10\nseg.ts\n".into(),
         "/abort.m3u8" => "#EXTM3U\n#EXTINF:2,\nabort.ts\n".into(),
         "/abort.ts" => {
@@ -95,6 +96,49 @@ async fn session(state: &NativeHlsState, token: &str) -> Arc<Session> {
         .get(token)
         .unwrap()
         .clone()
+}
+
+#[tokio::test]
+async fn query_selected_playlist_preserves_signed_query_and_cleans_up() {
+    let (origin, lab, task) = lab().await;
+    let state = NativeHlsState::default();
+    let path = "/play/live.php?extension=m3u8&play_token=a%2Bb%2f%3D&empty=&stream=42&stream=43";
+    let opened = state.start(format!("{origin}{path}"), None).await.unwrap();
+    assert!(lab.calls.lock().unwrap().is_empty());
+
+    let client = reqwest::Client::new();
+    let playlist = client
+        .get(&opened.url)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(lab.calls.lock().unwrap()[0].0, path);
+    let segment = links(&opened.url, &playlist).remove(0);
+    assert!(segment.starts_with("http://127.0.0.1:"));
+    let bytes = client
+        .get(segment)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    assert_eq!(bytes.len(), 1000);
+    assert_eq!(lab.calls.lock().unwrap()[1].0, "/seg.ts?token=synthetic%2B");
+    assert_eq!(lab.calls.lock().unwrap().len(), 2);
+    assert_eq!(state.stats(&opened.session).await.unwrap().samples, 1);
+
+    state.stop(&opened.session).await;
+    assert!(state.stats(&opened.session).await.is_err());
+    assert!(state.server.lock().await.is_none());
+    task.abort();
 }
 
 #[tokio::test]
