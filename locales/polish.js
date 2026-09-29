@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "Adres URL serwera API",
     "Applying HTTP remote settings...":
         "Stosowanie ustawień sterowania HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Zatwierdź kod dla %1 poleceniem ott approve NAME CODE:",
     Archive: "Archiwum",
     "Archive - begin": "Archiwum — początek",
     "Archive hours": "Godziny archiwum",
@@ -112,6 +114,7 @@ var keyStrings = {
     "Call PiP": "Otwórz PiP",
     "Call PiP / PiP exchange": "Otwórz PiP / zamień obrazy",
     Cancel: "Anuluj",
+    "Cancel pairing": "Anuluj parowanie",
     "Cannot delete the last category": "Nie można usunąć ostatniej kategorii",
     Category: "Kategoria",
     "Category selection": "Wybór kategorii",
@@ -149,6 +152,15 @@ var keyStrings = {
     "Command server": "Serwer poleceń",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adres serwera poleceń, kod dostępu urządzenia, lokalne sterowanie HTTP i zdalne wpisywanie tekstu",
+    "Command server discovery canceled.":
+        "Wyszukiwanie serwera poleceń anulowano.",
+    "Command server discovery has not started.":
+        "Wyszukiwanie serwera poleceń jeszcze się nie rozpoczęło.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Wyszukiwanie serwera poleceń jest niedostępne. Wybierz „Znajdź serwer poleceń”, aby spróbować ponownie.",
+    "Command server discovery timed out.":
+        "Upłynął limit czasu wyszukiwania serwera poleceń.",
+    "Command server found.": "Znaleziono serwer poleceń.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Skonfiguruj All4you.tv w Ustawienia -> Ustawienia dostawcy",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -227,6 +239,10 @@ var keyStrings = {
     "Copy category": "Kopiuj kategorię",
     "Copy JSON": "Kopiuj JSON",
     "Could not connect to the server.": "Nie udało się połączyć z serwerem.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nie udało się utworzyć żądania parowania. Wyszukaj serwer ponownie, aby spróbować jeszcze raz.",
+    "Could not save the approved command server settings.":
+        "Nie udało się zapisać zatwierdzonych ustawień serwera poleceń.",
     "Could not update HTTP remote control.":
         "Nie udało się zmienić ustawień sterowania HTTP.",
     Country: "Kraj",
@@ -245,6 +261,8 @@ var keyStrings = {
     "Device info:": "Informacje o urządzeniu:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Playlisty KBC (Kinoboom) wymagają adresu MAC urządzenia",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID urządzenia nie jest jeszcze gotowy. Wybierz „Znajdź serwer poleceń”, aby spróbować ponownie.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Ustawienia Diamond TV",
     Director: "Reżyser",
@@ -402,6 +420,8 @@ var keyStrings = {
         "Wybór pliku nie jest obsługiwany na tym urządzeniu",
     Filter: "Filtr",
     Filters: "Filtry",
+    "Find command server": "Znajdź serwer poleceń",
+    "Finding command servers...": "Wyszukiwanie serwerów poleceń…",
     "First Run Setup": "Konfiguracja początkowa",
     "Font type": "Krój czcionki",
     "For download settings file open": "Aby pobrać plik ustawień, otwórz",
@@ -507,6 +527,8 @@ var keyStrings = {
     "Next TV program": "Następny program",
     No: "Nie",
     "No channel name": "Brak nazwy kanału",
+    "No command server was found on this network.":
+        "W tej sieci nie znaleziono serwera poleceń.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nie znaleziono zapisanych ustawień",
@@ -536,6 +558,14 @@ var keyStrings = {
     on: "włączone",
     "on ": "po ",
     "or scan": "lub zeskanuj",
+    "Pairing approved. Command server configured.":
+        "Parowanie zatwierdzono. Serwer poleceń skonfigurowany.",
+    "Pairing expired. Find the server again to retry.":
+        "Czas parowania upłynął. Wyszukaj serwer ponownie, aby spróbować jeszcze raz.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Serwer parowania jest niedostępny. Wyszukaj serwer ponownie, aby spróbować jeszcze raz.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Parowanie odrzucono lub otrzymano nieprawidłowe zatwierdzenie. Wyszukaj serwer ponownie, aby spróbować jeszcze raz.",
     "Parental control": "Kontrola rodzicielska",
     Password: "Hasło",
     Pause: "Pauza",
@@ -607,6 +637,7 @@ var keyStrings = {
     "Rename to": "Zmień nazwę na",
     "Repeat parental code": "Powtórz kod rodzicielski",
     "Request sended!": "Żądanie wysłane!",
+    "Requesting approval for %1": "Żądanie zatwierdzenia dla %1",
     "Restart player": "Uruchom ponownie odtwarzacz",
     "Restart stream": "Uruchom ponownie strumień",
     "Restart stream / Live": "Uruchom ponownie strumień / na żywo",
@@ -663,12 +694,16 @@ var keyStrings = {
     "Set parental code": "Ustaw kod rodzicielski",
     "Set timer?": "Ustawić timer?",
     Settings: "Ustawienia",
+    "Settings changed. Discovery was canceled.":
+        "Ustawienia się zmieniły. Wyszukiwanie anulowano.",
     "Settings could not be saved": "Nie udało się zapisać ustawień",
     "Settings loaded from storage": "Ustawienia wczytane z pamięci",
     "Settings STB": "Ustawienia STB",
     "Settings saved": "Ustawienia zapisane",
     "Settings saved to storage": "Ustawienia zapisane w pamięci",
     "Settings sended!": "Ustawienia wysłane!",
+    "Several command servers were found. Select one below.":
+        "Znaleziono kilka serwerów poleceń. Wybierz jeden poniżej.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Ustawienia Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -722,8 +757,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Ustawienia Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Nieprawidłowy adres URL wyszukiwania serwera poleceń.",
     "The device ID in the address is invalid.":
         "Identyfikator urządzenia w adresie jest nieprawidłowy.",
+    "The discovery response is invalid.":
+        "Otrzymano nieprawidłową odpowiedź na żądanie wyszukiwania.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Ta przeglądarka nie obsługuje bezpiecznego automatycznego parowania. Zaktualizuj ją lub wprowadź ustawienia serwera poleceń ręcznie.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Ta przeglądarka nie ma profilu wykrywania. Wprowadź adres serwera lub skonfiguruj profil wdrożenia.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Ten odtwarzacz HTTPS nie może połączyć się z serwerem HTTP. Użyj serwera HTTPS lub otwórz odtwarzacz przez HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

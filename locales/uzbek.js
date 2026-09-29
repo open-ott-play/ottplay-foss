@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "API serveri URL manzili",
     "Applying HTTP remote settings...":
         "HTTP pulti sozlamalari qo‘llanmoqda...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "%1 uchun kodni ott approve NAME CODE buyrugʻi bilan tasdiqlang:",
     Archive: "Arxiv",
     "Archive - begin": "Arxiv — boshlanish",
     "Archive hours": "Arxiv soatlari",
@@ -111,6 +113,7 @@ var keyStrings = {
     "Call PiP": "PiP ochish",
     "Call PiP / PiP exchange": "PiP ochish / PiP oynalarini almashtirish",
     Cancel: "Bekor qilish",
+    "Cancel pairing": "Juftlashni bekor qilish",
     "Cannot delete the last category": "Oxirgi turkumni oʻchirib boʻlmaydi",
     Category: "Kategoriya",
     "Category selection": "Turkum tanlash",
@@ -148,6 +151,15 @@ var keyStrings = {
     "Command server": "Buyruqlar serveri",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Buyruqlar serveri manzili, qurilmaning kirish kodi, mahalliy HTTP boshqaruvi va masofaviy matn kiritish sozlamalari",
+    "Command server discovery canceled.":
+        "Buyruqlar serverini qidirish bekor qilindi.",
+    "Command server discovery has not started.":
+        "Buyruqlar serverini qidirish hali boshlanmadi.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Buyruqlar serverini qidirish mavjud emas. Qayta urinish uchun “Buyruqlar serverini topish”ni tanlang.",
+    "Command server discovery timed out.":
+        "Buyruqlar serverini qidirish vaqti tugadi.",
+    "Command server found.": "Buyruqlar serveri topildi.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -226,6 +238,10 @@ var keyStrings = {
     "Copy category": "Turkum nusxasini olish",
     "Copy JSON": "JSON nusxasini olish",
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Juftlash soʻrovini yaratib boʻlmadi. Qayta urinish uchun serverni yana toping.",
+    "Could not save the approved command server settings.":
+        "Buyruqlar serverining tasdiqlangan sozlamalarini saqlab boʻlmadi.",
     "Could not update HTTP remote control.":
         "HTTP pulti sozlamalarini yangilab bo‘lmadi.",
     Country: "Mamlakat",
@@ -244,6 +260,8 @@ var keyStrings = {
     "Device info:": "Qurilma haqida:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) pleylistlari uchun qurilmaning MAC manzili kerak",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Qurilma UUID identifikatori hali tayyor emas. Qayta urinish uchun “Buyruqlar serverini topish”ni tanlang.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV sozlamalari",
     Director: "Rejissyor",
@@ -402,6 +420,8 @@ var keyStrings = {
         "Bu qurilmada fayl tanlash qoʻllab-quvvatlanmaydi",
     Filter: "Filtr",
     Filters: "Filtrlar",
+    "Find command server": "Buyruqlar serverini topish",
+    "Finding command servers...": "Buyruqlar serverlari qidirilmoqda...",
     "First Run Setup": "Birinchi ishga tushirish sozlamalari",
     "Font type": "Shrift turi",
     "For download settings file open":
@@ -510,6 +530,8 @@ var keyStrings = {
     "Next TV program": "Keyingi koʻrsatuv",
     No: "Yoʻq",
     "No channel name": "Kanal nomi yo'q",
+    "No command server was found on this network.":
+        "Bu tarmoqda buyruqlar serveri topilmadi.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Saqlangan sozlamalar topilmadi",
@@ -539,6 +561,14 @@ var keyStrings = {
     on: "yoqilgan",
     "on ": "yoqilgan ",
     "or scan": "yoki skanerlang",
+    "Pairing approved. Command server configured.":
+        "Juftlash tasdiqlandi. Buyruqlar serveri sozlandi.",
+    "Pairing expired. Find the server again to retry.":
+        "Juftlash muddati tugadi. Qayta urinish uchun serverni yana toping.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Juftlash serveri mavjud emas. Qayta urinish uchun serverni yana toping.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Juftlash rad etildi yoki yaroqsiz tasdiq olindi. Qayta urinish uchun serverni yana toping.",
     "Parental control": "Ota-ona nazorati",
     Password: "Parol",
     Pause: "Pauza",
@@ -611,6 +641,7 @@ var keyStrings = {
     "Rename to": "Yangi nom",
     "Repeat parental code": "Ota-ona kodini qayta kiriting",
     "Request sended!": "Soʻrov yuborildi!",
+    "Requesting approval for %1": "%1 uchun tasdiq soʻralmoqda",
     "Restart player": "Pleyerni qayta ishga tushirish",
     "Restart stream": "Oqimni qayta ishga tushirish",
     "Restart stream / Live": "Oqimni qayta ishga tushirish / jonli efir",
@@ -669,12 +700,16 @@ var keyStrings = {
     "Set parental code": "Ota-ona kodini belgilash",
     "Set timer?": "Taymer oʻrnatilsinmi?",
     Settings: "Sozlamalar",
+    "Settings changed. Discovery was canceled.":
+        "Sozlamalar oʻzgardi. Qidiruv bekor qilindi.",
     "Settings could not be saved": "Sozlamalarni saqlab boʻlmadi",
     "Settings loaded from storage": "Sozlamalar xotiradan yuklandi",
     "Settings STB": "STB sozlamalari",
     "Settings saved": "Sozlamalar saqlandi",
     "Settings saved to storage": "Sozlamalar xotiraga saqlandi",
     "Settings sended!": "Sozlamalar yuborildi!",
+    "Several command servers were found. Select one below.":
+        "Bir nechta buyruqlar serveri topildi. Quyida ulardan birini tanlang.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) sozlamalari",
     ShockTv: "ShockTv",
@@ -728,8 +763,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox sozlamalari",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Buyruqlar serverini qidirish URL manzili yaroqsiz.",
     "The device ID in the address is invalid.":
         "Manzildagi qurilma ID raqami notoʻgʻri.",
+    "The discovery response is invalid.": "Qidiruv javobi yaroqsiz.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Bu brauzer xavfsiz avtomatik juftlashni bajara olmaydi. Uni yangilang yoki buyruqlar serveri sozlamalarini qoʻlda kiriting.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Bu brauzerda qidiruv profili yoʻq. Server manzilini kiriting yoki joylashtirish profilini sozlang.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Bu HTTPS pleyer HTTP serverga ulana olmaydi. HTTPS serverdan foydalaning yoki pleyerni HTTP orqali oching.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

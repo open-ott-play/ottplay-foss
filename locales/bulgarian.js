@@ -69,6 +69,8 @@ var keyStrings = {
     "API server URL": "URL на API сървъра",
     "Applying HTTP remote settings...":
         "Прилагане на настройките на HTTP дистанционното...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Потвърдете кода за %1 с командата ott approve NAME CODE:",
     Archive: "Архив",
     "Archive - begin": "Архив — начало",
     "Archive hours": "Часове архив",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "Отваряне на PiP",
     "Call PiP / PiP exchange": "Отваряне на PiP / размяна",
     Cancel: "Отказ",
+    "Cancel pairing": "Отмяна на сдвояването",
     "Cannot delete the last category":
         "Последната категория не може да бъде изтрита",
     Category: "Категория",
@@ -148,6 +151,15 @@ var keyStrings = {
     "Command server": "Сървър за команди",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Адрес на сървъра за команди, код за достъп, локално HTTP управление и дистанционно въвеждане на текст",
+    "Command server discovery canceled.":
+        "Търсенето на сървър за команди е отменено.",
+    "Command server discovery has not started.":
+        "Търсенето на сървър за команди още не е започнало.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Търсенето на сървър за команди не е достъпно. Натиснете „Намиране на сървър за команди“, за да опитате отново.",
+    "Command server discovery timed out.":
+        "Времето за търсене на сървър за команди изтече.",
+    "Command server found.": "Намерен е сървър за команди.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в Настройки -> Настройки на доставчика",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -226,6 +238,10 @@ var keyStrings = {
     "Copy category": "Копиране на категорията",
     "Copy JSON": "Копиране на JSON",
     "Could not connect to the server.": "Неуспешно свързване със сървъра.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Неуспешно създаване на заявка за сдвояване. Потърсете сървъра отново, за да опитате пак.",
+    "Could not save the approved command server settings.":
+        "Неуспешно запазване на одобрените настройки на сървъра за команди.",
     "Could not update HTTP remote control.":
         "Настройките на HTTP дистанционното не бяха променени.",
     Country: "Държава",
@@ -245,6 +261,8 @@ var keyStrings = {
     "Device info:": "Информация за устройството:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "За плейлистите KBC (Kinoboom) е необходим MAC адрес на устройството",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID на устройството още не е готов. Натиснете „Намиране на сървър за команди“, за да опитате отново.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Настройки за Diamond TV",
     Director: "Режисьор",
@@ -402,6 +420,8 @@ var keyStrings = {
         "Изборът на файл не се поддържа на това устройство",
     Filter: "Филтър",
     Filters: "Филтри",
+    "Find command server": "Намиране на сървър за команди",
+    "Finding command servers...": "Търсене на сървъри за команди…",
     "First Run Setup": "Първоначална настройка",
     "Font type": "Шрифт",
     "For download settings file open":
@@ -509,6 +529,8 @@ var keyStrings = {
     "Next TV program": "Следващо предаване",
     No: "Не",
     "No channel name": "Без име на канал",
+    "No command server was found on this network.":
+        "В тази мрежа не е намерен сървър за команди.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Няма намерени запазени настройки",
@@ -538,6 +560,14 @@ var keyStrings = {
     on: "включено",
     "on ": "при ",
     "or scan": "или сканирайте",
+    "Pairing approved. Command server configured.":
+        "Сдвояването е одобрено. Сървърът за команди е настроен.",
+    "Pairing expired. Find the server again to retry.":
+        "Времето за сдвояване изтече. Потърсете сървъра отново, за да опитате пак.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Сървърът за сдвояване не е достъпен. Потърсете сървъра отново, за да опитате пак.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Сдвояването е отхвърлено или е получено невалидно одобрение. Потърсете сървъра отново, за да опитате пак.",
     "Parental control": "Родителски контрол",
     Password: "Парола",
     Pause: "Пауза",
@@ -609,6 +639,7 @@ var keyStrings = {
     "Rename to": "Преименуване на",
     "Repeat parental code": "Повторете родителския код",
     "Request sended!": "Заявката е изпратена!",
+    "Requesting approval for %1": "Заявка за одобрение за %1",
     "Restart player": "Рестартиране на плейъра",
     "Restart stream": "Рестартиране на потока",
     "Restart stream / Live": "Рестартиране на потока / на живо",
@@ -665,12 +696,16 @@ var keyStrings = {
     "Set parental code": "Задайте родителски код",
     "Set timer?": "Да се зададе ли таймер?",
     Settings: "Настройки",
+    "Settings changed. Discovery was canceled.":
+        "Настройките са променени. Търсенето е отменено.",
     "Settings could not be saved": "Настройките не можаха да бъдат запазени",
     "Settings loaded from storage": "Настройките са заредени от хранилището",
     "Settings STB": "Настройки на STB",
     "Settings saved": "Настройките са запазени",
     "Settings saved to storage": "Настройките са запазени в хранилището",
     "Settings sended!": "Настройките са изпратени!",
+    "Several command servers were found. Select one below.":
+        "Намерени са няколко сървъра за команди. Изберете един по-долу.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Настройки за Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -726,8 +761,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Настройки за Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Невалиден URL за откриване на сървъра за команди.",
     "The device ID in the address is invalid.":
         "ID на устройството в адреса е невалиден.",
+    "The discovery response is invalid.":
+        "Получен е невалиден отговор на заявката за търсене.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Този браузър не поддържа безопасно автоматично сдвояване. Обновете го или въведете настройките на сървъра за команди ръчно.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "За този браузър няма профил за откриване. Въведете адрес на сървър или настройте профила за внедряване.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Този HTTPS плейър не може да се свърже с HTTP сървър. Използвайте HTTPS сървър или отворете плейъра чрез HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

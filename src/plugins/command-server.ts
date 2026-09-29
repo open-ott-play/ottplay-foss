@@ -17,12 +17,14 @@ export interface CommandServerRequest {
     body?: string;
     headers: Record<string, string>;
     method: string;
+    secureControl?: boolean;
     timeoutMs: number;
     url: string;
 }
 
 export interface CommandServerResponse {
     body: string;
+    error?: string;
     status: number;
 }
 
@@ -615,6 +617,63 @@ export function createCommandServerTransport(
                 nativeRequest(request).then(finish, function () {
                     finish();
                 });
+            } catch (_error) {
+                finish();
+            }
+        } else if (request.secureControl) {
+            try {
+                var target = new URL(request.url);
+                if (
+                    target.protocol !== "https:" ||
+                    target.username ||
+                    target.password ||
+                    target.hash
+                )
+                    throw new Error();
+                if (
+                    typeof w.fetch !== "function" ||
+                    typeof w.Request !== "function" ||
+                    typeof w.AbortController !== "function"
+                ) {
+                    finish({
+                        body: "",
+                        error: "secure_control_unavailable",
+                        status: 0,
+                    });
+                } else {
+                    xhr = new w.AbortController();
+                    var fetchRequest = new w.Request(request.url, {
+                        body: request.body,
+                        cache: "no-store",
+                        credentials: "omit",
+                        headers: request.headers,
+                        method: request.method,
+                        redirect: "error",
+                        signal: xhr.signal,
+                    });
+                    if (fetchRequest.redirect !== "error") {
+                        finish({
+                            body: "",
+                            error: "secure_control_unavailable",
+                            status: 0,
+                        });
+                    } else {
+                        w.fetch(fetchRequest)
+                            .then(function (response: any) {
+                                return response.text().then(function (
+                                    body: string
+                                ) {
+                                    finish({
+                                        body: body,
+                                        status: response.status,
+                                    });
+                                });
+                            })
+                            .catch(function () {
+                                finish();
+                            });
+                    }
+                }
             } catch (_error) {
                 finish();
             }

@@ -69,6 +69,8 @@ var keyStrings = {
     "API Server": "Сервер API",
     "API server URL": "Адрес сервера API",
     "Applying HTTP remote settings...": "Применение настроек HTTP-пульта...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Подтвердите код для %1 командой ott approve NAME CODE:",
     Archive: "Архив",
     "Archive - begin": "Архив — начало",
     "Archive hours": "Количество часов архива",
@@ -108,6 +110,7 @@ var keyStrings = {
     "Call PiP": "Открыть PiP",
     "Call PiP / PiP exchange": "Открыть PiP / поменять местами",
     Cancel: "Отмена",
+    "Cancel pairing": "Отменить сопряжение",
     "Cannot delete the last category": "Нельзя удалить последнюю категорию",
     Category: "Категории",
     "Category selection": "Выбор категории",
@@ -145,6 +148,14 @@ var keyStrings = {
     "Command server": "Сервер команд",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Адрес сервера команд, код доступа устройства, локальное HTTP-управление и удалённый ввод текста",
+    "Command server discovery canceled.": "Поиск сервера команд отменён.",
+    "Command server discovery has not started.":
+        "Поиск сервера команд ещё не начат.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Поиск сервера команд недоступен. Нажмите «Найти сервер команд», чтобы повторить.",
+    "Command server discovery timed out.":
+        "Время поиска сервера команд истекло.",
+    "Command server found.": "Сервер команд найден.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в разделе Настройки -> Настройки провайдера",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -223,6 +234,10 @@ var keyStrings = {
     "Copy category": "Копировать категорию",
     "Copy JSON": "Копировать JSON",
     "Could not connect to the server.": "Не удалось подключиться к серверу.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Не удалось создать запрос на сопряжение. Повторите поиск сервера, чтобы попробовать снова.",
+    "Could not save the approved command server settings.":
+        "Не удалось сохранить подтверждённые настройки сервера команд.",
     "Could not update HTTP remote control.":
         "Не удалось изменить настройки HTTP-пульта.",
     Country: "Страна",
@@ -241,6 +256,8 @@ var keyStrings = {
     "Device info:": "Информация об устройстве:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Для плейлистов KBC (Kinoboom) нужен MAC-адрес устройства",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID устройства ещё не готов. Нажмите «Найти сервер команд», чтобы повторить.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Настройки Diamond TV",
     Director: "Режиссёр",
@@ -398,6 +415,8 @@ var keyStrings = {
         "Выбор файла не поддерживается на этом устройстве",
     Filter: "Фильтр",
     Filters: "Фильтры",
+    "Find command server": "Найти сервер команд",
+    "Finding command servers...": "Поиск серверов команд…",
     "First Run Setup": "Первоначальная настройка",
     "Font type": "Шрифт",
     "For download settings file open": "Для скачивания файла настроек откройте",
@@ -503,6 +522,8 @@ var keyStrings = {
     "Next TV program": "Следующая передача",
     No: "Нет",
     "No channel name": "Нет названия канала",
+    "No command server was found on this network.":
+        "В этой сети не найден сервер команд.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Не найдены передачи для каналов и дат плейлиста. Проверьте источник и часы устройства.",
     "No saved settings found": "Сохранённые настройки не найдены",
@@ -532,6 +553,14 @@ var keyStrings = {
     on: "включен",
     "on ": "по ",
     "or scan": "или отсканируйте",
+    "Pairing approved. Command server configured.":
+        "Сопряжение подтверждено. Сервер команд настроен.",
+    "Pairing expired. Find the server again to retry.":
+        "Время сопряжения истекло. Повторите поиск сервера, чтобы попробовать снова.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Сервер сопряжения недоступен. Повторите поиск сервера, чтобы попробовать снова.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Сопряжение отклонено или получено неверное подтверждение. Повторите поиск сервера, чтобы попробовать снова.",
     "Parental control": "Родительский контроль",
     Password: "Пароль",
     Pause: "Пауза",
@@ -604,6 +633,7 @@ var keyStrings = {
     "Rename to": "Переименовать в",
     "Repeat parental code": "Повторите родительский код",
     "Request sended!": "Запрос отправлен!",
+    "Requesting approval for %1": "Запрос подтверждения для %1",
     "Restart player": "Перезапустить плеер",
     "Restart stream": "Перезапустить поток",
     "Restart stream / Live": "Перезапустить поток / прямой эфир",
@@ -660,12 +690,16 @@ var keyStrings = {
     "Set parental code": "Установите родительский код",
     "Set timer?": "Установить таймер?",
     Settings: "Настройки",
+    "Settings changed. Discovery was canceled.":
+        "Настройки изменились. Поиск отменён.",
     "Settings could not be saved": "Не удалось сохранить настройки",
     "Settings loaded from storage": "Настройки загружены из хранилища",
     "Settings STB": "Настройки устройства",
     "Settings saved": "Настройки сохранены",
     "Settings saved to storage": "Настройки сохранены в хранилище",
     "Settings sended!": "Настройки отправлены!",
+    "Several command servers were found. Select one below.":
+        "Найдено несколько серверов команд. Выберите один ниже.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Настройки Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -719,8 +753,16 @@ var keyStrings = {
     "Tabox settings": "Настройки Tabox",
     "Text is too long for remote input.":
         "Текст слишком длинный для удалённого ввода.",
+    "The command server discovery URL is invalid.":
+        "Неверный URL для поиска сервера команд.",
     "The device ID in the address is invalid.":
         "В адресе указан неверный ID устройства.",
+    "The discovery response is invalid.":
+        "Получен неверный ответ на запрос поиска.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Этот браузер не поддерживает безопасное автоматическое сопряжение. Обновите его или введите настройки сервера команд вручную.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Для этого браузера не задан профиль поиска. Введите адрес сервера или настройте профиль развёртывания.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Этот HTTPS-плеер не может подключиться к HTTP-серверу. Используйте HTTPS-сервер или откройте плеер по HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

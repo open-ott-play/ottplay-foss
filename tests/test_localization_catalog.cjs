@@ -53,6 +53,14 @@ try {
     ];`
     );
     write("devices/example.js", '_("Adapter message");');
+    write(
+        "src/plugins/control-discovery.ts",
+        `
+        var message = "Discovery initial status";
+        notify("waiting", "Approve at %1", address);
+        finish("error", "Discovery failed");
+    `
+    );
     write("providers/example/provider.js", 'translate("Provider message");');
     const fixtureKeys = collectSourceKeys(fixture);
     for (const key of [
@@ -79,6 +87,9 @@ try {
         "Menu explanation",
         "Adapter message",
         "Provider message",
+        "Discovery initial status",
+        "Approve at %1",
+        "Discovery failed",
     ])
         assert(
             fixtureKeys.keys.has(key),
@@ -211,6 +222,8 @@ try {
         "Player and device info",
         "Filter",
         "Remote text entry",
+        "Find command server",
+        "Cancel pairing",
         "Enter the command server IP or address.",
         "OttPlay FOSS %1 is available. Download and install now?",
     ])
@@ -220,7 +233,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 28);
-    assert.equal(result.keyCount, 666);
+    assert.equal(result.keyCount, 690);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

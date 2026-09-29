@@ -27,6 +27,63 @@ Volume, channel selection, notifications and provider selection use the existing
 
 The public player address is https://ott.2560801.xyz/. A browser loaded from that HTTPS address needs HTTPS for this connection. Local player installations use HTTP ports 8443–8446. The central OTT server's command routes remain disabled; the command server is a separate process/service.
 
+## Discovery and one-time approval
+
+An installation without a saved command-server address, token or enabled connection
+starts one nonblocking discovery attempt after its device UUID is available. Existing
+settings, including an explicit disconnect, are preserved. In Remote control, **Find
+command server** (shortcut **6**, or LEFT/RIGHT and OK) deliberately retries discovery
+and can stage a replacement for incorrect manual settings. Nothing is replaced until
+the selected server grants approval. **Cancel pairing** retires pending callbacks.
+
+Tauri calls `discover_control_servers` for DNS-SD `_ottplay-ctrl._tcp` records from
+the network's discovery domains. The command returns
+`{version:1, servers:[{id,domain,address}]}` with HTTPS base addresses. Browsers cannot
+read system DNS, so deployments may set `window.__OTT_CONTROL_DISCOVERY_URL__` to
+their discovery endpoint before loading the player. Loopback browser installations
+also try the same-origin `/api/control-discovery` endpoint. Other origins require an
+explicit deployment profile. Shared player code contains no personal discovery domain.
+The installed frontend exposes `window.__OTT_CONTROL_DISCOVERY_VERSION__ = 1` for
+deployment compatibility checks; this does not enable a connection.
+
+Network DNS/search domains and the deployment discovery profile are trusted
+installation configuration. HTTPS proves control of the advertised hostname, not
+the controller operator's identity. An untrusted network or profile could nominate
+its own HTTPS controller and approve its own pairing. Use discovery on trusted home
+or managed networks; saved/manual controller settings remain pinned elsewhere.
+Approval by the legitimate controller protects its existing device credentials,
+but DNS discovery alone cannot cryptographically authenticate that controller.
+
+Discovery responses contain addresses, never device tokens. Multiple servers remain
+an explicit choice. The player sends `{device_id,server_id}` to the selected base's
+`/api/pairings`, displays the eight-character approval code, and waits for the operator
+to approve it with `ott approve NAME CODE`. The short-lived pairing secret stays in
+memory and authenticates readback and receipt cleanup; it is not rendered, logged
+or persisted.
+An approved response must match the exact device and selected HTTPS address and carry
+a valid device token before the existing command-server controller saves and enables it.
+
+Pairing expires within ten minutes. Discovery and HTTP requests have bounded timeouts;
+transient readback retries never repeat the pairing POST. Editing settings, changing
+the device UUID, disconnecting, canceling or beginning a newer discovery retires old
+callbacks. The settings page may be closed while approval is pending and reopened to
+see its status. EPG, provider loading and remote text entry do not depend on discovery
+being available.
+
+Canceling, replacing a pairing, or successfully saving approved settings sends a
+best-effort authenticated DELETE for the receipt with a two-second timeout. A failed
+settings save retains the receipt privately until an explicit cancel/retry; server
+expiry remains the fallback if cleanup cannot reach the server. Same-origin metadata
+GETs include `X-Ottplay-Discovery: 1` so legacy local browsers with a no-referrer policy
+can use the discovery route without enabling cross-origin access to that route.
+HTTPS discovery and pairing use a dedicated no-redirect transport: Tauri applies
+HTTPS-only native requests, while browsers and Capacitor use Fetch with
+`redirect: "error"`. Browsers without this capability show a manual-setup message
+instead of sending pairing credentials through XHR. An AbortController is also
+required so cancellation and timeouts stop the underlying request. Same-origin HTTP metadata
+discovery remains available on local installations, and existing manually configured
+command connections and provider transports retain their behavior.
+
 ## Compatibility maintenance
 
 TypeScript uses descriptive English names. `src/compatibility/legacy-names.ts` declares the established provider-script globals, popup action IDs and version-1 backup fields. The classic linker preserves those external names, while live aliases let both interfaces observe provider hook replacement. Stored keys, DOM IDs, provider-specific fields and action identities retain their existing contracts.

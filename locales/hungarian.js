@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "API-kiszolgáló URL-címe",
     "Applying HTTP remote settings...":
         "A HTTP-távirányítás beállításainak alkalmazása...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Hagyja jóvá a(z) %1 kódját az ott approve NAME CODE paranccsal:",
     Archive: "Archívum",
     "Archive - begin": "Archívum — kezdete",
     "Archive hours": "Archívum órák",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "PiP megnyitása",
     "Call PiP / PiP exchange": "PiP megnyitása / felcserélése",
     Cancel: "Mégse",
+    "Cancel pairing": "Párosítás megszakítása",
     "Cannot delete the last category": "Az utolsó kategória nem törölhető",
     Category: "Kategória",
     "Category selection": "Kategória kiválasztása",
@@ -147,6 +150,15 @@ var keyStrings = {
     "Command server": "Parancskiszolgáló",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Parancskiszolgáló címe, eszköz-hozzáférési kód, helyi HTTP-vezérlés és távoli szövegbevitel beállításai",
+    "Command server discovery canceled.":
+        "A parancskiszolgáló keresése megszakítva.",
+    "Command server discovery has not started.":
+        "A parancskiszolgáló keresése még nem indult el.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "A parancskiszolgáló keresése nem érhető el. Az újrapróbálkozáshoz válassza a „Parancskiszolgáló keresése” lehetőséget.",
+    "Command server discovery timed out.":
+        "A parancskiszolgáló keresésének időkorlátja lejárt.",
+    "Command server found.": "Parancskiszolgáló megtalálva.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Állítsa be ezt: All4you.tv, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -226,6 +238,10 @@ var keyStrings = {
     "Copy JSON": "JSON másolása",
     "Could not connect to the server.":
         "Nem sikerült csatlakozni a kiszolgálóhoz.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nem sikerült párosítási kérelmet létrehozni. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Could not save the approved command server settings.":
+        "Nem sikerült menteni a parancskiszolgáló jóváhagyott beállításait.",
     "Could not update HTTP remote control.":
         "Nem sikerült módosítani a HTTP-távirányítás beállításait.",
     Country: "Ország",
@@ -244,6 +260,8 @@ var keyStrings = {
     "Device info:": "Eszközinformációk:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "A KBC (Kinoboom) listákhoz az eszköz MAC-címe szükséges",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Az eszköz UUID-je még nem áll rendelkezésre. Az újrapróbálkozáshoz válassza a „Parancskiszolgáló keresése” lehetőséget.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV beállításai",
     Director: "Rendező",
@@ -402,6 +420,8 @@ var keyStrings = {
         "Ez az eszköz nem támogatja a fájlkiválasztást",
     Filter: "Szűrő",
     Filters: "Szűrők",
+    "Find command server": "Parancskiszolgáló keresése",
+    "Finding command servers...": "Parancskiszolgálók keresése...",
     "First Run Setup": "Első indítás beállításai",
     "Font type": "Betűtípus",
     "For download settings file open":
@@ -510,6 +530,8 @@ var keyStrings = {
     "Next TV program": "Következő műsor",
     No: "Nem",
     "No channel name": "Nincs csatornanév",
+    "No command server was found on this network.":
+        "Ezen a hálózaton nem található parancskiszolgáló.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nem találhatók mentett beállítások",
@@ -539,6 +561,14 @@ var keyStrings = {
     on: "bekapcsolva",
     "on ": "be ",
     "or scan": "vagy olvassa be",
+    "Pairing approved. Command server configured.":
+        "A párosítás jóváhagyva. A parancskiszolgáló beállítva.",
+    "Pairing expired. Find the server again to retry.":
+        "A párosítás lejárt. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "A párosítási kiszolgáló nem érhető el. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "A párosítást elutasították, vagy érvénytelen jóváhagyás érkezett. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
     "Parental control": "Szülői felügyelet",
     Password: "Jelszó",
     Pause: "Szünet",
@@ -612,6 +642,7 @@ var keyStrings = {
     "Rename to": "Új név",
     "Repeat parental code": "Adja meg újra a szülői kódot",
     "Request sended!": "Kérés elküldve!",
+    "Requesting approval for %1": "Jóváhagyás kérése ehhez: %1",
     "Restart player": "Lejátszó újraindítása",
     "Restart stream": "Adatfolyam újraindítása",
     "Restart stream / Live": "Adatfolyam újraindítása / élő",
@@ -669,12 +700,16 @@ var keyStrings = {
     "Set parental code": "Szülői kód beállítása",
     "Set timer?": "Beállítja az időzítőt?",
     Settings: "Beállítások",
+    "Settings changed. Discovery was canceled.":
+        "A beállítások megváltoztak. A keresés megszakadt.",
     "Settings could not be saved": "Nem sikerült menteni a beállításokat",
     "Settings loaded from storage": "Beállítások betöltve a tárhelyről",
     "Settings STB": "STB beállítások",
     "Settings saved": "Beállítások elmentve",
     "Settings saved to storage": "Beállítások mentve a tárhelyre",
     "Settings sended!": "Beállítások elküldve!",
+    "Several command servers were found. Select one below.":
+        "Több parancskiszolgáló található. Válasszon egyet az alábbiak közül.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) beállításai",
     ShockTv: "ShockTv",
@@ -731,8 +766,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox beállításai",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "A parancskiszolgáló keresési URL-címe érvénytelen.",
     "The device ID in the address is invalid.":
         "A címben szereplő eszközazonosító érvénytelen.",
+    "The discovery response is invalid.":
+        "A keresésre kapott válasz érvénytelen.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Ez a böngésző nem tud biztonságosan automatikus párosítást végezni. Frissítse, vagy adja meg kézzel a parancskiszolgáló beállításait.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Ehhez a böngészőhöz nincs felderítési profil. Adjon meg egy kiszolgálócímet, vagy állítsa be a telepítési profilt.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Ez a HTTPS-lejátszó nem tud HTTP-kiszolgálóhoz csatlakozni. Használjon HTTPS-kiszolgálót, vagy nyissa meg a lejátszót HTTP-n keresztül.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

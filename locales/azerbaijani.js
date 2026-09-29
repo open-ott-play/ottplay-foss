@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "API serverinin URL-i",
     "Applying HTTP remote settings...":
         "HTTP uzaqdan idarəetmə ayarları tətbiq olunur…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "%1 üçün kodu ott approve NAME CODE əmri ilə təsdiqləyin:",
     Archive: "Arxiv",
     "Archive - begin": "Arxiv — başlanğıc",
     "Archive hours": "Arxiv saatları",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "PiP aç",
     "Call PiP / PiP exchange": "PiP aç / PiP dəyiş",
     Cancel: "Ləğv et",
+    "Cancel pairing": "Cütləşməni ləğv et",
     "Cannot delete the last category": "Son kateqoriyanı silmək olmaz",
     Category: "Kateqoriya",
     "Category selection": "Kateqoriya seçimi",
@@ -147,6 +150,15 @@ var keyStrings = {
     "Command server": "Əmr serveri",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Əmr serverinin ünvanı, cihazın giriş kodu, yerli HTTP idarəetməsi və uzaqdan mətn daxil etmə ayarları",
+    "Command server discovery canceled.":
+        "Əmr serverinin axtarışı ləğv edildi.",
+    "Command server discovery has not started.":
+        "Əmr serverinin axtarışı hələ başlamayıb.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Əmr serverinin axtarışı əlçatan deyil. Yenidən sınamaq üçün “Əmr serverini tap” seçin.",
+    "Command server discovery timed out.":
+        "Əmr serverinin axtarış müddəti bitdi.",
+    "Command server found.": "Əmr serveri tapıldı.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -225,6 +237,10 @@ var keyStrings = {
     "Copy category": "Kateqoriyanı kopyala",
     "Copy JSON": "JSON-u kopyala",
     "Could not connect to the server.": "Serverə qoşulmaq mümkün olmadı.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Cütləşmə sorğusu yaratmaq mümkün olmadı. Yenidən sınamaq üçün serveri təkrar axtarın.",
+    "Could not save the approved command server settings.":
+        "Əmr serverinin təsdiqlənmiş ayarlarını saxlamaq mümkün olmadı.",
     "Could not update HTTP remote control.":
         "HTTP uzaqdan idarəetməni yeniləmək mümkün olmadı.",
     Country: "Ölkə",
@@ -243,6 +259,8 @@ var keyStrings = {
     "Device info:": "Cihaz məlumatı:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) pleylistləri üçün cihazın MAC ünvanı tələb olunur",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Cihazın UUID-si hələ hazır deyil. Yenidən sınamaq üçün “Əmr serverini tap” seçin.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV ayarları",
     Director: "Rejissor",
@@ -401,6 +419,8 @@ var keyStrings = {
         "Bu cihazda fayl seçimi dəstəklənmir",
     Filter: "Filtr",
     Filters: "Filtrlər",
+    "Find command server": "Əmr serverini tap",
+    "Finding command servers...": "Əmr serverləri axtarılır…",
     "First Run Setup": "İlk açılış quraşdırması",
     "Font type": "Şrift növü",
     "For download settings file open": "Ayarlar faylını endirmək üçün açın",
@@ -506,6 +526,8 @@ var keyStrings = {
     "Next TV program": "Növbəti veriliş",
     No: "Xeyr",
     "No channel name": "Kanalın adı yoxdur",
+    "No command server was found on this network.":
+        "Bu şəbəkədə əmr serveri tapılmadı.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Saxlanmış ayarlar tapılmadı",
@@ -535,6 +557,14 @@ var keyStrings = {
     on: "aktivdir",
     "on ": "bu düymə ilə ",
     "or scan": "və ya skan edin",
+    "Pairing approved. Command server configured.":
+        "Cütləşmə təsdiqləndi. Əmr serveri quruldu.",
+    "Pairing expired. Find the server again to retry.":
+        "Cütləşmə müddəti bitdi. Yenidən sınamaq üçün serveri təkrar axtarın.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Cütləşmə serveri əlçatan deyil. Yenidən sınamaq üçün serveri təkrar axtarın.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Cütləşmə rədd edildi və ya etibarsız təsdiq alındı. Yenidən sınamaq üçün serveri təkrar axtarın.",
     "Parental control": "Valideyn nəzarəti",
     Password: "Şifrə",
     Pause: "Fasilə",
@@ -606,6 +636,7 @@ var keyStrings = {
     "Rename to": "Adını buna dəyiş",
     "Repeat parental code": "Valideyn kodunu təkrar daxil edin",
     "Request sended!": "Sorğu göndərildi!",
+    "Requesting approval for %1": "%1 üçün təsdiq tələb olunur",
     "Restart player": "Pleyeri yenidən başlat",
     "Restart stream": "Yayımı yenidən başlat",
     "Restart stream / Live": "Yayımı yenidən başlat / canlı yayım",
@@ -663,12 +694,16 @@ var keyStrings = {
     "Set parental code": "Valideyn kodunu təyin edin",
     "Set timer?": "Taymer qurulsun?",
     Settings: "Ayarlar",
+    "Settings changed. Discovery was canceled.":
+        "Ayarlar dəyişdi. Axtarış ləğv edildi.",
     "Settings could not be saved": "Ayarları saxlamaq mümkün olmadı",
     "Settings loaded from storage": "Ayarlar yaddaşdan yükləndi",
     "Settings STB": "Cihaz ayarları",
     "Settings saved": "Ayarlar saxlandı",
     "Settings saved to storage": "Ayarlar yaddaşa saxlandı",
     "Settings sended!": "Ayarlar göndərildi!",
+    "Several command servers were found. Select one below.":
+        "Bir neçə əmr serveri tapıldı. Aşağıdan birini seçin.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) ayarları",
     ShockTv: "ShockTv",
@@ -722,8 +757,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ayarları",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Əmr serverinin axtarış URL-i etibarsızdır.",
     "The device ID in the address is invalid.":
         "Ünvandakı cihaz ID-si etibarsızdır.",
+    "The discovery response is invalid.":
+        "Axtarış sorğusunun cavabı etibarsızdır.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Bu brauzer təhlükəsiz avtomatik cütləşməni dəstəkləmir. Onu yeniləyin və ya əmr serverinin ayarlarını əl ilə daxil edin.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Bu brauzer üçün axtarış profili yoxdur. Server ünvanını daxil edin və ya yerləşdirmə profilini qurun.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Bu HTTPS pleyeri HTTP serverinə qoşula bilməz. HTTPS serverindən istifadə edin və ya pleyeri HTTP üzərindən açın.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

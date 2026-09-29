@@ -127,6 +127,11 @@
       "reason": "Status messages come from command-server update/error/message declarations and the settingsCommands fallback assignments."
     },
     {
+      "file": "src/index.ts",
+      "expression": "status.message",
+      "reason": "Discovery statuses come from control-discovery notify/finish/message declarations extracted by localization-catalog.cjs; controller addresses are passed as placeholder arguments."
+    },
+    {
       "file": "src/plugins/vportal.ts",
       "expression": "text",
       "reason": "Forwarded translation parameter: callers and explicit wrapper/schema rules in localization-catalog.cjs provide the finite key set; provider titles and external error details are runtime data."

@@ -84,6 +84,7 @@ const CLASSIC_MODULES = [
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
     "build/plugins/command-server.js",
+    "build/plugins/control-discovery.js",
     "build/plugins/mobile-native-media.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",

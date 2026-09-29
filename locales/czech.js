@@ -68,6 +68,8 @@ var keyStrings = {
     "API server URL": "URL serveru API",
     "Applying HTTP remote settings...":
         "Používání nastavení ovládání přes HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Potvrďte kód pro %1 příkazem ott approve NAME CODE:",
     Archive: "Archiv",
     "Archive - begin": "Archiv — začátek",
     "Archive hours": "Hodiny archivu",
@@ -107,6 +109,7 @@ var keyStrings = {
     "Call PiP": "Otevřít PiP",
     "Call PiP / PiP exchange": "Otevřít PiP / prohodit obrazy",
     Cancel: "Zrušit",
+    "Cancel pairing": "Zrušit párování",
     "Cannot delete the last category": "Poslední kategorii nelze smazat",
     Category: "Kategorie",
     "Category selection": "Výběr kategorie",
@@ -144,6 +147,15 @@ var keyStrings = {
     "Command server": "Příkazový server",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adresa příkazového serveru, přístupový kód zařízení, místní ovládání HTTP a vzdálené zadávání textu",
+    "Command server discovery canceled.":
+        "Hledání příkazového serveru bylo zrušeno.",
+    "Command server discovery has not started.":
+        "Hledání příkazového serveru ještě nezačalo.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Hledání příkazového serveru není dostupné. Zvolte „Najít příkazový server“ a zkuste to znovu.",
+    "Command server discovery timed out.":
+        "Vypršel časový limit hledání příkazového serveru.",
+    "Command server found.": "Příkazový server nalezen.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nastavte All4you.tv v Nastavení -> Nastavení poskytovatele",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -222,6 +234,10 @@ var keyStrings = {
     "Copy category": "Kopírovat kategorii",
     "Copy JSON": "Kopírovat JSON",
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nepodařilo se vytvořit žádost o párování. Pro další pokus znovu vyhledejte server.",
+    "Could not save the approved command server settings.":
+        "Nepodařilo se uložit schválená nastavení příkazového serveru.",
     "Could not update HTTP remote control.":
         "Nastavení ovládání HTTP se nepodařilo aktualizovat.",
     Country: "Země",
@@ -240,6 +256,8 @@ var keyStrings = {
     "Device info:": "Informace o zařízení:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Playlisty KBC (Kinoboom) vyžadují MAC adresu zařízení",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID zařízení ještě není připraveno. Zvolte „Najít příkazový server“ a zkuste to znovu.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Nastavení Diamond TV",
     Director: "Režie",
@@ -396,6 +414,8 @@ var keyStrings = {
         "Výběr souboru není na tomto zařízení podporován",
     Filter: "Filtr",
     Filters: "Filtry",
+    "Find command server": "Najít příkazový server",
+    "Finding command servers...": "Hledání příkazových serverů…",
     "First Run Setup": "Počáteční nastavení",
     "Font type": "Druh písma",
     "For download settings file open": "Pro stažení souboru nastavení otevřete",
@@ -501,6 +521,8 @@ var keyStrings = {
     "Next TV program": "Další pořad",
     No: "Ne",
     "No channel name": "Kanál nemá název",
+    "No command server was found on this network.":
+        "V této síti nebyl nalezen příkazový server.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Uložená nastavení nebyla nalezena",
@@ -530,6 +552,14 @@ var keyStrings = {
     on: "zapnuto",
     "on ": "při ",
     "or scan": "nebo naskenujte",
+    "Pairing approved. Command server configured.":
+        "Párování schváleno. Příkazový server je nastaven.",
+    "Pairing expired. Find the server again to retry.":
+        "Čas pro párování vypršel. Pro další pokus znovu vyhledejte server.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Párovací server není dostupný. Pro další pokus znovu vyhledejte server.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Párování bylo odmítnuto nebo přišlo neplatné schválení. Pro další pokus znovu vyhledejte server.",
     "Parental control": "Rodičovská kontrola",
     Password: "Heslo",
     Pause: "Pauza",
@@ -601,6 +631,7 @@ var keyStrings = {
     "Rename to": "Přejmenovat na",
     "Repeat parental code": "Zopakujte rodičovský kód",
     "Request sended!": "Požadavek odeslán!",
+    "Requesting approval for %1": "Žádost o schválení pro %1",
     "Restart player": "Restartovat přehrávač",
     "Restart stream": "Restartovat stream",
     "Restart stream / Live": "Restartovat stream / živě",
@@ -657,12 +688,16 @@ var keyStrings = {
     "Set parental code": "Nastavte rodičovský kód",
     "Set timer?": "Nastavit časovač?",
     Settings: "Nastavení",
+    "Settings changed. Discovery was canceled.":
+        "Nastavení se změnilo. Hledání bylo zrušeno.",
     "Settings could not be saved": "Nastavení se nepodařilo uložit",
     "Settings loaded from storage": "Nastavení načteno z úložiště",
     "Settings STB": "Nastavení zařízení",
     "Settings saved": "Nastavení uloženo",
     "Settings saved to storage": "Nastavení uloženo do úložiště",
     "Settings sended!": "Nastavení odesláno!",
+    "Several command servers were found. Select one below.":
+        "Bylo nalezeno několik příkazových serverů. Jeden vyberte níže.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Nastavení Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -716,8 +751,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Nastavení Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL pro hledání příkazového serveru je neplatná.",
     "The device ID in the address is invalid.":
         "ID zařízení v adrese není platné.",
+    "The discovery response is invalid.":
+        "Odpověď na požadavek vyhledávání je neplatná.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Tento prohlížeč nepodporuje bezpečné automatické párování. Aktualizujte jej nebo zadejte nastavení příkazového serveru ručně.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Tento prohlížeč nemá profil vyhledávání. Zadejte adresu serveru nebo nastavte profil nasazení.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Tento přehrávač HTTPS se nemůže připojit k serveru HTTP. Použijte server HTTPS nebo otevřete přehrávač přes HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

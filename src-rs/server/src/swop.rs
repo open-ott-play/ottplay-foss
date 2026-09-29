@@ -90,7 +90,7 @@ fn error(status: StatusCode, message: &str) -> Response {
         .into_response()
 }
 
-fn client_origin(headers: &HeaderMap, scheme: &str) -> Result<String, Response> {
+pub(crate) fn client_origin(headers: &HeaderMap, scheme: &str) -> Result<String, Response> {
     let deny = || error(StatusCode::FORBIDDEN, "installation origin required");
     let host = headers
         .get(header::HOST)
