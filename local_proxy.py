@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.parse
 
@@ -24,18 +25,55 @@ def valid_token(token):
     return isinstance(token, str) and re.fullmatch(r'[A-Za-z0-9_-]{32,256}', token) is not None
 
 
-class CommandProxyServer(http.server.HTTPServer):
+class CommandProxyServer(http.server.ThreadingHTTPServer):
+    # Browser preconnections and incomplete requests must not block polling,
+    # but a client must not be able to create an unbounded number of workers.
+    MAX_CONNECTIONS = 16
+
     def __init__(self, address, *, enabled=False, token='', origins=()):
         self.http_enabled = enabled and valid_token(token)
         self.token = token if self.http_enabled else ''
         self.allowed_origins = frozenset(origins) - {'*', 'null', ''}
         self.commands = []
+        self._commands_lock = threading.Lock()
+        self._connection_slots = threading.BoundedSemaphore(self.MAX_CONNECTIONS)
         super().__init__(address, CommandProxyHandler)
 
     def get_request(self):
         connection, address = super().get_request()
         connection.settimeout(5)
         return connection, address
+
+    def process_request(self, request, client_address):
+        if not self._connection_slots.acquire(blocking=False):
+            # Do not wait here: accepting connections must remain responsive.
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._connection_slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._connection_slots.release()
+
+    def enqueue_command(self, command):
+        with self._commands_lock:
+            command['ts'] = time.time()
+            self.commands.append(command)
+            self.commands = self.commands[-50:]
+            return len(self.commands)
+
+    def drain_commands(self):
+        with self._commands_lock:
+            cutoff = time.time() - 60
+            recent = [command for command in self.commands if command.get('ts', 0) > cutoff]
+            self.commands = []
+            return recent
 
 
 class CommandProxyHandler(http.server.BaseHTTPRequestHandler):
@@ -123,10 +161,8 @@ class CommandProxyHandler(http.server.BaseHTTPRequestHandler):
         if not isinstance(data, dict) or not isinstance(data.get('command'), str) or not data['command'].strip():
             self._send_json({'error': 'A command object is required'}, 400)
             return
-        data['ts'] = time.time()
-        self.server.commands.append(data)
-        self.server.commands = self.server.commands[-50:]
-        self._send_json({'status': 'ok', 'queued': len(self.server.commands)})
+        queued = self.server.enqueue_command(data)
+        self._send_json({'status': 'ok', 'queued': queued})
 
     def do_GET(self):
         if self._path() not in ('/api/webhook/commands', '/webhook/poll'):
@@ -134,10 +170,7 @@ class CommandProxyHandler(http.server.BaseHTTPRequestHandler):
             return
         if not self._authorize():
             return
-        cutoff = time.time() - 60
-        recent = [command for command in self.server.commands if command.get('ts', 0) > cutoff]
-        self.server.commands = []
-        self._send_json(recent)
+        self._send_json(self.server.drain_commands())
 
     def _send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
