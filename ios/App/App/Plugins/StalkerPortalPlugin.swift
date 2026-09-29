@@ -8,13 +8,33 @@ import os.log
 public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "StalkerPortalPlugin"
     public let jsName = "StalkerPortal"
+    @MainActor private var requests: [String: (id: UUID, cancel: () -> Void)] = [:]
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "portalRequest", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "httpRequest", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelHttpRequest", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "swopRequest", returnType: CAPPluginReturnPromise),
     ]
 
     private static let DEFAULT_TIMEOUT: TimeInterval = 15
+
+    private static func validRequestID(_ value: String?) -> Bool {
+        guard let value, !value.isEmpty, value.utf8.count <= 128 else { return false }
+        return value.utf8.allSatisfy {
+            (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 95
+        }
+    }
+
+    @objc func cancelHttpRequest(_ call: CAPPluginCall) {
+        guard let requestID = call.getString("requestId"), Self.validRequestID(requestID) else {
+            call.reject("Invalid HTTP request identifier"); return
+        }
+        DispatchQueue.main.async {
+            let pending = self.requests.removeValue(forKey: requestID)
+            pending?.cancel()
+            call.resolve(["cancelled": pending != nil])
+        }
+    }
 
     @objc func swopRequest(_ call: CAPPluginCall) {
         NativeSwopRequest.start(call)
@@ -56,6 +76,10 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func performRequest(_ call: CAPPluginCall, rawURL: String) {
+        let requestID = call.getString("requestId")
+        guard call.options["requestId"] == nil || Self.validRequestID(requestID) else {
+            call.reject("Invalid HTTP request identifier"); return
+        }
         guard let url = URL(string: rawURL),
               let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https", url.host != nil else {
@@ -90,7 +114,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             request.httpBody = bodyString.data(using: .utf8)
         }
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let completion: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
                     let code = (error as NSError).code == NSURLErrorTimedOut ? "timeout" : nil
@@ -138,7 +162,25 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
                 ])
             }
         }
-        task.resume()
+        DispatchQueue.main.async {
+            if let requestID, self.requests[requestID] != nil {
+                call.reject("HTTP request is already pending"); return
+            }
+            let ownership = UUID()
+            let finish: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
+                DispatchQueue.main.async {
+                    if let requestID, self.requests[requestID]?.id == ownership { self.requests[requestID] = nil }
+                }
+                completion(data, response, error)
+            }
+            #if os(iOS)
+            let task = AccessMedia.fetch(request, completion: finish)
+            #else
+            let task = URLSession.shared.dataTask(with: request, completionHandler: finish)
+            task.resume()
+            #endif
+            if let requestID { self.requests[requestID] = (ownership, { task.cancel() }) }
+        }
     }
 }
 

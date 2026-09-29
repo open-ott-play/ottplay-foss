@@ -736,6 +736,8 @@ var keyStrings = {
     "Show when switching": "Арна ауысқанда көрсету",
     "Sleep timer": "Ұйқы таймері",
     "Sort channels": "Арналарды сұрыптау",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker порталының провайдері",
     "Stalker portal settings": "Stalker порталының баптаулары",
     "Stalker portals": "Stalker порталдары",

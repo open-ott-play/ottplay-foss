@@ -49,7 +49,14 @@ function response(body, status = 200, contentType = "application/json") {
         statusText: status === 200 ? "OK" : "Forbidden",
     };
 }
-function runtime(invoke, native = true, platform = "tauri", url) {
+function runtime(
+    invoke,
+    native = true,
+    platform = "tauri",
+    url,
+    capabilities = {}
+) {
+    const cancelled = [];
     const dom = new JSDOM(
         "<!doctype html><html><head></head><body></body></html>",
         {
@@ -67,7 +74,10 @@ function runtime(invoke, native = true, platform = "tauri", url) {
     w.eval(read("js/jquery-1.11.1.min.js"));
     if (native && platform === "tauri") w.__TAURI__ = {};
     if (platform === "capacitor")
-        w.Capacitor = { isNativePlatform: () => native };
+        w.Capacitor = {
+            getPlatform: () => capabilities.platform || "ios",
+            isNativePlatform: () => native,
+        };
     w.tauriInvoke = invoke;
     w.eval(compile(read("src/plugins/jquery-bridge.ts")));
     w.eval(compile(read("src/plugins/native-http.ts")));
@@ -75,12 +85,21 @@ function runtime(invoke, native = true, platform = "tauri", url) {
     const originalAjax = w.$.ajax;
     if (native && platform === "capacitor") {
         w.installCapacitorHttpTransport(w.$, {
+            cancelHttpRequest:
+                capabilities.cancel === false
+                    ? undefined
+                    : ({ requestId }) => {
+                          cancelled.push(requestId);
+                          return Promise.reject(
+                              new Error("optional cancellation rejected")
+                          );
+                      },
             httpRequest: (args) => invoke("proxy_http", args),
         });
     } else {
         w.setupTauriCompanionShim();
     }
-    return { $: w.$, close: () => w.close(), originalAjax, w };
+    return { $: w.$, cancelled, close: () => w.close(), originalAjax, w };
 }
 function finished(xhr) {
     return new Promise((resolve) => {
@@ -663,6 +682,8 @@ async function run(platform) {
             url: "https://provider.example/api",
         });
         const pendingResult = finished(pending);
+        const cancelledRequest = calls.at(-1).args.requestId;
+        pending.abort();
         pending.abort();
         result = await pendingResult;
         assert.equal(result.status, "abort");
@@ -671,6 +692,13 @@ async function run(platform) {
         await delay(5);
         assert.equal(successes, 0);
         assert.equal(completions, 1);
+        assert.deepEqual(
+            r.cancelled,
+            platform === "capacitor" ? [cancelledRequest] : [],
+            "abort cancels only its native request, exactly once"
+        );
+        if (platform === "capacitor")
+            assert.match(cancelledRequest, /^[A-Za-z0-9_-]{1,128}$/);
         result = await finished(
             $.ajax({
                 complete() {
@@ -681,6 +709,11 @@ async function run(platform) {
             })
         );
         assert.equal(result.status, "timeout");
+        if (platform === "capacitor") {
+            const timeoutRequest = calls.at(-1).args.requestId;
+            assert.notEqual(timeoutRequest, cancelledRequest);
+            assert.deepEqual(r.cancelled, [cancelledRequest, timeoutRequest]);
+        }
         settle(response("{}"));
         await delay(5);
         assert.equal(completions, 2);
@@ -695,6 +728,33 @@ async function run(platform) {
         );
         assert.equal(result.status, "canceled");
         assert.equal(calls.length, count);
+
+        const held = [];
+        reply = () => new Promise((resolve) => held.push(resolve));
+        const first = $.ajax({ url: "https://provider.example/first" });
+        const second = $.ajax({ url: "https://provider.example/second" });
+        const firstID = calls.at(-2).args.requestId;
+        const secondID = calls.at(-1).args.requestId;
+        first.abort();
+        const secondResult = finished(second);
+        held[0](response("retired", 200, "text/plain"));
+        held[1](response("active", 200, "text/plain"));
+        assert.equal((await secondResult).data, "active");
+        const cancelledCount = r.cancelled.length;
+        second.abort();
+        assert.equal(
+            r.cancelled.length,
+            cancelledCount,
+            "settled request is not cancelled"
+        );
+        if (platform === "capacitor") {
+            assert.notEqual(firstID, secondID);
+            assert.equal(r.cancelled.at(-1), firstID);
+            assert(
+                !r.cancelled.includes(secondID),
+                "other native consumers remain active"
+            );
+        }
     } finally {
         clearTimeout(testDeadline);
         r.close();
@@ -716,9 +776,42 @@ async function run(platform) {
         `OK: ${platform} HTTP with real jQuery 1.11.1, provider JSON/JSONP, VPortal JSON POST opt-in, status, callbacks, abort/timeout and browser isolation`
     );
 }
+async function testCancellationCompatibility() {
+    for (const capabilities of [{ cancel: false }, { platform: "android" }]) {
+        let args;
+        let settle;
+        const r = runtime(
+            (requestCommand, requestArgs) => {
+                args = requestArgs;
+                return new Promise((resolve) => {
+                    settle = resolve;
+                });
+            },
+            true,
+            "capacitor",
+            undefined,
+            capabilities
+        );
+        try {
+            const request = r.$.ajax({
+                url: "https://provider.example/playlist",
+            });
+            const result = finished(request);
+            request.abort();
+            assert.equal((await result).status, "abort");
+            assert.equal(args.requestId, undefined);
+            assert.deepEqual(r.cancelled, []);
+            settle(response("retired", 200, "text/plain"));
+            await delay(0);
+        } finally {
+            r.close();
+        }
+    }
+}
 testTauriOriginRouting()
     .then(() => run("tauri"))
     .then(() => run("capacitor"))
+    .then(testCancellationCompatibility)
     .then(
         () => clearTimeout(testDeadline),
         (error) => {

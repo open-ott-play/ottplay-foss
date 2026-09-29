@@ -59,11 +59,16 @@ function classicMediaRuntime(): any {
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
+    var screenOwner: any = null;
+    var screenRevision = -1;
     function bindScreen() {
         var screen = w.__ottClassicScreenPort;
         var owner = screen && screen.listOwner();
         if (!owner) return;
         var revision = library.revision();
+        if (screenOwner === owner && screenRevision === revision) return;
+        screenOwner = owner;
+        screenRevision = revision;
         owner.own(function () {
             if (!rendering && revision === library.revision()) api.cancel();
         });
@@ -292,7 +297,7 @@ function classicMediaRuntime(): any {
             .replace(/\s+/g, " ")
             .trim();
     }
-    library = w.__ottMediaLibrary.create({
+    var libraryPorts = {
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
             if (
@@ -350,7 +355,18 @@ function classicMediaRuntime(): any {
         },
         load: load,
         render: project,
-    });
+    };
+    library = w.__ottMediaLibrary.create(libraryPorts);
+    // Background episode resolution must not revoke catalogue or editor ownership.
+    var automaticLibrary = w.__ottMediaLibrary.create(libraryPorts);
+    function cancelNavigationAuto() {
+        var admitted = library.capture();
+        api.cancelAuto();
+        return current() && admitted();
+    }
+    function navigate(route: MediaRoute, reset = false) {
+        if (cancelNavigationAuto()) library.open(route, reset);
+    }
     function sequenceFor(item: MediaLibraryItem) {
         if (!item.payload.__ottMediaSequence) return null;
         var frame = library.snapshot("current").frame;
@@ -374,7 +390,7 @@ function classicMediaRuntime(): any {
         automatic = false,
         guard: () => boolean = current
     ) {
-        if (!automatic) api.cancelAuto();
+        if (!automatic && !cancelNavigationAuto()) return;
         var request = {};
         if (automatic) automaticRequest = request;
         function valid() {
@@ -384,7 +400,7 @@ function classicMediaRuntime(): any {
                 (!automatic || automaticRequest === request)
             );
         }
-        library.resolve(
+        (automatic ? automaticLibrary : library).resolve(
             function (done: any) {
                 bindScreen();
                 var abortLoad: any = null;
@@ -419,8 +435,15 @@ function classicMediaRuntime(): any {
                 } else accept(copy(item.payload));
                 return function () {
                     if (abortLoad) abortLoad();
-                    if (current() && w.providerMediaClient)
-                        w.providerMediaClient.cancel();
+                    if (current() && w.providerMediaClient) {
+                        var client = w.providerMediaClient;
+                        if (
+                            automatic &&
+                            typeof client.cancelAutomatic === "function"
+                        )
+                            client.cancelAutomatic();
+                        else client.cancel();
+                    }
                 };
             },
             function (payload: any) {
@@ -436,7 +459,7 @@ function classicMediaRuntime(): any {
                 };
                 pendingStart = start;
                 try {
-                    w._playMedia(payload);
+                    w._playMedia(payload, automatic);
                 } finally {
                     if (pendingStart === start) pendingStart = null;
                 }
@@ -446,12 +469,14 @@ function classicMediaRuntime(): any {
     var api = {
         active: current,
         back: function () {
+            if (!cancelNavigationAuto()) return;
             var result = library.back();
             if (!result && w.popupList) w.popupList(w.popMedia);
         },
         cancel: function () {
-            automaticGeneration++;
-            automaticRequest = null;
+            var admitted = library.capture();
+            api.cancelAuto();
+            if (!admitted()) return;
             library.close();
             if (current() && w.providerMediaClient)
                 w.providerMediaClient.cancel();
@@ -460,7 +485,7 @@ function classicMediaRuntime(): any {
             automaticGeneration++;
             if (!automaticRequest) return;
             automaticRequest = null;
-            library.cancel();
+            automaticLibrary.cancel();
         },
         capture: function () {
             var valid = library.capture();
@@ -585,9 +610,9 @@ function classicMediaRuntime(): any {
             w.setEdit = function () {
                 if (!current() || !admitted()) return;
                 var value = String(w.editvar || "").trim();
+                api.cancelAuto();
+                if (!current() || !admitted()) return;
                 library.refilter(function () {
-                    automaticGeneration++;
-                    automaticRequest = null;
                     filterText = value;
                 });
             };
@@ -604,7 +629,7 @@ function classicMediaRuntime(): any {
                 return;
             }
             if (target === -1 || target === -2) {
-                library.open({
+                navigate({
                     kind: target === -1 ? "history" : "favorites",
                     title:
                         target === -1
@@ -616,7 +641,7 @@ function classicMediaRuntime(): any {
             if (target === "submenu") {
                 var item = library.select(w.selIndex);
                 if (item && Array.isArray(item.payload.submenu))
-                    library.open({
+                    navigate({
                         kind: "variants",
                         target: item.payload.submenu,
                         title: item.title,
@@ -637,7 +662,7 @@ function classicMediaRuntime(): any {
                 (view.frames[0].route.kind === "catalog" &&
                     serializeMediaIdentity(view.frames[0].route.target) ===
                         serializeMediaIdentity(target));
-            library.open(
+            navigate(
                 {
                     kind: "catalog",
                     target: target === null ? "" : target,
@@ -725,7 +750,7 @@ function classicMediaRuntime(): any {
                 var payload = item.payload;
                 if (payload.__ottMediaFilter) api.filter();
                 else if (payload.__ottMediaRoute)
-                    library.open({
+                    navigate({
                         kind: payload.__ottMediaRoute,
                         title: item.title,
                     });
@@ -735,7 +760,7 @@ function classicMediaRuntime(): any {
                         payload.playlist_url === "submenu" &&
                         Array.isArray(payload.submenu)
                     )
-                        library.open({
+                        navigate({
                             kind: "variants",
                             target: payload.submenu,
                             title: item.title,

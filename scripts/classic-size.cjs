@@ -21,7 +21,11 @@ const { gzipSync } = require("node:zlib");
 // Remote CLI queries, result delivery and provider adapters add ~9 KB raw.
 // Discovery, secure pairing and its UI measure 603103 raw / 182299 gzip
 // for web 1.1.50 on Node 22.23.3 (native gzip 182353). Retain release headroom.
-const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 183500 });
+// Protected iOS sources retain cancellation and session checks after transport
+// helper deduplication. Native Node 22 output exceeded the previous gzip cap by
+// 16 bytes; allocate 50 bytes for this reviewed feature cost without raising raw
+// or complete-payload limits.
+const BUDGET = Object.freeze({ bytes: 606000, gzipBytes: 183550 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small

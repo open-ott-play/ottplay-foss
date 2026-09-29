@@ -1,10 +1,17 @@
 /** Native HTTP underneath jQuery, leaving its public AJAX contract intact. */
-export interface NativeHttpResponse {
+interface NativeHttpResponse {
     body: string;
     headers: string;
     status: number;
     statusText: string;
 }
+
+interface Window {
+    installCapacitorHttpTransport: typeof nativeHttpInstallCapacitor;
+    installTauriHttpTransport: typeof nativeHttpInstallTauri;
+}
+
+var nativeHttpSequence = 0;
 
 function nativeHttpRemoteUrl(url: string): boolean {
     if (!/^https?:\/\//i.test(url)) return false;
@@ -56,7 +63,8 @@ function nativeHttpJsonpConverter(callback: string): (text: string) => string {
  */
 function installNativeHttpTransport(
     $: any,
-    request: (args: any) => Promise<NativeHttpResponse>
+    request: (args: any) => Promise<NativeHttpResponse>,
+    cancel?: (requestId: string) => Promise<unknown>
 ): void {
     $.ajaxTransport("+* +script", function (opts: any) {
         if (opts.async === false) return;
@@ -98,11 +106,18 @@ function installNativeHttpTransport(
             );
         }
         var aborted = false;
+        var settled = false;
+        var requestId: string | undefined;
         return {
-            // Native IPC cannot cancel an in-flight request. jQuery settles abort/timeout
-            // immediately; discard late native responses (native timeout is bounded).
+            // jQuery settles immediately; retire only this native request as well.
             abort: function (): void {
+                if (aborted || settled) return;
                 aborted = true;
+                if (cancel && requestId) {
+                    try {
+                        cancel(requestId).catch(function () {});
+                    } catch (_error) {}
+                }
             },
             send: function (
                 headers: Record<string, string>,
@@ -129,14 +144,21 @@ function installNativeHttpTransport(
                         var ua = nativeHttpFormField(form, "ua");
                         if (ua) requestHeaders["User-Agent"] = ua;
                     }
-                    request({
+                    var args: any = {
                         body: requestBody,
                         headers: requestHeaders,
                         method: requestMethod,
                         timeoutMs: opts.timeout > 0 ? opts.timeout : 30000,
                         url: requestUrl,
-                    }).then(
+                    };
+                    if (cancel) {
+                        requestId =
+                            "http-" + Date.now() + "-" + ++nativeHttpSequence;
+                        args.requestId = requestId;
+                    }
+                    request(args).then(
                         function (response: NativeHttpResponse) {
+                            settled = true;
                             if (aborted) return;
                             complete(
                                 response.status,
@@ -146,6 +168,7 @@ function installNativeHttpTransport(
                             );
                         },
                         function (error: any) {
+                            settled = true;
                             if (aborted) return;
                             var message =
                                 error && error.message
@@ -162,6 +185,7 @@ function installNativeHttpTransport(
                         }
                     );
                 } catch (error) {
+                    settled = true;
                     complete(0, "error", { text: String(error) });
                 }
             },
@@ -169,7 +193,7 @@ function installNativeHttpTransport(
     });
 }
 
-export function installTauriHttpTransport(
+function nativeHttpInstallTauri(
     $: any,
     invoke: (command: string, args: any) => Promise<NativeHttpResponse>
 ): void {
@@ -179,10 +203,11 @@ export function installTauriHttpTransport(
     installNativeSwopTransport($, (args) => invoke("swop_http", args), true);
 }
 
-export function installCapacitorHttpTransport(
+function nativeHttpInstallCapacitor(
     $: any,
     http: {
         httpRequest(args: any): Promise<NativeHttpResponse>;
+        cancelHttpRequest?(args: { requestId: string }): Promise<unknown>;
         swopRequest?(args: any): Promise<NativeHttpResponse>;
     }
 ): void {
@@ -193,10 +218,18 @@ export function installCapacitorHttpTransport(
         !capacitor.isNativePlatform()
     )
         return;
-    installNativeHttpTransport($, function (args) {
-        args.url = String(args.url).replace(/^@/, "");
-        return http.httpRequest(args);
-    });
+    installNativeHttpTransport(
+        $,
+        function (args) {
+            args.url = String(args.url).replace(/^@/, "");
+            return http.httpRequest(args);
+        },
+        capacitor?.getPlatform?.() === "ios" && http.cancelHttpRequest
+            ? function (requestId) {
+                  return http.cancelHttpRequest!({ requestId });
+              }
+            : undefined
+    );
     if (capacitor && capacitor.isNativePlatform?.() === true) {
         installNativeSwopTransport(
             $,
@@ -209,6 +242,10 @@ export function installCapacitorHttpTransport(
         );
     }
 }
+
+// Preserve the classic installation API while keeping transport helpers private.
+window.installTauriHttpTransport = nativeHttpInstallTauri;
+window.installCapacitorHttpTransport = nativeHttpInstallCapacitor;
 
 /** Dedicated, explicit SWOP capability. Never fall back to provider HTTP/XHR. */
 function installNativeSwopTransport(

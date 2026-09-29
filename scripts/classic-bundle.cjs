@@ -1,4 +1,5 @@
 const CLASSIC_MODULES = [
+    "build/plugins/access-media.js",
     "build/polyfills/index.js",
     "build/compatibility/legacy-names.js",
     "build/shared/wire-contracts.js",
@@ -154,6 +155,10 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/plugins/native-http.js": Object.freeze([
+        "window.installTauriHttpTransport",
+        "window.installCapacitorHttpTransport",
+    ]),
     "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",

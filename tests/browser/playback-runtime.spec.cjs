@@ -379,6 +379,61 @@ test("natural episode completion resolves the next episode and loops with fresh 
     expect(fixture.errors).toEqual([]);
 });
 
+test("SWOP filter confirmation survives a natural episode transition", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL);
+    let submitPhone;
+    const phoneReply = new Promise((resolve) => {
+        submitPhone = resolve;
+    });
+    await context.route("**/swop/**", async (route) => {
+        if (new URL(route.request().url()).pathname === "/swop/session")
+            return route.fulfill({
+                json: {
+                    code: "ABCDEF",
+                    entryCode: "ABCDEF-GHJKLM",
+                    entryUrl: "https://swop.test/",
+                    sessionToken: "synthetic-read-token",
+                    url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                },
+            });
+        await phoneReply;
+        return route.fulfill({
+            json: { status: "ready", value: "Episode" },
+        });
+    });
+    await page.evaluate(() => {
+        window.__ottMedia.open(null);
+        window.ott_device = "lg/webos";
+        window.showEditKey = window.showEditKey1;
+        window.editKey = window.editKey1;
+        window.sSwopBaseUrl = "/swop";
+        window.__ottMedia.filter();
+        window.swopLoadValue();
+    });
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    await finishEpisode(page);
+    await pauseEpisode(page, 2);
+    await expect(page.locator(".swop-code")).toBeVisible();
+    submitPhone();
+    await expect
+        .poll(() => page.evaluate(() => window.editvar))
+        .toBe("Episode");
+    await page.evaluate(() => window._doKey(window.keys.ENTER));
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__ottMedia.snapshot().filter)).toBe(
+        "Episode"
+    );
+    await finishEpisode(page);
+    await pauseEpisode(page, 1);
+    expect(fixture.resolutions).toEqual([1, 2, 1]);
+    expect(await page.evaluate(() => window.__episodePickers)).toBe(1);
+    expect(fixture.errors).toEqual([]);
+});
+
 test("manual Stop cancels the pending automatic episode resolution", async ({
     page,
     context,

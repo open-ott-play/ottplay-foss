@@ -742,6 +742,8 @@ var keyStrings = {
     "Show when switching": "Mostrar al cambiar de canal",
     "Sleep timer": "Temporizador de apagado",
     "Sort channels": "Ordenar canales",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Proveedor de portal Stalker",
     "Stalker portal settings": "Ajustes del portal Stalker",
     "Stalker portals": "Portales Stalker",

@@ -35,6 +35,7 @@ function fixture(file, expectedVersion) {
     w.eval(read(file));
     assert.equal(w.$.fn.jquery, expectedVersion);
     w.eval(helper);
+    w.eval(compile("src/plugins/native-bridge.ts"));
     return { close: () => w.close(), w };
 }
 
@@ -226,6 +227,50 @@ function outcome(jq) {
     });
 }
 
+async function tauriInvokeContract(w) {
+    for (const mode of ["core", "legacy", "empty-core"]) {
+        for (const outcome of ["resolve", "reject", "throw"]) {
+            const args = { url: "https://portal.invalid/" };
+            const failure = new Error("native fixture");
+            const result =
+                outcome === "reject"
+                    ? Promise.reject(failure)
+                    : Promise.resolve(args);
+            const owner = {
+                invoke(command, value) {
+                    assert.equal(this, owner);
+                    assert.equal(command, "fixture_command");
+                    assert.equal(value, args);
+                    if (outcome === "throw") throw failure;
+                    return result;
+                },
+            };
+            w.__TAURI__ =
+                mode === "core"
+                    ? {
+                          core: owner,
+                          invoke() {
+                              assert.fail("core.invoke must take precedence");
+                          },
+                      }
+                    : owner;
+            if (mode === "empty-core") owner.core = {};
+            if (outcome === "throw") {
+                assert.throws(
+                    () => w.tauriInvoke("fixture_command", args),
+                    (error) => error === failure
+                );
+            } else {
+                assert.equal(w.tauriInvoke("fixture_command", args), result);
+                if (outcome === "reject")
+                    await assert.rejects(result, (error) => error === failure);
+                else assert.equal(await result, args);
+            }
+        }
+    }
+    delete w.__TAURI__;
+}
+
 async function nativeRoutes(w) {
     let response = {
         body: '{"channels":["fixture"]}',
@@ -341,10 +386,37 @@ async function nativeRoutes(w) {
             assert.equal(request.method, "POST");
             assert.equal(request.body, JSON.stringify({ request: status }));
             assert.equal(request.contentType, "application/json");
+            await outcome(w.$.ajax({ url }));
             assert.equal(
-                w.cookieHeaderForUrl(url),
+                calls[calls.length - 1].headers.Cookie,
                 "session=" + status,
-                "cookies are retained even when HTTP status rejects the response"
+                "the next request sends cookies even when the prior HTTP status rejected"
+            );
+            await outcome(
+                w.$.ajax({
+                    headers: {
+                        Authorization: "Bearer fixture",
+                        cookie: "caller=1",
+                    },
+                    url,
+                })
+            );
+            const explicit = calls[calls.length - 1].headers;
+            assert.equal(explicit.cookie, "caller=1");
+            assert.equal(explicit.Cookie, undefined);
+            assert.equal(explicit.Authorization, "Bearer fixture");
+            await outcome(
+                w.$.ajax({
+                    url:
+                        "https://other-" +
+                        status +
+                        ".invalid/stalker_portal/api/",
+                })
+            );
+            assert.equal(
+                calls[calls.length - 1].headers,
+                undefined,
+                "the cookie jar remains isolated by origin"
             );
         }
     }
@@ -366,6 +438,116 @@ async function nativeRoutes(w) {
         "all response checks use actual native route wrappers"
     );
     assert.equal(calls[beforeProxy].url, "https://stream.invalid/list.m3u");
+    const target = "https://stream.invalid/list.m3u";
+    const encodedTarget = "url=" + encodeURIComponent(target);
+    for (const [data, userAgent, referer] of [
+        [
+            {
+                referer: "https://origin.invalid/a+b",
+                ua: "Player + Test",
+                url: target,
+            },
+            "Player + Test",
+            "https://origin.invalid/a+b",
+        ],
+        [
+            encodedTarget +
+                "&ua=Player+%2B+Test&referer=https%3A%2F%2Forigin.invalid%2Fa%2Bb",
+            "Player + Test",
+            "https://origin.invalid/a+b",
+        ],
+        [{ referer: "", ua: "", url: target }, undefined, undefined],
+        [encodedTarget + "&ua=&referer=", undefined, undefined],
+        [{ referer: null, ua: null, url: target }, undefined, undefined],
+        [{ referer: 3, ua: false, url: target }, undefined, undefined],
+        [{ url: target }, undefined, undefined],
+    ]) {
+        const before = calls.length;
+        const response = await outcome(w.$.ajax({ data, url: "/m3u/cp.php" }));
+        assert.equal(response.ok, true);
+        assert.equal(calls.length, before + 1);
+        assert.equal(calls[before].url, target);
+        assert.equal(calls[before].userAgent, userAgent);
+        assert.equal(calls[before].referer, referer);
+    }
+    for (const data of [null, "", undefined]) {
+        const before = calls.length;
+        const response = await outcome(w.$.ajax({ data, url: "/m3u/cp.php" }));
+        assert.equal(response.ok, false);
+        assert.match(response.value, /missing url/);
+        assert.equal(calls.length, before);
+    }
+    for (const throwing of [undefined, "ua", "referer"]) {
+        const reads = [];
+        const failure = new Error("header getter failed");
+        const data = {};
+        for (const [key, value] of [
+            ["url", target],
+            ["ua", "Stateful player"],
+            ["referer", "https://origin.invalid/"],
+        ]) {
+            Object.defineProperty(data, key, {
+                get() {
+                    reads.push(key);
+                    if (key === throwing) throw failure;
+                    return value;
+                },
+            });
+        }
+        const before = calls.length;
+        if (throwing) {
+            assert.throws(
+                () => w.$.ajax({ data, url: "/m3u/cp.php" }),
+                (error) => error === failure
+            );
+            assert.equal(calls.length, before);
+        } else {
+            assert.equal(
+                (await outcome(w.$.ajax({ data, url: "/m3u/cp.php" }))).ok,
+                true
+            );
+            assert.equal(calls.length, before + 1);
+            assert.equal(calls[before].userAgent, "Stateful player");
+            assert.equal(calls[before].referer, "https://origin.invalid/");
+        }
+        assert.deepEqual(
+            reads,
+            throwing === "ua" ? ["url", "ua"] : ["url", "ua", "referer"]
+        );
+    }
+    for (const field of ["ua", "referer"]) {
+        const before = calls.length;
+        assert.throws(
+            () =>
+                w.$.ajax({
+                    data: encodedTarget + "&" + field + "=%",
+                    url: "/m3u/cp.php",
+                }),
+            (error) => error.name === "URIError"
+        );
+        assert.equal(calls.length, before);
+    }
+    const decoded = [];
+    const decode = w.decodeURIComponent;
+    w.decodeURIComponent = (value) => {
+        decoded.push(value);
+        return decode(value);
+    };
+    const beforeInvalid = calls.length;
+    try {
+        assert.throws(
+            () =>
+                w.$.ajax({
+                    data: encodedTarget + "&ua=%&referer=%E0%A4%A",
+                    url: "/m3u/cp.php",
+                }),
+            (error) => error.name === "URIError"
+        );
+    } finally {
+        w.decodeURIComponent = decode;
+    }
+    assert.deepEqual(decoded, [encodeURIComponent(target), "%"]);
+    assert.equal(calls.length, beforeInvalid);
 }
 
 (async () => {
@@ -376,6 +558,7 @@ async function nativeRoutes(w) {
             callbackContract(w, true);
             synchronousBoundaries(w);
             await promiseTiming(w);
+            await tauriInvokeContract(w);
             await nativeRoutes(w);
             console.log(
                 "PASS native jQuery bridge " +

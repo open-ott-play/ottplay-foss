@@ -60,10 +60,13 @@ public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     request.timeoutInterval = M3UProxyPlugin.defaultTimeout
 
-    let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    let completion: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
       if let error = error {
         DispatchQueue.main.async {
           // URLSession descriptions may contain provider credentials.
+          #if os(iOS)
+          if let failure = error as? AccessMediaFailure { call.reject(failure.rawValue); return }
+          #endif
           call.reject("proxy_fetch failed: transport error \((error as NSError).code)")
         }
         return
@@ -90,6 +93,10 @@ public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
       }
     }
 
-    task.resume()
+    #if os(iOS)
+    AccessMedia.fetch(request, completion: completion)
+    #else
+    URLSession.shared.dataTask(with: request, completionHandler: completion).resume()
+    #endif
   }
 }

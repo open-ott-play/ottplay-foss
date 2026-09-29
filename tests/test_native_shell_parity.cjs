@@ -416,6 +416,7 @@ const coreControls = functions("src/core/index.ts", [
     "playCoreMedia",
     "cancelCoreSeek",
     "cancelCoreAutoPlayback",
+    "cancelCoreSourcePreparation",
     "cancelCoreNativeHls",
     "destroyCoreShaka",
     "resetCoreNativeBitrate",
@@ -428,7 +429,8 @@ const coreControls = functions("src/core/index.ts", [
     "stbIsPlaying",
 ]);
 for (const platform of Object.keys(nativeSources)) {
-    let destroyed = 0;
+    let destroyed = 0,
+        cancelled = 0;
     const w = {
         _coreAutoCancel: null,
         _coreDemoMute: null,
@@ -445,6 +447,9 @@ for (const platform of Object.keys(nativeSources)) {
         clearPlayTimeInterval() {},
         coreDeviceEffects: {},
         coreMediaBackend: null,
+        coreSourcePreparationCancel() {
+            cancelled++;
+        },
         hlsInstance: {
             destroy() {
                 destroyed++;
@@ -480,8 +485,10 @@ for (const platform of Object.keys(nativeSources)) {
         vm.runInContext(nativeScript(platform, "pause"), w);
     assert.equal(w.video.paused, true, platform + " explicit Pause");
     assert.equal(w.forcePlay, false);
+    assert.equal(cancelled, 0, platform + " Pause keeps pending preparation");
     vm.runInContext(nativeScript(platform, "stop"), w);
     assert.equal(destroyed, 1, platform + " Stop tears down HLS");
+    assert.equal(cancelled, 1, platform + " Stop cancels pending preparation");
     assert.equal(w._playSession, 2);
 }
 

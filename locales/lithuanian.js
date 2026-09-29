@@ -732,6 +732,8 @@ var keyStrings = {
     "Show when switching": "Rodyti perjungiant kanalus",
     "Sleep timer": "Miego laikmatis",
     "Sort channels": "Rikiuoti kanalus",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portalo teikėjas",
     "Stalker portal settings": "Stalker portalo nustatymai",
     "Stalker portals": "Stalker portalai",

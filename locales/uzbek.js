@@ -739,6 +739,8 @@ var keyStrings = {
     "Show when switching": "Kanal almashtirilganda koʻrsatish",
     "Sleep timer": "Uyqu taymeri",
     "Sort channels": "Kanallarni saralash",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portali provayderi",
     "Stalker portal settings": "Stalker portali sozlamalari",
     "Stalker portals": "Stalker portallari",

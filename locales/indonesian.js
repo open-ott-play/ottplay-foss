@@ -733,6 +733,8 @@ var keyStrings = {
     "Show when switching": "Tampilkan saat berpindah saluran",
     "Sleep timer": "Pengatur waktu tidur",
     "Sort channels": "Urutkan saluran",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Penyedia portal Stalker",
     "Stalker portal settings": "Pengaturan portal Stalker",
     "Stalker portals": "Portal Stalker",
