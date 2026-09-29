@@ -2424,7 +2424,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
 }
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */
-function _playMedia(item: MediaHistoryEntry): void {
+function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     if (!item) return;
     var reference = (item as any).__ottMediaRef;
     if (
@@ -2432,7 +2432,7 @@ function _playMedia(item: MediaHistoryEntry): void {
         reference.sourceId !== (window as any).__ottMedia.sourceId()
     )
         return;
-    if ((window as any).providerMediaClient)
+    if (!automatic && (window as any).providerMediaClient)
         (window as any).providerMediaClient.cancel();
     var streamUrl =
         typeof item.stream_url === "function"

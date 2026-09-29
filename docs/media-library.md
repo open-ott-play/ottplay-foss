@@ -100,3 +100,15 @@ source and ID, so replacing a row at the same index cannot authorize an older PI
 intent. Filter text commits only after cancellation succeeds without a newer
 navigation taking ownership. Favorite removal similarly rechecks its navigation
 owner after journal callbacks before updating the visible list.
+
+Natural episode advancement uses a separate resolver lifetime from foreground
+catalog navigation. Resolving or starting the next episode therefore preserves
+an open Filter/Search editor, its SWOP confirmation and any pending catalog page.
+VPortal likewise owns separate foreground and automatic requests, with shared
+quality preference. Automatic requests do not claim the busy dialog or quality
+picker, and failures use a generic non-modal notice. Navigation, manual playback,
+Stop and source replacement still revoke obsolete automatic work; cancelling
+only automatic work leaves a foreground request intact. Repeated episode changes
+reuse the current screen ownership binding instead of accumulating cleanups.
+Regression tests cover both catalog/episode completion orders and confirming
+SWOP input across a real browser media-ended event.
