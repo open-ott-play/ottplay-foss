@@ -1,6 +1,6 @@
 {
   "name": "ottplay-foss",
-  "version": "1.1.48",
+  "version": "1.1.49",
   "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
   "type": "module",
   "scripts": {
@@ -34,7 +34,7 @@
     "test:devices": "node tests/test_device_detection.cjs",
     "test:devices:browser": "playwright test tests/browser/device-detection.spec.cjs tests/browser/media-runtime.spec.cjs tests/browser/playback-runtime.spec.cjs tests/browser/pc2-playback.spec.cjs tests/browser/window-controls.spec.cjs",
     "test:hosted": "node scripts/hosted-epg.cjs && node tests/test_hosted_epg_checkout.cjs && node tests/test_herenow_swop.cjs",
-    "test:hosted:browser": "node tests/test_hosted_epg.cjs",
+    "test:hosted:browser": "node tests/test_hosted_epg.cjs && node tests/test_hosted_epg_sources.cjs",
     "test:localization": "node tests/test_localization_catalog.cjs && node tests/test_localized_keyboard.cjs",
     "test:media": "npm run prepare:media && node tests/test_media_runtime.cjs && node tests/test_runtime_web_polyfills.cjs",
     "test:media:browser": "playwright test tests/browser/media-runtime.spec.cjs",

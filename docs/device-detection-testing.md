@@ -53,6 +53,25 @@ Chromium UA emulation does not reproduce a TV's engine version, firmware,
 native services, decoder or DRM implementation. ES5 parsing separately protects
 the syntax requirements of older engines.
 
+## Magic Remote on a physical LG
+
+The browser tests cover hover, wheel, click and directional-key transitions.
+They cannot prove that LG firmware makes its native pointer visible. The player
+does not force that pointer on or off. LG switches to directional mode when an
+arrow is pressed; shaking the remote switches back to pointer mode.
+
+If the pointer is missing, first compare the LG Home screen with the player and
+record whether the player was opened by Media Station X or the TV browser.
+Then open **Information → Debug HUD** in the player. This enables diagnostics
+for the current page without restarting playback. The LG input line reports
+cursor visibility, document focus and input-event counts. Move the remote and
+click while watching the counts; `unknown` means no cursor-visibility event has
+been received, not that the pointer is hidden. Input diagnostics do not capture
+coordinates or typed text and never cancel events or change pointer mode.
+
+See LG's [Magic Remote guide](https://webostv.developer.lge.com/develop/guides/magic-remote)
+and [system UI visibility events](https://webostv.developer.lge.com/develop/guides/system-ui-visibility).
+
 ## Official LG webOS TV Simulator
 
 The launcher installs the official [LG Simulator](https://webostv.developer.lge.com/develop/tools/simulator-installation)

@@ -123,11 +123,11 @@ export function createCommandServer(
     var state = "disconnected";
     var message = "Disconnected";
     var listener: (() => void) | null = null;
-    var responses: any[] = [];
-    var responseHistory: Record<string, any> = Object.create(null);
+    var responses: string[] = [];
+    var responseHistory: Record<string, string> = Object.create(null);
     var responseOrder: string[] = [];
-    var responseSizes: Record<string, number> = Object.create(null);
     var historySize = 0;
+    var moreRequests = false;
     var cancelExecution: (() => void) | null = null;
 
     function status(): any {
@@ -151,9 +151,15 @@ export function createCommandServer(
         var abort = cancel;
         cancel = null;
         active = false;
-        if (cancelExecution) cancelExecution();
+        var abortWork = cancelExecution;
         cancelExecution = null;
+        if (abortWork) {
+            try {
+                abortWork();
+            } catch (_error) {}
+        }
         responses = [];
+        moreRequests = false;
         if (abort) {
             try {
                 abort();
@@ -190,7 +196,7 @@ export function createCommandServer(
     function request(
         method: string,
         ids?: string[],
-        responseToSend?: any
+        responseToSend?: string
     ): void {
         if (!config.enabled || active) return;
         var current = generation;
@@ -257,6 +263,7 @@ export function createCommandServer(
                     failed();
                     return;
                 }
+                moreRequests = false;
                 var now = Date.now();
                 for (var j = 0; j < data.commands.length; j++) {
                     var command = data.commands[j];
@@ -326,11 +333,19 @@ export function createCommandServer(
                     var item = data.requests[0];
                     if (
                         item &&
+                        typeof item.id === "string" &&
                         /^[a-f0-9]{32}$/.test(item.id) &&
                         typeof item.expires_at === "number" &&
+                        isFinite(item.expires_at) &&
+                        typeof data.server_time === "number" &&
+                        isFinite(data.server_time) &&
                         (item.expires_at - data.server_time) * 1000 >
                             Date.now() - requestStarted
                     ) {
+                        // A replay does not prove the server made queue progress.
+                        moreRequests =
+                            data.requests.length > 1 &&
+                            !responseHistory[item.id];
                         if (responseHistory[item.id])
                             responses.push(responseHistory[item.id]);
                         else {
@@ -338,13 +353,18 @@ export function createCommandServer(
                             var completed = false;
                             var executionTimer = w.setTimeout(
                                 function () {
-                                    if (cancelExecution) cancelExecution();
+                                    var abortWork = cancelExecution;
                                     finishExecution({
                                         data: {
                                             error: "Request timed out in the player.",
                                         },
                                         status: "rejected",
                                     });
+                                    if (abortWork) {
+                                        try {
+                                            abortWork();
+                                        } catch (_error) {}
+                                    }
                                 },
                                 Math.min(
                                     40000,
@@ -367,26 +387,49 @@ export function createCommandServer(
                                 w.clearTimeout(executionTimer);
                                 active = false;
                                 cancelExecution = null;
-                                var answer = {
-                                    data: value.data,
-                                    id: item.id,
-                                    status: value.status,
-                                };
+                                var serialized: string;
+                                var error =
+                                    "The player returned an invalid result.";
+                                try {
+                                    var resultStatus = value && value.status;
+                                    if (
+                                        resultStatus !== "ok" &&
+                                        resultStatus !== "rejected" &&
+                                        resultStatus !== "unsupported"
+                                    )
+                                        throw new Error();
+                                    var data = JSON.stringify(value.data);
+                                    if (typeof data !== "string")
+                                        throw new Error();
+                                    serialized =
+                                        '{"data":' +
+                                        data +
+                                        ',"id":"' +
+                                        item.id +
+                                        '","status":"' +
+                                        resultStatus +
+                                        '"}';
+                                } catch (_error) {
+                                    serialized = "";
+                                }
                                 // Conservative UTF-8 bound, including JSON escaping. Limit
                                 // cached results independently of the number of request IDs.
-                                var serialized = JSON.stringify(answer);
                                 if (serialized.length * 3 > 2 * 1024 * 1024) {
-                                    answer = {
+                                    serialized = "";
+                                    error =
+                                        "Result is too large. Narrow the search.";
+                                }
+                                if (!serialized)
+                                    serialized = JSON.stringify({
                                         data: {
-                                            error: "Result is too large. Narrow the search.",
+                                            error: error,
                                         },
                                         id: item.id,
                                         status: "rejected",
-                                    };
-                                    serialized = JSON.stringify(answer);
-                                }
-                                responseHistory[item.id] = answer;
-                                responseSizes[item.id] = serialized.length;
+                                    });
+                                if (current !== generation || !config.enabled)
+                                    return;
+                                responseHistory[item.id] = serialized;
                                 historySize += serialized.length;
                                 responseOrder.push(item.id);
                                 while (
@@ -394,17 +437,24 @@ export function createCommandServer(
                                     historySize > 2 * 1024 * 1024
                                 ) {
                                     var oldest = responseOrder.shift()!;
-                                    historySize -= responseSizes[oldest];
-                                    delete responseSizes[oldest];
+                                    historySize -=
+                                        responseHistory[oldest].length;
                                     delete responseHistory[oldest];
                                 }
-                                responses.push(answer);
+                                responses.push(serialized);
                                 failures = 0;
                                 schedule(0);
                             };
                             try {
                                 var cancelWork = execute(item, finishExecution);
-                                if (!completed)
+                                if (current !== generation || !config.enabled) {
+                                    w.clearTimeout(executionTimer);
+                                    if (cancelWork) {
+                                        try {
+                                            cancelWork();
+                                        } catch (_error) {}
+                                    }
+                                } else if (!completed)
                                     cancelExecution = function () {
                                         w.clearTimeout(executionTimer);
                                         if (cancelWork) cancelWork();
@@ -429,13 +479,15 @@ export function createCommandServer(
                     ? "Connected. Waiting for the channel list..."
                     : lastCommandMessage || "Connected"
             );
-            schedule(pending.length || responses.length ? 0 : 1000);
+            schedule(
+                pending.length || responses.length || moreRequests ? 0 : 1000
+            );
         }
         try {
             var abort = send(
                 {
                     body: responseToSend
-                        ? JSON.stringify(responseToSend)
+                        ? responseToSend
                         : ids
                           ? JSON.stringify({ ids: ids })
                           : undefined,
@@ -478,7 +530,6 @@ export function createCommandServer(
             seenOrder = [];
             responseHistory = Object.create(null);
             responseOrder = [];
-            responseSizes = Object.create(null);
             historySize = 0;
         }
         seenAddress = normalizedAddress;

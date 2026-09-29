@@ -95,11 +95,14 @@ pub fn evict_source_set(count: usize, existing: bool) -> anyhow::Result<bool> {
     })
 }
 
-pub fn refresh_interval() -> anyhow::Result<u64> {
+pub fn refresh_interval(consecutive_failures: u32) -> anyhow::Result<u64> {
     scalar(|ctx| {
         core(&ctx)?
             .get::<_, Function>("nativeGuideRefreshInterval")?
-            .call(("rust-server",))
+            .call((
+                "rust-server",
+                consecutive_failures.min(i32::MAX as u32) as i32,
+            ))
     })
 }
 

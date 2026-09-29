@@ -139,6 +139,38 @@ fn persistence_boundaries_match_public_api() {
     );
 }
 
+// Keep the pre-migration oracle immutable. These named cases deliberately changed
+// with shared-core's all-source-failure recovery policy and safe server errors.
+// Every other case still compares the complete historical payload unchanged.
+fn recovery_expectation(case: &Value) -> Value {
+    let mut expected = case["expected"].clone();
+    let message = match case["name"].as_str().unwrap() {
+        "all failed sources still return fresh empty cache" => {
+            expected = json!({});
+            Some("source 2: XMLTV parse failed")
+        }
+        "database connection failure still propagates after all fetches fail" => {
+            Some("source 2: XMLTV parse failed")
+        }
+        "database connection failure propagates after successful fetch"
+        | "database connection failure still propagates with no feeds" => {
+            Some("EPG database unavailable")
+        }
+        "background all failed clears memory and persisted cache" => {
+            expected["firstTickUpdatedMemory"] = json!(false);
+            expected["result"] = expected["memoryBefore"].clone();
+            expected["databaseAfter"] = expected["databaseBefore"].clone();
+            expected["fetchedAtWithinCallWindow"] = json!(false);
+            None
+        }
+        _ => None,
+    };
+    if let Some(message) = message {
+        expected["error"] = json!({"message": message, "chain": [message]});
+    }
+    expected
+}
+
 fn verify(document: &str, count: usize, test: &str) {
     let fixture: Value = serde_json::from_str(document).unwrap();
     let cases = fixture["cases"].as_array().unwrap();
@@ -165,7 +197,8 @@ fn verify(document: &str, count: usize, test: &str) {
             .unwrap();
         let observed = runtime.block_on(capture(input));
         assert_eq!(
-            observed, cases[index]["expected"],
+            observed,
+            recovery_expectation(&cases[index]),
             "{}",
             cases[index]["name"]
         );
