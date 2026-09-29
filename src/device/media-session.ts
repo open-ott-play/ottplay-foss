@@ -28,9 +28,9 @@ function createOsMediaSession(ports: any) {
             if (!active(handle) || handle.snapshot().phase !== "playing")
                 return;
             var expected = revision;
-            var seekable = ports.metadata().seekable;
-            if (seekable && expected === revision && active(handle))
-                send("update");
+            var metadata = ports.metadata();
+            if (metadata.seekable && expected === revision && active(handle))
+                ports.send("update", metadata);
         }, 2000);
     }
     var unsubscribe = ports.backend.subscribe(function (event: any) {
