@@ -75,6 +75,10 @@ final class Fixture: URLProtocol {
             data = Data(repeating: 37, count: 2 * 1024 * 1024 + 17)
         } else if path == "/oversized.m3u8" {
             data = Data("#EXTM3U\n".utf8) + Data(repeating: 35, count: 2 * 1024 * 1024)
+        } else if path == "/long-vod.m3u8" || path == "/expanded.m3u8" {
+            let segments = path == "/long-vod.m3u8" ? 20000 : 70000
+            data = Data(("#EXTM3U\n" + String(repeating: "#EXTINF:1,\nsegment.ts\n", count: segments) + "#EXT-X-ENDLIST\n").utf8)
+            assert(data.count < 2 * 1024 * 1024, "Expansion fixture must fit the input budget")
         } else if path == "/missing" {
             status = 404
         } else if path == "/chunked-large" {
@@ -198,15 +202,36 @@ Task { @MainActor in
             requireThrows { _ = try AccessMediaPolicy.callbackCode(URL(string: value)!, state: state) }
         }
         let manifest = "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"key?a=1&b=%2F\"\n#EXT-X-MEDIA:TYPE=AUDIO,URI=\"audio.m3u8\"\n#EXT-X-PART:DURATION=1,URI=\"part.m4s\"\n#EXT-X-CONTENT-STEERING:SERVER-URI=\"steer.json\"\nhttps://external.invalid/no-cookie.ts\nsegment.ts\n"
-        let rewritten = AccessMediaPolicy.rewriteManifest(manifest, base: source) { config.map($0) }
+        let rewritten = try AccessMediaPolicy.rewriteManifest(manifest, base: source) { config.map($0) }
         assert(rewritten.contains("https://media.fixture.invalid/key?a=1&b=%2F"))
         assert(rewritten.contains("https://media.fixture.invalid/audio.m3u8"))
         assert(rewritten.contains("https://media.fixture.invalid/part.m4s"))
         assert(rewritten.contains("https://media.fixture.invalid/steer.json"))
         assert(rewritten.contains("https://external.invalid/no-cookie.ts"))
 
+        let windowsManifest = "#EXTM3U\r\n# comment я\r\n\r\nsegment.ts\r\n"
+        let windowsRewritten = try AccessMediaPolicy.rewriteManifest(windowsManifest, base: source) { config.map($0) }
+        assert(windowsRewritten == "#EXTM3U\r\n# comment я\r\n\r\nhttps://media.fixture.invalid/segment.ts\n")
+        let multipleAttributes = "#EXT-X-TEST:LABEL=\"я\",URI=\"a?x=%2F\",URI=\"b\",SERVER-URI=\"steer.json\""
+        let attributesRewritten = try AccessMediaPolicy.rewriteManifest(multipleAttributes, base: source) { config.map($0) }
+        assert(attributesRewritten == "#EXT-X-TEST:LABEL=\"я\",URI=\"https://media.fixture.invalid/a?x=%2F\",URI=\"https://media.fixture.invalid/b\",SERVER-URI=\"https://media.fixture.invalid/steer.json\"")
+        let smallManifest = "#EXTM3U\n# я\nsegment.ts\n"
+        let exact = try AccessMediaPolicy.rewriteManifest(smallManifest, base: source) { config.map($0) }
+        let atLimit = try AccessMediaPolicy.rewriteManifest(smallManifest, base: source, maxBytes: exact.utf8.count) { config.map($0) }
+        assert(atLimit == exact, "An exactly bounded rewritten manifest must remain valid")
+        requireThrows { _ = try AccessMediaPolicy.rewriteManifest(smallManifest, base: source, maxBytes: exact.utf8.count - 1) { config.map($0) } }
+        var expandedAttributes = 0
+        let denseAttributes = "#EXTM3U\n#EXT-X-SESSION-DATA:" + String(repeating: "URI=\"a\",", count: 100)
+        requireThrows {
+            _ = try AccessMediaPolicy.rewriteManifest(denseAttributes, base: source, maxBytes: 1024) { _ in
+                expandedAttributes += 1
+                return URL(string: "https://media.fixture.invalid/" + String(repeating: "a", count: 1024))!
+            }
+        }
+        assert(expandedAttributes == 1, "Stop attribute expansion before allocating an oversized line")
+
         let networkPath = "//cdn.fixture.invalid/segment.ts?signature=a%2Fb%2B%3D&&=preserved"
-        let external = AccessMediaPolicy.rewriteManifest(networkPath, base: source) { config.map($0) }
+        let external = try AccessMediaPolicy.rewriteManifest(networkPath, base: source) { config.map($0) }
         let resolvedExternal = URL(string: external, relativeTo: URL(string: "http://127.0.0.1:1234/media.m3u8")!)!.absoluteURL
         assert(resolvedExternal.absoluteString == "https:" + networkPath,
             "An unproxied network-path URI must not inherit HTTP from loopback")
@@ -266,6 +291,14 @@ Task { @MainActor in
         let oversized = try await proxy.url(for: URL(string: config.source_origin + "/oversized.m3u8")!, config: config)
         let (_, oversizedResponse) = try await URLSession.shared.data(from: oversized)
         assert((oversizedResponse as! HTTPURLResponse).statusCode == 502)
+        let longVOD = try await proxy.url(for: URL(string: config.source_origin + "/long-vod.m3u8")!, config: config)
+        let (longData, longResponse) = try await URLSession.shared.data(from: longVOD)
+        assert((longResponse as! HTTPURLResponse).statusCode == 200 && longData.count > 2 * 1024 * 1024,
+            "Long VOD manifests may legitimately expand beyond the input budget")
+        let expanded = try await proxy.url(for: URL(string: config.source_origin + "/expanded.m3u8")!, config: config)
+        let (expandedData, expandedResponse) = try await URLSession.shared.data(from: expanded)
+        assert((expandedResponse as! HTTPURLResponse).statusCode == 502 && expandedData.isEmpty,
+            "Rewritten manifest expansion must be bounded, got status \((expandedResponse as! HTTPURLResponse).statusCode), bytes \(expandedData.count)")
         let missing = try await proxy.url(for: URL(string: config.source_origin + "/missing")!, config: config)
         for _ in 0..<8 {
             let (missingData, missingResponse) = try await URLSession.shared.data(from: missing)
