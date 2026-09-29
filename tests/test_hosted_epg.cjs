@@ -918,6 +918,124 @@ function bridgeFixture() {
 console.log(
     "PASS hosted EPG bridge close/retry, generation notifications and refresh elapsed time"
 );
+// An EPG screen can finish empty before the first hosted index arrives. Use the
+// real bridge, GuideService and GuideScreen, controlling only transport delivery.
+function hostedGuideFixture() {
+    const f = require("./helpers/guide-runtime-fixture.cjs")(),
+        host = f.host,
+        workers = [];
+    host.clearInterval = function () {};
+    host.setInterval = function () {
+        return 0;
+    };
+    host.__OTTPLAY_HOSTED__ = {
+        epg: {
+            source: "https://fixture.test/epg.gz",
+            workerUrl: "/hosted/epg-worker.js",
+        },
+        version: 1,
+    };
+    host.Worker = function () {
+        workers.push(this);
+        this.postMessage = (value) => {
+            if (value.type === "close")
+                this.onmessage({ data: { type: "closed" } });
+        };
+        this.terminate = function () {};
+    };
+    vm.runInContext(bridgeSource, host);
+    const session = host.__ottHostedEpg.open(
+        [{ id: "1", name: "Station A" }],
+        () => {
+            // M3U publication invalidates the selected channel and repaints OSD.
+            host.__ottClassicGuide.invalidateChannel(1);
+            host.getCurProgData(1, function () {});
+        }
+    );
+    return {
+        ...f,
+        pages: () => f.calls.filter((call) => call[0] === "page").length,
+        ready(generation = "downloaded") {
+            workers[0].onmessage({
+                data: {
+                    fetched: f.now() * 1000,
+                    generation,
+                    mappings: { 1: { channel: "fixture" } },
+                    records: 1,
+                    type: "ready",
+                },
+            });
+            f.tick();
+        },
+        session,
+    };
+}
+for (const pending of [false, true]) {
+    const f = hostedGuideFixture(),
+        h = f.host;
+    h.playType = f.now() - 300;
+    h.playTime = 25;
+    h.epgList(0, 0, false);
+    f.tick();
+    if (!pending) f.complete([]);
+    f.tick(f.now() + 92);
+    f.ready();
+    assert.equal(
+        f.requests.length,
+        2,
+        "ready coalesces the open guide and OSD into one fresh request"
+    );
+    if (pending) f.complete([f.row(undefined, undefined, "Retired")], 0);
+    f.complete([f.row(undefined, undefined, "Downloaded programme")], 1);
+    assert.equal(h.__ottHostedEpg.diagnostics().phase, "ready");
+    assert.equal(
+        h.listArray[0]?.name,
+        "Downloaded programme",
+        "hosted ready refreshes both completed-empty and pending guide screens"
+    );
+    const pages = f.pages();
+    f.ready();
+    assert.equal(f.requests.length, 2, "same generation does not refetch");
+    assert.equal(f.pages(), pages, "same generation does not repaint");
+    f.ready("replacement");
+    assert.equal(f.requests.length, 3, "next generation coalesces again");
+    f.complete([f.row(undefined, undefined, "Replacement programme")], 2);
+    assert.equal(h.listArray[0].name, "Replacement programme");
+    f.session.close();
+}
+for (const departure of ["close", "replace"]) {
+    const f = hostedGuideFixture(),
+        h = f.host;
+    let dispose = null;
+    h.__ottClassicScreenPort = {
+        onDispose(callback) {
+            dispose = callback;
+            return () => {
+                if (dispose === callback) dispose = null;
+                callback();
+            };
+        },
+    };
+    h.epgList(0, 0, false);
+    f.tick();
+    f.complete([]);
+    if (departure === "close") h.closeList();
+    else {
+        dispose();
+        h.listArray = [{ name: "Replacement menu" }];
+    }
+    const list = h.listArray,
+        pages = f.pages();
+    f.ready();
+    f.complete([f.row()]);
+    assert.equal(h.listArray, list, departure + " preserves the current view");
+    assert.equal(f.pages(), pages, departure + " cannot reopen the guide");
+    assert.equal(h.__ottClassicGuideScreen.current(), null);
+    f.session.close();
+}
+console.log(
+    "PASS hosted EPG ready refreshes only the current guide and coalesces row requests"
+);
 const now = Math.floor(Date.now() / 1000);
 const stamp = (offset) =>
     new Date((now + offset) * 1000)
