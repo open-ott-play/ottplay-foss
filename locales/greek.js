@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL διακομιστή API",
     "Applying HTTP remote settings...":
         "Εφαρμογή ρυθμίσεων τηλεχειρισμού HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Εγκρίνετε τον κωδικό για %1 με ott approve NAME CODE:",
     Archive: "Αρχείο",
     "Archive - begin": "Αρχείο — αρχή",
     "Archive hours": "Ώρες αρχείου",
@@ -111,6 +113,7 @@ var keyStrings = {
     "Call PiP": "Άνοιγμα PiP",
     "Call PiP / PiP exchange": "Άνοιγμα PiP / εναλλαγή PiP",
     Cancel: "Ακύρωση",
+    "Cancel pairing": "Ακύρωση σύζευξης",
     "Cannot delete the last category":
         "Δεν είναι δυνατή η διαγραφή της τελευταίας κατηγορίας",
     Category: "Κατηγορία",
@@ -149,6 +152,15 @@ var keyStrings = {
     "Command server": "Διακομιστής εντολών",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Διεύθυνση διακομιστή εντολών, κωδικός πρόσβασης συσκευής, τοπικός έλεγχος HTTP και ρυθμίσεις απομακρυσμένης εισαγωγής κειμένου",
+    "Command server discovery canceled.":
+        "Η αναζήτηση διακομιστή εντολών ακυρώθηκε.",
+    "Command server discovery has not started.":
+        "Η αναζήτηση διακομιστή εντολών δεν έχει ξεκινήσει.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Η αναζήτηση διακομιστή εντολών δεν είναι διαθέσιμη. Επιλέξτε Εύρεση διακομιστή εντολών για να δοκιμάσετε ξανά.",
+    "Command server discovery timed out.":
+        "Έληξε το χρονικό όριο αναζήτησης διακομιστή εντολών.",
+    "Command server found.": "Βρέθηκε διακομιστής εντολών.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ρυθμίστε το All4you.tv από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -227,6 +239,10 @@ var keyStrings = {
     "Copy category": "Αντιγραφή κατηγορίας",
     "Copy JSON": "Αντιγραφή JSON",
     "Could not connect to the server.": "Αδυναμία σύνδεσης στον διακομιστή.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Δεν ήταν δυνατή η δημιουργία αιτήματος σύζευξης. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Could not save the approved command server settings.":
+        "Δεν ήταν δυνατή η αποθήκευση των εγκεκριμένων ρυθμίσεων του διακομιστή εντολών.",
     "Could not update HTTP remote control.":
         "Δεν ήταν δυνατή η ενημέρωση του τηλεχειρισμού HTTP.",
     Country: "Χώρα",
@@ -246,6 +262,8 @@ var keyStrings = {
     "Device info:": "Πληροφορίες συσκευής:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Απαιτείται η MAC της συσκευής για λίστες KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Το UUID της συσκευής δεν είναι ακόμη έτοιμο. Επιλέξτε Εύρεση διακομιστή εντολών για να δοκιμάσετε ξανά.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Ρυθμίσεις Diamond TV",
     Director: "Σκηνοθέτης",
@@ -407,6 +425,8 @@ var keyStrings = {
         "Η επιλογή αρχείου δεν υποστηρίζεται σε αυτή τη συσκευή",
     Filter: "Φίλτρο",
     Filters: "Φίλτρα",
+    "Find command server": "Εύρεση διακομιστή εντολών",
+    "Finding command servers...": "Αναζήτηση διακομιστών εντολών...",
     "First Run Setup": "Ρύθμιση πρώτης εκκίνησης",
     "Font type": "Γραμματοσειρά",
     "For download settings file open":
@@ -516,6 +536,8 @@ var keyStrings = {
     "Next TV program": "Επόμενη εκπομπή",
     No: "Όχι",
     "No channel name": "Χωρίς όνομα καναλιού",
+    "No command server was found on this network.":
+        "Δεν βρέθηκε διακομιστής εντολών σε αυτό το δίκτυο.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Δεν βρέθηκαν αποθηκευμένες ρυθμίσεις",
@@ -545,6 +567,14 @@ var keyStrings = {
     on: "ενεργός",
     "on ": "ενεργό ",
     "or scan": "ή σαρώστε",
+    "Pairing approved. Command server configured.":
+        "Η σύζευξη εγκρίθηκε. Ο διακομιστής εντολών ρυθμίστηκε.",
+    "Pairing expired. Find the server again to retry.":
+        "Η σύζευξη έληξε. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Ο διακομιστής σύζευξης δεν είναι διαθέσιμος. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Η σύζευξη απορρίφθηκε ή επιστράφηκε μη έγκυρη έγκριση. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
     "Parental control": "Γονικός έλεγχος",
     Password: "Κωδικός πρόσβασης",
     Pause: "Παύση",
@@ -620,6 +650,7 @@ var keyStrings = {
     "Rename to": "Μετονομασία σε",
     "Repeat parental code": "Εισαγάγετε ξανά τον γονικό κωδικό",
     "Request sended!": "Το αίτημα στάλθηκε!",
+    "Requesting approval for %1": "Αίτημα έγκρισης για %1",
     "Restart player": "Επανεκκίνηση προγράμματος αναπαραγωγής",
     "Restart stream": "Επανεκκίνηση ροής",
     "Restart stream / Live": "Επανεκκίνηση ροής / ζωντανά",
@@ -677,6 +708,8 @@ var keyStrings = {
     "Set parental code": "Ορισμός γονικού κωδικού",
     "Set timer?": "Ορισμός χρονοδιακόπτη;",
     Settings: "Ρυθμίσεις",
+    "Settings changed. Discovery was canceled.":
+        "Οι ρυθμίσεις άλλαξαν. Η αναζήτηση ακυρώθηκε.",
     "Settings could not be saved": "Δεν ήταν δυνατή η αποθήκευση των ρυθμίσεων",
     "Settings loaded from storage":
         "Οι ρυθμίσεις φορτώθηκαν από τον χώρο αποθήκευσης",
@@ -685,6 +718,8 @@ var keyStrings = {
     "Settings saved to storage":
         "Οι ρυθμίσεις αποθηκεύτηκαν στον χώρο αποθήκευσης",
     "Settings sended!": "Οι ρυθμίσεις στάλθηκαν!",
+    "Several command servers were found. Select one below.":
+        "Βρέθηκαν αρκετοί διακομιστές εντολών. Επιλέξτε έναν παρακάτω.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Ρυθμίσεις Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -736,8 +771,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Ρυθμίσεις Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Το URL εντοπισμού διακομιστή εντολών δεν είναι έγκυρο.",
     "The device ID in the address is invalid.":
         "Το αναγνωριστικό συσκευής στη διεύθυνση δεν είναι έγκυρο.",
+    "The discovery response is invalid.":
+        "Η απόκριση της αναζήτησης δεν είναι έγκυρη.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Αυτό το πρόγραμμα περιήγησης δεν μπορεί να εκτελέσει ασφαλή αυτόματη σύζευξη. Ενημερώστε το ή εισαγάγετε χειροκίνητα τις ρυθμίσεις του διακομιστή εντολών.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Αυτό το πρόγραμμα περιήγησης δεν έχει προφίλ εντοπισμού. Εισαγάγετε μια διεύθυνση διακομιστή ή ρυθμίστε το προφίλ εγκατάστασης.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Αυτό το πρόγραμμα αναπαραγωγής HTTPS δεν μπορεί να συνδεθεί σε διακομιστή HTTP. Χρησιμοποιήστε διακομιστή HTTPS ή ανοίξτε το πρόγραμμα αναπαραγωγής μέσω HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

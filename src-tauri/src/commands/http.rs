@@ -38,7 +38,9 @@ pub async fn proxy_http(
     body: Option<String>,
     headers: Option<HashMap<String, String>>,
     timeout_ms: Option<u64>,
+    secure_control: Option<bool>,
 ) -> Result<HttpResponse, HttpError> {
+    let secure_control = secure_control.unwrap_or(false);
     let url =
         reqwest::Url::parse(url.strip_prefix('@').unwrap_or(&url)).map_err(|error| HttpError {
             message: error.to_string(),
@@ -50,14 +52,23 @@ pub async fn proxy_http(
             timeout: false,
         });
     }
+    if secure_control
+        && (url.scheme() != "https"
+            || !url.username().is_empty()
+            || url.password().is_some()
+            || url.fragment().is_some())
+    {
+        return Err(HttpError {
+            message: "Secure control requests require HTTPS without URL credentials or a fragment"
+                .into(),
+            timeout: false,
+        });
+    }
     let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|error| HttpError {
         message: error.to_string(),
         timeout: false,
     })?;
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_millis(timeout_ms.unwrap_or(30000).max(1)))
-        .user_agent("OTT-play-FOSS/1.0")
-        .build()?;
+    let client = client_builder(timeout_ms, secure_control).build()?;
     let mut request = client.request(method, url);
     for (name, value) in headers.unwrap_or_default() {
         request = request.header(name, value);
@@ -82,6 +93,21 @@ pub async fn proxy_http(
         headers,
         body: response.text().await?,
     })
+}
+
+fn client_builder(timeout_ms: Option<u64>, secure_control: bool) -> reqwest::ClientBuilder {
+    let builder = reqwest::Client::builder()
+        .timeout(Duration::from_millis(timeout_ms.unwrap_or(30000).max(1)))
+        .user_agent("OTT-play-FOSS/1.0");
+    if secure_control {
+        // Pairing claims carry bearer credentials. Even a same-host redirect
+        // can change TLS to cleartext; return the redirect response untouched.
+        builder
+            .https_only(true)
+            .redirect(reqwest::redirect::Policy::none())
+    } else {
+        builder
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +156,7 @@ mod tests {
                 ("Content-Type".into(), "text/plain".into()),
             ])),
             Some(2000),
+            None,
         )
         .await
         .unwrap();
@@ -153,10 +180,86 @@ mod tests {
             None,
             None,
             None,
+            None,
         )
         .await
         .unwrap_err();
         assert!(error.message.contains("Only HTTP(S)"));
         assert!(!error.timeout);
+    }
+
+    #[tokio::test]
+    async fn secure_control_rejects_plaintext_and_url_credentials_before_network_io() {
+        for url in [
+            "http://127.0.0.1:1/api/pairings?id=receipt",
+            "https://user:secret@localhost/api/pairings",
+            "https://localhost/api/pairings#fragment",
+        ] {
+            let error = proxy_http(url.into(), "GET".into(), None, None, Some(100), Some(true))
+                .await
+                .unwrap_err();
+            assert!(error
+                .message
+                .contains("Secure control requests require HTTPS"));
+            assert!(!error.message.contains("secret"));
+        }
+        // HTTPS-only also applies inside the HTTP client, not just URL parsing.
+        assert!(client_builder(Some(100), true)
+            .build()
+            .unwrap()
+            .get("http://127.0.0.1:1/")
+            .send()
+            .await
+            .unwrap_err()
+            .is_builder());
+    }
+
+    #[tokio::test]
+    async fn secure_control_does_not_forward_bearer_on_redirect() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut reader = BufReader::new(&mut stream);
+            let mut request = String::new();
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if line == "\r\n" || line.is_empty() {
+                    break;
+                }
+                request.push_str(&line);
+            }
+            stream.write_all(format!("HTTP/1.1 307 Temporary Redirect\r\nLocation: http://{address}/leak\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").as_bytes()).unwrap();
+            listener.set_nonblocking(true).unwrap();
+            std::thread::sleep(Duration::from_millis(150));
+            assert!(
+                matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock),
+                "redirect destination was contacted"
+            );
+            request
+        });
+        // Use a plaintext fixture solely to exercise the production redirect
+        // policy. The separate test above covers the HTTPS-only enforcement.
+        let client = client_builder(Some(1000), true)
+            .https_only(false)
+            .build()
+            .unwrap();
+        let response = client
+            .get(format!("http://{address}/api/pairings?id=receipt"))
+            .bearer_auth("claim-secret")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(response.url().path(), "/api/pairings");
+        assert!(server
+            .join()
+            .unwrap()
+            .to_lowercase()
+            .contains("authorization: bearer claim-secret"));
     }
 }

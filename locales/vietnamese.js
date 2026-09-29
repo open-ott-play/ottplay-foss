@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL máy chủ API",
     "Applying HTTP remote settings...":
         "Đang áp dụng cài đặt điều khiển từ xa HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Phê duyệt mã cho %1 bằng lệnh ott approve NAME CODE:",
     Archive: "Lưu trữ",
     "Archive - begin": "Lưu trữ — bắt đầu",
     "Archive hours": "Số giờ lưu trữ",
@@ -111,6 +113,7 @@ var keyStrings = {
     "Call PiP": "Mở PiP",
     "Call PiP / PiP exchange": "Mở PiP / đổi PiP",
     Cancel: "Hủy",
+    "Cancel pairing": "Hủy ghép nối",
     "Cannot delete the last category": "Không thể xóa danh mục cuối cùng",
     Category: "Danh mục",
     "Category selection": "Chọn danh mục",
@@ -148,6 +151,13 @@ var keyStrings = {
     "Command server": "Máy chủ lệnh",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Địa chỉ máy chủ lệnh, mã truy cập thiết bị, điều khiển HTTP cục bộ và cài đặt nhập văn bản từ xa",
+    "Command server discovery canceled.": "Đã hủy tìm máy chủ lệnh.",
+    "Command server discovery has not started.":
+        "Chưa bắt đầu tìm máy chủ lệnh.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Không thể tìm máy chủ lệnh. Chọn Tìm máy chủ lệnh để thử lại.",
+    "Command server discovery timed out.": "Đã hết thời gian tìm máy chủ lệnh.",
+    "Command server found.": "Đã tìm thấy máy chủ lệnh.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Cấu hình All4you.tv trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -226,6 +236,10 @@ var keyStrings = {
     "Copy category": "Sao chép danh mục",
     "Copy JSON": "Sao chép JSON",
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Không thể tạo yêu cầu ghép nối. Hãy tìm lại máy chủ để thử lại.",
+    "Could not save the approved command server settings.":
+        "Không thể lưu cài đặt máy chủ lệnh đã được phê duyệt.",
     "Could not update HTTP remote control.":
         "Không thể cập nhật điều khiển từ xa HTTP.",
     Country: "Quốc gia",
@@ -244,6 +258,8 @@ var keyStrings = {
     "Device info:": "Thông tin thiết bị:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Danh sách phát KBC (Kinoboom) yêu cầu địa chỉ MAC của thiết bị",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID của thiết bị chưa sẵn sàng. Chọn Tìm máy chủ lệnh để thử lại.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Cài đặt Diamond TV",
     Director: "Đạo diễn",
@@ -399,6 +415,8 @@ var keyStrings = {
         "Thiết bị này không hỗ trợ chọn tệp",
     Filter: "Bộ lọc",
     Filters: "Bộ lọc",
+    "Find command server": "Tìm máy chủ lệnh",
+    "Finding command servers...": "Đang tìm máy chủ lệnh...",
     "First Run Setup": "Thiết lập lần đầu",
     "Font type": "Kiểu chữ",
     "For download settings file open": "Để tải tệp cài đặt xuống, mở",
@@ -505,6 +523,8 @@ var keyStrings = {
     "Next TV program": "Chương trình tiếp theo",
     No: "Không",
     "No channel name": "Kênh không có tên",
+    "No command server was found on this network.":
+        "Không tìm thấy máy chủ lệnh trên mạng này.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Không tìm thấy cài đặt đã lưu",
@@ -534,6 +554,14 @@ var keyStrings = {
     on: "bật",
     "on ": "bật ",
     "or scan": "hoặc quét",
+    "Pairing approved. Command server configured.":
+        "Ghép nối đã được phê duyệt. Máy chủ lệnh đã được cấu hình.",
+    "Pairing expired. Find the server again to retry.":
+        "Phiên ghép nối đã hết hạn. Hãy tìm lại máy chủ để thử lại.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Máy chủ ghép nối không khả dụng. Hãy tìm lại máy chủ để thử lại.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Ghép nối bị từ chối hoặc nhận được phê duyệt không hợp lệ. Hãy tìm lại máy chủ để thử lại.",
     "Parental control": "Kiểm soát của phụ huynh",
     Password: "Mật khẩu",
     Pause: "Tạm dừng",
@@ -605,6 +633,7 @@ var keyStrings = {
     "Rename to": "Đổi tên thành",
     "Repeat parental code": "Nhập lại mã phụ huynh",
     "Request sended!": "Đã gửi yêu cầu!",
+    "Requesting approval for %1": "Đang yêu cầu phê duyệt cho %1",
     "Restart player": "Khởi động lại trình phát",
     "Restart stream": "Khởi động lại luồng",
     "Restart stream / Live": "Khởi động lại luồng / trực tiếp",
@@ -660,12 +689,16 @@ var keyStrings = {
     "Set parental code": "Đặt mã phụ huynh",
     "Set timer?": "Đặt hẹn giờ?",
     Settings: "Cài đặt",
+    "Settings changed. Discovery was canceled.":
+        "Cài đặt đã thay đổi. Đã hủy tìm kiếm.",
     "Settings could not be saved": "Không thể lưu cài đặt",
     "Settings loaded from storage": "Đã tải cài đặt từ bộ nhớ",
     "Settings STB": "Cài đặt STB",
     "Settings saved": "Đã lưu cài đặt",
     "Settings saved to storage": "Đã lưu cài đặt vào bộ nhớ",
     "Settings sended!": "Đã gửi cài đặt!",
+    "Several command servers were found. Select one below.":
+        "Tìm thấy nhiều máy chủ lệnh. Hãy chọn một máy chủ bên dưới.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Cài đặt Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -716,8 +749,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Cài đặt Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL tìm máy chủ lệnh không hợp lệ.",
     "The device ID in the address is invalid.":
         "ID thiết bị trong địa chỉ không hợp lệ.",
+    "The discovery response is invalid.": "Phản hồi tìm kiếm không hợp lệ.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Trình duyệt này không thể ghép nối tự động một cách an toàn. Hãy cập nhật trình duyệt hoặc nhập thủ công cài đặt máy chủ lệnh.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Trình duyệt này không có hồ sơ tìm kiếm. Hãy nhập địa chỉ máy chủ hoặc cấu hình hồ sơ triển khai.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Trình phát HTTPS này không thể kết nối tới máy chủ HTTP. Dùng máy chủ HTTPS hoặc mở trình phát qua HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

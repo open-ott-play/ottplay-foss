@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL server API",
     "Applying HTTP remote settings...":
         "Se aplică setările controlului HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Aprobați codul pentru %1 folosind ott approve NAME CODE:",
     Archive: "Arhivă",
     "Archive - begin": "Arhivă — început",
     "Archive hours": "Ore de arhivă",
@@ -112,6 +114,7 @@ var keyStrings = {
     "Call PiP": "Deschide PiP",
     "Call PiP / PiP exchange": "Deschide PiP / schimbă ferestrele PiP",
     Cancel: "Anulează",
+    "Cancel pairing": "Anulează asocierea",
     "Cannot delete the last category": "Ultima categorie nu poate fi ștearsă",
     Category: "Categorie",
     "Category selection": "Selectarea categoriei",
@@ -149,6 +152,15 @@ var keyStrings = {
     "Command server": "Server de comenzi",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adresa serverului de comenzi, codul de acces al dispozitivului, controlul HTTP local și setările introducerii de text de la distanță",
+    "Command server discovery canceled.":
+        "Căutarea serverului de comenzi a fost anulată.",
+    "Command server discovery has not started.":
+        "Căutarea serverului de comenzi nu a început.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Căutarea serverului de comenzi nu este disponibilă. Selectați Caută server de comenzi pentru a reîncerca.",
+    "Command server discovery timed out.":
+        "Căutarea serverului de comenzi a expirat.",
+    "Command server found.": "Server de comenzi găsit.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configurați All4you.tv în Setări -> Setările furnizorului",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -227,6 +239,10 @@ var keyStrings = {
     "Copy category": "Copiază categoria",
     "Copy JSON": "Copiază JSON",
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nu s-a putut crea o cerere de asociere. Căutați din nou serverul pentru a reîncerca.",
+    "Could not save the approved command server settings.":
+        "Nu s-au putut salva setările aprobate ale serverului de comenzi.",
     "Could not update HTTP remote control.":
         "Nu s-au putut actualiza setările controlului HTTP.",
     Country: "Țară",
@@ -245,6 +261,8 @@ var keyStrings = {
     "Device info:": "Informații despre dispozitiv:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Adresa MAC a dispozitivului este necesară pentru listele KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID-ul dispozitivului nu este încă pregătit. Selectați Caută server de comenzi pentru a reîncerca.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Setări Diamond TV",
     Director: "Regizor",
@@ -405,6 +423,8 @@ var keyStrings = {
         "Selectarea fișierelor nu este acceptată pe acest dispozitiv",
     Filter: "Filtru",
     Filters: "Filtre",
+    "Find command server": "Caută server de comenzi",
+    "Finding command servers...": "Se caută servere de comenzi...",
     "First Run Setup": "Configurare la prima pornire",
     "Font type": "Tip de font",
     "For download settings file open":
@@ -514,6 +534,8 @@ var keyStrings = {
     "Next TV program": "Emisiunea următoare",
     No: "Nu",
     "No channel name": "Fără nume de canal",
+    "No command server was found on this network.":
+        "Nu s-a găsit niciun server de comenzi în această rețea.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nu au fost găsite setări salvate",
@@ -543,6 +565,14 @@ var keyStrings = {
     on: "activat",
     "on ": "pornit ",
     "or scan": "sau scanați",
+    "Pairing approved. Command server configured.":
+        "Asociere aprobată. Serverul de comenzi a fost configurat.",
+    "Pairing expired. Find the server again to retry.":
+        "Asocierea a expirat. Căutați din nou serverul pentru a reîncerca.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Serverul de asociere nu este disponibil. Căutați din nou serverul pentru a reîncerca.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Asocierea a fost respinsă sau a returnat o aprobare nevalidă. Căutați din nou serverul pentru a reîncerca.",
     "Parental control": "Control parental",
     Password: "Parolă",
     Pause: "Pauză",
@@ -616,6 +646,7 @@ var keyStrings = {
     "Rename to": "Redenumește în",
     "Repeat parental code": "Introduceți din nou codul parental",
     "Request sended!": "Cerere trimisă!",
+    "Requesting approval for %1": "Se solicită aprobarea pentru %1",
     "Restart player": "Repornește playerul",
     "Restart stream": "Repornește fluxul",
     "Restart stream / Live": "Repornește fluxul / în direct",
@@ -674,12 +705,16 @@ var keyStrings = {
     "Set parental code": "Setează codul parental",
     "Set timer?": "Setați temporizatorul?",
     Settings: "Setări",
+    "Settings changed. Discovery was canceled.":
+        "Setările s-au schimbat. Căutarea a fost anulată.",
     "Settings could not be saved": "Setările nu au putut fi salvate",
     "Settings loaded from storage": "Setările au fost încărcate din stocare",
     "Settings STB": "Setări STB",
     "Settings saved": "Setări salvate",
     "Settings saved to storage": "Setările au fost salvate în stocare",
     "Settings sended!": "Setări trimise!",
+    "Several command servers were found. Select one below.":
+        "S-au găsit mai multe servere de comenzi. Selectați unul mai jos.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Setări Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -731,8 +766,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Setări Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL-ul de descoperire a serverului de comenzi nu este valid.",
     "The device ID in the address is invalid.":
         "ID-ul dispozitivului din adresă este nevalid.",
+    "The discovery response is invalid.": "Răspunsul la căutare nu este valid.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Acest browser nu poate efectua o asociere automată în siguranță. Actualizați-l sau introduceți manual setările serverului de comenzi.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Acest browser nu are un profil de descoperire. Introduceți adresa unui server sau configurați profilul de implementare.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Acest player HTTPS nu se poate conecta la un server HTTP. Folosiți un server HTTPS sau deschideți playerul prin HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

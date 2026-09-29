@@ -67,6 +67,8 @@ var keyStrings = {
     "API Server": "API server",
     "API server URL": "API server URL",
     "Applying HTTP remote settings...": "Applying HTTP remote settings...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Approve the code for %1 with ott approve NAME CODE:",
     Archive: "Archive",
     "Archive - begin": "Archive — start",
     "Archive hours": "Archive hours",
@@ -108,6 +110,7 @@ var keyStrings = {
     "Call PiP": "Open PiP",
     "Call PiP / PiP exchange": "Open PiP / swap PiP",
     Cancel: "Cancel",
+    "Cancel pairing": "Cancel pairing",
     "Cannot delete the last category": "Cannot delete the last category",
     Category: "Category",
     "Category selection": "Category selection",
@@ -145,6 +148,14 @@ var keyStrings = {
     "Command server": "Command server",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Command server address, device access code, local HTTP control, and remote text entry settings",
+    "Command server discovery canceled.": "Command server discovery canceled.",
+    "Command server discovery has not started.":
+        "Command server discovery has not started.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Command server discovery is unavailable. Use Find command server to retry.",
+    "Command server discovery timed out.":
+        "Command server discovery timed out.",
+    "Command server found.": "Command server found.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configure All4you.tv in Settings -> Provider Settings",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -223,6 +234,10 @@ var keyStrings = {
     "Copy category": "Copy category",
     "Copy JSON": "Copy JSON",
     "Could not connect to the server.": "Could not connect to the server.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Could not create a pairing request. Find the server again to retry.",
+    "Could not save the approved command server settings.":
+        "Could not save the approved command server settings.",
     "Could not update HTTP remote control.":
         "Could not update HTTP remote control.",
     Country: "Country",
@@ -241,6 +256,8 @@ var keyStrings = {
     "Device info:": "Device info:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Device MAC is required for KBC (Kinoboom) playlists",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Device UUID is not ready. Use Find command server to retry.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV settings",
     Director: "Director",
@@ -398,6 +415,8 @@ var keyStrings = {
         "File selection is not supported on this device",
     Filter: "Filter",
     Filters: "Filters",
+    "Find command server": "Find command server",
+    "Finding command servers...": "Finding command servers...",
     "First Run Setup": "First-run setup",
     "Font type": "Font type",
     "For download settings file open": "To download the settings file, open",
@@ -503,6 +522,8 @@ var keyStrings = {
     "Next TV program": "Next program",
     No: "No",
     "No channel name": "No channel name",
+    "No command server was found on this network.":
+        "No command server was found on this network.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "No saved settings found",
@@ -532,6 +553,14 @@ var keyStrings = {
     on: "on",
     "on ": "on ",
     "or scan": "or scan",
+    "Pairing approved. Command server configured.":
+        "Pairing approved. Command server configured.",
+    "Pairing expired. Find the server again to retry.":
+        "Pairing expired. Find the server again to retry.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Pairing server is unavailable. Find the server again to retry.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Pairing was rejected or returned an invalid approval. Find the server again to retry.",
     "Parental control": "Parental control",
     Password: "Password",
     Pause: "Pause",
@@ -604,6 +633,7 @@ var keyStrings = {
     "Rename to": "Rename to",
     "Repeat parental code": "Re-enter parental code",
     "Request sended!": "Request sent!",
+    "Requesting approval for %1": "Requesting approval for %1",
     "Restart player": "Restart player",
     "Restart stream": "Restart stream",
     "Restart stream / Live": "Restart stream / Live",
@@ -660,12 +690,16 @@ var keyStrings = {
     "Set parental code": "Set parental code",
     "Set timer?": "Set timer?",
     Settings: "Settings",
+    "Settings changed. Discovery was canceled.":
+        "Settings changed. Discovery was canceled.",
     "Settings could not be saved": "Settings could not be saved",
     "Settings loaded from storage": "Settings loaded from storage",
     "Settings STB": "STB settings",
     "Settings saved": "Settings saved",
     "Settings saved to storage": "Settings saved to storage",
     "Settings sended!": "Settings sent!",
+    "Several command servers were found. Select one below.":
+        "Several command servers were found. Select one below.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) settings",
     ShockTv: "ShockTv",
@@ -715,8 +749,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox settings",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "The command server discovery URL is invalid.",
     "The device ID in the address is invalid.":
         "The device ID in the address is invalid.",
+    "The discovery response is invalid.": "The discovery response is invalid.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "This browser cannot safely pair automatically. Update it or enter the command server settings manually.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "This browser has no discovery profile. Enter a server address or configure the deployment profile.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

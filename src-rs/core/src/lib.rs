@@ -7,6 +7,7 @@ use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
 pub mod db;
+pub mod control_discovery;
 pub mod m3u;
 pub mod native_xmltv;
 mod proxy;

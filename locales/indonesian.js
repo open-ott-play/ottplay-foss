@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL server API",
     "Applying HTTP remote settings...":
         "Menerapkan pengaturan kendali jarak jauh HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Setujui kode untuk %1 dengan ott approve NAME CODE:",
     Archive: "Arsip",
     "Archive - begin": "Arsip — awal",
     "Archive hours": "Jam arsip",
@@ -109,6 +111,7 @@ var keyStrings = {
     "Call PiP": "Buka PiP",
     "Call PiP / PiP exchange": "Buka PiP / tukar PiP",
     Cancel: "Batal",
+    "Cancel pairing": "Batalkan pemasangan",
     "Cannot delete the last category":
         "Tidak dapat menghapus kategori terakhir",
     Category: "Kategori",
@@ -147,6 +150,15 @@ var keyStrings = {
     "Command server": "Server perintah",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Alamat server perintah, kode akses perangkat, kendali HTTP lokal, dan pengaturan input teks jarak jauh",
+    "Command server discovery canceled.":
+        "Pencarian server perintah dibatalkan.",
+    "Command server discovery has not started.":
+        "Pencarian server perintah belum dimulai.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Pencarian server perintah tidak tersedia. Gunakan Cari server perintah untuk mencoba kembali.",
+    "Command server discovery timed out.":
+        "Pencarian server perintah kehabisan waktu.",
+    "Command server found.": "Server perintah ditemukan.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurasikan All4you.tv di Pengaturan -> Pengaturan penyedia",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -225,6 +237,10 @@ var keyStrings = {
     "Copy category": "Salin kategori",
     "Copy JSON": "Salin JSON",
     "Could not connect to the server.": "Tidak dapat terhubung ke server.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Tidak dapat membuat permintaan pemasangan. Cari server lagi untuk mencoba kembali.",
+    "Could not save the approved command server settings.":
+        "Tidak dapat menyimpan pengaturan server perintah yang disetujui.",
     "Could not update HTTP remote control.":
         "Tidak dapat memperbarui kendali jarak jauh HTTP.",
     Country: "Negara",
@@ -244,6 +260,8 @@ var keyStrings = {
     "Device info:": "Info perangkat:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "MAC perangkat diperlukan untuk daftar putar KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID perangkat belum siap. Gunakan Cari server perintah untuk mencoba kembali.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Pengaturan Diamond TV",
     Director: "Sutradara",
@@ -400,6 +418,8 @@ var keyStrings = {
         "Pemilihan file tidak didukung di perangkat ini",
     Filter: "Filter",
     Filters: "Filter",
+    "Find command server": "Cari server perintah",
+    "Finding command servers...": "Mencari server perintah...",
     "First Run Setup": "Pengaturan awal",
     "Font type": "Jenis font",
     "For download settings file open": "Untuk mengunduh file pengaturan, buka",
@@ -505,6 +525,8 @@ var keyStrings = {
     "Next TV program": "Program berikutnya",
     No: "Tidak",
     "No channel name": "Saluran tanpa nama",
+    "No command server was found on this network.":
+        "Tidak ditemukan server perintah di jaringan ini.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Tidak ditemukan pengaturan tersimpan",
@@ -534,6 +556,14 @@ var keyStrings = {
     on: "aktif",
     "on ": "aktif ",
     "or scan": "atau pindai",
+    "Pairing approved. Command server configured.":
+        "Pemasangan disetujui. Server perintah telah dikonfigurasi.",
+    "Pairing expired. Find the server again to retry.":
+        "Pemasangan kedaluwarsa. Cari server lagi untuk mencoba kembali.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Server pemasangan tidak tersedia. Cari server lagi untuk mencoba kembali.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Pemasangan ditolak atau persetujuan yang diterima tidak valid. Cari server lagi untuk mencoba kembali.",
     "Parental control": "Kontrol orang tua",
     Password: "Kata sandi",
     Pause: "Jeda",
@@ -606,6 +636,7 @@ var keyStrings = {
     "Rename to": "Ubah nama menjadi",
     "Repeat parental code": "Masukkan ulang kode orang tua",
     "Request sended!": "Permintaan terkirim!",
+    "Requesting approval for %1": "Meminta persetujuan untuk %1",
     "Restart player": "Mulai ulang pemutar",
     "Restart stream": "Mulai ulang aliran",
     "Restart stream / Live": "Mulai ulang aliran / langsung",
@@ -663,12 +694,16 @@ var keyStrings = {
     "Set parental code": "Atur kode orang tua",
     "Set timer?": "Atur pengatur waktu?",
     Settings: "Pengaturan",
+    "Settings changed. Discovery was canceled.":
+        "Pengaturan berubah. Pencarian dibatalkan.",
     "Settings could not be saved": "Pengaturan tidak dapat disimpan",
     "Settings loaded from storage": "Pengaturan dimuat dari penyimpanan",
     "Settings STB": "Pengaturan STB",
     "Settings saved": "Pengaturan disimpan",
     "Settings saved to storage": "Pengaturan disimpan ke penyimpanan",
     "Settings sended!": "Pengaturan terkirim!",
+    "Several command servers were found. Select one below.":
+        "Beberapa server perintah ditemukan. Pilih salah satu di bawah.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Pengaturan Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -720,8 +755,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Pengaturan Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL pencarian server perintah tidak valid.",
     "The device ID in the address is invalid.":
         "ID perangkat di alamat tidak valid.",
+    "The discovery response is invalid.": "Respons pencarian tidak valid.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Browser ini tidak dapat melakukan pemasangan otomatis dengan aman. Perbarui browser atau masukkan pengaturan server perintah secara manual.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Browser ini tidak memiliki profil pencarian. Masukkan alamat server atau konfigurasikan profil penerapan.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Pemutar HTTPS ini tidak dapat terhubung ke server HTTP. Gunakan server HTTPS atau buka pemutar melalui HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":

@@ -70,6 +70,8 @@ var keyStrings = {
     "API server URL": "API серверінің URL мекенжайы",
     "Applying HTTP remote settings...":
         "HTTP қашықтан басқару баптаулары қолданылуда…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "%1 үшін кодты ott approve NAME CODE пәрменімен растаңыз:",
     Archive: "Мұрағат",
     "Archive - begin": "Мұрағат — басы",
     "Archive hours": "Мұрағат сағаттары",
@@ -110,6 +112,7 @@ var keyStrings = {
     "Call PiP": "PiP ашу",
     "Call PiP / PiP exchange": "PiP ашу / PiP ауыстыру",
     Cancel: "Бас тарту",
+    "Cancel pairing": "Жұптастырудан бас тарту",
     "Cannot delete the last category": "Соңғы санатты жою мүмкін емес",
     Category: "Санат",
     "Category selection": "Санат таңдау",
@@ -147,6 +150,14 @@ var keyStrings = {
     "Command server": "Пәрмен сервері",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Пәрмен серверінің мекенжайы, құрылғының кіру коды, жергілікті HTTP басқару және қашықтан мәтін енгізу баптаулары",
+    "Command server discovery canceled.": "Пәрмен серверін іздеу тоқтатылды.",
+    "Command server discovery has not started.":
+        "Пәрмен серверін іздеу әлі басталған жоқ.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Пәрмен серверін іздеу қолжетімсіз. Қайталау үшін «Пәрмен серверін табу» түймесін таңдаңыз.",
+    "Command server discovery timed out.":
+        "Пәрмен серверін іздеу уақыты аяқталды.",
+    "Command server found.": "Пәрмен сервері табылды.",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv қызметін Баптаулар -> Провайдер баптаулары бөлімінде баптаңыз",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -225,6 +236,10 @@ var keyStrings = {
     "Copy category": "Санатты көшіру",
     "Copy JSON": "JSON көшіру",
     "Could not connect to the server.": "Серверге қосылу мүмкін болмады.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Жұптастыру сұрауын жасау мүмкін болмады. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Could not save the approved command server settings.":
+        "Пәрмен серверінің расталған баптауларын сақтау мүмкін болмады.",
     "Could not update HTTP remote control.":
         "HTTP қашықтан басқаруды жаңарту мүмкін болмады.",
     Country: "Ел",
@@ -244,6 +259,8 @@ var keyStrings = {
     "Device info:": "Құрылғы туралы ақпарат:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) ойнату тізімдеріне құрылғының MAC мекенжайы қажет",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Құрылғының UUID-і әлі дайын емес. Қайталау үшін «Пәрмен серверін табу» түймесін таңдаңыз.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV баптаулары",
     Director: "Режиссер",
@@ -402,6 +419,8 @@ var keyStrings = {
         "Бұл құрылғыда файл таңдау қолдау көрсетілмейді",
     Filter: "Сүзгі",
     Filters: "Сүзгілер",
+    "Find command server": "Пәрмен серверін табу",
+    "Finding command servers...": "Пәрмен серверлері ізделуде…",
     "First Run Setup": "Алғашқы іске қосу баптауы",
     "Font type": "Қаріп түрі",
     "For download settings file open":
@@ -509,6 +528,8 @@ var keyStrings = {
     "Next TV program": "Келесі бағдарлама",
     No: "Жоқ",
     "No channel name": "Арна атауы жоқ",
+    "No command server was found on this network.":
+        "Бұл желіде пәрмен сервері табылмады.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Сақталған баптаулар табылмады",
@@ -538,6 +559,14 @@ var keyStrings = {
     on: "қосулы",
     "on ": "мына түймемен ",
     "or scan": "немесе сканерлеңіз",
+    "Pairing approved. Command server configured.":
+        "Жұптастыру расталды. Пәрмен сервері бапталды.",
+    "Pairing expired. Find the server again to retry.":
+        "Жұптастыру уақыты аяқталды. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Жұптастыру сервері қолжетімсіз. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Жұптастыру қабылданбады немесе жарамсыз растау алынды. Қайта әрекет ету үшін серверді қайта іздеңіз.",
     "Parental control": "Ата-ана бақылауы",
     Password: "Құпиясөз",
     Pause: "Кідірту",
@@ -609,6 +638,7 @@ var keyStrings = {
     "Rename to": "Жаңа атау",
     "Repeat parental code": "Ата-ана кодын қайталаңыз",
     "Request sended!": "Сұрау жіберілді!",
+    "Requesting approval for %1": "%1 үшін растау сұралуда",
     "Restart player": "Ойнатқышты қайта іске қосу",
     "Restart stream": "Ағынды қайта іске қосу",
     "Restart stream / Live": "Ағынды қайта іске қосу / тікелей эфир",
@@ -665,12 +695,16 @@ var keyStrings = {
     "Set parental code": "Ата-ана кодын орнатыңыз",
     "Set timer?": "Таймер орнатылсын ба?",
     Settings: "Баптаулар",
+    "Settings changed. Discovery was canceled.":
+        "Баптаулар өзгерді. Іздеу тоқтатылды.",
     "Settings could not be saved": "Баптауларды сақтау мүмкін болмады",
     "Settings loaded from storage": "Баптаулар жадтан жүктелді",
     "Settings STB": "Құрылғы баптаулары",
     "Settings saved": "Баптаулар сақталды",
     "Settings saved to storage": "Баптаулар жадқа сақталды",
     "Settings sended!": "Баптаулар жіберілді!",
+    "Several command servers were found. Select one below.":
+        "Бірнеше пәрмен сервері табылды. Төменнен біреуін таңдаңыз.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) баптаулары",
     ShockTv: "ShockTv",
@@ -724,8 +758,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox баптаулары",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Пәрмен серверін іздеуге арналған URL мекенжайы жарамсыз.",
     "The device ID in the address is invalid.":
         "Мекенжайдағы құрылғы ID-і жарамсыз.",
+    "The discovery response is invalid.": "Іздеу сұрауының жауабы жарамсыз.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Бұл браузер қауіпсіз автоматты жұптастыруды қолдамайды. Оны жаңартыңыз немесе пәрмен серверінің баптауларын қолмен енгізіңіз.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Бұл браузерге іздеу профилі берілмеген. Сервер мекенжайын енгізіңіз немесе орналастыру профилін баптаңыз.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Бұл HTTPS ойнатқышы HTTP серверіне қосыла алмайды. HTTPS серверін қолданыңыз немесе ойнатқышты HTTP арқылы ашыңыз.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
