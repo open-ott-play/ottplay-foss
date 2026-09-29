@@ -85,6 +85,121 @@ for (const channelSupport of ["available", "absent", "throws"]) {
 console.log(
     "PASS hosted EPG parser yielding, legacy fallback and queued close"
 );
+// A cache reopened near expiry must keep its original refresh deadline. Drive
+// the actual load/schedule paths without waiting two hours or fetching a feed.
+const cacheScheduleSource = ts.transpileModule(
+    ["load", "schedule", "validUrl"]
+        .map((name) =>
+            workerFactory.body.statements
+                .find(
+                    (node) =>
+                        ts.isFunctionDeclaration(node) &&
+                        node.name.text === name
+                )
+                .getText(workerAst)
+        )
+        .join("\n"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function cacheScheduleFixture(age, replacementAge = age, now = 20000000) {
+    const input = {
+        channels: [],
+        refreshMs: 7200000,
+        sources: ["https://fixture.test/feed.gz"],
+    };
+    const signature = JSON.stringify([input.sources, input.channels]);
+    const snapshot = (value) =>
+        value === null ? null : { fetched: now - value, signature };
+    const state = {
+        delay: null,
+        now,
+        read: { result: snapshot(age) },
+        refreshes: 0,
+        replacement: snapshot(replacementAge),
+    };
+    const env = {
+        clearTimeout() {},
+        setTimeout(_callback, delay) {
+            state.delay = delay;
+        },
+    };
+    const fixture = new Function(
+        "env",
+        "Date",
+        "state",
+        "var active=null, configuration=null, database=null, databaseName='', " +
+            "signature='', loading=false, closed=false, timer=null;\n" +
+            "function identity() { return 'fixture'; }\n" +
+            "function open(next) { database={}; next(); }\n" +
+            "function transaction() { return {objectStore: function() {return {get: function() { return state.read; }};}}; }\n" +
+            "function progress() {} function ready() {} function release() {}\n" +
+            "function fail(code) { throw new Error(code); }\n" +
+            "function lease(next) { next(); }\n" +
+            "function cleanup(next) { next(state.replacement); }\n" +
+            "function refresh() { state.refreshes++; }\n" +
+            cacheScheduleSource +
+            "\nreturn {load:load, schedule:schedule};"
+    )(env, { now: () => state.now }, state);
+    fixture.load(input);
+    state.read.onsuccess();
+    return { ...fixture, state };
+}
+{
+    const f = cacheScheduleFixture(7200000 - 60000);
+    assert.equal(f.state.refreshes, 0);
+    assert.equal(
+        f.state.delay,
+        60000,
+        "reopened cache refreshes at its original expiry, not two hours later"
+    );
+    f.schedule();
+    assert.equal(
+        f.state.delay,
+        7200000,
+        "normal error retries and new commits retain the full interval"
+    );
+    f.schedule(f.state.now - 7200000);
+    assert.equal(f.state.delay, 1, "an elapsed deadline uses a positive delay");
+    f.schedule(f.state.now - 7200001);
+    assert.equal(
+        f.state.delay,
+        1,
+        "crossing expiry cannot create a negative delay"
+    );
+    f.schedule(f.state.now + 60000);
+    assert.equal(
+        f.state.delay,
+        7200000,
+        "clock rollback cannot extend the interval"
+    );
+}
+assert.equal(cacheScheduleFixture(0).state.delay, 7200000);
+assert.equal(
+    cacheScheduleFixture(60000, 60000, 60000).state.delay,
+    7140000,
+    "an epoch-zero fetched timestamp is a valid deadline"
+);
+assert.equal(
+    cacheScheduleFixture(7200000, 7140000).state.delay,
+    60000,
+    "a fresh snapshot discovered after acquiring the lease keeps its expiry"
+);
+for (const age of [null, 7200000, 7200001]) {
+    const f = cacheScheduleFixture(age);
+    assert.equal(
+        f.state.refreshes,
+        1,
+        "missing/expired cache refreshes immediately"
+    );
+    assert.equal(f.state.delay, null);
+    f.schedule();
+    assert.equal(
+        f.state.delay,
+        7200000,
+        "failed refresh keeps normal retry backoff"
+    );
+}
+console.log("PASS hosted EPG saved-cache refresh deadline and retry intervals");
 const cleanupDeclaration = workerFactory.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "cleanup"
 );
@@ -917,6 +1032,124 @@ function bridgeFixture() {
 }
 console.log(
     "PASS hosted EPG bridge close/retry, generation notifications and refresh elapsed time"
+);
+// An EPG screen can finish empty before the first hosted index arrives. Use the
+// real bridge, GuideService and GuideScreen, controlling only transport delivery.
+function hostedGuideFixture() {
+    const f = require("./helpers/guide-runtime-fixture.cjs")(),
+        host = f.host,
+        workers = [];
+    host.clearInterval = function () {};
+    host.setInterval = function () {
+        return 0;
+    };
+    host.__OTTPLAY_HOSTED__ = {
+        epg: {
+            source: "https://fixture.test/epg.gz",
+            workerUrl: "/hosted/epg-worker.js",
+        },
+        version: 1,
+    };
+    host.Worker = function () {
+        workers.push(this);
+        this.postMessage = (value) => {
+            if (value.type === "close")
+                this.onmessage({ data: { type: "closed" } });
+        };
+        this.terminate = function () {};
+    };
+    vm.runInContext(bridgeSource, host);
+    const session = host.__ottHostedEpg.open(
+        [{ id: "1", name: "Station A" }],
+        () => {
+            // M3U publication invalidates the selected channel and repaints OSD.
+            host.__ottClassicGuide.invalidateChannel(1);
+            host.getCurProgData(1, function () {});
+        }
+    );
+    return {
+        ...f,
+        pages: () => f.calls.filter((call) => call[0] === "page").length,
+        ready(generation = "downloaded") {
+            workers[0].onmessage({
+                data: {
+                    fetched: f.now() * 1000,
+                    generation,
+                    mappings: { 1: { channel: "fixture" } },
+                    records: 1,
+                    type: "ready",
+                },
+            });
+            f.tick();
+        },
+        session,
+    };
+}
+for (const pending of [false, true]) {
+    const f = hostedGuideFixture(),
+        h = f.host;
+    h.playType = f.now() - 300;
+    h.playTime = 25;
+    h.epgList(0, 0, false);
+    f.tick();
+    if (!pending) f.complete([]);
+    f.tick(f.now() + 92);
+    f.ready();
+    assert.equal(
+        f.requests.length,
+        2,
+        "ready coalesces the open guide and OSD into one fresh request"
+    );
+    if (pending) f.complete([f.row(undefined, undefined, "Retired")], 0);
+    f.complete([f.row(undefined, undefined, "Downloaded programme")], 1);
+    assert.equal(h.__ottHostedEpg.diagnostics().phase, "ready");
+    assert.equal(
+        h.listArray[0]?.name,
+        "Downloaded programme",
+        "hosted ready refreshes both completed-empty and pending guide screens"
+    );
+    const pages = f.pages();
+    f.ready();
+    assert.equal(f.requests.length, 2, "same generation does not refetch");
+    assert.equal(f.pages(), pages, "same generation does not repaint");
+    f.ready("replacement");
+    assert.equal(f.requests.length, 3, "next generation coalesces again");
+    f.complete([f.row(undefined, undefined, "Replacement programme")], 2);
+    assert.equal(h.listArray[0].name, "Replacement programme");
+    f.session.close();
+}
+for (const departure of ["close", "replace"]) {
+    const f = hostedGuideFixture(),
+        h = f.host;
+    let dispose = null;
+    h.__ottClassicScreenPort = {
+        onDispose(callback) {
+            dispose = callback;
+            return () => {
+                if (dispose === callback) dispose = null;
+                callback();
+            };
+        },
+    };
+    h.epgList(0, 0, false);
+    f.tick();
+    f.complete([]);
+    if (departure === "close") h.closeList();
+    else {
+        dispose();
+        h.listArray = [{ name: "Replacement menu" }];
+    }
+    const list = h.listArray,
+        pages = f.pages();
+    f.ready();
+    f.complete([f.row()]);
+    assert.equal(h.listArray, list, departure + " preserves the current view");
+    assert.equal(f.pages(), pages, departure + " cannot reopen the guide");
+    assert.equal(h.__ottClassicGuideScreen.current(), null);
+    f.session.close();
+}
+console.log(
+    "PASS hosted EPG ready refreshes only the current guide and coalesces row requests"
 );
 const now = Math.floor(Date.now() / 1000);
 const stamp = (offset) =>

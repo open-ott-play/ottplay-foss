@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fixture = require("./helpers/guide-runtime-fixture.cjs");
+const privateRuntime = require("./helpers/private-runtime.cjs");
 let count = 0;
 function check(name, run) {
     run();
@@ -869,6 +870,157 @@ check(
         assert.equal(h.listArray.length, 0);
         assert.equal(f.calls.filter((x) => x[0] === "page").length, 0);
         assert.equal(h.__ottClassicGuideScreen.current(), null);
+    }
+);
+
+check("empty channel guides retain LG Back and parent-list navigation", () => {
+    for (const mode of ["epgList", "epgListAlpha", "recordsList"]) {
+        for (const returnToList of [false, true]) {
+            for (const refreshing of [false, true]) {
+                const f = fixture(),
+                    h = f.host,
+                    returned = [];
+                for (const name of [
+                    "screen-controller",
+                    "input-router",
+                    "classic-screen-port",
+                ])
+                    privateRuntime(h, "src/ui/" + name + ".ts");
+                const port = h.__ottClassicScreenPort;
+                const showPage = h.showPage,
+                    closeList = h.closeList;
+                h.showPage = () => {
+                    port.commitList();
+                    showPage();
+                };
+                h.closeList = () => {
+                    port.closeList();
+                    closeList();
+                };
+                h.keys.RETURN = 461;
+                h.channelsList = (category, index) => {
+                    returned.push([category, index]);
+                    // Channel navigation replaces the owned guide list.
+                    h.listArray = h.listDataArray = ["channels"];
+                    h.listKeyHandler = () => false;
+                    h.showPage();
+                };
+                h[mode](0, 1, returnToList);
+                f.tick();
+                f.complete([]);
+                assert.equal(h.listArray.length, 0);
+                if (refreshing) {
+                    h.__ottClassicGuideScreen.refresh();
+                    f.tick();
+                    assert.equal(f.requests.length, 2);
+                    assert.equal(f.requests[1].aborts, 0);
+                }
+                const owner = port.listOwner();
+                port.dispatch(461, undefined, () =>
+                    assert.fail("LG Back must remain owned by the guide")
+                );
+                assert.equal(
+                    owner.active(),
+                    false,
+                    mode + " must retire the empty guide on LG Back"
+                );
+                assert.deepEqual(returned, returnToList ? [[0, 1]] : []);
+                assert.equal(
+                    f.calls.filter((call) => call[0] === "close").length,
+                    returnToList ? 0 : 1
+                );
+                if (refreshing) assert.equal(f.requests[1].aborts, 1);
+                const pageCount = f.calls.filter(
+                    (call) => call[0] === "page"
+                ).length;
+                f.complete([f.row(f.now() - 100, f.now() - 20, "Late")]);
+                assert.equal(
+                    f.calls.filter((call) => call[0] === "page").length,
+                    pageCount,
+                    "A late response cannot reopen a departed guide"
+                );
+                assert.equal(h.__ottClassicGuideScreen.current(), null);
+            }
+        }
+    }
+});
+check(
+    "empty channel guide keeps channel, category and mode controls usable",
+    () => {
+        const f = fixture(),
+            h = f.host,
+            navigated = [];
+        Object.assign(h.keys, {
+            BLUE: 406,
+            LEFT: 37,
+            N1: 49,
+            N3: 51,
+            PREV: 424,
+            RW: 412,
+            YELLOW: 405,
+        });
+        h.epgList(0, 1, true);
+        f.tick();
+        f.complete([]);
+        h.channelsList = (category, index) =>
+            navigated.push(["channels", category, index]);
+        h.bucketsList = (category) => navigated.push(["categories", category]);
+        h.sArrowFun = 2;
+        h.sRewFun = h.sPNFun = 1;
+        for (const code of [405, 51, 37, 412, 424]) {
+            assert.equal(h.listKeyHandler(code), true);
+            assert.deepEqual(navigated.pop(), ["channels", 0, 1]);
+        }
+        for (const code of [406, 49, 415, 19]) {
+            assert.equal(h.listKeyHandler(code), true);
+            assert.deepEqual(navigated.pop(), ["categories", 0]);
+        }
+        // Mode cycling still uses the actual guide model and retains its return path.
+        for (const mode of [2, 0, 1]) {
+            assert.equal(h.listKeyHandler(h.keys.RED), true);
+            f.tick();
+            f.complete([]);
+            assert.equal(h.epgListMode, mode);
+            assert.equal(h.epgreturn, true);
+            assert.equal(h.listArray.length, 0);
+        }
+    }
+);
+check(
+    "empty guide row actions are inert and populated guide selection still plays",
+    () => {
+        const f = fixture(),
+            h = f.host;
+        Object.assign(h.keys, {
+            FF: 417,
+            GREEN: 404,
+            INFO: 457,
+            N2: 50,
+            N5: 53,
+            NEXT: 425,
+            RIGHT: 39,
+        });
+        h.epgList(0, 1, false);
+        f.tick();
+        const start = f.now() - 100;
+        f.complete([f.row(start, f.now() - 20, "Recording")]);
+        h.sArrowFun = 2;
+        h.sRewFun = h.sPNFun = 1;
+        // A stale selection is equivalent to an empty schedule for row actions.
+        h.selIndex = 3;
+        const before = f.calls.length;
+        for (const code of [13, 50, 53, 39, 417, 425, 457, 404])
+            assert.equal(h.listKeyHandler(code), false);
+        assert.equal(f.calls.length, before);
+        assert.equal(f.prompts.length, 0);
+        h.selIndex = 0;
+        assert.equal(h.listKeyHandler(457), true);
+        assert.deepEqual(f.calls.at(-1), ["description", "Recording"]);
+        assert.equal(h.listKeyHandler(13), true);
+        assert.deepEqual(
+            f.calls.filter((call) => call[0] === "archive"),
+            [["archive", start]]
+        );
     }
 );
 

@@ -583,6 +583,15 @@ test("native transport is inert without Tauri IPC or for unsupported URLs, witho
         "file:///live.m3u8",
         "https://origin.invalid/video.mp4",
         "https://origin.invalid/live.mpd",
+        "http://origin.invalid/play/live.php?extension=ts",
+        "http://origin.invalid/play/live.php?extension=m3u8evil",
+        "http://origin.invalid/play/live.php?other_extension=m3u8",
+        "http://origin.invalid/video.mp4#?extension=m3u8",
+        "http://origin.invalid/video.mp4?title=movie.m3u8",
+        "http://origin.invalid/video.mp4?title=movie.m3u8&extension=mp4",
+        "http://origin.invalid/play/live.php&extension=m3u8",
+        "http://origin.invalid/play/live.php?extension=m3u8?token=1",
+        "http://origin.invalid/play/live.php?next=?extension=m3u8",
         "data:video/mpegurl,test",
     ])
         assert.equal(f.w.createNativeHlsTransport(url, options), null);
@@ -590,6 +599,41 @@ test("native transport is inert without Tauri IPC or for unsupported URLs, witho
     f.w.stbPlay("https://origin.invalid/video.mp4");
     assert.equal(f.w.video.src, "https://origin.invalid/video.mp4");
     assert.equal(f.w.video.playCalls, 1);
+});
+
+test("Auto routes query-selected HLS through native transport without changing signed portal URLs", async () => {
+    for (const url of [
+        "http://origin.invalid/play/live.php?extension=m3u8",
+        "http://origin.invalid/play/live.php?mac=02%3A00%3A00%3A00%3A00%3A01&stream=42&extension=m3u8&play_token=a%2Bb",
+        "https://origin.invalid/play/live.php?stream=42&extension=m3u8#player",
+        "https://origin.invalid/live.m3u8?play_token=a%2Bb%2f&duplicate=1&duplicate=2",
+    ]) {
+        const bridge = bridgeFixture();
+        const f = fixture({ invoke: bridge.invoke });
+        f.w.setPlayerMode(3);
+        f.w.stbPlay(url);
+        assert.equal(
+            f.w.video.src,
+            "",
+            "WebKit must not request HTTP media directly"
+        );
+        assert.equal(bridge.calls[0].command, "native_hls_start");
+        assert.equal(
+            bridge.calls[0].args.url,
+            url,
+            "Preserve the complete signed URL"
+        );
+        bridge.calls[0].resolve({
+            session: "portal",
+            url: "http://127.0.0.1:12345/portal/index.m3u8",
+        });
+        await settle();
+        assert.equal(f.w.video.src, "http://127.0.0.1:12345/portal/index.m3u8");
+        assert.equal(f.w.video.playCalls, 1);
+        assert.equal(f.players.length, 0);
+        f.w.stbStop();
+        assert.equal(bridge.calls.at(-1).command, "native_hls_stop");
+    }
 });
 
 test("native transport polls IPC once per second without overlapping or extra upstream requests", async () => {

@@ -1770,9 +1770,7 @@ export function renderEpgFooter(): void {
 export function epgKeyHandler(keyCode: number): boolean {
     var w = window as any;
     var keys = w.keys;
-    var item = w.listArray[w.selIndex];
-    if (!item) return false;
-
+    // Navigation remains available when EPG is empty or selection is stale.
     switch (keyCode) {
         case keys.LEFT:
             if (w.sArrowFun !== 2) return false;
@@ -1791,22 +1789,12 @@ export function epgKeyHandler(keyCode: number): boolean {
                 w.channelsList(w.listCatIndex, w.listChannel);
             }
             return true;
-        case keys.ENTER:
-            selectEpg();
-            return true;
         case keys.N1:
         case keys.PLAY:
         case keys.PAUSE:
         case keys.BLUE:
             if (typeof w.bucketsList === "function")
                 w.bucketsList(w.listCatIndex);
-            return true;
-        case keys.RIGHT:
-            if (w.sArrowFun !== 2) return false;
-        // fallthrough
-        case keys.N2:
-            if (typeof w.showProgramInfo === "function")
-                w.showProgramInfo(item.name);
             return true;
         case keys.RW:
             if (w.sRewFun !== 1) return false;
@@ -1817,16 +1805,6 @@ export function epgKeyHandler(keyCode: number): boolean {
             if (w.sPNFun !== 1) return false;
             if (typeof w.channelsList === "function")
                 w.channelsList(w.listCatIndex, w.listChannel);
-            return true;
-        case keys.FF:
-            if (w.sRewFun !== 1) return false;
-            if (typeof w.showProgramInfo === "function")
-                w.showProgramInfo(item.name);
-            return true;
-        case keys.NEXT:
-            if (w.sPNFun !== 1) return false;
-            if (typeof w.showProgramInfo === "function")
-                w.showProgramInfo(item.name);
             return true;
         case keys.N0:
         case keys.EPG:
@@ -1868,6 +1846,31 @@ export function epgKeyHandler(keyCode: number): boolean {
                         );
                     return true;
             }
+            return true;
+    }
+    var item = w.listArray[w.selIndex];
+    if (!item) return false;
+
+    switch (keyCode) {
+        case keys.ENTER:
+            selectEpg();
+            return true;
+        case keys.RIGHT:
+            if (w.sArrowFun !== 2) return false;
+        // fallthrough
+        case keys.N2:
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
+            return true;
+        case keys.FF:
+            if (w.sRewFun !== 1) return false;
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
+            return true;
+        case keys.NEXT:
+            if (w.sPNFun !== 1) return false;
+            if (typeof w.showProgramInfo === "function")
+                w.showProgramInfo(item.name);
             return true;
         case keys.N8:
         case keys.TOOLS:

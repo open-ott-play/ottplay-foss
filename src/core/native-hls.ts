@@ -8,7 +8,14 @@ export function createNativeHlsTransport(
         changed: () => void;
     }
 ): { cancel: () => void; poll: () => void; mbps: () => number } | null {
-    if (!/^https?:\/\/[^\s]+\.m3u8(?:[?#]|$)/i.test(url)) return null;
+    // MAG gateways advertise HLS in the query instead of the PHP path. Keep
+    // their signed URL intact and let Rust load the media for the WebView.
+    if (
+        !/^https?:\/\/[^\s?#]+(?:\.m3u8(?:[?#]|$)|\?(?:[^\s#]*&)?extension=m3u8(?:[&#]|$))/i.test(
+            url
+        )
+    )
+        return null;
     var host = window as any;
     var bridge =
         (host.__TAURI__ && host.__TAURI__.core) || host.__TAURI_INTERNALS__;

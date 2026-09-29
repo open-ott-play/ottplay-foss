@@ -27,9 +27,43 @@ pub struct MediaSessionState {
 
 struct MediaSessionInner {
     controls: MediaControls,
+    metadata: MetadataCache,
     seekable: bool,
     /// Last known duration for relative seek clamps (seconds).
     duration_secs: Option<f64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct MetadataSnapshot {
+    title: String,
+    artist: String,
+    cover_url: Option<String>,
+    duration: Option<Duration>,
+}
+
+#[derive(Default)]
+struct MetadataCache(Option<MetadataSnapshot>);
+
+impl MetadataCache {
+    fn publish(
+        &mut self,
+        snapshot: MetadataSnapshot,
+        publish: impl FnOnce(MediaMetadata<'_>) -> Result<(), String>,
+    ) -> Result<(), String> {
+        if self.0.as_ref() == Some(&snapshot) {
+            return Ok(());
+        }
+        // Position ticks must not clear Now Playing artwork and reload its URL.
+        publish(MediaMetadata {
+            title: Some(&snapshot.title),
+            artist: Some(&snapshot.artist),
+            album: Some("OTT-play FOSS"),
+            cover_url: snapshot.cover_url.as_deref(),
+            duration: snapshot.duration,
+        })?;
+        self.0 = Some(snapshot);
+        Ok(())
+    }
 }
 
 impl Default for MediaSessionState {
@@ -190,6 +224,7 @@ fn ensure_controls(app: &AppHandle, state: &MediaSessionState) -> Result<(), Str
     // Simpler: store Arc on MediaSessionInner and update it from apply_meta.
     *guard = Some(MediaSessionInner {
         controls,
+        metadata: MetadataCache::default(),
         seekable: false,
         duration_secs: None,
     });
@@ -267,24 +302,35 @@ fn apply_metadata(
         None
     };
 
-    with_controls(state, |c| {
-        c.set_metadata(MediaMetadata {
-            title: Some(title),
-            artist: Some(artist),
-            album: Some("OTT-play FOSS"),
-            cover_url,
+    let mut guard = state
+        .inner
+        .lock()
+        .map_err(|_| "media session lock poisoned".to_string())?;
+    let inner = guard
+        .as_mut()
+        .ok_or_else(|| "media session not started".to_string())?;
+    let controls = &mut inner.controls;
+    inner.metadata.publish(
+        MetadataSnapshot {
+            title: title.to_owned(),
+            artist: artist.to_owned(),
+            cover_url: cover_url.map(str::to_owned),
             duration,
-        })
-        .map_err(|e| format!("set_metadata: {e}"))?;
-        let playback = if playing {
-            MediaPlayback::Playing { progress }
-        } else {
-            MediaPlayback::Paused { progress }
-        };
-        c.set_playback(playback)
-            .map_err(|e| format!("set_playback: {e}"))?;
-        Ok(())
-    })
+        },
+        |metadata| {
+            controls
+                .set_metadata(metadata)
+                .map_err(|e| format!("set_metadata: {e}"))
+        },
+    )?;
+    let playback = if playing {
+        MediaPlayback::Playing { progress }
+    } else {
+        MediaPlayback::Paused { progress }
+    };
+    controls
+        .set_playback(playback)
+        .map_err(|e| format!("set_playback: {e}"))
 }
 
 fn meta_args(
@@ -451,4 +497,70 @@ pub async fn stop_media_session(
         // Drop detaches controls.
     }
     Ok(ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn movie() -> MetadataSnapshot {
+        MetadataSnapshot {
+            title: "Movie".into(),
+            artist: "OTT-play FOSS".into(),
+            cover_url: Some("https://example.test/poster.jpg".into()),
+            duration: Some(Duration::from_secs(600)),
+        }
+    }
+
+    #[test]
+    fn position_refreshes_keep_artwork_until_metadata_changes() {
+        let mut cache = MetadataCache::default();
+        let mut published = Vec::new();
+        let mut publish = |metadata: MediaMetadata<'_>| {
+            published.push((
+                metadata.title.unwrap().to_owned(),
+                metadata.artist.unwrap().to_owned(),
+                metadata.cover_url.map(str::to_owned),
+                metadata.duration,
+            ));
+            Ok(())
+        };
+        for _ in 0..300 {
+            cache.publish(movie(), &mut publish).unwrap();
+        }
+        let mut next = movie();
+        next.title = "Next movie".into();
+        cache.publish(next.clone(), &mut publish).unwrap();
+        next.cover_url = None;
+        cache.publish(next.clone(), &mut publish).unwrap();
+        next.duration = None;
+        cache.publish(next.clone(), &mut publish).unwrap();
+        next.artist = "Live TV".into();
+        cache.publish(next, &mut publish).unwrap();
+        // A fresh session must publish even when restarting the same movie.
+        MetadataCache::default()
+            .publish(movie(), &mut publish)
+            .unwrap();
+        assert_eq!(published.len(), 6);
+        assert_eq!(published[1].0, "Next movie");
+        assert_eq!(published[2].2, None);
+        assert_eq!(published[3].3, None);
+        assert_eq!(published[4].1, "Live TV");
+    }
+
+    #[test]
+    fn failed_metadata_publication_is_retried() {
+        let mut cache = MetadataCache::default();
+        assert!(cache
+            .publish(movie(), |_| Err("unavailable".into()))
+            .is_err());
+        let mut retries = 0;
+        cache
+            .publish(movie(), |_| {
+                retries += 1;
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(retries, 1);
+    }
 }

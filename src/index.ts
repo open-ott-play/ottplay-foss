@@ -5905,6 +5905,17 @@ window.settingsCommands = function (): void {
     }
     function refreshServerStatus(): void {
         if (!commandServer) return;
+        var address = document.getElementById("commandServerAddressValue");
+        if (address)
+            address.textContent =
+                settings.commandServerAddress || w._("not set");
+        var tokenPresence = document.getElementById(
+            "commandServerTokenPresence"
+        );
+        if (tokenPresence)
+            tokenPresence.textContent = w._(
+                settings.commandServerToken ? "saved on this device" : "not set"
+            );
         var status = commandServer.status();
         var label = document.getElementById("commandServerStatus");
         var message = status.message;
@@ -6080,12 +6091,12 @@ window.settingsCommands = function (): void {
             "<br/>" +
             "<b>" +
             text(w._("Server address")) +
-            ":</b> " +
+            ':</b> <span id="commandServerAddressValue">' +
             text(settings.commandServerAddress || w._("not set")) +
-            "<br/>" +
+            "</span><br/>" +
             "<b>" +
             text(w._("Access code")) +
-            ":</b> " +
+            ':</b> <span id="commandServerTokenPresence">' +
             text(
                 w._(
                     settings.commandServerToken
@@ -6093,7 +6104,7 @@ window.settingsCommands = function (): void {
                         : "not set"
                 )
             ) +
-            "<br/>" +
+            "</span><br/>" +
             "<b>" +
             text(w._("Status")) +
             ':</b> <span id="commandServerStatus"></span><br/>' +
