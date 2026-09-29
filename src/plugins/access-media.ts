@@ -9,19 +9,31 @@ export function accessMediaPlugin(): any {
         : undefined;
 }
 
+var accessMediaRequestSequence = 0;
+
 export function prepareAccessMedia(
     url: string,
     ready: (url: string) => void,
     failed: () => void
-): void {
+): (() => void) | undefined {
     var plugin = accessMediaPlugin();
     if (!plugin || !/^https:\/\//i.test(url)) {
         ready(url);
         return;
     }
-    plugin.prepare({ url: url }).then(function (result: { url: string }) {
+    var requestId = Date.now() + "-" + ++accessMediaRequestSequence;
+    var active = true;
+    function reject(): void {
+        if (!active) return;
+        active = false;
+        failed();
+    }
+    plugin.prepare({ requestId: requestId, url: url }).then(function (result: {
+        url: string;
+    }) {
+        if (!active) return;
         if (!result || typeof result.url !== "string") {
-            failed();
+            reject();
             return;
         }
         // Do not turn a native bridge error into navigation to another origin.
@@ -31,9 +43,23 @@ export function prepareAccessMedia(
                 result.url
             )
         ) {
-            failed();
+            reject();
             return;
         }
+        active = false;
         ready(result.url);
-    }, failed);
+    }, reject);
+    return function () {
+        if (!active) return;
+        active = false;
+        if (typeof plugin.cancelPrepare === "function") {
+            try {
+                var cancellation = plugin.cancelPrepare({
+                    requestId: requestId,
+                });
+                if (cancellation && typeof cancellation.catch === "function")
+                    cancellation.catch(function () {});
+            } catch (_error) {}
+        }
+    };
 }

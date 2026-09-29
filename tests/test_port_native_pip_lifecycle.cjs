@@ -514,10 +514,17 @@ for (const action of ["stop", "replace"]) {
     test(`Capacitor iOS: ${action} during source login cannot start the retired stream`, async () => {
         const f = fixture("Capacitor");
         const pending = [];
+        const cancelled = [];
         f.window.Capacitor.Plugins = {
             AccessMedia: {
-                prepare: ({ url }) =>
-                    new Promise((resolve) => pending.push({ resolve, url })),
+                cancelPrepare: ({ requestId }) => {
+                    cancelled.push(requestId);
+                    return Promise.resolve();
+                },
+                prepare: ({ url, requestId }) =>
+                    new Promise((resolve) =>
+                        pending.push({ requestId, resolve, url })
+                    ),
             },
         };
         f.play("https://source.invalid/old.m3u8");
@@ -527,6 +534,11 @@ for (const action of ["stop", "replace"]) {
         if (action === "stop") f.stop();
         else f.play("https://source.invalid/new.m3u8");
         await settle();
+        assert.deepEqual(
+            cancelled,
+            [pending[0].requestId],
+            "retired sign-in reaches native cancellation"
+        );
         if (action === "stop") {
             assert.deepEqual(
                 f.nativeCalls,

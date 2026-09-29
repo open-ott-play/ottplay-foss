@@ -8,10 +8,19 @@ ROOT = Path(__file__).resolve().parents[1]
 SWIFT = r'''
 import Foundation
 import CryptoKit
+import Darwin
 
 @MainActor final class AccessMedia {
     static let shared = AccessMedia()
+    var authorizationStarted = Set<String>()
+    var authorizationCancelled = Set<String>()
     func authorized(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedCookie: String? = nil) async throws -> URLRequest {
+        if request.url!.path.hasPrefix("/authorize-pending") {
+            let path = request.url!.path
+            authorizationStarted.insert(path)
+            do { try await Task.sleep(nanoseconds: 120_000_000_000) }
+            catch { authorizationCancelled.insert(path); throw error }
+        }
         var result = request
         result.url = config.map(request.url!)
         result.setValue("CF_Authorization=TEST_ONLY_" + URL(string: config.media_origin)!.host!, forHTTPHeaderField: "Cookie")
@@ -23,6 +32,7 @@ final class Fixture: URLProtocol {
     static let lock = NSLock()
     static var seen: [URLRequest] = []
     static var stopped: [String] = []
+    static var pending: [String: Fixture] = [:]
     static var sessionCount = 0
     static func snapshot() -> [URLRequest] { lock.lock(); defer { lock.unlock() }; return seen }
     static func wasStopped(_ path: String) -> Bool { lock.lock(); defer { lock.unlock() }; return stopped.contains(path) }
@@ -67,7 +77,8 @@ final class Fixture: URLProtocol {
             status = 404
         } else if path == "/chunked-large" {
             data = Data(repeating: 37, count: 4096)
-        } else if path == "/pending" {
+        } else if ["/pending", "/cancel-upstream", "/half-close"].contains(path) {
+            Self.lock.lock(); Self.pending[path] = self; Self.lock.unlock()
             return
         } else if path.hasPrefix("/redirect-") {
             let next = path == "/redirect-same" ? "https://media.fixture.invalid/level/segment.ts" : "https://other.fixture.invalid/stolen"
@@ -88,13 +99,67 @@ final class Fixture: URLProtocol {
         }
         client?.urlProtocolDidFinishLoading(self)
     }
-    override func stopLoading() { Self.lock.lock(); Self.stopped.append(request.url!.path); Self.lock.unlock() }
+    override func stopLoading() {
+        Self.lock.lock(); Self.stopped.append(request.url!.path); Self.pending[request.url!.path] = nil; Self.lock.unlock()
+    }
+    static func finishPending(_ path: String) {
+        lock.lock(); let fixture = pending.removeValue(forKey: path); lock.unlock()
+        guard let fixture else { fatalError("Missing pending response fixture") }
+        let response = HTTPURLResponse(url: fixture.request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "video/mp2t", "Content-Length": "4"])!
+        fixture.client?.urlProtocol(fixture, didReceive: response, cacheStoragePolicy: .notAllowed)
+        fixture.client?.urlProtocol(fixture, didLoad: Data([1, 2, 3, 4]))
+        fixture.client?.urlProtocolDidFinishLoading(fixture)
+    }
 }
 
 func waitFor(_ predicate: () -> Bool) async throws {
     let deadline = Date().addingTimeInterval(3)
     while !predicate() && Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
     assert(predicate(), "Expected asynchronous fixture event")
+}
+
+// Raw localhost clients distinguish an actual TCP reset from a write-half-close,
+// which must remain open long enough to read the complete HTTP response.
+func openSocket(_ url: URL) -> Int32 {
+    let fd = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+    assert(fd >= 0)
+    var address = sockaddr_in()
+    address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+    address.sin_family = sa_family_t(AF_INET)
+    address.sin_port = UInt16(url.port!).bigEndian
+    address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+    let connected = withUnsafePointer(to: &address) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
+    }
+    assert(connected == 0)
+    var timeout = timeval(tv_sec: 3, tv_usec: 0)
+    assert(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size)) == 0)
+    let request = Data("GET \(url.path) HTTP/1.1\r\nHost: 127.0.0.1:\(url.port!)\r\nConnection: close\r\n\r\n".utf8)
+    let sent = request.withUnsafeBytes { Darwin.write(fd, $0.baseAddress!, $0.count) }
+    assert(sent == request.count)
+    return fd
+}
+func resetSocket(_ fd: Int32) {
+    var reset = linger(l_onoff: 1, l_linger: 0)
+    assert(setsockopt(fd, SOL_SOCKET, SO_LINGER, &reset, socklen_t(MemoryLayout<linger>.size)) == 0)
+    assert(Darwin.close(fd) == 0)
+}
+func readSocket(_ fd: Int32) async -> Data {
+    await withCheckedContinuation { continuation in
+        DispatchQueue.global().async {
+            defer { Darwin.close(fd) }
+            var output = Data(), buffer = [UInt8](repeating: 0, count: 4096)
+            while true {
+                let count = Darwin.read(fd, &buffer, buffer.count)
+                assert(count >= 0, "Timed out reading the half-closed client response")
+                if count == 0 { break }
+                output.append(contentsOf: buffer.prefix(count))
+                assert(output.count < 32768)
+            }
+            continuation.resume(returning: output)
+        }
+    }
 }
 
 func fixtureRequest(_ path: String) -> URLRequest {
@@ -212,7 +277,37 @@ Task { @MainActor in
         assert((wrongResponse as! HTTPURLResponse).statusCode == 403)
         let seen = Fixture.snapshot()
         assert(seen.count >= 13 && seen.allSatisfy { ["media.fixture.invalid", "media2.fixture.invalid"].contains($0.url!.host!) })
+
+        let pendingURL = try await proxy.url(for: URL(string: config.source_origin + "/cancel-upstream")!, config: config)
+        let disconnected = openSocket(pendingURL)
+        try await waitFor { Fixture.snapshot().contains { $0.url?.path == "/cancel-upstream" } }
+        resetSocket(disconnected)
+        try await waitFor { Fixture.wasStopped("/cancel-upstream") }
+
+        let halfClosedURL = try await proxy.url(for: URL(string: config.source_origin + "/half-close")!, config: config)
+        let halfClosed = openSocket(halfClosedURL)
+        try await waitFor { Fixture.snapshot().contains { $0.url?.path == "/half-close" } }
+        assert(Darwin.shutdown(halfClosed, SHUT_WR) == 0)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        assert(!Fixture.wasStopped("/half-close"), "HTTP write-half-close must preserve the response")
+        Fixture.finishPending("/half-close")
+        let halfClosedResponse = await readSocket(halfClosed)
+        assert(halfClosedResponse.starts(with: Data("HTTP/1.1 200".utf8)))
+        assert(halfClosedResponse.range(of: Data([1, 2, 3, 4])) != nil)
+        assert(halfClosedResponse.suffix(5) == Data("0\r\n\r\n".utf8))
+
+        let authURL = try await proxy.url(for: URL(string: config.source_origin + "/authorize-pending-reset")!, config: config)
+        let authClient = openSocket(authURL)
+        try await waitFor { AccessMedia.shared.authorizationStarted.contains("/authorize-pending-reset") }
+        resetSocket(authClient)
+        try await waitFor { AccessMedia.shared.authorizationCancelled.contains("/authorize-pending-reset") }
+        let stoppedAuthURL = try await proxy.url(for: URL(string: config.source_origin + "/authorize-pending-stop")!, config: config)
+        let stoppedAuthClient = openSocket(stoppedAuthURL)
+        try await waitFor { AccessMedia.shared.authorizationStarted.contains("/authorize-pending-stop") }
         proxy.stop()
+        try await waitFor { AccessMedia.shared.authorizationCancelled.contains("/authorize-pending-stop") }
+        Darwin.close(stoppedAuthClient)
+        assert(!Fixture.snapshot().contains { $0.url!.path.hasPrefix("/authorize-pending") })
         do { _ = try await proxy.url(for: source, config: config); fatalError("Stopped listener accepted new playback") } catch {}
 
         // The non-streaming helper must enforce the same redirect and memory
@@ -244,7 +339,7 @@ Task { @MainActor in
         cancelled.cancel()
         do { _ = try await cancelled.value; fatalError("Cancelled-before-start fetch completed") } catch is CancellationError {} catch { fatalError("Wrong early cancellation error") }
         assert(Fixture.snapshot().count == seenCount)
-        print("PASS: PKCE, origin isolation, HLS/LL-HLS rewriting, \(seen.count) media requests through one session, redirects, streaming, Range, HEAD, cancellation and bounds")
+        print("PASS: PKCE, origin isolation, HLS/LL-HLS rewriting, \(seen.count) media requests through one session, redirects, streaming, Range, HEAD, reset/half-close, authorization cancellation and bounds")
         finished = true
     } catch { fatalError("Access media fixture failed: \(error)") }
 }

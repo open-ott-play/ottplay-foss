@@ -16,8 +16,32 @@ private struct AccessMediaDiscovery {
 
 private struct AccessMediaAuthentication {
     let id: UUID
+    let loginID: UUID
     let session: ASWebAuthenticationSession
     let continuation: CheckedContinuation<URL, Error>
+}
+
+@MainActor
+private final class AccessMediaLogin {
+    let id = UUID()
+    var task: Task<Void, Never>?
+    var waiters: [UUID: (continuation: CheckedContinuation<AccessMediaSession, Error>, cancellation: AccessMediaWaiterCancellation)] = [:]
+    var hasLiveWaiter: Bool { waiters.values.contains { !$0.cancellation.isCancelled } }
+}
+
+// Cancellation handlers run on any executor. Publish cancellation before
+// scheduling MainActor cleanup so a simultaneously completed exchange cannot
+// save credentials on behalf of a consumer that has already stopped.
+private final class AccessMediaWaiterCancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    var isCancelled: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return cancelled
+    }
+    func cancel() {
+        lock.lock(); cancelled = true; lock.unlock()
+    }
 }
 
 @MainActor
@@ -27,7 +51,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
     private var entries: [String: SavedAccessMedia] = [:]
     private var missing: [String: Date] = [:]
     private var discovery: [String: Task<AccessMediaDiscovery, Error>] = [:]
-    private var logins: [String: Task<AccessMediaSession, Error>] = [:]
+    private var logins: [String: AccessMediaLogin] = [:]
     private var authentication: AccessMediaAuthentication?
     private var proxy: AccessMediaProxy?
     private var generation = 0
@@ -128,72 +152,137 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         active.continuation.resume(with: result)
     }
 
+    private func cancelAuthentication(loginID: UUID) {
+        guard let active = authentication, active.loginID == loginID else { return }
+        authentication = nil
+        active.session.cancel()
+        active.continuation.resume(throwing: AccessMediaFailure.cancelled)
+    }
+
+    private func finishLogin(_ source: String, id: UUID, result: Result<AccessMediaSession, Error>) {
+        guard let login = logins[source], login.id == id else { return }
+        logins[source] = nil
+        let waiters = login.waiters.values
+        login.waiters = [:]
+        for waiter in waiters {
+            waiter.continuation.resume(with: waiter.cancellation.isCancelled ? .failure(AccessMediaFailure.cancelled) : result)
+        }
+    }
+
+    private func retireLogin(_ source: String, login: AccessMediaLogin) {
+        guard logins[source]?.id == login.id else { return }
+        logins[source] = nil
+        login.task?.cancel()
+        cancelAuthentication(loginID: login.id)
+        for waiter in login.waiters.values { waiter.continuation.resume(throwing: AccessMediaFailure.cancelled) }
+        login.waiters = [:]
+    }
+
+    private func cancelWaiter(_ source: String, id: UUID) {
+        guard let login = logins[source], let waiter = login.waiters.removeValue(forKey: id) else { return }
+        waiter.continuation.resume(throwing: AccessMediaFailure.cancelled)
+        if !login.hasLiveWaiter {
+            // Retire this operation before cancellation can schedule a late
+            // callback. Other sources and other live consumers stay untouched.
+            retireLogin(source, login: login)
+        }
+    }
+
+    private func requireLogin(_ source: String, id: UUID, generation: Int) throws {
+        guard self.generation == generation, let login = logins[source], login.id == id,
+              login.hasLiveWaiter, !Task.isCancelled else {
+            throw AccessMediaFailure.cancelled
+        }
+    }
+
     private func authenticate(_ config: AccessMediaConfig) async throws -> AccessMediaSession {
         let generation = self.generation
         try Task.checkCancellation()
         if let current = entries[config.source_origin]?.session, current.valid(for: config) { return current }
-        if let pending = logins[config.source_origin] {
-            let session = try await pending.value
-            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+        let waiterID = UUID()
+        let cancellation = AccessMediaWaiterCancellation()
+        let session: AccessMediaSession = try await withTaskCancellationHandler(operation: {
             try Task.checkCancellation()
-            return session
-        }
-        let pending = Task<AccessMediaSession, Error> {
-            // Retire the shared task before waking any waiter. A completed task
-            // must not hand a rejected token back to a concurrent retry.
-            defer { if self.generation == generation { self.logins[config.source_origin] = nil } }
-            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
-            try Task.checkCancellation()
-            guard self.authentication == nil else { throw AccessMediaFailure.busy }
-            guard UIApplication.shared.applicationState == .active, self.presenter?.view.window != nil else {
-                throw AccessMediaFailure.login
-            }
-            let verifier = try AccessMediaPolicy.random()
-            let state = try AccessMediaPolicy.random()
-            var login = URLComponents(string: config.media_origin + config.authorize_path)!
-            login.queryItems = [URLQueryItem(name: "state", value: state),
-                URLQueryItem(name: "code_challenge", value: AccessMediaPolicy.challenge(verifier)),
-                URLQueryItem(name: "code_challenge_method", value: "S256")]
-            let callback: URL = try await withCheckedThrowingContinuation { continuation in
-                let id = UUID()
-                let auth = ASWebAuthenticationSession(url: login.url!, callbackURLScheme: "ottplay-access") { url, error in
-                    Task { @MainActor in
-                        let cancelled = (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
-                        self.finishAuthentication(id, result: url.map(Result.success) ??
-                            .failure(cancelled ? AccessMediaFailure.cancelled : AccessMediaFailure.login))
+            return try await withCheckedThrowingContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume(throwing: AccessMediaFailure.cancelled)
+                    return
+                }
+                if let login = self.logins[config.source_origin] {
+                    if login.hasLiveWaiter {
+                        login.waiters[waiterID] = (continuation, cancellation)
+                        return
+                    }
+                    // A new consumer cannot revive a cancelled operation whose
+                    // asynchronous cleanup has not reached the actor yet.
+                    self.retireLogin(config.source_origin, login: login)
+                }
+                let login = AccessMediaLogin()
+                login.waiters[waiterID] = (continuation, cancellation)
+                self.logins[config.source_origin] = login
+                let loginID = login.id
+                login.task = Task {
+                    do {
+                        let result = try await self.performLogin(config, id: loginID, generation: generation)
+                        self.finishLogin(config.source_origin, id: loginID, result: .success(result))
+                    } catch {
+                        self.finishLogin(config.source_origin, id: loginID, result: .failure(error))
                     }
                 }
-                auth.presentationContextProvider = self
-                auth.prefersEphemeralWebBrowserSession = false
-                self.authentication = AccessMediaAuthentication(id: id, session: auth, continuation: continuation)
-                if !auth.start() {
-                    self.finishAuthentication(id, result: .failure(AccessMediaFailure.login))
-                }
             }
-            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
-            try Task.checkCancellation()
-            let code = try AccessMediaPolicy.callbackCode(callback, state: state)
-            var exchange = URLRequest(url: URL(string: config.media_origin + config.exchange_path)!)
-            exchange.httpMethod = "POST"; exchange.timeoutInterval = 15
-            exchange.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            exchange.httpBody = try JSONSerialization.data(withJSONObject: ["code": code, "verifier": verifier])
-            let (data, response) = try await self.fetch(exchange, 20000)
-            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
-            try Task.checkCancellation()
-            guard response.statusCode == 200, let result = try? JSONDecoder().decode(AccessMediaSession.self, from: data),
-                  result.valid(for: config) else { throw AccessMediaFailure.login }
-            self.entries[config.source_origin] = SavedAccessMedia(config: config, session: result)
-            do { try self.save() } catch {
-                self.entries[config.source_origin]?.session = nil
-                throw error
-            }
-            return result
-        }
-        logins[config.source_origin] = pending
-        let session = try await pending.value
+        }, onCancel: {
+            cancellation.cancel()
+            Task { @MainActor in self.cancelWaiter(config.source_origin, id: waiterID) }
+        })
         guard self.generation == generation else { throw AccessMediaFailure.cancelled }
         try Task.checkCancellation()
         return session
+    }
+
+    private func performLogin(_ config: AccessMediaConfig, id loginID: UUID, generation: Int) async throws -> AccessMediaSession {
+        try requireLogin(config.source_origin, id: loginID, generation: generation)
+        guard self.authentication == nil else { throw AccessMediaFailure.busy }
+        guard UIApplication.shared.applicationState == .active, self.presenter?.view.window != nil else {
+            throw AccessMediaFailure.login
+        }
+        let verifier = try AccessMediaPolicy.random()
+        let state = try AccessMediaPolicy.random()
+        var login = URLComponents(string: config.media_origin + config.authorize_path)!
+        login.queryItems = [URLQueryItem(name: "state", value: state),
+            URLQueryItem(name: "code_challenge", value: AccessMediaPolicy.challenge(verifier)),
+            URLQueryItem(name: "code_challenge_method", value: "S256")]
+        let callback: URL = try await withCheckedThrowingContinuation { continuation in
+            let id = UUID()
+            let auth = ASWebAuthenticationSession(url: login.url!, callbackURLScheme: "ottplay-access") { url, error in
+                Task { @MainActor in
+                    let cancelled = (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
+                    self.finishAuthentication(id, result: url.map(Result.success) ??
+                        .failure(cancelled ? AccessMediaFailure.cancelled : AccessMediaFailure.login))
+                }
+            }
+            auth.presentationContextProvider = self
+            auth.prefersEphemeralWebBrowserSession = false
+            self.authentication = AccessMediaAuthentication(id: id, loginID: loginID, session: auth, continuation: continuation)
+            if !auth.start() {
+                self.finishAuthentication(id, result: .failure(AccessMediaFailure.login))
+            }
+        }
+        try requireLogin(config.source_origin, id: loginID, generation: generation)
+        let code = try AccessMediaPolicy.callbackCode(callback, state: state)
+        var exchange = URLRequest(url: URL(string: config.media_origin + config.exchange_path)!)
+        exchange.httpMethod = "POST"; exchange.timeoutInterval = 15
+        exchange.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        exchange.httpBody = try JSONSerialization.data(withJSONObject: ["code": code, "verifier": verifier])
+        let (data, response) = try await self.fetch(exchange, 20000)
+        try requireLogin(config.source_origin, id: loginID, generation: generation)
+        guard response.statusCode == 200, let result = try? JSONDecoder().decode(AccessMediaSession.self, from: data),
+              result.valid(for: config) else { throw AccessMediaFailure.login }
+        self.entries[config.source_origin] = SavedAccessMedia(config: config, session: result)
+        do { try self.save() } catch {
+            self.entries[config.source_origin]?.session = nil
+            throw error
+        }
+        return result
     }
 
     func authorized(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedCookie: String? = nil) async throws -> URLRequest {
@@ -214,6 +303,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     func preparedURL(_ url: URL) async throws -> URL {
+        try Task.checkCancellation()
         let generation = self.generation
         guard let config = try await configuration(for: url, discover: true) else { return url }
         guard self.generation == generation else { throw AccessMediaFailure.cancelled }
@@ -226,14 +316,13 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
 
     func signOut() throws {
         generation += 1
-        for pending in logins.values { pending.cancel() }
+        let pending = Array(logins.values)
         logins.removeAll()
-        if let active = authentication {
-            // Programmatic cancellation must release waiters even if the system
-            // browser never calls its completion handler. Late callbacks are ignored.
-            authentication = nil
-            active.session.cancel()
-            active.continuation.resume(throwing: AccessMediaFailure.cancelled)
+        for login in pending {
+            login.task?.cancel()
+            cancelAuthentication(loginID: login.id)
+            for waiter in login.waiters.values { waiter.continuation.resume(throwing: AccessMediaFailure.cancelled) }
+            login.waiters = [:]
         }
         proxy?.stop(); proxy = nil
         for origin in entries.keys { entries[origin]?.session = nil }
@@ -326,8 +415,10 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
 public class AccessMediaPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "AccessMediaPlugin"
     public let jsName = "AccessMedia"
+    @MainActor private var preparations: [String: (id: UUID, task: Task<Void, Never>)] = [:]
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "prepare", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelPrepare", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise),
     ]
     public override func load() {
@@ -335,9 +426,49 @@ public class AccessMediaPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc func prepare(_ call: CAPPluginCall) {
         guard let value = call.getString("url"), let url = URL(string: value) else { call.reject("Invalid source URL"); return }
-        Task { @MainActor in
-            do { call.resolve(["url": try await AccessMedia.shared.preparedURL(url).absoluteString]) }
-            catch { call.reject((error as? AccessMediaFailure)?.rawValue ?? AccessMediaFailure.unavailable.rawValue) }
+        let requestID = call.getString("requestId")
+        guard call.options["requestId"] == nil || Self.validRequestID(requestID) else {
+            call.reject("Invalid source request"); return
+        }
+        // Preserve native bridge call order even when cancellation arrives before
+        // the MainActor work task begins. IDs own requests, never global sessions.
+        DispatchQueue.main.async {
+            if let requestID, self.preparations[requestID] != nil {
+                call.reject("Source request is already pending"); return
+            }
+            let ownership = UUID()
+            let task = Task { @MainActor in
+                defer {
+                    if let requestID, self.preparations[requestID]?.id == ownership {
+                        self.preparations[requestID] = nil
+                    }
+                }
+                do {
+                    let prepared = try await AccessMedia.shared.preparedURL(url)
+                    try Task.checkCancellation()
+                    call.resolve(["url": prepared.absoluteString])
+                } catch {
+                    call.reject(error is CancellationError ? AccessMediaFailure.cancelled.rawValue :
+                        (error as? AccessMediaFailure)?.rawValue ?? AccessMediaFailure.unavailable.rawValue)
+                }
+            }
+            if let requestID { self.preparations[requestID] = (ownership, task) }
+        }
+    }
+    private static func validRequestID(_ value: String?) -> Bool {
+        guard let value, !value.isEmpty, value.utf8.count <= 128 else { return false }
+        return value.utf8.allSatisfy {
+            (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 95
+        }
+    }
+    @objc func cancelPrepare(_ call: CAPPluginCall) {
+        guard let requestID = call.getString("requestId"), Self.validRequestID(requestID) else {
+            call.reject("Invalid source request"); return
+        }
+        DispatchQueue.main.async {
+            let pending = self.preparations.removeValue(forKey: requestID)
+            pending?.task.cancel()
+            call.resolve(["cancelled": pending != nil])
         }
     }
     @objc func manage(_ call: CAPPluginCall) {

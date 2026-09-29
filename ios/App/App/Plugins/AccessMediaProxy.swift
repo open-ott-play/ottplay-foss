@@ -160,6 +160,7 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
     private let proxy: AccessMediaProxy
     private var input = Data()
     private var task: URLSessionDataTask?
+    private var authorizationTask: Task<Void, Never>?
     private var original: URLRequest?
     private var authorized: URLRequest?
     private var config: AccessMediaConfig?
@@ -209,18 +210,26 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
         // User interaction can take longer than a segment download.
         armDeadline(180)
         let rejectedCookie = renew ? authorized?.value(forHTTPHeaderField: "Cookie") : nil
-        Task {
+        authorizationTask = Task {
             do {
+                try Task.checkCancellation()
                 let authorized = try await AccessMedia.shared.authorized(request, config: config,
                     replacing: rejectedCookie)
+                try Task.checkCancellation()
                 proxy.queue.async {
+                    self.authorizationTask = nil
                     guard !self.closed, !self.finishing else { return }
                     self.authorized = authorized
                     self.retrying = false
                     self.task = self.proxy.task(for: authorized, delegate: self)
                     self.armDeadline(); self.task?.resume()
                 }
-            } catch { proxy.queue.async { self.fail(401) } }
+            } catch {
+                proxy.queue.async {
+                    self.authorizationTask = nil
+                    self.fail(401)
+                }
+            }
         }
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
@@ -334,6 +343,7 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
     fileprivate func close() {
         guard !closed else { return }
         closed = true; deadline?.cancel(); deadline = nil
+        authorizationTask?.cancel(); authorizationTask = nil
         task?.cancel(); task = nil
         connection.cancel(); proxy.finished(self)
     }

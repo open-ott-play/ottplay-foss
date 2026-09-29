@@ -906,6 +906,13 @@ export function stbEventToKeyCode(event: any): number {
  * - Calls video!.play() exactly once.
  * - Automatically restores previous audio/subtitle track settings via applyChannelPreference.
  */
+var coreSourcePreparationCancel: (() => void) | null = null;
+function cancelCoreSourcePreparation(): void {
+    var cancel = coreSourcePreparationCancel;
+    coreSourcePreparationCancel = null;
+    if (cancel) cancel();
+}
+
 function startCoreEngine(
     url: string,
     position?: number,
@@ -919,6 +926,7 @@ function startCoreEngine(
         liveRestartPolicy().reset();
         _coreAutoHlsUsed = false;
     }
+    cancelCoreSourcePreparation();
     cancelCoreAutoPlayback();
     cancelCoreNativeHls();
     (window as any).forcePlay = true;
@@ -940,18 +948,29 @@ function startCoreEngine(
     // Shaka detach is asynchronous and may otherwise clear the next engine's src.
     var start = function (): void {
         if (session !== _playSession) return;
+        var settled = false;
         var ready = function (playbackUrl: string): void {
             if (session !== _playSession) return;
+            settled = true;
+            coreSourcePreparationCancel = null;
             if (observe) observe();
             startCorePlayback(playbackUrl, position, session, url);
         };
-        if (coreDeviceEffects.prepareSource)
-            coreDeviceEffects.prepareSource(url, ready, function () {
-                if (session !== _playSession) return;
-                $("#buffering").hide();
-                showShift(_("Source sign-in required"));
-            });
-        else ready(url);
+        if (coreDeviceEffects.prepareSource) {
+            var cancel = coreDeviceEffects.prepareSource(
+                url,
+                ready,
+                function () {
+                    if (session !== _playSession) return;
+                    settled = true;
+                    coreSourcePreparationCancel = null;
+                    $("#buffering").hide();
+                    showShift(_("Source sign-in required"));
+                }
+            );
+            if (!settled && typeof cancel === "function")
+                coreSourcePreparationCancel = cancel;
+        } else ready(url);
     };
     if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
     else start();
@@ -1424,6 +1443,7 @@ function startCorePlayback(
 function stopCoreEngine(): void {
     if (video) video.loop = false;
     _playSession++;
+    cancelCoreSourcePreparation();
     cancelLiveRestart();
     cancelCoreSeek();
     cancelCoreAutoPlayback();

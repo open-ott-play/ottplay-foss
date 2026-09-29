@@ -57,7 +57,7 @@ struct AccessMediaSession: Codable {
 
 enum AccessMediaPolicy {
     static func origin(_ url: URL) -> String? {
-        guard url.scheme == "https", let host = url.host?.lowercased(), !host.isEmpty,
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased(), !host.isEmpty,
               url.user == nil, url.password == nil else { return nil }
         let authority = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
         return "https://\(authority)" + (url.port.map { $0 == 443 ? "" : ":\($0)" } ?? "")

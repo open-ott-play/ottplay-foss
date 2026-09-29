@@ -442,12 +442,21 @@ test("iOS source login cannot replace a newer channel or revive stopped playback
         second = deferred(),
         stopped = deferred();
     const pending = [first, second, stopped];
+    const prepared = [],
+        cancelled = [];
     w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
     w.Capacitor = {
         getPlatform: () => "ios",
         Plugins: {
             AccessMedia: {
-                prepare: () => pending.shift().promise,
+                cancelPrepare: ({ requestId }) => {
+                    cancelled.push(requestId);
+                    return Promise.resolve();
+                },
+                prepare: ({ requestId }) => {
+                    prepared.push(requestId);
+                    return pending.shift().promise;
+                },
             },
         },
     };
@@ -457,6 +466,8 @@ test("iOS source login cannot replace a newer channel or revive stopped playback
         "/fixture/media.m3u8";
     w.stbPlay("https://source.invalid/old.m3u8");
     w.stbPlay("https://source.invalid/new.m3u8", 12);
+    assert.deepEqual(cancelled, [prepared[0]]);
+    assert.notEqual(prepared[0], prepared[1]);
     first.resolve({ url: local + "old" });
     await tick();
     assert.equal(w.video.playCalls, 0);
@@ -466,6 +477,11 @@ test("iOS source login cannot replace a newer channel or revive stopped playback
     assert.equal(w.video.playCalls, 1);
     w.stbPlay("https://source.invalid/stopped.m3u8");
     w.stbStop();
+    assert.deepEqual(
+        cancelled,
+        [prepared[0], prepared[2]],
+        "only unfinished preparation is cancelled"
+    );
     stopped.resolve({ url: local });
     await tick();
     assert.equal(w.video.playCalls, 1);

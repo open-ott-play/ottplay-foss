@@ -36,6 +36,7 @@ function createNativePipPort(ports: any) {
             var nativeStarted = false;
             var fallbackUrl = request.url;
             var css: MediaEngineLease | null = null;
+            var cancelPreparation: (() => void) | null = null;
             function current() {
                 return alive && sequence === id;
             }
@@ -71,12 +72,17 @@ function createNativePipPort(ports: any) {
                 // responsive while a browser prompt is open. A rejected sign-in
                 // must never start the unauthenticated CSS fallback.
                 function preparationFailed(error: any) {
+                    cancelPreparation = null;
                     if (current()) ports.error(error);
                 }
                 try {
-                    Promise.resolve(ports.prepare(args)).then(function (
-                        prepared
-                    ) {
+                    Promise.resolve(
+                        ports.prepare(args, function (cancel: () => void) {
+                            if (current()) cancelPreparation = cancel;
+                            else cancel();
+                        })
+                    ).then(function (prepared) {
+                        cancelPreparation = null;
                         if (current()) {
                             fallbackUrl = prepared.url;
                             play(prepared);
@@ -90,6 +96,10 @@ function createNativePipPort(ports: any) {
                 dispose: function (replaced?: boolean) {
                     if (!alive) return;
                     alive = false;
+                    if (cancelPreparation) {
+                        cancelPreparation();
+                        cancelPreparation = null;
+                    }
                     if (css) css.dispose();
                     if (sequence !== id) return;
                     var stopId = ++sequence;

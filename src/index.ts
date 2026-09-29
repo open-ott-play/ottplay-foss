@@ -2674,9 +2674,12 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                               ? cap.playPip(args)
                               : cap.stopPip();
                       },
-                      prepare: function (args: any) {
+                      prepare: function (
+                          args: any,
+                          onCancel: (cancel: () => void) => void
+                      ) {
                           return new Promise(function (resolve, reject) {
-                              prepareAccessMedia(
+                              var cancel = prepareAccessMedia(
                                   args.url,
                                   function (url) {
                                       resolve(
@@ -2689,6 +2692,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                                       );
                                   }
                               );
+                              if (cancel) onCancel(cancel);
                           });
                       },
                       ready: function () {

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Exercise the production iOS auth state machine with deterministic OS fixtures.
 
-Only platform imports and the Capacitor bridge are replaced; the session,
-discovery, Keychain and ASWebAuthenticationSession orchestration runs unchanged.
+Only platform APIs and HTTP are replaced; the session, discovery, Keychain,
+ASWebAuthenticationSession and Capacitor request orchestration runs unchanged.
 No real browser, Keychain or network is used.
 """
 import subprocess
@@ -13,6 +13,33 @@ ROOT = Path(__file__).resolve().parents[1]
 SWIFT = r'''
 import Foundation
 import CoreFoundation
+
+public protocol CAPBridgedPlugin {}
+public struct CAPPluginMethod {
+    init(name: String, returnType: String) {}
+}
+public let CAPPluginReturnPromise = "promise"
+class Bridge { var viewController: UIViewController? }
+public class CAPPlugin: NSObject {
+    var bridge: Bridge?
+    public func load() {}
+}
+public class CAPPluginCall: NSObject {
+    let options: [String: Any]
+    var result: [String: Any]?
+    var error: String?
+    init(_ options: [String: Any]) { self.options = options }
+    func getString(_ key: String) -> String? { options[key] as? String }
+    func resolve(_ result: [String: Any] = [:]) { self.result = result }
+    func reject(_ error: String) { self.error = error }
+}
+final class AccessMediaHTTP {
+    static var requests = 0
+    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, HTTPURLResponse) {
+        requests += 1
+        throw AccessMediaFailure.unavailable
+    }
+}
 
 let kSecClass = "class", kSecClassGenericPassword = "generic"
 let kSecAttrService = "service", kSecAttrAccount = "account"
@@ -112,6 +139,7 @@ final class AccessMediaProxy {
     var holdDiscovery = false, holdExchange = false
     var discoveryGate: CheckedContinuation<Void, Never>?
     var exchangeGate: CheckedContinuation<Void, Never>?
+    var beforeExchangeReturns: (() -> Void)?
     let presenter = UIViewController()
     func makeAccess() -> AccessMedia {
         let access = AccessMedia(now: { self.time }, fetch: { request, limit in
@@ -138,6 +166,7 @@ final class AccessMediaProxy {
         if holdExchange { await withCheckedContinuation { exchangeGate = $0 } }
         let data = try JSONEncoder().encode(AccessMediaSession(token: "fixture.session\(exchange).signature",
             expires_at: Date().timeIntervalSince1970 + 3600, media_origin: config.media_origin))
+        beforeExchangeReturns?()
         return (data, HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])!)
     }
 }
@@ -160,6 +189,8 @@ Task { @MainActor in
     do {
         reset()
         let fixture = Fixture(), access = fixture.makeAccess()
+        assert(AccessMediaPolicy.origin(URL(string: "HTTPS://SOURCE.fixture.invalid/list.m3u8")!) == fixture.config.source_origin)
+        assert(fixture.config.map(URL(string: "HTTPS://SOURCE.fixture.invalid/list.m3u8")!)?.host == "media.fixture.invalid")
         let discoveryTasks = (0..<20).map { _ in Task { try await access.configuration(for: fixture.source, discover: true) } }
         for task in discoveryTasks { let result = try await task.value; assert(result == fixture.config) }
         assert(fixture.discoveries == 1, "Concurrent discovery must issue one HTTP request")
@@ -200,6 +231,100 @@ Task { @MainActor in
         assert(fixture.exchanges == 2, "Concurrent rejected requests must refresh only once")
         let invalid = Task { try await access.authorized(URLRequest(url: URL(string: "https://other.invalid/a")!), config: fixture.config) }
         await failure(invalid, .invalid)
+
+        reset()
+        let soleFixture = Fixture(), soleAccess = soleFixture.makeAccess()
+        var soleSettled = false
+        let sole = Task {
+            defer { soleSettled = true }
+            return try await soleAccess.authorized(URLRequest(url: soleFixture.source), config: soleFixture.config)
+        }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        let cancelledBrowser = ASWebAuthenticationSession.opened[0]
+        sole.cancel()
+        await until { soleSettled }
+        await failure(sole, .cancelled)
+        assert(cancelledBrowser.cancelled && soleFixture.exchanges == 0)
+        let afterSole = Task { try await soleAccess.authorized(URLRequest(url: soleFixture.source), config: soleFixture.config) }
+        await until { ASWebAuthenticationSession.opened.count == 2 }
+        cancelledBrowser.succeed()
+        for _ in 0..<20 { await Task.yield() }
+        assert(soleFixture.exchanges == 0, "A cancelled operation's callback must never exchange its code")
+        ASWebAuthenticationSession.opened[1].succeed()
+        _ = try await afterSole.value
+        assert(soleFixture.exchanges == 1)
+
+        reset()
+        let sharedFixture = Fixture(), sharedAccess = sharedFixture.makeAccess()
+        var retiredSettled = false, survivorStarted = false
+        let retired = Task {
+            defer { retiredSettled = true }
+            return try await sharedAccess.authorized(URLRequest(url: sharedFixture.source), config: sharedFixture.config)
+        }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        let survivor = Task {
+            survivorStarted = true
+            return try await sharedAccess.authorized(URLRequest(url: sharedFixture.source), config: sharedFixture.config)
+        }
+        await until { survivorStarted }
+        retired.cancel()
+        await until { retiredSettled }
+        await failure(retired, .cancelled)
+        assert(!ASWebAuthenticationSession.opened[0].cancelled && ASWebAuthenticationSession.opened.count == 1,
+            "Cancelling one waiter must preserve another waiter's shared browser")
+        ASWebAuthenticationSession.opened[0].succeed()
+        _ = try await survivor.value
+        assert(sharedFixture.exchanges == 1)
+
+        reset()
+        let retiredExchangeFixture = Fixture(), retiredExchangeAccess = retiredExchangeFixture.makeAccess()
+        retiredExchangeFixture.holdExchange = true
+        var exchangeSettled = false
+        let retiredExchange = Task {
+            defer { exchangeSettled = true }
+            return try await retiredExchangeAccess.authorized(URLRequest(url: retiredExchangeFixture.source), config: retiredExchangeFixture.config)
+        }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        ASWebAuthenticationSession.opened[0].succeed()
+        await until { retiredExchangeFixture.exchangeGate != nil }
+        retiredExchange.cancel()
+        await until { exchangeSettled }
+        await failure(retiredExchange, .cancelled)
+        assert(Keychain.writes == 0, "The last cancelled waiter settles without waiting for the network")
+        let newExchange = Task { try await retiredExchangeAccess.authorized(URLRequest(url: retiredExchangeFixture.source), config: retiredExchangeFixture.config) }
+        await until { ASWebAuthenticationSession.opened.count == 2 }
+        retiredExchangeFixture.exchangeGate!.resume()
+        for _ in 0..<20 { await Task.yield() }
+        assert(Keychain.writes == 0, "A late cancelled exchange cannot save credentials or retire a newer login")
+        retiredExchangeFixture.holdExchange = false
+        ASWebAuthenticationSession.opened[1].succeed()
+        _ = try await newExchange.value
+        assert(Keychain.writes == 1 && retiredExchangeFixture.exchanges == 2)
+
+        reset()
+        let simultaneousFixture = Fixture(), simultaneousAccess = simultaneousFixture.makeAccess()
+        var simultaneous: Task<URLRequest, Error>!
+        simultaneousFixture.beforeExchangeReturns = { simultaneous.cancel() }
+        simultaneous = Task { try await simultaneousAccess.authorized(URLRequest(url: simultaneousFixture.source), config: simultaneousFixture.config) }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        ASWebAuthenticationSession.opened[0].succeed()
+        await failure(simultaneous, .cancelled)
+        assert(Keychain.writes == 0,
+            "Cancellation immediately before exchange returns must prevent credential persistence before actor cleanup runs")
+
+        reset()
+        let survivingFixture = Fixture(), survivingAccess = survivingFixture.makeAccess()
+        var cancelledAtExchange: Task<URLRequest, Error>!
+        survivingFixture.beforeExchangeReturns = { cancelledAtExchange.cancel() }
+        cancelledAtExchange = Task { try await survivingAccess.authorized(URLRequest(url: survivingFixture.source), config: survivingFixture.config) }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        let liveAtExchange = Task { try await survivingAccess.authorized(URLRequest(url: survivingFixture.source), config: survivingFixture.config) }
+        for _ in 0..<20 { await Task.yield() }
+        ASWebAuthenticationSession.opened[0].succeed()
+        await failure(cancelledAtExchange, .cancelled)
+        _ = try await liveAtExchange.value
+        assert(Keychain.writes == 1 && survivingFixture.exchanges == 1,
+            "An exchange with a remaining live consumer still completes and persists once")
 
         reset()
         let cancelFixture = Fixture(), cancelAccess = cancelFixture.makeAccess()
@@ -302,7 +427,79 @@ Task { @MainActor in
         await failure(preparing, .cancelled)
         assert(ASWebAuthenticationSession.opened.isEmpty,
             "A discovery finishing after logout must not reopen the browser")
-        print("PASS: actual native auth state, 20-way discovery/login/renewal deduplication, cold-launch reuse, header isolation, logout/browser/exchange races, start failure, transient retry, source-authorized aliases")
+
+        reset()
+        let bridgeFixture = Fixture()
+        let configObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(bridgeFixture.config))
+        Keychain.data = try JSONSerialization.data(withJSONObject: [bridgeFixture.config.source_origin: ["config": configObject]])
+        AccessMedia.shared.presenter = bridgeFixture.presenter
+        let plugin = AccessMediaPlugin()
+        let first = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "first"])
+        let second = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "second"])
+        plugin.prepare(first); plugin.prepare(second)
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        let duplicateID = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "first"])
+        plugin.prepare(duplicateID)
+        await until { duplicateID.error != nil }
+        assert(duplicateID.error == "Source request is already pending" && first.error == nil,
+            "A duplicate ID must reject only the duplicate and preserve the original request")
+        let cancelFirst = CAPPluginCall(["requestId": "first"])
+        plugin.cancelPrepare(cancelFirst)
+        await until { first.error != nil }
+        assert(cancelFirst.result?["cancelled"] as? Bool == true && second.error == nil)
+        assert(!ASWebAuthenticationSession.opened[0].cancelled)
+        let unknown = CAPPluginCall(["requestId": "unknown"])
+        plugin.cancelPrepare(unknown)
+        await until { unknown.result != nil }
+        assert(unknown.result?["cancelled"] as? Bool == false)
+        let cancelSecond = CAPPluginCall(["requestId": "second"])
+        plugin.cancelPrepare(cancelSecond)
+        await until { second.error != nil }
+        assert(ASWebAuthenticationSession.opened[0].cancelled)
+
+        let immediate = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "immediate"])
+        let cancelImmediate = CAPPluginCall(["requestId": "immediate"])
+        plugin.prepare(immediate); plugin.cancelPrepare(cancelImmediate)
+        await until { immediate.error != nil }
+        assert(cancelImmediate.result?["cancelled"] as? Bool == true,
+            "Cancellation queued before work starts must still see the registered request")
+
+        let baseline = ASWebAuthenticationSession.opened.count
+        let reuseOld = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "reuse"])
+        plugin.prepare(reuseOld)
+        await until { ASWebAuthenticationSession.opened.count == baseline + 1 }
+        let reuseBrowser = ASWebAuthenticationSession.opened.last!
+        let cancelReuse = CAPPluginCall(["requestId": "reuse"])
+        let reuseNew = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "reuse"])
+        plugin.cancelPrepare(cancelReuse); plugin.prepare(reuseNew)
+        await until { reuseOld.error != nil }
+        // The new waiter may retain a still-live shared login, or start a fresh
+        // one after the old waiter was retired; both orderings are valid.
+        if reuseBrowser.cancelled { reuseBrowser.succeed() }
+        for _ in 0..<20 { await Task.yield() }
+        let cancelNew = CAPPluginCall(["requestId": "reuse"])
+        plugin.cancelPrepare(cancelNew)
+        await until { reuseNew.error != nil }
+        assert(cancelNew.result?["cancelled"] as? Bool == true,
+            "An old task's completion must not erase a reused request ID")
+        assert(AccessMediaHTTP.requests == 0, "Cancelled bridge work must never reach the exchange network")
+
+        let badID = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "../bad"])
+        plugin.prepare(badID)
+        assert(badID.error == "Invalid source request")
+        let newlineID = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "bad\n"])
+        plugin.prepare(newlineID)
+        assert(newlineID.error == "Invalid source request")
+        let nonStringID = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": 42])
+        plugin.prepare(nonStringID)
+        assert(nonStringID.error == "Invalid source request")
+        let legacyCount = ASWebAuthenticationSession.opened.count
+        let legacy = CAPPluginCall(["url": bridgeFixture.source.absoluteString])
+        plugin.prepare(legacy)
+        await until { ASWebAuthenticationSession.opened.count == legacyCount + 1 }
+        try AccessMedia.shared.signOut()
+        await until { legacy.error != nil }
+        print("PASS: native auth deduplication/reuse/alias trust, per-waiter cancellation, late browser/exchange isolation, native prepare/cancel ownership and uppercase HTTPS")
         finished = true
     } catch { fatalError("Auth fixture failed: \(error)") }
 }
@@ -317,10 +514,11 @@ with tempfile.TemporaryDirectory(prefix="ottplay-auth-test-") as directory:
     production = (sources / "AccessMedia.swift").read_text()
     for module in ["AuthenticationServices", "Capacitor", "Security", "UIKit"]:
         production = production.replace(f"import {module}\n", "")
-    production = production.split("@objc(AccessMediaPlugin)", 1)[0]
     (path / "AccessMedia.swift").write_text("import CoreFoundation\n" + production)
+    policy = (sources / "AccessMediaPolicy.swift").read_text().split("// Used only for protected requests", 1)[0]
+    (path / "AccessMediaPolicy.swift").write_text(policy)
     (path / "main.swift").write_text(SWIFT)
-    subprocess.run(["swiftc", str(sources / "AccessMediaPolicy.swift"),
+    subprocess.run(["swiftc", str(path / "AccessMediaPolicy.swift"),
                     str(path / "AccessMedia.swift"), str(path / "main.swift"),
                     "-o", str(path / "test")], check=True)
     subprocess.run([str(path / "test")], check=True, timeout=35)

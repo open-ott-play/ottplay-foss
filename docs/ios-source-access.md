@@ -89,6 +89,14 @@ consume the phone's loopback URL; remote receiver playback needs a separate
 authenticated transport. Web/Android/TV/desktop builds do not acquire iOS
 source sessions.
 
+Stopping playback or replacing a channel cancels its pending native preparation.
+Other consumers of the same sign-in continue; cancelling the last consumer
+closes the browser and cancels the exchange. Late callbacks cannot save a token
+or restart playback. Closing a proxy connection also cancels its pending
+authorization. A clean TCP write-half-close remains supported, with the existing
+request deadlines bounding connections whose peer cannot be distinguished from
+a client waiting for its response.
+
 ## Verification
 
 `python3 tests/test_ios_access_media.py` compiles the real Swift policy and
