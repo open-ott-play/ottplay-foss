@@ -85,6 +85,121 @@ for (const channelSupport of ["available", "absent", "throws"]) {
 console.log(
     "PASS hosted EPG parser yielding, legacy fallback and queued close"
 );
+// A cache reopened near expiry must keep its original refresh deadline. Drive
+// the actual load/schedule paths without waiting two hours or fetching a feed.
+const cacheScheduleSource = ts.transpileModule(
+    ["load", "schedule", "validUrl"]
+        .map((name) =>
+            workerFactory.body.statements
+                .find(
+                    (node) =>
+                        ts.isFunctionDeclaration(node) &&
+                        node.name.text === name
+                )
+                .getText(workerAst)
+        )
+        .join("\n"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+function cacheScheduleFixture(age, replacementAge = age, now = 20000000) {
+    const input = {
+        channels: [],
+        refreshMs: 7200000,
+        sources: ["https://fixture.test/feed.gz"],
+    };
+    const signature = JSON.stringify([input.sources, input.channels]);
+    const snapshot = (value) =>
+        value === null ? null : { fetched: now - value, signature };
+    const state = {
+        delay: null,
+        now,
+        read: { result: snapshot(age) },
+        refreshes: 0,
+        replacement: snapshot(replacementAge),
+    };
+    const env = {
+        clearTimeout() {},
+        setTimeout(_callback, delay) {
+            state.delay = delay;
+        },
+    };
+    const fixture = new Function(
+        "env",
+        "Date",
+        "state",
+        "var active=null, configuration=null, database=null, databaseName='', " +
+            "signature='', loading=false, closed=false, timer=null;\n" +
+            "function identity() { return 'fixture'; }\n" +
+            "function open(next) { database={}; next(); }\n" +
+            "function transaction() { return {objectStore: function() {return {get: function() { return state.read; }};}}; }\n" +
+            "function progress() {} function ready() {} function release() {}\n" +
+            "function fail(code) { throw new Error(code); }\n" +
+            "function lease(next) { next(); }\n" +
+            "function cleanup(next) { next(state.replacement); }\n" +
+            "function refresh() { state.refreshes++; }\n" +
+            cacheScheduleSource +
+            "\nreturn {load:load, schedule:schedule};"
+    )(env, { now: () => state.now }, state);
+    fixture.load(input);
+    state.read.onsuccess();
+    return { ...fixture, state };
+}
+{
+    const f = cacheScheduleFixture(7200000 - 60000);
+    assert.equal(f.state.refreshes, 0);
+    assert.equal(
+        f.state.delay,
+        60000,
+        "reopened cache refreshes at its original expiry, not two hours later"
+    );
+    f.schedule();
+    assert.equal(
+        f.state.delay,
+        7200000,
+        "normal error retries and new commits retain the full interval"
+    );
+    f.schedule(f.state.now - 7200000);
+    assert.equal(f.state.delay, 1, "an elapsed deadline uses a positive delay");
+    f.schedule(f.state.now - 7200001);
+    assert.equal(
+        f.state.delay,
+        1,
+        "crossing expiry cannot create a negative delay"
+    );
+    f.schedule(f.state.now + 60000);
+    assert.equal(
+        f.state.delay,
+        7200000,
+        "clock rollback cannot extend the interval"
+    );
+}
+assert.equal(cacheScheduleFixture(0).state.delay, 7200000);
+assert.equal(
+    cacheScheduleFixture(60000, 60000, 60000).state.delay,
+    7140000,
+    "an epoch-zero fetched timestamp is a valid deadline"
+);
+assert.equal(
+    cacheScheduleFixture(7200000, 7140000).state.delay,
+    60000,
+    "a fresh snapshot discovered after acquiring the lease keeps its expiry"
+);
+for (const age of [null, 7200000, 7200001]) {
+    const f = cacheScheduleFixture(age);
+    assert.equal(
+        f.state.refreshes,
+        1,
+        "missing/expired cache refreshes immediately"
+    );
+    assert.equal(f.state.delay, null);
+    f.schedule();
+    assert.equal(
+        f.state.delay,
+        7200000,
+        "failed refresh keeps normal retry backoff"
+    );
+}
+console.log("PASS hosted EPG saved-cache refresh deadline and retry intervals");
 const cleanupDeclaration = workerFactory.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "cleanup"
 );

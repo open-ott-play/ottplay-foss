@@ -405,7 +405,7 @@ function createHostedEpgWorker(env: any): void {
                     Date.now() - active.fetched < input.refreshMs
                 ) {
                     loading = false;
-                    schedule();
+                    schedule(active.fetched);
                     return;
                 }
                 // Orphan writes from interrupted refreshes never replace the last good generation.
@@ -423,7 +423,7 @@ function createHostedEpgWorker(env: any): void {
                             loading = false;
                             ready(false);
                             release();
-                            schedule();
+                            schedule(snapshot.fetched);
                             return;
                         }
                         refresh(signature);
@@ -437,12 +437,16 @@ function createHostedEpgWorker(env: any): void {
         if (database) begin();
         else open(begin);
     }
-    function schedule(): void {
+    function schedule(fetched?: number): void {
         if (closed) return;
         env.clearTimeout(timer);
+        var delay = configuration.refreshMs;
+        // Reusing a snapshot must not restart its full freshness interval.
+        if (fetched !== undefined)
+            delay = Math.max(1, Math.min(delay, fetched + delay - Date.now()));
         timer = env.setTimeout(function () {
             load(configuration);
-        }, configuration.refreshMs);
+        }, delay);
     }
     function refresh(signature: string): void {
         generation =
