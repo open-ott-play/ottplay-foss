@@ -226,6 +226,7 @@ try {
         "Cancel pairing",
         "Enter the command server IP or address.",
         "OttPlay FOSS %1 is available. Download and install now?",
+        "EPG diagnostics could not load. Open it again to retry.",
     ])
         assert(Object.hasOwn(reference, key), `Audited UI key missing: ${key}`);
     const result = audit({
@@ -233,7 +234,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 28);
-    assert.equal(result.keyCount, 690);
+    assert.equal(result.keyCount, 691);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

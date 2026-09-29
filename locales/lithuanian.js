@@ -354,6 +354,8 @@ var keyStrings = {
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Nepavyko paleisti EPG. Paleiskite grotuvą iš naujo, kad jo failai būtų įkelti iš naujo. Atkūrimas bus sustabdytas.",
     "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
         "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
     "EPG download time: %1": "EPG download time: %1",

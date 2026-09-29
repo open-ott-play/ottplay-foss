@@ -47,9 +47,6 @@
                     "Close"
                 );
             var lines = [context.description()];
-            function line(message: string, value?: any): void {
-                lines.push(host._("EPG " + message, value));
-            }
             if (status.transport)
                 lines.push(
                     "EPG transport: " +
@@ -59,53 +56,76 @@
                 );
             if (status.code) {
                 lines.push(status.code);
-                line(
-                    "stopped during: %1",
-                    context.phaseDescription(status.failedPhase)
+                lines.push(
+                    host._(
+                        "EPG stopped during: %1",
+                        context.phaseDescription(status.failedPhase)
+                    )
                 );
             }
             if (status.sources && status.sources.length) {
                 var index = Math.max(0, status.source || 0);
-                line(
-                    "source: %1",
-                    index +
-                        1 +
-                        "/" +
-                        status.sources.length +
-                        " · " +
-                        status.sources[index]
+                lines.push(
+                    host._(
+                        "EPG source: %1",
+                        index +
+                            1 +
+                            "/" +
+                            status.sources.length +
+                            " · " +
+                            status.sources[index]
+                    )
                 );
             }
             if (status.total || status.loaded)
-                line(
-                    "progress: %1",
-                    ((status.loaded || 0) / 1048576).toFixed(1) +
-                        " / " +
-                        ((status.total || 0) / 1048576).toFixed(1) +
-                        " MiB"
+                lines.push(
+                    host._(
+                        "EPG progress: %1",
+                        ((status.loaded || 0) / 1048576).toFixed(1) +
+                            " / " +
+                            ((status.total || 0) / 1048576).toFixed(1) +
+                            " MiB"
+                    )
                 );
-            if (status.records != null) line("programmes: %1", status.records);
+            if (status.records != null)
+                lines.push(host._("EPG programmes: %1", status.records));
             if (status.matched != null)
-                line("channels: %1", status.matched + "/" + status.channels);
+                lines.push(
+                    host._(
+                        "EPG channels: %1",
+                        status.matched + "/" + status.channels
+                    )
+                );
             if (status.fetched)
-                line(
-                    "cache updated: %1",
-                    new Date(status.fetched).toLocaleString()
+                lines.push(
+                    host._(
+                        "EPG cache updated: %1",
+                        new Date(status.fetched).toLocaleString()
+                    )
                 );
             if (status.cached && (status.code || status.sourceStale))
-                line("update failed; using saved programme guide");
+                lines.push(
+                    host._("EPG update failed; using saved programme guide")
+                );
             if (status.started) {
-                line(
-                    "elapsed: %1",
-                    Math.round(
-                        ((status.finished || Date.now()) - status.started) /
-                            1000
-                    ) + " s"
+                lines.push(
+                    host._(
+                        "EPG elapsed: %1",
+                        Math.round(
+                            ((status.finished || Date.now()) - status.started) /
+                                1000
+                        ) + " s"
+                    )
                 );
                 var times = context.timings();
-                line("cache and wait time: %1", seconds(times.cache));
-                line("download time: %1", seconds(times.download));
-                line("processing and storage time: %1", seconds(times.parse));
+                lines.push(
+                    host._("EPG cache and wait time: %1", seconds(times.cache)),
+                    host._("EPG download time: %1", seconds(times.download)),
+                    host._(
+                        "EPG processing and storage time: %1",
+                        seconds(times.parse)
+                    )
+                );
             }
             content.text(lines.join("\n\n"));
         }
