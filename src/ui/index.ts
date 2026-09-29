@@ -1194,13 +1194,13 @@ export function closeList(restorePip = true): void {
  * @sideeffect Sets `#info` innerHTML and display style, then hides it after 3000ms via setTimeout.
  */
 export function showShift(message: string): void {
-    var info = document.getElementById("info");
-    if (info) {
-        info.innerHTML = metadataHtml(message);
-        info.style.display = "block";
-    }
-    setTimeout(function () {
-        if (info) info.style.display = "none";
+    var info: any = document.getElementById("info");
+    if (!info) return;
+    clearTimeout(info.__ottShiftTimer);
+    info.innerHTML = metadataHtml(message);
+    info.style.display = "block";
+    info.__ottShiftTimer = setTimeout(function () {
+        info.style.display = "none";
     }, 3000);
 }
 
@@ -1344,7 +1344,10 @@ export function showSelectBox(
                     if (owner.foreground()) w._doKey(-100 + index, event);
                 };
                 row.onkeydown = function (event) {
-                    if (event.keyCode === 13 || event.keyCode === 32) {
+                    if (
+                        owner.foreground() &&
+                        (event.keyCode === 13 || event.keyCode === 32)
+                    ) {
                         event.preventDefault();
                         row.onclick!(event as any);
                     }
@@ -1677,21 +1680,22 @@ export function initBackgroundIntervals(): void {
         clearInterval(previous.clock);
         clearInterval(previous.guide);
     }
+    function updateClockText(id: string, value: string): void {
+        // Resolve the current node because menus can replace clock elements.
+        var element = document.getElementById(id);
+        if (element && element.textContent !== value)
+            element.textContent = value;
+    }
     owner.clock = setInterval(function () {
         if (host.__ottUiTimers !== owner) return;
         var now = new Date();
         var timeStr = _t2(now.getHours()) + ":" + _t2(now.getMinutes());
         var secStr = ":" + _t2(now.getSeconds());
-        var currentTEl = document.getElementById("current_t");
-        var currentSEl = document.getElementById("current_s");
-        var listTEl = document.getElementById("list_t");
-        var listSEl = document.getElementById("list_s");
-        var permTEl = document.getElementById("permanentTime");
-        if (currentTEl) currentTEl.innerHTML = timeStr;
-        if (currentSEl) currentSEl.innerHTML = secStr;
-        if (listTEl) listTEl.innerHTML = timeStr;
-        if (listSEl) listSEl.innerHTML = secStr;
-        if (permTEl) permTEl.innerHTML = timeStr;
+        updateClockText("current_t", timeStr);
+        updateClockText("current_s", secStr);
+        updateClockText("list_t", timeStr);
+        updateClockText("list_s", secStr);
+        updateClockText("permanentTime", timeStr);
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
@@ -2889,9 +2893,14 @@ function _setCase(e: boolean): void {
 }
 
 /** Case is derived from the original cell, never from a previous conversion. */
-function _keyboardCharacter(value: string): string {
+function _keyboardCharacter(value: string, language?: string): string {
     if (!_keyUp || _keyP) return value;
-    if (!_keyE && /^_(tur|aze)$/.test(String(_ottplaylang()))) {
+    if (
+        !_keyE &&
+        /^_(tur|aze)$/.test(
+            language === undefined ? String(_ottplaylang()) : language
+        )
+    ) {
         if (value === "i") return "İ";
         if (value === "ı") return "I";
     }
@@ -3059,6 +3068,8 @@ export function showEditKey1(
  */
 export function showEdit(): void {
     var e = $("#listEdit").show();
+    // Reuse the current language for this render; direct input still reads it live.
+    var language = String(_ottplaylang());
     /* Slightly smaller than /12 so .osk-key margins fit a 10-key row. */
     var t = ((e.width() || 600) / 12.4) | 0;
     if (t < 24) t = 24;
@@ -3070,7 +3081,7 @@ export function showEdit(): void {
     for (var s = 0; s < _keys.length; s++) {
         if (s > 0 && s % 10 === 0) r += "<br/>";
         var sym = _keysSymbol[_keys.charCodeAt(s)];
-        var character = _keyboardCharacter(_keys[s]);
+        var character = _keyboardCharacter(_keys[s], language);
         var n = sym
             ? sym.s
             : metadataText(
@@ -3140,7 +3151,7 @@ export function showEdit(): void {
                 _keysSymbol[1].s
                     ? _keyE
                         ? // Offer the other layout in the *current* UI language.
-                          _ottplaylang() == "_eng"
+                          language === "_eng"
                             ? _("Russian") || "Russian"
                             : _("lang") || "Lang"
                         : _("English") || "English"
@@ -3684,10 +3695,14 @@ export function clickVal(e: number): void {
         (window as any).event.stopPropagation
     )
         (window as any).event.stopPropagation();
-    if (_curVal === e && aboutKeyHandler)
+    if (_curVal === e && aboutKeyHandler) {
         aboutKeyHandler((window as any).keys.ENTER);
+        return;
+    }
     $("#ik" + _curVal).css({ "background-color": "", color: "" });
     _curVal = e;
+    if (listDetailElement)
+        listDetailElement.innerHTML = $("#ik" + e).html() || "";
     $("#ik" + _curVal).css({
         "background-color": (window as any).curColorB,
         color: (window as any).curColor,
@@ -3744,22 +3759,21 @@ export function selectValue(t: any): void {
     var html = "";
     for (var i = 0; i < r.length; i++) {
         if (i % n === 0) html += "<br/>";
-        html +=
-            '<div id="ik' +
-            i +
-            '" class="osk-key" onclick="clickVal(' +
-            i +
-            ');" style="width:' +
-            98 / n +
-            "%;line-height:" +
-            lineHeight +
-            'px;">' +
-            r[i] +
-            "</div>";
+        html += '<div id="ik' + i + '" class="osk-key">' + r[i] + "</div>";
     }
-    $("#listAbout")
-        .html('<div style="font-size:larger;">' + html + "</div>")
-        .show();
+    var grid = $("#listAbout")
+        .html("<div>" + html + "</div>")
+        .show()
+        .children()
+        .css("font-size", "larger");
+    grid.find(".osk-key").css({
+        lineHeight: lineHeight + "px",
+        width: 98 / n + "%",
+    });
+    grid.on("click", ".osk-key", function (event: any) {
+        event.stopPropagation();
+        if (input.owner.foreground()) clickVal(Number(this.id.slice(2)));
+    });
     $("#ik" + _curVal).css({
         "background-color": (window as any).curColorB,
         color: (window as any).curColor,
@@ -3785,7 +3799,7 @@ export function selectValue(t: any): void {
         if (listDetailElement) listDetailElement.innerHTML = r[_curVal];
     }
 
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
+    var input = (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
         function (e: number): boolean {
             switch (e) {

@@ -218,7 +218,7 @@
     },
     {
       "file": "src/ui/index.ts",
-      "expression": "_keysSymbol[1].s ? _keyE ? _ottplaylang() == \"_eng\" ? _(\"Russian\") || \"Russian\" : _(\"lang\") || \"Lang\" : _(\"English\") || \"English\" : \"\"",
+      "expression": "_keysSymbol[1].s ? _keyE ? language === \"_eng\" ? _(\"Russian\") || \"Russian\" : _(\"lang\") || \"Lang\" : _(\"English\") || \"English\" : \"\"",
       "reason": "Already-translated constituent labels plus runtime data or markup; nested literal calls are scanned independently."
     },
     {

@@ -139,6 +139,9 @@ function fixture() {
             "infoBox",
             "confirmBox",
             "showSelectBox",
+            "showShift",
+            "selectValue",
+            "clickVal",
             "saveListPanelState",
             "restoreListPanelState",
             "showEditKey2",
@@ -983,6 +986,52 @@ test("picker timeout and saved callback cannot affect newer picker", ({
     w.selectBoxKeyHandler(13);
     assert.deepEqual(chosen, [["new", 1]]);
 });
+test("retired focused picker row lets Enter reach the new confirmation", ({
+    w,
+}) => {
+    let selected = 0,
+        resumed = 0;
+    w._doKey = w.dispatchKey;
+    w.addEventListener("keydown", w.keyHandler);
+    w.showSelectBox(
+        0,
+        ["HD", "SD"],
+        () => {
+            selected++;
+            w.confirmBox("Continue?", () => resumed++);
+        },
+        -1
+    );
+    const old = w.channelNumberElement.firstChild;
+    const press = (target, code) =>
+        target.dispatchEvent(
+            new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                keyCode: code,
+                which: code,
+            })
+        );
+    press(old, w.keys.ENTER);
+    assert.equal(selected, 1);
+    assert.equal(resumed, 0, "opening key cannot also accept the confirmation");
+    assert.equal(w.channelNumberElement.style.display, "none");
+    // Chromium may target this old focused node until the next rendering frame.
+    press(old, w.keys.ENTER);
+    assert.equal(selected, 1);
+    assert.equal(
+        resumed,
+        1,
+        "retired node does not swallow the current modal's key"
+    );
+    w.showSelectBox(0, ["HD", "SD"], () => selected++, -1);
+    press(w.channelNumberElement.firstChild, 32);
+    assert.equal(
+        selected,
+        2,
+        "Space still accepts a foreground quality option once"
+    );
+});
 test("quality picker suspends and restores its media parent", ({
     w,
     events,
@@ -1044,6 +1093,62 @@ test("explicit picker decoration preserves its owner, input dispatch and stale g
     decorated(13);
     assert.equal(calls, 2);
     assert.deepEqual(chosen, [1]);
+});
+test("notification replacement cancels the earlier hide timer", ({
+    w,
+    jobs,
+}) => {
+    const info = w.document.createElement("div");
+    info.id = "info";
+    w.document.body.appendChild(info);
+    w.showShift("First");
+    w.showShift("Settings saved");
+    assert.equal(jobs.filter((job) => job.active).length, 1);
+    assert.equal(jobs[0].active, false);
+    assert.equal(info.style.display, "block");
+    assert.equal(info.textContent, "Settings saved");
+    jobs[1].callback();
+    assert.equal(info.style.display, "none");
+});
+test("settings value clicks honor filtered indices and the current overlay", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    const row = { name: "Fixture", val: 0, values: ["A", "@@@", "B", "C"] };
+    w.selectValue(row);
+    const button = w.document.getElementById("ik1");
+    assert.equal(button.getAttribute("onclick"), null);
+    assert.equal(button.style.lineHeight, "32px");
+    assert(button.style.width);
+    w.confirmBox("Overlay", () =>
+        assert.fail("grid cannot activate the dialog")
+    );
+    button.click();
+    assert.equal(w._curVal, 0, "covered grid cannot change selection");
+    key(w.keys.RETURN);
+    button.click();
+    assert.equal(w._curVal, 1);
+    assert.equal(row.val, 0, "first click only focuses");
+    assert.equal(w.listDetailElement.textContent, "B");
+    button.click();
+    assert.equal(
+        row.val,
+        2,
+        "second click commits the original, unfiltered index"
+    );
+    assert.equal(w.$("#listAbout").is(":visible"), false);
+    w.selectValue(row);
+    key(w.keys.RIGHT);
+    key(w.keys.RETURN);
+    assert.equal(row.val, 2, "Back cancels the uncommitted keyboard selection");
+    w.selectValue(row);
+    key(w.keys.RIGHT);
+    key(w.keys.ENTER);
+    assert.equal(row.val, 3, "keyboard acceptance still commits");
 });
 test("color picker old callback cannot commit to a new settings draft", ({
     w,

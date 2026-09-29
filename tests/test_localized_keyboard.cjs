@@ -58,6 +58,12 @@ w.eval(
         process.argv.includes("--bundle") ? "dist/player.js" : undefined
     )
 );
+let languageReads = 0;
+const getLanguage = w.stbGetItem;
+w.stbGetItem = function (key) {
+    if (key === "ottplaylang") languageReads++;
+    return getLanguage(key);
+};
 try {
     for (const [code, locale] of Object.entries(fixture.locales)) {
         const file = path.join(root, languageAssetPath(code));
@@ -111,6 +117,13 @@ try {
             for (const char of w._keys)
                 for (const upper of w._keyboardCharacter(char))
                     reachable.add(upper);
+            languageReads = 0;
+            w.showEdit();
+            assert.equal(
+                languageReads,
+                1,
+                code + " uppercase page reads the language once per render"
+            );
             w._setCase(false);
             assert.equal(
                 w._keys,
@@ -183,6 +196,24 @@ try {
         layout(code);
         assert.equal(w._keyboardCharacter("i"), "İ");
         assert.equal(w._keyboardCharacter("ı"), "I");
+        w.showEdit();
+        const iKey = w._keys.indexOf("i");
+        assert.equal(w.document.getElementById("ik" + iKey).textContent, "İ");
+        w.fixtureLocale = "_eng";
+        languageReads = 0;
+        w.showEdit();
+        assert.equal(
+            languageReads,
+            1,
+            "the next render refreshes the language"
+        );
+        assert.equal(w.document.getElementById("ik" + iKey).textContent, "I");
+        w.fixtureLocale = code;
+        w.editvar = "";
+        w.editPos = 0;
+        w._keyCur = iKey;
+        w.editKey1(w.keys.ENTER);
+        assert.equal(w.editvar, "İ", "insertion reads the current language");
         w._setLang(true);
         assert.equal(
             w._keyboardCharacter("i"),
@@ -190,6 +221,20 @@ try {
             "English layout ignores UI locale casing"
         );
     }
+    layout("_tur");
+    w.fixtureLocale = undefined;
+    languageReads = 0;
+    w.showEdit();
+    assert.equal(
+        languageReads,
+        1,
+        "missing language is resolved once per render"
+    );
+    assert.equal(
+        w.document.getElementById("ik" + w._keys.indexOf("i")).textContent,
+        "I",
+        "missing language uses default casing"
+    );
     layout("_arm");
     w.editvar = "ab";
     w.editPos = 1;
