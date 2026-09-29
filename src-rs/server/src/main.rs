@@ -1,4 +1,3 @@
-mod allocator;
 mod debug_api;
 mod control_discovery;
 mod hosted_epg;

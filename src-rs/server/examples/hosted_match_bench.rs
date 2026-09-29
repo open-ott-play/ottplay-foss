@@ -1,7 +1,4 @@
 //! Offline QuickJS measurement. External runner owns deadlines and SHA-256 receipts.
-#[path = "../src/allocator.rs"]
-mod allocator;
-
 use anyhow::{ensure, Result};
 use flate2::read::GzDecoder;
 use md5::{Digest, Md5};

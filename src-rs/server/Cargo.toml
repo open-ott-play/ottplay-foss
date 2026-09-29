@@ -31,7 +31,3 @@ hyper-util = { version = "0.1", features = ["server", "tokio"] }
 tower = "0.5"
 md-5 = "0.10"
 regex = "1"
-
-[target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
-ottplay-core = { path = "../core", features = ["rust-allocator"] }
-mimalloc = { version = "=0.1.52", default-features = false }
