@@ -543,19 +543,19 @@ mod tests {
         // The best non-exact match is last: a partial cached answer would be wrong.
         rows.push(vec!["winner".into(), "Candidate Alpha X".into()]);
         let index = GuideIndex::web(rows.clone())?;
-        let budget = GuideMatchBudget::new(Duration::from_secs(5));
+        let armed_budget = Arc::new(std::sync::OnceLock::<GuideMatchBudget>::new());
         let interrupt_once = Arc::new(AtomicBool::new(true));
         let calls = Arc::new(AtomicUsize::new(0));
         // Instrument the existing numeric-precision boundary, not the matcher:
         // its first invocation proves that actual fuzzy scoring has started.
         checked(&index.0, |ctx| {
-            let cancel = budget.clone();
+            let cancel = armed_budget.clone();
             let once = interrupt_once.clone();
             let count = calls.clone();
             let precision = Function::new(ctx.clone(), move |value: f64| {
                 count.fetch_add(1, Ordering::Relaxed);
                 if once.swap(false, Ordering::Relaxed) {
-                    cancel.cancel();
+                    cancel.get().expect("query budget is armed").cancel();
                 }
                 value
             })?;
@@ -564,18 +564,21 @@ mod tests {
             let guide: Object = constructor.construct((rows.clone(), "web", measure, precision))?;
             ctx.globals().set("guideIndex", guide)
         })?;
+        // Fixture construction is not part of the query's cancellation budget.
+        let budget = GuideMatchBudget::new(Duration::from_secs(5));
+        armed_budget.set(budget.clone()).ok().unwrap();
         let input = ["Candidate Alpha"];
         assert!(index
             .resolve_web_with_budget("", &input, input[0], &budget)
             .is_err());
         let interrupted_calls = calls.swap(0, Ordering::Relaxed);
         assert!(interrupted_calls > 0);
+        let fresh = GuideIndex::web(rows)?;
         let fresh_budget = GuideMatchBudget::new(Duration::from_secs(5));
         let recovered = index.resolve_web_with_budget("", &input, input[0], &fresh_budget)?;
         // If only the outer budget check had failed after completion, the first
         // run would have made just as many scoring calls as this complete run.
         assert!(interrupted_calls < calls.load(Ordering::Relaxed));
-        let fresh = GuideIndex::web(rows)?;
         assert_eq!(
             recovered,
             fresh.resolve_web_with_budget("", &input, input[0], &fresh_budget)?
