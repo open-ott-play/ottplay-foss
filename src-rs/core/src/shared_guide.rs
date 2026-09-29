@@ -3,11 +3,19 @@
 use rquickjs::function::{Constructor, This};
 use rquickjs::{Context, Ctx, FromJs, Function, Object, Runtime};
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 const CORE: &str = include_str!("../../../vendor/ottplay-core.js");
 
 #[derive(Clone)]
-pub struct GuideIndex(Context);
+pub struct GuideIndex(Context, Option<Arc<AliasNames>>);
+
+#[derive(Default)]
+struct AliasNames {
+    exact: HashMap<String, Vec<String>>,
+    canonical: HashMap<String, Vec<String>>,
+}
 
 /// Batched XML events cross the VM boundary; the shared core owns record state.
 pub struct GuideRecords(Context);
@@ -160,7 +168,32 @@ impl GuideIndex {
             let index: Object = constructor.construct((rows, "rust", measure, precision))?;
             ctx.globals().set("guideIndex", index)
         })?;
-        Ok(Self(context))
+        Ok(Self(context, None))
+    }
+
+    /// HTTP snapshots retain every alias. The shared core owns normalization and
+    /// unique-name selection; these maps only index its keys by distinct IDs.
+    pub(crate) fn with_aliases(rows: Vec<Vec<String>>, aliases: Vec<Vec<String>>) -> anyhow::Result<Self> {
+        let mut index = Self::new(rows)?;
+        let keys: Vec<Vec<String>> = checked(&index.0, |ctx| {
+            let normalize: Function = ctx.eval(
+                "(function(core, rows) { return rows.map(function(row) { return [row[0], \
+                 core.normalizedChannelName(row[1]), core.canonicalChannelName(row[1])]; }); })",
+            )?;
+            normalize.call((core(&ctx)?, aliases))
+        })?;
+        let mut names = AliasNames::default();
+        for row in keys {
+            let [id, exact, canonical]: [String; 3] = row.try_into()
+                .map_err(|_| anyhow::anyhow!("Invalid shared guide alias keys"))?;
+            for (map, key) in [(&mut names.exact, exact), (&mut names.canonical, canonical)] {
+                if key.is_empty() { continue; }
+                let ids = map.entry(key).or_default();
+                if !ids.contains(&id) { ids.push(id.clone()); }
+            }
+        }
+        index.1 = Some(Arc::new(names));
+        Ok(index)
     }
 
     /// Reuse the loaded core when preparing playlist names on a new worker.
@@ -193,6 +226,20 @@ impl GuideIndex {
 
     pub fn match_name(&self, name: &str) -> anyhow::Result<Option<(String, f32)>> {
         checked(&self.0, |ctx| {
+            if let Some(aliases) = &self.1 {
+                let api = core(&ctx)?;
+                let exact: String = api.get::<_, Function>("normalizedChannelName")?.call((name,))?;
+                let canonical: String = api.get::<_, Function>("canonicalChannelName")?.call((name,))?;
+                let exact = aliases.exact.get(&exact).cloned().unwrap_or_default();
+                let canonical = aliases.canonical.get(&canonical).cloned().unwrap_or_default();
+                if !exact.is_empty() || !canonical.is_empty() {
+                    let found: Option<String> = api.get::<_, Function>("chooseGuideChannel")?
+                        .call((Vec::<String>::new(), vec![exact], vec![canonical]))?;
+                    // An ambiguous exact alias must not fall through to a random
+                    // first normalized name in the legacy fuzzy index.
+                    return Ok(found.map(|id| (id, 1.0)));
+                }
+            }
             let index: Object = ctx.globals().get("guideIndex")?;
             let method: Function = index.get("match")?;
             let found: Option<Object> = method.call((This(index), name))?;

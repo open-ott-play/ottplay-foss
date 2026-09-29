@@ -46,7 +46,7 @@ struct EpgSnapshot {
 
 impl EpgSnapshot {
     fn new(cache: XmltvCache) -> anyhow::Result<Self> {
-        let index = xmltv::build_match_index(&cache.channels)?;
+        let index = xmltv::build_http_match_index(&cache.channels)?;
         Ok(Self { cache, index })
     }
 }

@@ -498,6 +498,17 @@ pub fn build_match_index(channels: &Channels) -> anyhow::Result<MatchIndex> {
     )
 }
 
+/// The HTTP companion can match any retained alias without discarding regional
+/// shift markers before the shared core's unique exact-name decision.
+pub fn build_http_match_index(channels: &Channels) -> anyhow::Result<MatchIndex> {
+    let rows = channels.iter().map(|(id, channel)| vec![id.clone(), channel.name.clone()]).collect();
+    let aliases = channels.iter().flat_map(|(id, channel)| {
+        let names = if channel.names.is_empty() { std::slice::from_ref(&channel.name) } else { &channel.names };
+        names.iter().map(move |name| vec![id.clone(), name.clone()])
+    }).collect();
+    MatchIndex::with_aliases(rows, aliases)
+}
+
 pub fn match_in_index(name: &str, index: &MatchIndex) -> anyhow::Result<Option<(String, f32)>> {
     index.match_name(name)
 }
@@ -522,6 +533,10 @@ fn parse_xmltv_shared_reference(xml: &str) -> anyhow::Result<(Channels, Programs
 #[cfg(test)]
 #[path = "xmltv_differential_tests.rs"]
 mod differential_tests;
+
+#[cfg(test)]
+#[path = "http_alias_tests.rs"]
+mod http_alias_tests;
 
 #[cfg(test)]
 mod tests {
