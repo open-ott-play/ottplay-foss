@@ -441,11 +441,11 @@ w.sNoNumbersKeys = 0;
 const originalTranslate = w._;
 const translated = {
     "Access code": "Translated access code",
+    "Cancel pairing": "Translated cancel pairing",
     "Command server": "Translated server",
     Connected: "Translated connected",
     Disconnect: "Translated disconnect",
     "Find command server": "Translated find server",
-    "Cancel pairing": "Translated cancel pairing",
     "Server address": "Translated address",
     "Server device access code": "Translated code editor",
 };
