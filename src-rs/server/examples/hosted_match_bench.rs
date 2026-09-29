@@ -2,14 +2,14 @@
 use anyhow::{ensure, Result};
 use flate2::read::GzDecoder;
 use md5::{Digest, Md5};
-use ottplay_core::xmltv::{parse_xmltv_hosted, MatchIndex};
+use ottplay_core::xmltv::{parse_xmltv_hosted, MatchBudget, MatchIndex};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
     collections::HashSet,
     fs::File,
     io::{Read, Write},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 #[derive(Deserialize)]
@@ -154,8 +154,12 @@ fn run() -> Result<()> {
     let started = Instant::now();
     let mut mappings = Vec::new();
     let mut known_ms = 0.0;
+    let budget = MatchBudget::new(Duration::from_secs(8));
     for (position, row) in input.channels.iter().take(count).enumerate() {
-        let found = index.resolve(&row.tvg_id, &[&row.tvg_name, &row.name])?;
+        let resolved = index.resolve_web_with_budget(
+            &row.tvg_id, &[&row.tvg_name, &row.name], &row.name, &budget,
+        )?;
+        let found = resolved.as_ref().map(|(id, _)| id.clone());
         if position < 32 {
             ensure!(found.as_deref() == Some("18"), "REN_MAPPING");
         } else {
@@ -163,7 +167,7 @@ fn run() -> Result<()> {
         }
         if let Some(id) = found {
             ensure!(channels.contains_key(&id), "UNKNOWN_CHANNEL");
-            let shift = index.web_shift_seconds(&row.name)?;
+            let shift = resolved.expect("resolved matching row").1;
             ensure!(shift == 0, "REN_SHIFT");
             mappings.push((position, id, shift));
         }
@@ -172,7 +176,7 @@ fn run() -> Result<()> {
         }
     }
     let match_ms = ms(started);
-    emit(json!({"stage":"match","passed":true,"requested":count,
+    emit(json!({"stage":"match","passed":true,"adapter":"resolve_web_with_budget","budgetMs":8000,"requested":count,
         "mappings":mappings.len(),"unmatched":count-mappings.len(),
         "knownMatchMs":known_ms,"missMatchMs":match_ms-known_ms,"matchMs":match_ms,
         "mappingsMd5":digest(&mappings)?,"retainedProgrammeChannels":programs.len()}))
