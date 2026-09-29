@@ -20,8 +20,7 @@ function ottDebugIsEnabled(): boolean {
         )
             return true;
         var q = typeof location !== "undefined" ? location.search || "" : "";
-        if (q.indexOf("debug=1") !== -1 || q.indexOf("debug=true") !== -1)
-            return true;
+        if (/(?:^|[?&])debug=(?:1|true)(?:&|$)/.test(q)) return true;
     } catch (_e) {}
     return false;
 }
@@ -388,7 +387,7 @@ function ottDebugUpdateHud(): void {
         parts.push((window as any).__ottDebugInput());
     if (!v) {
         parts.push("(no video)");
-        _ottDbgHudEl.innerHTML = parts.join(" · ");
+        _ottDbgHudEl.textContent = parts.join(" · ");
         return;
     }
     parts.push(
@@ -429,11 +428,16 @@ function ottDebugUpdateHud(): void {
         _ottDbgStallSince > 0
             ? Math.round((Date.now() - _ottDbgStallSince) / 1000) + "s"
             : "-";
-    parts.push("stallAge=" + stallAge + " err=" + (_ottDbgLastError || "-"));
+    parts.push(
+        "stallAge=" +
+            stallAge +
+            " err=" +
+            ottDebugRedactText(_ottDbgLastError || "-")
+    );
     var dropped = ottDebugDroppedFrames(v);
     if (dropped >= 0) parts.push("droppedFrames=" + dropped);
     parts.push("ring=" + _ottDbgRing.length + "/" + OTT_DEBUG_RING_MAX);
-    _ottDbgHudEl.innerHTML = parts.join(" · ");
+    _ottDbgHudEl.textContent = parts.join(" · ");
 }
 
 function ottDebugBuildIngestBody(batch: OttDebugEvent[]): string {
@@ -912,6 +916,11 @@ function ottDebugEnable(): void {
     console.info(
         "[ottDebug] enabled port=" + ottDebugPort() + " id=" + _ottDbgPlayerId
     );
+    // Restore before creating the HUD; absence keeps the default visible state.
+    try {
+        if (typeof localStorage !== "undefined")
+            _ottDbgHudOn = localStorage.getItem("ottplay_debug_hud") !== "0";
+    } catch (_e) {}
     ottDebugEnsureHud();
     ottDebugPush("sys", "boot", {
         href: typeof location !== "undefined" ? location.href : "",
@@ -919,16 +928,6 @@ function ottDebugEnable(): void {
         playerId: _ottDbgPlayerId,
         port: ottDebugPort(),
     });
-
-    // Restore HUD preference from localStorage
-    try {
-        if (
-            typeof localStorage !== "undefined" &&
-            localStorage.getItem("ottplay_debug_hud") === "1"
-        ) {
-            _ottDbgHudOn = true;
-        }
-    } catch (_e) {}
 
     if (_ottDbgHudTimer === null) {
         _ottDbgHudTimer = setInterval(ottDebugUpdateHud, OTT_DEBUG_HUD_MS);
