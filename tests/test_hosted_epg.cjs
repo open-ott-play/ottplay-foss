@@ -22,6 +22,69 @@ const workerFactory = workerAst.statements.find(
         ts.isFunctionDeclaration(node) &&
         node.name.text === "createHostedEpgWorker"
 );
+// Exercise the real factory's scheduler and close lifecycle. Only the private
+// enqueue entry point is exposed; no parser or scheduler implementation is mocked.
+const schedulerFactory = ts.transpileModule(
+    workerFactory
+        .getText(workerAst)
+        .replace(
+            "env.onmessage = function",
+            "env.enqueueParseForTest = yieldParse; env.onmessage = function"
+        ),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+for (const channelSupport of ["available", "absent", "throws"]) {
+    const messages = [],
+        timers = [],
+        tasks = [],
+        ports = [];
+    const env = {
+        clearInterval() {},
+        clearTimeout() {},
+        postMessage: (message) => messages.push(message),
+        setTimeout: (callback, delay) => {
+            assert.equal(delay, 0);
+            timers.push(callback);
+        },
+    };
+    if (channelSupport !== "absent") {
+        env.MessageChannel = function () {
+            if (channelSupport === "throws") throw new Error("unavailable");
+            this.port1 = { close: () => ports.push("read"), onmessage: null };
+            this.port2 = {
+                close: () => ports.push("write"),
+                postMessage: () => tasks.push(this.port1.onmessage),
+            };
+        };
+    }
+    vm.runInNewContext(schedulerFactory + "\ncreateHostedEpgWorker(env);", {
+        env,
+    });
+    const queue = channelSupport === "available" ? tasks : timers;
+    let calls = 0;
+    env.enqueueParseForTest(() => calls++);
+    assert.equal(calls, 0, "parsing must yield rather than recurse");
+    assert.equal(queue.length, 1);
+    queue.shift()();
+    assert.equal(calls, 1);
+    env.enqueueParseForTest(() => calls++);
+    const pending = queue.shift();
+    env.onmessage({ data: { type: "close" } });
+    pending();
+    env.enqueueParseForTest(() => calls++);
+    assert.equal(calls, 1, "close cancels queued parsing and future work");
+    assert.equal(queue.length, 0);
+    assert.equal(messages.at(-1).type, "closed");
+    assert.deepEqual(
+        ports,
+        channelSupport === "available" ? ["read", "write"] : []
+    );
+    env.onmessage({ data: { type: "close" } });
+    assert.equal(ports.length, channelSupport === "available" ? 2 : 0);
+}
+console.log(
+    "PASS hosted EPG parser yielding, legacy fallback and queued close"
+);
 const cleanupDeclaration = workerFactory.body.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name.text === "cleanup"
 );
@@ -249,6 +312,7 @@ function downloadFixture() {
     const worker = new Function(
         "env",
         "var request = null, downloadTimer = null, loading = true, closed = false, " +
+            "parseChannel = null, parseNext = null, " +
             "source = -1, downloaded = 0, total = 0, httpStatus = 0, phase = 'download', " +
             "timer = null, database = null, active = {}, scheduled = 0, parsed = 0, " +
             "messages = [], WIRE_LIMIT = 96 * 1024 * 1024, " +
@@ -476,6 +540,7 @@ for (const outcome of ["commit", "abort", "throw", "no-owner", "no-database"]) {
         "transaction",
         "owner",
         "var leaseTimer=null, timer=null, releasing=false, released=[], closed=false, loading=true; " +
+            "var parseChannel=null, parseNext=null; " +
             "function clearDownload() {}\n" +
             releaseSource +
             "\nreturn {release:release,close:close};"

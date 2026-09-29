@@ -31,6 +31,29 @@ function createHostedEpgWorker(env: any): void {
     var CACHE_BYTES = 192 * 1024 * 1024;
     var CHANNEL_BYTES = 8 * 1024 * 1024;
     var CHANNEL_RECORDS = 20000;
+    var parseChannel: any = null;
+    var parseNext: (() => void) | null = null;
+    // Nested zero-delay timers are clamped by browsers. A message yields to
+    // other worker tasks without adding that delay to every parser slice.
+    if (typeof env.MessageChannel === "function") {
+        try {
+            parseChannel = new env.MessageChannel();
+            parseChannel.port1.onmessage = continueParse;
+        } catch (_) {
+            parseChannel = null;
+        }
+    }
+    function continueParse(): void {
+        var next = parseNext;
+        parseNext = null;
+        if (!closed && next) next();
+    }
+    function yieldParse(next: () => void): void {
+        if (closed) return;
+        parseNext = next;
+        if (parseChannel) parseChannel.port2.postMessage(null);
+        else env.setTimeout(continueParse, 0);
+    }
     function xmlByteLength(value: string): number {
         // The input limit is UTF-8 XML bytes, not the cumulative UTF-16 storage
         // of transient parser chunks. Only bounded chunks are held in memory.
@@ -128,6 +151,13 @@ function createHostedEpgWorker(env: any): void {
     }
     function close(): void {
         closed = true;
+        parseNext = null;
+        if (parseChannel) {
+            parseChannel.port1.onmessage = null;
+            parseChannel.port1.close();
+            parseChannel.port2.close();
+            parseChannel = null;
+        }
         loading = false;
         env.clearTimeout(timer);
         clearDownload(true);
@@ -828,7 +858,9 @@ function createHostedEpgWorker(env: any): void {
                 } while (
                     offset < bytes.length &&
                     pendingBytes < 256 * 1024 &&
-                    Date.now() - started < 12
+                    // Shorter message-driven slices keep guide/close messages
+                    // responsive; legacy timer scheduling retains its budget.
+                    Date.now() - started < (parseChannel ? 4 : 12)
                 );
                 if (offset === bytes.length) {
                     if (inflate && (!inflate.ended || inflate.err))
@@ -858,7 +890,7 @@ function createHostedEpgWorker(env: any): void {
                 if (ended) {
                     bytes = new Uint8Array(0);
                     complete(retained);
-                } else env.setTimeout(step, 0);
+                } else yieldParse(step);
             });
         }
         step();
