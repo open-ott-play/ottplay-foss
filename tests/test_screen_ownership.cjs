@@ -148,6 +148,7 @@ function fixture() {
             "popupList",
             "hsvToRgb",
             "bindColorDialogInput",
+            "showColorDialog",
             "colorDialog",
             "selColorDialog",
             "backColorDialog",

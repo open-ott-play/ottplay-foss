@@ -2698,129 +2698,84 @@ function bindColorDialogInput(
     preview();
 }
 
-/**
- * Open the foreground color picker dialog (HSV selector).
- * The user adjusts hue (LEFT/RIGHT) and saturation (UP/DOWN) with presets via color keys.
- * The selected color is stored in `window.eSHLcolor` as "hue,saturation".
- *
- * @returns void
- * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer/detail. Shows `#listAbout` with color controls.
- *             Registers `aboutKeyHandler` for color adjustment keys.
- * @analysis The live preview updates the `#step` span's CSS color. YELLOW/GREEN/BLUE keys set predefined hues.
- *             ENTER saves and closes; RETURN closes without saving (fall-through in switch).
- */
-export function colorDialog(): void {
-    var s = 50,
-        n = 85;
-    s = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
-    n = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
+/** Share color-picker layout without changing the public dialog identities. */
+function showColorDialog(
+    settingKey: string,
+    fallback: string,
+    caption: string,
+    value: number,
+    foreground = false
+): void {
+    var setting = (window as any)[settingKey] || fallback;
+    var hue = Number.parseInt(setting.split(",")[0]);
+    var saturation = Number.parseInt(setting.split(",")[1]);
     saveListPanelState();
-    if (listCaptionElement) listCaptionElement.innerHTML = _("Color spectrum");
+    if (listCaptionElement) listCaptionElement.innerHTML = _(caption);
     if (listFooterElement)
         listFooterElement.innerHTML =
             renderButtonHint(keys.RETURN, strRETURN, "Close") +
             renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
+    var preview = foreground
+        ? '<span id="step" style="font-size: 150%;">&nbsp;1234567890&nbsp;<span style="background-color:' +
+          (window as any).curColorB +
+          '">&nbsp;1234567890&nbsp;</span></span>'
+        : '<span id="step" style="font-size: 150%;background-color:' +
+          (window as any).curColorB +
+          '">&nbsp;1234567890&nbsp;</span>';
+    var controls = foreground
+        ? '<br/><br><div class="btn" onclick="_doKey(keys.LEFT);">' +
+          strLEFT +
+          '</div>&nbsp;<div class="btn" onclick="_doKey(keys.RIGHT);">' +
+          strRIGHT +
+          "</div>&nbsp;" +
+          _("Color") +
+          '<br><div class="btn" onclick="_doKey(keys.UP);">' +
+          strUP +
+          '</div>&nbsp;<div class="btn" onclick="_doKey(keys.DOWN);">' +
+          strDOWN +
+          "</div>&nbsp;" +
+          _("Saturation") +
+          "<br>" +
+          renderButtonHint(keys.YELLOW, "", "Yellow") +
+          "<br>" +
+          renderButtonHint(keys.GREEN, "", "Green") +
+          "<br>" +
+          renderButtonHint(keys.BLUE, "", "Blue")
+        : "";
     $("#listAbout")
         .html(
             '<div style="font-size:larger;">' +
                 _("Color") +
-                ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;">&nbsp;1234567890&nbsp;<span style="background-color:' +
-                (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span></span>&nbsp;<br/>' +
-                '<br><div class="btn" onclick="_doKey(keys.LEFT);">' +
-                strLEFT +
-                '</div>&nbsp;<div class="btn" onclick="_doKey(keys.RIGHT);">' +
-                strRIGHT +
-                "</div>&nbsp;" +
-                _("Color") +
-                '<br><div class="btn" onclick="_doKey(keys.UP);">' +
-                strUP +
-                '</div>&nbsp;<div class="btn" onclick="_doKey(keys.DOWN);">' +
-                strDOWN +
-                "</div>&nbsp;" +
-                _("Saturation") +
-                "<br>" +
-                renderButtonHint(keys.YELLOW, "", "Yellow") +
-                "<br>" +
-                renderButtonHint(keys.GREEN, "", "Green") +
-                "<br>" +
-                renderButtonHint(keys.BLUE, "", "Blue") +
+                ":<br/><br/>&nbsp;" +
+                preview +
+                "&nbsp;" +
+                controls +
                 "</div>"
         )
         .show();
-    bindColorDialogInput(s, n, 100, "color", "eSHLcolor");
+    bindColorDialogInput(
+        hue,
+        saturation,
+        value,
+        foreground ? "color" : "background-color",
+        settingKey
+    );
 }
 
-/**
- * Open the selection/background text color picker (HSV with fixed value=50).
- * Hue (LEFT/RIGHT) and saturation (UP/DOWN) are adjustable. The selected color is stored
- * in `window.eSHLcolSel`.
- *
- * @returns void
- * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer. Shows `#listAbout` with preview.
- *             Registers `aboutKeyHandler`. Updates `#step` background-color in real time.
- * @analysis Unlike `colorDialog`, this one modifies background-color (not color) and uses V=50.
- */
+/** Adjust foreground text color, stored in eSHLcolor. */
+export function colorDialog(): void {
+    showColorDialog("eSHLcolor", "50,85", "Color spectrum", 100, true);
+}
+
+/** Adjust the selection background at HSV value 50, stored in eSHLcolSel. */
 export function selColorDialog(): void {
-    var s = Number.parseInt(
-        ((window as any).eSHLcolSel || "50,85").split(",")[0]
-    );
-    var n = Number.parseInt(
-        ((window as any).eSHLcolSel || "50,85").split(",")[1]
-    );
-    saveListPanelState();
-    if (listCaptionElement) listCaptionElement.innerHTML = _("Select color");
-    if (listFooterElement)
-        listFooterElement.innerHTML =
-            renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            renderButtonHint(keys.ENTER, strENTER, "Set");
-    if (listDetailElement) listDetailElement.innerHTML = "";
-    $("#listAbout")
-        .html(
-            '<div style="font-size:larger;">' +
-                _("Color") +
-                ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
-                (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
-        )
-        .show();
-    bindColorDialogInput(s, n, 50, "background-color", "eSHLcolSel");
+    showColorDialog("eSHLcolSel", "50,85", "Select color", 50);
 }
 
-/**
- * Open the background color picker dialog. Same interface as `colorDialog` but stores
- * the result in `window.eSHLcolorB` and applies it as background-color.
- *
- * @returns void
- * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer. Shows `#listAbout`.
- *             Registers `aboutKeyHandler`. Updates `#step` background-color preview.
- */
+/** Adjust the list background at HSV value 100, stored in eSHLcolorB. */
 export function backColorDialog(): void {
-    var s = Number.parseInt(
-        ((window as any).eSHLcolorB || "255,0").split(",")[0]
-    );
-    var n = Number.parseInt(
-        ((window as any).eSHLcolorB || "255,0").split(",")[1]
-    );
-    saveListPanelState();
-    if (listCaptionElement)
-        listCaptionElement.innerHTML = _("Background color");
-    if (listFooterElement)
-        listFooterElement.innerHTML =
-            renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            renderButtonHint(keys.ENTER, strENTER, "Set");
-    if (listDetailElement) listDetailElement.innerHTML = "";
-    $("#listAbout")
-        .html(
-            '<div style="font-size:larger;">' +
-                _("Color") +
-                ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
-                (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
-        )
-        .show();
-    bindColorDialogInput(s, n, 100, "background-color", "eSHLcolorB");
+    showColorDialog("eSHLcolorB", "255,0", "Background color", 100);
 }
 
 /* ---------------------------------------------------------------------------
