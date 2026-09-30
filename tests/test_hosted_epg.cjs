@@ -1796,8 +1796,8 @@ const server = http.createServer((request, response) => {
                         tvgName: "",
                     },
                 ],
-                sources: [url],
                 refreshMs: 7200000,
+                sources: [url],
                 type: "load",
             };
             const signature = JSON.stringify([
@@ -1821,32 +1821,32 @@ const server = http.createServer((request, response) => {
                     const db = opening.result,
                         tx = db.transaction(["meta", "rows"], "readwrite");
                     tx.objectStore("meta").put({
-                        key: "active",
                         fetched: Date.now(),
                         generation: "beta6",
-                        signature,
-                        records: 1,
+                        key: "active",
                         mappings: {
                             brand: {
                                 archiveHours: 48,
                                 channel: "beta6|0|18",
+                                logo: "",
                                 priority: 0,
                                 shift: -3600,
-                                logo: "",
                             },
                         },
+                        records: 1,
+                        signature,
                     });
                     tx.objectStore("rows").put({
-                        key: "beta6|0|18|0",
-                        generation: "beta6",
                         channel: "beta6|0|18",
+                        generation: "beta6",
+                        key: "beta6|0|18|0",
                         rows: [
                             {
-                                time: now - 600,
-                                time_to: now + 3600,
-                                name: "Wrong beta6 brand offset",
                                 descr: "",
                                 icon: "",
+                                name: "Wrong beta6 brand offset",
+                                time: now - 600,
+                                time_to: now + 3600,
                             },
                         ],
                     });

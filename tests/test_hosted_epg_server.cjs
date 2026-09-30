@@ -198,8 +198,8 @@ async function main() {
             guideDelay: false,
             guideErrors: [],
             malformedRows: false,
-            matchError: false,
             matchDelay: false,
+            matchError: false,
             matchGenerations: [],
             peak: 0,
             running: 0,
@@ -493,23 +493,23 @@ async function main() {
                         store = tx.objectStore("cache");
                     store.put(
                         {
-                            version: 1,
-                            source: "epg-one",
-                            generation: "beta6",
                             fetchedAt: Date.now(),
+                            generation: "beta6",
+                            mappings: {
+                                brand: {
+                                    channelId: "1",
+                                    logo: "",
+                                    shift: -3600,
+                                },
+                            },
                             refreshMs: 7200000,
-                            stale: false,
                             signature: JSON.stringify([
                                 "epg-one",
                                 [[row.id, row.name, row.epg, "", row.rec]],
                             ]),
-                            mappings: {
-                                brand: {
-                                    channelId: "1",
-                                    shift: -3600,
-                                    logo: "",
-                                },
-                            },
+                            source: "epg-one",
+                            stale: false,
+                            version: 1,
                         },
                         "active"
                     );
@@ -517,16 +517,16 @@ async function main() {
                         {
                             bytes: 200,
                             generation: "beta6",
-                            used: Date.now(),
                             rows: [
                                 {
-                                    time: now - 4200,
-                                    time_to: now + 600,
-                                    name: "Wrong beta6 brand offset",
                                     descr: "",
                                     icon: "",
+                                    name: "Wrong beta6 brand offset",
+                                    time: now - 4200,
+                                    time_to: now + 600,
                                 },
                             ],
+                            used: Date.now(),
                         },
                         JSON.stringify(["1", -3600, row.rec])
                     );
