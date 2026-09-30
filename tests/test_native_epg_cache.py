@@ -21,6 +21,7 @@ import tempfile
 from native_epg_policy_cases import methods
 from native_epg_fallback_cases import fallback_methods
 from native_epg_resource_cases import resource_methods, RESOURCE_STUBS
+from native_epg_index_cases import index_methods, instrument_index
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -206,8 +207,9 @@ SWIFT_TESTS = r"""
         assert(parsed.icons["wanted"] == "https://icons.test/a.png")
         let guide = try SharedGuide()
         let guideRows = parsed.channels.keys.sorted().flatMap { id in (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0] } }
-        assert(try! guide.resolve(guideRows, id: "wanted", names: ["", "Private +4"]) == "wanted")
-        assert(try! guide.resolve(guideRows, id: "", names: ["Alias", "Renamed"]) == "wanted")
+        let guideIndex = try guide.index(guideRows)
+        assert(try! guide.resolve(guideIndex, id: "wanted", names: ["", "Private +4"]) == "wanted")
+        assert(try! guide.resolve(guideIndex, id: "", names: ["Alias", "Renamed"]) == "wanted")
         let plus = try buildSlice(parsed, channelId: "42", ch: "Private +4", hash: "wanted", timeShiftHours: 0, archiveHours: 168)
         let plusRows = plus["epg_data"] as! [[String: Any]]
         assert(plusRows[0]["time"] as! Int == now + 14400)
@@ -460,7 +462,7 @@ def main():
             swift = swift.replace('Bundle.main.url(forResource: "ottplay-core.manifest", withExtension: "json")', f'Optional(URL(fileURLWithPath: {receipt}))')
             swift = swift.replace("@objc(MobileXmltvEpg)", "").replace("@objc ", "")
             # Swift's assert autoclosure cannot throw; evaluate the real read first.
-            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[0] + fallback_methods()[0]
+            tests = SWIFT_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[0] + fallback_methods()[0] + index_methods()
             # Existing policy fixtures compare small text values. Adapt those
             # test inputs/assertions to the new owned-document API; the shipping
             # fetch/cache/decompress/parse/load methods remain unchanged.
@@ -483,8 +485,9 @@ def main():
             tests += resource_methods()
             swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
             swift += RESOURCE_STUBS
-            swift += "\nMobileXmltvEpg.requestHandler = { request, completion in URLSession.shared.dataTask(with: request.url!, completionHandler: completion).resume() }\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\ntry MobileXmltvEpg().runFallbackTests()\ntry MobileXmltvEpg().runResourceTests()\ntry runDownloadResourceTests()\n"
+            swift += "\nMobileXmltvEpg.requestHandler = { request, completion in URLSession.shared.dataTask(with: request.url!, completionHandler: completion).resume() }\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\ntry MobileXmltvEpg().runFallbackTests()\ntry MobileXmltvEpg().runResourceTests()\ntry MobileXmltvEpg().runIndexTests()\ntry runDownloadResourceTests()\n"
             swift = swift.replace("Date().timeIntervalSince1970", "FixtureClock.now")
+            swift = instrument_index(swift)
             (tmp / "CacheTest.swift").write_text(swift)
             run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
 
