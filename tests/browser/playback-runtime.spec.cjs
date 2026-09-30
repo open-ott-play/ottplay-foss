@@ -1071,6 +1071,13 @@ test("built driver, media session and journal stay connected through playback", 
         );
     });
     await page.goto("/f/pc/", { waitUntil: "load" });
+    // iPhone requires this element policy as well as the WKWebView's inline
+    // permission. Desktop playback alone cannot detect system fullscreen takeover.
+    await expect(page.locator("#video")).toHaveJSProperty("playsInline", true);
+    await expect(page.locator("#videopip")).toHaveJSProperty(
+        "playsInline",
+        true
+    );
     await expect
         .poll(() =>
             page.evaluate(() => {
@@ -1085,6 +1092,46 @@ test("built driver, media session and journal stay connected through playback", 
         )
         .toBe(true);
     expect(providerScripts).toEqual([]);
+
+    const source = await page.evaluate(() => {
+        window.__overlayMediaEvents = [];
+        for (const type of ["pause", "emptied"])
+            video.addEventListener(type, () =>
+                window.__overlayMediaEvents.push(type)
+            );
+        window.infoBarHide();
+        return video.currentSrc;
+    });
+    await page.mouse.click(640, 670);
+    await expect(page.locator("#info1")).toBeVisible();
+    // Both the menu preview and full-size overlay must keep the same decoder
+    // running, instead of hiding the problem by stopping and restarting video.
+    for (const noSmall of [0, 1]) {
+        await page.evaluate((value) => {
+            window.settings.noSmall = window.sNoSmall = value;
+        }, noSmall);
+        await page.mouse.click(640, 70);
+        await expect(
+            page.locator(noSmall ? "#list_osd" : "#list_window")
+        ).toBeVisible();
+        // WebKit may decode this entire short fixture ahead of presentation,
+        // so measure the playhead after the menu opens, not decoded frame count.
+        const position = await page.evaluate(() => video.currentTime);
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (before) => Math.abs(video.currentTime - before),
+                    position
+                )
+            )
+            .toBeGreaterThan(0.05);
+        expect(await page.evaluate(() => video.paused)).toBe(false);
+        expect(await page.evaluate(() => video.currentSrc)).toBe(source);
+        await page.evaluate(() => window._doKey(window.keys.RETURN));
+        await expect(page.locator("#list_osd")).toBeHidden();
+        await expect(page.locator("#list_window")).toBeHidden();
+    }
+    expect(await page.evaluate(() => window.__overlayMediaEvents)).toEqual([]);
 
     // Use the actual user-facing media command. The provider supplies the URL,
     // while engine events drive typed state and the source-scoped media journal.
