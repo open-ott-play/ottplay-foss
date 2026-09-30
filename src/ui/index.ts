@@ -305,35 +305,44 @@ export function uiInit(): void {
                 top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
     });
-    var dialogRoot = document.getElementById("dialogbox");
-    if (dialogRoot && !(dialogRoot as any).__ottDialogButtonsBound) {
-        (dialogRoot as any).__ottDialogButtonsBound = true;
-        var dispatchDialogButton = function (event: Event): void {
+    ["dialogbox", "listPopUp"].forEach(function (id) {
+        var root = document.getElementById(id);
+        if (!root || (root as any).__ottButtonsBound) return;
+        (root as any).__ottButtonsBound = true;
+        var popup = id === "listPopUp";
+        var dispatchButton = function (event: Event): void {
             var target = event.target as Node | null;
             if (target && target.nodeType !== 1) target = target.parentNode;
             var button = target && $(target).closest("span[data-ott-key]")[0];
-            if (!button || !dialogRoot!.contains(button)) return;
-            // Consume before checking ownership so an obsolete control cannot
-            // activate its inline fallback or the video surface underneath.
+            if (!button || !root!.contains(button)) return;
+            // Consume before ownership checks so obsolete controls cannot
+            // activate inline fallbacks or the video surface underneath.
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
             var w = window as any;
-            var owner = w.__ottClassicScreenPort.owner("dialog");
+            var port = w.__ottClassicScreenPort;
+            var owner = popup ? port.listOwner() : port.owner("dialog");
             var key = Number(button.getAttribute("data-ott-key"));
-            if (owner && owner.foreground() && key && isFinite(key))
+            if (
+                owner &&
+                owner.foreground() &&
+                (!popup || $(root!).is(":visible")) &&
+                key &&
+                isFinite(key)
+            )
                 w._doKey(key, event);
         };
-        dialogRoot.addEventListener("click", dispatchDialogButton, true);
-        dialogRoot.addEventListener(
+        root.addEventListener("click", dispatchButton, true);
+        root.addEventListener(
             "keydown",
             function (event: KeyboardEvent): void {
                 if (event.keyCode === 13 || event.keyCode === 32)
-                    dispatchDialogButton(event);
+                    dispatchButton(event);
             },
             true
         );
-    }
+    });
 
     // Click on info bar toggles channel info display
     $infoBar.on("click.ottUi", function (e: any) {
