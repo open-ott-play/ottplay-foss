@@ -103,7 +103,11 @@ export function createCommandServer(
     ) => () => void,
     persist: (config: CommandServerConfig) => void,
     dispatch: (command: any) => string | void,
-    execute?: (request: any, done: (result: any) => void) => (() => void) | void
+    execute?: (
+        request: any,
+        done: (result: any) => void,
+        afterReply: (effect: () => void) => void
+    ) => (() => void) | void
 ): any {
     var config: CommandServerConfig = {
         address: "",
@@ -131,6 +135,12 @@ export function createCommandServer(
     var historySize = 0;
     var moreRequests = false;
     var cancelExecution: (() => void) | null = null;
+    // Delivery effects are local capabilities, never part of JSON or replay history.
+    var pendingEffect: {
+        body: string;
+        deadline: number;
+        run: () => void;
+    } | null = null;
 
     function status(): any {
         return {
@@ -161,6 +171,7 @@ export function createCommandServer(
             } catch (_error) {}
         }
         responses = [];
+        pendingEffect = null;
         moreRequests = false;
         if (abort) {
             try {
@@ -231,6 +242,7 @@ export function createCommandServer(
             // The server may have restarted or expired a request during execution.
             if (responseToSend && response && response.status === 404) {
                 responses.shift();
+                pendingEffect = null;
                 schedule(1000);
                 return;
             }
@@ -252,6 +264,19 @@ export function createCommandServer(
                     return;
                 }
                 responses.shift();
+                var effect = pendingEffect;
+                pendingEffect = null;
+                if (
+                    effect &&
+                    effect.body === responseToSend &&
+                    Date.now() < effect.deadline
+                ) {
+                    // Retire before invocation: lost ACKs or reentrant reloads cannot replay it.
+                    try {
+                        effect.run();
+                    } catch (_error) {}
+                    if (current !== generation || !config.enabled) return;
+                }
             } else if (ids) {
                 if (!data || data.status !== "ok") {
                     failed();
@@ -353,31 +378,31 @@ export function createCommandServer(
                         else {
                             active = true;
                             var completed = false;
-                            var executionTimer = w.setTimeout(
-                                function () {
-                                    var abortWork = cancelExecution;
-                                    finishExecution({
-                                        data: {
-                                            error: "Request timed out in the player.",
-                                        },
-                                        status: "rejected",
-                                    });
-                                    if (abortWork) {
-                                        try {
-                                            abortWork();
-                                        } catch (_error) {}
-                                    }
-                                },
-                                Math.min(
-                                    40000,
-                                    Math.max(
-                                        1,
-                                        (item.expires_at - data.server_time) *
-                                            1000 -
-                                            (Date.now() - requestStarted)
-                                    )
+                            var afterReplyEffect: (() => void) | null = null;
+                            var executionMs = Math.min(
+                                40000,
+                                Math.max(
+                                    1,
+                                    (item.expires_at - data.server_time) *
+                                        1000 -
+                                        (Date.now() - requestStarted)
                                 )
                             );
+                            var executionDeadline = Date.now() + executionMs;
+                            var executionTimer = w.setTimeout(function () {
+                                var abortWork = cancelExecution;
+                                finishExecution({
+                                    data: {
+                                        error: "Request timed out in the player.",
+                                    },
+                                    status: "rejected",
+                                });
+                                if (abortWork) {
+                                    try {
+                                        abortWork();
+                                    } catch (_error) {}
+                                }
+                            }, executionMs);
                             var finishExecution = function (value: any): void {
                                 if (
                                     completed ||
@@ -421,7 +446,8 @@ export function createCommandServer(
                                     error =
                                         "Result is too large. Narrow the search.";
                                 }
-                                if (!serialized)
+                                if (!serialized) {
+                                    resultStatus = "rejected";
                                     serialized = JSON.stringify({
                                         data: {
                                             error: error,
@@ -429,8 +455,20 @@ export function createCommandServer(
                                         id: item.id,
                                         status: "rejected",
                                     });
+                                }
                                 if (current !== generation || !config.enabled)
                                     return;
+                                if (
+                                    afterReplyEffect &&
+                                    resultStatus === "ok" &&
+                                    Date.now() < executionDeadline
+                                )
+                                    pendingEffect = {
+                                        body: serialized,
+                                        deadline: executionDeadline,
+                                        run: afterReplyEffect,
+                                    };
+                                afterReplyEffect = null;
                                 responseHistory[item.id] = serialized;
                                 historySize += serialized.length;
                                 responseOrder.push(item.id);
@@ -448,7 +486,20 @@ export function createCommandServer(
                                 schedule(0);
                             };
                             try {
-                                var cancelWork = execute(item, finishExecution);
+                                var cancelWork = execute(
+                                    item,
+                                    finishExecution,
+                                    function (effect: () => void) {
+                                        if (
+                                            !completed &&
+                                            current === generation &&
+                                            config.enabled &&
+                                            !afterReplyEffect &&
+                                            typeof effect === "function"
+                                        )
+                                            afterReplyEffect = effect;
+                                    }
+                                );
                                 if (current !== generation || !config.enabled) {
                                     w.clearTimeout(executionTimer);
                                     if (cancelWork) {

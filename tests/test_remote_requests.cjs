@@ -96,18 +96,118 @@ const ctx = {
                       return true;
                   },
               }
-            : name === "../utils/caseless"
-              ? casingContext.exports
-              : { handleCommand: () => "accepted" },
+            : name === "./remote-profiles"
+              ? loadRemoteHelper("remote-profiles")
+              : name === "../plugins/vportal"
+                ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
+                : name === "./remote-restart"
+                  ? loadRemoteHelper("remote-restart")
+                  : name === "../utils/caseless"
+                    ? casingContext.exports
+                    : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };
+function loadRemoteHelper(name, file = "src/commands/" + name + ".ts") {
+    const helper = ts.transpileModule(fs.readFileSync(file, "utf8"), {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }).outputText;
+    acorn.parse(helper, { ecmaVersion: 5 });
+    const context = vm.createContext({ ...ctx, exports: {} });
+    vm.runInContext(helper, context);
+    return context.exports;
+}
 vm.createContext(ctx);
 sharedCore(ctx, { vendorOnly: true });
 vm.runInContext(code, ctx);
 function call(action, params = {}) {
     return new Promise((resolve) =>
         ctx.exports.executeRemoteRequest({ action, params }, resolve)
+    );
+}
+function checkRealSettingsPolicy() {
+    let saves = 0,
+        reloads = 0,
+        restarts = 0;
+    const queryHost = {
+        ...host,
+        __ottActiveProviderDriver: {
+            ...host.__ottActiveProviderDriver,
+            saveCredentials: () => saves++,
+        },
+        __ottParental: undefined,
+        loadPlaylist: () => reloads++,
+        parentAccess: false,
+        parentPIN: "1234",
+        restart: () => restarts++,
+    };
+    const queryContext = vm.createContext({
+        ...ctx,
+        exports: {},
+        window: queryHost,
+    });
+    require("./helpers/access-runtime.cjs")(queryContext);
+    vm.runInContext(code, queryContext);
+    function policy(settings, providers, channels) {
+        queryHost.settings = {
+            psChannels: channels,
+            psOptions: settings,
+            requirePinForProviderSelection: providers,
+        };
+        queryHost.parentAccess = false;
+    }
+    function run(action, params) {
+        let result, effect;
+        queryContext.exports.executeRemoteRequest(
+            { action, params },
+            (value) => {
+                result = value;
+            },
+            (value) => {
+                effect = value;
+            }
+        );
+        return { effect, result };
+    }
+    const edit = { provider: "xtream", settings: { username: "changed" } };
+    for (const selected of [
+        [1, 0, 0],
+        [0, 1, 0],
+    ]) {
+        policy(...selected);
+        assert.equal(run("provider_settings", edit).result.status, "rejected");
+        const restart = run("restart", { target: "player" });
+        assert.equal(restart.result.status, "rejected");
+        assert.equal(restart.effect, undefined);
+    }
+    assert.equal(saves + reloads + restarts, 0);
+    policy(0, 0, 1);
+    assert.equal(queryHost.__ottParental.needs("channels"), true);
+    assert.equal(run("provider_settings", edit).result.status, "ok");
+    assert.equal(saves, 1);
+    assert.equal(reloads, 1);
+    const accepted = run("restart", { target: "player" });
+    assert.equal(accepted.result.status, "ok");
+    assert.equal(restarts, 0, "player restart waits for acknowledged delivery");
+    policy(1, 0, 0);
+    accepted.effect();
+    assert.equal(
+        restarts,
+        0,
+        "a settings lock acquired before ACK cancels restart"
+    );
+    policy(0, 0, 1);
+    run("restart", { target: "player" }).effect();
+    assert.equal(
+        restarts,
+        1,
+        "channel policy alone does not lock player settings"
+    );
+    console.log(
+        "PASS remote real settings policy: settings/providers locks, channels-only access and pre-ACK revocation"
     );
 }
 function checkUnicodeReference() {
@@ -849,6 +949,7 @@ function checkRemoteEpgCatalog() {
 }
 
 (async () => {
+    checkRealSettingsPolicy();
     checkRemoteEpgCatalog();
     await checkStatusDiagnostics();
     checkUnicodeReference();
@@ -955,6 +1056,7 @@ function checkRemoteEpgCatalog() {
     host.commandChannelsReady = false;
     r = await call("channels");
     assert.equal(r.status, "rejected");
+    require("./test_remote_profiles.cjs");
     console.log(
         "PASS remote requests: ES5, stable channel numbering, Cyrillic search, ambiguity, EPG window, provider policy and credential privacy"
     );
