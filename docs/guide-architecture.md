@@ -4,6 +4,16 @@
 LRU schedule cache, now/next projections, subscriptions and one transition clock.
 A last subscriber cancels its request, including a request recreated by native
 XMLTV warm-up. Direct archive/menu consumers remain independent subscribers.
+
+The fullscreen footer has one renderer for each playback mode. Live now/next
+callbacks must not repaint an archive or VOD footer; archive progress uses the
+playback position instead of the wall clock. Archive ticks publish a schedule to
+the guide only when that schedule changes, not once per position update. Live
+programme-change notifications retain the source, channel and broadcast start
+through guide misses, so periodic repaints and title/end corrections do not
+reopen a dismissed info bar. `test_archive_session.cjs` exercises the retained
+live subscription across archive entry, position ticks, late guide publication
+and return to live, including stable progress and notification counts.
 The configured cache capacity still disables full-schedule retention at zero;
 completed schedules expire after twelve hours or after all programmes end.
 Only subscribed channels trigger clock refreshes. Channel renderer fields are

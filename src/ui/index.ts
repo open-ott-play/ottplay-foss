@@ -305,35 +305,44 @@ export function uiInit(): void {
                 top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
     });
-    var dialogRoot = document.getElementById("dialogbox");
-    if (dialogRoot && !(dialogRoot as any).__ottDialogButtonsBound) {
-        (dialogRoot as any).__ottDialogButtonsBound = true;
-        var dispatchDialogButton = function (event: Event): void {
+    ["dialogbox", "listPopUp"].forEach(function (id) {
+        var root = document.getElementById(id);
+        if (!root || (root as any).__ottButtonsBound) return;
+        (root as any).__ottButtonsBound = true;
+        var popup = id === "listPopUp";
+        var dispatchButton = function (event: Event): void {
             var target = event.target as Node | null;
             if (target && target.nodeType !== 1) target = target.parentNode;
             var button = target && $(target).closest("span[data-ott-key]")[0];
-            if (!button || !dialogRoot!.contains(button)) return;
-            // Consume before checking ownership so an obsolete control cannot
-            // activate its inline fallback or the video surface underneath.
+            if (!button || !root!.contains(button)) return;
+            // Consume before ownership checks so obsolete controls cannot
+            // activate inline fallbacks or the video surface underneath.
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
             var w = window as any;
-            var owner = w.__ottClassicScreenPort.owner("dialog");
+            var port = w.__ottClassicScreenPort;
+            var owner = popup ? port.listOwner() : port.owner("dialog");
             var key = Number(button.getAttribute("data-ott-key"));
-            if (owner && owner.foreground() && key && isFinite(key))
+            if (
+                owner &&
+                owner.foreground() &&
+                (!popup || $(root!).is(":visible")) &&
+                key &&
+                isFinite(key)
+            )
                 w._doKey(key, event);
         };
-        dialogRoot.addEventListener("click", dispatchDialogButton, true);
-        dialogRoot.addEventListener(
+        root.addEventListener("click", dispatchButton, true);
+        root.addEventListener(
             "keydown",
             function (event: KeyboardEvent): void {
                 if (event.keyCode === 13 || event.keyCode === 32)
-                    dispatchDialogButton(event);
+                    dispatchButton(event);
             },
             true
         );
-    }
+    });
 
     // Click on info bar toggles channel info display
     $infoBar.on("click.ottUi", function (e: any) {
@@ -1432,8 +1441,9 @@ export function virtualTimeshiftProg(nowSec?: number): {
 }
 
 export function updateChannelInfo(channelId: number): void {
-    // Guide callbacks can arrive after playback has switched to a movie.
-    if (channelId == null || (window as any).playType < 0) return;
+    // A retained live guide subscription can fire during archive or VOD.
+    // Those modes own their programme, playhead and footer rendering.
+    if (channelId == null || (window as any).playType) return;
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
     if (channelId !== curList[primaryIndex]) return;
@@ -1545,8 +1555,7 @@ export function updateChannelInfo(channelId: number): void {
     } else {
         // No current EPG program
         var wAny = window as any;
-        var playType = wAny.playType || 0;
-        var canTimeshift = !playType && t && t.rec && Number(t.rec) > 0;
+        var canTimeshift = t && t.rec && Number(t.rec) > 0;
         if (canTimeshift) {
             // Live + catchup available, no EPG: 1h lookback, live at ~80%
             var _p = virtualTimeshiftProg();
@@ -1574,34 +1583,6 @@ export function updateChannelInfo(channelId: number): void {
             if (programName2El) programName2El.innerHTML = "";
             if (programDurationEl) programDurationEl.textContent = "";
             if (programDescrEl) programDescrEl.textContent = "";
-        } else if (
-            playType > 0 &&
-            wAny._prog100 &&
-            wAny._prog100.time &&
-            wAny._prog100.time_to
-        ) {
-            // Archive with synthetic/_prog100 window — keep driving the bar
-            var _pa = wAny._prog100;
-            var nowA = Date.now() / 1000;
-            var posA = playType + (wAny.playTime || 0);
-            var durA = _pa.time_to - _pa.time;
-            var pctA = durA > 0 ? ((posA - _pa.time) / durA) * 100 : 0;
-            if (pctA < 0) pctA = 0;
-            if (pctA > 100) pctA = 100;
-            if (progressEl) progressEl.style.width = pctA + "%";
-            if (progressREl)
-                progressREl.style.width =
-                    _pa.time_to > nowA
-                        ? Math.min(
-                              100,
-                              Math.max(0, ((_pa.time_to - nowA) / durA) * 100)
-                          ) + "%"
-                        : "0%";
-            if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
-            if (beginTimeEl) beginTimeEl.textContent = time2time(_pa.time);
-            if (endTimeEl)
-                endTimeEl.textContent =
-                    "+" + Math.max(0, Math.round((_pa.time_to - posA) / 60));
         } else {
             if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
             wAny._prog100 = 0;
@@ -1614,37 +1595,27 @@ export function updateChannelInfo(channelId: number): void {
             if (programDescrEl) programDescrEl.textContent = "";
         }
     }
-    // Auto-show on programme change when enabled, but never flash an empty
-    // #info1: require channel name and/or current programme, and defer while
-    // observeCurrentProgramme still has an EPG fetch pending (callback re-enters here).
+    // A repaint is not a programme change. Keep the last accepted identity
+    // through guide misses so a refresh or periodic tick cannot reopen the bar.
     try {
         var w = window as any;
-        var nowGate = Date.now() / 1000;
-        var channelLabel = (t && t.channel_name) || "";
-        var progLabel =
-            (hasProg && t && t.name) ||
-            (programNameEl &&
-                String(programNameEl.textContent || "")
-                    .replace(/\u00a0/g, " ")
-                    .trim()) ||
-            "";
-        var hasTimes = !!(
-            beginTimeEl && String(beginTimeEl.textContent || "").trim()
-        );
-        // Pending when no programme yet and time_request is not parked in the
-        // future (miss / in-flight park). Callback will populate then re-show.
-        var epgPending =
-            !hasProg &&
-            !!t &&
-            !(typeof t.time_request === "number" && t.time_request > nowGate);
-        var hasMeaningful = !!(
-            progLabel ||
-            hasTimes ||
-            (channelLabel && !epgPending)
-        );
+        var programmeKey =
+            hasProg && t
+                ? JSON.stringify([
+                      w.__ottClassicGuide ? w.__ottClassicGuide.source() : "",
+                      channelId,
+                      t.time,
+                  ])
+                : "";
+        var previous = w.__ottChannelInfoProgramme;
+        var changed =
+            programmeKey &&
+            (!previous || previous.row !== t || previous.key !== programmeKey);
+        if (programmeKey)
+            w.__ottChannelInfoProgramme = { key: programmeKey, row: t };
         if (
             w.sInfoChange &&
-            hasMeaningful &&
+            changed &&
             $infoBar &&
             typeof $infoBar.is === "function" &&
             !$infoBar.is(":visible") &&
