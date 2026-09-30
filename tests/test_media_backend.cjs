@@ -873,6 +873,25 @@ test("restart releases its startup pause latch before a later native resume", (f
     assert.equal(f.backend.current().snapshot().phase, "playing");
     assert.equal(f.timers.filter((timer) => timer.active).length, 1);
 });
+test("an engine that suppresses startup autoplay accepts the first native Play", (f) => {
+    const open = f.ports.open;
+    f.ports.open = (request, event) => ({
+        ...open(request, event),
+        supportsPausedStart: true,
+    });
+    f.backend.open({ url: "paused-start" });
+    f.playing(0, 8);
+    f.backend.current().pause();
+    f.backend.restart();
+    assert.equal(f.leases[1].request.paused, true);
+    Object.assign(f.leases[1].sample, { paused: true, position: 8, ready: 2 });
+    f.leases[1].event("loadedmetadata");
+    assert.equal(f.backend.current().snapshot().phase, "paused");
+    f.playing(1, 8);
+    assert.equal(f.leases[1].sample.paused, false);
+    assert.equal(f.backend.current().snapshot().phase, "playing");
+    assert.equal(f.timers.filter((timer) => timer.active).length, 1);
+});
 test("restart waits for asynchronous pause confirmation before releasing restoration", (f) => {
     f.backend.open({ url: "native-controls" });
     f.playing(0, 8);

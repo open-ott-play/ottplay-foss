@@ -407,6 +407,112 @@ test("Shaka late load/rejection cannot resurrect stopped playback", async () => 
     assert.equal(w.video.playCalls, 0);
     assert.equal(errors.length, 1);
 });
+for (const mode of [0, 1, 2]) {
+    for (const deferredSource of [false, true]) {
+        test(
+            "paused restart permits first native Play: engine " +
+                mode +
+                ", deferred source " +
+                deferredSource,
+            async () => {
+                const { w, players, shakas } = fixture();
+                const prepared = [];
+                const state = {
+                    generation: 1,
+                    position: 8,
+                    target: { kind: "vod" },
+                };
+                w.__ottClassicPlayback = {
+                    command(value) {
+                        if (value.type === "position")
+                            state.position = value.position;
+                    },
+                    context: () => ({
+                        isCurrentBackend: () => true,
+                        isCurrentSource: () => true,
+                    }),
+                    snapshot: () => state,
+                };
+                w.playerMode = mode;
+                w.__ottNativeRuntime = true;
+                if (deferredSource)
+                    w.__ottCoreTransport.configure({
+                        prepareSource(_url, ready) {
+                            prepared.push(ready);
+                            return () => {};
+                        },
+                    });
+                async function finishStartup(index) {
+                    if (mode === 2 && index) {
+                        shakas[index - 1].destroyed.resolve();
+                        await tick();
+                    }
+                    if (deferredSource) prepared[index]("prepared.mp4");
+                    if (mode === 1) players[index].events.manifest();
+                    if (mode === 2) {
+                        shakas[index].attached.resolve();
+                        await tick();
+                        shakas[index].loaded.resolve();
+                        await tick();
+                    }
+                }
+                function nativePlay() {
+                    w.video.play();
+                    for (const listener of [...w.video.listeners.playing])
+                        listener();
+                }
+                const backend = w.__ottCoreBackend();
+                backend.open({ url: "movie.mp4" });
+                await finishStartup(0);
+                w.video.readyState = 2;
+                w.video.currentTime = 8;
+                for (const listener of [...w.video.listeners.playing])
+                    listener();
+                backend.current().pause();
+                const plays = w.video.playCalls;
+                w.video.autoplay = true;
+                assert.equal(backend.restart().paused, true);
+                assert.equal(
+                    w.forcePlay,
+                    false,
+                    "pause intent precedes asynchronous startup"
+                );
+                assert.equal(
+                    w.video.autoplay,
+                    false,
+                    "the reflected native autoplay attribute is disabled"
+                );
+                await finishStartup(1);
+                w.video.metadata();
+                w.video.readyState = 2;
+                assert.equal(w.video.paused, true);
+                assert.equal(
+                    w.video.playCalls,
+                    plays,
+                    "neither source preparation nor decoder ready may play"
+                );
+                assert.equal(backend.current().snapshot().phase, "paused");
+                nativePlay();
+                assert.equal(
+                    w.video.paused,
+                    false,
+                    "first native Play is not mistaken for delayed autoplay"
+                );
+                assert.equal(backend.current().snapshot().phase, "playing");
+                backend.current().pause();
+                backend.current().resume();
+                assert.equal(
+                    w.forcePlay,
+                    true,
+                    "explicit backend resume still owns autoplay intent"
+                );
+                assert.equal(w.video.paused, false);
+                backend.dispose();
+                shakas.forEach((player) => player.destroyed.resolve());
+            }
+        );
+    }
+}
 test("native and HLS recovery preserve seek on engines rejecting pre-metadata currentTime", () => {
     const { w, players } = fixture();
     w.video.blockEarlySeek = true;

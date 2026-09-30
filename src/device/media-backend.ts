@@ -27,6 +27,8 @@ interface MediaEngineLease {
     sample(): MediaBackendSample;
     seek(position: number): void;
     selectTrack?(kind: string, index: number): void;
+    // The engine honors request.paused before any immediate or deferred startup.
+    supportsPausedStart?: boolean;
     tracks?(kind: string): any;
 }
 interface MediaBackendPorts {
@@ -385,6 +387,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     {
                         context: request.context,
                         lane: request.lane,
+                        paused: request.paused,
                         position: request.position,
                         url: url,
                     },
@@ -401,6 +404,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             }
             engine = opened;
             if (retainPause) {
+                if (engine.supportsPausedStart === true) retainPause = false;
                 phase = "paused";
                 command("pause");
                 if (!handle.active()) return;
