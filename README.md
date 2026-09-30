@@ -298,13 +298,17 @@ playback and PiP are separate device checks.
   on the phone. See [Apple's Mirroring requirements](https://support.apple.com/en-us/120421).
   Mirroring is optional for installation.
 - **A URL loses Latin letters or turns into Cyrillic in Mirroring:** switch the
-  **Mac input source to ABC/English**, clear the field and enter the complete URL
-  again. Inspect the address before submitting it. This occurred during the
-  verified installation with the Russian Mac input source selected.
+  **Mac input source to ABC/English**. With Mirroring focused, press
+  **Control–Space** and select **English (US)** for the iPhone hardware keyboard.
+  The Mac and iPhone input sources can differ; changing only the Mac's source
+  was insufficient in our verified session. Clear the field, re-enter the URL
+  and inspect the address before submitting it.
 - **Clipboard paste into Mirroring hangs or inserts unexpected text:** clear
-  the field and type with ABC/English, or enter the URL directly on the phone.
-  Do not submit a partially pasted URL. Paste failed in our installation session;
-  it is not a prerequisite for the direct-URL method.
+  the field and retype slowly in short chunks with the iPhone's English (US)
+  input source, or enter the URL directly on the phone. Fast Mirroring entry
+  can drop or duplicate characters; verify the complete address before saving.
+  Do not submit a partially pasted URL. Paste failed in our installation
+  session; it is not a prerequisite for the direct-URL method.
 - **Files/Recents shows several identical IPA names:** select the exact download
   location or use the tagged direct URL above. A local copy may be renamed to
   include its tag/build for clarity; renaming does not change its contents.
