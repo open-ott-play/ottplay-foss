@@ -37,13 +37,19 @@ function nativePolicy() {
         .join("; ");
 }
 
-function initializeFixture(native) {
+function initializeFixture(native, capacitor) {
     window.ott_device = "pc";
     window.__fixtureViolations = [];
     document.addEventListener("securitypolicyviolation", (event) => {
         window.__fixtureViolations.push(event.effectiveDirective);
     });
-    if (native) {
+    if (capacitor) {
+        // Only identify the input environment; no native bridge is invoked.
+        window.Capacitor = {
+            getPlatform: () => "ios",
+            isNativePlatform: () => true,
+        };
+    } else if (native) {
         window.__TAURI__ = {
             core: {
                 invoke: async (command) =>
@@ -144,11 +150,18 @@ function renderFixture(initialSettings) {
 }
 
 async function fixturePage(browser, profile, initialSettings, language) {
-    const native = profile === "tauri";
-    const stage = native ? "src-tauri/frontend/" : "";
+    const capacitor = profile === "capacitor";
+    const native = profile === "tauri" || capacitor;
+    const stage = capacitor
+        ? "dist-mobile/"
+        : native
+          ? "src-tauri/frontend/"
+          : "";
     const html = read(native ? stage + "index.html" : "dist/index.html");
     const parsed = new JSDOM(html);
     const document = parsed.window.document;
+    const viewport =
+        document.querySelector('meta[name="viewport"]')?.outerHTML || "";
     for (const script of document.querySelectorAll("script")) script.remove();
     const body = document.body.outerHTML;
     const styles = Array.from(document.querySelectorAll("style"), (style) => {
@@ -169,7 +182,13 @@ async function fixturePage(browser, profile, initialSettings, language) {
     const assets = new Map([
         [
             "/fixture-init.js",
-            "(" + initializeFixture.toString() + ")(" + native + ");",
+            "(" +
+                initializeFixture.toString() +
+                ")(" +
+                native +
+                "," +
+                capacitor +
+                ");",
         ],
         [
             "/fixture-render.js",
@@ -198,6 +217,9 @@ async function fixturePage(browser, profile, initialSettings, language) {
         }
     }
     const context = await browser.newContext({
+        hasTouch: capacitor,
+        isMobile: capacitor,
+        serviceWorkers: "block",
         viewport: { height: 720, width: 1280 },
     });
     const page = await context.newPage();
@@ -221,6 +243,7 @@ async function fixturePage(browser, profile, initialSettings, language) {
             return route.fulfill({
                 body:
                     '<!doctype html><html><head><meta charset="utf-8">' +
+                    viewport +
                     styles.join("\n") +
                     '<link rel="stylesheet" href="/styles/player.css"></head>' +
                     body.replace(
@@ -238,9 +261,10 @@ async function fixturePage(browser, profile, initialSettings, language) {
                     ) +
                     "</html>",
                 contentType: "text/html; charset=utf-8",
-                headers: native
-                    ? { "Content-Security-Policy": nativePolicy() }
-                    : {},
+                headers:
+                    profile === "tauri"
+                        ? { "Content-Security-Policy": nativePolicy() }
+                        : {},
                 status: 200,
             });
         }
@@ -1136,6 +1160,232 @@ for (const profile of ["server", "tauri"]) {
                 expect(
                     await page.evaluate(() => window.__confirmationChoices)
                 ).toEqual(["no"]);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+}
+
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(
+        profile + " Actions popup stays above programme details in every theme",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                // Exercise phone-sized landscape geometry without a native
+                // bridge, provider, saved profile or physical-device claim.
+                await page.setViewportSize({ height: 430, width: 932 });
+                await page.evaluate(() => {
+                    window.sNoNumbersKeys = 0;
+                    window.cList = Object.keys(channels);
+                    window.providerGetItem = () => null;
+                    window.providerSetItem = () => {};
+                    window.favoritesArray = [];
+                    channels.one.descr =
+                        "Synthetic programme description over the Actions area. ".repeat(
+                            60
+                        );
+                    window.__ottChannels.mount(window);
+                    setEditor();
+                });
+                for (const theme of [0, 1, 2]) {
+                    for (const position of [0, 1]) {
+                        await page.evaluate(
+                            ({ theme, position }) => {
+                                settings.interfaceTheme = theme;
+                                settings.listPosition = position;
+                                setColor();
+                                setFontSize();
+                                setListPos();
+                                _channelsList(0, 0);
+                            },
+                            { position, theme }
+                        );
+                        await expect(page.locator("#_prd")).toContainText(
+                            "Synthetic programme description"
+                        );
+                        await page
+                            .locator("#listPodval [data-ott-key]")
+                            .filter({ hasText: "Actions" })
+                            .click();
+                        const popup = page.locator("#listPopUp");
+                        await expect(popup).toBeVisible();
+                        const targets = await popup
+                            .locator("[data-ott-key]")
+                            .evaluateAll((buttons) =>
+                                buttons.map((button) => {
+                                    const rect = button.getBoundingClientRect();
+                                    const hit = document.elementFromPoint(
+                                        rect.left + rect.width / 2,
+                                        rect.top + rect.height / 2
+                                    );
+                                    return {
+                                        label: button.textContent.trim(),
+                                        receivesPoint: button.contains(hit),
+                                    };
+                                })
+                            );
+                        expect(targets.length).toBeGreaterThan(0);
+                        expect(
+                            targets.filter((target) => !target.receivesPoint),
+                            `theme=${theme} position=${position}`
+                        ).toEqual([]);
+                        // A real coordinate click must reach Search through
+                        // the long description and open its editor.
+                        await popup
+                            .locator("[data-ott-key]")
+                            .filter({ hasText: "Search" })
+                            .click();
+                        await expect(page.locator("#listEdit")).toBeVisible();
+                        await expect(popup).toBeHidden();
+                        await page.evaluate(() => _doKey(keys.RETURN));
+                        await expect(page.locator("#listEdit")).toBeHidden();
+                    }
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
+        profile +
+            " Actions popup dispatches once and ignores covered or stale controls",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    uiInit();
+                    uiInit();
+                    _channelsList(0, 0);
+                    $("#listPopUp").show();
+                    window.__popupDispatches = [];
+                    window._doKey = (key) => window.__popupDispatches.push(key);
+                    window.__sendPopupInput = () => {
+                        const button = document.querySelector(
+                            '#listPopUp [data-ott-key="' + keys.N6 + '"]'
+                        );
+                        button.click();
+                        for (const keyCode of [13, 32])
+                            button.dispatchEvent(
+                                new KeyboardEvent("keydown", {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    keyCode,
+                                })
+                            );
+                    };
+                    window.__sendPopupInput();
+                });
+                const expected = await page.evaluate(() => [
+                    keys.N6,
+                    keys.N6,
+                    keys.N6,
+                ]);
+                expect(
+                    await page.evaluate(() => window.__popupDispatches)
+                ).toEqual(expected);
+                await page.evaluate(() => {
+                    confirmBox("Cover the list", () => {});
+                    window.__sendPopupInput();
+                });
+                await expect(page.locator("#dialogbox")).toBeVisible();
+                expect(
+                    await page.evaluate(() => window.__popupDispatches)
+                ).toEqual(expected);
+                await page.evaluate(() => {
+                    window.__ottClassicScreenPort.close("dialog");
+                    $("#dialogbox, #listPopUp").hide();
+                    window.__sendPopupInput();
+                    closeList();
+                    // Even a stale visible DOM subtree cannot dispatch after
+                    // its list owner has been retired.
+                    $("#list, #listPopUp").show();
+                });
+                await expect(page.locator("#listPopUp")).toBeVisible();
+                await page.evaluate(() => window.__sendPopupInput());
+                expect(
+                    await page.evaluate(() => window.__popupDispatches)
+                ).toEqual(expected);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+
+    test(
+        profile +
+            " Actions dialog Search keeps its editor through input, save and cancel",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    window.sNoNumbersKeys = 1;
+                    window.cList = Object.keys(channels);
+                    window.providerGetItem = () => null;
+                    window.providerSetItem = () => {};
+                    window.favoritesArray = [];
+                    window.__ottChannels.mount(window);
+                    setEditor();
+                });
+                for (const save of [true, false]) {
+                    await page.evaluate(() => _channelsList(0, 0));
+                    await page
+                        .locator("#listPodval [data-ott-key]")
+                        .filter({ hasText: "Actions" })
+                        .click();
+                    await expect(page.locator("#dialogbox")).toBeVisible();
+                    await page
+                        .locator("#dialogbox [data-ott-key]")
+                        .filter({ hasText: "Search" })
+                        .click();
+                    await expect(page.locator("#listEdit")).toBeVisible();
+                    await expect(page.locator("#dialogbox")).toBeHidden();
+                    expect(
+                        await page.evaluate(() => {
+                            const port = window.__ottClassicScreenPort;
+                            const dialog = port.owner("dialog");
+                            return {
+                                dialogActive: !!(dialog && dialog.active()),
+                                editorForeground: port
+                                    .owner("editor")
+                                    .foreground(),
+                            };
+                        })
+                    ).toEqual({ dialogActive: false, editorForeground: true });
+                    await page.evaluate(() => _doKey(keys.DOWN));
+                    await expect(page.locator("#listEdit")).toBeVisible();
+                    await page.locator("#editvar").fill("News");
+                    await page.evaluate(
+                        (save) => _doKey(save ? keys.ENTER : keys.RETURN),
+                        save
+                    );
+                    await expect(page.locator("#listEdit")).toBeHidden();
+                    if (save) {
+                        await expect(page.locator("#listIn .item")).toHaveCount(
+                            1
+                        );
+                        await expect(page.locator("#it0")).toContainText(
+                            "News"
+                        );
+                    } else {
+                        await expect(
+                            page.locator("#listCaption")
+                        ).toContainText("Channel list");
+                        await expect(page.locator("#listIn .item")).toHaveCount(
+                            25
+                        );
+                    }
+                }
                 expect(fixture.errors).toEqual([]);
                 expect(fixture.unexpectedRequests).toEqual([]);
             } finally {

@@ -282,6 +282,8 @@ body {
     position: absolute;
     bottom: 53px;
     left: 0px;
+    /* Keep Actions above programme-detail layers, below the list chrome. */
+    z-index: 4;
     display: none;
     padding: 14px 18px;
     margin: 10px;

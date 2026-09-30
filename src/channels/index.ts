@@ -3181,6 +3181,8 @@ export function showActionsDialog(): void {
             case w.keys.YELLOW:
             case w.keys.TOOLS:
                 $(dialog!).hide();
+                // Search must belong to the list, not the hidden Actions modal.
+                w.__ottClassicScreenPort.close("dialog");
                 w.listChannel = w.selIndex;
                 searchChannel();
                 return true;
