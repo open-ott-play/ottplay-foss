@@ -78,6 +78,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arkiv. Kanal: ",
     Aspect: "Bildförhållande",
     Audio: "Ljud",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aàbcdeéfghijklmnopqrstuvwxyzåäö",
     always: "alltid",
     "and enter code": "och ange koden",
@@ -134,16 +137,22 @@ var keyStrings = {
     "Channel list. Category: ": "Kanallista. Kategori: ",
     "Channel parental control": "Föräldrakontroll för kanal",
     Channels: "Kanaler",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Kontrollera den här serverns SWOP-konfiguration.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Välj från",
     "Choose language": "Välj språk",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Välj leverantör",
     Classic: "Klassisk",
     "Clear all settings?": "Rensa alla inställningar?",
     "Clear settings": "Rensa inställningar",
     Close: "Stäng",
     "Close PiP": "Stäng PiP",
+    Code: "Code",
     Color: "Färg",
     "Color spectrum": "Färgpalett",
     "Command server": "Kommandoserver",
@@ -158,6 +167,7 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Tidsgränsen för sökning efter kommandoserver överskreds.",
     "Command server found.": "Kommandoserver hittades.",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurera All4you.tv under Inställningar -> Leverantörsinställningar",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -190,6 +200,8 @@ var keyStrings = {
         "Konfigurera New Look under Inställningar -> Leverantörsinställningar",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Konfigurera OTT Prime ONLINE under Inställningar -> Leverantörsinställningar",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Konfigurera POLMEDIA under Inställningar -> Leverantörsinställningar",
     "Configure PROST in Settings -> Provider Settings":
@@ -230,11 +242,14 @@ var keyStrings = {
     Connected: "Ansluten",
     "Connected. Waiting for the channel list...":
         "Ansluten. Väntar på kanallistan…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Ansluter till Stalker-portalen…",
     "Connecting...": "Ansluter…",
     "Continue watching?": "Fortsätta titta?",
     "Copy category": "Kopiera kategori",
     "Copy JSON": "Kopiera JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
     "Could not create a pairing request. Find the server again to retry.":
         "Kunde inte skapa en parkopplingsbegäran. Sök efter servern igen för att försöka på nytt.",
@@ -294,6 +309,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Ange ett användarnamn (8 tecken).",
     "Enter a username and password to access this service.":
         "Ange användarnamn och lösenord för att använda tjänsten.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Ange en giltig serveradress, t.ex. 192.168.1.20:8081.",
     "Enter access key for": "Ange åtkomstnyckel för",
@@ -308,6 +325,8 @@ var keyStrings = {
         "Ange MAC-adress (t.ex. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Ange mediebibliotekets URL",
     "Enter new category name": "Ange nytt kategorinamn",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Ange leverantörskod",
     "Enter Provider Code on PC or Phone":
         "Ange leverantörskod på dator eller telefon",
@@ -344,6 +363,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Ange Xtream-serverns URL",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Ange Xtream-serverns URL (t.ex. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Programguide",
     "EPG and archive. Channel: ": "Programguide och arkiv. Kanal: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -422,6 +445,7 @@ var keyStrings = {
     "Find command server": "Hitta kommandoserver",
     "Finding command servers...": "Söker efter kommandoservrar…",
     "First Run Setup": "Förstagångsinställning",
+    Folders: "Folders",
     "Font type": "Typsnitt",
     "For download settings file open":
         "För att ladda ned inställningsfilen, öppna",
@@ -531,6 +555,8 @@ var keyStrings = {
     "No channel name": "Kanalnamn saknas",
     "No command server was found on this network.":
         "Ingen kommandoserver hittades i det här nätverket.",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Inga sparade inställningar hittades",
@@ -549,8 +575,12 @@ var keyStrings = {
     Ok: "OK",
     Open: "Öppna",
     "Open in PiP": "Öppna i PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-inställningar",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -578,6 +608,7 @@ var keyStrings = {
     "PiP window position": "PiP-fönstrets placering",
     "PiP window size": "PiP-fönstrets storlek",
     Play: "Spela",
+    Playback: "Playback",
     "Player and device info": "Spelar- och enhetsinformation",
     "Player info:": "Spelarinformation:",
     Playlist: "Spellista",
@@ -586,6 +617,12 @@ var keyStrings = {
         "Spellistan kunde inte läsas in direkt. Läser in via server…",
     "Playlist Name": "Spellistans namn",
     "Playlist URL": "Spellistans URL",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA-inställningar",
     "Portal URL": "Portalens URL",
@@ -658,6 +695,7 @@ var keyStrings = {
     "Save & load channels": "Spara och läs in kanaler",
     "Save and load": "Spara och läs in",
     "Save and load channels": "Spara och läs in kanaler",
+    "Save and open library": "Save and open library",
     "Save Settings": "Spara inställningar",
     "Save settings": "Spara inställningar",
     "Save settings and load channel list":
@@ -734,6 +772,9 @@ var keyStrings = {
     "Show when changing program": "Visa vid programbyte",
     "Show when rewind": "Visa vid spolning",
     "Show when switching": "Visa vid kanalbyte",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Insomningstimer",
     "Sort channels": "Sortera kanaler",
     "Source access": "Source access",
@@ -823,6 +864,7 @@ var keyStrings = {
     "VPortal request failed":
         "Kunde inte läsa in VPortal. Kontrollera länken, åtkomstnyckeln och portalens tillgänglighet.",
     volume: "volym",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Fel föräldrakod!",
     "Xtream Codes Provider": "Xtream Codes-leverantör",
     "Xtream Codes settings": "Xtream Codes-inställningar",

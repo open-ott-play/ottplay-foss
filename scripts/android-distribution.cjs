@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { isManagedProviderScript } = require("./provider-assets.cjs");
 
-const PLAY_PROVIDERS = ["demo", "m3u", "stalker", "xtream"];
+const PLAY_PROVIDERS = ["demo", "m3u", "plex", "stalker", "xtream"];
 
 function transformDistribution(code, flavor) {
     if (!["full", "play"].includes(flavor))
@@ -67,6 +67,7 @@ function stagePlayProviders(root, destination) {
     const descriptions = {
         demo: "An original synthetic video test pattern for checking playback. No broadcast content is included.",
         m3u: "Open an M3U playlist that you are authorized to use. No television subscription or channels are included.",
+        plex: "Connect to your own Plex server and browse its libraries and folders. Server settings are stored on this device.",
         stalker:
             "Connect to your authorized Stalker portal using its address and credentials. No portal subscription is included.",
         xtream: "Connect using your authorized Xtream-compatible server address and credentials. No subscription is included.",

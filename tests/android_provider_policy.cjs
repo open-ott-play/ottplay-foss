@@ -102,6 +102,7 @@ const privateModules = [
     "edem-driver",
     "m3u-settings",
     "m3u-driver",
+    "plex-driver",
     "drivers",
 ];
 const privateProfiles = {};
@@ -201,6 +202,37 @@ const code = {
     full: executable(profiles.full),
     play: executable(profiles.play),
 };
+
+// Policy fixtures stop at loadChannels; catalogue and account transports are
+// exercised by their own tests. Settings mounting still needs the production
+// Plex configuration codec, and the provider error renderer needs its imported
+// metadata escaper. Run those actual pure helpers without inventing a codec.
+const fixtureDependencies = [
+    ["src/utils/helpers.ts", "metadataText"],
+    ["src/plugins/plex.ts", "normalizePlexConfig"],
+]
+    .map(([file, name]) => {
+        const source = ts.createSourceFile(
+            file,
+            fs.readFileSync(path.join(root, file), "utf8"),
+            ts.ScriptTarget.Latest,
+            true
+        );
+        const declaration = source.statements.find(
+            (node) => ts.isFunctionDeclaration(node) && node.name?.text === name
+        );
+        assert(declaration, "production fixture dependency: " + name);
+        return ts.transpileModule(
+            declaration.getText(source).replace(/^export\s+/, ""),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.None,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText;
+    })
+    .join("\n");
 
 function fixture(
     flavor = "play",
@@ -347,6 +379,11 @@ function fixture(
     w.$.ajax = (request) => requests.push(request);
     w.window = w;
     vm.createContext(w);
+    vm.runInContext(
+        fixtureDependencies +
+            "\nwindow.__ottPlex = { normalize: normalizePlexConfig };",
+        w
+    );
     require("./helpers/access-runtime.cjs")(w);
     // No untransformed Full implementation may silently satisfy a Play path.
     for (const module of privateProfiles[flavor])
@@ -378,11 +415,11 @@ function test(name, run) {
     cases++;
     console.log("PASS Android provider policy: " + name);
 }
-const permitted = ["m3u", "stalker", "xtream", "demo"];
+const permitted = ["m3u", "stalker", "xtream", "plex", "demo"];
 const fullIds = Array.from(fixture("full").w.arrayProvaiders).filter(Boolean);
 const excluded = fullIds.filter((id) => !permitted.includes(id));
 
-test("transformed Play executes only its four driver families without Full implementations", () => {
+test("transformed Play executes only its permitted driver families without Full implementations", () => {
     const full = fixture("full").w;
     const play = fixture().w;
     for (const [flavor, w] of [
@@ -464,7 +501,7 @@ test("actual build transform removes every branded provider ID and label", () =>
         Array.from(play.w.arrayProvaiders).filter(Boolean),
         permitted
     );
-    assert.equal(play.w.provArray.length, 5);
+    assert.equal(play.w.provArray.length, permitted.length + 1);
     // Parse all literal strings in the transformed module: hidden registry names
     // or unreachable activation implementations must not survive the Play build.
     const parsed = ts.createSourceFile(
@@ -482,7 +519,7 @@ test("actual build transform removes every branded provider ID and label", () =>
     // "top" is also an unrelated CSS property used by the shared menu.
     for (const id of excluded)
         if (id !== "top") assert(!literals.includes(id), "unshipped ID " + id);
-    for (const name of full.w.provArray.slice(5))
+    for (const name of full.w.provArray.slice(permitted.length + 1))
         assert(!literals.includes(name), "unshipped display label " + name);
     assert(
         !literals.some(
@@ -651,7 +688,9 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                         image.attrs.src,
                         "https://player.invalid/providers/" +
                             id +
-                            "/logo.png?fixture"
+                            (id === "plex"
+                                ? "/logo.svg?fixture"
+                                : "/logo.png?fixture")
                     );
                     assert.equal(
                         f.appendedImages[0].target,
@@ -741,6 +780,7 @@ test("settings restored after startup still pass policy at the script boundary",
         "m3u",
         "stalker",
         "xtream",
+        "plex",
         "",
         "demo",
     ]);

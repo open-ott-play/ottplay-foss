@@ -77,6 +77,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archiv. Kanál: ",
     Aspect: "Poměr stran",
     Audio: "Zvuk",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž",
     always: "vždy",
     "and enter code": "a zadejte kód",
@@ -132,16 +135,22 @@ var keyStrings = {
     "Channel list. Category: ": "Seznam kanálů. Kategorie: ",
     "Channel parental control": "Rodičovská kontrola kanálu",
     Channels: "Kanály",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Zkontrolujte nastavení SWOP tohoto serveru.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Vybrat z",
     "Choose language": "Vyberte jazyk",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Vyberte poskytovatele",
     Classic: "Klasický",
     "Clear all settings?": "Smazat všechna nastavení?",
     "Clear settings": "Smazat nastavení",
     Close: "Zavřít",
     "Close PiP": "Zavřít PiP",
+    Code: "Code",
     Color: "Barva",
     "Color spectrum": "Barevná paleta",
     "Command server": "Příkazový server",
@@ -156,6 +165,7 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Vypršel časový limit hledání příkazového serveru.",
     "Command server found.": "Příkazový server nalezen.",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nastavte All4you.tv v Nastavení -> Nastavení poskytovatele",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -188,6 +198,8 @@ var keyStrings = {
         "Nastavte New Look v Nastavení -> Nastavení poskytovatele",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Nastavte OTT Prime ONLINE v Nastavení -> Nastavení poskytovatele",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Nastavte POLMEDIA v Nastavení -> Nastavení poskytovatele",
     "Configure PROST in Settings -> Provider Settings":
@@ -228,11 +240,14 @@ var keyStrings = {
     Connected: "Připojeno",
     "Connected. Waiting for the channel list...":
         "Připojeno. Čekání na seznam kanálů…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Připojování k portálu Stalker…",
     "Connecting...": "Připojování…",
     "Continue watching?": "Pokračovat ve sledování?",
     "Copy category": "Kopírovat kategorii",
     "Copy JSON": "Kopírovat JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nepodařilo se vytvořit žádost o párování. Pro další pokus znovu vyhledejte server.",
@@ -291,6 +306,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Zadejte uživatelské jméno (8 znaků).",
     "Enter a username and password to access this service.":
         "Pro přístup ke službě zadejte uživatelské jméno a heslo.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Zadejte platnou adresu serveru, například 192.168.1.20:8081.",
     "Enter access key for": "Zadejte přístupový klíč pro",
@@ -305,6 +322,8 @@ var keyStrings = {
         "Zadejte MAC adresu (např. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Zadejte URL knihovny médií",
     "Enter new category name": "Zadejte nový název kategorie",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Zadejte kód poskytovatele",
     "Enter Provider Code on PC or Phone":
         "Zadejte kód poskytovatele na počítači nebo telefonu",
@@ -341,6 +360,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Zadejte URL serveru Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Zadejte URL serveru Xtream (např. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program a archiv. Kanál: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -419,6 +442,7 @@ var keyStrings = {
     "Find command server": "Najít příkazový server",
     "Finding command servers...": "Hledání příkazových serverů…",
     "First Run Setup": "Počáteční nastavení",
+    Folders: "Folders",
     "Font type": "Druh písma",
     "For download settings file open": "Pro stažení souboru nastavení otevřete",
     "For enter value open": "Pro zadání hodnoty otevřete",
@@ -525,6 +549,8 @@ var keyStrings = {
     "No channel name": "Kanál nemá název",
     "No command server was found on this network.":
         "V této síti nebyl nalezen příkazový server.",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Uložená nastavení nebyla nalezena",
@@ -543,8 +569,12 @@ var keyStrings = {
     Ok: "OK",
     Open: "Otevřít",
     "Open in PiP": "Otevřít v PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Nastavení OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -572,6 +602,7 @@ var keyStrings = {
     "PiP window position": "Umístění okna PiP",
     "PiP window size": "Velikost okna PiP",
     Play: "Přehrát",
+    Playback: "Playback",
     "Player and device info": "Informace o přehrávači a zařízení",
     "Player info:": "Informace o přehrávači:",
     Playlist: "Playlist",
@@ -580,6 +611,12 @@ var keyStrings = {
         "Playlist nelze načíst přímo. Načítání přes server…",
     "Playlist Name": "Název playlistu",
     "Playlist URL": "URL playlistu",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Nastavení POLMEDIA",
     "Portal URL": "URL portálu",
@@ -650,6 +687,7 @@ var keyStrings = {
     "Save & load channels": "Uložit a načíst kanály",
     "Save and load": "Uložit a načíst",
     "Save and load channels": "Uložit a načíst kanály",
+    "Save and open library": "Save and open library",
     "Save Settings": "Uložit nastavení",
     "Save settings": "Uložit nastavení",
     "Save settings and load channel list":
@@ -727,6 +765,9 @@ var keyStrings = {
     "Show when changing program": "Zobrazit při změně pořadu",
     "Show when rewind": "Zobrazit při přetáčení",
     "Show when switching": "Zobrazit při přepínání kanálů",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Časovač vypnutí",
     "Sort channels": "Řadit kanály",
     "Source access": "Source access",
@@ -817,6 +858,7 @@ var keyStrings = {
     "VPortal request failed":
         "Nepodařilo se načíst VPortal. Zkontrolujte odkaz, přístupový klíč a dostupnost portálu.",
     volume: "hlasitost",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Nesprávný rodičovský kód!",
     "Xtream Codes Provider": "Poskytovatel Xtream Codes",
     "Xtream Codes settings": "Nastavení Xtream Codes",

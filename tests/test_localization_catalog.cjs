@@ -221,6 +221,9 @@ try {
         "PiP exchange",
         "Player and device info",
         "Filter",
+        "Folders",
+        "Sign in with Plex",
+        "Save and open library",
         "Remote text entry",
         "Find command server",
         "Cancel pairing",
@@ -234,7 +237,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 28);
-    assert.equal(result.keyCount, 691);
+    assert.equal(result.keyCount, 721);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

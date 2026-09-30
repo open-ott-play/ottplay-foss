@@ -55,7 +55,8 @@ const { gzipSync } = require("node:zlib");
 // Stop add 995 raw / 384 gzip bytes to fe79de1 on Node 22.23.2. With the accepted
 // EPG changes, web measures 627267 / 190842 and native 627225 / 190902. Allocate
 // this reviewed lifecycle cost while retaining release-version headroom.
-const BUDGET = Object.freeze({ bytes: 627650, gzipBytes: 191150 });
+// NAS discovery and per-client Plex add bounded library boot and playback routing.
+const BUDGET = Object.freeze({ bytes: 635950, gzipBytes: 193850 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -82,7 +83,8 @@ const BUDGET = Object.freeze({ bytes: 627650, gzipBytes: 191150 });
 // The same combined source plus every provider totals 692751 / 215670 for web
 // and 692709 / 215730 for native on Node 22.23.2. Provider assets are unchanged;
 // retain the complete-payload guard and release-version headroom.
-const TOTAL_BUDGET = Object.freeze({ bytes: 693200, gzipBytes: 216200 });
+// Include direct Plex catalogs, PIN sign-in, roaming connections and session cleanup.
+const TOTAL_BUDGET = Object.freeze({ bytes: 728450, gzipBytes: 228200 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

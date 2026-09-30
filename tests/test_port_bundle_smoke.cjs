@@ -98,6 +98,7 @@ const optionalProviderApis = {
     edem: ["__ottEdemDriver"],
     m3u: ["__ottM3uDriver", "__ottM3uSettings"],
     playlist: ["__ottPlaylistDrivers"],
+    plex: ["__ottPlex", "__ottPlexAuth", "__ottPlexDriver"],
     stalker: ["__ottStalkerDriver"],
 };
 assert.deepEqual(
@@ -108,7 +109,7 @@ assert.deepEqual(
 
 function providerKinds() {
     return playDistribution
-        ? ["m3u", "stalker"]
+        ? ["m3u", "plex", "stalker"]
         : Object.keys(CLASSIC_PROVIDER_BUNDLES);
 }
 
@@ -608,10 +609,10 @@ function assertPrivateRuntime(w, profile) {
         assert.equal(w.__ottEdemDriver, undefined);
         assert.deepEqual(
             Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
-            ["demo", "m3u", "stalker", "xtream"]
+            ["demo", "m3u", "plex", "stalker", "xtream"]
         );
     } else {
-        assert.equal(w.__ottProviderDrivers.registry.ids().length, 48);
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 49);
     }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
@@ -2021,6 +2022,17 @@ function exerciseProviderRuntime(profile) {
         assert.equal(w.getMediaArray, null);
         assert.strictEqual(w.playMedia, w._playMedia);
     }
+    // A library-only provider loads its own family and offers configuration
+    // without fabricating a TV channel or requiring server credentials.
+    w.listCaptionElement = w.document.getElementById("listCaption");
+    w.listCaption = w.listCaptionElement;
+    w.listDetail = w.document.getElementById("listDetail");
+    w.listFooter = w.document.getElementById("listFooter");
+    w.loadProv("plex");
+    assert.equal(w.__ottActiveProviderDriver.id, "plex");
+    assert.equal(w.__ottActiveProviderDriver.capabilities.libraryOnly, true);
+    assert.equal(w.__ottActiveProviderDriver.libraryReady(), false);
+    w.loadProv("demo");
     assert.deepEqual(
         scripts,
         [],

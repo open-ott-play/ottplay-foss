@@ -278,6 +278,8 @@ function classicPlaybackCommand(command: any): void {
                 : 0;
         classicPlaybackProjection = classicPlaybackProjectionValue(w);
         if (classicPlaybackController) classicPlaybackController.cancel();
+        if (w.__ottMedia && w.__ottMedia.playbackStop)
+            w.__ottMedia.playbackStop(state.target);
         if (type === "finite-channel")
             store.classify(target, history, command.duration);
         else store.open(target, history, w.playTime);
@@ -295,8 +297,11 @@ function classicPlaybackCommand(command: any): void {
         type === "loading" ||
         type === "playing"
     ) {
-        if (type === "stop" && classicPlaybackController)
-            classicPlaybackController.cancel();
+        if (type === "stop") {
+            if (classicPlaybackController) classicPlaybackController.cancel();
+            if (w.__ottMedia && w.__ottMedia.playbackStop)
+                w.__ottMedia.playbackStop(state.target);
+        }
         store.phase(
             type === "stop"
                 ? "stopped"

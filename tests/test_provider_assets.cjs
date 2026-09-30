@@ -10,8 +10,8 @@ const { stagePlayProviders } = require("../scripts/android-distribution.cjs");
 const { isRetiredRuntimeScript } = require("../scripts/runtime-assets.cjs");
 const root = path.resolve(__dirname, "..");
 const ids = managedProviderIds();
-assert.equal(ids.length, 48);
-for (const id of ["antifriz", "edem", "kb-team", "m3u"])
+assert.equal(ids.length, 49);
+for (const id of ["antifriz", "edem", "kb-team", "m3u", "plex"])
     assert(ids.includes(id), "new independent driver asset boundary: " + id);
 function compatibilityProviders(directory, prefix = "") {
     return fs
@@ -71,7 +71,7 @@ assert(
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-driver-assets-"));
 try {
     stagePlayProviders(root, stage);
-    for (const id of ["demo", "xtream", "stalker", "m3u"]) {
+    for (const id of ["demo", "xtream", "stalker", "m3u", "plex"]) {
         assert(
             !fs.existsSync(path.join(stage, id, "provider.js")),
             "Play does not ship retired executable " + id

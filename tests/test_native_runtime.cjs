@@ -179,18 +179,22 @@ function fixture(name, play) {
             read("devices/" + device + "/device.js")
         );
     const providers = play
-        ? ["demo", "m3u", "stalker", "xtream"]
+        ? ["demo", "m3u", "plex", "stalker", "xtream"]
         : fs
               .readdirSync(path.join(root, "providers"))
               .filter((id) =>
                   fs.existsSync(path.join(root, "providers", id, "provider.js"))
               );
-    for (const id of providers)
+    for (const id of providers) {
+        // New managed families have no retained historical provider.js oracle.
+        if (!fs.existsSync(path.join(root, "providers", id, "provider.js")))
+            continue;
         write(
             folder,
             "providers/" + id + "/provider.js",
             read("providers/" + id + "/provider.js")
         );
+    }
     return folder;
 }
 function verifyStage(folder, platform) {

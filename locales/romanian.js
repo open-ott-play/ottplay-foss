@@ -79,6 +79,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arhivă. Canal: ",
     Aspect: "Raport de aspect",
     Audio: "Audio",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aăâbcdefghiîjklmnopqrsștțuvwxyz",
     always: "întotdeauna",
     "and enter code": "și introduceți codul",
@@ -137,16 +140,22 @@ var keyStrings = {
     "Channel list. Category: ": "Lista canalelor. Categorie: ",
     "Channel parental control": "Control parental al canalului",
     Channels: "Canale",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Verificați configurația SWOP a acestui server.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Alege din",
     "Choose language": "Alege limba",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Alege furnizorul",
     Classic: "Clasic",
     "Clear all settings?": "Ștergeți toate setările?",
     "Clear settings": "Șterge setările",
     Close: "Închide",
     "Close PiP": "Închide PiP",
+    Code: "Code",
     Color: "Culoare",
     "Color spectrum": "Spectru de culori",
     "Command server": "Server de comenzi",
@@ -161,6 +170,7 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Căutarea serverului de comenzi a expirat.",
     "Command server found.": "Server de comenzi găsit.",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configurați All4you.tv în Setări -> Setările furnizorului",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -193,6 +203,8 @@ var keyStrings = {
         "Configurați New Look în Setări -> Setările furnizorului",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Configurați OTT Prime ONLINE în Setări -> Setările furnizorului",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Configurați POLMEDIA în Setări -> Setările furnizorului",
     "Configure PROST in Settings -> Provider Settings":
@@ -233,11 +245,14 @@ var keyStrings = {
     Connected: "Conectat",
     "Connected. Waiting for the channel list...":
         "Conectat. Se așteaptă lista de canale…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Conectare la portalul Stalker…",
     "Connecting...": "Conectare…",
     "Continue watching?": "Continuați vizionarea?",
     "Copy category": "Copiază categoria",
     "Copy JSON": "Copiază JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nu s-a putut crea o cerere de asociere. Căutați din nou serverul pentru a reîncerca.",
@@ -297,6 +312,8 @@ var keyStrings = {
         "Introduceți un nume de utilizator (8 caractere).",
     "Enter a username and password to access this service.":
         "Introduceți numele de utilizator și parola pentru a accesa acest serviciu.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Introduceți o adresă validă de server, de exemplu 192.168.1.20:8081.",
     "Enter access key for": "Introduceți cheia de acces pentru",
@@ -312,6 +329,8 @@ var keyStrings = {
         "Introduceți adresa MAC (de ex. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Introduceți URL-ul mediatecii",
     "Enter new category name": "Introduceți noul nume al categoriei",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Introduceți codul furnizorului",
     "Enter Provider Code on PC or Phone":
         "Introduceți codul furnizorului pe un PC sau telefon",
@@ -349,6 +368,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Introduceți URL-ul serverului Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Introduceți URL-ul serverului Xtream (de ex. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Ghid TV",
     "EPG and archive. Channel: ": "EPG și arhivă. Canal: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -428,6 +451,7 @@ var keyStrings = {
     "Find command server": "Caută server de comenzi",
     "Finding command servers...": "Se caută servere de comenzi...",
     "First Run Setup": "Configurare la prima pornire",
+    Folders: "Folders",
     "Font type": "Tip de font",
     "For download settings file open":
         "Pentru a descărca fișierul de setări, deschideți",
@@ -538,6 +562,8 @@ var keyStrings = {
     "No channel name": "Fără nume de canal",
     "No command server was found on this network.":
         "Nu s-a găsit niciun server de comenzi în această rețea.",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nu au fost găsite setări salvate",
@@ -556,8 +582,12 @@ var keyStrings = {
     Ok: "OK",
     Open: "Deschide",
     "Open in PiP": "Deschide în PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Setări OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -585,6 +615,7 @@ var keyStrings = {
     "PiP window position": "Poziția ferestrei PiP",
     "PiP window size": "Dimensiunea ferestrei PiP",
     Play: "Redare",
+    Playback: "Playback",
     "Player and device info": "Informații despre player și dispozitiv",
     "Player info:": "Informații despre player:",
     Playlist: "Playlist",
@@ -593,6 +624,12 @@ var keyStrings = {
         "Playlistul nu se încarcă direct...Se încarcă prin server...",
     "Playlist Name": "Nume playlist",
     "Playlist URL": "URL playlist",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Setări POLMEDIA",
     "Portal URL": "URL portal",
@@ -665,6 +702,7 @@ var keyStrings = {
     "Save & load channels": "Salvează și încarcă canalele",
     "Save and load": "Salvează și încarcă",
     "Save and load channels": "Salvează și încarcă canalele",
+    "Save and open library": "Save and open library",
     "Save Settings": "Salvează setările",
     "Save settings": "Salvează setările",
     "Save settings and load channel list":
@@ -744,6 +782,9 @@ var keyStrings = {
     "Show when changing program": "Afișează la schimbarea emisiunii",
     "Show when rewind": "Afișează la derularea înapoi",
     "Show when switching": "Afișează la schimbarea canalelor",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Temporizator de oprire",
     "Sort channels": "Sortează canalele",
     "Source access": "Source access",
@@ -834,6 +875,7 @@ var keyStrings = {
     "VPortal request failed":
         "VPortal nu a putut fi încărcat. Verificați linkul, cheia de acces și disponibilitatea portalului.",
     volume: "volum",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Cod parental greșit!!!",
     "Xtream Codes Provider": "Furnizor Xtream Codes",
     "Xtream Codes settings": "Setări Xtream Codes",

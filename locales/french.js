@@ -80,6 +80,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archives. Chaîne : ",
     Aspect: "Format d'image",
     Audio: "Audio",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aàâæbcçdeéèêëfghiîïjklmnoôœpqrstuùûüvwxyÿz",
     always: "toujours",
     "and enter code": "et saisissez le code",
@@ -140,16 +143,22 @@ var keyStrings = {
     "Channel list. Category: ": "Liste des chaînes. Catégorie : ",
     "Channel parental control": "Contrôle parental de la chaîne",
     Channels: "Chaînes",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Vérifiez la configuration SWOP de ce serveur.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Choisir parmi",
     "Choose language": "Choisir la langue",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Choisir le fournisseur",
     Classic: "Classique",
     "Clear all settings?": "Effacer tous les paramètres ?",
     "Clear settings": "Effacer les paramètres",
     Close: "Fermer",
     "Close PiP": "Fermer PiP",
+    Code: "Code",
     Color: "Couleur",
     "Color spectrum": "Spectre des couleurs",
     "Command server": "Serveur de commandes",
@@ -164,6 +173,7 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Le délai de recherche du serveur de commandes a expiré.",
     "Command server found.": "Serveur de commandes trouvé.",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configurez All4you.tv dans Paramètres -> Paramètres du fournisseur",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -196,6 +206,8 @@ var keyStrings = {
         "Configurez New Look dans Paramètres -> Paramètres du fournisseur",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Configurez OTT Prime ONLINE dans Paramètres -> Paramètres du fournisseur",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Configurez POLMEDIA dans Paramètres -> Paramètres du fournisseur",
     "Configure PROST in Settings -> Provider Settings":
@@ -236,11 +248,14 @@ var keyStrings = {
     Connected: "Connecté",
     "Connected. Waiting for the channel list...":
         "Connecté. En attente de la liste des chaînes…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Connexion au portail Stalker…",
     "Connecting...": "Connexion…",
     "Continue watching?": "Continuer la lecture ?",
     "Copy category": "Copier la catégorie",
     "Copy JSON": "Copier le JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
         "Impossible de se connecter au serveur.",
     "Could not create a pairing request. Find the server again to retry.":
@@ -303,6 +318,8 @@ var keyStrings = {
         "Saisissez un nom d'utilisateur (8 caractères).",
     "Enter a username and password to access this service.":
         "Saisissez un nom d'utilisateur et un mot de passe pour accéder à ce service.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Saisissez une adresse serveur valide, par exemple 192.168.1.20:8081.",
     "Enter access key for": "Saisir la clé d'accès pour",
@@ -318,6 +335,8 @@ var keyStrings = {
         "Saisir l'adresse MAC (ex. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Saisir l'URL de la médiathèque",
     "Enter new category name": "Saisir le nouveau nom de la catégorie",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Saisir le code fournisseur",
     "Enter Provider Code on PC or Phone":
         "Saisir le code fournisseur sur PC ou téléphone",
@@ -355,6 +374,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Saisir l'URL du serveur Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Saisir l'URL du serveur Xtream (ex. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Guide TV",
     "EPG and archive. Channel: ": "EPG et archives. Chaîne : ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -435,6 +458,7 @@ var keyStrings = {
     "Find command server": "Rechercher un serveur de commandes",
     "Finding command servers...": "Recherche de serveurs de commandes...",
     "First Run Setup": "Configuration initiale",
+    Folders: "Folders",
     "Font type": "Police de caractères",
     "For download settings file open":
         "Pour télécharger le fichier de paramètres, ouvrez",
@@ -544,6 +568,8 @@ var keyStrings = {
     "No channel name": "Aucun nom de chaîne",
     "No command server was found on this network.":
         "Aucun serveur de commandes trouvé sur ce réseau.",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Aucun paramètre enregistré trouvé",
@@ -562,8 +588,12 @@ var keyStrings = {
     Ok: "OK",
     Open: "Ouvrir",
     "Open in PiP": "Ouvrir en PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Paramètres de OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -591,6 +621,7 @@ var keyStrings = {
     "PiP window position": "Position de la fenêtre PiP",
     "PiP window size": "Taille de la fenêtre PiP",
     Play: "Lecture",
+    Playback: "Playback",
     "Player and device info": "Informations sur le lecteur et l'appareil",
     "Player info:": "Informations sur le lecteur :",
     Playlist: "Playlist",
@@ -599,6 +630,12 @@ var keyStrings = {
         "La playlist ne se charge pas directement...Chargement via le serveur...",
     "Playlist Name": "Nom de la playlist",
     "Playlist URL": "URL de la playlist",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Paramètres de POLMEDIA",
     "Portal URL": "URL du portail",
@@ -671,6 +708,7 @@ var keyStrings = {
     "Save & load channels": "Enregistrer et charger les chaînes",
     "Save and load": "Enregistrer et charger",
     "Save and load channels": "Enregistrer et charger les chaînes",
+    "Save and open library": "Save and open library",
     "Save Settings": "Enregistrer les paramètres",
     "Save settings": "Enregistrer les paramètres",
     "Save settings and load channel list":
@@ -754,6 +792,9 @@ var keyStrings = {
     "Show when changing program": "Afficher au changement d'émission",
     "Show when rewind": "Afficher lors du retour arrière",
     "Show when switching": "Afficher au changement de chaîne",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Minuterie de veille",
     "Sort channels": "Trier les chaînes",
     "Source access": "Source access",
@@ -846,6 +887,7 @@ var keyStrings = {
     "VPortal request failed":
         "Impossible de charger VPortal. Vérifiez le lien, la clé d'accès et la disponibilité du portail.",
     volume: "volume",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Code parental incorrect !!!",
     "Xtream Codes Provider": "Fournisseur Xtream Codes",
     "Xtream Codes settings": "Paramètres Xtream Codes",

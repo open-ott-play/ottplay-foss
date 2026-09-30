@@ -79,6 +79,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arsip. Saluran: ",
     Aspect: "Rasio aspek",
     Audio: "Audio",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "abcdefghijklmnopqrstuvwxyz",
     always: "selalu",
     "and enter code": "dan masukkan kode",
@@ -135,16 +138,22 @@ var keyStrings = {
     "Channel list. Category: ": "Daftar saluran. Kategori: ",
     "Channel parental control": "Kontrol orang tua saluran",
     Channels: "Saluran",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Periksa konfigurasi SWOP server ini.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Pilih dari",
     "Choose language": "Pilih bahasa",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Pilih penyedia",
     Classic: "Klasik",
     "Clear all settings?": "Hapus semua pengaturan?",
     "Clear settings": "Hapus pengaturan",
     Close: "Tutup",
     "Close PiP": "Tutup PiP",
+    Code: "Code",
     Color: "Warna",
     "Color spectrum": "Spektrum warna",
     "Command server": "Server perintah",
@@ -159,6 +168,7 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Pencarian server perintah kehabisan waktu.",
     "Command server found.": "Server perintah ditemukan.",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurasikan All4you.tv di Pengaturan -> Pengaturan penyedia",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -191,6 +201,8 @@ var keyStrings = {
         "Konfigurasikan New Look di Pengaturan -> Pengaturan penyedia",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Konfigurasikan OTT Prime ONLINE di Pengaturan -> Pengaturan penyedia",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Konfigurasikan POLMEDIA di Pengaturan -> Pengaturan penyedia",
     "Configure PROST in Settings -> Provider Settings":
@@ -231,11 +243,14 @@ var keyStrings = {
     Connected: "Terhubung",
     "Connected. Waiting for the channel list...":
         "Terhubung. Menunggu daftar saluran…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Menghubungkan ke portal Stalker…",
     "Connecting...": "Menghubungkan…",
     "Continue watching?": "Lanjutkan menonton?",
     "Copy category": "Salin kategori",
     "Copy JSON": "Salin JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Tidak dapat terhubung ke server.",
     "Could not create a pairing request. Find the server again to retry.":
         "Tidak dapat membuat permintaan pemasangan. Cari server lagi untuk mencoba kembali.",
@@ -295,6 +310,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Masukkan nama pengguna (8 karakter).",
     "Enter a username and password to access this service.":
         "Masukkan nama pengguna dan kata sandi untuk mengakses layanan ini.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Masukkan alamat server yang valid, misalnya 192.168.1.20:8081.",
     "Enter access key for": "Masukkan kunci akses untuk",
@@ -310,6 +327,8 @@ var keyStrings = {
         "Masukkan alamat MAC (mis. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Masukkan URL pustaka media",
     "Enter new category name": "Masukkan nama kategori baru",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Masukkan kode penyedia",
     "Enter Provider Code on PC or Phone":
         "Masukkan kode penyedia di PC atau ponsel",
@@ -346,6 +365,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Masukkan URL server Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Masukkan URL server Xtream (mis. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG dan arsip. Saluran: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -423,6 +446,7 @@ var keyStrings = {
     "Find command server": "Cari server perintah",
     "Finding command servers...": "Mencari server perintah...",
     "First Run Setup": "Pengaturan awal",
+    Folders: "Folders",
     "Font type": "Jenis font",
     "For download settings file open": "Untuk mengunduh file pengaturan, buka",
     "For enter value open": "Untuk memasukkan nilai, buka",
@@ -529,6 +553,8 @@ var keyStrings = {
     "No channel name": "Saluran tanpa nama",
     "No command server was found on this network.":
         "Tidak ditemukan server perintah di jaringan ini.",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Tidak ditemukan pengaturan tersimpan",
@@ -547,8 +573,12 @@ var keyStrings = {
     Ok: "OK",
     Open: "Buka",
     "Open in PiP": "Buka dalam PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Pengaturan OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -576,6 +606,7 @@ var keyStrings = {
     "PiP window position": "Posisi jendela PiP",
     "PiP window size": "Ukuran jendela PiP",
     Play: "Putar",
+    Playback: "Playback",
     "Player and device info": "Informasi pemutar dan perangkat",
     "Player info:": "Informasi pemutar:",
     Playlist: "Daftar putar",
@@ -584,6 +615,12 @@ var keyStrings = {
         "Daftar putar tidak dapat dimuat langsung. Memuat melalui server…",
     "Playlist Name": "Nama daftar putar",
     "Playlist URL": "URL daftar putar",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Pengaturan POLMEDIA",
     "Portal URL": "URL portal",
@@ -655,6 +692,7 @@ var keyStrings = {
     "Save & load channels": "Simpan dan muat saluran",
     "Save and load": "Simpan dan muat",
     "Save and load channels": "Simpan dan muat saluran",
+    "Save and open library": "Save and open library",
     "Save Settings": "Simpan pengaturan",
     "Save settings": "Simpan pengaturan",
     "Save settings and load channel list":
@@ -733,6 +771,9 @@ var keyStrings = {
     "Show when changing program": "Tampilkan saat program berubah",
     "Show when rewind": "Tampilkan saat mundur",
     "Show when switching": "Tampilkan saat berpindah saluran",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Pengatur waktu tidur",
     "Sort channels": "Urutkan saluran",
     "Source access": "Source access",
@@ -823,6 +864,7 @@ var keyStrings = {
     "VPortal request failed":
         "Tidak dapat memuat VPortal. Periksa tautan, kunci akses, dan ketersediaan portal.",
     volume: "volume",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Kode orang tua salah!",
     "Xtream Codes Provider": "Penyedia Xtream Codes",
     "Xtream Codes settings": "Pengaturan Xtream Codes",

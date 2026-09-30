@@ -81,6 +81,7 @@ export function isProviderAllowed(id: string): boolean {
         id === "m3u" ||
         id === "stalker" ||
         id === "xtream" ||
+        id === "plex" ||
         id === "demo"
     );
 }
@@ -89,6 +90,7 @@ export var providerIds = [
     "m3u",
     "stalker",
     "xtream",
+    "plex",
     "",
     "demo",
     // OTTPLAY_FULL_ONLY_BEGIN
@@ -593,18 +595,25 @@ export function optionsList(fn?: () => void): void {
                 optionsArr.splice(optionIndex, 1);
         }
     }
+    var viewOptions = optionsArr.slice();
+    var nas = (window as any).__ottNasLibrary;
+    if (nas && nas.available())
+        viewOptions.unshift({
+            action: (window as any).popNasMedia,
+            name: nas.title(),
+        });
     listDataArray = [];
-    optionsArr.forEach(function (opt: any) {
+    viewOptions.forEach(function (opt: any) {
         listDataArray.push(_(opt.name || ""));
     });
     listArray = listDataArray;
     if (!sNoNumbersKeys)
-        prependMenuButtonHint(optionsArr, showProviderSelection, "9");
-    prependMenuButtonHint(optionsArr, showProviderSelection, strTools);
+        prependMenuButtonHint(viewOptions, showProviderSelection, "9");
+    prependMenuButtonHint(viewOptions, showProviderSelection, strTools);
     selIndex = 0;
     if (typeof fn !== "undefined") {
-        for (var t = 0; t < optionsArr.length; t++) {
-            if (optionsArr[t].action == fn) {
+        for (var t = 0; t < viewOptions.length; t++) {
+            if (viewOptions[t].action == fn) {
                 selIndex = t;
                 break;
             }
@@ -615,9 +624,9 @@ export function optionsList(fn?: () => void): void {
     };
     detailListActionFn = function () {
         listDetail.innerHTML = _(
-            optionsArr[selIndex].desc || optionsArr[selIndex].name || ""
+            viewOptions[selIndex].desc || viewOptions[selIndex].name || ""
         );
-        if (optionsArr[selIndex].action == toggleProviderSelectionVisibility)
+        if (viewOptions[selIndex].action == toggleProviderSelectionVisibility)
             providerSelectionUnlockCount = 0;
     };
     listKeyHandlerFn = function (key: number): boolean {
@@ -629,8 +638,8 @@ export function optionsList(fn?: () => void): void {
                 " selIndex=" +
                 selIndex +
                 " action=" +
-                (optionsArr[selIndex]
-                    ? typeof optionsArr[selIndex].action
+                (viewOptions[selIndex]
+                    ? typeof viewOptions[selIndex].action
                     : "undefined")
         );
         switch (key) {
@@ -639,7 +648,8 @@ export function optionsList(fn?: () => void): void {
                 popupList(optionsList);
                 return true;
             case keys.ENTER:
-                if (optionsArr[selIndex].action) optionsArr[selIndex].action();
+                if (viewOptions[selIndex].action)
+                    viewOptions[selIndex].action();
                 return true;
             case keys.TOOLS:
             case keys.N9:
@@ -648,6 +658,11 @@ export function optionsList(fn?: () => void): void {
                 return true;
         }
         return false;
+    };
+    var optionsHandler = listKeyHandlerFn;
+    (window as any).__ottNasLibraryChanged = function () {
+        if (listKeyHandlerFn === optionsHandler)
+            optionsList(viewOptions[selIndex] && viewOptions[selIndex].action);
     };
     listCaptionElement.innerHTML = _("Settings");
     listFooter!.innerHTML = renderButtonHint(keys.RETURN, strRETURN, "Close");
@@ -1168,7 +1183,7 @@ export function loadProv(providerId?: string): void {
                             host +
                                 (usesDriver ? "/providers/" : "/prov/") +
                                 s +
-                                "/logo.png?" +
+                                (s === "plex" ? "/logo.svg?" : "/logo.png?") +
                                 __av
                         );
                         img.attr("alt", " ");
@@ -1429,7 +1444,7 @@ export function showProviderSelection(): void {
     }
     if (isPlayDistribution()) {
         // Imported/recent Full selections cannot expand this registry.
-        providerIds = ["m3u", "stalker", "xtream", "", "demo"];
+        providerIds = ["m3u", "stalker", "xtream", "plex", "", "demo"];
         providerLabels = null;
     }
     if (!providerLabels || providerLabels.some((p) => typeof p !== "string"))
@@ -1440,6 +1455,7 @@ export function showProviderSelection(): void {
                 _("Stalker portals"),
             (sNoColorKeys ? "" : '<div class="btn yellow">&nbsp;</div>&nbsp;') +
                 "Xtream-codes",
+            "Plex",
             "",
             _("Demo — moving test pattern"),
             // OTTPLAY_FULL_ONLY_BEGIN
@@ -1531,7 +1547,7 @@ export function showProviderSelection(): void {
         if (savedProvId === id) {
             var edit = (window as any).__ottEditProvider;
             if (
-                id === "stalker" &&
+                (id === "stalker" || id === "plex") &&
                 !Number.parseInt(stbGetItem("noProvParam") || "0") &&
                 edit &&
                 edit()

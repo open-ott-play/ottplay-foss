@@ -4,6 +4,29 @@ var mediaClassicSource = "";
 var mediaClassicProvider: any = null;
 var mediaClassicPlayback: any = null;
 
+/** Installation libraries own their loader and storage independently of TV providers. */
+interface ClassicMediaSource {
+    client: any;
+    read(key: string): string | null;
+    sourceId: string;
+    title: string;
+    write(key: string, value: string): void;
+}
+var mediaClassicContext: ClassicMediaSource | null = null;
+var mediaClassicContextRevision = 0;
+
+function classicMediaSourceId(): string {
+    return mediaClassicContext
+        ? mediaClassicContext.sourceId
+        : (window as any).__ottSourceIdentity.media(window);
+}
+
+function classicMediaClient(): any {
+    return mediaClassicContext
+        ? mediaClassicContext.client
+        : (window as any).providerMediaClient;
+}
+
 function serializeMediaIdentity(value: any): string {
     if (value === null || typeof value !== "object")
         return JSON.stringify(value);
@@ -32,24 +55,40 @@ function serializeMediaIdentity(value: any): string {
 
 function classicMediaRuntime(): any {
     var w = window as any;
-    var source = w.__ottSourceIdentity.media(w);
+    var context = mediaClassicContext;
+    var mediaClient = classicMediaClient();
+    var source = classicMediaSourceId();
+    var provider = context ? context.client.load : w.getMediaArray;
     if (
         mediaClassicInstance &&
         mediaClassicInstance.active() &&
         mediaClassicSource === source &&
-        mediaClassicProvider === w.getMediaArray
+        mediaClassicProvider === provider
     )
         return mediaClassicInstance;
     var previous = mediaClassicInstance;
     mediaClassicInstance = null;
     if (previous) previous.cancel();
-    if (mediaClassicInstance || source !== w.__ottSourceIdentity.media(w))
+    if (
+        mediaClassicInstance ||
+        context !== mediaClassicContext ||
+        source !== classicMediaSourceId()
+    )
         return classicMediaRuntime();
     mediaClassicSource = source;
-    mediaClassicProvider = w.getMediaArray;
-    var provider = w.getMediaArray;
-    var get = w.providerGetItem;
-    var set = w.providerSetItem;
+    mediaClassicProvider = provider;
+    // A playing installation keeps its journal and catalog when another library is browsed.
+    if (
+        context &&
+        mediaClassicPlayback &&
+        mediaClassicPlayback.runtime.active()
+    ) {
+        mediaClassicInstance = mediaClassicPlayback.runtime;
+        mediaClassicInstance.restoreProjection();
+        return mediaClassicInstance;
+    }
+    var get = context ? context.read : w.providerGetItem;
+    var set = context ? context.write : w.providerSetItem;
     var copy = w.__ottMediaLibrary.copy;
     var library: any;
     var checkpointTime = 0;
@@ -75,11 +114,24 @@ function classicMediaRuntime(): any {
     }
     function current() {
         return (
-            source === w.__ottSourceIdentity.media(w) &&
-            provider === w.getMediaArray &&
-            get === w.providerGetItem &&
-            set === w.providerSetItem
+            context === mediaClassicContext &&
+            source === classicMediaSourceId() &&
+            (context
+                ? provider === context.client.load
+                : provider === w.getMediaArray &&
+                  get === w.providerGetItem &&
+                  set === w.providerSetItem)
         );
+    }
+    function ownsPlayback() {
+        return (
+            context &&
+            mediaClassicPlayback &&
+            mediaClassicPlayback.runtime === api
+        );
+    }
+    function persistent() {
+        return current() || ownsPlayback();
     }
     function limit() {
         return (
@@ -144,9 +196,13 @@ function classicMediaRuntime(): any {
             });
     }
     function entry(item: MediaLibraryItem, position = 0) {
+        var payload = copy(item.payload);
+        // Direct sources resolve access URLs afresh; journals keep stable IDs only.
+        if (mediaClient && typeof mediaClient.persist === "function")
+            payload = mediaClient.persist(payload);
         return {
             itemId: item.ref.itemId,
-            payload: copy(item.payload),
+            payload: payload,
             position: position,
             sourceId: source,
         };
@@ -168,17 +224,17 @@ function classicMediaRuntime(): any {
                 })
                 .slice(0, 1000);
         },
-        legacyId: w.__ottSourceIdentity.legacy(w),
+        legacyId: context ? source : w.__ottSourceIdentity.legacy(w),
         limit: limit,
         read: function (key: string) {
-            if (!current()) throw new Error("Media source replaced");
+            if (!persistent()) throw new Error("Media source replaced");
             var result = typeof get === "function" ? get.call(w, key) : null;
-            if (!current()) throw new Error("Media source replaced");
+            if (!persistent()) throw new Error("Media source replaced");
             return result;
         },
         sourceId: source,
         write: function (key: string, value: string) {
-            if (!current() || w.sFavorites === -1)
+            if (!persistent() || w.sFavorites === -1)
                 throw new Error("Media persistence unavailable");
             if (typeof set === "function") set.call(w, key, value);
         },
@@ -278,8 +334,8 @@ function classicMediaRuntime(): any {
         };
         provider(route.target === undefined ? "" : route.target, complete);
         return function () {
-            if (current() && w.providerMediaClient)
-                w.providerMediaClient.cancel();
+            if (current() && classicMediaClient())
+                classicMediaClient().cancel();
         };
     }
     function collectionItems(kind: string) {
@@ -408,7 +464,7 @@ function classicMediaRuntime(): any {
                     if (!done.isCurrent() || !valid()) return;
                     payload.__ottMediaRef = copy(item.ref);
                     delete payload.__ottMediaRefresh;
-                    var client = w.providerMediaClient;
+                    var client = classicMediaClient();
                     if (client && typeof client.resolve === "function")
                         client.resolve(payload, done, automatic);
                     else done(payload);
@@ -416,6 +472,11 @@ function classicMediaRuntime(): any {
                 var origin = item.payload.__ottMediaOrigin;
                 if (
                     item.payload.__ottMediaRefresh &&
+                    // Installation requests resolve stable IDs directly, independent of catalog pagination.
+                    !(
+                        item.payload.request &&
+                        (context || (mediaClient && mediaClient.stableRequests))
+                    ) &&
                     origin &&
                     origin.kind === "catalog"
                 ) {
@@ -435,8 +496,8 @@ function classicMediaRuntime(): any {
                 } else accept(copy(item.payload));
                 return function () {
                     if (abortLoad) abortLoad();
-                    if (current() && w.providerMediaClient) {
-                        var client = w.providerMediaClient;
+                    if (current() && classicMediaClient()) {
+                        var client = classicMediaClient();
                         if (
                             automatic &&
                             typeof client.cancelAutomatic === "function"
@@ -492,8 +553,8 @@ function classicMediaRuntime(): any {
             api.cancelAuto();
             if (!admitted()) return;
             library.close();
-            if (current() && w.providerMediaClient)
-                w.providerMediaClient.cancel();
+            if (current() && classicMediaClient())
+                classicMediaClient().cancel();
         },
         cancelAuto: function () {
             automaticGeneration++;
@@ -515,7 +576,7 @@ function classicMediaRuntime(): any {
         },
         checkpoint: function (ref: MediaRef, position: number, force = false) {
             if (
-                !current() ||
+                !persistent() ||
                 !ref ||
                 ref.sourceId !== source ||
                 !isFinite(position) ||
@@ -687,7 +748,12 @@ function classicMediaRuntime(): any {
                     kind: "catalog",
                     target: target === null ? "" : target,
                     title:
-                        title || (reset ? w._("Media Library") : w.mediaName),
+                        title ||
+                        (reset
+                            ? context
+                                ? context.title
+                                : w._("Media Library")
+                            : w.mediaName),
                 },
                 reset
             );
@@ -775,10 +841,22 @@ function classicMediaRuntime(): any {
             if (!admitted()) return null;
             collections();
             if (!admitted()) return null;
+            var departing = mediaClassicPlayback;
+            if (
+                departing &&
+                departing.context &&
+                departing.client !== classicMediaClient()
+            ) {
+                departing.client.stop(departing.payload.stream_url);
+                if (!admitted()) return null;
+            }
             var ticket = {};
             mediaClassicPlayback = {
+                client: classicMediaClient(),
+                context: context,
                 payload: copy(item.payload),
                 ref: item.ref,
+                runtime: api,
                 sequence: start && start.sequence,
                 ticket: ticket,
             };
@@ -802,6 +880,7 @@ function classicMediaRuntime(): any {
             };
         },
         restoreProjection: function () {
+            collections();
             project(library.snapshot("none"), false);
         },
         select: function (index: number) {
@@ -863,10 +942,14 @@ function classicMediaRuntime(): any {
         var host = window as any;
         host._mediaLoadState = {};
         if (mediaClassicInstance) mediaClassicInstance.cancel();
-        else if (host.providerMediaClient) host.providerMediaClient.cancel();
+        else if (classicMediaClient()) classicMediaClient().cancel();
     },
     cancelAuto: function () {
         if (mediaClassicInstance) mediaClassicInstance.cancelAuto();
+    },
+    cancelRequest: function () {
+        var client = classicMediaClient();
+        if (client) client.cancel();
     },
     capture: function () {
         return classicMediaRuntime().capture();
@@ -875,12 +958,21 @@ function classicMediaRuntime(): any {
         return classicMediaRuntime().captureAuto();
     },
     checkpoint: function (ref: MediaRef, position: number, force = false) {
-        classicMediaRuntime().checkpoint(ref, position, force);
+        var playback = mediaClassicPlayback;
+        var runtime =
+            playback &&
+            playback.context &&
+            ref &&
+            playback.ref.sourceId === ref.sourceId &&
+            playback.ref.itemId === ref.itemId
+                ? playback.runtime
+                : classicMediaRuntime();
+        runtime.checkpoint(ref, position, force);
     },
     current: function () {
-        var w = window as any;
         return mediaClassicPlayback &&
-            mediaClassicPlayback.ref.sourceId === w.__ottSourceIdentity.media(w)
+            (mediaClassicPlayback.context ||
+                mediaClassicPlayback.ref.sourceId === classicMediaSourceId())
             ? mediaClassicPlayback
             : null;
     },
@@ -898,6 +990,22 @@ function classicMediaRuntime(): any {
     },
     open: function (target: any, title?: string) {
         classicMediaRuntime().open(target, title);
+    },
+    playbackStop: function (target: any) {
+        var playback = mediaClassicPlayback;
+        if (
+            !playback ||
+            !target ||
+            target.kind !== "vod" ||
+            target.sourceId !== playback.ref.sourceId ||
+            target.channelId !== playback.ref.itemId ||
+            !target.payload ||
+            target.payload.stream_url !== playback.payload.stream_url
+        )
+            return;
+        var client = playback.client;
+        if (client && typeof client.stop === "function")
+            client.stop(playback.payload.stream_url);
     },
     playQueue: function (
         records: any[],
@@ -924,7 +1032,36 @@ function classicMediaRuntime(): any {
     snapshot: function () {
         return classicMediaRuntime().snapshot();
     },
-    sourceId: function () {
-        return (window as any).__ottSourceIdentity.media(window);
+    sourceId: classicMediaSourceId,
+    useSource: function (source: ClassicMediaSource | null) {
+        if (source === mediaClassicContext) return;
+        var token = ++mediaClassicContextRevision;
+        var host = window as any;
+        var previous = mediaClassicInstance;
+        // Capture a final confirmed position before the new storage owner is selected.
+        var state =
+            previous &&
+            host.__ottClassicPlayback &&
+            host.__ottClassicPlayback.snapshot();
+        mediaClassicInstance = null;
+        if (previous) {
+            if (state && state.target && state.target.kind === "vod")
+                previous.checkpoint(
+                    {
+                        itemId: state.target.channelId,
+                        sourceId: state.target.sourceId,
+                    },
+                    state.position,
+                    true
+                );
+            if (token !== mediaClassicContextRevision) return;
+            previous.cancel();
+        }
+        if (token !== mediaClassicContextRevision) return;
+        mediaClassicContext = source;
+        host._mediaLoadState = {};
+    },
+    usesSource: function (source: ClassicMediaSource) {
+        return mediaClassicContext === source;
     },
 };

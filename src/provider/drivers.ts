@@ -72,6 +72,7 @@ interface ProviderDriverPorts {
         fail: (...args: any[]) => void
     ): () => void;
     scheme?(): string;
+    sourceIdentity?(): string;
     storage: DriverStorage;
     storageFor?(prefix: string): DriverStorage;
     translate(value: string): string;
@@ -93,6 +94,7 @@ interface ProviderDriver {
         guide: boolean;
         settings: boolean;
         media: boolean;
+        libraryOnly?: boolean;
     };
     configuration?(): any;
     credentials(): ProviderCredentials;
@@ -100,6 +102,7 @@ interface ProviderDriver {
     guide(id: string | number, callback: (value: any) => void): void;
     guideCurrent?(id: string | number, callback: (value: any) => void): void;
     readonly id: string;
+    libraryReady?(): boolean;
     load(
         callback: (
             catalog: DriverCatalog | null,
@@ -1137,6 +1140,15 @@ providerDriverProfiles.forEach(function (profile) {
                             owner,
                             helpers
                         );
+                    if (profile.kind === "plex")
+                        return (window as any).__ottPlexDriver.create(
+                            ports,
+                            owner,
+                            {
+                                credentials: createCredentialOperations,
+                                emptyCatalog: emptyDriverCatalog,
+                            }
+                        );
                     // OTTPLAY_FULL_ONLY_BEGIN
                     if (profile.kind === "catalog")
                         return (window as any).__ottCatalogDrivers.create(
@@ -1744,6 +1756,9 @@ function mountProviderDriver(
                     ? protocol + "//"
                     : "https://";
             },
+            sourceIdentity: function () {
+                return host.__ottSourceIdentity.media(host);
+            },
             storage: store,
             storageFor: storageFor,
             translate: function (value) {
@@ -1951,7 +1966,12 @@ function mountProviderDriver(
             : null;
     host.__ottEditProvider = stalkerSettings && stalkerSettings.edit;
     if (stalkerSettings) host.duneAddSettings = stalkerSettings.mount;
-    var specialized = profile.kind === "m3u" ? host.__ottM3uDriver : null;
+    var specialized =
+        profile.kind === "m3u"
+            ? host.__ottM3uDriver
+            : profile.kind === "plex"
+              ? host.__ottPlexDriver
+              : null;
     // OTTPLAY_FULL_ONLY_BEGIN
     if (catalogProtocol)
         host.__ottCatalogDrivers.mountSettings(host, driver, owner, store);

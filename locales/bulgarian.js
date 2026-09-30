@@ -78,6 +78,9 @@ var keyStrings = {
     "Archive. Channel: ": "Архив. Канал: ",
     Aspect: "Съотношение на страните",
     Audio: "Звук",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "абвгдежзийклмнопрстуфхцчшщъьюяѝ",
     always: "винаги",
     "and enter code": "и въведете кода",
@@ -136,16 +139,22 @@ var keyStrings = {
     "Channel list. Category: ": "Списък на каналите. Категория: ",
     "Channel parental control": "Родителски контрол на канала",
     Channels: "Канали",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Проверете настройките на SWOP за този сървър.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Избор от",
     "Choose language": "Изберете език",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Изберете доставчик",
     Classic: "Класически",
     "Clear all settings?": "Да се изтрият ли всички настройки?",
     "Clear settings": "Изтриване на настройките",
     Close: "Затвори",
     "Close PiP": "Затваряне на PiP",
+    Code: "Code",
     Color: "Цвят",
     "Color spectrum": "Цветова палитра",
     "Command server": "Сървър за команди",
@@ -160,6 +169,7 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Времето за търсене на сървър за команди изтече.",
     "Command server found.": "Намерен е сървър за команди.",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в Настройки -> Настройки на доставчика",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -192,6 +202,8 @@ var keyStrings = {
         "Настройте New Look в Настройки -> Настройки на доставчика",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Настройте OTT Prime ONLINE в Настройки -> Настройки на доставчика",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Настройте POLMEDIA в Настройки -> Настройки на доставчика",
     "Configure PROST in Settings -> Provider Settings":
@@ -232,11 +244,14 @@ var keyStrings = {
     Connected: "Свързано",
     "Connected. Waiting for the channel list...":
         "Свързано. Изчакване на списъка с канали…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Свързване с портала Stalker…",
     "Connecting...": "Свързване…",
     "Continue watching?": "Да продължи ли гледането?",
     "Copy category": "Копиране на категорията",
     "Copy JSON": "Копиране на JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Неуспешно свързване със сървъра.",
     "Could not create a pairing request. Find the server again to retry.":
         "Неуспешно създаване на заявка за сдвояване. Потърсете сървъра отново, за да опитате пак.",
@@ -296,6 +311,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Въведете потребителско име (8 знака).",
     "Enter a username and password to access this service.":
         "Въведете потребителско име и парола за достъп до услугата.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Въведете валиден адрес на сървър, например 192.168.1.20:8081.",
     "Enter access key for": "Въведете ключ за достъп за",
@@ -310,6 +327,8 @@ var keyStrings = {
         "Въведете MAC адрес (напр. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Въведете URL на медиятеката",
     "Enter new category name": "Въведете ново име на категорията",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Въведете код на доставчика",
     "Enter Provider Code on PC or Phone":
         "Въведете кода на доставчика на компютър или телефон",
@@ -346,6 +365,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Въведете URL на сървъра Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Въведете URL на сървъра Xtream (напр. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "ТВ програма",
     "EPG and archive. Channel: ": "Програма и архив. Канал: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -425,6 +448,7 @@ var keyStrings = {
     "Find command server": "Намиране на сървър за команди",
     "Finding command servers...": "Търсене на сървъри за команди…",
     "First Run Setup": "Първоначална настройка",
+    Folders: "Folders",
     "Font type": "Шрифт",
     "For download settings file open":
         "За изтегляне на файла с настройки отворете",
@@ -533,6 +557,8 @@ var keyStrings = {
     "No channel name": "Без име на канал",
     "No command server was found on this network.":
         "В тази мрежа не е намерен сървър за команди.",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Няма намерени запазени настройки",
@@ -551,8 +577,12 @@ var keyStrings = {
     Ok: "ОК",
     Open: "Отваряне",
     "Open in PiP": "Отвори в PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки за OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -580,6 +610,7 @@ var keyStrings = {
     "PiP window position": "Позиция на прозореца PiP",
     "PiP window size": "Размер на прозореца PiP",
     Play: "Възпроизвеждане",
+    Playback: "Playback",
     "Player and device info": "Информация за плейъра и устройството",
     "Player info:": "Информация за плейъра:",
     Playlist: "Плейлист",
@@ -588,6 +619,12 @@ var keyStrings = {
         "Плейлистът не се зарежда директно...Зареждане чрез сървъра...",
     "Playlist Name": "Име на плейлиста",
     "Playlist URL": "URL на плейлиста",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Настройки за POLMEDIA",
     "Portal URL": "URL на портала",
@@ -658,6 +695,7 @@ var keyStrings = {
     "Save & load channels": "Запазване и зареждане на каналите",
     "Save and load": "Запазване и зареждане",
     "Save and load channels": "Запазване и зареждане на каналите",
+    "Save and open library": "Save and open library",
     "Save Settings": "Запази настройките",
     "Save settings": "Запазване на настройките",
     "Save settings and load channel list":
@@ -737,6 +775,9 @@ var keyStrings = {
     "Show when changing program": "Показване при смяна на предаването",
     "Show when rewind": "Показване при превъртане",
     "Show when switching": "Показване при смяна на канала",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Таймер за заспиване",
     "Sort channels": "Сортиране на канали",
     "Source access": "Source access",
@@ -828,6 +869,7 @@ var keyStrings = {
     "VPortal request failed":
         "Неуспешно зареждане на VPortal. Проверете връзката, ключа за достъп и достъпността на портала.",
     volume: "сила на звука",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Грешен родителски код!!!",
     "Xtream Codes Provider": "Доставчик Xtream Codes",
     "Xtream Codes settings": "Настройки на Xtream Codes",

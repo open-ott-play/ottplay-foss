@@ -32,7 +32,9 @@ function sourceIdentity(host: any, media?: boolean): string {
         ? [slot.www || ""]
         : config
           ? [
-                config.server || "",
+                driver && driver.id === "plex" && config.plexAccount
+                    ? config.plexAccount.id
+                    : config.server || "",
                 config.username || "",
                 !media && driver && typeof driver.mediaSource === "function"
                     ? ""

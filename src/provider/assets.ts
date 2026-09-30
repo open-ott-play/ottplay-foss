@@ -11,6 +11,11 @@ var providerAssetGroups: { [kind: string]: string[][] } = {
     // OTTPLAY_FULL_ONLY_BEGIN
     playlist: [["__ottPlaylistDrivers", "create", "mount", "reportLoad"]],
     // OTTPLAY_FULL_ONLY_END
+    plex: [
+        ["__ottPlex", "create", "normalize"],
+        ["__ottPlexAuth", "start", "connect", "cancel"],
+        ["__ottPlexDriver", "create", "mount", "reportLoad"],
+    ],
     stalker: [["__ottStalkerDriver", "create", "mountSettings"]],
 };
 

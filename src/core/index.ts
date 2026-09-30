@@ -214,6 +214,21 @@ function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
     );
 }
 
+/** A resolved Plex format belongs to this catalog item, never to the next channel. */
+function corePlexPlaybackHint(url: string): "file" | "mse" | null {
+    var library = (window as any).__ottMedia;
+    var current =
+        library && typeof library.current === "function"
+            ? library.current()
+            : null;
+    var payload = current && current.payload;
+    if (!payload || payload.stream_url !== url || !payload.__ottPlexPlayback)
+        return null;
+    var hint = payload.__ottPlexPlayback;
+    if (hint.type === "file") return "file";
+    return hint.type === "hls" && hint.engine === "mse" ? "mse" : null;
+}
+
 function setCoreDemoMute(enabled: boolean): void {
     if (_coreDemoMute && (!enabled || _coreDemoMute.media !== video)) {
         _coreDemoMute.media.muted = _coreDemoMute.muted;
@@ -934,6 +949,7 @@ function startCoreEngine(
     (window as any).forcePlay = !paused;
     if (video && paused) video.autoplay = false;
     var session = _playSession;
+    var plexHint = corePlexPlaybackHint(url);
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
@@ -957,7 +973,14 @@ function startCoreEngine(
             settled = true;
             coreSourcePreparationCancel = null;
             if (observe) observe();
-            startCorePlayback(playbackUrl, position, session, url);
+            startCorePlayback(
+                playbackUrl,
+                position,
+                session,
+                url,
+                plexHint === "file",
+                plexHint === "mse"
+            );
         };
         if (coreDeviceEffects.prepareSource) {
             var cancel = coreDeviceEffects.prepareSource(
@@ -985,23 +1008,33 @@ function startCorePlayback(
     url: string,
     position: number | undefined,
     session: number,
-    originalUrl: string = url
+    originalUrl: string = url,
+    nativeFile = false,
+    forceMse = false
 ): void {
     cancelCoreNativeHls();
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
-    var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
-    var mode = auto
-        ? _coreAutoHlsUsed
-            ? 1
-            : coreAutoMode(url, video)
-        : playerMode;
+    forceMse = forceMse && typeof Hls !== "undefined" && Hls.isSupported();
+    var auto =
+        !nativeFile &&
+        !forceMse &&
+        playerMode === 3 &&
+        getDefaultPlayerMode() === 3;
+    var mode = forceMse
+        ? 1
+        : auto
+          ? _coreAutoHlsUsed
+              ? 1
+              : coreAutoMode(url, video)
+          : playerMode;
     // Decode-fail: try hls.js first, drop failing level, recover once; native only if Safari
     // Demo includes an MP4 as well as HLS. HLS auto-selection must not send
     // the MP4 into the manifest loader, or alter the saved engine preference.
     var _forceNative =
-        (window as any).ottplayDemoActive === true &&
-        /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url);
+        nativeFile ||
+        ((window as any).ottplayDemoActive === true &&
+            /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url));
     var _pm =
         mode === 1 &&
         !_forceNative &&
@@ -1011,18 +1044,7 @@ function startCorePlayback(
             : mode === 2 && !_forceNative
               ? "shaka"
               : "html5";
-    console.log(
-        "[stbPlay] url=" +
-            (url.indexOf("/access/") >= 0 &&
-            url.indexOf("http://127.0.0.1:") === 0
-                ? "[protected source]"
-                : url.substring(0, 80)) +
-            "... playerMode=" +
-            playerMode +
-            " (" +
-            _pm +
-            ")"
-    );
+    console.log("[stbPlay] playerMode=" + playerMode + " (" + _pm + ")");
     var useHls =
         mode === 1 &&
         !_forceNative &&
@@ -1423,14 +1445,16 @@ function startCorePlayback(
         };
         // Prepare the transport before assigning src: only the player's actual
         // requests fetch playlists/segments, never an extra statistics probe.
-        _coreNativeHls = createNativeHlsTransport(url, {
-            active: active,
-            changed: updateCoreVideoInfo,
-            failed: function (): void {
-                attachNative(url);
-            },
-            ready: attachNative,
-        });
+        _coreNativeHls = nativeFile
+            ? null
+            : createNativeHlsTransport(url, {
+                  active: active,
+                  changed: updateCoreVideoInfo,
+                  failed: function (): void {
+                      attachNative(url);
+                  },
+                  ready: attachNative,
+              });
         if (!_coreNativeHls) attachNative(url);
         else if (!nativeAttached) {
             media.pause();
