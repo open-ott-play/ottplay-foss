@@ -29,6 +29,7 @@ const WIRE_LIMIT: usize = 96 * 1024 * 1024;
 const XML_LIMIT: usize = 512 * 1024 * 1024;
 const MAX_ROWS: usize = 20_000;
 const MAX_ROW_BYTES: usize = 8 * 1024 * 1024;
+const MAX_CURRENT_BYTES: usize = 2 * 1024 * 1024;
 const MATCH_TIMEOUT: Duration = Duration::from_secs(8);
 
 type PendingMatchPermits = Arc<Mutex<Option<(OwnedSemaphorePermit, OwnedSemaphorePermit)>>>;
@@ -172,7 +173,115 @@ impl Snapshot {
         result["rows"] = Value::Array(rows);
         Ok(result)
     }
+
+    fn current(
+        &self,
+        input: CurrentInput,
+        now: u64,
+        budget: &MatchBudget,
+    ) -> anyhow::Result<Value> {
+        let clock = (now / 1000) as i64;
+        let search = caseless_key(&input.search);
+        let total = input.channels.len();
+        let mut programs = Vec::new();
+        let mut result = self.metadata(now);
+        result["asOf"] = json!(clock);
+        result["checked"] = json!(total);
+        result["total"] = json!(total);
+        result["programs"] = json!([]);
+        let mut bytes = serde_json::to_vec(&result)?.len();
+        for row in input.channels {
+            budget.check()?;
+            let Some((id, inferred_shift)) = self.index.resolve_web_with_budget(
+                &row.tvg_id,
+                &[&row.tvg_name, &row.name],
+                &row.name,
+                budget,
+            )?
+            else {
+                continue;
+            };
+            let Some(rows) = self.programs.get(&id) else {
+                continue;
+            };
+            let shift = inferred_shift + row.shift;
+            let Some(program) = current_program(rows, clock - shift, budget)? else {
+                continue;
+            };
+            if program.title.is_empty()
+                || (!search.is_empty() && !caseless_key(&program.title).contains(&search))
+            {
+                continue;
+            }
+            let value = json!({"id":row.id,"start":program.start + shift,
+                "end":program.stop + shift,"title":program.title});
+            // Count actual JSON bytes, including escapes and array separators,
+            // without retaining descriptions or another complete encoded body.
+            bytes += serde_json::to_vec(&value)?.len() + usize::from(!programs.is_empty());
+            if bytes > MAX_CURRENT_BYTES {
+                return Err(anyhow::Error::new(CurrentResponseLimit));
+            }
+            programs.push(value);
+        }
+        budget.check()?;
+        result["programs"] = Value::Array(programs);
+        Ok(result)
+    }
 }
+
+// Match the player's caselessKey without changing accents or whitespace.
+fn caseless_key(value: &str) -> String {
+    let mut key = String::with_capacity(value.len());
+    for ch in value.chars() {
+        if ch == '\u{131}' {
+            key.push(ch);
+        } else {
+            for lower in ch.to_lowercase() {
+                key.extend(lower.to_uppercase());
+            }
+        }
+    }
+    key
+}
+
+fn current_program<'a>(
+    rows: &'a [xmltv::Programme],
+    clock: i64,
+    budget: &MatchBudget,
+) -> anyhow::Result<Option<&'a xmltv::Programme>> {
+    // Hosted snapshots sort by start then stop. Search only the eligible
+    // prefix; older overlapping entries can remain current after newer ones end.
+    let mut end = rows.partition_point(|row| row.start <= clock);
+    while end > 0 {
+        budget.check()?;
+        let start = rows[end - 1].start;
+        let mut first = end - 1;
+        while first > 0 && rows[first - 1].start == start {
+            budget.check()?;
+            first -= 1;
+        }
+        for row in &rows[first..end] {
+            budget.check()?;
+            // The shared guide selects the first valid row at the latest start.
+            if row.stop > clock {
+                return Ok(Some(row));
+            }
+        }
+        end = first;
+    }
+    Ok(None)
+}
+
+#[derive(Debug)]
+struct CurrentResponseLimit;
+
+impl std::fmt::Display for CurrentResponseLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("EPG_CHANNEL_LIMIT")
+    }
+}
+
+impl std::error::Error for CurrentResponseLimit {}
 
 struct GuideState {
     snapshot: RwLock<Option<Arc<Snapshot>>>,
@@ -237,6 +346,43 @@ impl MatchInput {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CurrentChannelInput {
+    id: String,
+    tvg_id: String,
+    tvg_name: String,
+    name: String,
+    shift: i64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CurrentInput {
+    version: u8,
+    source: String,
+    channels: Vec<CurrentChannelInput>,
+    search: String,
+}
+
+impl CurrentInput {
+    fn valid(&self) -> bool {
+        let mut ids = HashSet::new();
+        self.version == 1
+            && self.source == SOURCE
+            && self.search.len() <= 1024
+            && self.channels.len() <= 2048
+            && self.channels.iter().all(|c| {
+                !c.id.is_empty()
+                    && ids.insert(&c.id)
+                    && (-86400..=86400).contains(&c.shift)
+                    && [&c.id, &c.tvg_id, &c.tvg_name, &c.name]
+                        .iter()
+                        .all(|s| s.encode_utf16().count() <= 512)
+            })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ProgrammeInput {
     channel_id: String,
     shift: i64,
@@ -256,6 +402,7 @@ impl ProgrammeInput {
     }
 }
 
+#[derive(Debug)]
 enum ApiError {
     Invalid,
     Large,
@@ -309,6 +456,7 @@ fn router(state: Arc<GuideState>) -> Router {
         .route("/health", get(|| async { "OK" }))
         .route("/epg/v1/health", get(readiness))
         .route("/epg/v1/match", post(match_channels))
+        .route("/epg/v1/current", post(current))
         .route("/epg/v1/programmes", get(programmes))
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(512 * 1024))
@@ -359,19 +507,50 @@ async fn run_match(
     input: MatchInput,
     timeout: Duration,
 ) -> Result<Response, ApiError> {
-    run_match_using(state, input, timeout, |snapshot, channels, budget| {
-        snapshot.matches(channels, now_ms(), budget)
+    run_match_using(
+        state,
+        input.channels,
+        timeout,
+        |snapshot, channels, budget| snapshot.matches(channels, now_ms(), budget),
+    )
+    .await
+}
+
+async fn current(
+    State(state): State<Arc<GuideState>>,
+    body: Result<Json<CurrentInput>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let input = body
+        .map_err(|e| {
+            if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+                ApiError::Large
+            } else {
+                ApiError::Invalid
+            }
+        })?
+        .0;
+    if !input.valid() {
+        return Err(ApiError::Invalid);
+    }
+    run_current(state, input, MATCH_TIMEOUT).await
+}
+
+async fn run_current(
+    state: Arc<GuideState>,
+    input: CurrentInput,
+    timeout: Duration,
+) -> Result<Response, ApiError> {
+    run_match_using(state, input, timeout, |snapshot, input, budget| {
+        snapshot.current(input, now_ms(), budget)
     })
     .await
 }
 
-async fn run_match_using(
+async fn run_match_using<I: Send + 'static>(
     state: Arc<GuideState>,
-    input: MatchInput,
+    input: I,
     timeout: Duration,
-    work: impl FnOnce(Arc<Snapshot>, Vec<ChannelInput>, &MatchBudget) -> anyhow::Result<Value>
-        + Send
-        + 'static,
+    work: impl FnOnce(Arc<Snapshot>, I, &MatchBudget) -> anyhow::Result<Value> + Send + 'static,
 ) -> Result<Response, ApiError> {
     let budget = MatchBudget::new(timeout);
     let mut cancel = CancelMatchOnDrop {
@@ -407,11 +586,13 @@ async fn run_match_using(
         if work_budget.stopped() {
             return Err(ApiError::Timeout);
         }
-        let result = work(snapshot, input.channels, &work_budget)
+        let result = work(snapshot, input, &work_budget)
             .map(|value| Json(value).into_response())
-            .map_err(|_| {
+            .map_err(|error| {
                 if work_budget.stopped() {
                     ApiError::Timeout
+                } else if error.is::<CurrentResponseLimit>() {
+                    ApiError::Limit
                 } else {
                     ApiError::Internal
                 }
@@ -585,6 +766,439 @@ mod tests {
         }
     }
 
+    fn current_channel(id: &str, tvg_id: &str, name: &str, shift: i64) -> CurrentChannelInput {
+        CurrentChannelInput {
+            id: id.into(),
+            tvg_id: tvg_id.into(),
+            tvg_name: String::new(),
+            name: name.into(),
+            shift,
+        }
+    }
+
+    fn current_input(channels: Vec<CurrentChannelInput>, search: &str) -> CurrentInput {
+        CurrentInput {
+            version: 1,
+            source: SOURCE.into(),
+            channels,
+            search: search.into(),
+        }
+    }
+
+    fn current_body() -> Value {
+        json!({"version":1,"source":SOURCE,"search":"",
+            "channels":[{"id":"local","tvgId":"ren","tvgName":"","name":"РЕН ТВ","shift":0}]})
+    }
+
+    #[test]
+    fn current_caseless_key_matches_unicode_17_without_extra_equivalences() {
+        let mut mappings = std::collections::HashMap::new();
+        for line in include_str!("../../../tests/fixtures/unicode/CaseFolding-17.0.0.txt").lines() {
+            let fields: Vec<_> = line
+                .split('#')
+                .next()
+                .unwrap()
+                .split(';')
+                .map(str::trim)
+                .collect();
+            if fields.len() < 3 || !matches!(fields[1], "C" | "F") {
+                continue;
+            }
+            let point = u32::from_str_radix(fields[0], 16).unwrap();
+            let folded: String = fields[2]
+                .split_whitespace()
+                .map(|point| char::from_u32(u32::from_str_radix(point, 16).unwrap()).unwrap())
+                .collect();
+            mappings.insert(point, folded);
+        }
+        assert_eq!(mappings.len(), 1585);
+        for point in 0..=0x10ffff {
+            let Some(ch) = char::from_u32(point) else {
+                continue;
+            };
+            let original = ch.to_string();
+            let expected = mappings.get(&point).unwrap_or(&original);
+            let actual = caseless_key(&original);
+            assert_eq!(actual, caseless_key(expected), "C/F pair U+{point:04X}");
+            let mut canonical = String::new();
+            for ch in actual.chars() {
+                if let Some(folded) = mappings.get(&(ch as u32)) {
+                    canonical.push_str(folded);
+                } else {
+                    canonical.push(ch);
+                }
+            }
+            assert_eq!(&canonical, expected, "no extra equivalence U+{point:04X}");
+        }
+        assert_eq!(
+            caseless_key("Три Кота Straße ẞ ςσΣ"),
+            "ТРИ КОТА STRASSE SS ΣΣΣ"
+        );
+        assert_ne!(caseless_key("ё"), caseless_key("е"));
+        assert_ne!(caseless_key("ı"), caseless_key("i"));
+        assert_ne!(caseless_key("a  b"), caseless_key("a b"));
+    }
+
+    #[test]
+    fn current_selects_latest_overlap_and_first_valid_tie_without_copying_history() {
+        let row = |start, stop, title: &str| xmltv::Programme {
+            start,
+            stop,
+            title: title.into(),
+            ..Default::default()
+        };
+        let rows = vec![
+            row(10, 100, "older overlap"),
+            row(20, 25, "ended tie"),
+            row(20, 30, "first current tie"),
+            row(20, 40, "later tie"),
+            row(22, 24, "ended later start"),
+            row(60, 80, "future"),
+        ];
+        let budget = MatchBudget::new(MATCH_TIMEOUT);
+        assert!(current_program(&rows, 9, &budget).unwrap().is_none());
+        assert_eq!(
+            current_program(&rows, 20, &budget).unwrap().unwrap().title,
+            "ended tie"
+        );
+        assert_eq!(
+            current_program(&rows, 25, &budget).unwrap().unwrap().title,
+            "first current tie"
+        );
+        assert_eq!(
+            current_program(&rows, 30, &budget).unwrap().unwrap().title,
+            "later tie"
+        );
+        assert_eq!(
+            current_program(&rows, 40, &budget).unwrap().unwrap().title,
+            "older overlap"
+        );
+        assert_eq!(
+            current_program(&rows, 60, &budget).unwrap().unwrap().title,
+            "future"
+        );
+        assert!(current_program(&rows, 100, &budget).unwrap().is_none());
+        budget.cancel();
+        assert!(current_program(&rows, 40, &budget).is_err());
+    }
+
+    #[test]
+    fn current_matches_in_order_filters_titles_and_applies_both_shifts_once() {
+        let mut snapshot = snapshot();
+        snapshot.programs.get_mut("ren").unwrap()[0].title = "Три Кота: Ёлка Straße".into();
+        let rows = || {
+            vec![
+                current_channel("second", "ren", "РЕН ТВ +1", -3600),
+                current_channel("missing", "", "Unknown channel", 0),
+                current_channel("no-guide", "other", "Другой", 0),
+                current_channel("first", "ren", "РЕН ТВ", 0),
+            ]
+        };
+        let result = snapshot
+            .current(
+                current_input(rows(), "тРИ кОТА"),
+                NOW,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(result["programs"].as_array().unwrap().len(), 2);
+        assert_eq!(result["programs"][0]["id"], "second");
+        assert_eq!(result["programs"][1]["id"], "first");
+        assert_eq!(result["programs"][0]["start"], NOW / 1000);
+        assert_eq!(result["programs"][0]["end"], NOW / 1000 + 3600);
+        assert_eq!(result["asOf"], NOW / 1000);
+        assert_eq!(result["checked"], 4);
+        assert_eq!(result["total"], 4);
+        assert_eq!(result["generation"], snapshot.generation);
+        assert_eq!(result["fetchedAt"], NOW);
+        assert_eq!(result["stale"], false);
+        let encoded = result.to_string();
+        assert!(!encoded.contains("Описание"));
+        assert!(!encoded.contains("http"));
+        assert_eq!(result["programs"][0].as_object().unwrap().len(), 4);
+        for (search, count) in [
+            ("STRASSE", 2),
+            ("ёлка", 2),
+            ("елка", 0),
+            ("три  кота", 0),
+            ("unknown", 0),
+            ("", 2),
+        ] {
+            let result = snapshot
+                .current(
+                    current_input(rows(), search),
+                    NOW,
+                    &MatchBudget::new(MATCH_TIMEOUT),
+                )
+                .unwrap();
+            assert_eq!(
+                result["programs"].as_array().unwrap().len(),
+                count,
+                "{search}"
+            );
+        }
+        let shifted = snapshot
+            .current(
+                current_input(vec![current_channel("seconds", "ren", "РЕН ТВ +1", 30)], ""),
+                NOW + 3630_000,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(shifted["programs"][0]["start"], NOW / 1000 + 3630);
+        assert_eq!(shifted["programs"][0]["end"], NOW / 1000 + 7230);
+        let stale = snapshot
+            .current(
+                current_input(rows(), ""),
+                NOW + REFRESH_MS,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(stale["stale"], true);
+        assert_eq!(stale["checked"], 4);
+        snapshot.programs.get_mut("ren").unwrap()[0].title.clear();
+        let empty = snapshot
+            .current(
+                current_input(rows(), ""),
+                NOW,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(empty["programs"], json!([]));
+    }
+
+    #[tokio::test]
+    async fn current_endpoint_rejects_invalid_and_oversized_requests_without_echoing_fields() {
+        let state = GuideState::new();
+        let path = "/epg/v1/current";
+        let (status, body) = request(router(state.clone()), "POST", path, current_body()).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["error"]["code"], "EPG_NOT_READY");
+        state.publish(snapshot()).await;
+        let mut invalid = Vec::new();
+        for (field, value) in [
+            ("version", json!(2)),
+            ("source", json!("other")),
+            ("search", json!("я".repeat(513))),
+            ("url", json!("https://private.invalid/secret")),
+        ] {
+            let mut body = current_body();
+            body[field] = value;
+            invalid.push(body);
+        }
+        for (field, value) in [
+            ("id", json!("")),
+            ("name", json!("😀".repeat(257))),
+            ("shift", json!(86401)),
+            ("shift", json!(-86401)),
+            ("shift", json!(0.5)),
+            ("shift", json!("NaN")),
+            ("url", json!("https://private.invalid/secret")),
+        ] {
+            let mut body = current_body();
+            body["channels"][0][field] = value;
+            invalid.push(body);
+        }
+        let mut duplicate = current_body();
+        let row = duplicate["channels"][0].clone();
+        duplicate["channels"].as_array_mut().unwrap().push(row);
+        invalid.push(duplicate);
+        let mut many = current_body();
+        many["channels"] = json!((0..2049)
+            .map(|i| json!({"id":i.to_string(),"tvgId":"ren","tvgName":"","name":"","shift":0}))
+            .collect::<Vec<_>>());
+        invalid.push(many);
+        for body in invalid {
+            let (status, result) = request(router(state.clone()), "POST", path, body).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert_eq!(
+                result,
+                json!({"version":1,"source":SOURCE,"error":{"code":"EPG_REQUEST"}})
+            );
+        }
+        let mut large = current_body();
+        large["search"] = json!("a".repeat(512 * 1024));
+        let (status, result) = request(router(state.clone()), "POST", path, large).await;
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(result["error"]["code"], "EPG_REQUEST_LIMIT");
+        let mut empty = current_body();
+        empty["channels"] = json!([]);
+        empty["search"] = json!("я".repeat(512));
+        let (status, result) = request(router(state), "POST", path, empty).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(result["checked"], 0);
+        assert_eq!(result["total"], 0);
+        assert_eq!(result["programs"], json!([]));
+        assert!(result["asOf"].as_u64().is_some());
+    }
+
+    #[test]
+    fn current_response_budget_counts_json_escaping_and_never_returns_partial_rows() {
+        let mut snapshot = snapshot();
+        let channels = || {
+            (0..128)
+                .map(|i| current_channel(&i.to_string(), "ren", "РЕН ТВ", 0))
+                .collect()
+        };
+        snapshot.programs.get_mut("ren").unwrap()[0].title = "a".repeat(16000);
+        let result = snapshot
+            .current(
+                current_input(channels(), ""),
+                NOW,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(result["programs"].as_array().unwrap().len(), 128);
+        assert!(serde_json::to_vec(&result).unwrap().len() <= MAX_CURRENT_BYTES);
+        snapshot.programs.get_mut("ren").unwrap()[0].title = "a".repeat(16384);
+        let error = snapshot
+            .current(
+                current_input(channels(), ""),
+                NOW,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap_err();
+        assert!(error.is::<CurrentResponseLimit>());
+        snapshot.programs.get_mut("ren").unwrap()[0].title = "\u{1}".repeat(3000);
+        let error = snapshot
+            .current(
+                current_input(channels(), ""),
+                NOW,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap_err();
+        assert!(error.is::<CurrentResponseLimit>());
+    }
+
+    #[tokio::test]
+    async fn current_route_returns_compact_current_rows_or_a_whole_budget_error() {
+        let state = GuideState::new();
+        let clock = now_ms();
+        let mut fresh = snapshot();
+        fresh.fetched_at = clock;
+        let program = &mut fresh.programs.get_mut("ren").unwrap()[0];
+        program.start = (clock / 1000) as i64 - 60;
+        program.stop = (clock / 1000) as i64 + 3600;
+        program.title = "Три Кота".into();
+        let start = program.start;
+        let end = program.stop;
+        state.publish(fresh).await;
+        let mut body = current_body();
+        body["search"] = json!("кОТа");
+        let (status, result) =
+            request(router(state.clone()), "POST", "/epg/v1/current", body).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            result["programs"],
+            json!([{"id":"local","start":start,"end":end,"title":"Три Кота"}])
+        );
+        assert!(result["asOf"]
+            .as_i64()
+            .is_some_and(|now| start <= now && now < end));
+        assert_eq!(result["stale"], false);
+        assert_eq!(result["checked"], 1);
+        assert_eq!(result["total"], 1);
+        let held = state
+            .match_requests
+            .clone()
+            .acquire_many_owned(2)
+            .await
+            .unwrap();
+        let (status, result) = request(
+            router(state.clone()),
+            "POST",
+            "/epg/v1/current",
+            current_body(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(result["error"]["code"], "EPG_BUSY");
+        drop(held);
+        let mut oversized = snapshot();
+        let program = &mut oversized.programs.get_mut("ren").unwrap()[0];
+        program.start = start;
+        program.stop = end;
+        program.title = "a".repeat(16384);
+        state.publish(oversized).await;
+        let mut body = current_body();
+        body["channels"] = json!((0..128)
+            .map(
+                |i| json!({"id":i.to_string(),"tvgId":"ren","tvgName":"","name":"РЕН ТВ","shift":0})
+            )
+            .collect::<Vec<_>>());
+        let (status, result) = request(router(state), "POST", "/epg/v1/current", body).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            result,
+            json!({"version":1,"source":SOURCE,"error":{"code":"EPG_CHANNEL_LIMIT"}})
+        );
+    }
+
+    #[tokio::test]
+    async fn current_deadline_cancellation_and_snapshot_replacement_are_coherent() {
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let old_generation = state
+            .snapshot
+            .read()
+            .await
+            .as_ref()
+            .unwrap()
+            .generation
+            .clone();
+        let held = state.match_execution.clone().acquire_owned().await.unwrap();
+        let input = || current_input(vec![current_channel("local", "ren", "РЕН ТВ", 0)], "");
+        let response = run_current(state.clone(), input(), Duration::from_millis(20)).await;
+        assert!(matches!(response, Err(ApiError::Timeout)));
+        assert_eq!(state.match_requests.available_permits(), 2);
+        let task = tokio::spawn(run_current(state.clone(), input(), MATCH_TIMEOUT));
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while state.match_requests.available_permits() != 1 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        assert_eq!(state.match_requests.available_permits(), 2);
+        let task = tokio::spawn(run_current(state.clone(), input(), MATCH_TIMEOUT));
+        // Wait until this request has captured its immutable snapshot.
+        tokio::time::timeout(Duration::from_secs(1), async {
+            loop {
+                let captured = state
+                    .snapshot
+                    .read()
+                    .await
+                    .as_ref()
+                    .is_some_and(|s| Arc::strong_count(s) > 1);
+                if captured {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let mut fresh = snapshot();
+        fresh.fetched_at = now_ms();
+        fresh.generation = "replacement".into();
+        state.publish(fresh).await;
+        drop(held);
+        let response = task.await.unwrap().unwrap();
+        let result: Value = serde_json::from_slice(
+            &to_bytes(response.into_body(), MAX_CURRENT_BYTES)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result["generation"], old_generation);
+        assert_eq!(result["fetchedAt"], NOW);
+        assert_eq!(result["checked"], 1);
+        let (_, result) = request(router(state), "POST", "/epg/v1/current", current_body()).await;
+        assert_eq!(result["generation"], "replacement");
+        assert_eq!(result["stale"], false);
+    }
+
     // Deterministic host-work probe: core tests separately interrupt a real
     // infinite JS loop. Here we test HTTP ownership, queuing and permit cleanup
     // without relying on how fast the evolving matcher handles a fixture.
@@ -635,7 +1249,7 @@ mod tests {
         let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let response = run_match_using(
             state.clone(),
-            match_input(),
+            match_input().channels,
             Duration::from_millis(20),
             blocked_match(entered, finished.clone()),
         )
@@ -722,7 +1336,7 @@ mod tests {
                 move |Json(input): Json<MatchInput>| {
                     run_match_using(
                         state.clone(),
-                        input,
+                        input.channels,
                         MATCH_TIMEOUT,
                         blocked_match(entered.clone(), finished.clone()),
                     )

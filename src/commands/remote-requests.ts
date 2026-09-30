@@ -8,6 +8,10 @@ import {
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
 
+// Keep the source and catalogue fingerprint on the player; only an opaque
+// receipt crosses the control transport. It authorizes no additional access.
+var remoteEpgCatalog: any = null;
+
 /** Read only producer-owned, allowlisted snapshots; never raw diagnostics or logs. */
 function remoteSnapshot(read: any): any {
     if (typeof read !== "function") return { available: false };
@@ -384,6 +388,118 @@ export function executeRemoteRequest(
         return;
     }
     var rows = channels();
+    if (request.action === "epg_catalog" || request.action === "play_catalog") {
+        var identity = w.__ottSourceIdentity;
+        if (!identity || typeof identity.current !== "function") {
+            done({
+                data: { error: "Update the player for server EPG queries." },
+                status: "unsupported",
+            });
+            return;
+        }
+        var catalogSource = identity.current(w);
+        var catalogLoad = w.__ottCommandChannelLoad;
+        var metadata: any[];
+        try {
+            if (rows.length > 2048) throw new Error();
+            metadata = rows.map(function (row: any) {
+                var channel = w.channels[row.id];
+                var shift = Number(channel.ts) || 0;
+                var entry = {
+                    id: String(row.id),
+                    name: row.name,
+                    number: row.number,
+                    shift: shift,
+                    tvgId: String(channel.epg || ""),
+                    tvgName: String(channel.tn || ""),
+                };
+                if (
+                    !entry.id ||
+                    !isFinite(shift) ||
+                    Math.floor(shift) !== shift ||
+                    Math.abs(shift) > 86400 ||
+                    [entry.id, entry.name, entry.tvgId, entry.tvgName].some(
+                        function (value) {
+                            return value.length > 512;
+                        }
+                    )
+                )
+                    throw new Error();
+                return entry;
+            });
+        } catch (_) {
+            reject("Channel metadata exceeds the server EPG limits.");
+            return;
+        }
+        var catalogSignature = JSON.stringify(metadata);
+        if (catalogSignature.length > 500000) {
+            reject("Channel metadata exceeds the server EPG limits.");
+            return;
+        }
+        var catalogCurrent = function (): boolean {
+            return (
+                w.commandChannelsReady === true &&
+                catalogLoad === w.__ottCommandChannelLoad &&
+                catalogSource === identity.current(w)
+            );
+        };
+        var receiptCurrent = function (): boolean {
+            return (
+                catalogCurrent() &&
+                remoteEpgCatalog &&
+                remoteEpgCatalog.source === catalogSource &&
+                remoteEpgCatalog.load === catalogLoad &&
+                remoteEpgCatalog.signature === catalogSignature &&
+                remoteEpgCatalog.expires > Date.now()
+            );
+        };
+        if (request.action === "epg_catalog") {
+            if (Object.keys(params).length || !catalogCurrent()) {
+                reject("Channels or provider changed. Retry the EPG query.");
+                return;
+            }
+            if (!receiptCurrent())
+                remoteEpgCatalog = {
+                    expires: Date.now() + 120000,
+                    load: catalogLoad,
+                    signature: catalogSignature,
+                    source: catalogSource,
+                    token:
+                        Date.now().toString(36) +
+                        "-" +
+                        Math.random().toString(36).slice(2),
+                };
+            reply({ catalog: remoteEpgCatalog.token, channels: metadata });
+            return;
+        }
+        if (
+            Object.keys(params).length !== 2 ||
+            typeof params.catalog !== "string" ||
+            typeof params.id !== "string" ||
+            !receiptCurrent() ||
+            params.catalog !== remoteEpgCatalog.token
+        ) {
+            reject(
+                "Channels or provider changed. Retry the EPG query before playing."
+            );
+            return;
+        }
+        var selected = rows.filter(function (row: any) {
+            return String(row.id) === params.id;
+        });
+        if (selected.length !== 1) {
+            reject("The selected EPG channel is no longer available.");
+            return;
+        }
+        selected[0].id = params.id;
+        // Reuse channel admission/category handling, after binding the request to
+        // the exact ordered catalogue that the remote EPG result described.
+        request = {
+            action: "play",
+            params: { query: String(selected[0].number) },
+        };
+        params = request.params;
+    }
     if (request.action === "channels") {
         var channelSearch = caselessKey(String(params.search || ""));
         reply({

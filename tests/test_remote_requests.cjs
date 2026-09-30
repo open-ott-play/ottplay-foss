@@ -664,7 +664,183 @@ async function checkStatusDiagnostics() {
     }
 }
 
+function checkRemoteEpgCatalog() {
+    function fixture() {
+        let source = "private-source-identity";
+        let clock = Date.now();
+        const plays = [];
+        const h = {
+            ...host,
+            __ottClassicGuide: {
+                peek() {
+                    throw new Error("EPG must not be read on the player");
+                },
+                request() {
+                    throw new Error("EPG must not be fetched on the player");
+                },
+            },
+            __ottCommandChannelLoad: 3,
+            __ottSourceIdentity: { current: () => source },
+            cats: { all: [7, "second"] },
+            catsArray: ["all"],
+            channels: {
+                7: {
+                    channel_name: "РЕН ТВ +2",
+                    epg: "ren",
+                    stream_url: "secret-stream",
+                    tn: "РЕН ТВ",
+                    ts: 900,
+                },
+                second: { channel_name: "Другой", password: "secret-password" },
+            },
+            cList: [7, "second"],
+            playChannel: (...args) => plays.push(args),
+        };
+        const context = vm.createContext({
+            ...ctx,
+            Date: { now: () => clock },
+            exports: {},
+            window: h,
+        });
+        vm.runInContext(code, context);
+        return {
+            expire: () => {
+                clock += 120001;
+            },
+            h,
+            plays,
+            run(action, params = {}) {
+                let result;
+                context.exports.executeRemoteRequest(
+                    { action, params },
+                    (value) => {
+                        result = JSON.parse(JSON.stringify(value));
+                    }
+                );
+                assert.ok(
+                    result,
+                    "metadata and guarded play reply synchronously"
+                );
+                return result;
+            },
+            source: () => {
+                source = "replacement-source";
+            },
+        };
+    }
+    const f = fixture();
+    const snapshot = f.run("epg_catalog");
+    assert.equal(snapshot.status, "ok");
+    assert.deepEqual(snapshot.data.channels, [
+        {
+            id: "7",
+            name: "РЕН ТВ +2",
+            number: 1,
+            shift: 900,
+            tvgId: "ren",
+            tvgName: "РЕН ТВ",
+        },
+        {
+            id: "second",
+            name: "Другой",
+            number: 2,
+            shift: 0,
+            tvgId: "",
+            tvgName: "",
+        },
+    ]);
+    assert.equal(
+        f.run("epg_catalog").data.catalog,
+        snapshot.data.catalog,
+        "unchanged catalog retains its receipt"
+    );
+    assert(!JSON.stringify(snapshot).includes("secret"));
+    assert(!JSON.stringify(snapshot).includes("private-source"));
+    const played = f.run("play_catalog", {
+        catalog: snapshot.data.catalog,
+        id: "7",
+    });
+    assert.equal(played.status, "ok");
+    assert.deepEqual(played.data, {
+        channel: { id: "7", name: "РЕН ТВ +2", number: 1 },
+        dispatched: true,
+    });
+    assert.deepEqual(f.plays, [[0, 0]]);
+
+    for (const change of [
+        (f) => f.h.cList.reverse(),
+        (f) => {
+            f.h.channels[7].channel_name = "Changed";
+        },
+        (f) => {
+            f.h.channels[7].epg = "different-guide";
+        },
+        (f) => {
+            f.h.channels[7].ts = 3600;
+        },
+        (f) => {
+            f.h.__ottCommandChannelLoad++;
+        },
+        (f) => {
+            f.h.commandChannelsReady = false;
+        },
+        (f) => {
+            f.h.cats.all = ["second"];
+        },
+        (f) => f.source(),
+        (f) => f.expire(),
+    ]) {
+        const f = fixture();
+        const receipt = f.run("epg_catalog").data.catalog;
+        change(f);
+        assert.equal(
+            f.run("play_catalog", { catalog: receipt, id: "7" }).status,
+            "rejected"
+        );
+        assert.equal(f.plays.length, 0);
+    }
+    for (const params of [
+        {},
+        { catalog: "wrong", id: "7" },
+        { catalog: snapshot.data.catalog, id: "missing" },
+        { catalog: snapshot.data.catalog, extra: true, id: "7" },
+    ]) {
+        assert.equal(f.run("play_catalog", params).status, "rejected");
+        assert.equal(f.plays.length, 1);
+    }
+    for (const value of [Infinity, 86401, -86401, 0.5]) {
+        const f = fixture();
+        f.h.channels[7].ts = value;
+        assert.equal(f.run("epg_catalog").status, "rejected");
+    }
+    const huge = fixture();
+    huge.h.cList = Array.from({ length: 1565 }, (_, i) => String(i));
+    huge.h.channels = Object.fromEntries(
+        huge.h.cList.map((id) => [id, { channel_name: "Channel " + id }])
+    );
+    assert.equal(
+        huge.run("epg_catalog").data.channels.length,
+        1565,
+        "a full player catalogue is read without any guide request"
+    );
+    huge.h.cList = Array.from({ length: 2049 }, (_, i) => String(i));
+    huge.h.channels = Object.fromEntries(
+        huge.h.cList.map((id) => [id, { channel_name: id }])
+    );
+    assert.equal(huge.run("epg_catalog").status, "rejected");
+    const longName = fixture();
+    longName.h.channels[7].channel_name = "я".repeat(513);
+    assert.equal(longName.run("epg_catalog").status, "rejected");
+    const empty = fixture();
+    empty.h.cList = [];
+    assert.deepEqual(empty.run("epg_catalog").data.channels, []);
+    console.log(
+        "PASS server EPG catalog: metadata-only reads, shifts, bounded fields and source/reload/order/expiry playback guards"
+    );
+}
+
 (async () => {
+    checkRemoteEpgCatalog();
     await checkStatusDiagnostics();
     checkUnicodeReference();
     checkUnicodeRequests();
