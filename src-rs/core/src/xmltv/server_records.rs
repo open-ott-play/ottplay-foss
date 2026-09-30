@@ -1,7 +1,7 @@
 //! Native compatibility backend for the server's shared `rust` record profile.
 //! QuickXML still owns tokenization and decoding. Calendar/record changes must
 //! remain equivalent to the pinned shared core, checked by differential tests.
-use super::{attr, attr_value, Channel, Channels, Programme, Programs};
+use super::{attr, Channel, Channels, Programme, Programs};
 use quick_xml::events::BytesStart;
 
 #[derive(Clone, Copy)]
@@ -29,11 +29,34 @@ impl ServerRecords {
                 });
             }
             b"programme" => {
+                let mut values = [None, None, None];
+                let mut seen = 0u8;
+                // Retain QuickXML's duplicate checks and first-value semantics,
+                // including a first value that fails decoding and defaults empty.
+                for attribute in element.attributes().flatten() {
+                    let field = match attribute.key.as_ref() {
+                        b"channel" => 0,
+                        b"start" => 1,
+                        b"stop" => 2,
+                        _ => continue,
+                    };
+                    values[field] = attribute
+                        .decoded_and_normalized_value(
+                            quick_xml::XmlVersion::Implicit1_0,
+                            element.decoder(),
+                        )
+                        .ok();
+                    seen |= 1 << field;
+                    if seen == 7 {
+                        break;
+                    }
+                }
+                let [channel, start, stop] = values;
                 self.programme = Some((
-                    attr(element, "channel").unwrap_or_default(),
+                    channel.unwrap_or_default().into_owned(),
                     Programme {
-                        start: parse_time(&attr_value(element, "start").unwrap_or_default()),
-                        stop: parse_time(&attr_value(element, "stop").unwrap_or_default()),
+                        start: parse_time(&start.unwrap_or_default()),
+                        stop: parse_time(&stop.unwrap_or_default()),
                         ..Programme::default()
                     },
                 ));

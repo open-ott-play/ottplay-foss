@@ -311,3 +311,80 @@ fn server_records_match_shared_full_feed() -> anyhow::Result<()> {
     );
     Ok(())
 }
+
+#[test]
+fn server_records_match_shared_programme_attribute_scan() {
+    let attributes = [
+        "channel='a&amp;b'",
+        "start='20260928000000 +0300'",
+        "stop='20260928003000 +0300'",
+    ];
+    let mut cases = Vec::new();
+    for order in [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ] {
+        let ordered = order.map(|index| attributes[index]).join(" ");
+        for prefix in [
+            "",
+            "ignored='value' ",
+            "bare ",
+            "junk=unquoted ",
+            "junk='one' junk='two' ",
+        ] {
+            cases.push(format!("{prefix}{ordered} trailing='&unsupported;'"));
+        }
+        cases.push(format!(
+            "{} ignored='x' {} ignored='duplicate' {}",
+            attributes[order[0]], attributes[order[1]], attributes[order[2]]
+        ));
+    }
+    // A failed first decode still wins over later duplicate attributes. Their
+    // decoding errors, and unrelated attribute errors, must stay ignored.
+    for key in ["channel", "start", "stop"] {
+        for value in [
+            "",
+            "replacement",
+            "20260928010000 +0000",
+            "&unsupported;",
+            "&#x110000;",
+            "&#0;",
+        ] {
+            cases.push(format!("{key}='{value}' {}", attributes.join(" ")));
+            cases.push(format!("{} {key}='{value}'", attributes.join(" ")));
+        }
+    }
+    cases.extend([
+        "channel='a&#38;b' start='20260928000000&#32;+0300' stop='20260928003000&#x20;+0300'"
+            .into(),
+        "channel='a\tb' start='20260928000000\r\n+0300' stop='20260928003000\t+0300'".into(),
+        "channel='a&amp;b'".into(),
+        "start='20260928000000 +0300' stop='20260928003000 +0300'".into(),
+        "channel=a start='20260928000000 +0300' channel='a&amp;b' stop='20260928003000 +0300'"
+            .into(),
+        "channel 'lost' start='20260928000000 +0300' channel='a&amp;b' stop='20260928003000 +0300'"
+            .into(),
+    ]);
+    // Exercise quick-xml's hashed duplicate-check path as well as the usual
+    // handful of attributes, and preserve the early stop after all three keys.
+    let extras = (0..40)
+        .map(|index| format!("x{index}='ignored' "))
+        .collect::<String>();
+    cases.push(format!("{extras}{} x2='duplicate'", attributes.join(" ")));
+    cases.push(format!(
+        "{} {extras}channel='duplicate'",
+        attributes.join(" ")
+    ));
+    for (index, attributes) in cases.iter().enumerate() {
+        for title in ["First", "&unsupported;"] {
+            compare(&format!("programme attributes {index}: {attributes}"), &format!(
+                "<tv><channel id='a&amp;b'><display-name>A</display-name></channel><programme {attributes}><title>{title}</title><desc>Description</desc></programme><programme channel='a&amp;b'><title>Following</title></programme></tv>"
+            ));
+        }
+    }
+    assert_eq!(cases.len(), 80);
+}

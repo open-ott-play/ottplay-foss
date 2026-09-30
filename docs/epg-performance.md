@@ -53,6 +53,27 @@ programme order, against the same reference. Timing comparisons must keep the
 input hash, node, resource limit and build profile fixed. Release images require
 separate Linux qualification; a fast local parser microbenchmark is insufficient.
 
+To separate parsing from construction of the persistent HTTP matching index:
+
+```sh
+cargo run --locked --release -p ottplay-core --example epg_bench -- feed.xml http-match
+```
+
+The `parse` phase ends before index construction. Add `parse` and `index` times
+when comparing cold computation with a version that did not build a persistent
+index before publishing its guide. The existing `match` mode builds the native
+name index; `http-match` also includes the retained HTTP aliases. Both modes
+measure three passes of up to 500 sorted channel names. The output fingerprint covers
+every parsed field and programme order outside the timed regions; it does not
+certify the selected channel IDs, which require the matching tests and HTTP
+schedule comparisons.
+
+Alternate old and candidate binaries on the same host with the same frozen feed.
+Record complete readiness, process CPU, first and warm requests, and complete
+ordered programme responses. Check the selected channel identity explicitly:
+v1.1.43 can return a regional schedule for an unshifted name. A faster response
+with the wrong schedule is not a valid correctness baseline.
+
 ## Why the change is necessary
 
 The move to shared record rules in v1.1.44 improved rule ownership but introduced
