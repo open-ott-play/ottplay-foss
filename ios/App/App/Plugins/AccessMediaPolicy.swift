@@ -243,3 +243,93 @@ final class AccessMediaHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendab
         completion?(buffer, response, cancelled ? CancellationError() : failure ?? error)
     }
 }
+
+// Public requests retain URLSession.shared's connection pool, cookies,
+// credentials and default redirect handling. A task delegate bounds delivered
+// bytes without creating or invalidating a session shared by other consumers.
+final class AccessMediaPublicHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    private let limit: Int
+    private var task: URLSessionDataTask?
+    private var completion: CheckedContinuation<(Data, URLResponse), Error>?
+    private var cancelled = false
+    private var buffer = Data()
+    private var response: URLResponse?
+
+    private init(limit: Int) { self.limit = limit }
+
+    private func start(_ request: URLRequest, completion: CheckedContinuation<(Data, URLResponse), Error>) {
+        lock.lock()
+        guard !cancelled else { lock.unlock(); completion.resume(throwing: CancellationError()); return }
+        self.completion = completion
+        let task = URLSession.shared.dataTask(with: request)
+        task.delegate = self
+        self.task = task
+        lock.unlock()
+        task.resume()
+    }
+
+    private func cancel() {
+        lock.lock(); cancelled = true; lock.unlock()
+        finish(CancellationError(), cancelTask: true)
+    }
+
+    private func finish(_ error: Error?, cancelTask: Bool = false) {
+        lock.lock()
+        guard let completion else { lock.unlock(); return }
+        let task = self.task
+        let error = cancelled ? CancellationError() : error
+        let result: Result<(Data, URLResponse), Error>
+        if let error { result = .failure(error) }
+        else if let response { result = .success((buffer, response)) }
+        else { result = .failure(URLError(.badServerResponse)) }
+        self.completion = nil; self.task = nil; self.response = nil; buffer = Data()
+        lock.unlock()
+        if cancelTask { task?.cancel() }
+        completion.resume(with: result)
+    }
+
+    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, URLResponse) {
+        guard limit >= 0 else { throw URLError(.dataLengthExceedsMaximum) }
+        let operation = AccessMediaPublicHTTP(limit: limit)
+        return try await withTaskCancellationHandler(operation: {
+            try Task.checkCancellation()
+            let result: (Data, URLResponse) = try await withCheckedThrowingContinuation { continuation in
+                operation.start(request, completion: continuation)
+            }
+            try Task.checkCancellation()
+            return result
+        }, onCancel: { operation.cancel() })
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        lock.lock()
+        guard completion != nil else { lock.unlock(); completionHandler(.cancel); return }
+        guard response.expectedContentLength <= Int64(limit) else {
+            lock.unlock()
+            finish(URLError(.dataLengthExceedsMaximum), cancelTask: true)
+            completionHandler(.cancel)
+            return
+        }
+        self.response = response
+        lock.unlock()
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        lock.lock()
+        guard completion != nil else { lock.unlock(); return }
+        guard data.count <= limit - buffer.count else {
+            lock.unlock()
+            finish(URLError(.dataLengthExceedsMaximum), cancelTask: true)
+            return
+        }
+        buffer.append(data)
+        lock.unlock()
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        finish(error)
+    }
+}
