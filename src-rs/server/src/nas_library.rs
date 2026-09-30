@@ -19,13 +19,105 @@ use std::{
     sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::{Mutex, OwnedRwLockReadGuard, RwLock, Semaphore};
 
 type HmacSha256 = Hmac<Sha256>;
 const MAX_JSON: usize = 8 * 1024 * 1024;
 const MAX_PLAYLIST: usize = 2 * 1024 * 1024;
 const URL_TTL: u64 = 7 * 24 * 60 * 60;
 const MAX_EXPORT_ITEMS: usize = 100_000;
+const CATALOG_CACHE_TTL: Duration = Duration::from_secs(15);
+const CATALOG_CACHE_BYTES: usize = 16 * 1024 * 1024;
+const CATALOG_CACHE_ENTRIES: usize = 32;
+static HLS_URI_REGEX: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(r#"URI="([^"]*)""#).expect("constant URI regex")
+});
+
+struct CachedCatalog {
+    value: Arc<Value>,
+    bytes: usize,
+    expires: Instant,
+    used: Instant,
+}
+
+#[derive(Default)]
+struct CatalogCache {
+    entries: HashMap<String, CachedCatalog>,
+    flights: HashMap<String, std::sync::Weak<Mutex<()>>>,
+    bytes: usize,
+}
+
+impl CatalogCache {
+    fn get(&mut self, key: &str) -> Option<Arc<Value>> {
+        let entry = self.entries.get_mut(key)?;
+        if Instant::now() < entry.expires {
+            entry.used = Instant::now();
+            return Some(entry.value.clone());
+        }
+        self.bytes -= self.entries.remove(key).unwrap().bytes;
+        None
+    }
+
+    fn insert(&mut self, key: String, value: Arc<Value>, bytes: usize) {
+        if bytes > CATALOG_CACHE_BYTES {
+            return;
+        }
+        if let Some(previous) = self.entries.remove(&key) {
+            self.bytes -= previous.bytes;
+        }
+        let now = Instant::now();
+        self.entries.retain(|_, entry| {
+            if entry.expires <= now {
+                self.bytes -= entry.bytes;
+                false
+            } else {
+                true
+            }
+        });
+        while self.entries.len() >= CATALOG_CACHE_ENTRIES
+            || self.bytes + bytes > CATALOG_CACHE_BYTES
+        {
+            let Some(oldest) = self
+                .entries
+                .iter()
+                .min_by_key(|(_, entry)| entry.used)
+                .map(|(key, _)| key.clone())
+            else {
+                break;
+            };
+            self.bytes -= self.entries.remove(&oldest).unwrap().bytes;
+        }
+        self.bytes += bytes;
+        self.entries.insert(
+            key,
+            CachedCatalog {
+                value,
+                bytes,
+                expires: now + CATALOG_CACHE_TTL,
+                used: now,
+            },
+        );
+    }
+}
+
+struct TranscodeSession {
+    seen: Instant,
+    gate: Arc<RwLock<()>>,
+}
+impl TranscodeSession {
+    fn new(seen: Instant) -> Self {
+        Self {
+            seen,
+            gate: Arc::new(RwLock::new(())),
+        }
+    }
+}
+
+struct SessionLease {
+    session: String,
+    gate: Arc<RwLock<()>>,
+    _guard: OwnedRwLockReadGuard<()>,
+}
 
 #[derive(Clone)]
 struct Library {
@@ -35,8 +127,10 @@ struct Library {
     client: reqwest::Client,
     metadata: Arc<Semaphore>,
     streams: Arc<Semaphore>,
-    sessions: Arc<Mutex<HashMap<String, Instant>>>,
+    sessions: Arc<Mutex<HashMap<String, TranscodeSession>>>,
     browser_hosts: Vec<String>,
+    catalog_cache: Arc<Mutex<CatalogCache>>,
+    catalog_waiters: Arc<Semaphore>,
 }
 
 pub fn routes_from_env() -> anyhow::Result<Router> {
@@ -109,6 +203,8 @@ impl Library {
             streams: Arc::new(Semaphore::new(32)),
             sessions: Arc::new(Mutex::new(HashMap::new())),
             browser_hosts: Vec::new(),
+            catalog_cache: Arc::new(Mutex::new(CatalogCache::default())),
+            catalog_waiters: Arc::new(Semaphore::new(64)),
         })
     }
 
@@ -125,7 +221,15 @@ impl Library {
         mac.verify_slice(&self.signature(&self.key)).is_ok()
     }
 
-    fn accepts_browser(&self, headers: &HeaderMap, expected: &str) -> bool {
+    fn accepts_browser(
+        &self,
+        headers: &HeaderMap,
+        expected: &str,
+        peer: Option<std::net::SocketAddr>,
+    ) -> bool {
+        let Some(peer) = peer else {
+            return false;
+        };
         if !same_origin(headers, expected) {
             return false;
         }
@@ -139,7 +243,8 @@ impl Library {
             .trim_matches(['[', ']'])
             .trim_end_matches('.')
             .to_ascii_lowercase();
-        local_host(&host) || self.browser_hosts.iter().any(|allowed| allowed == &host)
+        self.browser_hosts.iter().any(|allowed| allowed == &host)
+            || (local_host(&host) && local_ip(peer.ip()))
     }
 
     fn url(&self, path: &str) -> Result<reqwest::Url, &'static str> {
@@ -169,16 +274,75 @@ impl Library {
         Ok(url)
     }
 
-    async fn fetch(&self, path: &str, offset: usize, limit: usize) -> Result<Value, &'static str> {
+    async fn fetch(
+        &self,
+        path: &str,
+        offset: usize,
+        limit: usize,
+    ) -> Result<Arc<Value>, &'static str> {
+        // Play resolution and transcode negotiation must always reflect Plex's current state.
+        let cacheable = path == "/library/sections"
+            || path.starts_with("/hubs/search?")
+            || path.starts_with("/library/sections/")
+            || (path.starts_with("/library/metadata/") && path.ends_with("/children"));
+        if !cacheable {
+            return self
+                .fetch_fresh(path, offset, limit)
+                .await
+                .map(|(value, _)| value);
+        }
+        let key = format!("{offset}:{limit}:{path}");
+        if let Some(value) = self.catalog_cache.lock().await.get(&key) {
+            return Ok(value);
+        }
+        let _waiter = self
+            .catalog_waiters
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| "NAS is busy")?;
+        let gate = {
+            let mut cache = self.catalog_cache.lock().await;
+            if let Some(value) = cache.get(&key) {
+                return Ok(value);
+            }
+            // Weak gates disappear when a cancelled or completed request drops its guard.
+            // Cancellation cannot leave a permanently occupied in-flight cache entry.
+            cache.flights.retain(|_, gate| gate.strong_count() > 0);
+            match cache.flights.get(&key).and_then(std::sync::Weak::upgrade) {
+                Some(gate) => gate,
+                None => {
+                    let gate = Arc::new(Mutex::new(()));
+                    cache.flights.insert(key.clone(), Arc::downgrade(&gate));
+                    gate
+                }
+            }
+        };
+        let _single_fetch = gate.lock().await;
+        if let Some(value) = self.catalog_cache.lock().await.get(&key) {
+            return Ok(value);
+        }
+        let (value, bytes) = self.fetch_fresh(path, offset, limit).await?;
+        self.catalog_cache
+            .lock()
+            .await
+            .insert(key, value.clone(), bytes);
+        Ok(value)
+    }
+
+    async fn fetch_fresh(
+        &self,
+        path: &str,
+        offset: usize,
+        limit: usize,
+    ) -> Result<(Arc<Value>, usize), &'static str> {
         let _permit = self
             .metadata
             .clone()
             .try_acquire_owned()
             .map_err(|_| "NAS is busy")?;
-        let url = self.url(path)?;
         let request = self
             .client
-            .get(url)
+            .get(self.url(path)?)
             .header("X-Plex-Token", self.token.clone())
             .header(header::ACCEPT, "application/json")
             .header("X-Plex-Container-Start", offset)
@@ -189,7 +353,8 @@ impl Library {
             return Err("Plex request failed");
         }
         let bytes = bounded(response, MAX_JSON).await?;
-        serde_json::from_slice(&bytes).map_err(|_| "Invalid Plex catalog")
+        let value = serde_json::from_slice(&bytes).map_err(|_| "Invalid Plex catalog")?;
+        Ok((Arc::new(value), bytes.len()))
     }
 
     fn media_url(&self, origin: &str, path: &str) -> Result<String, &'static str> {
@@ -286,7 +451,10 @@ impl Library {
     }
 
     async fn catalog(&self, request: &CatalogRequest, origin: &str) -> Result<Value, &'static str> {
-        let offset = request.offset.unwrap_or(0).min(MAX_EXPORT_ITEMS);
+        let offset = request.offset.unwrap_or(0);
+        if offset > MAX_EXPORT_ITEMS {
+            return Err("Catalog offset exceeds limit");
+        }
         let limit = request.limit.unwrap_or(100).clamp(1, 1000);
         let (path, root) = match request.cmd.as_deref().unwrap_or("") {
             "" => ("/library/sections".to_owned(), true),
@@ -347,24 +515,25 @@ impl Library {
         } else if request.cmd.as_deref() == Some("search") {
             // Plex's hubs API limits each type independently; flatten then cap to the caller's page.
             // Hubs search is bounded by Plex's explicit limit, never a whole-library scan.
-            let mut found = Vec::new();
-            for hub in array(container, "Hub") {
-                for item in array(hub, "Metadata") {
-                    if let Some(item) = self.item(item, origin) {
-                        found.push(item);
-                    }
-                }
-            }
+            let mut found: Vec<&Value> = array(container, "Hub")
+                .iter()
+                .flat_map(|hub| array(hub, "Metadata"))
+                .filter(|item| catalog_item(item))
+                .collect();
             if found.is_empty() {
-                for item in array(container, "Metadata") {
-                    if let Some(item) = self.item(item, origin) {
-                        found.push(item);
-                    }
-                }
+                found = array(container, "Metadata")
+                    .iter()
+                    .filter(|item| catalog_item(item))
+                    .collect();
             }
-            // Search results returned by Plex are a bounded snapshot, not a paginated library listing.
+            // Sign thumbnails only for the visible page, not every match in every hub.
             total = Some(found.len());
-            items = found.into_iter().skip(offset).take(limit).collect();
+            items = found
+                .into_iter()
+                .skip(offset)
+                .take(limit)
+                .filter_map(|item| self.item(item, origin))
+                .collect();
             received = items.len();
         } else {
             for item in array(container, "Metadata") {
@@ -381,6 +550,7 @@ impl Library {
             "title":container["title2"].as_str().or_else(||container["librarySectionTitle"].as_str()).unwrap_or("Synology"),
             "controls":{"search":true}, "items":items});
         if received > 0
+            && offset + received <= MAX_EXPORT_ITEMS
             && total
                 .map(|total| offset + received < total)
                 .unwrap_or(received >= limit)
@@ -407,9 +577,11 @@ impl Library {
             .first()
             .ok_or("Media not found")?;
         let mut variants = serde_json::Map::new();
+        let mut sessions = serde_json::Map::new();
         let mut original = None;
         let mut compatible = None;
         let mut stop = None;
+        let mut heartbeat = None;
         for (media_index, media) in array(item, "Media").iter().take(16).enumerate() {
             for (part_index, part) in array(media, "Part").iter().take(32).enumerate() {
                 let Some(path) = part["key"]
@@ -442,16 +614,24 @@ impl Library {
                 if matches!(item["type"].as_str(), Some("movie" | "episode" | "clip")) {
                     let (path, stop_path) = self.transcode_paths(id, media_index, part_index)?;
                     let hls = self.media_url(origin, &path)?;
+                    let stop_url = self.media_url(origin, &stop_path)?;
+                    let heartbeat_url =
+                        self.media_url(origin, &stop_path.replace("/stop?", "/ping?"))?;
                     if compatible.is_none() {
                         compatible = Some(hls.clone());
-                        stop = Some(self.media_url(origin, &stop_path)?);
+                        stop = Some(stop_url.clone());
+                        heartbeat = Some(heartbeat_url.clone());
                     }
+                    sessions.insert(
+                        hls.clone(),
+                        json!({"stop":stop_url,"heartbeat":heartbeat_url}),
+                    );
                     variants.insert(format!("Совместимый HLS{suffix}"), json!(hls));
                 }
             }
         }
         Ok(
-            json!({"type":"stream", "title":item_title(item), "url":compatible.or(original).ok_or("No playable media file")?, "variants":variants, "stop":stop}),
+            json!({"type":"stream", "title":item_title(item), "url":compatible.or(original).ok_or("No playable media file")?, "variants":variants, "stop":stop, "heartbeat":heartbeat, "sessions":sessions}),
         )
     }
 
@@ -496,9 +676,12 @@ impl Library {
         ))
     }
 
-    async fn touch_session(&self, url: &reqwest::Url) -> Result<(), &'static str> {
+    async fn touch_session(
+        &self,
+        url: &reqwest::Url,
+    ) -> Result<Option<SessionLease>, &'static str> {
         if !url.path().starts_with("/video/:/transcode/") {
-            return Ok(());
+            return Ok(None);
         }
         let session = url
             .query_pairs()
@@ -512,7 +695,7 @@ impl Library {
                     .map(str::to_owned)
             });
         let Some(session) = session else {
-            return Ok(());
+            return Ok(None);
         };
         if session.is_empty()
             || session.len() > 128
@@ -522,53 +705,116 @@ impl Library {
         {
             return Err("Invalid transcode session");
         }
-        let mut sessions = self.sessions.lock().await;
         if url.path().ends_with("/stop") {
-            return Ok(());
+            return Ok(None);
         }
-        if !sessions.contains_key(&session) && sessions.len() >= 8 {
-            return Err("NAS transcoder is busy; retry later");
+        let starting = url.path() == "/video/:/transcode/universal/start.m3u8";
+        let heartbeat = url.path() == "/video/:/transcode/universal/ping";
+        let gate = {
+            let mut sessions = self.sessions.lock().await;
+            if !starting && !sessions.contains_key(&session) {
+                return Err("Transcode session is no longer active");
+            }
+            if !sessions.contains_key(&session) && sessions.len() >= 8 {
+                return Err("NAS transcoder is busy; retry later");
+            }
+            sessions
+                .entry(session.clone())
+                .or_insert_with(|| TranscodeSession::new(Instant::now()))
+                .gate
+                .clone()
+        };
+        // Serialize cleanup only with requests for this particular session. A slow
+        // Plex stop must never hold the global registry lock or block other players.
+        let guard = if heartbeat {
+            gate.clone()
+                .try_read_owned()
+                .map_err(|_| "Transcode session is no longer active")?
+        } else {
+            gate.clone().read_owned().await
+        };
+        let mut sessions = self.sessions.lock().await;
+        if let Some(current) = sessions.get_mut(&session) {
+            if !Arc::ptr_eq(&current.gate, &gate) {
+                return Err("Transcode session changed; retry playback");
+            }
+            current.seen = Instant::now();
+        } else if starting && sessions.len() < 8 {
+            sessions.insert(
+                session.clone(),
+                TranscodeSession {
+                    seen: Instant::now(),
+                    gate: gate.clone(),
+                },
+            );
+        } else {
+            return Err("Transcode session is no longer active");
         }
-        sessions.insert(session, Instant::now());
-        Ok(())
+        Ok(Some(SessionLease {
+            session,
+            gate,
+            _guard: guard,
+        }))
     }
 
-    async fn failed_start(&self, session: Option<&str>) {
-        // A transport failure can occur after Plex starts converting. Keep a cleanup
-        // obligation, but make it eligible for the next reaper run immediately.
-        if let Some(session) = session {
-            if let Some(seen) = self.sessions.lock().await.get_mut(session) {
-                *seen = Instant::now() - Duration::from_secs(181);
+    async fn failed_start(&self, lease: Option<&SessionLease>) {
+        // A transport failure can occur after Plex starts converting. Preserve a
+        // cleanup obligation, but never expire a newer generation of the session.
+        if let Some(lease) = lease {
+            if let Some(current) = self.sessions.lock().await.get_mut(&lease.session) {
+                if Arc::ptr_eq(&current.gate, &lease.gate) {
+                    current.seen = Instant::now() - Duration::from_secs(181);
+                }
             }
         }
     }
 
     async fn reap_sessions(&self) {
-        let expired: Vec<(String, Instant)> = self
+        let expired: Vec<(String, Instant, Arc<RwLock<()>>)> = self
             .sessions
             .lock()
             .await
             .iter()
-            .filter(|(_, seen)| seen.elapsed() > Duration::from_secs(180))
-            .map(|(session, seen)| (session.clone(), *seen))
+            .filter(|(_, entry)| entry.seen.elapsed() > Duration::from_secs(180))
+            .map(|(session, entry)| (session.clone(), entry.seen, entry.gate.clone()))
             .collect();
-        for (session, seen) in expired {
-            if let Ok(url) = self.url(&format!(
-                "/video/:/transcode/universal/stop?session={session}"
-            )) {
-                if self
-                    .client
-                    .get(url)
-                    .header("X-Plex-Token", self.token.clone())
-                    .timeout(Duration::from_secs(5))
-                    .send()
-                    .await
-                    .is_ok_and(|response| stopped(response.status()))
-                {
-                    let mut sessions = self.sessions.lock().await;
-                    if sessions.get(&session) == Some(&seen) {
-                        sessions.remove(&session);
-                    }
+        futures_util::stream::iter(expired)
+            .for_each_concurrent(4, |(session, seen, gate)| async move {
+                self.stop_expired(&session, seen, gate).await;
+            })
+            .await;
+    }
+
+    async fn stop_expired(&self, session: &str, seen: Instant, gate: Arc<RwLock<()>>) {
+        let Ok(_session) = gate.try_write() else {
+            return;
+        };
+        {
+            let sessions = self.sessions.lock().await;
+            if !sessions
+                .get(session)
+                .is_some_and(|current| current.seen == seen && Arc::ptr_eq(&current.gate, &gate))
+            {
+                return;
+            }
+        }
+        if let Ok(url) = self.url(&format!(
+            "/video/:/transcode/universal/stop?session={session}"
+        )) {
+            if self
+                .client
+                .get(url)
+                .header("X-Plex-Token", self.token.clone())
+                .timeout(Duration::from_secs(5))
+                .send()
+                .await
+                .is_ok_and(|response| stopped(response.status()))
+            {
+                let mut sessions = self.sessions.lock().await;
+                if sessions.get(session).is_some_and(|current| {
+                    current.seen == seen && Arc::ptr_eq(&current.gate, &gate)
+                }) {
+                    sessions.remove(session);
                 }
             }
         }
@@ -576,13 +822,12 @@ impl Library {
 
     fn rewrite_hls(&self, source: &str, path: &str, origin: &str) -> Result<String, &'static str> {
         let base = self.url(path)?;
-        let uri_regex = regex::Regex::new(r#"URI="([^"]*)""#).expect("constant URI regex");
         let mut output = String::with_capacity(source.len() * 2);
         for line in source.lines() {
             let line = line.trim_end_matches('\r');
             if line.starts_with('#') {
                 let mut last = 0;
-                for capture in uri_regex.captures_iter(line) {
+                for capture in HLS_URI_REGEX.captures_iter(line) {
                     let value = capture.get(1).unwrap();
                     output.push_str(&line[last..value.start()]);
                     output.push_str(&self.hls_child(&base, value.as_str(), origin)?);
@@ -709,6 +954,26 @@ fn now() -> u64 {
 fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 20 && id.bytes().all(|c| c.is_ascii_digit())
 }
+fn catalog_item(item: &Value) -> bool {
+    let valid = item
+        .get("ratingKey")
+        .is_some_and(|id| id.as_str().is_some_and(valid_id) || id.as_u64().is_some());
+    valid
+        && matches!(
+            item["type"].as_str(),
+            Some(
+                "movie"
+                    | "episode"
+                    | "track"
+                    | "clip"
+                    | "show"
+                    | "season"
+                    | "artist"
+                    | "album"
+                    | "photoalbum"
+            )
+        )
+}
 fn numeric_id(value: &Value) -> Option<String> {
     let id = value
         .as_str()
@@ -778,12 +1043,18 @@ fn local_host(host: &str) -> bool {
     if host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local") {
         return true;
     }
-    match host.parse::<std::net::IpAddr>() {
-        Ok(std::net::IpAddr::V4(ip)) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
-        Ok(std::net::IpAddr::V6(ip)) => {
-            ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
-        }
-        Err(_) => false,
+    host.parse::<std::net::IpAddr>().is_ok_and(local_ip)
+}
+
+fn local_ip(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(ip) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
+        std::net::IpAddr::V6(ip) => ip
+            .to_ipv4_mapped()
+            .map(|ip| local_ip(ip.into()))
+            .unwrap_or_else(|| {
+                ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
+            }),
     }
 }
 
@@ -810,6 +1081,7 @@ async fn config(State(library): State<Arc<Library>>) -> Response {
 async fn api(
     State(library): State<Arc<Library>>,
     Extension(crate::msx::Scheme(scheme)): Extension<crate::msx::Scheme>,
+    peer: Option<Extension<axum::extract::ConnectInfo<std::net::SocketAddr>>>,
     headers: HeaderMap,
     Json(request): Json<CatalogRequest>,
 ) -> Response {
@@ -821,7 +1093,11 @@ async fn api(
         .key
         .as_deref()
         .is_some_and(|key| library.accepts_key(key))
-        && !library.accepts_browser(&headers, &origin)
+        && !library.accepts_browser(
+            &headers,
+            &origin,
+            peer.map(|Extension(axum::extract::ConnectInfo(peer))| peer),
+        )
     {
         return error(
             StatusCode::UNAUTHORIZED,
@@ -913,13 +1189,35 @@ async fn stream(
         Ok(url) => url,
         Err(message) => return error(StatusCode::BAD_REQUEST, message),
     };
-    if let Err(message) = library.touch_session(&url).await {
-        return error(StatusCode::SERVICE_UNAVAILABLE, message);
-    }
+    let session_guard = match library.touch_session(&url).await {
+        Ok(guard) => guard,
+        Err(message) => {
+            return error(
+                if message == "Transcode session is no longer active" {
+                    StatusCode::NOT_FOUND
+                } else {
+                    StatusCode::SERVICE_UNAVAILABLE
+                },
+                message,
+            )
+        }
+    };
+    let heartbeat = if url.path() == "/video/:/transcode/universal/ping" {
+        url.query_pairs()
+            .find(|(key, _)| key == "session")
+            .map(|(_, value)| value.into_owned())
+    } else {
+        None
+    };
     let starting = if url.path() == "/video/:/transcode/universal/start.m3u8" {
         url.query_pairs()
             .find(|(key, _)| key == "session")
             .map(|(_, value)| value.into_owned())
+    } else {
+        None
+    };
+    let starting_lease = if starting.is_some() {
+        session_guard.as_ref()
     } else {
         None
     };
@@ -934,12 +1232,12 @@ async fn stream(
                     .as_i64()
                     .is_some_and(|code| code >= 2000)
                 {
-                    library.failed_start(starting.as_deref()).await;
+                    library.failed_start(starting_lease).await;
                     return error(StatusCode::BAD_GATEWAY, "Plex cannot convert this media");
                 }
             }
             Err(message) => {
-                library.failed_start(starting.as_deref()).await;
+                library.failed_start(starting_lease).await;
                 return error(StatusCode::BAD_GATEWAY, message);
             }
         }
@@ -948,6 +1246,16 @@ async fn stream(
         url.query_pairs()
             .find(|(key, _)| key == "session")
             .map(|(_, value)| value.into_owned())
+    } else {
+        None
+    };
+    let stopping_generation = if let Some(session) = stopping.as_ref() {
+        library
+            .sessions
+            .lock()
+            .await
+            .get(session)
+            .map(|current| current.gate.clone())
     } else {
         None
     };
@@ -969,17 +1277,36 @@ async fn stream(
     let upstream = match request.send().await {
         Ok(upstream) => upstream,
         Err(_) => {
-            library.failed_start(starting.as_deref()).await;
+            library.failed_start(starting_lease).await;
             return error(StatusCode::BAD_GATEWAY, "Plex media unavailable");
         }
     };
     let status = upstream.status();
+    if matches!(status, StatusCode::NOT_FOUND | StatusCode::GONE) {
+        if let Some(session) = heartbeat {
+            let mut sessions = library.sessions.lock().await;
+            if session_guard.as_ref().is_some_and(|lease| {
+                sessions
+                    .get(&session)
+                    .is_some_and(|current| Arc::ptr_eq(&current.gate, &lease.gate))
+            }) {
+                sessions.remove(&session);
+            }
+        }
+    }
     if !status.is_success() {
-        library.failed_start(starting.as_deref()).await;
+        library.failed_start(starting_lease).await;
     }
     if let Some(session) = stopping {
         if stopped(status) {
-            library.sessions.lock().await.remove(&session);
+            let mut sessions = library.sessions.lock().await;
+            if stopping_generation.as_ref().is_some_and(|gate| {
+                sessions
+                    .get(&session)
+                    .is_some_and(|current| Arc::ptr_eq(&current.gate, gate))
+            }) {
+                sessions.remove(&session);
+            }
         }
         if matches!(status, StatusCode::NOT_FOUND | StatusCode::GONE) {
             return no_store(StatusCode::NO_CONTENT.into_response());
@@ -1056,8 +1383,15 @@ async fn stream(
     }
     let body = async_stream::try_stream! {
         let _permit = permit;
+        let _session_guard = session_guard;
         let mut chunks = upstream.bytes_stream();
         while let Some(chunk) = chunks.next().await { yield chunk?; }
+        if let Some(lease) = _session_guard.as_ref() {
+            let mut sessions = library.sessions.lock().await;
+            if let Some(current) = sessions.get_mut(&lease.session) {
+                if Arc::ptr_eq(&current.gate,&lease.gate) { current.seen = Instant::now(); }
+            }
+        }
     };
     (
         status,
@@ -1078,6 +1412,7 @@ struct PlaylistQuery {
 async fn playlist(
     State(library): State<Arc<Library>>,
     Extension(crate::msx::Scheme(scheme)): Extension<crate::msx::Scheme>,
+    peer: Option<Extension<axum::extract::ConnectInfo<std::net::SocketAddr>>>,
     headers: HeaderMap,
     Query(query): Query<PlaylistQuery>,
 ) -> Response {
@@ -1089,7 +1424,11 @@ async fn playlist(
         .key
         .as_deref()
         .is_some_and(|key| library.accepts_key(key))
-        && !library.accepts_browser(&headers, &origin)
+        && !library.accepts_browser(
+            &headers,
+            &origin,
+            peer.map(|Extension(axum::extract::ConnectInfo(peer))| peer),
+        )
     {
         return error(
             StatusCode::UNAUTHORIZED,
@@ -1249,6 +1588,11 @@ mod tests {
                 {"ratingKey":"20","type":"track","title":"Song","grandparentTitle":"Artist","duration":120000}
             ]}})).into_response(),
             "/library/metadata/1" => Json(json!({"MediaContainer":{"Metadata":[movie(1)]}})).into_response(),
+            "/library/metadata/2" => {
+                let mut item = movie(2);
+                item["Media"].as_array_mut().unwrap().push(json!({"container":"avi","videoCodec":"mpeg4","Part":[{"key":"/library/parts/2/alternate.avi"}]}));
+                Json(json!({"MediaContainer":{"Metadata":[item]}})).into_response()
+            }
             "/hubs/search" => {
                 assert!(uri.query().unwrap().contains("query=Movie"));
                 let offset: usize = headers["X-Plex-Container-Start"].to_str().unwrap().parse().unwrap();
@@ -1282,6 +1626,10 @@ mod tests {
             "/video/:/transcode/universal/session/demo/base/index.m3u8" => ([(header::CONTENT_TYPE,"application/vnd.apple.mpegurl")],
                 "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"key.bin\"\n#EXTINF:5,\nsegment.ts\n").into_response(),
             "/video/:/transcode/universal/session/demo/base/segment.ts" => ([(header::CONTENT_TYPE,"video/mp2t")],vec![0x47u8;188]).into_response(),
+            "/video/:/transcode/universal/ping" => {
+                if uri.query().unwrap_or_default().contains("gone") {StatusCode::NOT_FOUND.into_response()}
+                else {StatusCode::OK.into_response()}
+            }
             "/video/:/transcode/universal/stop" => {
                 let query = uri.query().unwrap_or_default();
                 if query.contains("gone410") { StatusCode::GONE.into_response() }
@@ -1308,7 +1656,11 @@ mod tests {
             .unwrap();
         });
         let library = Library::new(&format!("http://{address}"), TOKEN, KEY).unwrap();
-        let app = routes(library.clone()).layer(Extension(crate::msx::Scheme("http")));
+        let app = routes(library.clone())
+            .layer(Extension(crate::msx::Scheme("http")))
+            .layer(Extension(axum::extract::ConnectInfo(
+                "127.0.0.1:10000".parse::<std::net::SocketAddr>().unwrap(),
+            )));
         (library, app, task)
     }
 
@@ -1726,7 +2078,7 @@ mod tests {
         );
         assert_eq!(library.sessions.lock().await.len(), 7);
         for seen in library.sessions.lock().await.values_mut() {
-            *seen = Instant::now() - Duration::from_secs(181);
+            seen.seen = Instant::now() - Duration::from_secs(181);
         }
         library.reap_sessions().await;
         assert!(library.sessions.lock().await.is_empty());
@@ -1840,7 +2192,14 @@ mod tests {
             let origin = format!("http://{host}:3000");
             let mut headers = HeaderMap::new();
             headers.insert(header::ORIGIN, origin.parse().unwrap());
-            assert!(library.accepts_browser(&headers, &origin), "{host}");
+            assert!(
+                library.accepts_browser(
+                    &headers,
+                    &origin,
+                    Some("127.0.0.1:10000".parse().unwrap())
+                ),
+                "{host}"
+            );
         }
         for host in [
             "public.example",
@@ -1852,13 +2211,28 @@ mod tests {
             let origin = format!("https://{host}");
             let mut headers = HeaderMap::new();
             headers.insert(header::ORIGIN, origin.parse().unwrap());
-            assert!(!library.accepts_browser(&headers, &origin), "{host}");
+            assert!(
+                !library.accepts_browser(
+                    &headers,
+                    &origin,
+                    Some("127.0.0.1:10000".parse().unwrap())
+                ),
+                "{host}"
+            );
         }
         let mut headers = HeaderMap::new();
         headers.insert(header::ORIGIN, "https://public.example".parse().unwrap());
         library.browser_hosts.push("public.example".to_owned());
-        assert!(library.accepts_browser(&headers, "https://public.example"));
-        assert!(!library.accepts_browser(&headers, "http://public.example"));
+        assert!(library.accepts_browser(
+            &headers,
+            "https://public.example",
+            Some("8.8.8.8:10000".parse().unwrap())
+        ));
+        assert!(!library.accepts_browser(
+            &headers,
+            "http://public.example",
+            Some("8.8.8.8:10000".parse().unwrap())
+        ));
     }
     #[tokio::test]
     async fn root_pagination_uses_plex_total_and_does_not_apply_offset_twice() {
@@ -1902,7 +2276,7 @@ mod tests {
                     .status(),
                 StatusCode::BAD_GATEWAY
             );
-            assert!(library.sessions.lock().await[name].elapsed() > Duration::from_secs(180));
+            assert!(library.sessions.lock().await[name].seen.elapsed() > Duration::from_secs(180));
         }
         library.reap_sessions().await;
         assert!(library.sessions.lock().await.is_empty());
@@ -1911,7 +2285,7 @@ mod tests {
                 .sessions
                 .lock()
                 .await
-                .insert(name.into(), Instant::now());
+                .insert(name.into(), TranscodeSession::new(Instant::now()));
             let url = library
                 .media_url(
                     PLAYER,
@@ -1926,11 +2300,10 @@ mod tests {
             );
             assert!(!library.sessions.lock().await.contains_key(name));
         }
-        library
-            .sessions
-            .lock()
-            .await
-            .insert("retry".into(), Instant::now() - Duration::from_secs(181));
+        library.sessions.lock().await.insert(
+            "retry".into(),
+            TranscodeSession::new(Instant::now() - Duration::from_secs(181)),
+        );
         library.reap_sessions().await;
         assert!(
             library.sessions.lock().await.contains_key("retry"),
@@ -1961,6 +2334,498 @@ mod tests {
             titles,
             (1..=6).map(|id| format!("Movie {id}")).collect::<Vec<_>>()
         );
+        task.abort();
+    }
+    #[derive(Default)]
+    struct FetchProbe {
+        calls: std::sync::atomic::AtomicUsize,
+        fail: std::sync::atomic::AtomicBool,
+        block: std::sync::atomic::AtomicBool,
+        started: tokio::sync::Notify,
+        release: tokio::sync::Notify,
+    }
+
+    async fn fetch_probe() -> (Library, Arc<FetchProbe>, tokio::task::JoinHandle<()>) {
+        let probe = Arc::new(FetchProbe::default());
+        let app = Router::new()
+            .fallback(|State(probe): State<Arc<FetchProbe>>| async move {
+                use std::sync::atomic::Ordering::SeqCst;
+                let calls = probe.calls.fetch_add(1, SeqCst) + 1;
+                if probe.block.swap(false, SeqCst) {
+                    probe.started.notify_one();
+                    probe.release.notified().await;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+                if probe.fail.swap(false, SeqCst) {
+                    return StatusCode::BAD_GATEWAY.into_response();
+                }
+                Json(json!({"MediaContainer":{"probe":calls}})).into_response()
+            })
+            .with_state(probe.clone());
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        (
+            Library::new(&format!("http://{address}"), TOKEN, KEY).unwrap(),
+            probe,
+            task,
+        )
+    }
+
+    #[tokio::test]
+    async fn catalog_cache_coalesces_success_expires_and_never_caches_errors_or_play_decisions() {
+        use std::sync::atomic::Ordering::SeqCst;
+        let (library, probe, task) = fetch_probe().await;
+        let responses = futures_util::future::join_all(
+            (0..8).map(|_| library.fetch("/library/sections", 0, 100)),
+        )
+        .await;
+        let first = responses[0].as_ref().unwrap();
+        assert!(responses
+            .iter()
+            .all(|value| Arc::ptr_eq(first, value.as_ref().unwrap())));
+        assert_eq!(
+            probe.calls.load(SeqCst),
+            1,
+            "Concurrent page loads share one Plex request"
+        );
+        library.fetch("/library/sections", 0, 100).await.unwrap();
+        assert_eq!(probe.calls.load(SeqCst), 1);
+        for entry in library.catalog_cache.lock().await.entries.values_mut() {
+            entry.expires = Instant::now() - Duration::from_secs(1);
+        }
+        library.fetch("/library/sections", 0, 100).await.unwrap();
+        assert_eq!(
+            probe.calls.load(SeqCst),
+            2,
+            "Expired catalogs refresh rather than extending freshness on reads"
+        );
+        probe.fail.store(true, SeqCst);
+        assert!(library.fetch("/library/sections", 10, 100).await.is_err());
+        library.fetch("/library/sections", 10, 100).await.unwrap();
+        assert_eq!(
+            probe.calls.load(SeqCst),
+            4,
+            "A failed fetch is retried immediately"
+        );
+        for path in [
+            "/library/metadata/1",
+            "/video/:/transcode/universal/decision?session=probe",
+        ] {
+            library.fetch(path, 0, 1).await.unwrap();
+            library.fetch(path, 0, 1).await.unwrap();
+        }
+        assert_eq!(
+            probe.calls.load(SeqCst),
+            8,
+            "Play metadata and per-session negotiation stay fresh"
+        );
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn cancelled_cache_leader_does_not_deadlock_waiters_or_leave_inflight_slots() {
+        use std::sync::atomic::Ordering::SeqCst;
+        let (library, probe, task) = fetch_probe().await;
+        probe.block.store(true, SeqCst);
+        let leader = tokio::spawn({
+            let library = library.clone();
+            async move { library.fetch("/library/sections", 0, 100).await }
+        });
+        probe.started.notified().await;
+        let follower = tokio::spawn({
+            let library = library.clone();
+            async move { library.fetch("/library/sections", 0, 100).await }
+        });
+        tokio::task::yield_now().await;
+        leader.abort();
+        assert!(leader.await.unwrap_err().is_cancelled());
+        tokio::time::timeout(Duration::from_secs(2), follower)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert_eq!(probe.calls.load(SeqCst), 2);
+        assert!(library
+            .catalog_cache
+            .lock()
+            .await
+            .flights
+            .values()
+            .all(|gate| gate.strong_count() == 0));
+        probe.release.notify_one();
+        task.abort();
+    }
+
+    #[test]
+    fn catalog_cache_evicts_to_both_byte_and_entry_limits() {
+        let mut cache = CatalogCache::default();
+        for number in 0..(CATALOG_CACHE_ENTRIES + 10) {
+            cache.insert(number.to_string(), Arc::new(json!({})), 1);
+        }
+        assert_eq!(cache.entries.len(), CATALOG_CACHE_ENTRIES);
+        assert_eq!(cache.bytes, CATALOG_CACHE_ENTRIES);
+        for number in 0..3 {
+            cache.insert(format!("large{number}"), Arc::new(json!({})), MAX_JSON);
+        }
+        assert!(cache.entries.len() <= 2);
+        assert!(cache.bytes <= CATALOG_CACHE_BYTES);
+        assert!(cache.get("large2").is_some());
+    }
+
+    #[tokio::test]
+    async fn real_peer_is_required_for_keyless_access_and_forwarded_headers_cannot_override_it() {
+        let (library, _app, task) = fixture().await;
+        for peer in [None, Some("8.8.8.8:123"), Some("[::ffff:8.8.8.8]:123")] {
+            let mut app = routes(library.clone()).layer(Extension(crate::msx::Scheme("http")));
+            if let Some(peer) = peer {
+                app = app.layer(Extension(axum::extract::ConnectInfo(
+                    peer.parse::<std::net::SocketAddr>().unwrap(),
+                )));
+            }
+            let request = Request::post("/nas/api")
+                .header(header::HOST, "localhost:3000")
+                .header(header::ORIGIN, PLAYER)
+                .header("x-forwarded-for", "127.0.0.1")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"app":"ott-play"}"#))
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::UNAUTHORIZED
+            );
+            assert_eq!(
+                self::request(
+                    &app,
+                    "POST",
+                    "/nas/api",
+                    json!({"app":"ott-play","key":KEY}),
+                    None,
+                    None
+                )
+                .await
+                .status(),
+                StatusCode::OK
+            );
+        }
+        for peer in [
+            "127.0.0.1:123",
+            "192.168.1.2:123",
+            "[::1]:123",
+            "[::ffff:192.168.1.2]:123",
+        ] {
+            let app = routes(library.clone())
+                .layer(Extension(crate::msx::Scheme("http")))
+                .layer(Extension(axum::extract::ConnectInfo(
+                    peer.parse::<std::net::SocketAddr>().unwrap(),
+                )));
+            assert_eq!(
+                request(
+                    &app,
+                    "POST",
+                    "/nas/api",
+                    json!({"app":"ott-play"}),
+                    Some(PLAYER),
+                    None
+                )
+                .await
+                .status(),
+                StatusCode::OK
+            );
+        }
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn session_cleanup_does_not_stop_revived_or_inflight_sessions_or_block_other_players() {
+        use std::sync::atomic::Ordering::SeqCst;
+        let (library, probe, task) = fetch_probe().await;
+        let url = library
+            .url("/video/:/transcode/universal/start.m3u8?session=active")
+            .unwrap();
+        let active = library.touch_session(&url).await.unwrap();
+        let old = Instant::now() - Duration::from_secs(181);
+        let gate = {
+            let mut sessions = library.sessions.lock().await;
+            let entry = sessions.get_mut("active").unwrap();
+            entry.seen = old;
+            entry.gate.clone()
+        };
+        drop(active);
+        drop(library.touch_session(&url).await.unwrap());
+        library.stop_expired("active", old, gate.clone()).await;
+        assert_eq!(
+            probe.calls.load(SeqCst),
+            0,
+            "A resumed session invalidates a cleanup snapshot before stop is sent"
+        );
+        let active = library.touch_session(&url).await.unwrap();
+        library
+            .sessions
+            .lock()
+            .await
+            .get_mut("active")
+            .unwrap()
+            .seen = old;
+        tokio::time::timeout(Duration::from_secs(1), library.reap_sessions())
+            .await
+            .unwrap();
+        assert_eq!(
+            probe.calls.load(SeqCst),
+            0,
+            "Active bodies are skipped without queued cleanup locks"
+        );
+        let other = library
+            .url("/video/:/transcode/universal/start.m3u8?session=other")
+            .unwrap();
+        drop(
+            tokio::time::timeout(Duration::from_secs(1), library.touch_session(&other))
+                .await
+                .unwrap()
+                .unwrap(),
+        );
+        drop(active);
+        tokio::time::timeout(Duration::from_secs(2), library.reap_sessions())
+            .await
+            .unwrap();
+        assert_eq!(probe.calls.load(SeqCst), 1);
+        assert!(!library.sessions.lock().await.contains_key("active"));
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn heartbeats_extend_existing_sessions_but_never_revive_stopped_missing_or_closing_sessions(
+    ) {
+        let (library, app, task) = fixture().await;
+        let ping = library
+            .media_url(PLAYER, "/video/:/transcode/universal/ping?session=beat")
+            .unwrap();
+        assert_eq!(
+            request(&app, "GET", &path(&ping), json!(null), None, None)
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert!(library.sessions.lock().await.is_empty());
+        drop(
+            library
+                .touch_session(
+                    &library
+                        .url("/video/:/transcode/universal/start.m3u8?session=beat")
+                        .unwrap(),
+                )
+                .await
+                .unwrap(),
+        );
+        let gate = {
+            let mut sessions = library.sessions.lock().await;
+            let entry = sessions.get_mut("beat").unwrap();
+            entry.seen = Instant::now() - Duration::from_secs(181);
+            entry.gate.clone()
+        };
+        assert_eq!(
+            request(&app, "GET", &path(&ping), json!(null), None, None)
+                .await
+                .status(),
+            StatusCode::OK
+        );
+        assert!(library.sessions.lock().await["beat"].seen.elapsed() < Duration::from_secs(1));
+        let closing = gate.write().await;
+        assert_eq!(
+            request(&app, "GET", &path(&ping), json!(null), None, None)
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        drop(closing);
+        let stop = library
+            .media_url(PLAYER, "/video/:/transcode/universal/stop?session=beat")
+            .unwrap();
+        assert_eq!(
+            request(&app, "GET", &path(&stop), json!(null), None, None)
+                .await
+                .status(),
+            StatusCode::OK
+        );
+        assert_eq!(
+            request(&app, "GET", &path(&ping), json!(null), None, None)
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert!(library.sessions.lock().await.is_empty());
+        drop(
+            library
+                .touch_session(
+                    &library
+                        .url("/video/:/transcode/universal/start.m3u8?session=gone")
+                        .unwrap(),
+                )
+                .await
+                .unwrap(),
+        );
+        let gone = library
+            .media_url(PLAYER, "/video/:/transcode/universal/ping?session=gone")
+            .unwrap();
+        assert_eq!(
+            request(&app, "GET", &path(&gone), json!(null), None, None)
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert!(library.sessions.lock().await.is_empty());
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn excessive_catalog_offsets_are_rejected_instead_of_repeating_the_last_page() {
+        let (_library, app, task) = fixture().await;
+        let response = request(
+            &app,
+            "POST",
+            "/nas/api",
+            json!({"app":"ott-play","offset":MAX_EXPORT_ITEMS+1}),
+            Some(PLAYER),
+            None,
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        task.abort();
+    }
+    #[tokio::test]
+    async fn four_active_streams_do_not_starve_idle_session_cleanup() {
+        use std::sync::atomic::Ordering::SeqCst;
+        let (library, probe, task) = fetch_probe().await;
+        let mut active = Vec::new();
+        for number in 0..5 {
+            let name = format!("stream{number}");
+            let url = library
+                .url(&format!(
+                    "/video/:/transcode/universal/start.m3u8?session={name}"
+                ))
+                .unwrap();
+            let lease = library.touch_session(&url).await.unwrap();
+            library.sessions.lock().await.get_mut(&name).unwrap().seen =
+                Instant::now() - Duration::from_secs(181);
+            if number < 4 {
+                active.push(lease);
+            } else {
+                drop(lease);
+            }
+        }
+        tokio::time::timeout(Duration::from_secs(1), library.reap_sessions())
+            .await
+            .unwrap();
+        assert_eq!(probe.calls.load(SeqCst), 1);
+        assert_eq!(library.sessions.lock().await.len(), 4);
+        assert!(!library.sessions.lock().await.contains_key("stream4"));
+        drop(active);
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn playback_lifecycle_belongs_to_each_selected_hls_variant_and_not_to_originals() {
+        let (library, _app, task) = fixture().await;
+        let playback = library.play("item:2", PLAYER).await.unwrap();
+        let sessions = playback["sessions"].as_object().unwrap();
+        assert_eq!(sessions.len(), 2);
+        assert_eq!(
+            sessions[playback["url"].as_str().unwrap()]["heartbeat"],
+            playback["heartbeat"]
+        );
+        let session_id = |url: &str| {
+            let signed = url.split('/').nth(5).unwrap();
+            let ticket = library.ticket(signed).unwrap();
+            library
+                .url(&ticket.path)
+                .unwrap()
+                .query_pairs()
+                .find(|(key, _)| key == "session")
+                .unwrap()
+                .1
+                .into_owned()
+        };
+        let mut ids = HashSet::new();
+        for (url, lease) in sessions {
+            let id = session_id(url);
+            assert!(ids.insert(id.clone()));
+            assert_eq!(session_id(lease["stop"].as_str().unwrap()), id);
+            assert_eq!(session_id(lease["heartbeat"].as_str().unwrap()), id);
+        }
+        for (label, url) in playback["variants"].as_object().unwrap() {
+            if label.starts_with("Оригинал") {
+                assert!(!sessions.contains_key(url.as_str().unwrap()));
+            }
+        }
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn late_hls_children_cannot_recreate_stopped_registry_entries() {
+        let (library, app, task) = fixture().await;
+        for name in [
+            "stale1", "stale2", "stale3", "stale4", "stale5", "stale6", "stale7", "stale8",
+            "stale9",
+        ] {
+            let child = library
+                .media_url(
+                    PLAYER,
+                    &format!("/video/:/transcode/universal/session/{name}/base/segment.ts"),
+                )
+                .unwrap();
+            assert_eq!(
+                request(&app, "GET", &path(&child), json!(null), None, None)
+                    .await
+                    .status(),
+                StatusCode::NOT_FOUND
+            );
+        }
+        assert!(library.sessions.lock().await.is_empty());
+        task.abort();
+    }
+    #[tokio::test]
+    async fn delayed_heartbeat_failure_does_not_remove_a_restarted_session_generation() {
+        let arrived = Arc::new(tokio::sync::Notify::new());
+        let release = Arc::new(tokio::sync::Notify::new());
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let upstream = Router::new().fallback({
+            let arrived = arrived.clone();
+            let release = release.clone();
+            move || {
+                let arrived = arrived.clone();
+                let release = release.clone();
+                async move {
+                    arrived.notify_one();
+                    release.notified().await;
+                    StatusCode::NOT_FOUND
+                }
+            }
+        });
+        let task = tokio::spawn(async move { axum::serve(listener, upstream).await.unwrap() });
+        let library = Library::new(&format!("http://{address}"), TOKEN, KEY).unwrap();
+        let app = routes(library.clone()).layer(Extension(crate::msx::Scheme("http")));
+        let start = library
+            .url("/video/:/transcode/universal/start.m3u8?session=same")
+            .unwrap();
+        drop(library.touch_session(&start).await.unwrap());
+        let ping = library
+            .media_url(PLAYER, "/video/:/transcode/universal/ping?session=same")
+            .unwrap();
+        let pending = tokio::spawn(async move {
+            request(&app, "GET", &path(&ping), json!(null), None, None).await
+        });
+        arrived.notified().await;
+        library.sessions.lock().await.remove("same");
+        let restarted = library.touch_session(&start).await.unwrap().unwrap();
+        release.notify_one();
+        assert_eq!(pending.await.unwrap().status(), StatusCode::NOT_FOUND);
+        assert!(Arc::ptr_eq(
+            &library.sessions.lock().await["same"].gate,
+            &restarted.gate
+        ));
         task.abort();
     }
 }

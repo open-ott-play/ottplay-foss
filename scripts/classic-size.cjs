@@ -15,9 +15,9 @@ const { gzipSync } = require("node:zlib");
 // The optional PC2 engine port also fits within these measured budgets.
 // Owned episode looping and the natural-ended bridge add about 1.8 KB raw.
 // Persistent page-title filtering adds about 1.5 KB, including its TV editor.
-// Optional same-origin NAS discovery and provider-independent media ownership measure
-// Session cleanup adds 1316 bytes to the 566194-byte baseline; preserve native/release headroom.
-const BUDGET = Object.freeze({ bytes: 568000, gzipBytes: 170550 });
+// NAS discovery, independent media ownership and native session keepalives measure
+// 568476 raw / 170540 gzip bytes locally; retain native/release suffix headroom.
+const BUDGET = Object.freeze({ bytes: 569000, gzipBytes: 170900 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -28,7 +28,7 @@ const BUDGET = Object.freeze({ bytes: 568000, gzipBytes: 170550 });
 // outputs on CI Node 22.23.2 (192106 with a beta version). Keep suffix headroom.
 // VOD-owned native metadata and the late-guide guard measure 192222 on Node 22.
 // Include the VPortal automatic-quality resolver as part of episode looping.
-const TOTAL_BUDGET = Object.freeze({ bytes: 632000, gzipBytes: 194800 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 633000, gzipBytes: 195150 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

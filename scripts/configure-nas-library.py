@@ -5,11 +5,12 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import secrets
 import shlex
 import subprocess
 import tempfile
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 import xml.etree.ElementTree as ET
 
 
@@ -38,10 +39,17 @@ def main():
     parser.add_argument("--restart", action="store_true")
     args = parser.parse_args()
     for value in (args.plex_url, args.player_url):
-        parsed = urlsplit(value)
+        try:
+            parsed = urlsplit(value)
+            port = parsed.port
+        except ValueError:
+            parser.error("URLs must have a valid HTTP(S) hostname and port")
         if (parsed.scheme not in ("http", "https") or not parsed.hostname
                 or parsed.username is not None or parsed.password is not None
-                or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
+                or parsed.path not in ("", "/") or parsed.query or parsed.fragment
+                or (port is not None and port == 0)
+                or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in value)
+                or "\\" in value):
             parser.error("URLs must be HTTP(S) origins without credentials or paths")
     config = plistlib.loads(args.plist.read_bytes())
     env = config.setdefault("EnvironmentVariables", {})
@@ -63,8 +71,8 @@ def main():
     env["OTTPLAY_PLEX_URL"] = args.plex_url.rstrip("/")
     env["OTTPLAY_PLEX_TOKEN"] = token
     env.setdefault("OTTPLAY_NAS_KEY", secrets.token_urlsafe(36))
-    if len(env["OTTPLAY_NAS_KEY"]) < 32:
-        raise SystemExit("Existing OTTPLAY_NAS_KEY is invalid")
+    if not re.fullmatch(r'[^\[\]\s<>"\\\x00-\x1f\x7f]{32,1024}', env["OTTPLAY_NAS_KEY"]):
+        raise SystemExit("Existing OTTPLAY_NAS_KEY must contain 32–1024 VPortal-compatible characters")
     backup = args.plist.parent / ".ottplay-backups" / (args.plist.name + ".before-nas")
     if not backup.exists():
         private_write(backup, args.plist.read_bytes())
@@ -74,7 +82,7 @@ def main():
     private_write(args.connections, (json.dumps({
         "player": base + "/",
         "vportal": "portal::[key:" + key + "]" + base + "/nas/api",
-        "playlist": base + "/nas/playlist.m3u?key=" + key,
+        "playlist": base + "/nas/playlist.m3u?" + urlencode({"key": key}),
     }, ensure_ascii=False, indent=2) + "\n").encode())
     if args.restart:
         # kickstart reuses launchd's cached environment. Reload the changed plist.

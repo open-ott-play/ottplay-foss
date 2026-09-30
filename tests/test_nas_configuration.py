@@ -7,11 +7,69 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from urllib.parse import parse_qs, urlsplit
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/configure-nas-library.py"
 
 
 class NasConfigurationTests(unittest.TestCase):
+    def test_url_and_key_validation_happens_before_configuration_changes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            plist = root / "player.plist"
+            links = root / "links.json"
+            token = root / "token"
+            token.write_text("private-fixture-token")
+            config = {"Label": "example.player", "EnvironmentVariables": {}}
+            original = plistlib.dumps(config)
+            plist.write_bytes(original)
+            links.write_text("preserve existing connections")
+            command = [sys.executable, str(SCRIPT), "--plex-url", "http://192.168.1.25:32400",
+                       "--token-file", str(token), "--player-url", "http://192.168.1.20:8443",
+                       "--plist", str(plist), "--connections", str(links)]
+            for option in ("--plex-url", "--player-url"):
+                for value in ("http://host:not-a-port", "http://host:65536", "http://host:0",
+                              "http://[broken", "http://bad host", "http://host\\suffix"):
+                    with self.subTest(option=option, value=value):
+                        broken = command.copy()
+                        broken[broken.index(option) + 1] = value
+                        result = subprocess.run(broken, capture_output=True)
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertEqual(plist.read_bytes(), original)
+                        self.assertEqual(links.read_text(), "preserve existing connections")
+                        self.assertFalse((root / ".ottplay-backups").exists())
+            for key in ("x" * 32 + "]", "x" * 32 + "\n", "x" * 1025):
+                config["EnvironmentVariables"]["OTTPLAY_NAS_KEY"] = key
+                before = plistlib.dumps(config)
+                plist.write_bytes(before)
+                result = subprocess.run(command, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(plist.read_bytes(), before)
+                self.assertEqual(links.read_text(), "preserve existing connections")
+                self.assertFalse((root / ".ottplay-backups").exists())
+
+    def test_existing_opaque_key_survives_portable_url_encoding(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            plist = root / "player.plist"
+            links = root / "links.json"
+            token = root / "token"
+            token.write_text("private-fixture-token")
+            key = "x" * 32 + "&part=2+#/percent%"
+            plist.write_bytes(plistlib.dumps({"Label": "example.player",
+                                             "EnvironmentVariables": {"OTTPLAY_NAS_KEY": key}}))
+            result = subprocess.run([
+                sys.executable, str(SCRIPT), "--plex-url", "http://192.168.1.25:32400",
+                "--token-file", str(token), "--player-url", "http://192.168.1.20:8443",
+                "--plist", str(plist), "--connections", str(links),
+            ], capture_output=True, text=True, check=True)
+            urls = json.loads(links.read_text())
+            self.assertEqual(parse_qs(urlsplit(urls["playlist"]).query), {"key": [key]})
+            self.assertEqual(urlsplit(urls["playlist"]).fragment, "")
+            self.assertEqual(urls["vportal"], "portal::[key:" + key + "]http://192.168.1.20:8443/nas/api")
+            self.assertEqual(plistlib.loads(plist.read_bytes())["EnvironmentVariables"]["OTTPLAY_NAS_KEY"], key)
+            self.assertNotIn(key, result.stdout + result.stderr)
+
     def test_private_idempotent_configuration_preserves_listeners(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

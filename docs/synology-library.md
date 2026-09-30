@@ -11,6 +11,8 @@ The existing television playlist and provider library remain available. NAS
 history and favorites have their own identity and storage. Video starts using
 Plex's compatible HLS stream; the VPortal API also offers the original file.
 Stopping or switching videos releases the associated Plex conversion session.
+While the OTT-play client owns a video, a signed keepalive preserves its Plex
+session during pauses. Stopping, switching or disposing the client cancels it.
 Original files support HTTP byte ranges for seeking. Plex handles container,
 audio and video conversion subject to the NAS's capabilities.
 
@@ -67,6 +69,9 @@ replace `OTTPLAY_NAS_KEY` and restart the server.
   `portal::[key:YOUR_KEY]http://PLAYER_LAN_IP:8443/nas/api`.
 - VLC, Kodi and other M3U players: open the file's `playlist` URL as a network
   playlist. It is a separate source; it does not replace an IPTV playlist.
+  For a client that supports the original codecs, append `&mode=original` to
+  stream files directly with byte-range seeking, without a Plex conversion
+  session or keepalive requirement.
 - The server's browser player discovers `/nas/config` automatically and uses
   `/nas/api` directly. It does not need either private key in browser settings.
 
@@ -78,8 +83,14 @@ A public static player cannot reach a LAN service through its cloud API relay.
 ## Protocol and access
 
 `POST /nas/api` accepts the existing VPortal JSON protocol: root navigation,
-`browse`, `search`, and `play`, with bounded pagination. Automatic browser access is intended for a trusted local network: the browser
-must use a local host and a matching Origin or Referer. Origin checks prevent
+`browse`, `search`, and `play`, with bounded pagination. Catalog metadata is cached
+for up to 15 seconds, with at most 32 entries and 16 MiB of serialized response
+data. Concurrent identical reads share one Plex request. Playback resolution and
+conversion decisions always read current Plex state.
+
+Automatic browser access is intended for a trusted local network: the browser
+must use a local host, connect from a local network address, and provide a
+matching Origin or Referer. Forwarded headers do not supply the peer address. Origin checks prevent
 cross-site browser requests; they are not a login boundary. Native clients use
 the NAS access key. Keep a public reverse proxy from forwarding these local
 routes unless access is authenticated. `OTTPLAY_NAS_BROWSER_HOSTS` can explicitly
@@ -102,5 +113,26 @@ npm run build:server
 
 `scripts/nas-live-smoke.py` performs opt-in checks against a configured server.
 It reads credentials privately and reports status, formats and counts without
-printing media titles, connection keys or signed URLs. Offline tests do not
-claim validation on physical TVs or mobile devices.
+printing media titles, connection keys or signed URLs. Run it on the installed
+listeners as well as any staging server:
+
+```sh
+python3 scripts/nas-live-smoke.py --base-url http://127.0.0.1:8443
+python3 scripts/nas-live-smoke.py --base-url https://127.0.0.1:8447 \
+  --ca-file /private/path/to/server.crt
+node scripts/nas-live-browser.cjs --base-url http://127.0.0.1:8443
+```
+
+The browser probe requires Playwright Chromium and a library with a video longer
+than two minutes. It opens the shipped player in an isolated browser context,
+plays the first available item, checks decoded frames and seeking, verifies the
+TV provider stays unchanged, and stops the Plex session. It reports boot, catalog,
+playback and seek timings without titles or URLs. Use `--entry /f/pc2/` to test the
+other PC engine. HTTPS uses normal certificate validation unless the local test
+explicitly passes `--allow-self-signed`; the API smoke can verify a private CA
+without disabling certificate checks. These probes do not claim validation on
+physical TVs or mobile devices.
+
+Add `--pause-seconds 210` to test a pause longer than the abandoned-session idle
+timeout, followed by resume and seeking. This checks successful keepalives as
+well as decoded frames after the pause.

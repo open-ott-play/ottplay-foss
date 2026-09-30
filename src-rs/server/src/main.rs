@@ -151,7 +151,7 @@ async fn serve_tls(
 ) -> anyhow::Result<()> {
     let acceptor = TlsAcceptor::from(config);
     loop {
-        let (stream, _) = match listener.accept().await {
+        let (stream, peer) = match listener.accept().await {
             Ok(connection) => connection,
             Err(error) => {
                 tracing::warn!("TLS accept error: {error}");
@@ -159,7 +159,9 @@ async fn serve_tls(
             }
         };
         let acceptor = acceptor.clone();
-        let app = app.clone();
+        let app = app
+            .clone()
+            .layer(axum::Extension(axum::extract::ConnectInfo(peer)));
         tokio::spawn(async move {
             let tls = match acceptor.accept(stream).await {
                 Ok(stream) => stream,
@@ -200,9 +202,12 @@ async fn serve_listeners(
         println!("ottplay-server: http://{address}");
         let app = app.clone().layer(axum::Extension(msx::Scheme("http")));
         tasks.spawn(async move {
-            axum::serve(listener, app)
-                .await
-                .with_context(|| format!("HTTP listener {address} failed"))
+            axum::serve(
+                listener,
+                app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+            )
+            .await
+            .with_context(|| format!("HTTP listener {address} failed"))
         });
     }
     for listener in listeners.https {
@@ -484,7 +489,14 @@ mod listener_tests {
             .map(|s| s.local_addr().unwrap())
             .collect();
         assert_eq!(addresses.iter().collect::<HashSet<_>>().len(), 4);
-        let app = Router::new().route("/health", get(health));
+        let app = Router::new().route("/health", get(health)).route(
+            "/peer",
+            get(
+                |axum::extract::ConnectInfo(peer): axum::extract::ConnectInfo<
+                    std::net::SocketAddr,
+                >| async move { peer.ip().to_string() },
+            ),
+        );
         let task = tokio::spawn(serve_listeners(listeners, app, None));
         let client = reqwest::Client::builder()
             .no_proxy()
@@ -499,6 +511,19 @@ mod listener_tests {
                 .unwrap();
             assert_eq!(response.status(), StatusCode::OK);
             assert_eq!(response.text().await.unwrap(), "OK");
+            let peer = client
+                .get(format!("http://{address}/peer"))
+                .header("x-forwarded-for", "8.8.8.8")
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            assert_eq!(
+                peer, "127.0.0.1",
+                "Only the actual accepted TCP peer is trusted"
+            );
         }
         task.abort();
         assert!(task.await.unwrap_err().is_cancelled());
@@ -733,7 +758,9 @@ async fn epg_handler(
     let archive_hours: i64 = params.hours.map(|h| h as i64).unwrap_or(0);
     let result =
         ottplay_core::get_epg_slice(&cache, &hash, &channel_id, time_shift, archive_hours).await;
-    result.map(Json).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    result
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 #[derive(Debug, Deserialize)]

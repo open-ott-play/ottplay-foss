@@ -597,8 +597,8 @@ export function optionsList(fn?: () => void): void {
     var nas = (window as any).__ottNasLibrary;
     if (nas && nas.available())
         viewOptions.unshift({
-            name: nas.title(),
             action: (window as any).popNasMedia,
+            name: nas.title(),
         });
     listDataArray = [];
     viewOptions.forEach(function (opt: any) {

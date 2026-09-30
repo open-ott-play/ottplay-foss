@@ -47,6 +47,7 @@ class Smoke:
         self.visited = set()
         self.browse_count = 0
         self.stop_urls = set()
+        self.heartbeats_by_stop = {}
         context = ssl.create_default_context(cafile=ca_file)
         self.opener = urllib.request.build_opener(
             urllib.request.ProxyHandler({}),
@@ -247,6 +248,11 @@ class Smoke:
         require(status == 206 and len(data) == 1024, "M3U original media does not support Range")
         emit("m3u_original", status=status, entries=1, bytes=len(data))
 
+    def heartbeat(self, url, phase, expected):
+        status, _, _ = self.request(url, limit=1024)
+        require(status == expected, "HLS heartbeat " + phase + " returned HTTP " + str(status))
+        emit("hls_heartbeat", phase=phase, status=status)
+
     def run(self, max_browse):
         root = self.discover()
         self.pagination(root)
@@ -266,9 +272,23 @@ class Smoke:
             hls = next((url for url in urls if ".m3u8" in urllib.parse.urlsplit(url).path), None)
         require(hls is not None, "Playback response lacks a browser HLS variant")
         require(direct is not None, "Playback response lacks an original media variant")
+        sessions = playable.get("sessions", {})
+        session = sessions.get(hls) if isinstance(sessions, dict) else None
+        require(isinstance(session, dict), "HLS variant lacks its session controls")
+        require(isinstance(session.get("stop"), str) and isinstance(session.get("heartbeat"), str),
+                "HLS session controls are incomplete")
+        stop = self.url(session["stop"])
+        heartbeat = self.url(session["heartbeat"])
+        self.stop_urls.add(stop)
+        self.heartbeats_by_stop[stop] = heartbeat
+        if playable.get("url") == hls:
+            require(playable.get("stop") == stop and playable.get("heartbeat") == heartbeat,
+                    "Default HLS session controls differ from its variant controls")
         emit("catalogue_play", browse_requests=self.browse_count, variants=len(urls))
         self.original(direct)
+        self.heartbeat(heartbeat, "before_start", 404)
         self.hls(hls)
+        self.heartbeat(heartbeat, "active", 200)
         self.playlist()
 
     def close(self):
@@ -276,6 +296,8 @@ class Smoke:
             status, _, _ = self.request(url)
             require(status in (200, 204), "HLS session stop returned HTTP " + str(status))
             emit("hls_stop", status=status)
+            if url in self.heartbeats_by_stop:
+                self.heartbeat(self.heartbeats_by_stop[url], "after_stop", 404)
 
 
 def main():

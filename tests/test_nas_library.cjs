@@ -20,10 +20,19 @@ const film = {
 };
 function create(overrides = {}) {
     const c = fixture();
+    const intervals = new Map();
+    let intervalId = 0;
     Object.assign(
         c,
         {
-            location: { protocol: "https:", host: "player.invalid" },
+            clearInterval(id) {
+                intervals.delete(id);
+            },
+            location: { host: "player.invalid", protocol: "https:" },
+            setInterval(run, delay) {
+                intervals.set(++intervalId, { delay, run });
+                return intervalId;
+            },
             sPageSize: 30,
         },
         overrides
@@ -32,13 +41,13 @@ function create(overrides = {}) {
     const requests = [];
     c.$.ajax = (options) => {
         const request = {
-            options,
-            aborted: false,
             abort() {
                 request.aborted = true;
                 if (options.error) options.error({}, "abort");
                 if (options.complete) options.complete();
             },
+            aborted: false,
+            options,
             reply(value) {
                 if (options.success) options.success(value);
                 if (options.complete) options.complete();
@@ -55,8 +64,8 @@ function create(overrides = {}) {
         ts
             .transpileModule(source, {
                 compilerOptions: {
-                    target: ts.ScriptTarget.ES5,
                     module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES5,
                 },
             })
             .outputText.replace(/^import .*$/gm, "")
@@ -75,7 +84,7 @@ function create(overrides = {}) {
             .at(-1)
             .reply({ items, title: "Synology", type: "videoportal" });
     }
-    return { c, discover, nas, open, requests };
+    return { c, discover, intervals, nas, open, requests };
 }
 let passed = 0;
 function test(name, run) {
@@ -160,8 +169,8 @@ test("one click resolves compatible default without a quality dialog", () => {
     f.requests.at(-1).reply({
         url: "https://player.invalid/nas/hls/signed/master.m3u8",
         variants: {
-            Original: "https://player.invalid/nas/stream/signed/original.mkv",
             Compatible: "https://player.invalid/nas/hls/signed/master.m3u8",
+            Original: "https://player.invalid/nas/stream/signed/original.mkv",
         },
     });
     assert(
@@ -187,15 +196,15 @@ test("provider changes preserve NAS ownership and returning restores untouched p
     f.discover();
     f.open([
         {
-            type: "category",
-            title: "Series",
             request: { cmd: "folder", id: "8" },
+            title: "Series",
+            type: "category",
         },
     ]);
     f.c.selectMedia(0);
     const pending = f.requests.at(-1);
     const replacement = (target, done) => {
-        f.c.mediaRecords = [{ title: "Provider", stream_url: "provider.mp4" }];
+        f.c.mediaRecords = [{ stream_url: "provider.mp4", title: "Provider" }];
         done();
     };
     f.c.p_pref = "new-provider";
@@ -203,7 +212,7 @@ test("provider changes preserve NAS ownership and returning restores untouched p
     f.c.providerGetItem = () => "";
     f.c.providerSetItem = () =>
         assert.fail("NAS journal must not write provider storage");
-    pending.reply({ type: "category", items: [film] });
+    pending.reply({ items: [film], type: "category" });
     assert.equal(f.c.listArray[0].title, film.title);
     assert.equal(f.c.__ottMedia.sourceId(), sourceId);
     f.c.popMedia();
@@ -220,7 +229,7 @@ test("restoring provider or closing NAS revokes delayed catalog and playback", (
     const pending = f.requests.at(-1);
     f.c.popMedia();
     assert.equal(pending.aborted, true);
-    pending.reply({ type: "videoportal", items: [film] });
+    pending.reply({ items: [film], type: "videoportal" });
     assert.equal(f.c.listArray[0].title, "Movie");
     f.open();
     f.c.selectMedia(0);
@@ -235,7 +244,7 @@ test("restoring provider or closing NAS revokes delayed catalog and playback", (
 test("NAS history survives cold start and provider changes, renewing signed URLs", () => {
     const first = create();
     first.c.stored.medHistory = JSON.stringify([
-        { title: "Private provider", stream_url: "provider.mp4" },
+        { stream_url: "provider.mp4", title: "Private provider" },
     ]);
     first.discover();
     first.open();
@@ -251,11 +260,9 @@ test("NAS history survives cold start and provider changes, renewing signed URLs
     );
     assert.equal(cold.c.listArray[0].title, film.title);
     assert(!cold.c.listArray.some((item) => item.title === "Private provider"));
+    const beforeResume = cold.requests.length;
     cold.c.selectMedia(0);
-    cold.requests.at(-1).reply({
-        type: "videoportal",
-        items: [{ ...film, title: "Renamed film" }],
-    });
+    assert.equal(cold.requests.length, beforeResume + 1);
     assert.equal(JSON.parse(cold.requests.at(-1).options.data).cmd, "play");
     cold.requests.at(-1).reply({ url: "https://player.invalid/fresh.mp4" });
     assert(
@@ -273,7 +280,7 @@ test("switching media sources flushes the confirmed playback position", () => {
     f.open();
     f.c.selectMedia(0);
     f.requests.at(-1).reply({ url: "https://player.invalid/film.mp4" });
-    f.c.__ottClassicPlayback.command({ type: "position", position: 137 });
+    f.c.__ottClassicPlayback.command({ position: 137, type: "position" });
     const state = f.c.__ottClassicPlayback.snapshot();
     assert.equal(state.position, 137);
     f.c.popMedia();
@@ -281,6 +288,48 @@ test("switching media sources flushes the confirmed playback position", () => {
         f.c.stored["installation:mediaJournal.v1:" + sourceId]
     );
     assert.equal(journal.history[0].position, 137);
+});
+
+test("browsing another library preserves NAS playback ownership and continuing resume position", () => {
+    const f = create();
+    f.discover();
+    f.open();
+    f.c.selectMedia(0);
+    f.requests.at(-1).reply({ url: "https://player.invalid/film.mp4" });
+    const playback = f.c.__ottMedia.current();
+    const backend = f.c.__ottClassicPlayback.context();
+    f.c.popMedia();
+    const providerHistory = f.c.medHistory;
+    assert.equal(f.c.__ottMedia.current(), playback);
+    assert.equal(backend.isCurrentBackend(), true);
+    f.c.__ottClassicPlayback.reconcile();
+    assert.equal(f.c.__ottClassicPlayback.snapshot().target.sourceId, sourceId);
+    f.c.__ottClassicPlayback.command({ position: 246, type: "position" });
+    f.c.__ottClassicPlayback.command({ type: "pause" });
+    const key = "installation:mediaJournal.v1:" + sourceId;
+    assert.equal(JSON.parse(f.c.stored[key]).history[0].position, 246);
+    assert.equal(
+        f.c.medHistory,
+        providerHistory,
+        "background checkpoint cannot replace provider lists"
+    );
+    const count = f.requests.length;
+    f.nas.open();
+    assert.equal(
+        f.requests.length,
+        count,
+        "returning to the playing catalog reuses its owned view"
+    );
+    f.c.__ottMedia.favorite(f.c.listArray[0]);
+    f.c.__ottClassicPlayback.command({ position: 300, type: "position" });
+    f.c.__ottClassicPlayback.command({ type: "stop" });
+    const journal = JSON.parse(f.c.stored[key]);
+    assert.equal(journal.history[0].position, 300);
+    assert.equal(
+        journal.favorites.length,
+        1,
+        "playback and catalog retain a single journal writer"
+    );
 });
 
 test("standalone NAS is available in popup with no provider; labels are escaped", () => {
@@ -349,13 +398,221 @@ const secondStop =
 function startSession(
     f,
     stop = firstStop,
-    url = "https://player.invalid/first.m3u8"
+    url = "https://player.invalid/first.m3u8",
+    extra = {}
 ) {
     f.discover();
     f.open();
     f.c.selectMedia(0);
-    f.requests.at(-1).reply({ stop, url });
+    f.requests.at(-1).reply({ stop, url, ...extra });
 }
+
+const firstHeartbeat =
+    "https://player.invalid/nas/stream/heartbeat.signature/media.bin";
+
+test("owned heartbeat preserves a paused NAS session while browsing and is revoked by Stop", () => {
+    const f = create();
+    startSession(f, firstStop, undefined, { heartbeat: firstHeartbeat });
+    assert.equal(f.intervals.size, 1);
+    const timer = [...f.intervals.values()][0];
+    assert.equal(timer.delay, 30000);
+    const playback = f.c.__ottMedia.current();
+    f.c.__ottClassicPlayback.command({ type: "pause" });
+    f.c.popMedia();
+    for (let tick = 0; tick < 8; tick++) {
+        timer.run();
+        assert.equal(
+            f.requests.at(-1).options.url,
+            "/nas/stream/heartbeat.signature/media.bin"
+        );
+        assert.equal(f.requests.at(-1).options.type, "GET");
+        assert.equal(f.requests.at(-1).options.data, undefined);
+        const count = f.requests.length;
+        timer.run();
+        assert.equal(f.requests.length, count, "heartbeats never overlap");
+        f.requests.at(-1).reply("");
+    }
+    assert.equal(f.c.__ottMedia.current(), playback);
+    timer.run();
+    const ping = f.requests.at(-1);
+    f.c.__ottClassicPlayback.command({ type: "stop" });
+    assert.equal(ping.aborted, true);
+    assert.equal(f.intervals.size, 0);
+    const count = f.requests.length;
+    timer.run();
+    assert.equal(
+        f.requests.length,
+        count,
+        "queued timer cannot resurrect a stopped session"
+    );
+    assert.equal(
+        f.requests.at(-1).options.url,
+        "/nas/stream/first.signature/media.bin"
+    );
+});
+
+test("heartbeat belongs only to the admitted session and disposal cancels it", () => {
+    const f = create();
+    startSession(f, firstStop, undefined, { heartbeat: firstHeartbeat });
+    const old = [...f.intervals.values()][0];
+    f.nas.open();
+    f.c.selectMedia(0);
+    assert.equal(f.intervals.size, 0);
+    f.requests.at(-1).reply("");
+    f.requests.at(-1).reply({
+        heartbeat: firstHeartbeat,
+        stop: secondStop,
+        url: "https://player.invalid/second.m3u8",
+    });
+    assert.equal(f.intervals.size, 1);
+    const count = f.requests.length;
+    old.run();
+    assert.equal(f.requests.length, count);
+    const current = [...f.intervals.values()][0];
+    current.run();
+    const ping = f.requests.at(-1);
+    f.nas.dispose();
+    assert.equal(ping.aborted, true);
+    assert.equal(f.intervals.size, 0);
+});
+
+test("native explicit NAS uses its configured origin for the same signed session lifecycle", () => {
+    for (const native of [
+        { __TAURI__: {} },
+        { Capacitor: { isNativePlatform: () => true } },
+    ]) {
+        const f = create(native);
+        const client = f.c.createVPortalClient(
+            "portal::[key:fixture-private-key]http://nas.invalid:8443/nas/api"
+        );
+        const origin = "http://nas.invalid:8443";
+        client.resolve(film, () => {});
+        assert.equal(f.requests.at(-1).options.url, origin + "/nas/api");
+        f.requests.at(-1).reply({
+            heartbeat: origin + "/nas/stream/ping.signature/media.bin",
+            stop: origin + "/nas/stream/stop.signature/media.bin",
+            url: origin + "/video.m3u8",
+        });
+        assert.equal(f.intervals.size, 1);
+        [...f.intervals.values()][0].run();
+        assert.equal(
+            f.requests.at(-1).options.url,
+            origin + "/nas/stream/ping.signature/media.bin"
+        );
+        client.dispose();
+        assert.equal(f.intervals.size, 0);
+        assert.equal(
+            f.requests.at(-1).options.url,
+            origin + "/nas/stream/stop.signature/media.bin"
+        );
+    }
+});
+
+test("native quality selection owns only its chosen variant lease and cancel releases an unplayed request", () => {
+    for (const selected of [0, 1, 2, -1]) {
+        const f = create({ __TAURI__: {} });
+        const origin = "http://nas.invalid";
+        const client = f.c.createVPortalClient(
+            "portal::[key:fixture-private-key]" + origin + "/nas/api"
+        );
+        let choose;
+        let played;
+        f.c.showSelectBox = (_index, _labels, done) => {
+            client.cancel(); // The real picker closes its parent list before opening.
+            f.c._mediaLoadState = {};
+            choose = done;
+            f.c.selectBoxKeyHandler = () => false;
+        };
+        const urls = [
+            origin + "/original.mp4",
+            origin + "/one.m3u8",
+            origin + "/two.m3u8",
+        ];
+        const one = {
+            heartbeat: origin + "/nas/stream/one-ping.signature/media.bin",
+            stop: origin + "/nas/stream/one-stop.signature/media.bin",
+        };
+        const two = {
+            heartbeat: origin + "/nas/stream/two-ping.signature/media.bin",
+            stop: origin + "/nas/stream/two-stop.signature/media.bin",
+        };
+        client.resolve(film, (item) => (played = item));
+        f.requests.at(-1).reply({
+            url: urls[1],
+            ...one,
+            sessions: { [urls[1]]: one, [urls[2]]: two },
+            // Server order is independent of alphabetical labels.
+            variants: Object.fromEntries([
+                ["Original", urls[0]],
+                ["HLS", urls[1]],
+                ["Alternate", urls[2]],
+            ]),
+        });
+        assert.equal(
+            f.requests.length,
+            1,
+            "opening quality picker does not stop the pending default"
+        );
+        assert.equal(
+            f.intervals.size,
+            0,
+            "unselected variants never acquire a heartbeat"
+        );
+        if (selected < 0) {
+            f.c.selectBoxKeyHandler(f.c.keys.RETURN);
+            assert.equal(f.requests.at(-1).options.url, one.stop);
+            assert.equal(played, undefined);
+            continue;
+        }
+        choose(selected);
+        assert.equal(played.stream_url, urls[selected]);
+        assert.equal(f.intervals.size, selected ? 1 : 0);
+        if (selected) {
+            [...f.intervals.values()][0].run();
+            assert.equal(
+                f.requests.at(-1).options.url,
+                (selected === 1 ? one : two).heartbeat
+            );
+        }
+        client.dispose();
+        assert.equal(f.intervals.size, 0);
+        if (selected)
+            assert.equal(
+                f.requests.at(-1).options.url,
+                (selected === 1 ? one : two).stop
+            );
+        else
+            assert.equal(
+                f.requests.length,
+                1,
+                "Original does not ping or stop an unused HLS variant"
+            );
+    }
+});
+
+test("heartbeat cannot follow arbitrary origins or start for a canceled resolve", () => {
+    for (const heartbeat of [
+        "https://attacker.invalid/nas/stream/ping.signature/media.bin",
+        "https://player.invalid/admin/keepalive",
+        "//player.invalid/nas/stream/ping.signature/media.bin",
+    ]) {
+        const f = create();
+        startSession(f, firstStop, undefined, { heartbeat });
+        assert.equal(f.intervals.size, 0);
+    }
+    const f = create();
+    f.discover();
+    f.open();
+    f.c.selectMedia(0);
+    const pending = f.requests.at(-1);
+    f.c.cancelMediaLoad();
+    pending.reply({
+        heartbeat: firstHeartbeat,
+        stop: firstStop,
+        url: "https://player.invalid/late.m3u8",
+    });
+    assert.equal(f.intervals.size, 0);
+});
 
 test("NAS switching awaits session release; browsing and cancel keep playback alive", () => {
     const f = create();
@@ -411,7 +668,7 @@ test("actual source replacement and disposal release NAS even while browsing pro
     startSession(f);
     f.c.popMedia();
     const count = f.requests.length;
-    f.c.__ottClassicPlayback.command({ type: "live", channelId: "1" });
+    f.c.__ottClassicPlayback.command({ channelId: "1", type: "live" });
     assert.equal(f.requests.length, count + 1);
     assert.equal(
         f.requests.at(-1).options.url,
@@ -424,6 +681,51 @@ test("actual source replacement and disposal release NAS even while browsing pro
         second.requests.at(-1).options.url,
         "/nas/stream/first.signature/media.bin"
     );
+    const provider = create();
+    startSession(provider);
+    provider.c.popMedia();
+    provider.c.selectMedia(0);
+    assert.equal(provider.c.calls.at(-1)[0], "play");
+    assert.equal(provider.c.calls.at(-1)[1], "movie.mp4");
+    assert.equal(
+        provider.requests.at(-1).options.url,
+        "/nas/stream/first.signature/media.bin",
+        "admitting provider VOD releases the previous installation session"
+    );
+});
+
+test("episode completion renews NAS playback and changing libraries revokes auto-next", () => {
+    const f = create();
+    f.discover();
+    f.nas.open();
+    f.requests.at(-1).reply({
+        items: [film, { ...film, request: { cmd: "play", id: "43" } }],
+        type: "multistream",
+    });
+    f.c.selectMedia(0);
+    f.requests
+        .at(-1)
+        .reply({ stop: firstStop, url: "https://player.invalid/first.m3u8" });
+    function ended() {
+        f.c.__ottClassicPlayback.command({ type: "stop" });
+        f.c.__ottMedia.ended(f.c.__ottClassicPlayback.snapshot().generation);
+        f.requests.at(-1).reply("");
+    }
+    ended();
+    assert.equal(JSON.parse(f.requests.at(-1).options.data).id, "43");
+    f.requests
+        .at(-1)
+        .reply({ stop: secondStop, url: "https://player.invalid/second.m3u8" });
+    f.c.popMedia();
+    const displayed = f.c.listArray;
+    const count = f.requests.length;
+    ended();
+    assert.equal(
+        f.requests.length,
+        count + 1,
+        "only session release; canceled queue cannot start another episode"
+    );
+    assert.equal(f.c.listArray, displayed);
 });
 
 test("canceled and accepted-but-unplayed responses release only their own signed session", () => {
