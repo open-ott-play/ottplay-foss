@@ -153,9 +153,14 @@ function classicArchiveRuntime(): any {
             return classicArchiveCapture();
         },
         publish: function (model: ArchiveView): any {
-            w.epgArray = model.rows.map(function (row): any {
-                return row.payload;
-            });
+            // The controller keeps its schedule stable between position ticks.
+            // Restore that owned projection even if a view replaced epgArray.
+            w.epgArray =
+                classicArchiveSchedule === model.rows
+                    ? classicArchivePublished
+                    : model.rows.map(function (row): any {
+                          return row.payload;
+                      });
             w.curProg = model.current ? model.rows.indexOf(model.current) : -1;
             // Position ticks repaint the archive footer but do not replace
             // the live guide projection with the same schedule every second.

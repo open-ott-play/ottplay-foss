@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fixture = require("./helpers/guide-runtime-fixture.cjs");
 const privateRuntime = require("./helpers/private-runtime.cjs");
+const vm = require("node:vm");
 let count = 0;
 function check(name, run) {
     run();
@@ -1184,6 +1185,107 @@ check(
         );
         h.closeList();
         assert.equal(h.__ottClassicGuideScreen.current(), null);
+    }
+);
+
+// Exercise the real list close/footer/clock with the guide owner and transport.
+const footerUi = require("./test_port_vod.cjs").sourceFunctions(
+    "src/ui/index.ts",
+    [
+        "closeList",
+        "updateChannelInfo",
+        "virtualTimeshiftProg",
+        "initBackgroundIntervals",
+    ]
+);
+function installFooterUi(f) {
+    const h = f.host,
+        query = h.$;
+    h.$ = (selector) => {
+        const result = query(selector);
+        result.toggle = () => result;
+        return result;
+    };
+    h.__ottClassicScreenPort = { closeList() {} };
+    h.cancelMediaLoad = () => {};
+    h.listElement = null;
+    h.isListVisible = true;
+    h.listChannel = 2;
+    h.time2time = String;
+    h.formatProgramDateTime = String;
+    h.setInterval = (run) => run;
+    h.clearInterval = () => {};
+    vm.runInContext(footerUi, h);
+    return h;
+}
+check(
+    "closing the list retires hidden guide rows and restores the playing footer",
+    () => {
+        const f = fixture(),
+            h = installFooterUi(f),
+            listCallbacks = [];
+        h.epgCacheCapacity = 0;
+        h.getCurProgData(1, () => listCallbacks.push(1));
+        h.getCurProgData(2, () => listCallbacks.push(2));
+        f.tick();
+        f.complete([f.row(f.now() - 10, f.now() + 10, "First")], 0);
+        f.complete([f.row(f.now() - 10, f.now() + 10, "Hidden")], 1);
+        h.closeList();
+        assert.equal(
+            h.document.getElementById("programm_name").textContent,
+            "First"
+        );
+        listCallbacks.length = 0;
+        f.tick(f.now() + 10);
+        assert.deepEqual(
+            f.requests.map((request) => request.id),
+            [1, 2, 1]
+        );
+        // An idempotent close must not cancel the restored live subscription.
+        h.closeList();
+        assert.equal(f.requests[2].aborts, 0);
+        f.complete([f.row(f.now(), f.now() + 100, "Second")], 2);
+        assert.equal(
+            h.document.getElementById("programm_name").textContent,
+            "Second"
+        );
+        assert.deepEqual(listCallbacks, []);
+        assert.equal(
+            f.requests.length,
+            3,
+            "The hidden second row never refetches"
+        );
+        // The periodic fallback follows playback, not the last browsed channel.
+        h.document.getElementById("programm_name").textContent = "";
+        h.initBackgroundIntervals();
+        h.__ottUiTimers.guide();
+        assert.equal(
+            h.document.getElementById("programm_name").textContent,
+            "Second"
+        );
+    }
+);
+check(
+    "closing a list during archive or VOD cancels row work without a live repaint",
+    () => {
+        for (const playType of [9990, -1]) {
+            const f = fixture(),
+                h = installFooterUi(f);
+            h.playType = playType;
+            h.getCurProgData(1, () => assert.fail("Retired list callback"));
+            h.getCurProgData(2, () => assert.fail("Retired list callback"));
+            f.tick();
+            h.document.getElementById("programm_name").textContent = "Playback";
+            h.closeList();
+            assert.equal(f.requests[0].aborts, 1);
+            f.complete([f.row()], 0);
+            f.tick(f.now() + 3600);
+            assert.equal(f.requests.length, 1);
+            assert.equal(
+                h.document.getElementById("programm_name").textContent,
+                "Playback"
+            );
+        }
     }
 );
 

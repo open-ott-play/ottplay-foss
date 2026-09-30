@@ -1147,6 +1147,9 @@ export function setSelect(index: number): void {
  * @analysis Errors during DOM manipulation are silently caught and logged.
  */
 export function closeList(restorePip = true): void {
+    var wasListVisible = isListVisible;
+    if (wasListVisible && (window as any).__ottClassicGuide)
+        (window as any).__ottClassicGuide.cancelConsumers();
     (window as any).__ottClassicScreenPort.closeList();
     if ((window as any).__ottClassicGuideScreen)
         (window as any).__ottClassicGuideScreen.close();
@@ -1195,6 +1198,12 @@ export function closeList(restorePip = true): void {
     } catch (e) {
         console.error(e);
     }
+    // Visible rows owned the guide callbacks; fullscreen returns ownership
+    // to the playing channel, which can differ from the selected list row.
+    if (wasListVisible && !(window as any).playType)
+        updateChannelInfo(
+            ((window as any).curList || [])[(window as any).primaryIndex]
+        );
 }
 
 /**
@@ -1694,7 +1703,9 @@ export function initBackgroundIntervals(): void {
             !(window as any).playType &&
             typeof (window as any).updateChannelInfo === "function"
         ) {
-            (window as any).updateChannelInfo((window as any).listChannel);
+            (window as any).updateChannelInfo(
+                ((window as any).curList || [])[(window as any).primaryIndex]
+            );
         }
     }, 30000);
 }

@@ -300,6 +300,100 @@ check("a failing UI callback cannot starve the next channel request", () => {
     assert.deepEqual(got, ["two"]);
 });
 check(
+    "a retired row completion releases the next channel without decoding",
+    () => {
+        const f = fixture(),
+            got = [],
+            retired = programme("retired");
+        let decoded = 0;
+        Object.defineProperty(retired, "title", {
+            enumerable: true,
+            get() {
+                decoded++;
+                return "retired";
+            },
+        });
+        const old = f.ref();
+        f.service.request(old, () => got.push("retired"));
+        f.service.request(f.ref(2), () => got.push("two"));
+        f.flush();
+        f.tokens[1] = {};
+        f.requests[0].done([retired]);
+        f.flush();
+        assert.equal(decoded, 0, "a retired response never reaches the codec");
+        assert.equal(
+            f.requests.length,
+            2,
+            "the other channel starts immediately"
+        );
+        assert.equal(f.requests[1].ref.id, 2);
+        assert.equal(f.service.snapshot(old), null);
+        assert.equal(f.service.snapshot(f.ref()), null);
+        assert.equal(f.service.peek(f.ref()), null);
+        f.requests[1].done([programme("two")]);
+        assert.deepEqual(got, ["two"]);
+    }
+);
+check(
+    "late retired completions cannot release a replacement transport slot",
+    () => {
+        for (const completeBeforeReplacement of [false, true]) {
+            const f = fixture(),
+                got = [];
+            f.service.request(f.ref(), () => got.push("retired"));
+            f.flush();
+            f.tokens[1] = {};
+            if (completeBeforeReplacement)
+                f.requests[0].done([programme("retired")]);
+            f.service.request(f.ref(), () => got.push("replacement"));
+            f.service.request(f.ref(2), () => got.push("two"));
+            f.flush();
+            assert.equal(f.requests.length, 2);
+            assert.equal(f.requests[1].ref.id, 1);
+            f.requests[0].done([programme("late or duplicate")]);
+            f.flush();
+            assert.equal(
+                f.requests.length,
+                2,
+                "replacement still owns the serial slot"
+            );
+            assert.equal(f.requests[1].canceled, 0);
+            f.requests[1].done([programme("replacement")]);
+            f.flush();
+            assert.equal(f.requests.length, 3);
+            assert.equal(f.service.peek(f.ref())[0].title, "replacement");
+            f.requests[2].done([programme("two")]);
+            assert.deepEqual(got, ["replacement", "two"]);
+        }
+    }
+);
+check(
+    "synchronous row invalidation during decoding cannot starve the queue",
+    () => {
+        const f = fixture(),
+            got = [],
+            retired = programme("retired");
+        Object.defineProperty(retired, "title", {
+            enumerable: true,
+            get() {
+                f.tokens[1] = {};
+                return "retired";
+            },
+        });
+        f.service.request(f.ref(), () => got.push("retired"));
+        f.service.request(f.ref(2), () => got.push("two"));
+        f.flush();
+        f.requests[0].done([retired]);
+        f.flush();
+        assert.equal(f.requests.length, 2);
+        assert.equal(f.requests[1].ref.id, 2);
+        assert.equal(f.service.snapshot(f.ref()), null);
+        assert.equal(f.service.peek(f.ref()), null);
+        f.requests[1].done([programme("two")]);
+        assert.deepEqual(got, ["two"]);
+    }
+);
+check(
     "warm refresh subscriptions cancel their new fetch when the last observer leaves",
     () => {
         const f = fixture();

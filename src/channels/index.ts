@@ -2265,10 +2265,9 @@ function renderArchiveInfo(model: ArchiveView): void {
     archivePos = position;
     var w = window as any;
     var channelId = model.context.host.id;
-    epgArray = model.rows.map(function (row): EPGEntry {
-        return row.payload;
-    });
-    curProg = model.current ? model.rows.indexOf(model.current) : -1;
+    // The archive adapter already projected this schedule and selection.
+    epgArray = w.epgArray;
+    curProg = w.curProg;
     var prog: EPGEntry = model.current
         ? model.current.payload
         : {
