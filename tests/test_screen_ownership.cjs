@@ -163,6 +163,7 @@ function fixture() {
     w.editKey = w.editKey2;
     return {
         close: () => dom.window.close(),
+        context: dom.getInternalVMContext(),
         events,
         jobs,
         key: (code) =>
@@ -253,6 +254,334 @@ function layoutFixture(w) {
     w.eval(functions("src/ui/index.ts", ["showPage"]));
     return { frames, layouts: () => layouts, listIn };
 }
+// Real list formatter, DOM styling and guide subscriptions, with only layout,
+// provider completion and time controlled by the fixture.
+function channelPageFixture(f, pageSize, options = {}) {
+    const { w, jobs, context } = f;
+    const { listIn } = layoutFixture(w);
+    listIn.getBoundingClientRect = () => ({ bottom: 600, top: 0 });
+    Object.defineProperty(listIn, "clientHeight", { value: 600 });
+    Object.defineProperty(listIn, "clientWidth", { value: 720 });
+    w.document.body.insertAdjacentHTML(
+        "beforeend",
+        '<div id="testFont"></div><div id="listPopUp"></div>'
+    );
+    let now = 1000000;
+    const requests = [],
+        counts = { details: 0, preview: 0, rows: 0, scroll: 0 };
+    w.Date.now = () => now;
+    w.setTimeout = (callback, delay) => {
+        jobs.push({ active: true, at: now + delay, callback, delay });
+        return jobs.length;
+    };
+    const ids = Array.from(
+        { length: pageSize * 2 + 1 },
+        (_, i) => "channel" + i
+    );
+    Object.assign(w, {
+        catIndex: 0,
+        cats: { All: ids },
+        catsArray: ["All"],
+        channels: Object.fromEntries(
+            ids.map((id) => [id, { channel_name: id, rec: 24 }])
+        ),
+        channelsKeyHandler: () => false,
+        cList: ids,
+        curList: ids,
+        epg: {},
+        epgCacheCapacity: 1000,
+        fetchChannelGuide(id, complete) {
+            requests.push({ complete, id });
+            return () => {};
+        },
+        getChannelPicon: () => "https://images.invalid/channel.png",
+        getViewportHeightScale: () => 1,
+        listDetail: w.listDetailElement,
+        listFooter: w.listFooterElement,
+        p_pref: "fixture",
+        parentalArray: [],
+        parentPIN: "*",
+        playType: 0,
+        previewChId() {
+            counts.preview++;
+        },
+        primaryIndex: 0,
+        sArrowFun: 0,
+        scrollUp() {
+            counts.scroll++;
+        },
+        setPopupChannels() {},
+        sNextCount: 2,
+        sPNFun: 0,
+        sPSchannels: 0,
+        sRewFun: 0,
+        sThumbnail: 1,
+        strEPG: "EPG",
+        strInfo: "Info",
+        strPlayPause: "Play",
+        strTools: "Settings",
+        time2time: String,
+    });
+    Object.assign(w.settings, {
+        channelLogoMode: 1,
+        interfaceTheme: 0,
+        nextCountList: 2,
+        pageSize,
+        preview: options.preview ?? 1,
+        showArchive: 1,
+        showDescription: options.description ?? 1,
+        showName: 1,
+        showNumber: 1,
+        showProgram: options.program ?? 1,
+        showProgress: options.progress ?? 1,
+        showScroll: options.scroll ?? 1,
+    });
+    w.eval(fs.readFileSync(path.join(root, "vendor/ottplay-core.js"), "utf8"));
+    for (const file of ["service", "classic-service"])
+        require("./helpers/private-runtime.cjs")(
+            context,
+            "src/guide/" + file + ".ts"
+        );
+    w.eval(functions("src/channels/index.ts", ["observeCurrentProgramme"]));
+    w.eval(
+        functions("src/provider/index.ts", [
+            "_channelsList",
+            "updateChannelListRow",
+            "detailProg",
+        ])
+    );
+    w.eval(functions("src/ui/index.ts", ["changeSelect"]));
+    const update = w.updateChannelListRow;
+    w.updateChannelListRow = (id) => {
+        counts.rows++;
+        update(id);
+    };
+    const html = Object.getOwnPropertyDescriptor(
+        w.Element.prototype,
+        "innerHTML"
+    );
+    Object.defineProperty(w.listDetailElement, "innerHTML", {
+        get() {
+            return html.get.call(this);
+        },
+        set(value) {
+            if (value) counts.details++;
+            html.set.call(this, value);
+        },
+    });
+    function programmes(id, expired = false) {
+        const base = Math.floor(w.Date.now() / 1000);
+        return [
+            {
+                descr: "Description",
+                name: "Programme " + id,
+                time: base - 100,
+                time_to: base + (expired ? -50 : 500),
+            },
+            {
+                descr: "Next description",
+                name: "Next " + id,
+                time: base + (expired ? -40 : 500),
+                time_to: base + (expired ? -10 : 1100),
+            },
+        ];
+    }
+    function seed(expired = false) {
+        ids.forEach((id) =>
+            w.__ottClassicGuide.seed(id, programmes(id, expired))
+        );
+    }
+    function advance(ms) {
+        const until = now + ms;
+        let calls = 0;
+        for (;;) {
+            const job = jobs
+                .filter((entry) => entry.active && entry.at <= until)
+                .sort((a, b) => a.at - b.at)[0];
+            if (!job) break;
+            assert(++calls < 200, "render timers converge");
+            now = job.at;
+            job.active = false;
+            job.callback();
+        }
+        now = until;
+    }
+    function resetCounts() {
+        Object.keys(counts).forEach((key) => {
+            counts[key] = 0;
+        });
+    }
+    return {
+        advance,
+        counts,
+        ids,
+        listIn,
+        programmes,
+        requests,
+        resetCounts,
+        seed,
+    };
+}
+for (const pageSize of [25, 10, 30]) {
+    test(
+        "warm channel page renders details once at configured " +
+            pageSize +
+            " rows",
+        (f) => {
+            const { w } = f;
+            const page = channelPageFixture(f, pageSize);
+            page.seed();
+            const settings = JSON.stringify(w.settings);
+            function checkPage(first) {
+                assert.equal(
+                    page.listIn.querySelectorAll(".item").length,
+                    pageSize
+                );
+                assert.equal(
+                    w.document.getElementById("pn" + page.ids[first])
+                        .textContent,
+                    "Programme " + page.ids[first]
+                );
+                assert.equal(
+                    w.document.getElementById("pr" + page.ids[first]).style
+                        .width,
+                    ((w.Date.now() / 1000 - 900) / 600) * 100 + "%"
+                );
+                assert.ok(page.listIn.querySelector(".list-scroll"));
+                page.advance(200);
+                assert.deepEqual(
+                    page.counts,
+                    { details: 1, preview: 1, rows: 0, scroll: 1 },
+                    "warm page must not paint and immediately discard its detail or rewrite formatted rows"
+                );
+                assert.equal(
+                    page.requests.length,
+                    0,
+                    "warm rendering never refetches"
+                );
+                assert.equal(JSON.stringify(w.settings), settings);
+            }
+            w._channelsList(0, 0);
+            checkPage(0);
+            page.resetCounts();
+            w.changeSelect(pageSize);
+            checkPage(pageSize);
+            page.resetCounts();
+            w.listArray = w.listDataArray = ["Other menu"];
+            w.getListItemFn = (item) => item;
+            w.detailListActionFn = () => {};
+            w.selIndex = 0;
+            w.showPage();
+            page.advance(200);
+            assert.equal(page.listIn.textContent, "Other menu");
+            assert.deepEqual(page.counts, {
+                details: 0,
+                preview: 0,
+                rows: 0,
+                scroll: 0,
+            });
+        }
+    );
+    test(
+        "expired channel pages preserve async fill/settings at " +
+            pageSize +
+            " rows",
+        (f) => {
+            const { w } = f;
+            const page = channelPageFixture(f, pageSize, {
+                description: 0,
+                preview: 0,
+                program: 0,
+                progress: 0,
+                scroll: 0,
+            });
+            page.seed(true);
+            w._channelsList(0, 0);
+            page.advance(200);
+            assert.equal(
+                page.listIn.querySelectorAll(".item").length,
+                pageSize
+            );
+            assert.equal(
+                page.listIn.querySelector(
+                    ".ott-channel-programme, .ott-channel-progress, .list-scroll"
+                ),
+                null
+            );
+            assert.equal(w.listDetailElement.innerHTML, "");
+            assert.equal(page.counts.preview, 0);
+            page.advance(
+                w.channels[page.ids[0]].time_request * 1000 - w.Date.now()
+            );
+            assert.equal(
+                page.requests.length,
+                1,
+                "expired rows still start the serial guide queue"
+            );
+            page.resetCounts();
+            const request = page.requests[0];
+            request.complete(request.id, page.programmes(request.id));
+            page.advance(0);
+            assert.deepEqual(
+                page.counts,
+                { details: 1, preview: 0, rows: 1, scroll: 1 },
+                "actual async guide callback still refreshes the selected detail"
+            );
+            assert.equal(
+                w.document.getElementById("_descr").style.height,
+                "0px"
+            );
+            assert.match(w.listDetailElement.textContent, /Programme channel0/);
+            assert.equal(
+                page.listIn.querySelector(
+                    ".ott-channel-programme, .ott-channel-progress, .list-scroll"
+                ),
+                null
+            );
+        }
+    );
+}
+for (const expired of [false, true])
+    test(
+        (expired ? "expired" : "cold") +
+            " visible programme rows still fill asynchronously",
+        (f) => {
+            const { w } = f;
+            const page = channelPageFixture(f, 25);
+            if (expired) page.seed(true);
+            w._channelsList(0, 0);
+            page.advance(200);
+            const id = page.ids[0];
+            assert.ok(
+                w.document.querySelector("#pn" + id + " .ott-channel-no-epg")
+            );
+            assert.equal(
+                w.document.getElementById("pr" + id).style.width,
+                "0%"
+            );
+            if (expired)
+                page.advance(w.channels[id].time_request * 1000 - w.Date.now());
+            assert.equal(page.requests.length, 1);
+            page.resetCounts();
+            const request = page.requests[0];
+            request.complete(request.id, page.programmes(request.id));
+            page.advance(0);
+            assert.equal(
+                w.document.getElementById("pn" + id).textContent,
+                "Programme " + id
+            );
+            assert.equal(
+                w.document.getElementById("pr" + id).style.width,
+                ((w.Date.now() / 1000 - w.channels[id].time) / 600) * 100 + "%"
+            );
+            assert.deepEqual(page.counts, {
+                details: 1,
+                preview: 1,
+                rows: 1,
+                scroll: 1,
+            });
+        }
+    );
 test("retired list layout frames cannot resize or reopen the list", ({ w }) => {
     const { frames, layouts, listIn } = layoutFixture(w);
     w.showPage();
