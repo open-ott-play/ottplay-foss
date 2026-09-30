@@ -154,6 +154,132 @@ function fixture() {
     return c;
 }
 
+// A live now/next subscription survives entering archive. Archive ticks and
+// late guide replies must not repaint its footer with the wall-clock programme.
+{
+    const c = fixture();
+    const callbacks = new Map();
+    let nextTimer = 0;
+    c.setTimeout = (fn, delay) => {
+        const id = ++nextTimer;
+        if (!delay) callbacks.set(id, fn);
+        return id;
+    };
+    c.clearTimeout = (id) => callbacks.delete(id);
+    const flush = () => {
+        for (let turns = 0; callbacks.size; turns++) {
+            assert(turns < 20, "Guide repaint callbacks converge");
+            const pending = [...callbacks.values()];
+            callbacks.clear();
+            pending.forEach((fn) => fn());
+        }
+    };
+    require("./helpers/guide-runtime-fixture.cjs").install(c);
+    c.epgCacheCapacity = 10;
+    c.$infoBar = { is: () => false };
+    c.formatProgramDateTime = String;
+    vm.runInContext(
+        require("./test_port_vod.cjs").sourceFunctions("src/ui/index.ts", [
+            "updateChannelInfo",
+            "virtualTimeshiftProg",
+        ]),
+        c
+    );
+    c.epgArray = [
+        { name: "Archive", time: 999000, time_to: 999200 },
+        { name: "Archive next", time: 999200, time_to: 999400 },
+        { name: "Live", time: 999940, time_to: 1000040 },
+    ];
+    c.__ottClassicGuide.seed(101, c.epgArray);
+    c.updateChannelInfo(101);
+    assert.equal(c.elements.programm_name.textContent, "Live");
+    assert.equal(c.elements.progress.style.width, "60%");
+    let publications = 0;
+    const publish = c.__ottClassicGuide.publish;
+    c.__ottClassicGuide.publish = (...args) => {
+        publications++;
+        return publish(...args);
+    };
+    c.sInfoChange = true;
+    c.playArchive(999060);
+    flush();
+    assert.equal(c.elements.programm_name.textContent, "Archive");
+    assert.equal(c.elements.progress.style.width, "30%");
+    assert.equal(c._prog100.name, "Archive");
+    assert.equal(c._prog100.time, 999000);
+    const opened = c.effects.filter((e) => e[0] === "info").length;
+    for (const position of [999061, 999062, 999063]) {
+        c.updateArchiveInfo(position);
+        flush();
+        assert.equal(c.elements.programm_name.textContent, "Archive");
+        assert.equal(
+            c.elements.progress.style.width,
+            (position - 999000) / 2 + "%"
+        );
+    }
+    assert.equal(
+        publications,
+        1,
+        "Position ticks do not republish the same schedule"
+    );
+    assert.equal(c.effects.filter((e) => e[0] === "info").length, opened);
+    // A real schedule refresh can still notify the retained live subscriber.
+    c.__ottClassicGuide.publish(101, c.epgArray);
+    flush();
+    assert.equal(c.elements.programm_name.textContent, "Archive");
+    assert.equal(c.elements.progress.style.width, "31.5%");
+    assert.equal(c._prog100.time, 999000);
+    c.updateArchiveInfo(999220);
+    flush();
+    assert.equal(c.elements.programm_name.textContent, "Archive next");
+    assert.equal(c.elements.progress.style.width, "10%");
+    assert.equal(c.effects.filter((e) => e[0] === "info").length, opened + 1);
+    c.updateArchiveInfo(999222);
+    flush();
+    assert.equal(c.effects.filter((e) => e[0] === "info").length, opened + 1);
+    c.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+    c.updateChannelInfo(101);
+    assert.equal(c.elements.programm_name.textContent, "Live");
+    assert.equal(c.elements.progress.style.width, "60%");
+    const liveOpened = c.effects.filter((e) => e[0] === "info").length;
+    c.updateChannelInfo(101);
+    c.updateChannelInfo(101);
+    c.__ottClassicGuide.publish(101, c.epgArray);
+    flush();
+    assert.equal(
+        c.effects.filter((e) => e[0] === "info").length,
+        liveOpened,
+        "Periodic live repaints and identical guide replies do not reopen the bar"
+    );
+    c.__ottClassicGuide.publish(101, [
+        { name: "Corrected live title", time: 999940, time_to: 1000100 },
+    ]);
+    flush();
+    assert.equal(c.elements.programm_name.textContent, "Corrected live title");
+    assert.equal(c.effects.filter((e) => e[0] === "info").length, liveOpened);
+    c.__ottClassicGuide.publish(101, []);
+    flush();
+    c.__ottClassicGuide.publish(101, [
+        { name: "Corrected live title", time: 999940, time_to: 1000100 },
+    ]);
+    flush();
+    assert.equal(c.effects.filter((e) => e[0] === "info").length, liveOpened);
+    c.__ottClassicGuide.publish(101, [
+        { name: "New live programme", time: 999980, time_to: 1000200 },
+    ]);
+    flush();
+    assert.equal(c.elements.programm_name.textContent, "New live programme");
+    assert.equal(
+        c.effects.filter((e) => e[0] === "info").length,
+        liveOpened + 1
+    );
+    c.updateChannelInfo(101);
+    assert.equal(
+        c.effects.filter((e) => e[0] === "info").length,
+        liveOpened + 1
+    );
+}
+
 // Real entrypoints use resource bounds, never the renderer's mutable programme index.
 {
     const c = fixture();

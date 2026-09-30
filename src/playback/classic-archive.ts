@@ -157,7 +157,12 @@ function classicArchiveRuntime(): any {
                 return row.payload;
             });
             w.curProg = model.current ? model.rows.indexOf(model.current) : -1;
-            if (typeof w.publishChannelProgrammeRows === "function")
+            // Position ticks repaint the archive footer but do not replace
+            // the live guide projection with the same schedule every second.
+            if (
+                classicArchiveSchedule !== model.rows &&
+                typeof w.publishChannelProgrammeRows === "function"
+            )
                 w.publishChannelProgrammeRows(
                     model.context.host.id,
                     w.epgArray
