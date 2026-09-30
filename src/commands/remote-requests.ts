@@ -399,6 +399,8 @@ export function executeRemoteRequest(
         }
         var catalogSource = identity.current(w);
         var catalogLoad = w.__ottCommandChannelLoad;
+        // Provider-internal IDs can collide with unrelated public XMLTV IDs.
+        var xmltvMetadata = activeProvider() === "m3u";
         var metadata: any[];
         try {
             if (rows.length > 2048) throw new Error();
@@ -410,8 +412,8 @@ export function executeRemoteRequest(
                     name: row.name,
                     number: row.number,
                     shift: shift,
-                    tvgId: String(channel.epg || ""),
-                    tvgName: String(channel.tn || ""),
+                    tvgId: xmltvMetadata ? String(channel.epg || "") : "",
+                    tvgName: xmltvMetadata ? String(channel.tn || "") : "",
                 };
                 if (
                     !entry.id ||

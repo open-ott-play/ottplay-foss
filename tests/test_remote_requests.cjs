@@ -665,12 +665,13 @@ async function checkStatusDiagnostics() {
 }
 
 function checkRemoteEpgCatalog() {
-    function fixture() {
+    function fixture(provider = "m3u") {
         let source = "private-source-identity";
         let clock = Date.now();
         const plays = [];
         const h = {
             ...host,
+            __ottActiveProviderDriver: { id: provider },
             __ottClassicGuide: {
                 peek() {
                     throw new Error("EPG must not be read on the player");
@@ -766,6 +767,14 @@ function checkRemoteEpgCatalog() {
         dispatched: true,
     });
     assert.deepEqual(f.plays, [[0, 0]]);
+
+    for (const provider of ["edem", "xtream", "stalker"]) {
+        const named = fixture(provider);
+        const row = named.run("epg_catalog").data.channels[0];
+        assert.equal(row.name, "РЕН ТВ +2");
+        assert.equal(row.tvgId, "", "provider IDs are not public XMLTV IDs");
+        assert.equal(row.tvgName, "");
+    }
 
     for (const change of [
         (f) => f.h.cList.reverse(),

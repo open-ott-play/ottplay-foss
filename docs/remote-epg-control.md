@@ -10,6 +10,9 @@ contains an opaque `catalog` receipt and ordered channels with `id`, `number`,
 `name`, `tvgId`, `tvgName` and `shift` in seconds. It never calls the guide loader.
 No playlist, stream URL, account credentials or private EPG URL is included. The
 receipt's source fingerprint and catalogue signature stay inside the player.
+Only M3U's explicit XMLTV identifiers are forwarded as `tvgId` and `tvgName`.
+Other providers are matched by channel name because their internal EPG IDs can
+collide with unrelated IDs in the public guide.
 
 The CLI sends the metadata and title filter directly to the configured service's
 `POST /epg/v1/current` endpoint without the command-server authorization token.
