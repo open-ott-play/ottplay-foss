@@ -1,7 +1,7 @@
 # Hosted EPG service v1
 
 `EPG_ONLY=true` runs the Rust server as a restricted public guide service. It
-exposes only `/health`, `/epg/v1/health`, `/epg/v1/match` and
+exposes only `/health`, `/epg/v1/health`, `/epg/v1/match`, `/epg/v1/current` and
 `/epg/v1/programmes`. The ordinary server is unchanged when this variable is
 absent or false. Bind/TLS flags retain their existing behavior.
 
@@ -9,7 +9,7 @@ The administrator-owned source is `epg-one`, fixed to
 `https://cdn.epg.one/epg2.xml.gz`. If `EPG_URLS` is supplied in this mode it must
 be exactly that URL. HTTP redirects are disabled. Clients cannot submit feed,
 playlist, stream or proxy URLs. No playlist session or provider credentials are
-stored. The intended public ingress forwards only the match and programmes
+stored. The intended public ingress forwards only the match, current and programmes
 routes; keep the health routes internal. A same-origin here.now proxy avoids a
 cross-origin dependency on LG. This API does not enable CORS itself.
 
@@ -44,6 +44,52 @@ across client sessions. The pinned shared core's **web** matcher resolves
 exact-ID precedence. Duplicate display aliases retain the web profile's first
 match; the native server's different alias policy is not substituted.
 `shift` is inferred from `name` and is measured in **seconds**.
+
+## Current programme search
+
+`POST /epg/v1/current` matches a client channel catalog and searches its current
+programme titles in one accepted snapshot:
+
+```json
+{"version":1,"source":"epg-one","channels":[{"id":"local-42","tvgId":"18","tvgName":"","name":"РЕН ТВ HD","shift":0}],"search":"передача"}
+```
+
+The channel metadata, unique local IDs, 2048-channel maximum and 512 KiB request
+body limit are the same as matching. Every channel additionally requires
+`shift`, an integer number of **seconds** in [-86400, 86400]. This is the
+player's separate provider `row.ts` adjustment, added to the name-inferred
+shift exactly once. `search` is a required string of at most 1024 UTF-8 bytes;
+an empty string returns every nonempty current title. Unknown fields and
+sources are rejected, including feed, playlist and stream URL fields.
+
+```json
+{"version":1,"source":"epg-one","generation":"opaque","fetchedAt":1790685238000,"refreshMs":7200000,"asOf":1790685238,"stale":false,"checked":1,"total":1,"programs":[{"id":"local-42","start":1790683200,"end":1790686800,"title":"Передача"}]}
+```
+
+`asOf`, `start` and `end` are Unix seconds; `fetchedAt` remains milliseconds.
+All channels use that single `asOf` and snapshot `generation`, even if refresh
+publishes a new snapshot during the request. `checked` and `total` both count
+every submitted channel, including unmatched channels and those without EPG.
+Results preserve input order and contain only local IDs, shifted intervals and
+titles. Descriptions, logos, stream URLs and provider credentials are absent.
+
+Current selection follows the shared guide: `start <= asOf < end`, preferring
+the latest start and the first valid stored row when starts tie. Selection
+uses the sorted schedule directly without cloning its full programme window.
+An empty current title is omitted instead of falling back to an older show.
+Search is a case-insensitive substring comparison using the player's caseless
+key (lowercase then uppercase, preserving dotless `ı`). Tests pin all Unicode
+17 default case-fold equivalences. No accent removal, `ё`/`е` substitution,
+whitespace collapsing or Unicode normalization is applied.
+
+Current search shares matching's two admission slots, single execution slot,
+eight-second deadline and disconnect cancellation. It returns a complete result
+or an error, never partial rows. The complete encoded JSON response is capped
+at **2 MiB**, including escaped strings; exceeding it returns 422
+`EPG_CHANNEL_LIMIT`. Narrow the search or channel selection before retrying.
+`stale` is explicit, and clients should not automatically tune from stale
+results. This fixed-source endpoint does not substitute for another provider's
+private guide or a custom XMLTV feed.
 
 ## Programmes
 
@@ -104,7 +150,7 @@ All responses, including failures, send `Cache-Control: no-store` and
   a burst of new playlists cannot consume all guide-read capacity.
 - 409 `EPG_GENERATION`: snapshot changed; rematch.
 - 404 `EPG_CHANNEL`: unknown canonical channel or unavailable route.
-- 422 `EPG_CHANNEL_LIMIT`: complete requested history exceeds the budget.
+- 422 `EPG_CHANNEL_LIMIT`: complete requested history or current result exceeds its budget.
 - 500 `EPG_INTERNAL`: internal computation failed; no provider data is exposed.
 - 504 `EPG_TIMEOUT`: matching exceeded its bounded processing/queue deadline.
 

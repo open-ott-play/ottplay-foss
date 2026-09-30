@@ -44,7 +44,9 @@ const { gzipSync } = require("node:zlib");
 // Removing redundant canonicalization and metadata work saves 400 raw bytes.
 // Budget the new feature explicitly,
 // retaining candidate suffix room and the established Node 22 gzip allowance.
-const BUDGET = Object.freeze({ bytes: 616150, gzipBytes: 187600 });
+// Server EPG metadata snapshots and catalogue-bound playback add 1885 raw /
+// 535 gzip bytes: 617817 / 187389 web on Node 26.8.2, without guide downloads.
+const BUDGET = Object.freeze({ bytes: 618050, gzipBytes: 188150 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -63,7 +65,8 @@ const BUDGET = Object.freeze({ bytes: 616150, gzipBytes: 187600 });
 // The gesture candidate totals 673493 raw / 208815 gzip before version suffixes.
 // Including the Edem queue bridge, the VPortal candidate totals 681416 raw /
 // 211638 gzip (native 681374 / 211697); all provider families remain counted.
-const TOTAL_BUDGET = Object.freeze({ bytes: 681700, gzipBytes: 212650 });
+// The metadata RPCs add the same measured cost to the complete payload.
+const TOTAL_BUDGET = Object.freeze({ bytes: 683600, gzipBytes: 213200 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
