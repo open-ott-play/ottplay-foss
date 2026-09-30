@@ -75,6 +75,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archívum. Csatorna: ",
     Aspect: "Képarány",
     Audio: "Hang",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz",
     always: "mindig",
     "and enter code": "és adja meg a kódot",
@@ -130,21 +133,28 @@ var keyStrings = {
     "Channel list. Category: ": "Csatornalista. Kategória: ",
     "Channel parental control": "Csatorna szülői felügyelete",
     Channels: "Csatornák",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Ellenőrizze a kiszolgáló SWOP-beállításait.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Választás innen",
     "Choose language": "Nyelv kiválasztása",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Szolgáltató kiválasztása",
     Classic: "Klasszikus",
     "Clear all settings?": "Törli az összes beállítást?",
     "Clear settings": "Beállítások törlése",
     Close: "Bezár",
     "Close PiP": "PiP bezárása",
+    Code: "Code",
     Color: "Szín",
     "Color spectrum": "Színspektrum",
     "Command server": "Parancskiszolgáló",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Parancskiszolgáló címe, eszköz-hozzáférési kód, helyi HTTP-vezérlés és távoli szövegbevitel beállításai",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Állítsa be ezt: All4you.tv, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -177,6 +187,8 @@ var keyStrings = {
         "Állítsa be ezt: New Look, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Állítsa be ezt: OTT Prime ONLINE, a Beállítások -> Szolgáltató beállításai menüben",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Állítsa be ezt: POLMEDIA, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure PROST in Settings -> Provider Settings":
@@ -217,11 +229,14 @@ var keyStrings = {
     Connected: "Csatlakoztatva",
     "Connected. Waiting for the channel list...":
         "Csatlakoztatva. Várakozás a csatornalistára…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Csatlakozás a Stalker portálhoz…",
     "Connecting...": "Csatlakozás…",
     "Continue watching?": "Folytatja a nézést?",
     "Copy category": "Kategória másolása",
     "Copy JSON": "JSON másolása",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
         "Nem sikerült csatlakozni a kiszolgálóhoz.",
     "Could not update HTTP remote control.":
@@ -276,6 +291,8 @@ var keyStrings = {
         "Adja meg a felhasználónevet (8 karakter).",
     "Enter a username and password to access this service.":
         "A szolgáltatás eléréséhez adja meg a felhasználónevet és a jelszót.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Adjon meg érvényes kiszolgálócímet, például: 192.168.1.20:8081.",
     "Enter access key for": "Adja meg a hozzáférési kulcsot ehhez:",
@@ -291,6 +308,8 @@ var keyStrings = {
         "Adja meg a MAC-címet (pl. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Adja meg a médiatár URL-t",
     "Enter new category name": "Adja meg a kategória új nevét",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Adja meg a szolgáltató kódját",
     "Enter Provider Code on PC or Phone":
         "Adja meg a szolgáltató kódját számítógépen vagy telefonon",
@@ -327,6 +346,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Adja meg az Xtream-kiszolgáló URL-címét",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Adja meg az Xtream-kiszolgáló URL-címét (pl. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Műsorújság",
     "EPG and archive. Channel: ": "Műsorújság és archívum. Csatorna: ",
     "ERROR!": "Hiba!",
@@ -358,6 +381,7 @@ var keyStrings = {
     Filter: "Szűrő",
     Filters: "Szűrők",
     "First Run Setup": "Első indítás beállításai",
+    Folders: "Folders",
     "Font type": "Betűtípus",
     "For download settings file open":
         "A beállításfájl letöltéséhez nyissa meg:",
@@ -465,6 +489,8 @@ var keyStrings = {
     "Next TV program": "Következő műsor",
     No: "Nem",
     "No channel name": "Nincs csatornanév",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Nem találhatók mentett beállítások",
     "Not found": "Nem található",
     "Not reduce video when showing the list (bugfix)":
@@ -481,6 +507,10 @@ var keyStrings = {
     Ok: "OK",
     Open: "Megnyitás",
     "Open in PiP": "Megnyitás PiP-ben",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE beállításai",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -500,6 +530,7 @@ var keyStrings = {
     "PiP window position": "PiP-ablak helye",
     "PiP window size": "PiP-ablak mérete",
     Play: "Lejátszás",
+    Playback: "Playback",
     "Player and device info": "Lejátszó- és eszközinformációk",
     "Player info:": "Lejátszóinformációk:",
     Playlist: "Lejátszási lista",
@@ -508,6 +539,12 @@ var keyStrings = {
         "A playlist nem töltődik be közvetlenül...Betöltés szerveren keresztül...",
     "Playlist Name": "Playlist neve",
     "Playlist URL": "Lejátszási lista URL-címe",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA beállításai",
     "Portal URL": "Portál URL-címe",
@@ -572,6 +609,7 @@ var keyStrings = {
     "Save & load channels": "Mentés és csatornák betöltése",
     "Save and load": "Mentés és betöltés",
     "Save and load channels": "Mentés és csatornák betöltése",
+    "Save and open library": "Save and open library",
     "Save Settings": "Beállítások mentése",
     "Save settings": "Beállítások mentése",
     "Save settings and load channel list":
@@ -641,6 +679,9 @@ var keyStrings = {
     "Show when changing program": "Megjelenítés műsorváltáskor",
     "Show when rewind": "Megjelenítés visszatekeréskor",
     "Show when switching": "Megjelenítés csatornaváltáskor",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Elalvásidőzítő",
     "Sort channels": "Csatornák rendezése",
     "Stalker Portal Provider": "Stalker portálszolgáltató",
@@ -719,6 +760,7 @@ var keyStrings = {
     "VPortal request failed":
         "Nem sikerült betölteni a VPortalt. Ellenőrizze a hivatkozást, a hozzáférési kulcsot és a portál elérhetőségét.",
     volume: "hangerő",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Hibás szülői kód!!!",
     "Xtream Codes Provider": "Xtream Codes szolgáltató",
     "Xtream Codes settings": "Xtream Codes beállításai",

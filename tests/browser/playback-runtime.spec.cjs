@@ -6,6 +6,19 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+test.beforeEach(async ({ context }) => {
+    await context.addInitScript(() => {
+        // The fixture has silent AAC. Without an OS audio output, headless
+        // Chromium can emit playing while its audio clock never advances.
+        // Keep real decoding/ended events, but mute every new media attempt.
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            this.muted = true;
+            return play.call(this);
+        };
+    });
+});
+
 async function episodeFixture(page, context, baseURL, holdNext = false) {
     const origin = new URL(baseURL).origin;
     const errors = [];
@@ -83,9 +96,13 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
     await page.waitForFunction(
         () => window.__ottDevice && !document.body.classList.contains("booting")
     );
+    await page.keyboard.press("Shift");
     await page.evaluate(() => {
         window.stbStop();
         window.__ottMedia.cancel();
+        // Test episode ownership with real MSE decoding and media events.
+        // macOS native HLS can report playing with a stalled headless clock.
+        window.setPlayerMode(1);
         window.host = location.origin;
         window.p_pref = "episode-browser-fixture";
         window.m3uArr = null;
@@ -174,7 +191,8 @@ async function pauseEpisode(page, id) {
             state.phase !== "playing" ||
             state.target?.channelId !==
                 'request:{"cmd":"play","id":' + episode + "}" ||
-            video.readyState < 2
+            video.readyState < 2 ||
+            video.currentTime <= 0
         )
             return false;
         window.stbPause();
@@ -189,7 +207,8 @@ async function finishEpisode(page) {
         const video = document.querySelector("video");
         if (!Number.isFinite(video.duration))
             throw new Error("Missing HLS duration");
-        window.stbSetPosTime(video.duration - 0.15);
+        // Play the complete two-second fixture. Seeking near its advertised
+        // duration can land beyond the shorter audio track's buffered range.
         window.stbContinue();
     });
 }
@@ -705,6 +724,7 @@ test("built driver, media session and journal stay connected through playback", 
         );
     });
     await page.goto("/f/pc/", { waitUntil: "load" });
+    await page.keyboard.press("Shift");
     await expect
         .poll(() =>
             page.evaluate(() => {

@@ -75,6 +75,9 @@ var keyStrings = {
     "Archive. Channel: ": "Արխիվ։ Ալիք՝ ",
     Aspect: "Կողմերի հարաբերակցություն",
     Audio: "Ձայն",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "աբգդեզէըթժիլխծկհձղճմյնշոչպջռսվտրցւփքօֆև",
     always: "միշտ",
     "and enter code": "և մուտքագրեք կոդը",
@@ -129,21 +132,28 @@ var keyStrings = {
     "Channel list. Category: ": "Ալիքների ցուցակ. Կատեգորիա: ",
     "Channel parental control": "Ծնողական վերահսկողություն ալիքի համար",
     Channels: "Ալիքներ",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Ստուգեք այս սերվերի SWOP կարգավորումները։",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Ընտրել աղբյուրից",
     "Choose language": "Ընտրել լեզուն",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Ընտրել մատակարարին",
     Classic: "Դասական",
     "Clear all settings?": "Մաքրե՞լ բոլոր կարգավորումները։",
     "Clear settings": "Մաքրել կարգավորումները",
     Close: "Փակել",
     "Close PiP": "Փակել PiP-ը",
+    Code: "Code",
     Color: "Գույն",
     "Color spectrum": "Գունային սպեկտր",
     "Command server": "Հրամանների սերվեր",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Հրամանների սերվերի հասցե, սարքի մուտքի կոդ, տեղային HTTP կառավարման և հեռակա տեքստի մուտքագրման կարգավորումներ",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Կարգավորեք All4you.tv-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -176,6 +186,8 @@ var keyStrings = {
         "Կարգավորեք New Look-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Կարգավորեք OTT Prime ONLINE-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Կարգավորեք POLMEDIA-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure PROST in Settings -> Provider Settings":
@@ -216,11 +228,14 @@ var keyStrings = {
     Connected: "Միացված է",
     "Connected. Waiting for the channel list...":
         "Միացված է։ Սպասում է ալիքների ցուցակին…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Միացում Stalker պորտալին…",
     "Connecting...": "Միացում…",
     "Continue watching?": "Շարունակե՞լ դիտումը։",
     "Copy category": "Պատճենել կատեգորիան",
     "Copy JSON": "Պատճենել JSON-ը",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
     "Could not update HTTP remote control.":
         "Չհաջողվեց թարմացնել HTTP հեռակառավարման կարգավորումները։",
@@ -274,6 +289,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Մուտքագրեք օգտանունը (8 նիշ)։",
     "Enter a username and password to access this service.":
         "Այս ծառայությունից օգտվելու համար մուտքագրեք օգտանունը և գաղտնաբառը։",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Մուտքագրեք վավեր սերվերի հասցե, օրինակ՝ 192.168.1.20:8081։",
     "Enter access key for": "Մուտքագրեք մուտքի բանալին՝",
@@ -288,6 +305,8 @@ var keyStrings = {
         "Մուտքագրեք MAC հասցեն (օր.՝ 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Մուտքագրեք մեդիա գրադարանի URL-ը",
     "Enter new category name": "Մուտքագրեք կատեգորիայի նոր անունը",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Մուտքագրեք մատակարարի կոդը",
     "Enter Provider Code on PC or Phone":
         "Մուտքագրեք մատակարարի կոդը համակարգչով կամ հեռախոսով",
@@ -325,6 +344,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Մուտքագրեք Xtream սերվերի URL-ը",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Մուտքագրեք Xtream սերվերի URL-ը (օր.՝ https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Հեռուստածրագիր",
     "EPG and archive. Channel: ": "Հեռուստածրագիր և արխիվ։ Ալիք՝ ",
     "ERROR!": "Սխալ։",
@@ -355,6 +378,7 @@ var keyStrings = {
     Filter: "Զտիչ",
     Filters: "Զտիչներ",
     "First Run Setup": "Առաջին գործարկման կարգավորում",
+    Folders: "Folders",
     "Font type": "Տառատեսակ",
     "For download settings file open":
         "Կարգավորումների ֆայլը ներբեռնելու համար բացեք",
@@ -461,6 +485,8 @@ var keyStrings = {
     "Next TV program": "Հաջորդ հաղորդում",
     No: "Ոչ",
     "No channel name": "Ալիքի անուն չկա",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Պահպանված կարգավորումներ չեն գտնվել",
     "Not found": "Չի գտնվել",
     "Not reduce video when showing the list (bugfix)":
@@ -477,6 +503,10 @@ var keyStrings = {
     Ok: "Լավ",
     Open: "Բացել",
     "Open in PiP": "Բացել PiP-ով",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE կարգավորումներ",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -496,6 +526,7 @@ var keyStrings = {
     "PiP window position": "PiP պատուհանի դիրք",
     "PiP window size": "PiP պատուհանի չափ",
     Play: "Նվագարկել",
+    Playback: "Playback",
     "Player and device info": "Նվագարկչի և սարքի տվյալներ",
     "Player info:": "Նվագարկչի տվյալներ՝",
     Playlist: "Նվագարկման ցուցակ",
@@ -504,6 +535,12 @@ var keyStrings = {
         "Նվագարկման ցուցակը չի բեռնվում ուղղակիորեն...Բեռնում սերվերի միջոցով...",
     "Playlist Name": "Նվագարկման ցուցակի անուն",
     "Playlist URL": "Նվագարկման ցուցակի URL",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA կարգավորումներ",
     "Portal URL": "Պորտալի URL",
@@ -570,6 +607,7 @@ var keyStrings = {
     "Save & load channels": "Պահպանել և բեռնել ալիքները",
     "Save and load": "Պահպանել և բեռնել",
     "Save and load channels": "Պահպանել և բեռնել ալիքները",
+    "Save and open library": "Save and open library",
     "Save Settings": "Պահպանել կարգավորումները",
     "Save settings": "Պահպանել կարգավորումները",
     "Save settings and load channel list":
@@ -638,6 +676,9 @@ var keyStrings = {
     "Show when changing program": "Ցուցադրել հաղորդումը փոխվելիս",
     "Show when rewind": "Ցուցադրել հետ պտտելիս",
     "Show when switching": "Ցուցադրել ալիքները փոխելիս",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Քնի ժամանակաչափ",
     "Sort channels": "Դասավորել ալիքները",
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
@@ -716,6 +757,7 @@ var keyStrings = {
     "VPortal request failed":
         "Չհաջողվեց բեռնել VPortal-ը։ Ստուգեք հղումը, մուտքի բանալին և պորտալի հասանելիությունը։",
     volume: "ձայն",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Սխալ ծնողական կոդ!!!",
     "Xtream Codes Provider": "Xtream Codes մատակարար",
     "Xtream Codes settings": "Xtream Codes կարգավորումներ",

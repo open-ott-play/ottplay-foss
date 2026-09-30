@@ -72,6 +72,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archive. Channel: ",
     Aspect: "Aspect",
     Audio: "Audio",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
     always: "always",
     "and enter code": "and enter the code",
@@ -128,21 +131,28 @@ var keyStrings = {
     "Channel list. Category: ": "Channel list. Category: ",
     "Channel parental control": "Channel parental control",
     Channels: "Channels",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Check this server's SWOP configuration.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Choose from",
     "Choose language": "Choose language",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Choose provider",
     Classic: "Classic",
     "Clear all settings?": "Clear all settings?",
     "Clear settings": "Clear settings",
     Close: "Close",
     "Close PiP": "Close PiP",
+    Code: "Code",
     Color: "Color",
     "Color spectrum": "Color spectrum",
     "Command server": "Command server",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Command server address, device access code, local HTTP control, and remote text entry settings",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configure All4you.tv in Settings -> Provider Settings",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -175,6 +185,8 @@ var keyStrings = {
         "Configure New Look in Settings -> Provider Settings",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Configure OTT Prime ONLINE in Settings -> Provider Settings",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Configure POLMEDIA in Settings -> Provider Settings",
     "Configure PROST in Settings -> Provider Settings":
@@ -215,11 +227,14 @@ var keyStrings = {
     Connected: "Connected",
     "Connected. Waiting for the channel list...":
         "Connected. Waiting for the channel list...",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Connecting to Stalker portal…",
     "Connecting...": "Connecting…",
     "Continue watching?": "Continue watching?",
     "Copy category": "Copy category",
     "Copy JSON": "Copy JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Could not connect to the server.",
     "Could not update HTTP remote control.":
         "Could not update HTTP remote control.",
@@ -272,6 +287,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Enter a username (8 characters).",
     "Enter a username and password to access this service.":
         "Enter a username and password to access this service.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Enter a valid server address, for example 192.168.1.20:8081.",
     "Enter access key for": "Enter access key for",
@@ -287,6 +304,8 @@ var keyStrings = {
         "Enter MAC address (e.g. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Enter media library URL",
     "Enter new category name": "Enter new category name",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Enter provider code",
     "Enter Provider Code on PC or Phone":
         "Enter provider code on a PC or phone",
@@ -323,6 +342,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Enter Xtream server URL",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Enter Xtream server URL (e.g. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG and archive. Channel: ",
     "ERROR!": "Error!",
@@ -354,6 +377,7 @@ var keyStrings = {
     Filter: "Filter",
     Filters: "Filters",
     "First Run Setup": "First-run setup",
+    Folders: "Folders",
     "Font type": "Font type",
     "For download settings file open": "To download the settings file, open",
     "For enter value open": "To enter a value, open",
@@ -458,6 +482,8 @@ var keyStrings = {
     "Next TV program": "Next program",
     No: "No",
     "No channel name": "No channel name",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "No saved settings found",
     "Not found": "Not found",
     "Not reduce video when showing the list (bugfix)":
@@ -474,6 +500,10 @@ var keyStrings = {
     Ok: "OK",
     Open: "Open",
     "Open in PiP": "Open in PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE settings",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -493,6 +523,7 @@ var keyStrings = {
     "PiP window position": "PiP window position",
     "PiP window size": "PiP window size",
     Play: "Play",
+    Playback: "Playback",
     "Player and device info": "Player and device information",
     "Player info:": "Player information:",
     Playlist: "Playlist",
@@ -501,6 +532,12 @@ var keyStrings = {
         "Playlist could not be loaded directly. Loading via server…",
     "Playlist Name": "Playlist name",
     "Playlist URL": "Playlist URL",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA settings",
     "Portal URL": "Portal URL",
@@ -564,6 +601,7 @@ var keyStrings = {
     "Save & load channels": "Save & load channels",
     "Save and load": "Save and load",
     "Save and load channels": "Save and load channels",
+    "Save and open library": "Save and open library",
     "Save Settings": "Save settings",
     "Save settings": "Save settings",
     "Save settings and load channel list":
@@ -628,6 +666,9 @@ var keyStrings = {
     "Show when changing program": "Show when the program changes",
     "Show when rewind": "Show when rewinding",
     "Show when switching": "Show when switching channels",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Sleep timer",
     "Sort channels": "Sort channels",
     "Stalker Portal Provider": "Stalker portal provider",
@@ -703,6 +744,7 @@ var keyStrings = {
     "VPortal request failed":
         "Could not load VPortal. Check the link, access key, and portal availability.",
     volume: "volume",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Wrong parental code!",
     "Xtream Codes Provider": "Xtream Codes Provider",
     "Xtream Codes settings": "Xtream Codes settings",

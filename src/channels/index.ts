@@ -1398,7 +1398,16 @@ export function onChannelsLoaded(): void {
     // prompt. Hiding it afterwards would close the newly created prompt.
     $("#dialogbox").hide();
     try {
-        if (cList.length) {
+        var driver = (window as any).__ottActiveProviderDriver;
+        var libraryOnly = Boolean(
+            driver &&
+                driver.capabilities.libraryOnly &&
+                typeof driver.libraryReady === "function" &&
+                driver.libraryReady() &&
+                (window as any).providerMediaClient &&
+                typeof (window as any).getMediaArray === "function"
+        );
+        if (cList.length || libraryOnly) {
             // Save pending provider to storage on success
             if (
                 window._pendingProvId &&
@@ -1426,36 +1435,41 @@ export function onChannelsLoaded(): void {
 
                 window._pendingProvId = "";
             }
-            loadFavoritesLists();
-            (window as any).__ottChannels.mount(window);
-            (window as any).__ottClassicPlayback.hydrate();
-            // Start playback: restore continue-watching bookmark if available.
-            // If no archive/vod bookmark is offered, fall back to the normal
-            // live playChannel path (live bookmarks are already encoded in
-            // catIndex/primaryIndex persisted by setCurrent).
-            var el = document.getElementById("launch");
-            if (el) el.innerHTML += "<br/>Start playback...";
-            if (!restoreContinueWatch()) {
-                try {
-                    window.playChannel(catIndex, primaryIndex);
-                } catch (e) {
-                    console.error(e);
-                    primaryIndex = 0;
-                    catIndex = sFavorites ? 1 : 0;
+            if (libraryOnly) {
+                window.playType = 0;
+                (window as any).popMedia();
+            } else {
+                loadFavoritesLists();
+                (window as any).__ottChannels.mount(window);
+                (window as any).__ottClassicPlayback.hydrate();
+                // Start playback: restore continue-watching bookmark if available.
+                // If no archive/vod bookmark is offered, fall back to the normal
+                // live playChannel path (live bookmarks are already encoded in
+                // catIndex/primaryIndex persisted by setCurrent).
+                var el = document.getElementById("launch");
+                if (el) el.innerHTML += "<br/>Start playback...";
+                if (!restoreContinueWatch()) {
                     try {
                         window.playChannel(catIndex, primaryIndex);
-                    } catch (e2) {
-                        console.error(e2);
+                    } catch (e) {
+                        console.error(e);
+                        primaryIndex = 0;
+                        catIndex = sFavorites ? 1 : 0;
+                        try {
+                            window.playChannel(catIndex, primaryIndex);
+                        } catch (e2) {
+                            console.error(e2);
+                        }
                     }
                 }
+                try {
+                    window.loadEpgTimers();
+                } catch (e) {
+                    console.error(e);
+                }
+                // List must be hidden so main key handler gets events (ENTER, Q, C, etc.)
+                window.isListVisible = false;
             }
-            try {
-                window.loadEpgTimers();
-            } catch (e) {
-                console.error(e);
-            }
-            // List must be hidden so main key handler gets events (ENTER, Q, C, etc.)
-            window.isListVisible = false;
         } else {
             // Empty channel list — show popup so user can configure provider (e.g., enter playlist URL)
             window.playType = 0;

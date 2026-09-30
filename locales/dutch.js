@@ -74,6 +74,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archief. Zender: ",
     Aspect: "Beeldverhouding",
     Audio: "Audio",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aáäbcdeéëfghiíïj́klmnoóöpqrstuúüvwxyz",
     always: "altijd",
     "and enter code": "en voer de code in",
@@ -131,21 +134,28 @@ var keyStrings = {
     "Channel list. Category: ": "Zenderlijst. Categorie: ",
     "Channel parental control": "Ouderlijk toezicht op zenders",
     Channels: "Zenders",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Controleer de SWOP-configuratie van deze server.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Kiezen uit",
     "Choose language": "Taal kiezen",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Provider kiezen",
     Classic: "Klassiek",
     "Clear all settings?": "Alle instellingen wissen?",
     "Clear settings": "Instellingen wissen",
     Close: "Sluiten",
     "Close PiP": "PiP sluiten",
+    Code: "Code",
     Color: "Kleur",
     "Color spectrum": "Kleurenspectrum",
     "Command server": "Opdrachtserver",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adres van opdrachtserver, toegangscode voor apparaat, lokale HTTP-bediening en tekstinvoer op afstand",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configureer All4you.tv via Instellingen -> Providerinstellingen",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -178,6 +188,8 @@ var keyStrings = {
         "Configureer New Look via Instellingen -> Providerinstellingen",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Configureer OTT Prime ONLINE via Instellingen -> Providerinstellingen",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Configureer POLMEDIA via Instellingen -> Providerinstellingen",
     "Configure PROST in Settings -> Provider Settings":
@@ -218,11 +230,14 @@ var keyStrings = {
     Connected: "Verbonden",
     "Connected. Waiting for the channel list...":
         "Verbonden. Wachten op de zenderlijst…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Verbinden met Stalker-portaal…",
     "Connecting...": "Verbinden…",
     "Continue watching?": "Verder kijken?",
     "Copy category": "Categorie kopiëren",
     "Copy JSON": "JSON kopiëren",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
         "Kan geen verbinding maken met de server.",
     "Could not update HTTP remote control.":
@@ -278,6 +293,8 @@ var keyStrings = {
         "Voer een gebruikersnaam in (8 tekens).",
     "Enter a username and password to access this service.":
         "Voer een gebruikersnaam en wachtwoord in om deze dienst te gebruiken.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Voer een geldig serveradres in, bijvoorbeeld 192.168.1.20:8081.",
     "Enter access key for": "Toegangssleutel invoeren voor",
@@ -293,6 +310,8 @@ var keyStrings = {
         "MAC-adres invoeren (bijv. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "URL van mediabibliotheek invoeren",
     "Enter new category name": "Nieuwe categorienaam invoeren",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Providercode invoeren",
     "Enter Provider Code on PC or Phone":
         "Providercode op pc of telefoon invoeren",
@@ -329,6 +348,10 @@ var keyStrings = {
     "Enter Xtream server URL": "URL van Xtream-server invoeren",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "URL van Xtream-server invoeren (bijv. https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG en archief. Zender: ",
     "ERROR!": "Fout!",
@@ -360,6 +383,7 @@ var keyStrings = {
     Filter: "Filter",
     Filters: "Filters",
     "First Run Setup": "Eerste configuratie",
+    Folders: "Folders",
     "Font type": "Lettertype",
     "For download settings file open":
         "Open voor het downloaden van het instellingenbestand",
@@ -466,6 +490,8 @@ var keyStrings = {
     "Next TV program": "Volgend programma",
     No: "Nee",
     "No channel name": "Geen zendernaam",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Geen opgeslagen instellingen gevonden",
     "Not found": "Niet gevonden",
     "Not reduce video when showing the list (bugfix)":
@@ -482,6 +508,10 @@ var keyStrings = {
     Ok: "OK",
     Open: "Openen",
     "Open in PiP": "In PiP openen",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Instellingen voor OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -501,6 +531,7 @@ var keyStrings = {
     "PiP window position": "Positie van PiP-venster",
     "PiP window size": "Grootte van PiP-venster",
     Play: "Afspelen",
+    Playback: "Playback",
     "Player and device info": "Speler- en apparaatgegevens",
     "Player info:": "Spelergegevens:",
     Playlist: "Afspeellijst",
@@ -509,6 +540,12 @@ var keyStrings = {
         "Afspeellijst kon niet rechtstreeks worden geladen. Laden via server…",
     "Playlist Name": "Naam van afspeellijst",
     "Playlist URL": "URL van afspeellijst",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Instellingen voor POLMEDIA",
     "Portal URL": "Portaal-URL",
@@ -573,6 +610,7 @@ var keyStrings = {
     "Save & load channels": "Opslaan en zenders laden",
     "Save and load": "Opslaan en laden",
     "Save and load channels": "Opslaan en zenders laden",
+    "Save and open library": "Save and open library",
     "Save Settings": "Instellingen opslaan",
     "Save settings": "Instellingen opslaan",
     "Save settings and load channel list":
@@ -640,6 +678,9 @@ var keyStrings = {
     "Show when changing program": "Tonen bij programmawisseling",
     "Show when rewind": "Tonen bij spoelen",
     "Show when switching": "Tonen bij zenderwisseling",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Slaaptimer",
     "Sort channels": "Zenders sorteren",
     "Stalker Portal Provider": "Stalker-portaalprovider",
@@ -718,6 +759,7 @@ var keyStrings = {
     "VPortal request failed":
         "VPortal kon niet worden geladen. Controleer de link, toegangssleutel en beschikbaarheid van het portaal.",
     volume: "volume",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Onjuiste ouderlijke code!",
     "Xtream Codes Provider": "Xtream Codes-provider",
     "Xtream Codes settings": "Xtream Codes-instellingen",

@@ -21,6 +21,7 @@ module.exports = defineConfig({
         "media-runtime.spec.cjs",
         "playback-runtime.spec.cjs",
         "nas-library.spec.cjs",
+        "plex-provider.spec.cjs",
         "pc2-playback.spec.cjs",
         "window-controls.spec.cjs",
     ],

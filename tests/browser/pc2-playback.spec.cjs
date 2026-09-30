@@ -8,6 +8,19 @@ const { parse } = require("acorn");
 test.use({ trace: "off" });
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+test.beforeEach(async ({ context }) => {
+    await context.addInitScript(() => {
+        // Headless Chromium's OS audio clock can stall even for silent AAC.
+        // Muting before every native play also covers Video.js tech and PiP
+        // creation while preserving real decoding, seeking and ended events.
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            this.muted = true;
+            return play.call(this);
+        };
+    });
+});
+
 async function boot(
     page,
     context,
@@ -180,6 +193,7 @@ async function boot(
             page.evaluate(() => window.curList && window.curList.length)
         )
         .toBe(2);
+    await page.keyboard.press("Shift");
     await page.evaluate(() => {
         window.video.muted = true;
         window.playChannel(window.catsArray.indexOf("Test"), 0);

@@ -69,7 +69,7 @@ try {
     // Android Play ships exactly the two permitted provider implementations.
     // Check both its retained flat export and the nested Capacitor entry point.
     const playArtifacts = ["play/player.js", "play/dist/player.js"];
-    const playKinds = ["m3u", "stalker"];
+    const playKinds = ["m3u", "plex", "stalker"];
     for (const file of playArtifacts) {
         const directory = path.join(root, path.dirname(file));
         fs.mkdirSync(directory, { recursive: true });

@@ -73,6 +73,9 @@ var keyStrings = {
     "Archive. Channel: ": "ארכיון. ערוץ: ",
     Aspect: "יחס תמונה",
     Audio: "שמע",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "אבגדהוזחטיכךלמםנןסעפףצץקרשת",
     always: "תמיד",
     "and enter code": "והזן את הקוד",
@@ -125,20 +128,27 @@ var keyStrings = {
     "Channel list. Category: ": "רשימת ערוצים. קטגוריה: ",
     "Channel parental control": "בקרת הורים לערוץ",
     Channels: "ערוצים",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.": "בדקו את הגדרות SWOP של שרת זה.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "בחר מתוך",
     "Choose language": "בחר שפה",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "בחר ספק",
     Classic: "קלאסי",
     "Clear all settings?": "לנקות את כל ההגדרות?",
     "Clear settings": "נקה הגדרות",
     Close: "סגור",
     "Close PiP": "סגור PiP",
+    Code: "Code",
     Color: "צבע",
     "Color spectrum": "ספקטרום צבעים",
     "Command server": "שרת פקודות",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "כתובת שרת הפקודות, קוד גישה למכשיר, שליטה מקומית דרך HTTP והגדרות הזנת טקסט מרחוק",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "הגדר את All4you.tv בהגדרות -> הגדרות ספק",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -171,6 +181,8 @@ var keyStrings = {
         "הגדר את New Look בהגדרות -> הגדרות ספק",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "הגדר את OTT Prime ONLINE בהגדרות -> הגדרות ספק",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "הגדר את POLMEDIA בהגדרות -> הגדרות ספק",
     "Configure PROST in Settings -> Provider Settings":
@@ -211,11 +223,14 @@ var keyStrings = {
     Connected: "מחובר",
     "Connected. Waiting for the channel list...":
         "מחובר. ממתין לרשימת הערוצים…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "מתחבר לפורטל Stalker…",
     "Connecting...": "מתחבר…",
     "Continue watching?": "להמשיך לצפות?",
     "Copy category": "העתק קטגוריה",
     "Copy JSON": "העתק JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
     "Could not update HTTP remote control.":
         "לא ניתן לעדכן את הגדרות השליטה דרך HTTP.",
@@ -268,6 +283,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "הזן שם משתמש (8 תווים).",
     "Enter a username and password to access this service.":
         "הזן שם משתמש וסיסמה כדי לגשת לשירות זה.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "הזן כתובת שרת תקינה, למשל 192.168.1.20:8081.",
     "Enter access key for": "הזן מפתח גישה עבור",
@@ -282,6 +299,8 @@ var keyStrings = {
         "הזן כתובת MAC (למשל 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "הזן כתובת ספריית מדיה",
     "Enter new category name": "הזן שם חדש לקטגוריה",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "הזן קוד ספק",
     "Enter Provider Code on PC or Phone": "הזן קוד ספק במחשב או בטלפון",
     "Enter parental code": "הזן קוד הורים",
@@ -317,6 +336,10 @@ var keyStrings = {
     "Enter Xtream server URL": "הזן כתובת שרת Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "הזן כתובת שרת Xtream (למשל https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "לוח שידורים",
     "EPG and archive. Channel: ": "לוח שידורים וארכיון. ערוץ: ",
     "ERROR!": "שגיאה!",
@@ -346,6 +369,7 @@ var keyStrings = {
     Filter: "מסנן",
     Filters: "מסננים",
     "First Run Setup": "הגדרות הפעלה ראשונה",
+    Folders: "Folders",
     "Font type": "סוג גופן",
     "For download settings file open": "כדי להוריד את קובץ ההגדרות, פתח",
     "For enter value open": "כדי להזין ערך, פתח",
@@ -450,6 +474,8 @@ var keyStrings = {
     "Next TV program": "התוכנית הבאה",
     No: "לא",
     "No channel name": "אין שם ערוץ",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "לא נמצאו הגדרות שמורות",
     "Not found": "לא נמצא",
     "Not reduce video when showing the list (bugfix)":
@@ -466,6 +492,10 @@ var keyStrings = {
     Ok: "אישור",
     Open: "פתח",
     "Open in PiP": "פתח ב-PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "הגדרות OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -485,6 +515,7 @@ var keyStrings = {
     "PiP window position": "מיקום חלון PiP",
     "PiP window size": "גודל חלון PiP",
     Play: "נגן",
+    Playback: "Playback",
     "Player and device info": "פרטי הנגן והמכשיר",
     "Player info:": "פרטי הנגן:",
     Playlist: "פלייליסט",
@@ -493,6 +524,12 @@ var keyStrings = {
         "הפלייליסט לא נטען ישירות...טעינה דרך השרת...",
     "Playlist Name": "שם פלייליסט",
     "Playlist URL": "כתובת פלייליסט",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "הגדרות POLMEDIA",
     "Portal URL": "כתובת פורטל",
@@ -553,6 +590,7 @@ var keyStrings = {
     "Save & load channels": "שמור וטען ערוצים",
     "Save and load": "שמור וטען",
     "Save and load channels": "שמור וטען ערוצים",
+    "Save and open library": "Save and open library",
     "Save Settings": "שמור הגדרות",
     "Save settings": "שמור הגדרות",
     "Save settings and load channel list": "שמור הגדרות וטען רשימת ערוצים",
@@ -616,6 +654,9 @@ var keyStrings = {
     "Show when changing program": "הצג בעת שינוי תוכנית",
     "Show when rewind": "הצג בעת הרצה לאחור",
     "Show when switching": "הצג בעת החלפת ערוצים",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "טיימר שינה",
     "Sort channels": "מיין ערוצים",
     "Stalker Portal Provider": "ספק פורטל Stalker",
@@ -689,6 +730,7 @@ var keyStrings = {
     "VPortal request failed":
         "לא ניתן לטעון את VPortal. בדוק את הקישור, מפתח הגישה וזמינות הפורטל.",
     volume: "עוצמת קול",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "קוד הורים שגוי!!!",
     "Xtream Codes Provider": "ספק Xtream Codes",
     "Xtream Codes settings": "הגדרות Xtream Codes",

@@ -76,6 +76,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arhīvs. Kanāls: ",
     Aspect: "Attēla proporcijas",
     Audio: "Skaņa",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aābcčdeēfgģhiījkķlļmnņoprsštuūvzž",
     always: "vienmēr",
     "and enter code": "un ievadiet kodu",
@@ -130,21 +133,28 @@ var keyStrings = {
     "Channel list. Category: ": "Kanālu saraksts. Kategorija: ",
     "Channel parental control": "Kanāla vecāku kontrole",
     Channels: "Kanāli",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Pārbaudiet šī servera SWOP konfigurāciju.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Izvēlēties pakalpojuma sniedzēju",
     Classic: "Klasisks",
     "Clear all settings?": "Notīrīt visus iestatījumus?",
     "Clear settings": "Notīrīt iestatījumus",
     Close: "Aizvērt",
     "Close PiP": "Aizvērt PiP",
+    Code: "Code",
     Color: "Krāsa",
     "Color spectrum": "Krāsu spektrs",
     "Command server": "Komandu serveris",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Komandu servera adrese, ierīces piekļuves kods, lokālā HTTP vadība un attālinātās teksta ievades iestatījumi",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurējiet All4you.tv sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -177,6 +187,8 @@ var keyStrings = {
         "Konfigurējiet New Look sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Konfigurējiet OTT Prime ONLINE sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Konfigurējiet POLMEDIA sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure PROST in Settings -> Provider Settings":
@@ -217,11 +229,14 @@ var keyStrings = {
     Connected: "Savienots",
     "Connected. Waiting for the channel list...":
         "Savienots. Gaida kanālu sarakstu…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Savienojas ar Stalker portālu…",
     "Connecting...": "Savienojas…",
     "Continue watching?": "Turpināt skatīties?",
     "Copy category": "Kopēt kategoriju",
     "Copy JSON": "Kopēt JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Neizdevās savienoties ar serveri.",
     "Could not update HTTP remote control.":
         "Neizdevās atjaunināt HTTP tālvadības iestatījumus.",
@@ -275,6 +290,8 @@ var keyStrings = {
         "Ievadiet lietotājvārdu (8 rakstzīmes).",
     "Enter a username and password to access this service.":
         "Lai piekļūtu šim pakalpojumam, ievadiet lietotājvārdu un paroli.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Ievadiet derīgu servera adresi, piemēram, 192.168.1.20:8081.",
     "Enter access key for": "Ievadiet piekļuves atslēgu:",
@@ -290,6 +307,8 @@ var keyStrings = {
         "Ievadiet MAC adresi (piem., 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Ievadiet mediotēkas URL",
     "Enter new category name": "Ievadiet jauno kategorijas nosaukumu",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Ievadiet pakalpojuma sniedzēja kodu",
     "Enter Provider Code on PC or Phone":
         "Ievadiet pakalpojuma sniedzēja kodu datorā vai tālrunī",
@@ -327,6 +346,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Ievadiet Xtream servera URL",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Ievadiet Xtream servera URL (piem., https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Programma",
     "EPG and archive. Channel: ": "EPG un arhīvs. Kanāls: ",
     "ERROR!": "Kļūda!",
@@ -358,6 +381,7 @@ var keyStrings = {
     Filter: "Filtrs",
     Filters: "Filtri",
     "First Run Setup": "Pirmās palaišanas iestatīšana",
+    Folders: "Folders",
     "Font type": "Fonta veids",
     "For download settings file open":
         "Lai lejupielādētu iestatījumu failu, atveriet",
@@ -465,6 +489,8 @@ var keyStrings = {
     "Next TV program": "Nākamais raidījums",
     No: "Nē",
     "No channel name": "Nav kanāla nosaukuma",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Nav atrasti saglabāti iestatījumi",
     "Not found": "Nav atrasts",
     "Not reduce video when showing the list (bugfix)":
@@ -481,6 +507,10 @@ var keyStrings = {
     Ok: "Labi",
     Open: "Atvērt",
     "Open in PiP": "Atvērt PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE iestatījumi",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -500,6 +530,7 @@ var keyStrings = {
     "PiP window position": "PiP loga novietojums",
     "PiP window size": "PiP loga izmērs",
     Play: "Atskaņot",
+    Playback: "Playback",
     "Player and device info": "Atskaņotāja un ierīces informācija",
     "Player info:": "Atskaņotāja informācija:",
     Playlist: "Atskaņošanas saraksts",
@@ -508,6 +539,12 @@ var keyStrings = {
         "Atskaņošanas saraksts netiek ielādēts tieši...Ielāde caur serveri...",
     "Playlist Name": "Atskaņošanas saraksta nosaukums",
     "Playlist URL": "Atskaņošanas saraksta URL",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA iestatījumi",
     "Portal URL": "Portāla URL",
@@ -572,6 +609,7 @@ var keyStrings = {
     "Save & load channels": "Saglabāt un ielādēt kanālus",
     "Save and load": "Saglabāt un ielādēt",
     "Save and load channels": "Saglabāt un ielādēt kanālus",
+    "Save and open library": "Save and open library",
     "Save Settings": "Saglabāt iestatījumus",
     "Save settings": "Saglabāt iestatījumus",
     "Save settings and load channel list":
@@ -637,6 +675,9 @@ var keyStrings = {
     "Show when changing program": "Rādīt, mainoties raidījumam",
     "Show when rewind": "Rādīt attīšanas laikā",
     "Show when switching": "Rādīt, pārslēdzot kanālus",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Miega taimeris",
     "Sort channels": "Kārtot kanālus",
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
@@ -712,6 +753,7 @@ var keyStrings = {
     "VPortal request failed":
         "Neizdevās ielādēt VPortal. Pārbaudiet saiti, piekļuves atslēgu un portāla pieejamību.",
     volume: "skaļums",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Nepareizs vecāku kods!!!",
     "Xtream Codes Provider": "Xtream Codes pakalpojuma sniedzējs",
     "Xtream Codes settings": "Xtream Codes iestatījumi",

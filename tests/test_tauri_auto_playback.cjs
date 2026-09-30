@@ -282,6 +282,129 @@ test("Tauri Auto preserves working native H264 and explicit HTML5/hls.js choices
     assert.equal(f.players[0].media, f.w.video);
 });
 
+test("Plex Original uses native files per item without changing the selected engine", () => {
+    for (const tauri of [true, false]) {
+        for (const mode of [0, 1, 2, 3]) {
+            const url =
+                "http://plex.test/library/parts/1/file.mp4?X-Plex-Token=private-access";
+            let current = {
+                payload: {
+                    __ottPlexPlayback: { mime: "video/mp4", type: "file" },
+                    stream_url: url,
+                },
+            };
+            const logs = [];
+            const f = fixture({
+                globals: {
+                    console: {
+                        error() {},
+                        log: (...args) => logs.push(args.join(" ")),
+                        warn() {},
+                    },
+                },
+                savedPlayerMode: mode,
+                tauri,
+            });
+            f.w.__ottMedia = { current: () => current };
+            const selectedMode = f.w.playerMode;
+            f.w.stbPlay(url, 67);
+            ready(f.w.video, true);
+            assert.equal(f.w.video.src, url);
+            assert.equal(f.w.video.currentTime, 67);
+            assert.equal(f.players.length, 0, "No HLS parser receives an MP4");
+            assert.equal(f.shakaPlayers.length, 0);
+            assert.equal(f.w.playerMode, selectedMode);
+            assert.equal(f.preferences.sPlayers, String(mode));
+            assert.equal(logs.join("\n").includes("private-access"), false);
+            assert.equal(logs.join("\n").includes("X-Plex-Token"), false);
+            f.w.stbPause();
+            f.w.stbContinue();
+            assert.equal(f.w.video.paused, false);
+            f.w.stbStop();
+            current = null;
+            f.w.stbPlay("next-channel.m3u8");
+            if (selectedMode === 1) assert.equal(f.players.length, 1);
+            if (selectedMode === 2) assert.equal(f.shakaPlayers.length, 1);
+            assert.equal(f.w.playerMode, selectedMode);
+            assert.equal(f.preferences.sPlayers, String(mode));
+        }
+    }
+});
+
+test("Plex hints require the exact active file and leave HLS variants unchanged", () => {
+    const url = "http://plex.test/play.m3u8?X-Plex-Token=private-access";
+    const current = {
+        payload: {
+            __ottPlexPlayback: { type: "file" },
+            stream_url: url + "-old",
+        },
+    };
+    const f = fixture({ savedPlayerMode: 1 });
+    f.w.__ottMedia = { current: () => current };
+    f.w.stbPlay(url);
+    assert.equal(
+        f.players.length,
+        1,
+        "A stale file hint cannot affect another URL"
+    );
+    current.payload.stream_url = url;
+    current.payload.__ottPlexPlayback.type = "hls";
+    f.w.stbPlay(url);
+    assert.equal(
+        f.players.length,
+        2,
+        "Compatible HLS keeps its selected engine"
+    );
+    assert.equal(f.players[0].destroyCalls, 1);
+    assert.equal(f.players[1].url, url);
+});
+
+test("Plex HEVC remux selects MSE per item even when native HLS is the saved preference", () => {
+    for (const mode of [0, 2, 3]) {
+        const f = fixture({ savedPlayerMode: mode });
+        const url = "https://plex.test/remux.m3u8?X-Plex-Token=private-access";
+        const current = {
+            payload: {
+                __ottPlexPlayback: { engine: "mse", type: "hls" },
+                stream_url: url,
+            },
+        };
+        f.w.__ottMedia = { current: () => current };
+        f.w.stbPlay(url, 40);
+        assert.equal(f.players.length, 1);
+        assert.equal(f.players[0].url, url);
+        assert.equal(f.players[0].media, f.w.video);
+        assert.equal(f.players[0].config.startFragPrefetch, undefined);
+        assert.equal(f.shakaPlayers.length, 0);
+        assert.equal(f.w.playerMode, mode);
+        assert.equal(f.preferences.sPlayers, String(mode));
+        f.w.stbStop();
+        f.w.stbPlay("https://ordinary.test/next.m3u8");
+        assert.equal(
+            f.players.length,
+            1,
+            "The previous item's MSE hint cannot affect another URL"
+        );
+        assert.equal(f.shakaPlayers.length, mode === 2 ? 1 : 0);
+    }
+});
+
+test("Plex MSE hint does not assume an unavailable HLS runtime", () => {
+    const f = fixture({ hlsMissing: true, savedPlayerMode: 0 });
+    const url = "https://plex.test/remux.m3u8";
+    f.w.__ottMedia = {
+        current: () => ({
+            payload: {
+                __ottPlexPlayback: { engine: "mse", type: "hls" },
+                stream_url: url,
+            },
+        }),
+    };
+    f.w.stbPlay(url);
+    assert.equal(f.w.video.src, url);
+    assert.equal(f.players.length, 0);
+});
+
 test("webOS uses Auto for every requested mode while Tauri and NetCast preserve manual modes", () => {
     for (const requested of [0, 1, 2, 3]) {
         const webos = fixture({

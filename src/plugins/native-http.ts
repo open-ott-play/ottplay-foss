@@ -78,11 +78,21 @@ function installNativeHttpTransport(
                 String(opts.contentType || "")
             ) &&
             types.indexOf("json") !== -1;
+        // Plex's documented PIN flow is the sole form POST this transport owns.
+        var isPlexPinRequest =
+            opts.plexAuthRequest === true &&
+            /^https:\/\/plex\.tv\/api\/v2\/pins(?:\?|$)/i.test(url) &&
+            method === "POST" &&
+            /^application\/x-www-form-urlencoded(?:\s*;|$)/i.test(
+                String(opts.contentType || "")
+            ) &&
+            types.indexOf("json") !== -1;
         if (
             !(
                 isCompanionProxy ||
                 (remote && (method === "GET" || isExternalMatch)) ||
-                isVPortalRequest
+                isVPortalRequest ||
+                isPlexPinRequest
             )
         )
             return;

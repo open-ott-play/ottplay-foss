@@ -395,6 +395,7 @@ export default defineConfig(({ mode }) => ({
                 ).filter(
                     (kind) =>
                         androidFlavor !== "play" ||
+                        kind === "plex" ||
                         kind === "stalker" ||
                         kind === "m3u"
                 );

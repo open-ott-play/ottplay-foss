@@ -92,13 +92,20 @@ test("eager and unknown kinds stay synchronous without network", () => {
 test("every complete preloaded family stays synchronous", () => {
     const f = fixture();
     const kinds = Object.keys(f.assets.groups).sort();
-    assert.deepEqual(kinds, ["catalog", "edem", "m3u", "playlist", "stalker"]);
+    assert.deepEqual(kinds, [
+        "catalog",
+        "edem",
+        "m3u",
+        "playlist",
+        "plex",
+        "stalker",
+    ]);
     let completed = 0;
     for (const kind of kinds) {
         f.publish(kind);
         f.ensure(kind, owner(), () => completed++);
     }
-    assert.equal(completed, 5);
+    assert.equal(completed, 6);
     assert.equal(f.requests.length, 0);
 });
 

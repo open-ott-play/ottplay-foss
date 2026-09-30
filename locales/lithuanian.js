@@ -74,6 +74,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archyvas. Kanalas: ",
     Aspect: "Kraštinių santykis",
     Audio: "Garsas",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "aąbcčdeęėfghiįyjklmnoprsštuųūvzž",
     always: "visada",
     "and enter code": "ir įveskite kodą",
@@ -129,21 +132,28 @@ var keyStrings = {
     "Channel list. Category: ": "Kanalų sąrašas. Kategorija: ",
     "Channel parental control": "Kanalo tėvų kontrolė",
     Channels: "Kanalai",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Patikrinkite šio serverio SWOP konfigūraciją.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Pasirinkti iš",
     "Choose language": "Pasirinkti kalbą",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Pasirinkti teikėją",
     Classic: "Klasikinė",
     "Clear all settings?": "Išvalyti visus nustatymus?",
     "Clear settings": "Išvalyti nustatymus",
     Close: "Uždaryti",
     "Close PiP": "Užverti PiP",
+    Code: "Code",
     Color: "Spalva",
     "Color spectrum": "Spalvų spektras",
     "Command server": "Komandų serveris",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Komandų serverio adresas, įrenginio prieigos kodas, vietinio HTTP valdymo ir nuotolinės teksto įvesties nustatymai",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nustatykite All4you.tv skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -176,6 +186,8 @@ var keyStrings = {
         "Nustatykite New Look skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Nustatykite OTT Prime ONLINE skiltyje Nustatymai -> Teikėjo nustatymai",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Nustatykite POLMEDIA skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure PROST in Settings -> Provider Settings":
@@ -216,11 +228,14 @@ var keyStrings = {
     Connected: "Prisijungta",
     "Connected. Waiting for the channel list...":
         "Prisijungta. Laukiama kanalų sąrašo…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Jungiamasi prie Stalker portalo…",
     "Connecting...": "Jungiamasi…",
     "Continue watching?": "Tęsti žiūrėjimą?",
     "Copy category": "Kopijuoti kategoriją",
     "Copy JSON": "Kopijuoti JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
     "Could not update HTTP remote control.":
         "Nepavyko atnaujinti HTTP valdymo nustatymų.",
@@ -275,6 +290,8 @@ var keyStrings = {
         "Įveskite naudotojo vardą (8 simboliai).",
     "Enter a username and password to access this service.":
         "Norėdami naudotis šia paslauga, įveskite naudotojo vardą ir slaptažodį.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Įveskite tinkamą serverio adresą, pavyzdžiui, 192.168.1.20:8081.",
     "Enter access key for": "Įveskite prieigos raktą:",
@@ -290,6 +307,8 @@ var keyStrings = {
         "Įveskite MAC adresą (pvz., 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Įveskite mediatekos URL",
     "Enter new category name": "Įveskite naują kategorijos pavadinimą",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Įveskite teikėjo kodą",
     "Enter Provider Code on PC or Phone":
         "Įveskite teikėjo kodą kompiuteryje arba telefone",
@@ -326,6 +345,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Įveskite Xtream serverio URL",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Įveskite Xtream serverio URL (pvz., https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "TV programa",
     "EPG and archive. Channel: ": "EPG ir archyvas. Kanalas: ",
     "ERROR!": "Klaida!",
@@ -357,6 +380,7 @@ var keyStrings = {
     Filter: "Filtras",
     Filters: "Filtrai",
     "First Run Setup": "Pirmojo paleidimo nustatymas",
+    Folders: "Folders",
     "Font type": "Šriftas",
     "For download settings file open":
         "Norėdami atsisiųsti nustatymų failą, atverkite",
@@ -463,6 +487,8 @@ var keyStrings = {
     "Next TV program": "Kita laida",
     No: "Ne",
     "No channel name": "Nėra kanalo pavadinimo",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Išsaugotų nustatymų nerasta",
     "Not found": "Nerasta",
     "Not reduce video when showing the list (bugfix)":
@@ -479,6 +505,10 @@ var keyStrings = {
     Ok: "Gerai",
     Open: "Atverti",
     "Open in PiP": "Atidaryti PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nustatymai",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -498,6 +528,7 @@ var keyStrings = {
     "PiP window position": "PiP lango padėtis",
     "PiP window size": "PiP lango dydis",
     Play: "Leisti",
+    Playback: "Playback",
     "Player and device info": "Grotuvo ir įrenginio informacija",
     "Player info:": "Grotuvo informacija:",
     Playlist: "Grojaraštis",
@@ -506,6 +537,12 @@ var keyStrings = {
         "Grojaraštis neįkeliamas tiesiogiai...Įkeliama per serverį...",
     "Playlist Name": "Grojaraščio pavadinimas",
     "Playlist URL": "Grojačio sąrašo URL",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA nustatymai",
     "Portal URL": "Portalo URL",
@@ -568,6 +605,7 @@ var keyStrings = {
     "Save & load channels": "Išsaugoti ir įkelti kanalus",
     "Save and load": "Išsaugoti ir įkelti",
     "Save and load channels": "Išsaugoti ir įkelti kanalus",
+    "Save and open library": "Save and open library",
     "Save Settings": "Išsaugoti nustatymus",
     "Save settings": "Išsaugoti nustatymus",
     "Save settings and load channel list":
@@ -632,6 +670,9 @@ var keyStrings = {
     "Show when changing program": "Rodyti pasikeitus laidai",
     "Show when rewind": "Rodyti atsukant",
     "Show when switching": "Rodyti perjungiant kanalus",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Miego laikmatis",
     "Sort channels": "Rikiuoti kanalus",
     "Stalker Portal Provider": "Stalker portalo teikėjas",
@@ -709,6 +750,7 @@ var keyStrings = {
     "VPortal request failed":
         "Nepavyko įkelti VPortal. Patikrinkite nuorodą, prieigos raktą ir portalo prieinamumą.",
     volume: "garsumas",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Neteisingas tėvų kodas!!!",
     "Xtream Codes Provider": "Xtream Codes teikėjas",
     "Xtream Codes settings": "Xtream Codes nustatymai",

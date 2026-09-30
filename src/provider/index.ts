@@ -81,6 +81,7 @@ export function isProviderAllowed(id: string): boolean {
         id === "m3u" ||
         id === "stalker" ||
         id === "xtream" ||
+        id === "plex" ||
         id === "demo"
     );
 }
@@ -89,6 +90,7 @@ export var providerIds = [
     "m3u",
     "stalker",
     "xtream",
+    "plex",
     "",
     "demo",
     // OTTPLAY_FULL_ONLY_BEGIN
@@ -1181,7 +1183,7 @@ export function loadProv(providerId?: string): void {
                             host +
                                 (usesDriver ? "/providers/" : "/prov/") +
                                 s +
-                                "/logo.png?" +
+                                (s === "plex" ? "/logo.svg?" : "/logo.png?") +
                                 __av
                         );
                         img.attr("alt", " ");
@@ -1441,7 +1443,7 @@ export function showProviderSelection(): void {
     }
     if (isPlayDistribution()) {
         // Imported/recent Full selections cannot expand this registry.
-        providerIds = ["m3u", "stalker", "xtream", "", "demo"];
+        providerIds = ["m3u", "stalker", "xtream", "plex", "", "demo"];
         providerLabels = null;
     }
     if (!providerLabels || providerLabels.some((p) => typeof p !== "string"))
@@ -1452,6 +1454,7 @@ export function showProviderSelection(): void {
                 _("Stalker portals"),
             (sNoColorKeys ? "" : '<div class="btn yellow">&nbsp;</div>&nbsp;') +
                 "Xtream-codes",
+            "Plex",
             "",
             _("Demo — moving test pattern"),
             // OTTPLAY_FULL_ONLY_BEGIN
@@ -1543,7 +1546,7 @@ export function showProviderSelection(): void {
         if (savedProvId === id) {
             var edit = (window as any).__ottEditProvider;
             if (
-                id === "stalker" &&
+                (id === "stalker" || id === "plex") &&
                 !Number.parseInt(stbGetItem("noProvParam") || "0") &&
                 edit &&
                 edit()

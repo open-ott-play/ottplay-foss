@@ -75,6 +75,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arxiv. Kanal: ",
     Aspect: "Tomonlar nisbati",
     Audio: "Ovoz",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "abcdefghijklmnopqrstuvxyzʻʼ",
     always: "doim",
     "and enter code": "va kodni kiriting",
@@ -131,21 +134,28 @@ var keyStrings = {
     "Channel list. Category: ": "Kanallar ro'yxati. Kategoriya: ",
     "Channel parental control": "Kanal ota-ona nazorati",
     Channels: "Kanallar",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Ushbu serverning SWOP sozlamalarini tekshiring.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Quyidagidan tanlash",
     "Choose language": "Tilni tanlash",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Provayderni tanlash",
     Classic: "Klassik",
     "Clear all settings?": "Barcha sozlamalar tozalansinmi?",
     "Clear settings": "Sozlamalarni tozalash",
     Close: "Yopish",
     "Close PiP": "PiP yopish",
+    Code: "Code",
     Color: "Rang",
     "Color spectrum": "Rang spektri",
     "Command server": "Buyruqlar serveri",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Buyruqlar serveri manzili, qurilmaning kirish kodi, mahalliy HTTP boshqaruvi va masofaviy matn kiritish sozlamalari",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -178,6 +188,8 @@ var keyStrings = {
         "New Look uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "OTT Prime ONLINE uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "POLMEDIA uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure PROST in Settings -> Provider Settings":
@@ -218,11 +230,14 @@ var keyStrings = {
     Connected: "Ulandi",
     "Connected. Waiting for the channel list...":
         "Ulandi. Kanallar roʻyxati kutilmoqda…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Stalker portaliga ulanmoqda…",
     "Connecting...": "Ulanmoqda…",
     "Continue watching?": "Tomosha davom ettirilsinmi?",
     "Copy category": "Turkum nusxasini olish",
     "Copy JSON": "JSON nusxasini olish",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
     "Could not update HTTP remote control.":
         "HTTP pulti sozlamalarini yangilab bo‘lmadi.",
@@ -276,6 +291,8 @@ var keyStrings = {
         "Foydalanuvchi nomini kiriting (8 ta belgi).",
     "Enter a username and password to access this service.":
         "Bu xizmatga kirish uchun foydalanuvchi nomi va parolni kiriting.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Toʻgʻri server manzilini kiriting, masalan, 192.168.1.20:8081.",
     "Enter access key for": "Quyidagiga kirish kalitini kiriting:",
@@ -291,6 +308,8 @@ var keyStrings = {
         "MAC manzilini kiriting (masalan, 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Media kutubxonasi URL kiriting",
     "Enter new category name": "Turkumning yangi nomini kiriting",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Provayder kodini kiriting",
     "Enter Provider Code on PC or Phone":
         "Provayder kodini kompyuter yoki telefonda kiriting",
@@ -327,6 +346,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Xtream serveri URL manzilini kiriting",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Xtream serveri URL manzilini kiriting (masalan, https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "TV dasturi",
     "EPG and archive. Channel: ": "EPG va arxiv. Kanal: ",
     "ERROR!": "Xato!",
@@ -358,6 +381,7 @@ var keyStrings = {
     Filter: "Filtr",
     Filters: "Filtrlar",
     "First Run Setup": "Birinchi ishga tushirish sozlamalari",
+    Folders: "Folders",
     "Font type": "Shrift turi",
     "For download settings file open":
         "Sozlamalar faylini yuklab olish uchun oching:",
@@ -465,6 +489,8 @@ var keyStrings = {
     "Next TV program": "Keyingi koʻrsatuv",
     No: "Yoʻq",
     "No channel name": "Kanal nomi yo'q",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Saqlangan sozlamalar topilmadi",
     "Not found": "Topilmadi",
     "Not reduce video when showing the list (bugfix)":
@@ -481,6 +507,10 @@ var keyStrings = {
     Ok: "OK",
     Open: "Ochish",
     "Open in PiP": "PiP da ochish",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sozlamalari",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -500,6 +530,7 @@ var keyStrings = {
     "PiP window position": "PiP oynasining joylashuvi",
     "PiP window size": "PiP oynasining oʻlchami",
     Play: "Ijro",
+    Playback: "Playback",
     "Player and device info": "Pleyer va qurilma haqida",
     "Player info:": "Pleyer haqida:",
     Playlist: "Playlist",
@@ -508,6 +539,12 @@ var keyStrings = {
         "Playlist to'g'ridan-to'g'ri yuklanmayapti...Server orqali yuklanmoqda...",
     "Playlist Name": "Playlist nomi",
     "Playlist URL": "Pleylist URL manzili",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA sozlamalari",
     "Portal URL": "Portal URL manzili",
@@ -572,6 +609,7 @@ var keyStrings = {
     "Save & load channels": "Saqlash va kanallarni yuklash",
     "Save and load": "Saqlash va yuklash",
     "Save and load channels": "Saqlash va kanallarni yuklash",
+    "Save and open library": "Save and open library",
     "Save Settings": "Sozlamalarni saqlash",
     "Save settings": "Sozlamalarni saqlash",
     "Save settings and load channel list":
@@ -638,6 +676,9 @@ var keyStrings = {
     "Show when changing program": "Koʻrsatuv oʻzgarganda koʻrsatish",
     "Show when rewind": "Orqaga oʻtkazishda koʻrsatish",
     "Show when switching": "Kanal almashtirilganda koʻrsatish",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Uyqu taymeri",
     "Sort channels": "Kanallarni saralash",
     "Stalker Portal Provider": "Stalker portali provayderi",
@@ -717,6 +758,7 @@ var keyStrings = {
     "VPortal request failed":
         "VPortalʼni yuklab boʻlmadi. Havola, kirish kaliti va portalning mavjudligini tekshiring.",
     volume: "ovoz balandligi",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Noto'g'ri ota-ona kodi!!!",
     "Xtream Codes Provider": "Xtream Codes provayderi",
     "Xtream Codes settings": "Xtream Codes sozlamalari",

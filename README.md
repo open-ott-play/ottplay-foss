@@ -956,4 +956,6 @@ demonstration recordings. The helper keeps all generated media outside Git.
 
 ## Synology media library
 
+Each player can also connect to its own Plex account or server using the **Plex** provider. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
+
 An optional native NAS library uses an existing Plex server for catalogs and compatible playback, with a separate Synology entry and M3U export. See [configuration and client access](docs/synology-library.md).

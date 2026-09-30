@@ -73,6 +73,9 @@ var keyStrings = {
     "Archive. Channel: ": "Архіў. Канал: ",
     Aspect: "Суадносіны бакоў",
     Audio: "Гук",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet: "абвгдеёжзійклмнопрстуўфхцчшыьэюяʼ",
     always: "заўсёды",
     "and enter code": "і ўвядзіце код",
@@ -127,21 +130,28 @@ var keyStrings = {
     "Channel list. Category: ": "Спіс каналаў. Катэгорыя: ",
     "Channel parental control": "Бацькоўскі кантроль канала",
     Channels: "Каналы",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Праверце налады SWOP гэтага сервера.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Выбраць з",
     "Choose language": "Выберыце мову",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Выберыце правайдара",
     Classic: "Класічны",
     "Clear all settings?": "Выдаліць усе налады?",
     "Clear settings": "Выдаліць налады",
     Close: "Закрыць",
     "Close PiP": "Закрыць PiP",
+    Code: "Code",
     Color: "Колер",
     "Color spectrum": "Колеравая палітра",
     "Command server": "Сервер каманд",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Адрас сервера каманд, код доступу прылады, лакальнае HTTP-кіраванне і аддалены ўвод тэксту",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Наладзьце All4you.tv у раздзеле Налады -> Налады правайдара",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -174,6 +184,8 @@ var keyStrings = {
         "Наладзьце New Look у раздзеле Налады -> Налады правайдара",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Наладзьце OTT Prime ONLINE у раздзеле Налады -> Налады правайдара",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Наладзьце POLMEDIA у раздзеле Налады -> Налады правайдара",
     "Configure PROST in Settings -> Provider Settings":
@@ -214,11 +226,14 @@ var keyStrings = {
     Connected: "Падключана",
     "Connected. Waiting for the channel list...":
         "Падключана. Чаканне спіса каналаў…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Падключэнне да партала Stalker…",
     "Connecting...": "Падключэнне…",
     "Continue watching?": "Працягнуць прагляд?",
     "Copy category": "Капіяваць катэгорыю",
     "Copy JSON": "Капіяваць JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Не ўдалося падключыцца да сервера.",
     "Could not update HTTP remote control.":
         "Не ўдалося змяніць налады HTTP-пульта.",
@@ -272,6 +287,8 @@ var keyStrings = {
         "Увядзіце імя карыстальніка (8 сімвалаў).",
     "Enter a username and password to access this service.":
         "Увядзіце імя карыстальніка і пароль для доступу да сэрвісу.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Увядзіце правільны адрас сервера, напрыклад 192.168.1.20:8081.",
     "Enter access key for": "Увядзіце ключ доступу для",
@@ -287,6 +304,8 @@ var keyStrings = {
         "Увядзіце MAC-адрас (напрыклад, 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Увод URL медыятэкі",
     "Enter new category name": "Увядзіце новую назву катэгорыі",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Увядзіце код правайдара",
     "Enter Provider Code on PC or Phone":
         "Увядзіце код правайдара на ПК або тэлефоне",
@@ -324,6 +343,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Увядзіце адрас сервера Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Увядзіце адрас сервера Xtream (напрыклад, https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Праграма",
     "EPG and archive. Channel: ": "Праграма і архіў. Канал: ",
     "ERROR!": "Памылка!",
@@ -355,6 +378,7 @@ var keyStrings = {
     Filter: "Фільтр",
     Filters: "Фільтры",
     "First Run Setup": "Пачатковае наладжванне",
+    Folders: "Folders",
     "Font type": "Шрыфт",
     "For download settings file open": "Каб спампаваць файл налад, адкрыйце",
     "For enter value open": "Каб увесці значэнне, адкрыйце",
@@ -459,6 +483,8 @@ var keyStrings = {
     "Next TV program": "Наступная перадача",
     No: "Не",
     "No channel name": "Няма назвы канала",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Захаваныя налады не знойдзены",
     "Not found": "Не знойдзена",
     "Not reduce video when showing the list (bugfix)":
@@ -475,6 +501,10 @@ var keyStrings = {
     Ok: "ОК",
     Open: "Адкрыць",
     "Open in PiP": "Адкрыць у PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Налады OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -494,6 +524,7 @@ var keyStrings = {
     "PiP window position": "Размяшчэнне акна PiP",
     "PiP window size": "Памер акна PiP",
     Play: "Прайграць",
+    Playback: "Playback",
     "Player and device info": "Звесткі пра прайгравальнік і прыладу",
     "Player info:": "Звесткі пра прайгравальнік:",
     Playlist: "Плэйліст",
@@ -502,6 +533,12 @@ var keyStrings = {
         "Плэйліст не загружаецца напрамую...Загрузка праз сервер...",
     "Playlist Name": "Назва плэйліста",
     "Playlist URL": "URL плэйліста",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Налады POLMEDIA",
     "Portal URL": "Адрас партала",
@@ -564,6 +601,7 @@ var keyStrings = {
     "Save & load channels": "Захаваць і загрузіць каналы",
     "Save and load": "Захаваць і загрузіць",
     "Save and load channels": "Захаваць і загрузіць каналы",
+    "Save and open library": "Save and open library",
     "Save Settings": "Захаваць налады",
     "Save settings": "Захаваць налады",
     "Save settings and load channel list":
@@ -628,6 +666,9 @@ var keyStrings = {
     "Show when changing program": "Паказваць пры змене перадачы",
     "Show when rewind": "Паказваць пры перамотцы",
     "Show when switching": "Паказваць пры пераключэнні каналаў",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Таймер сну",
     "Sort channels": "Сартаваць каналы",
     "Stalker Portal Provider": "Правайдар партала Stalker",
@@ -705,6 +746,7 @@ var keyStrings = {
     "VPortal request failed":
         "Не ўдалося загрузіць VPortal. Праверце спасылку, ключ доступу і даступнасць партала.",
     volume: "гучнасць",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Няправільны бацькоўскі код!!!",
     "Xtream Codes Provider": "Правайдар Xtream Codes",
     "Xtream Codes settings": "Налады Xtream Codes",

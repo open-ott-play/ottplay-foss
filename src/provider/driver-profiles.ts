@@ -14,6 +14,7 @@
         title: "Stalker portal",
     },
     { id: "m3u", kind: "m3u", prefix: "m3u", title: "M3U playlist" },
+    { id: "plex", kind: "plex", prefix: "plex", title: "Plex" },
     // OTTPLAY_FULL_ONLY_BEGIN
     { id: "antifriz", kind: "playlist", prefix: "az", title: "Antifriz" },
     { id: "kb-team", kind: "playlist", prefix: "kbc", title: "KBC (Kinoboom)" },

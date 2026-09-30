@@ -583,6 +583,43 @@ async function run(platform) {
         );
         assert.equal(ordinaryXhrs, nonPortalPosts.length);
 
+        testStage = "Plex PIN form POST has a narrow explicit native opt-in";
+        const pinRequest = {
+            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+            data: {
+                strong: "false",
+                "X-Plex-Client-Identifier": "fixture-client",
+            },
+            dataType: "json",
+            plexAuthRequest: true,
+            type: "POST",
+            url: "https://plex.tv/api/v2/pins",
+        };
+        reply = (args) => {
+            assert.equal(args.url, pinRequest.url);
+            assert.equal(args.method, "POST");
+            assert.equal(new URLSearchParams(args.body).get("strong"), "false");
+            return response('{"id":123,"code":"1234","expiresIn":900}', 201);
+        };
+        result = await finished($.ajax(pinRequest));
+        assert.equal(result.ok, true);
+        assert.equal(result.xhr.status, 201);
+        const beforeInvalidPins = calls.length;
+        const invalidPins = [
+            { plexAuthRequest: false },
+            { plexAuthRequest: "true" },
+            { url: "http://plex.tv/api/v2/pins" },
+            { url: "https://plex.tv.evil.example/api/v2/pins" },
+            { url: "https://plex.tv/api/v2/pins/123" },
+            { url: "https://plex.tv/api/v2/user" },
+            { contentType: "application/json" },
+            { type: "PUT" },
+        ];
+        for (const overrides of invalidPins)
+            await finished($.ajax({ ...pinRequest, ...overrides }));
+        assert.equal(calls.length, beforeInvalidPins);
+        const ordinaryBeforePortal = ordinaryXhrs;
+
         w.eval(
             compile(
                 functions("src/utils/helpers.ts", [
@@ -633,7 +670,7 @@ async function run(platform) {
         assert.equal(calls.at(-1).command, "proxy_http");
         assert.equal(
             ordinaryXhrs,
-            nonPortalPosts.length,
+            ordinaryBeforePortal,
             "VPortal must not use WebView XHR"
         );
         assert.equal(w.mediaRecords.length, 1);

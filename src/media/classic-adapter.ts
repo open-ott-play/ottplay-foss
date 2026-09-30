@@ -56,6 +56,7 @@ function serializeMediaIdentity(value: any): string {
 function classicMediaRuntime(): any {
     var w = window as any;
     var context = mediaClassicContext;
+    var mediaClient = classicMediaClient();
     var source = classicMediaSourceId();
     var provider = context ? context.client.load : w.getMediaArray;
     if (
@@ -191,9 +192,13 @@ function classicMediaRuntime(): any {
             });
     }
     function entry(item: MediaLibraryItem, position = 0) {
+        var payload = copy(item.payload);
+        // Direct sources resolve access URLs afresh; journals keep stable IDs only.
+        if (mediaClient && typeof mediaClient.persist === "function")
+            payload = mediaClient.persist(payload);
         return {
             itemId: item.ref.itemId,
-            payload: copy(item.payload),
+            payload: payload,
             position: position,
             sourceId: source,
         };
@@ -449,7 +454,10 @@ function classicMediaRuntime(): any {
                 if (
                     item.payload.__ottMediaRefresh &&
                     // Installation requests resolve stable IDs directly, independent of catalog pagination.
-                    !(context && item.payload.request) &&
+                    !(
+                        item.payload.request &&
+                        (context || (mediaClient && mediaClient.stableRequests))
+                    ) &&
                     origin &&
                     origin.kind === "catalog"
                 ) {

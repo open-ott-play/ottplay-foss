@@ -76,6 +76,9 @@ var keyStrings = {
     "Archive. Channel: ": "Lưu trữ. Kênh: ",
     Aspect: "Tỷ lệ khung hình",
     Audio: "Âm thanh",
+    Automatic: "Automatic",
+    "Automatic plays supported files directly and uses compatible HLS when needed.":
+        "Automatic plays supported files directly and uses compatible HLS when needed.",
     alhabet:
         "aàảãáạăằẳẵắặâầẩẫấậbcdđeèẻẽéẹêềểễếệghiìỉĩíịklmnoòỏõóọôồổỗốộơờởỡớợpqrstuùủũúụưừửữứựvxyỳỷỹýỵ",
     always: "luôn luôn",
@@ -131,21 +134,28 @@ var keyStrings = {
     "Channel list. Category: ": "Danh sách kênh. Danh mục: ",
     "Channel parental control": "Kiểm soát kênh của phụ huynh",
     Channels: "Kênh",
+    "Check the connection and open your Plex libraries.":
+        "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Kiểm tra cấu hình SWOP của máy chủ này.",
+    "Checking the Plex server connection…":
+        "Checking the Plex server connection…",
     "Choose from": "Chọn từ",
     "Choose language": "Chọn ngôn ngữ",
+    "Choose Plex server": "Choose Plex server",
     "Choose provider": "Chọn nhà cung cấp",
     Classic: "Cổ điển",
     "Clear all settings?": "Xóa tất cả cài đặt?",
     "Clear settings": "Xóa cài đặt",
     Close: "Đóng",
     "Close PiP": "Đóng PiP",
+    Code: "Code",
     Color: "Màu",
     "Color spectrum": "Phổ màu",
     "Command server": "Máy chủ lệnh",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Địa chỉ máy chủ lệnh, mã truy cập thiết bị, điều khiển HTTP cục bộ và cài đặt nhập văn bản từ xa",
+    "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Cấu hình All4you.tv trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -178,6 +188,8 @@ var keyStrings = {
         "Cấu hình New Look trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Cấu hình OTT Prime ONLINE trong Cài đặt -> Cài đặt nhà cung cấp",
+    "Configure Plex in Settings -> Provider Settings":
+        "Configure Plex in Settings -> Provider Settings",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Cấu hình POLMEDIA trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure PROST in Settings -> Provider Settings":
@@ -218,11 +230,14 @@ var keyStrings = {
     Connected: "Đã kết nối",
     "Connected. Waiting for the channel list...":
         "Đã kết nối. Đang chờ danh sách kênh…",
+    "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Đang kết nối tới cổng Stalker…",
     "Connecting...": "Đang kết nối…",
     "Continue watching?": "Tiếp tục xem?",
     "Copy category": "Sao chép danh mục",
     "Copy JSON": "Sao chép JSON",
+    "Could not connect to Plex. Check the server address, token and network access.":
+        "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
     "Could not update HTTP remote control.":
         "Không thể cập nhật điều khiển từ xa HTTP.",
@@ -275,6 +290,8 @@ var keyStrings = {
     "Enter a username (8 characters).": "Nhập tên người dùng (8 ký tự).",
     "Enter a username and password to access this service.":
         "Nhập tên người dùng và mật khẩu để truy cập dịch vụ này.",
+    "Enter a valid Plex server address and access token.":
+        "Enter a valid Plex server address and access token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Nhập địa chỉ máy chủ hợp lệ, ví dụ: 192.168.1.20:8081.",
     "Enter access key for": "Nhập khóa truy cập cho",
@@ -289,6 +306,8 @@ var keyStrings = {
         "Nhập địa chỉ MAC (ví dụ: 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Nhập URL thư viện đa phương tiện",
     "Enter new category name": "Nhập tên danh mục mới",
+    "Enter Plex server address": "Enter Plex server address",
+    "Enter Plex token": "Enter Plex token",
     "Enter Provider Code": "Nhập mã nhà cung cấp",
     "Enter Provider Code on PC or Phone":
         "Nhập mã nhà cung cấp trên máy tính hoặc điện thoại",
@@ -325,6 +344,10 @@ var keyStrings = {
     "Enter Xtream server URL": "Nhập URL máy chủ Xtream",
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Nhập URL máy chủ Xtream (ví dụ: https://your-server:8080)",
+    "Enter your Plex access token. It is saved in this device's profile.":
+        "Enter your Plex access token. It is saved in this device's profile.",
+    "Enter your Plex server address, for example http://192.168.1.25:32400":
+        "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG và lưu trữ. Kênh: ",
     "ERROR!": "Lỗi!",
@@ -355,6 +378,7 @@ var keyStrings = {
     Filter: "Bộ lọc",
     Filters: "Bộ lọc",
     "First Run Setup": "Thiết lập lần đầu",
+    Folders: "Folders",
     "Font type": "Kiểu chữ",
     "For download settings file open": "Để tải tệp cài đặt xuống, mở",
     "For enter value open": "Để nhập giá trị, mở",
@@ -460,6 +484,8 @@ var keyStrings = {
     "Next TV program": "Chương trình tiếp theo",
     No: "Không",
     "No channel name": "Kênh không có tên",
+    "No Plex servers are available for this account.":
+        "No Plex servers are available for this account.",
     "No saved settings found": "Không tìm thấy cài đặt đã lưu",
     "Not found": "Không tìm thấy",
     "Not reduce video when showing the list (bugfix)":
@@ -476,6 +502,10 @@ var keyStrings = {
     Ok: "OK",
     Open: "Mở",
     "Open in PiP": "Mở trong PiP",
+    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open plex.tv/link on your phone or computer and enter this code.":
+        "Open plex.tv/link on your phone or computer and enter this code.",
+    "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cài đặt OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -495,6 +525,7 @@ var keyStrings = {
     "PiP window position": "Vị trí cửa sổ PiP",
     "PiP window size": "Kích thước cửa sổ PiP",
     Play: "Phát",
+    Playback: "Playback",
     "Player and device info": "Thông tin trình phát và thiết bị",
     "Player info:": "Thông tin trình phát:",
     Playlist: "Danh sách phát",
@@ -503,6 +534,12 @@ var keyStrings = {
         "Không thể tải trực tiếp danh sách phát. Đang tải qua máy chủ…",
     "Playlist Name": "Tên danh sách phát",
     "Playlist URL": "URL danh sách phát",
+    Plex: "Plex",
+    "Plex connection failed": "Plex connection failed",
+    "Plex settings": "Plex settings",
+    "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
+        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+    "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Cài đặt POLMEDIA",
     "Portal URL": "URL cổng",
@@ -565,6 +602,7 @@ var keyStrings = {
     "Save & load channels": "Lưu và tải kênh",
     "Save and load": "Lưu và tải",
     "Save and load channels": "Lưu và tải kênh",
+    "Save and open library": "Save and open library",
     "Save Settings": "Lưu cài đặt",
     "Save settings": "Lưu cài đặt",
     "Save settings and load channel list": "Lưu cài đặt và tải danh sách kênh",
@@ -629,6 +667,9 @@ var keyStrings = {
     "Show when changing program": "Hiển thị khi đổi chương trình",
     "Show when rewind": "Hiển thị khi tua lại",
     "Show when switching": "Hiển thị khi chuyển kênh",
+    "Sign in to your Plex account and choose a server. No password is entered in this player.":
+        "Sign in to your Plex account and choose a server. No password is entered in this player.",
+    "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Hẹn giờ ngủ",
     "Sort channels": "Sắp xếp kênh",
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
@@ -704,6 +745,7 @@ var keyStrings = {
     "VPortal request failed":
         "Không thể tải VPortal. Kiểm tra liên kết, khóa truy cập và tình trạng hoạt động của cổng.",
     volume: "âm lượng",
+    "Waiting for sign-in…": "Waiting for sign-in…",
     "Wrong parental code !!!": "Mã phụ huynh không đúng!",
     "Xtream Codes Provider": "Nhà cung cấp Xtream Codes",
     "Xtream Codes settings": "Cài đặt Xtream Codes",

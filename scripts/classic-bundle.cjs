@@ -66,6 +66,9 @@ const CLASSIC_MODULES = [
     "build/provider/edem-driver.js",
     "build/provider/m3u-settings.js",
     "build/provider/m3u-driver.js",
+    "build/plugins/plex.js",
+    "build/plugins/plex-auth.js",
+    "build/provider/plex-driver.js",
     "build/provider/drivers.js",
     "build/provider/assets.js",
     "build/provider/index.js",
@@ -93,6 +96,11 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     edem: ["build/provider/edem-driver.js"],
     m3u: ["build/provider/m3u-settings.js", "build/provider/m3u-driver.js"],
     playlist: ["build/provider/playlist-drivers.js"],
+    plex: [
+        "build/plugins/plex.js",
+        "build/plugins/plex-auth.js",
+        "build/provider/plex-driver.js",
+    ],
     stalker: ["build/provider/stalker-driver.js"],
 });
 const providerModules = new Set(Object.values(CLASSIC_PROVIDER_BUNDLES).flat());
@@ -148,6 +156,8 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
+    "build/plugins/plex-auth.js": Object.freeze(["window.__ottPlexAuth"]),
+    "build/plugins/plex.js": Object.freeze(["window.__ottPlex"]),
     "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",
@@ -171,6 +181,7 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/provider/playlist-drivers.js": Object.freeze([
         "window.__ottPlaylistDrivers",
     ]),
+    "build/provider/plex-driver.js": Object.freeze(["window.__ottPlexDriver"]),
     "build/provider/runtime.js": Object.freeze(["window.__ottProviderRuntime"]),
     "build/provider/source-identity.js": Object.freeze([
         "window.__ottSourceIdentity",
