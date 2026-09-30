@@ -1191,16 +1191,16 @@ export function closeList(restorePip = true): void {
  *
  * @param message - HTML string to display.
  * @returns void
- * @sideeffect Sets `#info` innerHTML and display style, then hides it after 3000ms via setTimeout.
+ * @sideeffect Replaces the per-element timer and hides `#info` after 3000ms.
  */
 export function showShift(message: string): void {
-    var info = document.getElementById("info");
-    if (info) {
-        info.innerHTML = metadataHtml(message);
-        info.style.display = "block";
-    }
-    setTimeout(function () {
-        if (info) info.style.display = "none";
+    var info: any = document.getElementById("info");
+    if (!info) return;
+    clearTimeout(info.__ottShiftTimer);
+    info.innerHTML = metadataHtml(message);
+    info.style.display = "block";
+    info.__ottShiftTimer = setTimeout(function () {
+        info.style.display = "none";
     }, 3000);
 }
 
@@ -1344,7 +1344,10 @@ export function showSelectBox(
                     if (owner.foreground()) w._doKey(-100 + index, event);
                 };
                 row.onkeydown = function (event) {
-                    if (event.keyCode === 13 || event.keyCode === 32) {
+                    if (
+                        owner.foreground() &&
+                        (event.keyCode === 13 || event.keyCode === 32)
+                    ) {
                         event.preventDefault();
                         row.onclick!(event as any);
                     }
@@ -1677,21 +1680,22 @@ export function initBackgroundIntervals(): void {
         clearInterval(previous.clock);
         clearInterval(previous.guide);
     }
+    function updateClockText(id: string, value: string): void {
+        // Resolve the current node because menus can replace clock elements.
+        var element = document.getElementById(id);
+        if (element && element.textContent !== value)
+            element.textContent = value;
+    }
     owner.clock = setInterval(function () {
         if (host.__ottUiTimers !== owner) return;
         var now = new Date();
         var timeStr = _t2(now.getHours()) + ":" + _t2(now.getMinutes());
         var secStr = ":" + _t2(now.getSeconds());
-        var currentTEl = document.getElementById("current_t");
-        var currentSEl = document.getElementById("current_s");
-        var listTEl = document.getElementById("list_t");
-        var listSEl = document.getElementById("list_s");
-        var permTEl = document.getElementById("permanentTime");
-        if (currentTEl) currentTEl.innerHTML = timeStr;
-        if (currentSEl) currentSEl.innerHTML = secStr;
-        if (listTEl) listTEl.innerHTML = timeStr;
-        if (listSEl) listSEl.innerHTML = secStr;
-        if (permTEl) permTEl.innerHTML = timeStr;
+        updateClockText("current_t", timeStr);
+        updateClockText("current_s", secStr);
+        updateClockText("list_t", timeStr);
+        updateClockText("list_s", secStr);
+        updateClockText("permanentTime", timeStr);
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
@@ -2891,10 +2895,8 @@ function _setCase(e: boolean): void {
 /** Case is derived from the original cell, never from a previous conversion. */
 function _keyboardCharacter(value: string): string {
     if (!_keyUp || _keyP) return value;
-    if (!_keyE && /^_(tur|aze)$/.test(String(_ottplaylang()))) {
-        if (value === "i") return "İ";
-        if (value === "ı") return "I";
-    }
+    if (value === "i" && !_keyE && /^_(tur|aze)$/.test(_ottplaylang()))
+        return "İ";
     if (value === "ß") return "ẞ";
     // Expanded uppercase forms (e.g. Armenian և) still occupy one key cell.
     return value.toUpperCase();
@@ -2916,14 +2918,6 @@ function _localizedAlphabet(): string {
     var t = _("alhabet");
     if (typeof t === "string" && t.length > 0 && t !== "alhabet") return t;
     return _keysRu;
-}
-
-/**
- * Always show Lang: English UI still needs a Cyrillic layout for search/edit.
- * (Legacy hid Lang when ottplaylang == "_eng".)
- */
-function _showLangKey(): boolean {
-    return true;
 }
 
 /** Start the English or localized layout at its first page. */
@@ -3013,28 +3007,25 @@ export function showEditKey1(
     if (!editorOwner || !editorOwner.active()) return;
     // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
     if (_ottplaylang() == "_eng") _keyE = true;
-    _keysSymbol[1].s = _showLangKey()
-        ? '<span style="font-family:fontello;padding:0.2em;">&#xe80E;</span>'
-        : "";
+    // English UI still needs access to its Cyrillic keyboard layout.
+    _keysSymbol[1].s =
+        '<span style="font-family:fontello;padding:0.2em;">&#xe80E;</span>';
     _keysSymbol[7].s =
         '<span style="font-family:fontello;padding:0.2em;">&#xe804;</span>';
     _keysSymbol[9].s = "Ok";
     if (!(window as any).sNoColorKeys) {
-        if (_keysSymbol[1].s)
-            _keysSymbol[1].s =
-                '<span style="border-bottom:3px solid green;">' +
-                _keysSymbol[1].s +
-                "</span>";
-        if (_keysSymbol[7].s)
-            _keysSymbol[7].s =
-                '<span style="border-bottom:3px solid #bb0;">' +
-                _keysSymbol[7].s +
-                "</span>";
-        if (_keysSymbol[9].s)
-            _keysSymbol[9].s =
-                '<span style="border-bottom:3px solid blue;">' +
-                _keysSymbol[9].s +
-                "</span>";
+        _keysSymbol[1].s =
+            '<span style="border-bottom:3px solid green;">' +
+            _keysSymbol[1].s +
+            "</span>";
+        _keysSymbol[7].s =
+            '<span style="border-bottom:3px solid #bb0;">' +
+            _keysSymbol[7].s +
+            "</span>";
+        _keysSymbol[9].s =
+            '<span style="border-bottom:3px solid blue;">' +
+            _keysSymbol[9].s +
+            "</span>";
     }
     editPos = (window as any).editvar.length;
     var r = _keyCur >= _keys.length - 10 ? 14 : _keyCur;
@@ -3067,41 +3058,29 @@ export function showEdit(): void {
         ((window as any).editCaption || "") +
         "</div>";
     r += '<div id="ee" dir="auto"></div><div class="osk-grid">';
+    var combiningMark = /^[\u0300-\u036f]/;
     for (var s = 0; s < _keys.length; s++) {
         if (s > 0 && s % 10 === 0) r += "<br/>";
-        var sym = _keysSymbol[_keys.charCodeAt(s)];
-        var character = _keyboardCharacter(_keys[s]);
-        var n = sym
-            ? sym.s
-            : metadataText(
-                  /^[\u0300-\u036f]/.test(character)
-                      ? "◌" + character
-                      : character
-              );
+        var charCode = _keys.charCodeAt(s);
+        var sym = _keysSymbol[charCode];
+        var n = sym ? sym.s : _keyboardCharacter(_keys[s]);
+        if (!sym) n = metadataText(combiningMark.test(n) ? "◌" + n : n);
         r +=
             '<div id="ik' +
             s +
             '" class="osk-key"' +
-            (_keys.charCodeAt(s) === 8 && _keyPages > 1
+            (charCode === 8 && _keyPages > 1
                 ? ' aria-label="' + metadataText(_("Next keyboard page")) + '"'
                 : "") +
             ' onclick="clickKey(' +
             s +
-            ');" style="width:' +
-            t +
-            "px;height:" +
-            t +
-            "px;line-height:" +
-            t +
-            'px;">' +
+            ');">' +
             n +
             "</div>";
     }
     e.html(r + "</div>");
-    var textSize = Math.min(
-        parseFloat(e.css("font-size")) || 24,
-        (e.height() || 600) / 14
-    );
+    var fontSize = parseFloat(e.css("font-size")) || 24;
+    var textSize = Math.min(fontSize, (e.height() || 600) / 14);
     e.find(".osk-cap, #ee").css("font-size", textSize);
     _changeEdit();
     // Text settings can make the caption/input taller. Constrain cells by
@@ -3114,12 +3093,10 @@ export function showEdit(): void {
     var height = Math.max(16, Math.min(t, Math.floor(available / rows) - 4));
     grid.css({ "font-size": 0, "line-height": height + 4 + "px" });
     grid.find(".osk-key").css({
-        "font-size": Math.min(
-            parseFloat(e.css("font-size")) || 24,
-            height * 0.65
-        ),
+        "font-size": Math.min(fontSize, height * 0.65),
         height: height,
         "line-height": height + "px",
+        width: t,
     });
     $("#ik" + _keyCur).css({
         "background-color": (window as any).curColorB,
@@ -3141,9 +3118,9 @@ export function showEdit(): void {
                     ? _keyE
                         ? // Offer the other layout in the *current* UI language.
                           _ottplaylang() == "_eng"
-                            ? _("Russian") || "Russian"
-                            : _("lang") || "Lang"
-                        : _("English") || "English"
+                            ? "Russian"
+                            : "lang"
+                        : "English"
                     : "",
                 strFF
             ) +
@@ -3228,47 +3205,29 @@ export function clickKey(e: number): void {
  *             Symbol keys (charCode <= 9) invoke their action function instead of typing.
  */
 export function editKey1(e: number): void {
+    function focusKeyboardKey(index: number): void {
+        $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+        _keyCur = index;
+        $("#ik" + _keyCur).css({
+            "background-color": (window as any).curColorB,
+            color: (window as any).curColor,
+        });
+    }
     switch (e) {
         case (window as any).keys.UP:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += _keyCur > 9 ? -10 : _keys.length - 10;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(_keyCur + (_keyCur > 9 ? -10 : _keys.length - 10));
             return;
         case (window as any).keys.DOWN:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur +=
-                    _keyCur < _keys.length - 10 ? 10 : -_keys.length + 10;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(
+                _keyCur +
+                    (_keyCur < _keys.length - 10 ? 10 : -_keys.length + 10)
+            );
             return;
         case (window as any).keys.LEFT:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += _keyCur % 10 > 0 ? -1 : 9;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(_keyCur + (_keyCur % 10 > 0 ? -1 : 9));
             return;
         case (window as any).keys.RIGHT:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += _keyCur % 10 < 9 ? 1 : -9;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(_keyCur + (_keyCur % 10 < 9 ? 1 : -9));
             return;
         case (window as any).keys.TOOLS:
         case (window as any).keys.RED:
@@ -3309,19 +3268,15 @@ export function editKey1(e: number): void {
             return;
         default: {
             var idx = -1;
+            var typedCharacter = String.fromCharCode(e);
             for (var i = 0; i < _keys.length; i++) {
-                if (_keyboardCharacter(_keys[i]) === String.fromCharCode(e)) {
+                if (_keyboardCharacter(_keys[i]) === typedCharacter) {
                     idx = i;
                     break;
                 }
             }
             if (idx > -1) {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += idx - _keyCur;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
+                focusKeyboardKey(idx);
                 editKey1((window as any).keys.ENTER);
             }
             return;
@@ -3674,24 +3629,22 @@ export function mediaList(target: MediaTarget | null): void {
  *
  * @param e - The zero-based index of the clicked option.
  * @returns void
- * @sideeffect Stops event propagation. Updates highlight styles for old and new selection.
+ * @sideeffect Updates highlight styles for old and new selection. The grid consumes the DOM click.
  *             Calls `aboutKeyHandler(keys.ENTER)` if clicking the already-selected item.
  */
 export function clickVal(e: number): void {
-    if (
-        typeof (window as any).event !== "undefined" &&
-        (window as any).event &&
-        (window as any).event.stopPropagation
-    )
-        (window as any).event.stopPropagation();
-    if (_curVal === e && aboutKeyHandler)
+    if (_curVal === e && aboutKeyHandler) {
         aboutKeyHandler((window as any).keys.ENTER);
+        return;
+    }
     $("#ik" + _curVal).css({ "background-color": "", color: "" });
     _curVal = e;
-    $("#ik" + _curVal).css({
+    var key = $("#ik" + _curVal);
+    key.css({
         "background-color": (window as any).curColorB,
         color: (window as any).curColor,
     });
+    if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
 }
 
 /**
@@ -3707,6 +3660,14 @@ export function clickVal(e: number): void {
  *             RETURN/EXIT discards and calls `restoreListPanelState()`.
  */
 export function selectValue(t: any): void {
+    function paintSelectedValue(): void {
+        var key = $("#ik" + _curVal);
+        key.css({
+            "background-color": (window as any).curColorB,
+            color: (window as any).curColor,
+        });
+        if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
+    }
     var r = t.values.filter(function (v: any) {
         return v !== "@@@";
     });
@@ -3725,9 +3686,9 @@ export function selectValue(t: any): void {
     var maxW = 0;
     for (var i = 0; i < r.length; i++) {
         testEl.html("&nbsp;" + r[i] + "&nbsp;");
-        maxW = maxW > testEl.width() ? maxW : testEl.width();
-        testEl.text("");
+        maxW = Math.max(maxW, testEl.width());
     }
+    testEl.text("");
     var listAboutW = $("#listAbout").width();
     var n = 6;
     if (maxW > 0 && listAboutW > 0) {
@@ -3744,27 +3705,22 @@ export function selectValue(t: any): void {
     var html = "";
     for (var i = 0; i < r.length; i++) {
         if (i % n === 0) html += "<br/>";
-        html +=
-            '<div id="ik' +
-            i +
-            '" class="osk-key" onclick="clickVal(' +
-            i +
-            ');" style="width:' +
-            98 / n +
-            "%;line-height:" +
-            lineHeight +
-            'px;">' +
-            r[i] +
-            "</div>";
+        html += '<div id="ik' + i + '" class="osk-key">' + r[i] + "</div>";
     }
-    $("#listAbout")
-        .html('<div style="font-size:larger;">' + html + "</div>")
-        .show();
-    $("#ik" + _curVal).css({
-        "background-color": (window as any).curColorB,
-        color: (window as any).curColor,
+    var grid = $("#listAbout")
+        .html("<div>" + html + "</div>")
+        .show()
+        .children()
+        .css("font-size", "larger");
+    grid.find(".osk-key").css({
+        lineHeight: lineHeight + "px",
+        width: 98 / n + "%",
     });
-    if (listDetailElement) listDetailElement.innerHTML = r[_curVal];
+    grid.on("click", ".osk-key", function (event: any) {
+        event.stopPropagation();
+        if (input.owner.foreground()) clickVal(Number(this.id.slice(2)));
+    });
+    paintSelectedValue();
 
     /**
      * Move the selection cursor by `delta` positions in the grid, wrapping at edges.
@@ -3778,14 +3734,10 @@ export function selectValue(t: any): void {
         _curVal += delta;
         if (_curVal < 0) _curVal = r.length - 1;
         if (_curVal >= r.length) _curVal = 0;
-        $("#ik" + _curVal).css({
-            "background-color": (window as any).curColorB,
-            color: (window as any).curColor,
-        });
-        if (listDetailElement) listDetailElement.innerHTML = r[_curVal];
+        paintSelectedValue();
     }
 
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
+    var input = (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
         function (e: number): boolean {
             switch (e) {

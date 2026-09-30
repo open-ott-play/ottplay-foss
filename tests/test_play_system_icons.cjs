@@ -88,7 +88,6 @@ const keyboard = declarations(
         "_buildKeyboard",
         "_ottplaylang",
         "_localizedAlphabet",
-        "_showLangKey",
         "_setLang",
         "_setPunct",
         "showEditKey1",

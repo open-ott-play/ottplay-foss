@@ -690,6 +690,118 @@ test("browser list swipe retains legacy remote navigation", async ({
 
 for (const profile of ["server", "tauri"]) {
     test(
+        profile +
+            " settings value grid works under CSP and retains draft semantics",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    settingsInterface();
+                    window.__valueRow = listArray.find(
+                        (row) => row.settingId === "interfaceTheme"
+                    );
+                    window.__originalTheme = __valueRow.val;
+                    __valueRow.val = 0;
+                });
+                await page.evaluate(
+                    () =>
+                        new Promise((resolve) =>
+                            requestAnimationFrame(() =>
+                                requestAnimationFrame(resolve)
+                            )
+                        )
+                );
+                await page.evaluate(() => {
+                    window.__fixtureViolations = [];
+                    selectValue(__valueRow);
+                });
+                const choice = page.locator("#ik1");
+                await expect(choice).toHaveCSS("line-height", "32px");
+                const widths = await page
+                    .locator("#listAbout .osk-key")
+                    .evaluateAll((rows) =>
+                        rows.map((row) => row.getBoundingClientRect().width)
+                    );
+                expect(widths).toHaveLength(3);
+                expect(widths[0]).toBeGreaterThan(200);
+                expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(
+                    1
+                );
+                await choice.click();
+                expect(await page.evaluate(() => __valueRow.val)).toBe(0);
+                await expect(page.locator("#listDetail")).toHaveText("PLi-HD");
+                await expect(page.locator("#listAbout")).toBeVisible();
+                expect(await page.evaluate(() => __fixtureViolations)).toEqual(
+                    []
+                );
+                await choice.click();
+                expect(await page.evaluate(() => __valueRow.val)).toBe(1);
+                await expect(page.locator("#listAbout")).toBeHidden();
+                // The value picker updates the draft; cancelling Settings keeps saved state.
+                await page.evaluate(() => _doKey(keys.RETURN));
+                await page.evaluate(() => settingsInterface());
+                expect(
+                    await page.evaluate(
+                        () =>
+                            listArray.find(
+                                (row) => row.settingId === "interfaceTheme"
+                            ).val === __originalTheme
+                    )
+                ).toBe(true);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
+        profile + " a newer notification keeps its full visible lifetime",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                // install() keeps wall time running until explicitly paused.
+                await page.clock.install({ time: 0 });
+                await page.clock.pauseAt(60000);
+                await page.evaluate(() => showShift("Previous notification"));
+                await page.clock.runFor(2500);
+                await page.evaluate(() => showShift("Settings saved"));
+                await page.clock.runFor(500);
+                await expect(page.locator("#info")).toBeVisible();
+                await expect(page.locator("#info")).toHaveText(
+                    "Settings saved"
+                );
+                await page.clock.runFor(2499);
+                await expect(page.locator("#info")).toBeVisible();
+                await page.clock.runFor(1);
+                await expect(page.locator("#info")).toBeHidden();
+                await page.evaluate(() => showShift("Detached notification"));
+                await page.clock.runFor(2500);
+                await page.evaluate(() => {
+                    const oldInfo = document.getElementById("info");
+                    const replacement = oldInfo.cloneNode(false);
+                    oldInfo.replaceWith(replacement);
+                    showShift("Replacement node");
+                });
+                await page.clock.runFor(500);
+                await expect(page.locator("#info")).toBeVisible();
+                await expect(page.locator("#info")).toHaveText(
+                    "Replacement node"
+                );
+                await page.clock.runFor(2499);
+                await expect(page.locator("#info")).toBeVisible();
+                await page.clock.runFor(1);
+                await expect(page.locator("#info")).toBeHidden();
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
         profile + " confirmation buttons keep their meaning under CSP",
         async ({ browser }) => {
             const fixture = await fixturePage(browser, profile);

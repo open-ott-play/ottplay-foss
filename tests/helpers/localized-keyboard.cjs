@@ -55,7 +55,6 @@ const keyboardNames = [
     "_keyboardCharacter",
     "_ottplaylang",
     "_localizedAlphabet",
-    "_showLangKey",
     "_setLang",
     "_buildKeyboard",
     "_setPunct",

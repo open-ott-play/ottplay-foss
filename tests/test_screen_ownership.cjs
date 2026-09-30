@@ -139,6 +139,9 @@ function fixture() {
             "infoBox",
             "confirmBox",
             "showSelectBox",
+            "showShift",
+            "selectValue",
+            "clickVal",
             "saveListPanelState",
             "restoreListPanelState",
             "showEditKey2",
@@ -983,6 +986,52 @@ test("picker timeout and saved callback cannot affect newer picker", ({
     w.selectBoxKeyHandler(13);
     assert.deepEqual(chosen, [["new", 1]]);
 });
+test("retired focused picker row lets Enter reach the new confirmation", ({
+    w,
+}) => {
+    let selected = 0,
+        resumed = 0;
+    w._doKey = w.dispatchKey;
+    w.addEventListener("keydown", w.keyHandler);
+    w.showSelectBox(
+        0,
+        ["HD", "SD"],
+        () => {
+            selected++;
+            w.confirmBox("Continue?", () => resumed++);
+        },
+        -1
+    );
+    const old = w.channelNumberElement.firstChild;
+    const press = (target, code) =>
+        target.dispatchEvent(
+            new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                keyCode: code,
+                which: code,
+            })
+        );
+    press(old, w.keys.ENTER);
+    assert.equal(selected, 1);
+    assert.equal(resumed, 0, "opening key cannot also accept the confirmation");
+    assert.equal(w.channelNumberElement.style.display, "none");
+    // Chromium may target this old focused node until the next rendering frame.
+    press(old, w.keys.ENTER);
+    assert.equal(selected, 1);
+    assert.equal(
+        resumed,
+        1,
+        "retired node does not swallow the current modal's key"
+    );
+    w.showSelectBox(0, ["HD", "SD"], () => selected++, -1);
+    press(w.channelNumberElement.firstChild, 32);
+    assert.equal(
+        selected,
+        2,
+        "Space still accepts a foreground quality option once"
+    );
+});
 test("quality picker suspends and restores its media parent", ({
     w,
     events,
@@ -1045,6 +1094,192 @@ test("explicit picker decoration preserves its owner, input dispatch and stale g
     assert.equal(calls, 2);
     assert.deepEqual(chosen, [1]);
 });
+test("notification replacement cancels the earlier hide timer", ({
+    w,
+    jobs,
+}) => {
+    const info = w.document.createElement("div");
+    info.id = "info";
+    w.document.body.appendChild(info);
+    w.showShift("First");
+    w.showShift("Settings saved");
+    assert.equal(jobs.filter((job) => job.active).length, 1);
+    assert.equal(jobs[0].active, false);
+    assert.equal(info.style.display, "block");
+    assert.equal(info.textContent, "Settings saved");
+    jobs[1].callback();
+    assert.equal(info.style.display, "none");
+});
+test("notification delay belongs to its node after replacement", ({
+    w,
+    jobs,
+}) => {
+    w.showShift("Missing node");
+    assert.equal(jobs.length, 0);
+    const oldInfo = w.document.createElement("div");
+    oldInfo.id = "info";
+    w.document.body.appendChild(oldInfo);
+    w.showShift("Old node");
+    oldInfo.remove();
+    const info = w.document.createElement("div");
+    info.id = "info";
+    info.style.display = "inline";
+    w.document.body.appendChild(info);
+    w.showShift("Replacement node");
+    assert.equal(info.style.display, "block");
+    jobs[0].callback();
+    assert.equal(oldInfo.style.display, "none");
+    assert.equal(info.style.display, "block");
+    assert.equal(info.textContent, "Replacement node");
+    jobs[1].callback();
+    assert.equal(info.style.display, "none");
+});
+test("settings value clicks honor filtered indices and the current overlay", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    const row = { name: "Fixture", val: 0, values: ["A", "@@@", "B", "C"] };
+    w.selectValue(row);
+    const button = w.document.getElementById("ik1");
+    assert.equal(button.getAttribute("onclick"), null);
+    assert.equal(button.style.lineHeight, "32px");
+    assert(button.style.width);
+    w.confirmBox("Overlay", () =>
+        assert.fail("grid cannot activate the dialog")
+    );
+    button.click();
+    assert.equal(w._curVal, 0, "covered grid cannot change selection");
+    key(w.keys.RETURN);
+    button.click();
+    assert.equal(w._curVal, 1);
+    assert.equal(row.val, 0, "first click only focuses");
+    assert.equal(w.listDetailElement.textContent, "B");
+    button.click();
+    assert.equal(
+        row.val,
+        2,
+        "second click commits the original, unfiltered index"
+    );
+    assert.equal(w.$("#listAbout").is(":visible"), false);
+    w.selectValue(row);
+    key(w.keys.RIGHT);
+    key(w.keys.RETURN);
+    assert.equal(row.val, 2, "Back cancels the uncommitted keyboard selection");
+    w.selectValue(row);
+    key(w.keys.RIGHT);
+    key(w.keys.ENTER);
+    assert.equal(row.val, 3, "keyboard acceptance still commits");
+});
+test("settings grid keeps label markup consistent without confirming zero movement", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    const row = {
+        name: "Fixture",
+        val: 0,
+        values: ["Rock &amp; Roll <b>HD</b>", "News &lt;Live&gt; <i>2</i>"],
+    };
+    w.selectValue(row);
+    const first = w.document.getElementById("ik0");
+    const second = w.document.getElementById("ik1");
+    assert.equal(w.listDetailElement.innerHTML, first.innerHTML);
+    assert.equal(w.listDetailElement.textContent, "Rock & Roll HD");
+    key(w.keys.UP);
+    assert.equal(
+        w._curVal,
+        0,
+        "Up at the first short row moves zero positions"
+    );
+    assert.equal(w.$("#listAbout").is(":visible"), true);
+    assert.equal(row.val, 0);
+    key(w.keys.RIGHT);
+    assert.equal(w.listDetailElement.innerHTML, second.innerHTML);
+    assert.equal(w.listDetailElement.textContent, "News <Live> 2");
+    first.click();
+    assert.equal(w.listDetailElement.innerHTML, first.innerHTML);
+    assert.equal(w.listDetailElement.textContent, "Rock & Roll HD");
+    assert.equal(w.$("#listAbout").is(":visible"), true);
+});
+test("settings grid measures each visible label once and clears the probe once", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    w.$("body").append('<div id="testFont"></div>');
+    const widths = { A: 40, B: 120, C: 80, D: 40, E: 100, Wide: 250 };
+    const measured = [];
+    let clears = 0;
+    const originalWidth = w.$.fn.width;
+    const originalText = w.$.fn.text;
+    w.$.fn.width = function () {
+        if (this[0]?.id === "testFont") {
+            const label = this[0].textContent.trim();
+            measured.push(label);
+            return widths[label];
+        }
+        if (this[0]?.id === "listAbout") return 1000;
+        return originalWidth.apply(this, arguments);
+    };
+    w.$.fn.text = function (value) {
+        if (this[0]?.id === "testFont" && value === "") clears++;
+        return originalText.apply(this, arguments);
+    };
+    const row = {
+        name: "Fixture",
+        val: 0,
+        values: ["A", "@@@", "Wide", "B", "C", "D", "E"],
+    };
+    w.selectValue(row);
+    assert.deepEqual(measured, ["A", "Wide", "B", "C", "D", "E"]);
+    assert.equal(clears, 1);
+    assert.equal(w.document.getElementById("testFont").textContent, "");
+    assert.equal(
+        parseFloat(w.document.getElementById("ik0").style.width),
+        98 / 3,
+        "the widest label determines three columns"
+    );
+    key(w.keys.DOWN);
+    assert.equal(w.listDetailElement.textContent, "C");
+    key(w.keys.ENTER);
+    assert.equal(
+        row.val,
+        4,
+        "vertical movement retains the filtered value map"
+    );
+});
+for (const width of [0, undefined]) {
+    test(
+        "settings grid retains six-column fallback for width " + width,
+        ({ w }) => {
+            w.settings = { pageSize: 25 };
+            w.getViewportHeightScale = () => 1;
+            w._curVal = 0;
+            w.showPage();
+            const originalWidth = w.$.fn.width;
+            w.$.fn.width = function () {
+                if (this[0]?.id === "listAbout") return 1000;
+                if (!this.length) return width;
+                return originalWidth.apply(this, arguments);
+            };
+            w.selectValue({ name: "Fixture", val: 0, values: ["A", "B"] });
+            assert.equal(
+                parseFloat(w.document.getElementById("ik0").style.width),
+                98 / 6
+            );
+        }
+    );
+}
 test("color picker old callback cannot commit to a new settings draft", ({
     w,
 }) => {
