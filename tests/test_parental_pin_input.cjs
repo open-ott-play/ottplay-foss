@@ -52,12 +52,17 @@ function functions(file, names) {
 const code = bundle
     ? functions("dist/player.js", [
           "_enterPinCode",
+          "cancelNativeListInertia",
           "dispatchKey",
           "keyHandler",
           "stbEventToKeyCode",
       ])
     : functions("src/channels/index.ts", ["_enterPinCode"]) +
-      functions("src/key-handler/index.ts", ["dispatchKey", "keyHandler"]) +
+      functions("src/key-handler/index.ts", [
+          "cancelNativeListInertia",
+          "dispatchKey",
+          "keyHandler",
+      ]) +
       functions("src/core/index.ts", ["stbEventToKeyCode"]);
 const adapters = {};
 for (const name of [
@@ -120,6 +125,7 @@ for (const [adapter, keys] of Object.entries(adapters)) {
                 : originalIs.call(this, selector);
         };
         w.keys = keys;
+        w.nativeListInertia = null;
         w.eval(code);
         w._doKey = w.dispatchKey;
         w.addEventListener("keydown", w.keyHandler);
