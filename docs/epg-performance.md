@@ -6,6 +6,11 @@ XML event and programme through Kotlin/JS running inside QuickJS. Parsing and
 decompression remain on a blocking worker; request workers keep serving the
 published immutable guide snapshot.
 
+The startup placeholder creates its empty matching index only if an early request
+needs it, on the existing blocking worker. Every fetched snapshot, including an
+empty feed, still builds its complete index before publication and the `Loaded`
+message. Each snapshot owns its index so in-flight readers retain their generation.
+
 ## Scope and ownership
 
 `src-rs/core/src/xmltv/server_records.rs` is an explicit server-profile compatibility

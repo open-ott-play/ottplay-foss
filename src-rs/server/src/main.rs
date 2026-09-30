@@ -17,7 +17,7 @@ use axum::{
 };
 use chrono::Utc;
 use clap::Parser;
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::ServerConfig;
 use rustls_pemfile::certs as pemfile_certs;
@@ -42,19 +42,35 @@ use ottplay_core::xmltv::{self, XmltvCache};
 // while a refresh builds the next generation outside the request/runtime locks.
 struct EpgSnapshot {
     cache: XmltvCache,
-    index: xmltv::MatchIndex,
+    index: OnceCell<xmltv::MatchIndex>,
 }
 
 impl EpgSnapshot {
     fn new(cache: XmltvCache) -> anyhow::Result<Self> {
         let index = xmltv::build_http_match_index(&cache.channels)?;
-        Ok(Self { cache, index })
+        Ok(Self {
+            cache,
+            index: OnceCell::with_value(index),
+        })
+    }
+
+    fn initial() -> Self {
+        Self {
+            cache: XmltvCache::default(),
+            index: OnceCell::new(),
+        }
+    }
+
+    fn index(&self) -> anyhow::Result<&xmltv::MatchIndex> {
+        // Only the initial placeholder defers construction; fetched snapshots
+        // are fully indexed before publication, even when their guide is empty.
+        self.index
+            .get_or_try_init(|| xmltv::build_http_match_index(&self.cache.channels))
     }
 }
 
 static EPG_CACHE: Lazy<Arc<RwLock<Arc<EpgSnapshot>>>> = Lazy::new(|| {
-    let empty = EpgSnapshot::new(XmltvCache::default()).expect("initialize empty EPG index");
-    Arc::new(RwLock::new(Arc::new(empty)))
+    Arc::new(RwLock::new(Arc::new(EpgSnapshot::initial())))
 });
 
 static EPG_TO_XMLTV: Lazy<Arc<RwLock<HashMap<String, String>>>> =
@@ -854,7 +870,7 @@ async fn epg_handler(
     let snapshot = EPG_CACHE.read().await.clone();
     let matched = if let Some(ch) = params.ch {
         let snapshot = snapshot.clone();
-        tokio::task::spawn_blocking(move || xmltv::match_in_index(&ch, &snapshot.index))
+        tokio::task::spawn_blocking(move || xmltv::match_in_index(&ch, snapshot.index()?))
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
@@ -884,7 +900,7 @@ async fn epg_handler(
     let result = tokio::task::spawn_blocking(move || {
         ottplay_core::get_epg_slice_with_index(
             &snapshot.cache,
-            &snapshot.index,
+            snapshot.index()?,
             &hash,
             &channel_id,
             time_shift,
@@ -919,13 +935,15 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
         let result = tokio::task::spawn_blocking(move || {
             let mut epg_to_xmltv = std::collections::HashMap::new();
             let mut time_shift_by_epg = std::collections::HashMap::new();
-            let text = ottplay_core::m3u::match_channels_text_with_index(
-                &body_owned,
-                &snapshot.cache.channels,
-                &snapshot.index,
-                &mut epg_to_xmltv,
-                &mut time_shift_by_epg,
-            );
+            let text = snapshot.index().and_then(|index| {
+                ottplay_core::m3u::match_channels_text_with_index(
+                    &body_owned,
+                    &snapshot.cache.channels,
+                    index,
+                    &mut epg_to_xmltv,
+                    &mut time_shift_by_epg,
+                )
+            });
             (text, epg_to_xmltv, time_shift_by_epg)
         })
         .await;
@@ -965,13 +983,15 @@ async fn match_channels_handler(body: Bytes) -> impl IntoResponse {
             let result = tokio::task::spawn_blocking(move || {
                 let mut epg_to_xmltv = std::collections::HashMap::new();
                 let mut time_shift_by_epg = std::collections::HashMap::new();
-                let results = ottplay_core::m3u::match_channels_with_index(
-                    channels,
-                    &snapshot.cache.channels,
-                    &snapshot.index,
-                    &mut epg_to_xmltv,
-                    &mut time_shift_by_epg,
-                );
+                let results = snapshot.index().and_then(|index| {
+                    ottplay_core::m3u::match_channels_with_index(
+                        channels,
+                        &snapshot.cache.channels,
+                        index,
+                        &mut epg_to_xmltv,
+                        &mut time_shift_by_epg,
+                    )
+                });
                 (results, epg_to_xmltv, time_shift_by_epg)
             })
             .await;
@@ -1006,7 +1026,7 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
             ottplay_core::m3u::match_logos_text_with_index(
                 &body_owned,
                 &snapshot.cache.channels,
-                &snapshot.index,
+                snapshot.index()?,
             )
         })
         .await;
@@ -1040,7 +1060,7 @@ async fn match_logos_handler(body: Bytes) -> impl IntoResponse {
                 ottplay_core::m3u::match_logos_with_index(
                     channels,
                     &snapshot.cache.channels,
-                    &snapshot.index,
+                    snapshot.index()?,
                 )
             })
             .await;
@@ -1627,6 +1647,108 @@ mod device_entry_tests {
 mod epg_snapshot_tests {
     use super::*;
 
+    #[test]
+    fn only_initial_placeholder_defers_index_construction() -> anyhow::Result<()> {
+        assert!(EpgSnapshot::initial().index.get().is_none());
+        assert!(EpgSnapshot::new(XmltvCache::default())?
+            .index
+            .get()
+            .is_some());
+        assert!(snapshot("news", "Schedule")?.index.get().is_some());
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn early_requests_preserve_protocols_and_registrations_across_refresh(
+    ) -> anyhow::Result<()> {
+        async fn body(response: impl IntoResponse) -> anyhow::Result<String> {
+            let response = response.into_response();
+            anyhow::ensure!(response.status() == StatusCode::OK);
+            let bytes = axum::body::to_bytes(response.into_body(), 4096).await?;
+            Ok(String::from_utf8(bytes.to_vec())?)
+        }
+        let initial = Arc::new(EpgSnapshot::initial());
+        let previous = std::mem::replace(&mut *EPG_CACHE.write().await, initial.clone());
+        let registered = HashMap::from([("keep".into(), "previous".into())]);
+        let shifts = HashMap::from([("keep".into(), 7)]);
+        let previous_map = std::mem::replace(&mut *EPG_TO_XMLTV.write().await, registered.clone());
+        let previous_shifts =
+            std::mem::replace(&mut *TIME_SHIFT_BY_EPG.write().await, shifts.clone());
+
+        // Concurrent early requests share the placeholder while running both
+        // matching and slicing on their existing blocking workers.
+        let mut readers = JoinSet::new();
+        for _ in 0..8 {
+            readers.spawn(async {
+                body(
+                    epg_handler(
+                        Path("keep.json".into()),
+                        Query(EpgParams {
+                            ch: Some("News +2".into()),
+                            ts: None,
+                            hours: Some(168),
+                        }),
+                    )
+                    .await,
+                )
+                .await
+            });
+        }
+        while let Some(result) = readers.join_next().await {
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&result??)?,
+                serde_json::json!({"epg_data": []})
+            );
+        }
+        assert!(initial.index.get().is_some());
+        let json = r#"[{"id":"one","name":"News +2"}]"#;
+        let text = "{}\n\t\n{}\n\t\none-a-b-0~News%20%2B2\ntwo-a-b-known~Unknown%20%2B3\nbad";
+        assert_eq!(
+            body(match_channels_handler(Bytes::from_static(text.as_bytes())).await).await?,
+            "{}\n\t\none~local~one\ntwo~local~known\n\t\nlocal~/"
+        );
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(
+                &body(match_channels_handler(Bytes::from_static(json.as_bytes())).await).await?
+            )?,
+            serde_json::json!([{"id": "one", "score": 0.0}])
+        );
+        assert_eq!(
+            body(match_logos_handler(Bytes::from_static(text.as_bytes())).await).await?,
+            "{}\n\t\none~/logo/one.svg?ch=News%20%2B2\ntwo~/logo/two.svg?ch=Unknown%20%2B3"
+        );
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(
+                &body(match_logos_handler(Bytes::from_static(json.as_bytes())).await).await?
+            )?,
+            serde_json::json!([{"id": "one", "logo_url": "/logo/one.svg?ch=News%20%2B2"}])
+        );
+        assert_eq!(*EPG_TO_XMLTV.read().await, registered);
+        assert_eq!(*TIME_SHIFT_BY_EPG.read().await, shifts);
+
+        refresh_epg_snapshot(&EPG_CACHE, || snapshot("new", "New schedule")).await?;
+        assert!(EPG_CACHE.read().await.index.get().is_some());
+        let matched: serde_json::Value = serde_json::from_str(
+            &body(match_channels_handler(Bytes::from_static(json.as_bytes())).await).await?,
+        )?;
+        let hash = matched[0]["epg_id"].as_str().unwrap();
+        assert_eq!(EPG_TO_XMLTV.read().await[hash], "new");
+        assert_eq!(TIME_SHIFT_BY_EPG.read().await[hash], 2);
+        assert_eq!(EPG_TO_XMLTV.read().await["keep"], "previous");
+        assert_eq!(TIME_SHIFT_BY_EPG.read().await["keep"], 7);
+        tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+            assert!(xmltv::match_in_index("News", initial.index()?)?.is_none());
+            assert!(initial.cache.programs.is_empty());
+            Ok(())
+        })
+        .await??;
+
+        *EPG_CACHE.write().await = previous;
+        *EPG_TO_XMLTV.write().await = previous_map;
+        *TIME_SHIFT_BY_EPG.write().await = previous_shifts;
+        Ok(())
+    }
+
     fn snapshot(id: &str, title: &str) -> anyhow::Result<EpgSnapshot> {
         let cache = XmltvCache {
             channels: HashMap::from([(
@@ -1662,7 +1784,7 @@ mod epg_snapshot_tests {
         ] {
             // A request can finish on another worker after the refresh has swapped.
             std::thread::spawn(move || {
-                let (id, _) = xmltv::match_in_index("News HD", &snapshot.index)
+                let (id, _) = xmltv::match_in_index("News HD", snapshot.index().unwrap())
                     .unwrap()
                     .unwrap();
                 assert_eq!(id, expected_id);
@@ -1691,7 +1813,7 @@ mod epg_snapshot_tests {
         );
         assert!(Arc::ptr_eq(&*cache.read().await, &previous));
         assert_eq!(
-            xmltv::match_in_index("News", &previous.index)?.unwrap().0,
+            xmltv::match_in_index("News", previous.index()?)?.unwrap().0,
             "old"
         );
         Ok(())
@@ -1719,7 +1841,7 @@ mod epg_snapshot_tests {
                 let snapshot = cache.read().await.clone();
                 tokio::task::spawn_blocking(move || {
                     for _ in 0..20 {
-                        let (id, _) = xmltv::match_in_index("News HD", &snapshot.index)?.unwrap();
+                        let (id, _) = xmltv::match_in_index("News HD", snapshot.index()?)?.unwrap();
                         anyhow::ensure!(id == "old");
                         anyhow::ensure!(snapshot.cache.programs[&id][0].title == "Old schedule");
                     }
@@ -1741,7 +1863,7 @@ mod epg_snapshot_tests {
         refresh.await??;
         let refreshed = cache.read().await.clone();
         assert_eq!(
-            xmltv::match_in_index("News", &refreshed.index)?.unwrap().0,
+            xmltv::match_in_index("News", refreshed.index()?)?.unwrap().0,
             "new"
         );
         Ok(())
