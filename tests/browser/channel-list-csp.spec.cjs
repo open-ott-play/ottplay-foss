@@ -299,6 +299,10 @@ async function fixturePage(browser, profile, initialSettings, language) {
 
 async function listTouchFixture(browser, native = true) {
     const fixture = await fixturePage(browser, "server");
+    // Gesture timings must be deliberate: IPC latency is not finger velocity.
+    const clockStart = Date.now();
+    await fixture.page.clock.install({ time: clockStart });
+    await fixture.page.clock.pauseAt(clockStart + 1000);
     await fixture.page.evaluate((native) => {
         if (native) window.Capacitor = {};
         window.__touchClicks = [];
@@ -369,6 +373,74 @@ async function listTouchFixture(browser, native = true) {
         };
     }, native);
     return fixture;
+}
+
+for (const direction of [-1, 1]) {
+    test(`native fast flick coasts across several pages (${direction})`, async ({
+        browser,
+    }) => {
+        const fixture = await listTouchFixture(browser);
+        const page = fixture.page;
+        try {
+            await page.evaluate(() => {
+                for (let number = 41; number <= 500; number++) {
+                    const id = "fixture" + number;
+                    cats.Fixture.push(id);
+                    channels[id] = {
+                        channel_name: "Fixture channel " + number,
+                        rec: 0,
+                    };
+                }
+                _channelsList(0, 250);
+                window.__touchBegin(250);
+            });
+            for (const rows of [5.25, 10.25]) {
+                await page.clock.runFor(30);
+                await page.evaluate(
+                    (rows) => window.__touchSend("touchmove", rows),
+                    rows * direction
+                );
+            }
+            const release = await page.evaluate((direction) => {
+                window.__touchSend("touchend", 10.25 * direction);
+                return {
+                    index: window.selIndex,
+                    pageSize: window.listPageSize,
+                };
+            }, direction);
+            expect(release.index).toBe(250 - 10 * direction);
+            await page.clock.runFor(1600);
+            const end = await page.evaluate(() => window.selIndex);
+            expect((release.index - end) * direction).toBeGreaterThanOrEqual(
+                release.pageSize * 2
+            );
+            await expect(page.locator("#it" + end)).toBeVisible();
+            expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
+            expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+
+            // A slow drag keeps its exact finger distance, without a tail.
+            await page.evaluate(() => window.__touchBegin(window.selIndex));
+            for (let step = 1; step <= 8; step++) {
+                await page.clock.runFor(100);
+                await page.evaluate(
+                    (rows) => window.__touchSend("touchmove", rows),
+                    (step * direction) / 2
+                );
+            }
+            await page.evaluate(
+                (rows) => window.__touchSend("touchend", rows),
+                4.25 * direction
+            );
+            const slow = await page.evaluate(() => window.selIndex);
+            expect(slow).toBe(end - 4 * direction);
+            await page.clock.runFor(1600);
+            expect(await page.evaluate(() => window.selIndex)).toBe(slow);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
 }
 
 test("native list swipe continues across replaced pages and clamps both ends", async ({

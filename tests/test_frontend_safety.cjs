@@ -114,6 +114,7 @@ function fixture() {
         listCaptionElement: w.document.getElementById("listCaption"),
         listDetail: w.document.getElementById("listDetail"),
         listFooterElement: w.document.getElementById("listPodval"),
+        nativeListInertia: null,
         renderButtonHint: (key, s, label) =>
             '<span data-key="' + key + '">' + label + "</span>",
         restoreListPanelState() {},
@@ -372,6 +373,7 @@ test("buttons help closes with Back and existing RETURN, while native cloud save
     try {
         w.eval(
             func("src/index.ts", "buttonsInfo") +
+                func("src/key-handler/index.ts", "cancelNativeListInertia") +
                 func("src/key-handler/index.ts", "keyHandler") +
                 cloudSource(bundleAst)
         );
