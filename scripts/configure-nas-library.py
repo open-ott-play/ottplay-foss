@@ -84,6 +84,7 @@ def main():
         subprocess.run(["launchctl", "bootstrap", domain, str(args.plist)], check=True)
     print("NAS configuration saved; existing listeners and service options preserved.")
     print("Private connection links: " + str(args.connections))
+    print("macOS may ask to allow ottplay-server to access devices on the local network.")
     if not args.restart:
         print("Restart the player service after deploying the NAS-capable binary.")
 

@@ -46,6 +46,15 @@ links. It makes no changes to Plex or the NAS files. Alternatively pass
 player and server before restarting the service. `--restart` explicitly restarts
 an already updated service.
 
+On macOS, the first connection made by the launchd service can display
+**Allow “ottplay-server” to find devices on local networks?** The user must allow
+that system request before the background service can contact Synology. A
+successful shell or staging test does not imply this permission has been granted
+to the installed service. If `/nas/config` works but `/nas/api` reports Plex
+unavailable, verify this permission and repeat the live smoke on the installed
+ports. The setup script does not change macOS privacy databases or global
+firewall settings.
+
 Client links are saved in `~/.config/ottplay/nas-library.json`, outside the web
 root. The file contains an access key and must be kept private. Re-running the
 configuration command preserves the key. To revoke existing client links,
