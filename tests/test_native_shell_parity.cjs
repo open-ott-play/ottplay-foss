@@ -29,10 +29,12 @@ function functions(file, names) {
 
 const touchCode = functions("src/key-handler/index.ts", [
     "capacitorOnly",
+    "cancelNativeListInertia",
     "isNativeTouchEditor",
     "resetNativeListTouch",
     "forwardNativeListTouch",
     "startNativeListTouch",
+    "startNativeListInertia",
     "moveNativeListTouch",
     "updateTouchPosition",
     "handleTouchCancel",
@@ -41,19 +43,61 @@ const touchCode = functions("src/key-handler/index.ts", [
     "body_handleTouchEnd",
     "checkTap",
     "getDirection",
+    "keyHandler",
 ]);
 
 function touchFixture(platform) {
     const calls = [];
+    let now = 1000;
+    let frameId = 0;
+    const frames = new Map();
+    const clock = {
+        advance(milliseconds) {
+            now += milliseconds;
+        },
+        frame(milliseconds = 1000 / 60) {
+            now += milliseconds;
+            const pending = [...frames.entries()];
+            for (const [id, callback] of pending) {
+                if (!frames.delete(id)) continue;
+                callback(now);
+            }
+        },
+        get now() {
+            return now;
+        },
+        get pending() {
+            return frames.size;
+        },
+        settle(milliseconds = 1000 / 60) {
+            let count = 0;
+            while (frames.size && count++ < 1000) this.frame(milliseconds);
+            assert.equal(frames.size, 0, "list inertia must settle");
+        },
+    };
     const w = {
         _doKey: (key) => calls.push(["key", key]),
         alert: () => {},
+        cancelAnimationFrame: (id) => frames.delete(id),
+        Date: class extends Date {
+            static now() {
+                return now;
+            }
+        },
         document: { getElementById: () => null },
         keys: { DOWN: 40, ENTER: 13, LEFT: 37, RIGHT: 39, SETUP: 192, UP: 38 },
         MouseEvent: function (type, options) {
             Object.assign(this, { type }, options);
         },
+        nativeListFrame: 0,
+        nativeListInertia: null,
         nativeListTouch: null,
+        performance: { now: () => now },
+        requestAnimationFrame(callback) {
+            frames.set(++frameId, callback);
+            return frameId;
+        },
+        stbEventToKeyCode: (event) => event.keyCode,
         tCount: undefined,
         touch_locked: false,
         touch_min_sensX: 60,
@@ -72,8 +116,458 @@ function touchFixture(platform) {
     vm.createContext(w);
     require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(touchCode, w);
-    return { calls, w };
+    return { calls, clock, w };
 }
+
+function nativeListFixture({ index = 100, length = 1000 } = {}) {
+    const fixture = touchFixture("capacitor");
+    const { calls, clock, w } = fixture;
+    const dom = new JSDOM('<!doctype html><div id="listIn"></div>', {
+        pretendToBeVisual: true,
+    });
+    w.document = dom.window.document;
+    w.MouseEvent = function (type, options) {
+        return new dom.window.MouseEvent(type, {
+            ...options,
+            view: dom.window,
+        });
+    };
+    const list = w.document.getElementById("listIn");
+    w.__ottListRowH = 44;
+    w.listPageSize = 8;
+    w.listArray = Array.from({ length }, (_, id) => ({ id }));
+    w.listDataArray = w.listArray;
+    w.selIndex = index;
+    w.isListVisible = true;
+    w.__ottClassicScreenPort.commitList();
+    let page = -1;
+    function render() {
+        const nextPage = Math.floor(w.selIndex / w.listPageSize);
+        if (page === nextPage) return;
+        page = nextPage;
+        list.innerHTML = "";
+        for (
+            let id = page * w.listPageSize;
+            id < Math.min(length, (page + 1) * w.listPageSize);
+            id++
+        ) {
+            const row = w.document.createElement("div");
+            row.id = "it" + id;
+            row.addEventListener("click", () => {
+                calls.push(["click", id]);
+                calls.push(["play", id]);
+            });
+            list.appendChild(row);
+        }
+    }
+    w.changeSelect = (steps) => {
+        assert.ok(Number.isInteger(steps), "selection moves by whole rows");
+        const next = w.selIndex + steps;
+        assert.ok(
+            next >= 0 && next < length,
+            "selection never wraps at bounds"
+        );
+        calls.push(["select", steps, next]);
+        w.selIndex = next;
+        render();
+    };
+    render();
+    for (const [type, callback] of [
+        ["touchstart", w.handleTouchStart],
+        ["touchmove", w.handleTouchMove],
+        ["touchend", w.body_handleTouchEnd],
+        ["touchcancel", w.handleTouchCancel],
+    ])
+        w.document.body.addEventListener(type, callback);
+    let target;
+    function send(type, { rows = 0, dx = 0, dt = 0, fingers = 1 } = {}) {
+        clock.advance(dt);
+        const touch = {
+            clientX: 100 + dx,
+            clientY: 500 + rows * w.__ottListRowH,
+            identifier: 7,
+            screenX: 100 + dx,
+            screenY: 500 + rows * w.__ottListRowH,
+            target,
+        };
+        const touches = Array.from({ length: fingers }, (_, finger) => ({
+            ...touch,
+            identifier: touch.identifier + finger,
+        }));
+        const event = new dom.window.Event(type, {
+            bubbles: true,
+            cancelable: true,
+        });
+        Object.defineProperties(event, {
+            changedTouches: { value: touches },
+            touches: {
+                value:
+                    type === "touchend" || type === "touchcancel"
+                        ? []
+                        : touches,
+            },
+        });
+        target.dispatchEvent(event);
+        return event;
+    }
+    return {
+        ...fixture,
+        begin(options) {
+            target = w.document.getElementById("it" + w.selIndex);
+            assert.ok(target, "gesture begins on a mounted row");
+            return send("touchstart", options);
+        },
+        close() {
+            w.handleTouchCancel();
+            dom.window.close();
+        },
+        flick(direction = -1) {
+            this.begin();
+            send("touchmove", { dt: 40, rows: 2 * direction });
+            send("touchmove", { dt: 40, rows: 4 * direction });
+            send("touchend", { rows: 4 * direction });
+        },
+        send,
+        get target() {
+            return target;
+        },
+    };
+}
+
+function assertListDidNotActivate(fixture, label) {
+    assert.deepEqual(
+        fixture.calls.filter(([type]) => type !== "select"),
+        [],
+        label + " cannot click, play, or dispatch an unrelated key"
+    );
+}
+
+// Drive the actual touch handlers, screen owners and detached-row listeners
+// with a controllable animation clock, without browser timing variability.
+for (const direction of [-1, 1]) {
+    const fixture = nativeListFixture();
+    try {
+        fixture.flick(direction);
+        const released = fixture.w.selIndex;
+        assert.equal(released, 100 - 4 * direction, "finger tracks four rows");
+        assert.ok(fixture.clock.pending, "fast release starts inertia");
+        fixture.clock.settle();
+        assert.ok(
+            (released - fixture.w.selIndex) * direction >=
+                fixture.w.listPageSize * 2,
+            "a fast flick coasts at least two further visible pages"
+        );
+        assertListDidNotActivate(fixture, "fast flick");
+    } finally {
+        fixture.close();
+    }
+}
+
+{
+    const fixture = nativeListFixture();
+    try {
+        fixture.begin();
+        fixture.send("touchend", { dt: 80, rows: -4 });
+        assert.equal(
+            fixture.w.selIndex,
+            104,
+            "coalesced touchend preserves the final four-row movement"
+        );
+        fixture.clock.settle();
+        assert.ok(fixture.w.selIndex > 104, "coalesced fast release can coast");
+        assertListDidNotActivate(fixture, "coalesced flick");
+    } finally {
+        fixture.close();
+    }
+}
+
+{
+    const fixture = nativeListFixture();
+    try {
+        fixture.begin();
+        for (const rows of [-0.4, -0.8, -1.2, -1.6, -2, -2.4])
+            fixture.send("touchmove", { dt: 100, rows });
+        fixture.send("touchend", { rows: -2.4 });
+        assert.equal(
+            fixture.w.selIndex,
+            102,
+            "slow drag retains row precision"
+        );
+        assert.equal(fixture.clock.pending, 0, "slow release has no inertia");
+        assertListDidNotActivate(fixture, "slow drag");
+    } finally {
+        fixture.close();
+    }
+}
+
+{
+    const fixture = nativeListFixture();
+    try {
+        fixture.begin();
+        fixture.send("touchmove", { rows: -2 });
+        fixture.send("touchend", { rows: -4 });
+        assert.equal(
+            fixture.w.selIndex,
+            104,
+            "same-timestamp drag still tracks"
+        );
+        assert.equal(
+            fixture.clock.pending,
+            0,
+            "zero elapsed time cannot manufacture a fling velocity"
+        );
+        assertListDidNotActivate(fixture, "same-timestamp drag");
+    } finally {
+        fixture.close();
+    }
+}
+
+const settledIndexes = [];
+for (const frameDuration of [1000 / 120, 1000 / 60, 1000 / 30, 100]) {
+    const fixture = nativeListFixture();
+    try {
+        fixture.flick();
+        let frames = 0;
+        while (fixture.clock.pending && frames++ < 1000) {
+            const before = fixture.calls.length;
+            fixture.clock.frame(frameDuration);
+            assert.ok(
+                fixture.calls.length - before <= 1,
+                "one animation frame renders at most one selection change"
+            );
+        }
+        assert.equal(fixture.clock.pending, 0, "all refresh rates settle");
+        settledIndexes.push(fixture.w.selIndex);
+        assertListDidNotActivate(fixture, "frame-rate-independent flick");
+    } finally {
+        fixture.close();
+    }
+}
+assert.ok(
+    Math.max(...settledIndexes) - Math.min(...settledIndexes) <= 1,
+    "coast distance stays within one row at 120Hz, 60Hz, 30Hz and delayed frames"
+);
+
+for (const pause of [0, 200]) {
+    const fixture = nativeListFixture();
+    try {
+        fixture.begin();
+        fixture.send("touchmove", { dt: 40, rows: -3 });
+        fixture.send("touchmove", { dt: 30, rows: -2 });
+        fixture.send("touchmove", { dt: 30, rows: -1 });
+        fixture.send("touchend", { dt: pause, rows: -1 });
+        const released = fixture.w.selIndex;
+        fixture.clock.settle();
+        if (pause) {
+            assert.equal(
+                fixture.w.selIndex,
+                released,
+                "holding still before release discards earlier speed"
+            );
+        } else {
+            assert.ok(
+                fixture.w.selIndex < released,
+                "coast follows the final direction after reversal"
+            );
+        }
+        assertListDidNotActivate(fixture, "reversed drag");
+    } finally {
+        fixture.close();
+    }
+}
+
+for (const [name, interrupt] of [
+    ["touch cancellation", (fixture) => fixture.w.handleTouchCancel()],
+    ["new touch", (fixture) => fixture.begin()],
+    ["remote key", (fixture) => fixture.w.keyHandler({ keyCode: 40 })],
+    ["hidden list", (fixture) => (fixture.w.isListVisible = false)],
+    [
+        "covered owner",
+        (fixture) =>
+            fixture.w.__ottClassicScreenPort.openOverlay("dialog", () => {}),
+    ],
+    [
+        "replaced owner",
+        (fixture) => {
+            fixture.w.listKeyHandler = () => {};
+            fixture.w.__ottClassicScreenPort.commitList();
+        },
+    ],
+    [
+        "replaced rows",
+        (fixture) => {
+            fixture.w.listDataArray = fixture.w.listDataArray.slice();
+        },
+    ],
+    [
+        "background document",
+        (fixture) =>
+            Object.defineProperty(fixture.w.document, "hidden", {
+                value: true,
+            }),
+    ],
+    ["external selection", (fixture) => fixture.w.changeSelect(1)],
+    ["suspended animation", (fixture) => fixture.clock.frame(1000)],
+    ["reversed animation clock", (fixture) => fixture.clock.advance(-100)],
+]) {
+    const fixture = nativeListFixture();
+    try {
+        fixture.flick();
+        fixture.clock.frame();
+        assert.ok(fixture.clock.pending, name + " interrupts an active coast");
+        interrupt(fixture);
+        const stopped = fixture.w.selIndex;
+        fixture.clock.settle();
+        assert.equal(
+            fixture.w.selIndex,
+            stopped,
+            name + " stops later movement"
+        );
+        assertListDidNotActivate(fixture, name);
+    } finally {
+        fixture.close();
+    }
+}
+
+for (const [index, direction, expected] of [
+    [10, -1, 19],
+    [9, 1, 0],
+]) {
+    const fixture = nativeListFixture({ index, length: 20 });
+    try {
+        fixture.flick(direction);
+        fixture.clock.settle();
+        assert.equal(fixture.w.selIndex, expected, "coast clamps at list end");
+        assert.equal(fixture.clock.pending, 0, "bound clears animation work");
+        assertListDidNotActivate(fixture, "boundary flick");
+    } finally {
+        fixture.close();
+    }
+}
+
+// Rendering can synchronously retire an owner or begin a newer interaction.
+// The frame that caused that render must not schedule work or stop its successor.
+for (const scenario of [
+    { name: "cancelled during render", replace: false },
+    { name: "replaced during render", replace: true },
+    {
+        index: 14,
+        length: 20,
+        name: "replaced while reaching a bound",
+        replace: true,
+    },
+]) {
+    const fixture = nativeListFixture(scenario);
+    try {
+        fixture.flick();
+        const changeSelect = fixture.w.changeSelect;
+        let interrupted = false;
+        fixture.w.changeSelect = (steps) => {
+            fixture.w.changeSelect = changeSelect;
+            changeSelect(steps);
+            interrupted = true;
+            if (scenario.replace) fixture.flick(1);
+            else fixture.w.handleTouchCancel();
+        };
+        fixture.clock.frame(40);
+        assert.equal(interrupted, true, scenario.name + " runs inside render");
+        const released = fixture.w.selIndex;
+        assert.equal(
+            fixture.clock.pending,
+            scenario.replace ? 1 : 0,
+            scenario.name + " leaves only the current interaction scheduled"
+        );
+        if (scenario.replace) {
+            fixture.clock.frame(40);
+            assert.ok(
+                fixture.w.selIndex < released,
+                scenario.name + " keeps the replacement flick moving"
+            );
+            fixture.w.handleTouchCancel();
+            assert.equal(
+                fixture.clock.pending,
+                0,
+                scenario.name +
+                    " retains the replacement frame for cancellation"
+            );
+        }
+        const stopped = fixture.w.selIndex;
+        fixture.clock.settle();
+        assert.equal(
+            fixture.w.selIndex,
+            stopped,
+            scenario.name + " stays stopped"
+        );
+        assertListDidNotActivate(fixture, scenario.name);
+    } finally {
+        fixture.close();
+    }
+}
+
+{
+    const fixture = nativeListFixture({ index: 103 });
+    try {
+        fixture.begin();
+        const originalTarget = fixture.target;
+        fixture.send("touchmove", { dt: 40, rows: -2 });
+        assert.equal(originalTarget.isConnected, false, "paging detaches row");
+        fixture.send("touchmove", { dt: 40, rows: -4 });
+        fixture.send("touchend", { rows: -4 });
+        assert.equal(
+            fixture.w.selIndex,
+            107,
+            "detached row forwards final move"
+        );
+        fixture.clock.frame(40);
+        assert.ok(
+            fixture.w.selIndex > 107,
+            "detached row release starts coast"
+        );
+        assert.equal(
+            fixture.send("touchmove", { rows: -10 }).defaultPrevented,
+            false,
+            "completed gesture releases detached row listeners"
+        );
+        assertListDidNotActivate(fixture, "detached row flick");
+
+        fixture.begin();
+        const tappedIndex = fixture.w.selIndex;
+        fixture.send("touchend");
+        fixture.clock.settle();
+        assert.equal(fixture.w.selIndex, tappedIndex, "new tap brakes coast");
+        assert.deepEqual(
+            fixture.calls.filter(([type]) => type !== "select"),
+            [
+                ["click", tappedIndex],
+                ["play", tappedIndex],
+            ],
+            "stationary tap after flick still activates exactly once"
+        );
+    } finally {
+        fixture.close();
+    }
+}
+
+{
+    const fixture = nativeListFixture();
+    try {
+        fixture.begin();
+        fixture.send("touchmove", { dt: 20, dx: 120, rows: -0.5 });
+        fixture.send("touchend", { dx: 120, rows: -5 });
+        assert.equal(fixture.clock.pending, 0, "horizontal lock cannot fling");
+        assert.equal(
+            fixture.w.selIndex,
+            100,
+            "horizontal gesture does not drag"
+        );
+        assert.deepEqual(fixture.calls, [["key", fixture.w.keys.RIGHT]]);
+    } finally {
+        fixture.close();
+    }
+}
+console.log(
+    "OK: native list flick distance, row precision, timing, bounds and cancellation"
+);
 
 // Same target and coordinates must reach the same click path in every shell,
 // regardless of the previously highlighted menu/channel item.
@@ -427,6 +921,7 @@ console.log(
 // device keymap and actual TS dispatch chain. No OS or native player is mocked
 // as successful by these assertions.
 const dispatch = functions("src/key-handler/index.ts", [
+    "cancelNativeListInertia",
     "dispatchKey",
     "keyHandler",
     "handleMainKey",
@@ -487,6 +982,8 @@ for (const platform of Object.keys(nativeSources)) {
             isEditMode: false,
             isSelectBox: false,
             keyFun: (v) => calls.push(v),
+            nativeListFrame: 0,
+            nativeListInertia: null,
             settings: { nextFun: 13, prevFun: 14 },
             stbContinue: () => calls.push("continue"),
             stbEventToKeyCode: (e) => e.keyCode,

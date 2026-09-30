@@ -84,7 +84,11 @@ const modules = {
     ],
     "src/core/index.ts": ["stbEventToKeyCode"],
     "src/index.ts": ["_playChannel"],
-    "src/key-handler/index.ts": ["dispatchKey", "keyHandler"],
+    "src/key-handler/index.ts": [
+        "cancelNativeListInertia",
+        "dispatchKey",
+        "keyHandler",
+    ],
     "src/localization/index.ts": ["translate"],
     "src/ui/index.ts": ["confirmBox"],
     "src/utils/helpers.ts": ["metadataText"],
@@ -179,6 +183,7 @@ function fixture({
         loadEpgTimers() {},
         loadFavoritesLists() {},
         medHistory: [],
+        nativeListInertia: null,
         p_pref: "test-provider",
         // Synthetic fixture secret only; no persisted/user settings are accessed.
         parentPIN: "2468",

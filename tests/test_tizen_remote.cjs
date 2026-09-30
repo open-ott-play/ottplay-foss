@@ -45,6 +45,7 @@ let handlers =
     source("src/localization/assets.ts") +
     source("src/core/index.ts", ["stbEventToKeyCode"]) +
     source("src/key-handler/index.ts", [
+        "cancelNativeListInertia",
         "keyHandler",
         "handleMainKey",
         "toggleMainPlayback",
@@ -89,6 +90,7 @@ if (useBundle) {
         visit(declaration.body || declaration);
     }
     for (const name of [
+        "cancelNativeListInertia",
         "keyHandler",
         "handleMainKey",
         "toggleMainPlayback",
@@ -181,6 +183,7 @@ function fixture(code, nativeMode = "working") {
             if (!provider) w.firstRun();
         },
         loadSettings() {},
+        nativeListInertia: null,
         nofun() {},
         optionsList: () => calls.push("settings"),
         playType: 0,

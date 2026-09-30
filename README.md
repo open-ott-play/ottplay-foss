@@ -105,7 +105,9 @@ remote-control consent and JSON import/export continue to use the shared fronten
 Tablet multitasking can override the requested orientation.
 
 On iPhone, swipe vertically over the channel list to move through its rows and
-pages; swipe up for later channels and down for earlier ones. A single tap starts
+pages; swipe up for later channels and down for earlier ones. A quick flick
+continues across several pages and slows to a stop; a slow drag stays precise.
+Touch the screen or press a navigation key to stop the motion. A single tap starts
 the channel under your finger, even when another row is selected. A swipe never
 opens the channel when you lift your finger.
 

@@ -45,7 +45,11 @@ const typedCore = compile("src/core/index.ts");
 const typedHandlers = compile("src/key-handler/index.ts");
 const sourceHandlers =
     declarations(typedCore, ["stbEventToKeyCode"], "source") +
-    declarations(typedHandlers, ["keyHandler"], "source");
+    declarations(
+        typedHandlers,
+        ["cancelNativeListInertia", "keyHandler"],
+        "source"
+    );
 const cases = [
     { core: typedCore, handlers: sourceHandlers, name: "source" },
     {
@@ -60,7 +64,7 @@ if (process.argv.includes("--bundle")) {
         core: bundle,
         handlers: declarations(
             bundle,
-            ["stbEventToKeyCode", "keyHandler"],
+            ["stbEventToKeyCode", "cancelNativeListInertia", "keyHandler"],
             "classic bundle"
         ),
         name: "classic bundle",
@@ -98,6 +102,7 @@ for (const testCase of cases) {
                 isListVisible: true,
                 isSelectBox: false,
                 listKeyHandlerFn: () => false,
+                nativeListInertia: null,
                 settings: { volumeStep: 5 },
                 stbInit() {},
                 version: "test",

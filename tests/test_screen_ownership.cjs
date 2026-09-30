@@ -104,6 +104,7 @@ function fixture() {
         listDetailElement: w.document.getElementById("listDetail"),
         listElement: w.document.getElementById("list_window"),
         listFooterElement: w.document.getElementById("listPodval"),
+        nativeListInertia: null,
         setTimeout(callback, delay) {
             jobs.push({ active: true, callback, delay });
             return jobs.length;
@@ -158,7 +159,11 @@ function fixture() {
         ])
     );
     w.eval(
-        functions("src/key-handler/index.ts", ["keyHandler", "dispatchKey"])
+        functions("src/key-handler/index.ts", [
+            "cancelNativeListInertia",
+            "keyHandler",
+            "dispatchKey",
+        ])
     );
     w.editKey = w.editKey2;
     return {
