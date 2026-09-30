@@ -1,3 +1,4 @@
+import { caselessKey } from "../utils/caseless";
 import { metadataImageUrl, metadataText } from "../utils/helpers";
 
 export interface VPortalLink {
@@ -71,6 +72,11 @@ export interface VPortalClient {
     load(target: any, callback: VPortalCompletion): void;
     play(item: any): void;
     resolve(item: any, done: (item: any) => void, automatic?: boolean): void;
+    search(
+        query: string,
+        done: (result: { items: any[]; error?: string }) => void,
+        isCurrent?: () => boolean
+    ): () => void;
 }
 
 interface VPortalRequestLane {
@@ -90,6 +96,8 @@ export function createVPortalClient(
     var jq = w.jQuery || w.$;
     var foreground: VPortalRequestLane = { pending: null, revision: 0 };
     var background: VPortalRequestLane = { pending: null, revision: 0 };
+    var searchLane: VPortalRequestLane = { pending: null, revision: 0 };
+    var stopSearch: (() => void) | null = null;
     var disposed = false;
     var dialogHandler: any = null;
     var previousDialogHandler: any = null;
@@ -133,7 +141,8 @@ export function createVPortalClient(
         var token = ++foreground.revision;
         var request = foreground.pending;
         foreground.pending = null;
-        // Invalidate both lanes before abort callbacks can start newer work.
+        // Invalidate all lanes before abort callbacks can start newer work.
+        if (stopSearch) stopSearch();
         cancelAutomatic();
         if (request && typeof request.abort === "function") request.abort();
         if (token !== foreground.revision) return;
@@ -222,16 +231,19 @@ export function createVPortalClient(
             endpoint = hostedVPortalRoute(portal.url, w.__OTTPLAY_HOSTED__);
         var finished = false;
         var automatic = lane === background;
-        if (!automatic) showBusy();
+        var visible = lane === foreground;
+        if (visible) showBusy();
         try {
             if (!endpoint)
                 throw new Error("VPortal endpoint is not configured");
             var xhr = jq.ajax({
                 complete: function (): void {
+                    if (finished) return;
                     finished = true;
+                    if (lane === searchLane && !guard()) return;
                     if (!isCurrent(token, lane)) return;
                     lane.pending = null;
-                    if (!automatic) hideBusy();
+                    if (visible) hideBusy();
                     complete();
                 },
                 contentType: "application/json; charset=UTF-8",
@@ -240,11 +252,18 @@ export function createVPortalClient(
                 ),
                 dataType: "json",
                 error: function (_xhr: any, status: string): void {
-                    if (isCurrent(token, lane) && guard() && status !== "abort")
+                    if (
+                        !finished &&
+                        lane !== searchLane &&
+                        isCurrent(token, lane) &&
+                        guard() &&
+                        status !== "abort"
+                    )
                         reportError(automatic);
                 },
                 success: function (data: any): void {
-                    if (isCurrent(token, lane)) accept(data);
+                    if (lane === searchLane && !guard()) return;
+                    if (!finished && isCurrent(token, lane)) accept(data);
                 },
                 timeout: 30000,
                 type: "POST",
@@ -254,8 +273,8 @@ export function createVPortalClient(
             if (!finished && isCurrent(token, lane)) lane.pending = xhr;
         } catch (_error) {
             if (!isCurrent(token, lane)) return;
-            if (!automatic) hideBusy();
-            if (guard()) reportError(automatic);
+            if (visible) hideBusy();
+            if (lane !== searchLane && guard()) reportError(automatic);
             complete();
         }
     }
@@ -317,6 +336,357 @@ export function createVPortalClient(
         return (
             typeof value === "string" && /^https?:\/\/[^\s<>]+$/i.test(value)
         );
+    }
+
+    function directProviderId(item: any): any {
+        var fields = [
+            "id",
+            "fid",
+            "stream_id",
+            "itemId",
+            "media_id",
+            "episode_id",
+        ];
+        for (var index = 0; index < fields.length; index++) {
+            var value = item[fields[index]];
+            if (
+                (typeof value === "string" && value) ||
+                (typeof value === "number" && isFinite(value))
+            )
+                return { field: fields[index], value: String(value) };
+        }
+        return null;
+    }
+
+    function search(
+        query: string,
+        done: (result: { items: any[]; error?: string }) => void,
+        guard?: () => boolean
+    ): () => void {
+        if (stopSearch) stopSearch();
+        query = String(query || "").trim();
+        var token = ++searchLane.revision;
+        var active = true;
+        var timer: any = null;
+        var deadline = Date.now() + 25000;
+        var folded = caselessKey(query);
+        var items: any[] = [];
+        var tasks: any[] = [];
+        var requests: { [key: string]: boolean } = Object.create(null);
+        var folders: { [key: string]: boolean } = Object.create(null);
+        var playables: { [key: string]: boolean } = Object.create(null);
+        var pageCount = 0;
+        var rowCount = 0;
+        var canonicalBytes = 0;
+
+        function cancelSearch(): void {
+            if (!active) return;
+            active = false;
+            if (timer !== null) w.clearTimeout(timer);
+            tasks = [];
+            if (stopSearch === cancelSearch) stopSearch = null;
+            if (token !== searchLane.revision) return;
+            ++searchLane.revision;
+            var pending = searchLane.pending;
+            searchLane.pending = null;
+            if (pending && typeof pending.abort === "function") pending.abort();
+        }
+
+        function current(): boolean {
+            if (!active) return false;
+            if (!isCurrent(token, searchLane) || (guard && !guard())) {
+                cancelSearch();
+                return false;
+            }
+            return true;
+        }
+
+        function finish(error?: string): void {
+            if (!current()) return;
+            var result = error ? { error: error, items: [] } : { items: items };
+            cancelSearch();
+            done(result);
+        }
+
+        function fail(): void {
+            finish("VPortal search could not collect a complete result");
+        }
+
+        // Sorted request keys detect cycles even if the provider reorders JSON keys.
+        function key(value: any, limit = 65536): string {
+            function ordered(input: any, depth: number): any {
+                if (depth > 12) throw new Error();
+                if (!input || typeof input !== "object") return input;
+                if (Array.isArray(input))
+                    return input.map(function (part: any) {
+                        return ordered(part, depth + 1);
+                    });
+                var result = Object.create(null);
+                Object.keys(input)
+                    .sort()
+                    .forEach(function (name) {
+                        result[name] = ordered(input[name], depth + 1);
+                    });
+                return result;
+            }
+            var valueKey = JSON.stringify(ordered(value, 0));
+            // Reserve UTF-16 storage across all identity maps and page signatures.
+            // Charge repeated keys too, keeping the bound conservative on old TVs.
+            canonicalBytes += valueKey ? valueKey.length * 2 : 0;
+            if (
+                !valueKey ||
+                valueKey.length > limit ||
+                canonicalBytes > 2097152
+            )
+                throw new Error();
+            return valueKey;
+        }
+
+        function folderContext(item: any, parent: any): any {
+            var context: any = { type: "multistream" };
+            [
+                "title",
+                "year",
+                "duration",
+                "agelimit",
+                "description",
+                "imglr",
+                "img",
+            ].forEach(function (field) {
+                context[field] = item[field] || (parent && parent[field]);
+            });
+            if (parent && parent.title && item.title)
+                context.title = parent.title + " - " + item.title;
+            if (item.adult || (parent && parent.adult)) context.adult = 1;
+            return context;
+        }
+
+        function collection(
+            params: any,
+            parent: any,
+            ancestors: string[]
+        ): any {
+            if (!params || typeof params !== "object" || Array.isArray(params))
+                throw new Error();
+            var copied = copyRequest(params);
+            if (!Object.keys(copied).length) throw new Error();
+            copied.limit = 300;
+            var identity = key(copied);
+            if (ancestors.indexOf(identity) !== -1) throw new Error();
+            if (folders[identity]) return null;
+            folders[identity] = true;
+            return {
+                ancestors: ancestors.concat([identity]),
+                pages: Object.create(null),
+                params: copied,
+                parent: parent,
+            };
+        }
+
+        function next(): void {
+            if (!current()) return;
+            if (Date.now() >= deadline) {
+                finish(
+                    "VPortal search timed out before collecting all results"
+                );
+                return;
+            }
+            try {
+                while (tasks.length) {
+                    if (Date.now() >= deadline) {
+                        finish(
+                            "VPortal search timed out before collecting all results"
+                        );
+                        return;
+                    }
+                    var task = tasks.pop();
+                    if (task.item) {
+                        var item = task.item;
+                        if (
+                            !task.parent &&
+                            caselessKey(String(item.title || "")).indexOf(
+                                folded
+                            ) === -1
+                        )
+                            continue;
+                        if (item.type === "stream") {
+                            var record = media(item, task.context);
+                            if (
+                                !record ||
+                                !record.stream_url ||
+                                (record.request &&
+                                    !Object.keys(record.request).length)
+                            )
+                                throw new Error();
+                            var identity = key(
+                                record.request || record.stream_url
+                            );
+                            if (playables[identity]) continue;
+                            playables[identity] = true;
+                            if (items.length >= 2000) throw new Error();
+                            var title = task.parent
+                                ? task.parent.title
+                                : "[" + query + "]";
+                            record.__ottMediaOrigin = {
+                                kind: "catalog",
+                                target: sourceTarget({
+                                    mediaName: title,
+                                    request: copyRequest(task.params),
+                                }),
+                                title: title,
+                            };
+                            if (!record.request)
+                                record.__ottVPortalDirect = {
+                                    id: directProviderId(item),
+                                    occurrence: task.occurrence,
+                                    title: String(item.title || ""),
+                                };
+                            items.push(record);
+                        } else if (
+                            item.type === "multistream" ||
+                            (task.parent && item.type === "category")
+                        ) {
+                            var child = collection(
+                                item.request,
+                                folderContext(item, task.context),
+                                task.ancestors
+                            );
+                            if (child) tasks.push(child);
+                        }
+                        continue;
+                    }
+                    var requestKey = key(task.params);
+                    if (requests[requestKey] || ++pageCount > 100)
+                        throw new Error();
+                    requests[requestKey] = true;
+                    var response: any = null;
+                    request(
+                        task.params,
+                        token,
+                        function (data): void {
+                            if (current()) response = data;
+                        },
+                        function (): void {
+                            if (!current()) return;
+                            try {
+                                acceptPage(task, response);
+                            } catch (_error) {
+                                fail();
+                                return;
+                            }
+                            next();
+                        },
+                        current,
+                        searchLane
+                    );
+                    return;
+                }
+                finish();
+            } catch (_error) {
+                fail();
+            }
+        }
+
+        function acceptPage(task: any, data: any): void {
+            if (
+                !data ||
+                ["videoportal", "category", "multistream"].indexOf(
+                    data.type
+                ) === -1 ||
+                !Array.isArray(data.items) ||
+                data.truncated
+            )
+                throw new Error();
+            rowCount += data.items.length;
+            if (rowCount > 10000) throw new Error();
+            var rows: any[] = [];
+            var nextPage: any = null;
+            data.items.forEach(function (item: any) {
+                if (!item || typeof item !== "object") throw new Error();
+                if (item.type === "next") {
+                    if (nextPage) throw new Error();
+                    nextPage = item;
+                } else rows.push(item);
+            });
+            var signature = key(
+                rows.map(function (item) {
+                    return [item.type, item.title, item.request, item.url];
+                }),
+                2000000
+            );
+            if (rows.length && task.pages[signature]) throw new Error();
+            task.pages[signature] = true;
+            var context = folderContext(task.parent || {}, data);
+            context.type = task.parent ? "multistream" : "category";
+            // Response metadata can add an adult flag, but cannot replace the
+            // matched series title or discard metadata from an earlier page.
+            context.title = task.parent ? task.parent.title : "";
+            if (nextPage) {
+                var params = copyRequest(task.params);
+                var supplied = copyRequest(nextPage.request);
+                Object.keys(supplied).forEach(function (name) {
+                    params[name] = supplied[name];
+                });
+                if (supplied.offset === undefined)
+                    params.offset =
+                        Math.max(0, Number(task.params.offset) || 0) +
+                        rows.length;
+                params.limit = 300;
+                var offset = Number(params.offset);
+                if (
+                    params.cmd !== task.params.cmd ||
+                    params.query !== task.params.query ||
+                    !isFinite(offset) ||
+                    Math.floor(offset) !== offset ||
+                    offset <= (Number(task.params.offset) || 0)
+                )
+                    throw new Error();
+                tasks.push({
+                    ancestors: task.ancestors,
+                    pages: task.pages,
+                    params: params,
+                    parent: task.parent ? context : null,
+                });
+            } else if (
+                data.has_more ||
+                data.hasMore ||
+                (typeof data.total === "number" &&
+                    data.total >
+                        (Number(task.params.offset) || 0) + rows.length)
+            ) {
+                throw new Error();
+            }
+            var occurrences: { [key: string]: number } = Object.create(null);
+            var rowOccurrences: number[] = [];
+            rows.forEach(function (item) {
+                var title = String(item.title || "");
+                var occurrence = occurrences[title] || 0;
+                rowOccurrences.push(occurrence);
+                if (item.type === "stream") occurrences[title] = occurrence + 1;
+            });
+            for (var index = rows.length - 1; index >= 0; index--)
+                tasks.push({
+                    ancestors: task.ancestors,
+                    context: context,
+                    item: rows[index],
+                    occurrence: rowOccurrences[index],
+                    params: task.params,
+                    parent: task.parent ? context : null,
+                });
+        }
+
+        stopSearch = cancelSearch;
+        if (!current()) return cancelSearch;
+        if (!folded || query.length > 1024) {
+            finish("VPortal search requires a title filter");
+            return cancelSearch;
+        }
+        timer = w.setTimeout(function () {
+            finish("VPortal search timed out before collecting all results");
+        }, 25000);
+        tasks.push(collection({ cmd: "search", query: query }, null, []));
+        next();
+        return cancelSearch;
     }
 
     function load(target: any, callback: VPortalCompletion): void {
@@ -501,6 +871,88 @@ export function createVPortalClient(
             else w._playMedia(playable);
         }
         if (!item.request || typeof item.request !== "object") {
+            if (automatic && item.__ottVPortalQueue) {
+                var direct = item.__ottVPortalDirect;
+                var origin = item.__ottMediaOrigin;
+                var target = origin && origin.target;
+                if (
+                    !direct ||
+                    !target ||
+                    !target.request ||
+                    typeof target.request !== "object" ||
+                    Array.isArray(target.request) ||
+                    !Object.keys(target.request).length ||
+                    (options.sourceId &&
+                        target.vportalSource !== options.sourceId)
+                ) {
+                    reportError(true);
+                    return;
+                }
+                var page: any = null;
+                var pageReceived = false;
+                request(
+                    target.request,
+                    token,
+                    function (data): void {
+                        if (current()) {
+                            pageReceived = true;
+                            page = data;
+                        }
+                    },
+                    function (): void {
+                        if (!current()) return;
+                        if (!page) {
+                            if (pageReceived) reportError(true);
+                            return;
+                        }
+                        if (
+                            ["videoportal", "category", "multistream"].indexOf(
+                                page.type
+                            ) === -1 ||
+                            !Array.isArray(page.items) ||
+                            page.items.length > 10000 ||
+                            page.truncated
+                        ) {
+                            reportError(true);
+                            return;
+                        }
+                        var matches: any[] = [];
+                        var occurrence = 0;
+                        page.items.forEach(function (candidate: any): void {
+                            if (!candidate || candidate.type !== "stream")
+                                return;
+                            if (direct.id) {
+                                var id = candidate[direct.id.field];
+                                if (
+                                    (typeof id === "string" ||
+                                        typeof id === "number") &&
+                                    String(id) === direct.id.value
+                                )
+                                    matches.push(candidate);
+                            } else if (
+                                String(candidate.title || "") === direct.title
+                            ) {
+                                if (occurrence++ === direct.occurrence)
+                                    matches.push(candidate);
+                            }
+                        });
+                        var fresh = matches.length === 1 ? matches[0] : null;
+                        if (
+                            !fresh ||
+                            (fresh.request &&
+                                typeof fresh.request === "object") ||
+                            !validStream(fresh.url)
+                        ) {
+                            reportError(true);
+                            return;
+                        }
+                        start(fresh.url);
+                    },
+                    current,
+                    lane
+                );
+                return;
+            }
             start(item.stream_url);
             return;
         }
@@ -612,6 +1064,7 @@ export function createVPortalClient(
         ) {
             play(item, done, automatic);
         },
+        search: search,
     };
 }
 

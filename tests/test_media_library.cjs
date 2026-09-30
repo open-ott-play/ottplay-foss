@@ -763,7 +763,11 @@ function episodeFixture(ids = [30, 2, 11]) {
             c.resolutions.push({ automatic, item });
             const resolved = {
                 ...item,
-                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+                stream_url:
+                    item.id +
+                    "-" +
+                    (c.fixedUrls ? 1 : c.resolutions.length) +
+                    ".mp4",
             };
             if (c.defer) c.pendingEpisode = () => done(resolved);
             else done(resolved);
@@ -1199,6 +1203,254 @@ test("Saved episode entries remain filterable in history and favorites", () => {
         applyTitleFilter(c, "");
         assert.equal(c.listArray.filter((row) => row.id).length, 2);
     }
+});
+
+function remoteQueueFixture() {
+    const c = fixture();
+    c.commandChannelsReady = false;
+    c.resolutions = [];
+    c.replies = [];
+    c.providerMediaClient = {
+        cancel() {},
+        cancelAutomatic() {},
+        resolve(item, done, automatic) {
+            c.resolutions.push({ automatic, item });
+            const playable = {
+                ...item,
+                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+            };
+            c.completeResolve = () => done(playable);
+            if (!c.deferResolve) c.completeResolve();
+        },
+        search(query, done, guard) {
+            c.searchQuery = query;
+            c.completeSearch = (items, error) => {
+                if (guard()) done({ error, items });
+            };
+            return () => {
+                c.searchCancelled = true;
+            };
+        },
+    };
+    vm.runInContext(
+        sourceFunctions("src/commands/remote-requests.ts", [
+            "executeRemoteRequest",
+        ]),
+        c
+    );
+    c.requestQueue = (action = "vportal", query = "  Фильм  ") =>
+        c.executeRemoteRequest({ action, params: { query } }, (reply) =>
+            c.replies.push(plain(reply))
+        );
+    c.finishItem = () => {
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    };
+    return c;
+}
+
+test("Remote VPortal queue loops every result in order with fresh URLs and no resume or quality prompt", () => {
+    for (const ids of [[30, 2, 11], [7]]) {
+        const c = remoteQueueFixture();
+        c.requestQueue();
+        assert.equal(c.searchQuery, "Фильм");
+        assert.equal(c.resolutions.length, 0, "Wait for the complete search");
+        c.completeSearch(
+            ids.map((id) => ({ id, request: { id }, title: "Фильм " + id }))
+        );
+        assert.equal(
+            c.replies.length,
+            1,
+            JSON.stringify({
+                calls: c.calls,
+                resolutions: c.resolutions,
+                state: c.__ottClassicPlayback.snapshot(),
+            })
+        );
+        assert.deepEqual(c.replies[0], {
+            data: {
+                dispatched: true,
+                items: ids.map((id, index) => ({
+                    number: index + 1,
+                    title: "Фильм " + id,
+                })),
+                loop: true,
+                total: ids.length,
+            },
+            status: "ok",
+        });
+        for (let n = 0; n < ids.length; n++) c.finishItem();
+        assert.deepEqual(
+            c.resolutions.map((row) => row.item.id),
+            [...ids, ids[0]]
+        );
+        assert(c.resolutions.every((row) => row.automatic));
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            ids.length + 1
+        );
+        assert(
+            !c.calls.some((row) => row[0] === "confirm" || row[0] === "pin")
+        );
+        assert(!JSON.stringify(c.replies).includes(".mp4"));
+    }
+});
+
+test("Remote VPortal list-only and empty or failed searches never start a queue", () => {
+    const listing = remoteQueueFixture();
+    listing.requestQueue("vportal_search");
+    listing.completeSearch([
+        {
+            id: 1,
+            request: { key: "not-public" },
+            stream_url: "https://private.invalid/video?token=secret",
+            title: "Film",
+        },
+    ]);
+    assert.deepEqual(listing.replies, [
+        {
+            data: { items: [{ number: 1, title: "Film" }], total: 1 },
+            status: "ok",
+        },
+    ]);
+    assert.equal(listing.resolutions.length, 0);
+    for (const error of [undefined, "provider URL and key must not leak"]) {
+        const c = remoteQueueFixture();
+        c.requestQueue();
+        c.completeSearch([], error);
+        assert.equal(c.replies[0].status, "rejected");
+        assert.equal(c.resolutions.length, 0);
+        assert(!JSON.stringify(c.replies).includes("must not leak"));
+    }
+});
+
+test("A replacement remote queue restarts its shared first item and advances through the new selection", () => {
+    const c = remoteQueueFixture();
+    c.fixedUrls = true;
+    for (const ids of [
+        [1, 2],
+        [1, 3],
+    ]) {
+        c.requestQueue();
+        c.completeSearch(
+            ids.map((id) => ({ id, request: { id }, title: "Film " + id }))
+        );
+    }
+    assert.equal(c.replies.length, 2);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 2);
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [1, 1, 3]
+    );
+});
+
+test("Repeated Stop while already stopped cancels a pending remote search", () => {
+    const c = remoteQueueFixture();
+    c.__ottClassicPlayback.reconcile();
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.requestQueue();
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    c.__ottMedia.cancelAuto();
+    c.__ottClassicPlayback.command({ type: "stop" });
+    assert.equal(c.__ottClassicPlayback.snapshot().generation, generation);
+    c.completeSearch([{ id: 1, request: { id: 1 }, title: "Film" }]);
+    assert.equal(c.resolutions.length, 0);
+    assert.equal(c.replies.length, 0);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+});
+
+test("Oversized remote queue metadata is rejected before playback dispatch", () => {
+    const c = remoteQueueFixture();
+    c.requestQueue();
+    c.completeSearch([
+        { id: 1, request: { id: 1 }, title: "я".repeat(500000) },
+    ]);
+    assert.equal(c.replies[0].status, "rejected");
+    assert.match(c.replies[0].data.error, /more specific/);
+    assert.equal(c.resolutions.length, 0);
+});
+
+test("Remote VPortal validates queries and rejects unavailable or parental-locked queues", () => {
+    for (const query of ["", "   ", "я".repeat(513), "\ud800"]) {
+        const c = remoteQueueFixture();
+        c.requestQueue("vportal", query);
+        assert.equal(c.replies[0].status, "rejected");
+        assert.equal(c.searchQuery, undefined);
+    }
+    const missing = remoteQueueFixture();
+    delete missing.providerMediaClient.search;
+    missing.requestQueue();
+    assert.equal(missing.replies[0].status, "unsupported");
+    const locked = remoteQueueFixture();
+    locked.requestQueue();
+    locked.completeSearch([
+        { adult: 1, id: 1, request: { id: 1 }, title: "Film" },
+    ]);
+    assert.equal(locked.replies[0].status, "rejected");
+    assert.equal(locked.resolutions.length, 0);
+    assert(!locked.calls.some((row) => row[0] === "pin"));
+});
+
+test("Remote request cancellation, Stop and source replacement block late search and stream replies", () => {
+    for (const at of ["search", "resolve"]) {
+        for (const action of ["cancel", "stop", "source"]) {
+            const c = remoteQueueFixture();
+            c.deferResolve = true;
+            const cancel = c.requestQueue();
+            if (at === "resolve")
+                c.completeSearch([
+                    { id: 1, request: { id: 1 }, title: "Film" },
+                ]);
+            if (action === "cancel") cancel();
+            if (action === "stop") {
+                c.__ottMedia.cancelAuto();
+                c.__ottClassicPlayback.command({ type: "stop" });
+            }
+            if (action === "source") c.providerMediaClient = {};
+            if (at === "search")
+                c.completeSearch([
+                    { id: 1, request: { id: 1 }, title: "Film" },
+                ]);
+            else c.completeResolve();
+            assert.equal(
+                c.calls.filter((row) => row[0] === "play").length,
+                0,
+                at + ": " + action
+            );
+            assert.equal(c.replies.length, 0);
+        }
+    }
+});
+
+test("A remote queue's direct-URL identity retains its provider page when reloaded from history", () => {
+    const c = remoteQueueFixture();
+    c.requestQueue();
+    const origin = {
+        kind: "catalog",
+        target: "provider-page",
+        title: "Provider page",
+    };
+    c.completeSearch([
+        {
+            __ottMediaOrigin: origin,
+            stream_url: "old.mp4",
+            title: "Same title",
+        },
+    ]);
+    const original = c.__ottMedia.current().ref.itemId;
+    c.__ottMedia.checkpoint(c.__ottMedia.current().ref, 150, true);
+    c.catalogs["provider-page"] = [
+        { stream_url: "renewed.mp4", title: "Same title" },
+    ];
+    c.mediaList(-1);
+    c.selectMedia(0);
+    assert.equal(c.__ottMedia.current().ref.itemId, original);
+    assert.equal(
+        c.resolutions.length,
+        2,
+        "History found the item in its originating page"
+    );
 });
 
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);

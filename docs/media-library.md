@@ -112,3 +112,42 @@ only automatic work leaves a foreground request intact. Repeated episode changes
 reuse the current screen ownership binding instead of accumulating cleanups.
 Regression tests cover both catalog/episode completion orders and confirming
 SWOP input across a real browser media-ended event.
+
+## Remote VPortal queues
+
+The control CLI accepts `ott PLAYER vp TITLE_FILTER` to search the active
+provider's VPortal and start a repeating queue. `ott PLAYER vp --list TITLE_FILTER`
+returns the same numbered titles without changing playback. This supports the
+M3U VPortal setting and Edem's media portal. Matching is case-insensitive and uses
+the shared title normalization. TV channel numbers and EPG searches are unchanged.
+
+The collector follows every advertised search page and expands matching series
+and their seasons in provider order. It ignores unrelated category navigation,
+deduplicates playable entries and completes the whole search before dispatching
+playback. A partial or malformed catalog, repeated page, timeout or exceeded limit
+rejects the request instead of silently playing an incomplete selection. Limits
+are 25 seconds, 100 page requests, 10,000 examined rows and 2,000 unique videos;
+use a narrower title filter when needed. Queries are limited to 1,024 UTF-8 bytes.
+Canonical page and item identities also have a shared 2 MiB serialization budget
+(charged at two bytes per UTF-16 code unit); exceeding it rejects the whole search.
+
+The first video starts from the beginning, natural completion advances to the next,
+and the last loops to the first. A one-video queue repeats that video. A new queue
+replaces and restarts the selection even when its first video is already playing.
+Automatic playback uses the saved quality preference without opening a picker or
+resume dialog. Locked adult selections require parental access to be unlocked on
+the player before dispatch. Stop, manual playback, source changes and cancellation
+revoke pending automatic work; late search replies cannot restart a stopped player.
+
+Each visit resolves a fresh stream URL. Direct-URL catalog entries reload their
+origin page using a separate automatic request lane, matched by provider ID or raw
+title and duplicate occurrence. An unavailable entry never falls back to its old
+URL. Resolution or media errors do not count as natural completion and may leave
+the queue stopped; this feature cannot make an unavailable or unsupported stream
+playable. The queue is in memory and is not restored after restarting the player.
+
+The command receipt contains only numbered titles, total count and dispatch/loop
+flags. It confirms that playback was dispatched, not that the video decoded or
+became visible. Credentials, provider request objects and stream URLs remain on the
+player. A headless browser regression drives the shipped command-server transport
+and real media-ended events through a multi-page movie/series queue and its wrap.

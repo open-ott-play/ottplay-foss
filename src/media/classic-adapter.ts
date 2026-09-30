@@ -126,16 +126,15 @@ function classicMediaRuntime(): any {
                 else if (row.request)
                     id = "request:" + serializeMediaIdentity(row.request);
                 else {
-                    var occurrence = titles[title] || 0;
-                    titles[title] = occurrence + 1;
+                    var origin = row.__ottMediaOrigin || route;
+                    var location = origin.target || "";
+                    var titleKey = serializeMediaIdentity([location, title]);
+                    var occurrence = titles[titleKey] || 0;
+                    titles[titleKey] = occurrence + 1;
                     // Providers without IDs get a catalog-local identity, never a signed stream URL.
                     id =
                         "catalog:" +
-                        serializeMediaIdentity([
-                            route.target || "",
-                            title,
-                            occurrence,
-                        ]);
+                        serializeMediaIdentity([location, title, occurrence]);
                 }
                 var identity = { itemId: id, sourceId: source };
                 payload.__ottMediaRef = identity;
@@ -388,7 +387,8 @@ function classicMediaRuntime(): any {
         item: MediaLibraryItem,
         sequence: any = null,
         automatic = false,
-        guard: () => boolean = current
+        guard: () => boolean = current,
+        dispatched?: () => void
     ) {
         if (!automatic && !cancelNavigationAuto()) return;
         var request = {};
@@ -457,12 +457,26 @@ function classicMediaRuntime(): any {
                     sequence: sequence,
                     valid: guard,
                 };
+                var previousPlayback = mediaClassicPlayback;
                 pendingStart = start;
                 try {
                     w._playMedia(payload, automatic);
                 } finally {
                     if (pendingStart === start) pendingStart = null;
                 }
+                var state = w.__ottClassicPlayback.snapshot();
+                if (
+                    dispatched &&
+                    current() &&
+                    mediaClassicPlayback &&
+                    mediaClassicPlayback !== previousPlayback &&
+                    mediaClassicPlayback.ref.itemId === item.ref.itemId &&
+                    state.target &&
+                    state.target.kind === "vod" &&
+                    state.target.channelId === item.ref.itemId &&
+                    state.phase !== "stopped"
+                )
+                    dispatched();
             }
         );
     }
@@ -491,6 +505,12 @@ function classicMediaRuntime(): any {
             var valid = library.capture();
             return function () {
                 return current() && valid();
+            };
+        },
+        captureAuto: function () {
+            var revision = automaticGeneration;
+            return function () {
+                return current() && automaticGeneration === revision;
             };
         },
         checkpoint: function (ref: MediaRef, position: number, force = false) {
@@ -672,6 +692,48 @@ function classicMediaRuntime(): any {
                 reset
             );
         },
+        playQueue: function (
+            records: any[],
+            query: string,
+            guard: () => boolean,
+            dispatched: () => void
+        ) {
+            var items = describe(records, {
+                kind: "catalog",
+                target: "search?query=" + encodeURIComponent(query),
+                title: query,
+            });
+            if (!items.length || !current() || !guard()) return;
+            items.forEach(function (item: MediaLibraryItem) {
+                item.payload.__ottVPortalQueue = true;
+            });
+            api.cancelAuto();
+            var revision = automaticGeneration;
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            function valid() {
+                return (
+                    current() &&
+                    guard() &&
+                    automaticGeneration === revision &&
+                    w.__ottClassicPlayback.snapshot().generation === generation
+                );
+            }
+            var started = false;
+            resolve(
+                items[0],
+                { index: 0, items: items, replace: true },
+                true,
+                valid,
+                function () {
+                    started = true;
+                    dispatched();
+                }
+            );
+            return function () {
+                if (!started && revision === automaticGeneration)
+                    api.cancelAuto();
+            };
+        },
         prepare: function (payload: any, url: string) {
             if (
                 payload.__ottMediaRef &&
@@ -692,6 +754,7 @@ function classicMediaRuntime(): any {
             if (!admitted()) return null;
             var state = w.__ottClassicPlayback.snapshot();
             if (
+                !(start && start.sequence && start.sequence.replace) &&
                 state.target &&
                 state.target.sourceId === source &&
                 state.target.channelId === item.ref.itemId &&
@@ -808,6 +871,9 @@ function classicMediaRuntime(): any {
     capture: function () {
         return classicMediaRuntime().capture();
     },
+    captureAuto: function () {
+        return classicMediaRuntime().captureAuto();
+    },
     checkpoint: function (ref: MediaRef, position: number, force = false) {
         classicMediaRuntime().checkpoint(ref, position, force);
     },
@@ -832,6 +898,19 @@ function classicMediaRuntime(): any {
     },
     open: function (target: any, title?: string) {
         classicMediaRuntime().open(target, title);
+    },
+    playQueue: function (
+        records: any[],
+        query: string,
+        guard: () => boolean,
+        dispatched: () => void
+    ) {
+        return classicMediaRuntime().playQueue(
+            records,
+            query,
+            guard,
+            dispatched
+        );
     },
     prepare: function (item: any, url: string) {
         return classicMediaRuntime().prepare(item, url);

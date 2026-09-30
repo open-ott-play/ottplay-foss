@@ -1093,4 +1093,91 @@ test("real loadProv/loadChannels dispatches Edem without provider script or AJAX
     assert.equal(f.scripts.length, 0);
     assert.equal(f.ajaxWrites, 0);
 });
+test("remote queues use the shared VPortal search and automatic resolver with owned cancellation", () => {
+    const f = setup();
+    const clients = [];
+    f.host.parseVPortalLink = () => ({ url: "https://portal.test/api" });
+    f.host.checkProviderUrl = () => true;
+    f.host.createVPortalClient = (link, options) => {
+        const record = {
+            automaticCancels: 0,
+            cancels: 0,
+            disposed: 0,
+            link,
+            options,
+            resolutions: [],
+        };
+        record.client = {
+            cancel() {
+                record.cancels++;
+            },
+            cancelAutomatic() {
+                record.automaticCancels++;
+            },
+            dispose() {
+                record.disposed++;
+            },
+            resolve(item, done, automatic) {
+                record.resolutions.push({ automatic, item });
+                done({ ...item, stream_url: "https://video.test/fresh.mp4" });
+            },
+            search(query, done, guard) {
+                record.query = query;
+                record.guard = guard;
+                done({ items: [] });
+                return () => {
+                    record.searchCancelled = true;
+                };
+            },
+        };
+        clients.push(record);
+        return record.client;
+    };
+    const client = f.host.providerMediaClient;
+    const guard = () => true;
+    let result;
+    const cancel = client.search(
+        "Фильм",
+        (value) => {
+            result = value;
+        },
+        guard
+    );
+    assert.deepEqual(clone(result), { items: [] });
+    assert.equal(clients[0].query, "Фильм");
+    assert.strictEqual(clients[0].guard, guard);
+    assert.equal(clients[0].options.sourceId, f.driver.mediaSource());
+    assert.equal(clients[0].options.isCurrent(), true);
+    cancel();
+    assert.equal(clients[0].searchCancelled, true);
+    const item = { __ottVPortalQueue: true, request: { id: 7 } };
+    client.resolve(item, () => {}, true);
+    assert.deepEqual(clients[0].resolutions, [{ automatic: true, item }]);
+    client.cancelAutomatic();
+    assert.equal(clients[0].automaticCancels, 1);
+    client.cancel();
+    assert.equal(clients[0].cancels, 1);
+    f.saved.set("edvpurl", "portal::[key:new-secret]https://other.test/api");
+    assert.equal(clients[0].options.isCurrent(), false);
+    client.search("Next", () => {}, guard);
+    assert.equal(clients.length, 2);
+    assert.equal(clients[0].disposed, 1);
+    f.mount("m3u");
+    assert.equal(clients[1].options.isCurrent(), false);
+    assert.equal(clients[1].disposed, 1);
+});
+
+test("remote VPortal does not instantiate a portal rejected by platform policy", () => {
+    const f = setup();
+    f.host.parseVPortalLink = () => ({ url: "https://portal.test/api" });
+    f.host.checkProviderUrl = () => false;
+    f.host.createVPortalClient = () => assert.fail("Blocked provider endpoint");
+    let reply;
+    f.host.providerMediaClient.search("Movie", (result) => {
+        reply = result;
+    });
+    assert.equal(reply.error, "VPortal is not configured.");
+    assert.deepEqual(clone(reply.items), []);
+});
+
 console.log("PASS " + passed + " Edem instance driver groups");
