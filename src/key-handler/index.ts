@@ -526,6 +526,7 @@ var xDown: number | null = null,
 var xMove1: number | null = null,
     yMove1: number | null = null,
     tCount: number | undefined;
+var touchMaxDistance = 0;
 var touch_min_sensY = Math.round(screen.height / 10);
 var touch_min_sensX = Math.round(
     touch_min_sensY * (screen.width / screen.height) * 2
@@ -1028,10 +1029,23 @@ function moveNativeListTouch(touch: any): boolean {
     return true;
 }
 
+function updateTouchPosition(touch: any): void {
+    if (!touch) return;
+    xUp = Math.round(touch.screenX);
+    yUp = Math.round(touch.screenY);
+    if (tCount === 1)
+        touchMaxDistance = Math.max(
+            touchMaxDistance,
+            Math.abs(xUp - xDown!),
+            Math.abs(yUp - yDown!)
+        );
+}
+
 function handleTouchCancel(): void {
     resetNativeListTouch();
     xDown = yDown = xUp = yUp = xMove1 = yMove1 = null;
     tCount = undefined;
+    touchMaxDistance = 0;
 }
 
 function handleTouchStart(e: any): void {
@@ -1090,8 +1104,7 @@ function handleTouchStart(e: any): void {
 function handleTouchMove(e: any): void {
     if (touch_locked || xDown === null || yDown === null) return;
     e.preventDefault();
-    xUp = Math.round(e.touches[0].screenX);
-    yUp = Math.round(e.touches[0].screenY);
+    updateTouchPosition(e.touches[0]);
     if (moveNativeListTouch(e.touches[0])) return;
     if (tCount === 1) {
         var dir = getDirection(
@@ -1134,6 +1147,7 @@ function body_handleTouchEnd(e: any): void {
     e.preventDefault();
     if (e.touches.length === 0) {
         // Some WebViews coalesce the last movement into touchend.
+        if (tCount === 1) updateTouchPosition(e.changedTouches[0]);
         if (nativeListTouch) moveNativeListTouch(e.changedTouches[0]);
         if (nativeListTouch?.cancelled) {
             handleTouchCancel();
@@ -1193,14 +1207,9 @@ function body_handleTouchEnd(e: any): void {
             // Preserve the TS click target and coordinates in every shell.
             if (
                 !nativeListTouch?.moved &&
-                checkTap(
-                    xDown!,
-                    yDown!,
-                    xUp!,
-                    yUp!,
-                    touch_min_sensX / 2,
-                    touch_min_sensY / 2
-                )
+                // Retain checkTap's tolerance, but measure the whole gesture
+                // so returning to its starting point cannot activate a control.
+                touchMaxDistance < touch_min_sensX / 10
             ) {
                 var touch = e.changedTouches[0];
                 var clickEvent: MouseEvent;
@@ -1242,6 +1251,7 @@ function body_handleTouchEnd(e: any): void {
         xDown = null;
         yDown = null;
         tCount = undefined;
+        touchMaxDistance = 0;
         resetNativeListTouch();
     }
 }

@@ -126,6 +126,7 @@ function fixture() {
         touch_locked: false,
         touch_min_sensX: 100,
         touch_min_sensY: 50,
+        touchMaxDistance: 0,
         xDown: 100,
         xMove1: 100,
         xUp: 100,
@@ -146,6 +147,7 @@ function fixture() {
             "toggleMainPlayback",
             "handleMainKey",
             "handleTouchMove",
+            "updateTouchPosition",
             "moveNativeListTouch",
             "resetNativeListTouch",
             "getDirection",
@@ -572,7 +574,9 @@ for (const route of ["manifest", "native recovery"]) {
     };
     let dispatched: any;
     f.w.body_handleTouchEnd({
-        changedTouches: [{ clientX: 25, clientY: 45 }],
+        changedTouches: [
+            { clientX: 25, clientY: 45, screenX: 100, screenY: 100 },
+        ],
         preventDefault() {},
         target: {
             dispatchEvent(event: any) {

@@ -8,9 +8,12 @@ function createNativePipPort(ports: any) {
         }
         var task: any;
         try {
-            task = ports.serial
-                ? (pending || Promise.resolve()).then(run)
-                : Promise.resolve(run());
+            // Stop cancels native startup. Queue the next play behind teardown,
+            // rather than holding cancellation behind the readiness it aborts.
+            task =
+                ports.serial && action !== "stop"
+                    ? (pending || Promise.resolve()).then(run)
+                    : Promise.resolve(run());
         } catch (error) {
             task = Promise.reject(error);
         }
@@ -111,7 +114,7 @@ function createNativePipPort(ports: any) {
                     }
                     // Preparation can wait for sign-in or fail before a replacing
                     // play reaches native code. Retire any started decoder now;
-                    // the serial queue still waits for an in-flight command.
+                    // its replacement waits only for teardown acknowledgement.
                     if (replaced && ports.prepare) {
                         if (nativeStarted) stop();
                     } else if (replaced) Promise.resolve().then(stop);

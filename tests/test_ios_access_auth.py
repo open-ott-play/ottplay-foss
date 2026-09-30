@@ -58,6 +58,7 @@ struct Logger {
     init(subsystem: String, category: String) {}
     func debug(_ message: String) {}
 }
+func os_log(_ format: String, _ arguments: CVarArg...) {}
 enum NativeSwopRequest { static func start(_ call: CAPPluginCall) {} }
 
 let kSecClass = "class", kSecClassGenericPassword = "generic"
@@ -524,6 +525,76 @@ Task { @MainActor in
         try AccessMedia.shared.signOut()
         await until { legacy.error != nil }
 
+        let proxyPlugin = M3UProxyPlugin()
+        let beforeProxyLogin = ASWebAuthenticationSession.opened.count
+        let proxyFirst = CAPPluginCall(["url": "@" + bridgeFixture.source.absoluteString, "requestId": "proxy-first"])
+        let proxySecond = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "proxy-second"])
+        proxyPlugin.proxyFetch(proxyFirst); proxyPlugin.proxyFetch(proxySecond)
+        await until { ASWebAuthenticationSession.opened.count == beforeProxyLogin + 1 }
+        let proxyBrowser = ASWebAuthenticationSession.opened.last!
+        let duplicateProxy = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "proxy-first"])
+        proxyPlugin.proxyFetch(duplicateProxy)
+        await until { duplicateProxy.error != nil }
+        assert(duplicateProxy.error == "Proxy request is already pending" && proxyFirst.error == nil)
+        let cancelProxyFirst = CAPPluginCall(["requestId": "proxy-first"])
+        proxyPlugin.cancelProxyFetch(cancelProxyFirst)
+        await until { proxyFirst.settlements == 1 }
+        assert(cancelProxyFirst.result?["cancelled"] as? Bool == true && !proxyBrowser.cancelled && proxySecond.error == nil,
+            "Cancelling one fallback leaves another source consumer's shared sign-in active")
+        proxyPlugin.cancelProxyFetch(CAPPluginCall(["requestId": "proxy-second"]))
+        await until { proxySecond.settlements == 1 && proxyBrowser.cancelled }
+        proxyBrowser.succeed()
+        for _ in 0..<20 { await Task.yield() }
+        assert(proxyFirst.settlements == 1 && proxySecond.settlements == 1 && AccessMediaHTTP.requests == 0)
+
+        let immediateProxy = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "proxy-immediate"])
+        let cancelImmediateProxy = CAPPluginCall(["requestId": "proxy-immediate"])
+        proxyPlugin.proxyFetch(immediateProxy); proxyPlugin.cancelProxyFetch(cancelImmediateProxy)
+        await until { immediateProxy.settlements == 1 }
+        assert(cancelImmediateProxy.result?["cancelled"] as? Bool == true)
+        let oldProxy = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "proxy-reuse"])
+        let newProxy = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "proxy-reuse"])
+        proxyPlugin.proxyFetch(oldProxy)
+        await until { ASWebAuthenticationSession.opened.last?.cancelled == false }
+        proxyPlugin.cancelProxyFetch(CAPPluginCall(["requestId": "proxy-reuse"]))
+        proxyPlugin.proxyFetch(newProxy)
+        await until { oldProxy.settlements == 1 }
+        let cancelNewProxy = CAPPluginCall(["requestId": "proxy-reuse"])
+        proxyPlugin.cancelProxyFetch(cancelNewProxy)
+        await until { newProxy.settlements == 1 }
+        assert(cancelNewProxy.result?["cancelled"] as? Bool == true && newProxy.error != nil,
+            "An old fallback completion cannot erase a reused request ID")
+        for invalid in ["", "bad\n", "../bad", 42] as [Any] {
+            let call = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": invalid])
+            proxyPlugin.proxyFetch(call)
+            assert(call.error == "Invalid proxy request identifier" && call.settlements == 1)
+        }
+        let legacyProxy = CAPPluginCall(["url": bridgeFixture.source.absoluteString])
+        proxyPlugin.proxyFetch(legacyProxy)
+        await until { ASWebAuthenticationSession.opened.last?.cancelled == false }
+        try AccessMedia.shared.signOut()
+        await until { legacyProxy.settlements == 1 }
+
+        for (ua, referer, status) in [("webos", "https://ref.fixture.invalid/start?q=a+b", 200), ("Custom fixture UA", "", 403), ("", "", 200)] {
+            AccessMediaPublicHTTP.handler = { request in
+                assert(request.url!.absoluteString == "https://plain-proxy.fixture.invalid/list")
+                assert(request.timeoutInterval == 15 && request.httpMethod == "GET")
+                let actualUA = request.value(forHTTPHeaderField: "User-Agent") ?? ""
+                assert(ua == "webos" ? actualUA.contains("Web0S") : actualUA == (ua.isEmpty ? "OTT-play-FOSS/1.0" : ua))
+                assert(request.value(forHTTPHeaderField: "Referer") == (referer.isEmpty ? "https://plain-proxy.fixture.invalid" : referer))
+                return (Data("#EXTM3U\n".utf8), HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: [:])!)
+            }
+            let call = CAPPluginCall(["url": "@https://plain-proxy.fixture.invalid/list", "requestId": "proxy-complete", "userAgent": ua, "referer": referer])
+            proxyPlugin.proxyFetch(call)
+            await until { call.settlements == 1 }
+            assert(status == 200 ? call.result?["body"] as? String == "#EXTM3U\n" : call.error == "Upstream 403")
+            let cancelComplete = CAPPluginCall(["requestId": "proxy-complete"])
+            proxyPlugin.cancelProxyFetch(cancelComplete)
+            await until { cancelComplete.result != nil }
+            assert(cancelComplete.result?["cancelled"] as? Bool == false)
+        }
+        AccessMediaPublicHTTP.handler = nil
+
         let httpPlugin = StalkerPortalPlugin()
         let timedLogin = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "timeoutMs": 30.0, "requestId": "short-network"])
         let beforeTimedLogin = ASWebAuthenticationSession.opened.count
@@ -736,8 +807,11 @@ with tempfile.TemporaryDirectory(prefix="ottplay-auth-test-") as directory:
     portal = (sources / "StalkerPortalPlugin.swift").read_text().split("/// A separate capability:", 1)[0]
     portal = portal.replace("import Capacitor\n", "").replace("import os.log\n", "").replace("#if os(iOS)", "#if true")
     (path / "StalkerPortalPlugin.swift").write_text(portal)
+    proxy = (sources.parent / "M3UProxy.swift").read_text()
+    proxy = proxy.replace("import Capacitor\n", "").replace("import os.log\n", "").replace("#if os(iOS)", "#if true")
+    (path / "M3UProxy.swift").write_text(proxy)
     (path / "main.swift").write_text(SWIFT)
     subprocess.run(["swiftc", str(path / "AccessMediaPolicy.swift"),
-                    str(path / "AccessMedia.swift"), str(path / "StalkerPortalPlugin.swift"), str(path / "main.swift"),
+                    str(path / "AccessMedia.swift"), str(path / "StalkerPortalPlugin.swift"), str(path / "M3UProxy.swift"), str(path / "main.swift"),
                     "-o", str(path / "test")], check=True)
     subprocess.run([str(path / "test")], check=True, timeout=35)

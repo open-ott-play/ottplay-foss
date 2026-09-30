@@ -5,6 +5,9 @@ import { StalkerPortal } from "./stalker-portal";
 import { nativeWebFallback } from "./web-fallback";
 
 export interface M3UProxyPlugin {
+    cancelProxyFetch?(opts: {
+        requestId: string;
+    }): Promise<{ cancelled: boolean }>;
     /**
      * Fetch a remote URL with injected User-Agent and Referer headers.
      * Mirrors Tauri `proxy_fetch` and Mode A `cp.php` behavior.
@@ -19,6 +22,7 @@ export interface M3UProxyPlugin {
         url: string;
         referer?: string;
         userAgent?: string;
+        requestId?: string;
     }): Promise<{ body: string }>;
 }
 
@@ -160,7 +164,15 @@ function setupCapacitorCompanionShim(): void {
     }
     if ((window as any).__ottCapacitorAjaxShim) return;
     (window as any).__ottCapacitorAjaxShim = true;
-    window.installCapacitorHttpTransport($, StalkerPortal);
+    const cancellableProxy =
+        (window as any).Capacitor?.getPlatform?.() === "ios" &&
+        typeof M3UProxy.cancelProxyFetch === "function" &&
+        typeof StalkerPortal.cancelHttpRequest === "function";
+    window.installCapacitorHttpTransport(
+        $,
+        StalkerPortal,
+        cancellableProxy ? M3UProxy : undefined
+    );
     const origAjax = $.ajax.bind($);
 
     function isLocalCapacitorCompanionUrl(url: string): boolean {
@@ -243,6 +255,10 @@ function setupCapacitorCompanionShim(): void {
             }
             const ua = extractProxyField(data, "ua");
             const referer = extractProxyField(data, "referer");
+            if (cancellableProxy) {
+                opts.data = { referer, ua, url: target };
+                return origAjax(opts);
+            }
             return nativePromiseToJq(
                 $,
                 M3UProxy.proxyFetch({

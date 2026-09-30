@@ -55,6 +55,7 @@ class AVPlayer {
     var currentItem: AVPlayerItem? { didSet { Array(observers.values).forEach { $0(self, ()) } } }
     var observers: [UUID: (AVPlayer, Void) -> Void] = [:]
     init(url: URL? = nil) { self.url = url }
+    func play() { paused = false }
     func pause() { paused = true }
     func replaceCurrentItem(with item: AVPlayerItem?) { itemCleared = item == nil; currentItem = item }
     func observe(_ keyPath: KeyPath<AVPlayer, AVPlayerItem?>, options: [ObserveOption],
@@ -83,8 +84,12 @@ class AVPlayerLooper {
 }
 class PipController {
     var isPictureInPictureActive = true
+    var isPictureInPicturePossible = true
+    var startRequests = 0
+    func startPictureInPicture() { startRequests += 1 }
     func stopPictureInPicture() { isPictureInPictureActive = false }
 }
+typealias AVPictureInPictureController = PipController
 class PipLayer {
     var removed = false
     func removeFromSuperlayer() { removed = true }
@@ -103,8 +108,8 @@ class Harness {
     var pipPossibleObservation: Any?
     var pendingPipCall: PipCall?
     var pipResolved = false
-    var startRequests = 0
-    private func tryStartPip() { startRequests += 1 }
+    var startRequests: Int { pipController?.startRequests ?? 0 }
+    private func configurePlaybackSession() -> Bool { true }
     private func drainCallbacks() { RunLoop.main.run(until: Date().addingTimeInterval(0.02)) }
 '''
 
@@ -138,6 +143,8 @@ TESTS = r'''
         let queue = pipPlayer as! AVQueuePlayer
         let looper = pipLooper!
         assert(looper.enabled && looper.player === queue && looper.templateItem.url == remoteDemo)
+        pipController = PipController()
+        queue.play()
         observePipPlayerItem(queue)
         drainCallbacks()
         assert(startRequests == 0 && queue.currentItem == nil)
@@ -145,9 +152,16 @@ TESTS = r'''
         queue.items = [delayedItem]
         queue.currentItem = delayedItem
         drainCallbacks()
+        assert(controlNativePipPlayer(play: false) && queue.paused)
         delayedItem.status = .readyToPlay
         drainCallbacks()
         assert(startRequests == 1, "Late looper item readiness must reach PiP startup")
+        assert(queue.paused, "Readiness must preserve Pause requested while PiP was starting")
+        tryStartPip()
+        assert(queue.paused, "A subsequent PiP-possible callback must also preserve Pause")
+        assert(controlNativePipPlayer(play: true) && !queue.paused)
+        tryStartPip()
+        assert(!queue.paused, "Explicit Play resumes playback during startup")
         let oldItemCallbacks = Array(delayedItem.observers.values)
         let pending = PipCall()
         pendingPipCall = pending
@@ -158,6 +172,7 @@ TESTS = r'''
         teardownPip(keepCall: false)
         assert(!looper.enabled && queue.paused && queue.items.isEmpty)
         assert(pipPlayer == nil && pipLooper == nil)
+        assert(!controlNativePipPlayer(play: true), "Retired native player cannot be resumed")
         assert(!controller.isPictureInPictureActive && layer.removed)
         assert(pending.results.count == 1 && pending.results[0]["ok"] as? Bool == false)
         assert(pendingPipCall == nil && !pipResolved)
@@ -172,9 +187,21 @@ TESTS = r'''
         oldItemCallbacks.forEach { $0(delayedItem, ()) }
         drainCallbacks()
         assert(pipPlayer === ordinary && !ordinary.paused, "Retired demo item must not tear down replacement")
+        let replacementController = PipController()
+        pipController = replacementController
+        let replacementCall = PipCall()
+        pendingPipCall = replacementCall
+        pictureInPictureControllerDidStartPictureInPicture(controller)
+        pictureInPictureController(controller, failedToStartPictureInPictureWithError: NSError(domain: "retired", code: 1))
+        pictureInPictureControllerDidStopPictureInPicture(controller)
+        assert(replacementCall.results.isEmpty && !pipResolved && pipPlayer === ordinary)
+        assert(pipController === replacementController, "Retired controller callbacks must preserve the replacement")
+        pictureInPictureControllerDidStartPictureInPicture(replacementController)
+        pictureInPictureControllerDidStartPictureInPicture(replacementController)
+        assert(replacementCall.results.count == 1 && replacementCall.results[0]["ok"] as? Bool == true)
         releasePipPlayer()
         assert(ordinary.paused && ordinary.itemCleared)
-        print("PASS iOS PiP: delayed looper readiness, cancellation, queue release and stale item guards")
+        print("PASS iOS PiP: delayed readiness preserves Pause; explicit Play; cancellation, queue release and stale item/controller guards")
     }
 }
 Harness().run()
@@ -187,8 +214,13 @@ def main():
         method(source, "private func makePipPlayer("),
         method(source, "private func releasePipPlayer("),
         method(source, "private func observePipPlayerItem("),
+        method(source, "private func controlNativePipPlayer("),
+        method(source, "private func tryStartPip("),
         method(source, "private func resolvePipOnce("),
         method(source, "private func teardownPip("),
+        method(source, "public func pictureInPictureControllerDidStartPictureInPicture(").replace("public func", "func"),
+        method(source, "public func pictureInPictureController(").replace("public func", "func"),
+        method(source, "public func pictureInPictureControllerDidStopPictureInPicture(").replace("public func", "func"),
     ]
     play = method(source, "@objc func playPip(")
     teardown = method(source, "private func teardownPip(")
