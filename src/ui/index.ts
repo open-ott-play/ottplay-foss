@@ -440,9 +440,12 @@ export function uiInit(): void {
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    if (usesLgPointerInput()) {
-                        // A click can arrive without movement after a menu opens.
-                        // Focus first, then dispatch exactly one OK action.
+                    if (
+                        usesLgPointerInput() ||
+                        (ev as any).ottNativeListTap === true
+                    ) {
+                        // Touch taps and LG pointer clicks focus and activate
+                        // in one action, including an already selected row.
                         if (idx !== selIndex) setSelect(idx);
                         dispatchKey(keys.ENTER);
                     } else if (
