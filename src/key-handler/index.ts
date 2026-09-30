@@ -1233,6 +1233,9 @@ function body_handleTouchEnd(e: any): void {
                         null
                     );
                 }
+                // Only a stationary native list gesture activates on its first
+                // tap. Mouse clicks and remote navigation retain their policy.
+                (clickEvent as any).ottNativeListTap = !!nativeListTouch;
                 e.target.dispatchEvent(clickEvent);
             }
         }

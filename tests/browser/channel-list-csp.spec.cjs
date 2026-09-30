@@ -420,20 +420,14 @@ test("native list swipe never becomes a tap after reversal or a coalesced end", 
         expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
         await expect(page.locator("#it14")).toBeVisible();
 
-        // A stationary tap retains row hit-testing and the existing two-tap
-        // focus/activate behavior; a drag must not poison the next gesture.
+        // The next stationary native tap activates its row immediately;
+        // a drag must not poison the next gesture or activate its final row.
         await page.evaluate(() => {
             window.__touchBegin(8);
             window.__touchSend("touchend");
         });
         expect(await page.evaluate(() => window.selIndex)).toBe(8);
-        expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
-        await page.evaluate(() => {
-            window.__touchBegin(8);
-            window.__touchSend("touchend");
-        });
         expect(await page.evaluate(() => window.__touchClicks)).toEqual([
-            "it8",
             "it8",
         ]);
         expect(await page.evaluate(() => window.__touchPlayed)).toEqual([
@@ -444,6 +438,79 @@ test("native list swipe never becomes a tap after reversal or a coalesced end", 
         expect(fixture.unexpectedRequests).toEqual([]);
     } finally {
         await fixture.close();
+    }
+});
+
+test("native list taps activate selected and nested unfocused rows exactly once", async ({
+    browser,
+}) => {
+    for (const index of [0, 8]) {
+        const fixture = await listTouchFixture(browser);
+        const page = fixture.page;
+        try {
+            await page.evaluate((index) => {
+                const row = document.getElementById("it" + index);
+                const target = row.querySelector("span");
+                if (!target)
+                    throw new Error("Rendered row must have a nested target");
+                window.__touchBegin(target);
+                // Ordinary finger jitter is a tap, not a list scroll.
+                window.__touchSend("touchend", 0.1, 2);
+            }, index);
+            expect(await page.evaluate(() => window.selIndex)).toBe(index);
+            expect(await page.evaluate(() => window.__touchPlayed)).toEqual([
+                [0, index],
+            ]);
+            expect(await page.evaluate(() => window.__touchClicks.length)).toBe(
+                1
+            );
+            expect(await page.evaluate(() => window.isListVisible)).toBe(false);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    }
+});
+
+test("native mouse and remote keys and browser touch retain focus before activation", async ({
+    browser,
+}) => {
+    for (const input of ["mouse", "remote", "browser-touch"]) {
+        const fixture = await listTouchFixture(
+            browser,
+            input !== "browser-touch"
+        );
+        const page = fixture.page;
+        try {
+            if (input === "mouse") await page.locator("#it1").click();
+            else if (input === "remote")
+                await page.evaluate(() => window._doKey(window.keys.DOWN));
+            else
+                await page.evaluate(() => {
+                    window.__touchBegin(1);
+                    window.__touchSend("touchend");
+                });
+            expect(await page.evaluate(() => window.selIndex)).toBe(1);
+            expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+            expect(await page.evaluate(() => window.isListVisible)).toBe(true);
+            if (input === "mouse") await page.locator("#it1").click();
+            else if (input === "remote")
+                await page.evaluate(() => window._doKey(window.keys.ENTER));
+            else
+                await page.evaluate(() => {
+                    window.__touchBegin(1);
+                    window.__touchSend("touchend");
+                });
+            expect(await page.evaluate(() => window.__touchPlayed)).toEqual([
+                [0, 1],
+            ]);
+            expect(await page.evaluate(() => window.isListVisible)).toBe(false);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
     }
 });
 
