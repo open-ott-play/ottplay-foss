@@ -75,6 +75,8 @@ const CLASSIC_MODULES = [
     "build/provider/assets.js",
     "build/provider/index.js",
     "build/commands/index.js",
+    "build/commands/remote-profiles.js",
+    "build/commands/remote-restart.js",
     "build/commands/remote-requests.js",
     "build/app/init.js",
     "build/app/device.js",

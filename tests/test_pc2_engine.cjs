@@ -20,6 +20,7 @@ function emitter(target = {}) {
 }
 function fixture() {
     let open;
+    const engineMedia = { autoplay: true, style: {} };
     const ready = [],
         sources = [],
         players = [],
@@ -65,6 +66,7 @@ function fixture() {
                 error() {},
                 isPaused: true,
                 loop() {},
+                media,
                 muted() {},
                 pause() {
                     player.isPaused = true;
@@ -79,7 +81,8 @@ function fixture() {
                 ready(cb) {
                     ready.push(cb);
                 },
-                readyState: () => (player.metadata ? 1 : 0),
+                readyState: () =>
+                    player.readyLevel || (player.metadata ? 1 : 0),
                 tech() {
                     return tech;
                 },
@@ -110,6 +113,9 @@ function fixture() {
                 (event) => events.push(event),
                 { style: {} }
             );
+        },
+        openRequest(request, event) {
+            return open(request, event, engineMedia);
         },
         players,
         preferences,
@@ -217,6 +223,48 @@ function fixture() {
         "Delayed settings restoration cannot act on the next source"
     );
     next.dispose();
+}
+{
+    const f = fixture();
+    require("./helpers/private-runtime.cjs")(
+        vm.createContext(f.w),
+        "src/device/media-backend.ts"
+    );
+    const backend = f.w.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => ({ generation: 1, kind: "vod", position: 8 }),
+        emit() {},
+        open: f.openRequest,
+        setInterval: () => 1,
+    });
+    backend.open({ url: "https://fixture.test/movie.m3u8" });
+    f.ready[0]();
+    const player = f.players[0];
+    player.readyLevel = 2;
+    player.position = 8;
+    player.emit("playing");
+    backend.current().pause();
+    assert.equal(backend.restart().paused, true);
+    assert.equal(f.w.forcePlay, false);
+    f.ready[1]();
+    player.emit("loadedmetadata");
+    assert.equal(player.media.autoplay, false);
+    assert.equal(
+        player.plays,
+        1,
+        "a deferred Video.js ready callback cannot autoplay a paused restart"
+    );
+    assert.equal(backend.current().snapshot().phase, "paused");
+    // Video.js/native controls may bypass the backend resume method.
+    player.play();
+    player.emit("playing");
+    assert.equal(
+        player.paused(),
+        false,
+        "the first native Play must remain playing"
+    );
+    assert.equal(backend.current().snapshot().phase, "playing");
+    backend.dispose();
 }
 {
     const f = fixture(),

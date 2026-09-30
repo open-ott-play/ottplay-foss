@@ -916,7 +916,8 @@ function cancelCoreSourcePreparation(): void {
 function startCoreEngine(
     url: string,
     position?: number,
-    observe?: () => void
+    observe?: () => void,
+    paused = false
 ): void {
     setCoreDemoMute((window as any).ottplayDemoActive === true);
     if (video) video.loop = (window as any).ottplayDemoActive === true;
@@ -929,7 +930,9 @@ function startCoreEngine(
     cancelCoreSourcePreparation();
     cancelCoreAutoPlayback();
     cancelCoreNativeHls();
-    (window as any).forcePlay = true;
+    // Set intent before source preparation, HLS manifests or Shaka attachment.
+    (window as any).forcePlay = !paused;
+    if (video && paused) video.autoplay = false;
     var session = _playSession;
     if (hlsInstance) {
         hlsInstance.destroy();
@@ -2691,6 +2694,7 @@ function openCoreEngineLease(
             if (kind === "audio") setAudioTrack(index);
             else if (kind === "subtitle") setSubtitleTrack(index);
         },
+        supportsPausedStart: !pip,
         tracks: function (kind: string) {
             if (!active() || !media) return [];
             var source =
@@ -2736,7 +2740,13 @@ function openCoreEngineLease(
         if (pip) {
             observe();
             startCorePipEngine(request.url);
-        } else startCoreEngine(request.url, request.position, observe);
+        } else
+            startCoreEngine(
+                request.url,
+                request.position,
+                observe,
+                request.paused === true
+            );
     } catch (error) {
         lease.dispose();
         throw error;

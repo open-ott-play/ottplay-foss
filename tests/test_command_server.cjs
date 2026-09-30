@@ -1168,3 +1168,204 @@ console.log(
 console.log(
     "PASS RPC cached-replay cadence, response/cache bounds and identity isolation"
 );
+
+// Reload capabilities survive a lost POST response, but never enter replay history.
+function effectRequest(expires = 5030) {
+    return {
+        commands: [],
+        requests: [
+            { action: "restart", expires_at: expires, id: "d".repeat(32) },
+        ],
+        server_time: 5000,
+    };
+}
+{
+    let effects = 0;
+    let executions = 0;
+    const rpc = harness("http:", (_request, done, afterReply) => {
+        executions++;
+        afterReply(() => effects++);
+        afterReply(() => (effects += 100));
+        done({ data: { accepted: true, dispatched: false }, status: "ok" });
+        afterReply(() => (effects += 1000));
+    });
+    rpc.connect();
+    rpc.respond(effectRequest());
+    assert.equal(effects, 0);
+    rpc.next();
+    const body = rpc.requests.at(-1).request.body;
+    assert.equal(JSON.parse(body).data.dispatched, false);
+    rpc.respond({}, 0);
+    assert.equal(effects, 0);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    rpc.respond({ status: "ok" });
+    assert.equal(effects, 1);
+    rpc.next();
+    rpc.respond(effectRequest());
+    rpc.next();
+    rpc.respond({ status: "ok" });
+    assert.equal(executions, 1);
+    assert.equal(effects, 1, "cached result replay must not reload again");
+}
+for (const mode of [
+    "expired",
+    "cap",
+    "404",
+    "reconfigured",
+    "invalid",
+    "rejected",
+    "oversize",
+]) {
+    let effects = 0;
+    const rpc = harness("http:", (_request, done, afterReply) => {
+        afterReply(() => effects++);
+        done({
+            data:
+                mode === "invalid"
+                    ? undefined
+                    : mode === "oversize"
+                      ? "x".repeat(800000)
+                      : {},
+            status: mode === "rejected" ? "rejected" : "ok",
+        });
+    });
+    rpc.connect();
+    rpc.respond(effectRequest(mode === "cap" ? 5100 : 5002));
+    rpc.next();
+    const oldResponse = rpc.requests.at(-1);
+    if (mode === "expired") clock += 2000;
+    if (mode === "cap") clock += 40000;
+    if (mode === "reconfigured") rpc.connect();
+    oldResponse.complete({
+        body: '{"status":"ok"}',
+        status: mode === "404" ? 404 : 200,
+    });
+    assert.equal(effects, 0, mode + " must discard its reload capability");
+}
+{
+    let effects = 0;
+    let canceled = 0;
+    const rpc = harness("http:", (_request, _done, afterReply) => {
+        afterReply(() => effects++);
+        return () => canceled++;
+    });
+    rpc.connect();
+    rpc.respond(effectRequest());
+    rpc.next(); // Execution deadline rejects and cancels the unfinished operation.
+    rpc.next();
+    rpc.respond({ status: "ok" });
+    assert.equal(effects, 0);
+    assert.equal(canceled, 1);
+}
+{
+    let rpc;
+    rpc = harness("http:", (_request, done, afterReply) => {
+        afterReply(() => rpc.connect());
+        done({ data: {}, status: "ok" });
+    });
+    rpc.connect();
+    rpc.respond(effectRequest());
+    rpc.next();
+    rpc.respond({ status: "ok" });
+    assert.equal(
+        rpc.jobs.size,
+        0,
+        "ACK effect reconfiguration cannot schedule an old poll"
+    );
+    assert.equal(rpc.requests.at(-1).request.method, "GET");
+}
+console.log(
+    "PASS acknowledged reload effects: retry, replay, deadline, revocation and invalid results"
+);
+
+const restartCode = ts.transpileModule(
+    fs.readFileSync(
+        path.join(__dirname, "../src/commands/remote-restart.ts"),
+        "utf8"
+    ),
+    {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }
+).outputText;
+acorn.parse(restartCode, { ecmaVersion: 5 });
+const restartContext = { exports: {} };
+vm.runInNewContext(restartCode, restartContext);
+const executeRestart = restartContext.exports.executeRemoteRestart;
+{
+    const order = [];
+    let locked = false;
+    let effect;
+    let reply;
+    const play = () => {};
+    const w = {
+        __ottClassicPlayback: {
+            checkpoint: (_snapshot, force) => order.push(["checkpoint", force]),
+            snapshot: () => ({ position: 42 }),
+        },
+        __ottCoreBackend: () => ({
+            current: () => ({
+                active: () => true,
+                sample: () => order.push("sample"),
+            }),
+            restart: () => ({
+                accepted: true,
+                dispatched: true,
+                position: 42,
+                target: "stream",
+            }),
+        }),
+        __ottCoreTransport: { play },
+        __ottParental: { needs: () => locked },
+        restart: () => order.push("reload"),
+        stbPlay: play,
+    };
+    const done = (value) => (reply = value);
+    const afterReply = (value) => (effect = value);
+    executeRestart(w, {}, done, afterReply);
+    assert.equal(reply.data.dispatched, true);
+    assert.equal(reply.data.position, 42);
+    assert.equal(effect, undefined);
+    for (const params of [
+        [],
+        null,
+        { target: "other" },
+        { extra: true, target: "stream" },
+    ]) {
+        executeRestart(w, params, done, afterReply);
+        assert.equal(reply.status, "rejected");
+    }
+    executeRestart(w, { target: "player" }, done);
+    assert.equal(reply.status, "unsupported");
+    locked = true;
+    executeRestart(w, { target: "player" }, done, afterReply);
+    assert.equal(reply.status, "rejected");
+    locked = false;
+    executeRestart(w, { target: "player" }, done, afterReply);
+    assert.equal(reply.data.accepted, true);
+    assert.equal(reply.data.dispatched, false);
+    assert.equal(order.length, 0);
+    effect();
+    assert.deepEqual(order, ["sample", ["checkpoint", true], "reload"]);
+    order.length = 0;
+    locked = true;
+    effect();
+    assert.equal(
+        order.length,
+        0,
+        "settings lock changed before ACK must prevent reload"
+    );
+    w.stbPlay = () => {};
+    executeRestart(w, {}, done, afterReply);
+    assert.equal(
+        reply.status,
+        "unsupported",
+        "legacy decoders cannot claim managed restart"
+    );
+}
+console.log(
+    "PASS remote restart: validation, owned backend, locked settings, checkpoint and truthful acceptance"
+);

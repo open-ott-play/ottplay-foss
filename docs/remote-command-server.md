@@ -95,13 +95,17 @@ Validate source behavior, emitted provider ABI, persisted settings, ES5 syntax a
 ## Terminal CLI and replies
 
 The optional protocol-1 request extension supports `ott NAME v`, `s`, `p`,
-channel selection by catalogue number/name, provider listing/selection and
-explicit M3U/Xtream/Stalker/OTTClub settings adapters. See the
+channel selection by catalogue number/name, provider listing/selection,
+M3U profiles, playback restarts and explicit M3U/Xtream/Stalker/OTTClub settings
+adapters. See the
 [CLI guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/cli.md).
 The terminal's alias maps to the device's UUID in the server configuration.
 Each installation needs its own code. No administrator token belongs in a player.
 
-Queries use the player's current catalogue and guide service; EPG requests have
+With the CLI's central EPG service configured, programme searches request only
+the player's channel metadata and use the service's `/epg/v1/current` endpoint.
+See [remote EPG control](remote-epg-control.md). Without that configuration,
+queries use the player's current catalogue and guide service; EPG requests have
 a 25-second collection budget and report partial results explicitly. Programmes
 share the Unix-seconds `as_of` timestamp captured when collection starts, even
 when guide callbacks arrive later. `checked` counts completed channel lookups;
@@ -117,6 +121,45 @@ results are explicitly rejected so polling can continue. EPG collection yields
 between batches, keeps at most four guide requests pending, and rejects results
 if the source or channel-load generation changes during collection.
 The previous command-only API remains compatible with older servers and players.
+
+### M3U profiles and restarts
+
+Select M3U with `ott NAME provider m3u` before using profile commands.
+`profiles` lists all 15 M3U slots, numbered 1–15 as in the player interface.
+`profile 2` selects slot 2. An empty slot cannot be selected; configure its
+playlist first. A deployment that fixes the M3U slot cannot select another slot.
+Parental settings locks and provider distribution restrictions still apply.
+
+`profile 2 url URL`, `profile 2 history HOURS`, `profile 2 vportal LINK`, and
+`profile 2 name NAME` change the specified slot. History is the playlist's
+archive depth in whole hours (0–8760), not watch-history retention. The VPortal
+value is the complete cabinet link, including its `portal::[key:...]` prefix.
+Empty strings clear string fields. Use `profile-config 2 FILE.json` to submit
+several settings together without placing credentials in shell history:
+
+```json
+{"name":"Movies","playlist":"https://example.com/list.m3u","history_hours":72,"vportal":"portal::[key:YOUR_KEY]http://host/api/v1/"}
+```
+
+The settings object accepts only those four fields. Validation finishes before
+anything is saved. Other fields and slots are preserved. Editing an inactive
+slot does not select it or reload the active playlist. Responses contain only
+the slot number, name, active state, archive hours and configuration flags;
+they never return playlist URLs, VPortal keys or media source identities.
+
+`restart` restarts the current stream through its playback backend while
+preserving the supported session state. Unsupported playback contexts report
+an error rather than starting a different channel. `restart player` reloads
+the complete player page. Its response means the reload was accepted; the
+player performs it only after the command server acknowledges the response.
+It does not claim that the replacement page has loaded or playback resumed.
+Full reload has the same session behavior as the player's existing restart:
+the in-memory VPortal automatic queue is not restored across page reloads.
+An expired response or changed controller connection discards a pending reload.
+Neither command retries a mutation after an uncertain response.
+
+These actions require updated CLI, control server and player versions. They
+do not change the existing provider-selection or active-playlist commands.
 
 ### Remote diagnostic snapshots
 
