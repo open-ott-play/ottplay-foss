@@ -1782,6 +1782,8 @@ function onStbReady(): void {
             (window as any).ensureDeviceClientId();
         if (typeof (window as any).applyLocalSwopConfig === "function")
             (window as any).applyLocalSwopConfig();
+        if ((window as any).__ottNasLibrary)
+            (window as any).__ottNasLibrary.init();
         initUIReferences();
 
         // Apply settings
@@ -2355,7 +2357,9 @@ function setupTauriEpgCacheReady(): void {
  * and sendClientFeedback(). If parental access is required, defers via callback.
  */
 function _playChannel(catIdx: number, chIdx: number): void {
-    if ((window as any).providerMediaClient)
+    if ((window as any).__ottMedia && (window as any).__ottMedia.cancelRequest)
+        (window as any).__ottMedia.cancelRequest();
+    else if ((window as any).providerMediaClient)
         (window as any).providerMediaClient.cancel();
     console.log(
         "[playChannel] catIdx=" +
@@ -2429,7 +2433,9 @@ function _playMedia(item: MediaHistoryEntry): void {
         reference.sourceId !== (window as any).__ottMedia.sourceId()
     )
         return;
-    if ((window as any).providerMediaClient)
+    if ((window as any).__ottMedia.cancelRequest)
+        (window as any).__ottMedia.cancelRequest();
+    else if ((window as any).providerMediaClient)
         (window as any).providerMediaClient.cancel();
     var streamUrl =
         typeof item.stream_url === "function"
@@ -4069,7 +4075,10 @@ window.settingsInterface = function (): void {
             if (row.settingId === "editor")
                 return typeof w.showEditKey2 === "function";
             if (row.settingId === "medCount")
-                return typeof w.getMediaArray === "function";
+                return (
+                    typeof w.getMediaArray === "function" ||
+                    !!(w.__ottNasLibrary && w.__ottNasLibrary.available())
+                );
             if (row.settingId === "volumeStep")
                 return typeof w.stbGetVolume === "function";
             if (row.settingId === "osdOpacity")

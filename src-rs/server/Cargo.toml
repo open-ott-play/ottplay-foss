@@ -12,7 +12,7 @@ ottplay-core = { path = "../core" }
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 flate2 = "1"
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
@@ -31,3 +31,8 @@ hyper-util = { version = "0.1", features = ["server", "tokio"] }
 tower = "0.5"
 md-5 = "0.10"
 regex = "1"
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+futures-util = "0.3"
+async-stream = "0.3"

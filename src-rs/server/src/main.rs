@@ -1,5 +1,6 @@
 mod debug_api;
 mod msx;
+mod nas_library;
 mod stalker_api;
 mod swop;
 mod vportal_api;
@@ -273,7 +274,8 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/local", ServeDir::new("local"))
         .layer(cors)
         // Installation-authenticated relay must not inherit permissive asset CORS.
-        .merge(swop::routes_from_env()?);
+        .merge(swop::routes_from_env()?)
+        .merge(nas_library::routes_from_env()?);
 
     serve_listeners(listeners, app, tls_config).await
 }

@@ -2330,6 +2330,8 @@ export function popRecords(): void {
  * @sideeffect Calls `window.mediaList(null)`.
  */
 export function popMedia(): void {
+    if ((window as any).__ottMedia && (window as any).__ottMedia.useSource)
+        (window as any).__ottMedia.useSource(null);
     if (
         typeof (window as any).getMediaArray === "function" &&
         typeof (window as any).mediaList === "function"

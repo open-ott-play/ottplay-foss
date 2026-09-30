@@ -32,6 +32,9 @@ interface VPortalCompletion {
 }
 
 interface VPortalOptions {
+    /** Explicit same-origin installation API; never resolved through the upstream proxy. */
+    directEndpoint?: string;
+    preferDefault?: boolean;
     isCurrent?: () => boolean;
     sourceId?: string;
     title?: string;
@@ -40,6 +43,7 @@ interface VPortalOptions {
 export interface VPortalClient {
     cancel(): void;
     dispose(): void;
+    stop(url?: string): void;
     load(target: any, callback: VPortalCompletion): void;
     play(item: any): void;
     resolve(item: any, done: (item: any) => void, automatic?: boolean): void;
@@ -50,7 +54,9 @@ export function createVPortalClient(
     link: string,
     options: VPortalOptions = {}
 ): VPortalClient | null {
-    var parsed = parseVPortalLink(link);
+    var direct = options.directEndpoint;
+    if (direct && !/^\/[a-z0-9][a-z0-9/_-]*$/i.test(direct)) return null;
+    var parsed = direct ? { key: "", url: direct } : parseVPortalLink(link);
     if (!parsed) return null;
     var portal = parsed;
     var w = window as any;
@@ -62,6 +68,62 @@ export function createVPortalClient(
     var previousDialogHandler: any = null;
     var qualityHandler: any = null;
     var preferredQuality = "";
+    var mediaSession: { stop: string; url: string; started: boolean } | null =
+        null;
+    var releases = 0;
+    var releaseWaiters: Array<() => void> = [];
+
+    function releaseUrl(value: any): void {
+        if (!direct || typeof value !== "string" || !w.location) return;
+        var origin =
+            String(w.location.protocol) + "//" + String(w.location.host);
+        if (
+            value.slice(0, origin.length).toLowerCase() !== origin.toLowerCase()
+        )
+            return;
+        var path = value.slice(origin.length);
+        if (
+            !/^\/nas\/stream\/[a-z0-9_-]+\.[a-z0-9_-]+\/media\.[a-z0-9]{1,8}$/i.test(
+                path
+            )
+        )
+            return;
+        releases++;
+        var finished = false;
+        function complete(): void {
+            if (finished) return;
+            finished = true;
+            if (--releases) return;
+            var waiting = releaseWaiters;
+            releaseWaiters = [];
+            waiting.forEach(function (next) {
+                next();
+            });
+        }
+        try {
+            jq.ajax({
+                url: path,
+                type: "GET",
+                dataType: "text",
+                timeout: 5000,
+                complete: complete,
+            });
+        } catch (_) {
+            complete();
+        }
+    }
+
+    function stop(url?: string): void {
+        var session = mediaSession;
+        if (!session || (url && session.url !== url)) return;
+        mediaSession = null;
+        releaseUrl(session.stop);
+    }
+
+    function afterRelease(next: () => void): void {
+        if (releases) releaseWaiters.push(next);
+        else next();
+    }
 
     function translate(text: string): string {
         return typeof w._ === "function" ? w._(text) : text;
@@ -88,6 +150,7 @@ export function createVPortalClient(
 
     function cancel(): void {
         var token = ++revision;
+        if (mediaSession && !mediaSession.started) stop();
         var request = pending;
         pending = null;
         if (request && typeof request.abort === "function") request.abort();
@@ -166,7 +229,7 @@ export function createVPortalClient(
         );
         var body = copyRequest(params);
         body.app = "ott-play";
-        body.key = portal.key;
+        if (!direct) body.key = portal.key;
         var finished = false;
         showBusy();
         try {
@@ -180,7 +243,7 @@ export function createVPortalClient(
                 },
                 contentType: "application/json; charset=UTF-8",
                 data: JSON.stringify(
-                    native ? body : { params: body, url: portal.url }
+                    native || direct ? body : { params: body, url: portal.url }
                 ),
                 dataType: "json",
                 error: function (_xhr: any, status: string): void {
@@ -188,13 +251,16 @@ export function createVPortalClient(
                         reportError();
                 },
                 success: function (data: any): void {
-                    if (isCurrent(token)) accept(data);
+                    if (isCurrent(token) && guard()) accept(data);
+                    else if (data) releaseUrl(data.stop);
                 },
                 timeout: 30000,
                 type: "POST",
-                url: native
-                    ? portal.url
-                    : String(w.host || "").replace(/\/$/, "") + "/vportal/api",
+                url:
+                    native || direct
+                        ? portal.url
+                        : String(w.host || "").replace(/\/$/, "") +
+                          "/vportal/api",
                 vportalRequest: true,
             });
             if (!finished && isCurrent(token)) pending = xhr;
@@ -438,102 +504,137 @@ export function createVPortalClient(
             // its previous URL with the newly resolved URL before updating it.
             var playable = copyRequest(item);
             playable.stream_url = url;
-            if (resolved) resolved(playable);
-            else w._playMedia(playable);
+            var session = mediaSession;
+            if (session) {
+                session.url = url;
+                session.started = true;
+            }
+            try {
+                if (resolved) resolved(playable);
+                else w._playMedia(playable);
+            } catch (error) {
+                if (mediaSession === session) stop();
+                throw error;
+            }
         }
+        stop();
         if (!item.request || typeof item.request !== "object") {
-            start(item.stream_url);
+            afterRelease(function () {
+                start(item.stream_url);
+            });
             return;
         }
         var result: any = null;
-        request(
-            item.request,
-            token,
-            function (data): void {
-                if (current()) result = data;
-            },
-            function (): void {
-                if (!current()) return;
-                if (!result || result.type === "error") {
-                    if (result) reportError();
-                    return;
-                }
-                var variants = result.variants;
-                var names =
-                    variants && typeof variants === "object"
-                        ? Object.keys(variants).filter(function (name) {
-                              return validStream(variants[name]);
-                          })
-                        : [];
-                var url = validStream(result.url)
-                    ? result.url
-                    : names.length
-                      ? variants[names[0]]
-                      : "";
-                if (!url) {
-                    reportError();
-                    return;
-                }
-                if (
-                    automatic ||
-                    names.length < 2 ||
-                    typeof w.showSelectBox !== "function"
-                ) {
-                    if (automatic && names.indexOf(preferredQuality) !== -1)
-                        url = variants[preferredQuality];
-                    start(url);
-                    return;
-                }
-                var selected = 0;
-                names.forEach(function (name, index) {
-                    if (variants[name] === url) selected = index;
-                });
-                w.showSelectBox(
-                    selected,
-                    names.map(metadataText),
-                    function (index: number) {
-                        if (current() && index >= 0 && index < names.length) {
-                            preferredQuality = names[index];
-                            start(variants[names[index]]);
-                        }
-                    },
-                    -1,
-                    !!resolved
-                );
-                // showSelectBox closes the old list, which deliberately cancels pending work.
-                token = revision;
-                view = w._mediaLoadState;
-                var picker = w.selectBoxKeyHandler;
-                qualityHandler = function (code: number): boolean {
+        afterRelease(function () {
+            if (!current()) return;
+            request(
+                item.request,
+                token,
+                function (data): void {
+                    if (current()) {
+                        result = data;
+                        if (direct && data && data.stop)
+                            mediaSession = {
+                                stop: data.stop,
+                                url: data.url || "",
+                                started: false,
+                            };
+                    } else if (data) releaseUrl(data.stop);
+                },
+                function (): void {
                     if (!current()) {
-                        cancel();
-                        return true;
+                        if (mediaSession && !mediaSession.started) stop();
+                        return;
                     }
-                    var keys = w.keys || {};
-                    if (code === keys.STOP) {
-                        cancel();
-                        if (typeof w.stbStop === "function") w.stbStop();
-                        return true;
+                    if (!result || result.type === "error") {
+                        if (mediaSession && !mediaSession.started) stop();
+                        if (result) reportError();
+                        return;
                     }
-                    var handled =
-                        typeof picker === "function" ? picker(code) : false;
-                    if (code === keys.RETURN || code === keys.EXIT) cancel();
-                    return handled;
-                };
-                var screen = w.__ottClassicScreenPort;
-                if (
-                    screen &&
-                    typeof screen.decorateOwnedCallback === "function"
-                )
-                    qualityHandler = screen.decorateOwnedCallback(
-                        "picker",
-                        picker,
-                        qualityHandler
+                    var variants = result.variants;
+                    var names =
+                        variants && typeof variants === "object"
+                            ? Object.keys(variants).filter(function (name) {
+                                  return validStream(variants[name]);
+                              })
+                            : [];
+                    var url = validStream(result.url)
+                        ? result.url
+                        : names.length
+                          ? variants[names[0]]
+                          : "";
+                    if (!url) {
+                        if (mediaSession && !mediaSession.started) stop();
+                        reportError();
+                        return;
+                    }
+                    if (
+                        automatic ||
+                        options.preferDefault ||
+                        names.length < 2 ||
+                        typeof w.showSelectBox !== "function"
+                    ) {
+                        if (automatic && names.indexOf(preferredQuality) !== -1)
+                            url = variants[preferredQuality];
+                        start(url);
+                        return;
+                    }
+                    var selected = 0;
+                    names.forEach(function (name, index) {
+                        if (variants[name] === url) selected = index;
+                    });
+                    w.showSelectBox(
+                        selected,
+                        names.map(metadataText),
+                        function (index: number) {
+                            if (
+                                current() &&
+                                index >= 0 &&
+                                index < names.length
+                            ) {
+                                preferredQuality = names[index];
+                                start(variants[names[index]]);
+                            }
+                        },
+                        -1,
+                        !!resolved
                     );
-                else w.selectBoxKeyHandler = qualityHandler;
-            },
-            current
-        );
+                    // showSelectBox closes the old list, which deliberately cancels pending work.
+                    token = revision;
+                    view = w._mediaLoadState;
+                    var picker = w.selectBoxKeyHandler;
+                    qualityHandler = function (code: number): boolean {
+                        if (!current()) {
+                            cancel();
+                            return true;
+                        }
+                        var keys = w.keys || {};
+                        if (code === keys.STOP) {
+                            cancel();
+                            if (typeof w.stbStop === "function") w.stbStop();
+                            return true;
+                        }
+                        var handled =
+                            typeof picker === "function" ? picker(code) : false;
+                        if (code === keys.RETURN || code === keys.EXIT)
+                            cancel();
+                        return handled;
+                    };
+                    var screen = w.__ottClassicScreenPort;
+                    if (
+                        screen &&
+                        typeof screen.decorateOwnedCallback === "function"
+                    )
+                        qualityHandler = screen.decorateOwnedCallback(
+                            "picker",
+                            picker,
+                            qualityHandler
+                        );
+                    else w.selectBoxKeyHandler = qualityHandler;
+                },
+                current
+            );
+        });
     }
 
     return {
@@ -541,6 +642,13 @@ export function createVPortalClient(
         dispose: function (): void {
             disposed = true;
             cancel();
+            stop();
+        },
+        stop: function (url?: string) {
+            if (!direct || (mediaSession && url && mediaSession.url !== url))
+                return;
+            cancel();
+            stop(url);
         },
         load: load,
         play: play,
@@ -556,3 +664,128 @@ export function createVPortalClient(
 
 (window as any).parseVPortalLink = parseVPortalLink;
 (window as any).createVPortalClient = createVPortalClient;
+
+/** A local installation advertises its catalog without exposing a NAS/Plex access key. */
+export function createNasLibrary(host: any): any {
+    var revision = 0;
+    var pending: any = null;
+    var source: any = null;
+    var api: any;
+    function retire(): void {
+        var previous = source;
+        source = null;
+        if (!previous) return;
+        if (host.__ottMedia && host.__ottMedia.usesSource(previous))
+            host.__ottMedia.useSource(null);
+        previous.client.dispose();
+    }
+    function init(): void {
+        var token = ++revision;
+        if (pending && typeof pending.abort === "function") pending.abort();
+        pending = null;
+        // Native shells use explicitly configured VPortal links and their normal transport.
+        if (
+            !host.location ||
+            !/^https?:$/.test(host.location.protocol) ||
+            host.__TAURI__ ||
+            (host.Capacitor &&
+                (typeof host.Capacitor.isNativePlatform !== "function" ||
+                    host.Capacitor.isNativePlatform()))
+        )
+            return;
+        var jq = host.jQuery || host.$;
+        if (!jq || typeof jq.ajax !== "function") return;
+        var finished = false;
+        try {
+            var request = jq.ajax({
+                cache: false,
+                contentType: "application/json",
+                dataType: "json",
+                type: "GET",
+                url: "/nas/config",
+                timeout: 5000,
+                success: function (config: any): void {
+                    if (token !== revision) return;
+                    if (
+                        !config ||
+                        config.enabled !== true ||
+                        config.api !== "/nas/api" ||
+                        typeof config.sourceId !== "string" ||
+                        !/^[a-z0-9:_-]{1,160}$/i.test(config.sourceId)
+                    ) {
+                        retire();
+                        return;
+                    }
+                    if (source && source.sourceId === config.sourceId) return;
+                    retire();
+                    var title =
+                        typeof config.title === "string" && config.title.trim()
+                            ? config.title.trim().slice(0, 120)
+                            : "Synology";
+                    var next: any = {
+                        sourceId: config.sourceId,
+                        title: title,
+                        read: function (key: string) {
+                            // A fresh NAS namespace must never claim the active provider's legacy journal.
+                            return typeof host.stbGetItem === "function"
+                                ? host.stbGetItem("installation:" + key)
+                                : null;
+                        },
+                        write: function (key: string, value: string) {
+                            if (typeof host.stbSetItem === "function")
+                                host.stbSetItem("installation:" + key, value);
+                        },
+                    };
+                    next.client = createVPortalClient("", {
+                        directEndpoint: config.api,
+                        preferDefault: true,
+                        isCurrent: function () {
+                            return (
+                                source === next &&
+                                host.__ottMedia.usesSource(next)
+                            );
+                        },
+                        sourceId: next.sourceId,
+                        title: title,
+                    });
+                    if (!next.client) return;
+                    source = next;
+                    if (typeof host.__ottNasLibraryChanged === "function")
+                        host.__ottNasLibraryChanged();
+                },
+                complete: function () {
+                    finished = true;
+                    if (token === revision) pending = null;
+                },
+            });
+            if (!finished && token === revision) pending = request;
+        } catch (_) {
+            /* An absent optional installation must never block startup. */
+        }
+    }
+    api = {
+        available: function () {
+            return !!source;
+        },
+        init: init,
+        open: function () {
+            if (!source || !host.__ottMedia) return;
+            host.__ottMedia.useSource(source);
+            host.__ottMedia.open(null, source.title);
+        },
+        title: function () {
+            return source ? metadataText(source.title) : "Synology";
+        },
+        dispose: function () {
+            revision++;
+            if (pending && typeof pending.abort === "function") pending.abort();
+            pending = null;
+            retire();
+        },
+    };
+    return api;
+}
+(window as any).__ottNasLibrary = createNasLibrary(window);
+(window as any).popNasMedia = function () {
+    (window as any).__ottNasLibrary.open();
+};

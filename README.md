@@ -953,3 +953,7 @@ English history and source links, also available from the player's information m
 
 Use the local [video-use workflow](docs/demo-video.md) to prepare and edit
 demonstration recordings. The helper keeps all generated media outside Git.
+
+## Synology media library
+
+An optional native NAS library uses an existing Plex server for catalogs and compatible playback, with a separate Synology entry and M3U export. See [configuration and client access](docs/synology-library.md).

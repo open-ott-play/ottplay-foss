@@ -173,7 +173,7 @@
     },
     {
       "file": "src/provider/index.ts",
-      "expression": "optionsArr[selIndex].desc || optionsArr[selIndex].name || \"\"",
+      "expression": "viewOptions[selIndex].desc || viewOptions[selIndex].name || \"\"",
       "reason": "Settings/information schema name and description fields are extracted at their declarations; external or already-rendered rows stay runtime data."
     },
     {
