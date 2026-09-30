@@ -36,7 +36,10 @@ const { gzipSync } = require("node:zlib");
 // Unicode remote matching on Node 22.23.3 measures 606636 raw / 184035 gzip
 // for web and 606594 raw / 184089 gzip for both native variants. Allocate its
 // measured cost plus candidate suffix room; retain the complete gzip limit.
-const BUDGET = Object.freeze({ bytes: 606700, gzipBytes: 184150 });
+// Native list swipes retain gesture ownership across paginated row replacement.
+// Node 26 measures 608740 raw / 184260 gzip (web), 608698 / 184317 (native).
+// Include release suffix room and the established Node 22 gzip variation.
+const BUDGET = Object.freeze({ bytes: 608900, gzipBytes: 185000 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -52,7 +55,8 @@ const BUDGET = Object.freeze({ bytes: 606700, gzipBytes: 184150 });
 // The same bounded diagnostics addition needs 100 raw complete-payload bytes.
 // The same candidate with every provider measures 671260 / 208569 for web
 // and 671218 / 208623 for native outputs; retain bounded suffix headroom.
-const TOTAL_BUDGET = Object.freeze({ bytes: 671300, gzipBytes: 209000 });
+// The gesture candidate totals 673493 raw / 208815 gzip before version suffixes.
+const TOTAL_BUDGET = Object.freeze({ bytes: 673750, gzipBytes: 209800 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
