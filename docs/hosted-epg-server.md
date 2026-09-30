@@ -113,6 +113,10 @@ are excluded. Rows sort stably by start, then stop, retaining duplicates and
 full descriptions. A known channel with no matching programmes returns an
 empty array. Per-channel limits are 20,000 rows and an 8 MiB decoded record
 budget; exceeding them fails the request instead of returning partial history.
+At most four programme requests are admitted. Disconnecting while work is still
+queued returns its admission slot immediately, even if the blocking worker pool
+is occupied. Once processing starts, the worker retains that slot until it
+finishes. Programme requests do not inherit the match endpoint's deadline.
 
 Browser XMLTV record behavior is preserved using native token parsing:
 first metadata for a channel, all aliases in input order, first nonempty title

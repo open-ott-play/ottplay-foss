@@ -32,19 +32,23 @@ const MAX_ROW_BYTES: usize = 8 * 1024 * 1024;
 const MAX_CURRENT_BYTES: usize = 2 * 1024 * 1024;
 const MATCH_TIMEOUT: Duration = Duration::from_secs(8);
 
-type PendingMatchPermits = Arc<Mutex<Option<(OwnedSemaphorePermit, OwnedSemaphorePermit)>>>;
+type PendingRequestPermits =
+    Arc<Mutex<Option<(OwnedSemaphorePermit, Option<OwnedSemaphorePermit>)>>>;
 
-struct CancelMatchOnDrop {
-    budget: MatchBudget,
+struct CancelRequestOnDrop {
+    budget: Option<MatchBudget>,
     work: Option<tokio::task::AbortHandle>,
-    pending: Option<PendingMatchPermits>,
+    pending: Option<PendingRequestPermits>,
 }
 
-impl Drop for CancelMatchOnDrop {
+impl Drop for CancelRequestOnDrop {
     fn drop(&mut self) {
-        self.budget.cancel();
+        if let Some(budget) = &self.budget {
+            budget.cancel();
+        }
         // Tokio can remove a blocking task that has not started yet. Once it
-        // starts, the JS interrupt and row checks observe the cancelled budget.
+        // starts, it keeps its leases until it returns. Matching work also
+        // observes its cancelled budget through JS interrupts and row checks.
         if let Some(work) = &self.work {
             work.abort();
         }
@@ -553,8 +557,8 @@ async fn run_match_using<I: Send + 'static>(
     work: impl FnOnce(Arc<Snapshot>, I, &MatchBudget) -> anyhow::Result<Value> + Send + 'static,
 ) -> Result<Response, ApiError> {
     let budget = MatchBudget::new(timeout);
-    let mut cancel = CancelMatchOnDrop {
-        budget: budget.clone(),
+    let mut cancel = CancelRequestOnDrop {
+        budget: Some(budget.clone()),
         work: None,
         pending: None,
     };
@@ -575,7 +579,7 @@ async fn run_match_using<I: Send + 'static>(
             .map_err(|_| ApiError::Timeout)?
             .map_err(|_| ApiError::Internal)?;
     let work_budget = budget.clone();
-    let pending = Arc::new(Mutex::new(Some((permit, execution))));
+    let pending = Arc::new(Mutex::new(Some((permit, Some(execution)))));
     cancel.pending = Some(pending.clone());
     let work = tokio::task::spawn_blocking(move || {
         let _permits = pending
@@ -628,14 +632,24 @@ async fn programmes(
         .await
         .clone()
         .ok_or(ApiError::NotReady)?;
-    tokio::task::spawn_blocking(move || {
-        let _permit = permit;
+    let pending = Arc::new(Mutex::new(Some((permit, None))));
+    let mut cancel = CancelRequestOnDrop {
+        budget: None,
+        work: None,
+        pending: Some(pending.clone()),
+    };
+    let work = tokio::task::spawn_blocking(move || {
+        let _permit = pending
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .take()
+            .ok_or(ApiError::Timeout)?;
         snapshot
             .programmes(input, now_ms())
             .map(|value| Json(value).into_response())
-    })
-    .await
-    .map_err(|_| ApiError::Internal)?
+    });
+    cancel.work = Some(work.abort_handle());
+    work.await.map_err(|_| ApiError::Internal)?
 }
 
 async fn fetch_snapshot(client: &reqwest::Client) -> anyhow::Result<Snapshot> {
@@ -1309,6 +1323,74 @@ mod tests {
             release.send(()).unwrap();
             blocker.await.unwrap();
             assert!(run_match(state, match_input(), MATCH_TIMEOUT).await.is_ok());
+        });
+    }
+
+    #[test]
+    fn hosted_programmes_cancelled_blocking_queue_releases_all_permits_before_dequeue() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(1)
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let state = GuideState::new();
+            let fresh = snapshot();
+            let generation = fresh.generation.clone();
+            state.publish(fresh).await;
+            let (release, held) = std::sync::mpsc::channel();
+            let entered = Arc::new(tokio::sync::Notify::new());
+            let signal = entered.clone();
+            let blocker = tokio::task::spawn_blocking(move || {
+                signal.notify_one();
+                let _ = held.recv();
+            });
+            entered.notified().await;
+            let start = || {
+                tokio::spawn(programmes(
+                    State(state.clone()),
+                    Ok(Query(ProgrammeInput {
+                        channel_id: "ren".into(),
+                        shift: 0,
+                        hours: 8784,
+                        generation: generation.clone(),
+                    })),
+                ))
+            };
+            let requests: Vec<_> = (0..4).map(|_| start()).collect();
+            tokio::time::timeout(Duration::from_secs(1), async {
+                while state.programme_requests.available_permits() != 0 {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            for request in &requests {
+                request.abort();
+            }
+            for request in requests {
+                assert!(matches!(request.await, Err(error) if error.is_cancelled()));
+            }
+            // The unrelated blocking worker is still occupied. Disconnected
+            // consumers must not keep all guide capacity until it is released.
+            assert_eq!(state.programme_requests.available_permits(), 4);
+            let replacement = start();
+            tokio::time::timeout(Duration::from_secs(1), async {
+                while state.programme_requests.available_permits() != 3 {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            release.send(()).unwrap();
+            blocker.await.unwrap();
+            let response = tokio::time::timeout(Duration::from_secs(1), replacement)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(state.programme_requests.available_permits(), 4);
         });
     }
 
