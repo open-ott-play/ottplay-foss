@@ -32,10 +32,66 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return try action(policy!)
     }
 
-    private typealias Parsed = (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], icons: [String: String], names: [String: [String]])
+    // Identity belongs to the actual successful parse, including memory fallback.
+    // Readers retain their immutable snapshot while a refresh publishes another.
+    private final class Parsed {
+        let channels: [String: String]
+        let programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]
+        let icons: [String: String]
+        let names: [String: [String]]
+        private let queryLock = NSLock()
+        private var guide: SharedGuide?
+        private var index: JavaScriptCore.JSValue?
+
+        init(_ channels: [String: String], _ programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], _ icons: [String: String], _ names: [String: [String]]) {
+            self.channels = channels; self.programs = programs; self.icons = icons; self.names = names
+        }
+
+        func query<T>(_ action: (SharedGuide, JavaScriptCore.JSValue) throws -> T) throws -> T {
+            queryLock.lock()
+            defer { queryLock.unlock() }
+            if guide == nil {
+                let next = try SharedGuide()
+                let rows = channels.keys.sorted().flatMap { id in
+                    (names[id] ?? [channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
+                }
+                let built = try next.index(rows)
+                // Publish only after both allocations succeed; failures remain retryable.
+                guide = next; index = built
+            }
+            // Guard the whole transaction, including exception state and Swift caches.
+            return try action(guide!, index!)
+        }
+    }
     private let sourceLock = NSLock()
     private var parsedCache: [String: (fetched: TimeInterval, data: Parsed)] = [:]
     private var pendingSources: [String: [(Result<Parsed, Error>) -> Void]] = [:]
+    private let assemblyLock = NSLock()
+    private var assemblyRevision: UInt64 = 0
+    private var assembled: (revision: UInt64, sources: [String], parts: [Parsed?], data: Parsed)?
+
+    private func assemble(_ sources: [String], _ parts: [Parsed?], revision: UInt64) throws -> Parsed {
+        assemblyLock.lock()
+        defer { assemblyLock.unlock() }
+        if let cached = assembled, cached.sources == sources,
+           zip(cached.parts, parts).allSatisfy({ $0.0 === $0.1 }) {
+            assembled = (max(revision, cached.revision), sources, parts, cached.data)
+            return cached.data
+        }
+        var channels: [String: String] = [:], icons: [String: String] = [:], names: [String: [String]] = [:]
+        var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
+        for parsed in parts.compactMap({ $0 }) {
+            let ids = try withPolicy { try $0.unowned(Array(channels.keys), incoming: Array(parsed.channels.keys)) }
+            for id in ids {
+                channels[id] = parsed.channels[id]; programs[id] = parsed.programs[id]
+                icons[id] = parsed.icons[id]; names[id] = parsed.names[id]
+            }
+        }
+        let data = Parsed(channels, programs, icons, names)
+        // An older asynchronous batch may finish after a newer one was assembled.
+        if assembled == nil || revision > assembled!.revision { assembled = (revision, sources, parts, data) }
+        return data
+    }
     // The host transport must apply the delivered-body limit while receiving.
     // Expanded XML is kept on disk, never as a full Swift String or Data value.
     private var inputByteLimit = 64 * 1024 * 1024
@@ -142,7 +198,11 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // Source order is significant: the first feed defining an ID owns its programs.
     private func loadSources(_ sources: [String], force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
-        var merged: Parsed = ([:], [:], [:], [:])
+        assemblyLock.lock()
+        assemblyRevision &+= 1
+        let revision = assemblyRevision
+        assemblyLock.unlock()
+        var parts = [Parsed?](repeating: nil, count: sources.count)
         var errors: [Int: Error] = [:]
         let batch: JavaScriptCore.JSValue
         do { batch = try withPolicy { try $0.sourceBatch(sources.count) } }
@@ -153,20 +213,14 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 if index < 0 {
                     let failed = try self.withPolicy { try $0.batchFailure(batch) }
                     if failed >= 0 { completion(.failure(errors[failed]!)) }
-                    else { completion(.success(merged)) }
+                    else { completion(.success(try self.assemble(sources, parts, revision: revision))) }
                     return
                 }
                 loadSource(sources[index], force: force) { result in
                     do {
                         switch result {
                         case .success(let parsed):
-                            let ids = try self.withPolicy { try $0.unowned(Array(merged.channels.keys), incoming: Array(parsed.channels.keys)) }
-                            for id in ids {
-                                merged.channels[id] = parsed.channels[id]
-                                merged.programs[id] = parsed.programs[id]
-                                merged.icons[id] = parsed.icons[id]
-                                merged.names[id] = parsed.names[id]
-                            }
+                            parts[index] = parsed
                             try self.withPolicy { try $0.batchAdvance(batch, succeeded: true, channels: parsed.channels.count) }
                         case .failure(let error):
                             errors[index] = error
@@ -375,7 +429,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             defer { stream.close() }
             let parser = try XmltvParser(core: ())
             try parser.parse(stream)
-            return (parser.channels, parser.programs, parser.icons, parser.names)
+            return Parsed(parser.channels, parser.programs, parser.icons, parser.names)
         }
     }
 
@@ -465,23 +519,21 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Channel Resolution + EPG Slice
 
     private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) throws -> [String: Any] {
-        let guide = try SharedGuide()
-        let rows = parsed.channels.keys.sorted().flatMap { id in
-            (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
-        }
-        let xmltvId = try guide.resolve(rows, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
-        let unsorted = parsed.programs[xmltvId] ?? []
-        let progs = try guide.xmltvOrder(unsorted.map { Double($0.start) }).map { unsorted[$0] }
-        let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
-        let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
-            now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
-        let epgData: [[String: Any]] = selection.map { row in
-            let prog = progs[Int(row[0])]
-            return ["time": Int(row[1]), "time_to": Int(row[2]), "name": prog.title,
-                    "descr": prog.desc, "icon": ""]
-        }
+        try parsed.query { guide, index in
+            let xmltvId = try guide.resolve(index, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
+            let unsorted = parsed.programs[xmltvId] ?? []
+            let progs = try guide.xmltvOrder(unsorted.map { Double($0.start) }).map { unsorted[$0] }
+            let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
+            let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
+                now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
+            let epgData: [[String: Any]] = selection.map { row in
+                let prog = progs[Int(row[0])]
+                return ["time": Int(row[1]), "time_to": Int(row[2]), "name": prog.title,
+                        "descr": prog.desc, "icon": ""]
+            }
 
-        return ["epg_data": epgData]
+            return ["epg_data": epgData]
+        }
     }
 }
 
@@ -648,10 +700,12 @@ private final class SharedGuide {
         return result
     }
     func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }
-    func resolve(_ rows: [[String]], id: String, names: [String]) throws -> String? {
+    func index(_ rows: [[String]]) throws -> JavaScriptCore.JSValue {
         let measure: @convention(block) (String) -> Int = { $0.count }
         let precision: @convention(block) (Double) -> Double = { $0 }
-        let index = try checked { core.forProperty("NativeGuide")?.construct(withArguments: [rows, "swift", measure, precision]) }
+        return try checked { core.forProperty("NativeGuide")?.construct(withArguments: [rows, "swift", measure, precision]) }
+    }
+    func resolve(_ index: JavaScriptCore.JSValue, id: String, names: [String]) throws -> String? {
         let result = try checked { index.invokeMethod("resolve", withArguments: [id, names]) }
         return result.isNull ? nil : result.toString()
     }

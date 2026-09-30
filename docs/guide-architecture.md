@@ -8,8 +8,12 @@ XMLTV warm-up. Direct archive/menu consumers remain independent subscribers.
 The fullscreen footer has one renderer for each playback mode. Live now/next
 callbacks must not repaint an archive or VOD footer; archive progress uses the
 playback position instead of the wall clock. Archive ticks publish a schedule to
-the guide only when that schedule changes, not once per position update. Live
-programme-change notifications retain the source, channel and broadcast start
+the guide only when that schedule changes, not once per position update.
+Archive position ticks also reuse the adapter's full-schedule projection; the
+footer consumes that projection instead of copying the schedule again. A real
+schedule replacement or refill creates a new projection, while progress and
+programme boundaries still update on each tick. Live programme-change
+notifications retain the source, channel and broadcast start
 through guide misses, so periodic repaints and title/end corrections do not
 reopen a dismissed info bar. `test_archive_session.cjs` exercises the retained
 live subscription across archive entry, position ticks, late guide publication
@@ -18,6 +22,10 @@ The configured cache capacity still disables full-schedule retention at zero;
 completed schedules expire after twelve hours or after all programmes end.
 Only subscribed channels trigger clock refreshes. Channel renderer fields are
 accessors over this owner; scalar reads do not clone whole schedules.
+Closing the channel list retires its visible-row subscriptions and restores the
+playing live channel's footer subscription. The periodic footer fallback uses
+the playing channel, not the last highlighted row. Archive and VOD keep their
+own renderers, and an already closed list does not cancel an active live request.
 
 ## Request, cache and projection are different operations
 
@@ -28,6 +36,9 @@ coalesces consumers for the same source/channel reference; the service runs one
 transport request at a time. Each successful consumer receives detached rows.
 Empty/failing responses produce `null` rather than an indefinitely reusable empty
 schedule. A cancelled/retired consumer does not receive late completion.
+When an in-flight channel row becomes obsolete, its completion releases only
+its own queue slot and advances unrelated requests without publishing stale
+rows. A late response cannot release a replacement request's slot.
 
 `__ottClassicGuide.peek(id)` and the compatibility `getEpgFromCache(id)` read a
 retained full schedule without fetching. They validate source identity, channel-row

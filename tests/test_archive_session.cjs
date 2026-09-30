@@ -280,6 +280,103 @@ function fixture() {
     );
 }
 
+// Position ticks reuse the full schedule projection while still updating the footer.
+{
+    const c = fixture();
+    let mappings = 0,
+        mappedRows = 0;
+    const create = c.__ottArchiveSession.create;
+    c.__ottArchiveSession.create = (core, ports) => {
+        const publish = ports.publish;
+        ports.publish = (model) => {
+            const map = model.rows.map;
+            model.rows.map = function (callback) {
+                mappings++;
+                mappedRows += this.length;
+                return map.call(this, callback);
+            };
+            try {
+                return publish(model);
+            } finally {
+                delete model.rows.map;
+            }
+        };
+        return create(core, ports);
+    };
+    c.epgArray = Array.from({ length: 1000 }, (_, index) => ({
+        name: "Programme " + index,
+        time: 900000 + index * 100,
+        time_to: 900100 + index * 100,
+    }));
+    c.playArchive(999060);
+    const schedule = c.epgArray;
+    assert.equal(mappings, 1, "One full conversion when adopting a schedule");
+    assert.equal(mappedRows, 1000);
+    assert.equal(c.elements.programm_name.textContent, "Programme 990");
+    assert.equal(c.elements.progress.style.width, "60%");
+    mappings = mappedRows = 0;
+    for (const position of [999061, 999062, 999063]) {
+        c.updateArchiveInfo(position);
+        assert.equal(c.epgArray, schedule);
+        assert.equal(c.curProg, 990);
+        assert.equal(c.elements.programm_name.textContent, "Programme 990");
+        assert.equal(c.elements.progress.style.width, position - 999000 + "%");
+    }
+    assert.equal(mappings, 0, "Position ticks allocate no schedule arrays");
+    assert.equal(
+        mappedRows,
+        0,
+        "Position ticks traverse no schedule for encoding"
+    );
+    c.updateArchiveInfo(999120);
+    assert.equal(
+        c.epgArray,
+        schedule,
+        "A programme boundary keeps the schedule"
+    );
+    assert.equal(c.curProg, 991);
+    assert.equal(c.elements.programm_name.textContent, "Programme 991");
+    assert.equal(c.elements.progress.style.width, "20%");
+    c.epgArray = [{ name: "Foreign view", time: 999100, time_to: 999200 }];
+    c.updateArchiveInfo(999121);
+    assert.equal(c.epgArray, schedule, "A tick restores its owned projection");
+    assert.equal(mappings, 0);
+
+    // Explicit selections may replace the schedule, and late refills may correct it.
+    c.epgArray = [{ name: "Corrected", time: 999100, time_to: 999300 }];
+    c.playArchive(999150);
+    const corrected = c.epgArray;
+    assert.notEqual(corrected, schedule);
+    assert.equal(mappings, 1);
+    assert.equal(mappedRows, 1);
+    assert.equal(c.curProg, 0);
+    assert.equal(c.elements.programm_name.textContent, "Corrected");
+    assert.equal(c.elements.progress.style.width, "25%");
+    c.updateArchiveInfo(999151);
+    assert.equal(c.epgArray, corrected);
+    assert.equal(c.requests.length, 1);
+    c.__ottClassicPlayback.command({ position: 1, type: "position" });
+    c.reply(0, [
+        { name: "Refilled", time: 999100, time_to: 999400 },
+        { name: "Refilled next", time: 999400, time_to: 1000000 },
+    ]);
+    const refilled = c.epgArray;
+    assert.notEqual(refilled, corrected);
+    assert.equal(mappings, 2, "A changed schedule is encoded once");
+    assert.equal(mappedRows, 3);
+    assert.equal(c.elements.programm_name.textContent, "Refilled");
+    assert.equal(c.elements.nprogramm_name.textContent, "Refilled next");
+    assert.equal(c.elements.progress.style.width, "17%");
+    c.updateArchiveInfo(999152);
+    assert.equal(c.epgArray, refilled);
+    assert.equal(mappings, 2);
+    assert.equal(
+        c.opens().length,
+        2,
+        "Refilling the guide does not reopen media"
+    );
+}
+
 // Real entrypoints use resource bounds, never the renderer's mutable programme index.
 {
     const c = fixture();

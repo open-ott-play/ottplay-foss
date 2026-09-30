@@ -1770,6 +1770,164 @@ const server = http.createServer((request, response) => {
         await page.evaluate(() => waitMessage("ready"));
         assert.equal(calls, before, "fresh cache avoids another full download");
 
+        // Seed beta.6's actual database/record layout. Its programme windows
+        // were admitted with the old brand offset, so they require a new parse.
+        const identitySource = ts.transpileModule(
+            workerFactory.body.statements
+                .find(
+                    (node) =>
+                        ts.isFunctionDeclaration(node) &&
+                        node.name.text === "identity"
+                )
+                .getText(workerAst),
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText;
+        const legacyBrandCache = await page.evaluate(async (source) => {
+            const identity = new Function(source + "\nreturn identity;")();
+            const url = location.origin + "/feed.gz";
+            window.brandInput = {
+                channels: [
+                    {
+                        archiveHours: 48,
+                        id: "brand",
+                        name: "Россия-1",
+                        sources: [url],
+                        tvgId: "18",
+                        tvgName: "",
+                    },
+                ],
+                refreshMs: 7200000,
+                sources: [url],
+                type: "load",
+            };
+            const signature = JSON.stringify([
+                brandInput.sources,
+                brandInput.channels,
+            ]);
+            const name = "ottplay-hosted-epg-v1-" + identity(signature);
+            const now = Math.floor(Date.now() / 1000);
+            await new Promise((resolve, reject) => {
+                const opening = indexedDB.open(name, 1);
+                opening.onupgradeneeded = () => {
+                    const db = opening.result;
+                    db.createObjectStore("meta", { keyPath: "key" });
+                    const rows = db.createObjectStore("rows", {
+                        keyPath: "key",
+                    });
+                    rows.createIndex("channel", "channel");
+                    rows.createIndex("generation", "generation");
+                };
+                opening.onsuccess = () => {
+                    const db = opening.result,
+                        tx = db.transaction(["meta", "rows"], "readwrite");
+                    tx.objectStore("meta").put({
+                        fetched: Date.now(),
+                        generation: "beta6",
+                        key: "active",
+                        mappings: {
+                            brand: {
+                                archiveHours: 48,
+                                channel: "beta6|0|18",
+                                logo: "",
+                                priority: 0,
+                                shift: -3600,
+                            },
+                        },
+                        records: 1,
+                        signature,
+                    });
+                    tx.objectStore("rows").put({
+                        channel: "beta6|0|18",
+                        generation: "beta6",
+                        key: "beta6|0|18|0",
+                        rows: [
+                            {
+                                descr: "",
+                                icon: "",
+                                name: "Wrong beta6 brand offset",
+                                time: now - 600,
+                                time_to: now + 3600,
+                            },
+                        ],
+                    });
+                    tx.oncomplete = () => {
+                        db.close();
+                        resolve();
+                    };
+                    tx.onabort = () => {
+                        db.close();
+                        reject(tx.error);
+                    };
+                };
+                opening.onerror = () => reject(opening.error);
+            });
+            return name;
+        }, identitySource);
+        holdFeed = true;
+        status = 503;
+        await page.evaluate(() => {
+            makeWorker();
+            worker.postMessage(brandInput);
+        });
+        for (let i = 0; i < 200 && !heldResponses.size; i++)
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        assert.equal(
+            heldResponses.size,
+            1,
+            "Old matching semantics require a fresh feed"
+        );
+        assert.equal(
+            await page.evaluate(() => messages.some((m) => m.type === "ready")),
+            false
+        );
+        assert.equal(
+            await page.evaluate(() => getGuide("brand")),
+            null,
+            "Delayed refresh cannot use beta.6 brand offsets"
+        );
+        holdFeed = false;
+        for (const response of heldResponses) response.end();
+        const upgradeFailure = await page.evaluate(() => waitMessage("error"));
+        assert.equal(upgradeFailure.cached, false);
+        assert.equal(
+            await page.evaluate(() => getGuide("brand")),
+            null,
+            "Failed refresh cannot use beta.6 brand offsets"
+        );
+        status = 200;
+        await page.evaluate(() => {
+            makeWorker();
+            worker.postMessage(brandInput);
+        });
+        const correctedBrandReady = await page.evaluate(() =>
+            waitMessage("ready")
+        );
+        assert.notEqual(correctedBrandReady.cacheName, legacyBrandCache);
+        assert.equal(correctedBrandReady.mappings.brand.shift, 0);
+        const correctedBrandRows = await page.evaluate(() => getGuide("brand"));
+        assert.equal(correctedBrandRows[0].name, "Now & next");
+        assert.equal(correctedBrandRows[0].time, now - 3600);
+        const afterBrandMigration = calls;
+        await page.evaluate(() => {
+            makeWorker();
+            worker.postMessage(brandInput);
+        });
+        await page.evaluate(() => waitMessage("ready"));
+        assert.deepEqual(
+            await page.evaluate(() => getGuide("brand")),
+            correctedBrandRows
+        );
+        assert.equal(
+            calls,
+            afterBrandMigration,
+            "Corrected cache avoids another full download"
+        );
+        await page.evaluate(() => {
+            makeWorker();
+            configure();
+        });
+        await page.evaluate(() => waitMessage("ready"));
+
         for (const failure of [
             "truncated-gzip",
             "invalid-xml",

@@ -182,6 +182,7 @@ async function main() {
     const errors = [];
     const requests = [];
     const pending = [];
+    const pendingMatches = [];
     const baseRow = (name = "Full programme") => ({
         descr: "Complete description — not a shortened bootstrap.",
         icon: "",
@@ -197,6 +198,7 @@ async function main() {
             guideDelay: false,
             guideErrors: [],
             malformedRows: false,
+            matchDelay: false,
             matchError: false,
             matchGenerations: [],
             peak: 0,
@@ -242,6 +244,8 @@ async function main() {
                 method: req.method,
                 path: url.pathname,
             });
+            if (state.matchDelay)
+                await new Promise((resolve) => pendingMatches.push(resolve));
             if (state.matchError) {
                 json(state.matchError === 504 ? 504 : 503, {
                     error: {
@@ -471,6 +475,126 @@ async function main() {
             );
             await close();
         }
+
+        // Beta.6 stored this exact unversioned signature and a brand-derived
+        // negative shift. Neither delayed nor failed rematching may expose it.
+        reset();
+        const brand = [{ ...channels("brand")[0], epg: "1", name: "Россия-1" }];
+        state.matchDelay = true;
+        state.matchError = 503;
+        await page.evaluate(async (rows) => {
+            const row = rows[0],
+                now = Math.floor(Date.now() / 1000);
+            const opening = indexedDB.open("ottplay-hosted-epg-server-v1", 1);
+            await new Promise((resolve, reject) => {
+                opening.onsuccess = () => {
+                    const db = opening.result,
+                        tx = db.transaction(["cache", "usage"], "readwrite"),
+                        store = tx.objectStore("cache");
+                    store.put(
+                        {
+                            fetchedAt: Date.now(),
+                            generation: "beta6",
+                            mappings: {
+                                brand: {
+                                    channelId: "1",
+                                    logo: "",
+                                    shift: -3600,
+                                },
+                            },
+                            refreshMs: 7200000,
+                            signature: JSON.stringify([
+                                "epg-one",
+                                [[row.id, row.name, row.epg, "", row.rec]],
+                            ]),
+                            source: "epg-one",
+                            stale: false,
+                            version: 1,
+                        },
+                        "active"
+                    );
+                    store.put(
+                        {
+                            bytes: 200,
+                            generation: "beta6",
+                            rows: [
+                                {
+                                    descr: "",
+                                    icon: "",
+                                    name: "Wrong beta6 brand offset",
+                                    time: now - 4200,
+                                    time_to: now + 600,
+                                },
+                            ],
+                            used: Date.now(),
+                        },
+                        JSON.stringify(["1", -3600, row.rec])
+                    );
+                    tx.objectStore("usage").put(
+                        { bytes: 200, used: Date.now() },
+                        JSON.stringify(["1", -3600, row.rec])
+                    );
+                    tx.oncomplete = () => {
+                        db.close();
+                        resolve();
+                    };
+                    tx.onabort = () => {
+                        db.close();
+                        reject(tx.error);
+                    };
+                };
+                opening.onerror = () => reject(opening.error);
+            });
+            window.openGuide(rows);
+        }, brand);
+        await page.waitForFunction(
+            () => window.__ottHostedEpg.diagnostics().phase === "download"
+        );
+        assert.deepEqual(await page.evaluate(() => window.notifications), []);
+        assert.equal(
+            await get("brand"),
+            null,
+            "Delayed rematch cannot use beta.6 brand offsets"
+        );
+        for (let i = 0; i < 200 && !pendingMatches.length; i++)
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        assert.equal(pendingMatches.length, 1);
+        pendingMatches.splice(0).forEach((done) => done());
+        await page.waitForFunction(
+            () => window.__ottHostedEpg.diagnostics().phase === "error"
+        );
+        assert.deepEqual(await page.evaluate(() => window.notifications), []);
+        assert.equal(
+            await get("brand"),
+            null,
+            "Failed rematch cannot use beta.6 brand offsets"
+        );
+        assert.equal(guideRequests().length, 0);
+        await close();
+
+        reset();
+        state.generation = "corrected-brand-policy";
+        await open(brand);
+        assert.equal(
+            await page.evaluate(() => window.notifications[0].brand.shift),
+            0
+        );
+        const correctedBrand = await get("brand");
+        assert.equal(correctedBrand[0].name, "Full programme");
+        assert.equal(guideRequests()[0].query.shift, "0");
+        assert.equal(guideRequests().length, 1);
+        await close();
+        reset();
+        state.matchError = 503;
+        await page.evaluate((rows) => window.openGuide(rows), brand);
+        await page.waitForFunction(() => window.notifications.length > 0);
+        assert.deepEqual(await get("brand"), correctedBrand);
+        assert.equal(
+            guideRequests().length,
+            0,
+            "Corrected cache remains available offline after migration"
+        );
+        await close();
 
         const catalogue = (count, prefix) =>
             Array.from({ length: count }, (_, i) => channels(prefix + i)[0]);
@@ -918,6 +1042,7 @@ async function main() {
     } finally {
         if (browser) await browser.close();
         pending.splice(0).forEach((done) => done());
+        pendingMatches.splice(0).forEach((done) => done());
         server.closeAllConnections();
         await new Promise((resolve) => server.close(resolve));
     }

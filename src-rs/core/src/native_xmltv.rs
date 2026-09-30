@@ -1,6 +1,6 @@
 //! Native-shell XMLTV sources. Browser companion configuration is untouched.
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex as SyncMutex, Weak};
 use tokio::sync::Mutex;
 use serde::Deserialize;
 use crate::xmltv::{self, XmltvCache};
@@ -35,8 +35,55 @@ impl NativeSnapshot {
     }
 }
 
-type SourceSlot = Arc<Mutex<Option<Arc<NativeSnapshot>>>>;
-static SOURCES: LazyLock<Mutex<HashMap<Vec<String>, SourceSlot>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+#[derive(Clone, Debug)]
+struct SourceError(Arc<anyhow::Error>);
+
+impl std::fmt::Display for SourceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.0.as_ref(), formatter)
+    }
+}
+
+impl std::error::Error for SourceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0.source()
+    }
+}
+
+type SourceResult = Result<Arc<NativeSnapshot>, SourceError>;
+type SourceAttempt = Mutex<Option<SourceResult>>;
+
+#[derive(Default)]
+struct SourceState {
+    cache: Option<Arc<NativeSnapshot>>,
+    attempt: Weak<SourceAttempt>,
+}
+
+#[derive(Default)]
+struct SourceSlot(SyncMutex<SourceState>);
+
+#[derive(Default)]
+struct SourceRegistry {
+    resident: HashMap<Vec<String>, Arc<SourceSlot>>,
+    // Eviction drops cache residency, not the identity of an active refresh.
+    active: HashMap<Vec<String>, Weak<SourceSlot>>,
+}
+
+impl SourceRegistry {
+    fn acquire(&mut self, urls: &[String]) -> anyhow::Result<Arc<SourceSlot>> {
+        self.active.retain(|_, slot| slot.strong_count() != 0);
+        let slot = self.active.get(urls).and_then(Weak::upgrade)
+            .unwrap_or_else(|| Arc::new(SourceSlot::default()));
+        if shared_guide::evict_source_set(self.resident.len(), self.resident.contains_key(urls))? {
+            if let Some(key) = self.resident.keys().next().cloned() { self.resident.remove(&key); }
+        }
+        self.resident.insert(urls.to_vec(), slot.clone());
+        self.active.insert(urls.to_vec(), Arc::downgrade(&slot));
+        Ok(slot)
+    }
+}
+
+static SOURCES: LazyLock<Mutex<SourceRegistry>> = LazyLock::new(|| Mutex::new(SourceRegistry::default()));
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct MatchChannel {
@@ -94,19 +141,37 @@ pub fn merge_source(target: &mut XmltvCache, mut source: XmltvCache) -> anyhow::
 pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<NativeSnapshot>> {
     anyhow::ensure!(!urls.is_empty(), "No XMLTV sources");
     anyhow::ensure!(urls.iter().all(|url| url.starts_with("http://") || url.starts_with("https://")), "Invalid XMLTV URL");
-    let slot = {
-        let mut sources = SOURCES.lock().await;
-        // Bound resident source sets; active calls retain their Arc when evicted.
-        if shared_guide::evict_source_set(sources.len(), sources.contains_key(urls))? {
-            if let Some(key) = sources.keys().next().cloned() { sources.remove(&key); }
-        }
-        sources.entry(urls.to_vec()).or_insert_with(|| Arc::new(Mutex::new(None))).clone()
-    };
-    let mut guard = slot.lock().await;
+    let slot = SOURCES.lock().await.acquire(urls)?;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
-    if let Some(cache) = guard.as_ref() {
-        if shared_guide::source_fresh(now.saturating_sub(cache.cache.fetched_at))? { return Ok(cache.clone()); }
+    let (cache, attempt) = {
+        let mut state = slot.0.lock().unwrap_or_else(|error| error.into_inner());
+        if let Some(cache) = state.cache.as_ref() {
+            if shared_guide::source_fresh(now.saturating_sub(cache.cache.fetched_at))? { return Ok(cache.clone()); }
+        }
+        let attempt = state.attempt.upgrade().unwrap_or_else(|| {
+            let attempt = Arc::new(SourceAttempt::new(None));
+            state.attempt = Arc::downgrade(&attempt);
+            attempt
+        });
+        (state.cache.clone(), attempt)
+    };
+    // The guard serializes leaders; cancellation leaves an unfinished attempt
+    // for a waiting caller to take over instead of stranding its subscribers.
+    let mut result = attempt.lock().await;
+    if result.is_none() {
+        let refreshed = refresh_sources(urls, cache, now).await
+            .map_err(|error| SourceError(Arc::new(error)));
+        let mut state = slot.0.lock().unwrap_or_else(|error| error.into_inner());
+        if let Ok(cache) = &refreshed { state.cache = Some(cache.clone()); }
+        *result = Some(refreshed);
+        // Callers already holding this attempt share even STALE/FAIL. A later
+        // independent request retries normally, without altering fetched_at.
+        state.attempt = Weak::new();
     }
+    result.as_ref().expect("source attempt completed").clone().map_err(Into::into)
+}
+
+async fn refresh_sources(urls: &[String], cache: Option<Arc<NativeSnapshot>>, now: u64) -> anyhow::Result<Arc<NativeSnapshot>> {
     let mut merged = XmltvCache::default();
     let mut last_error = None;
     for url in urls {
@@ -115,22 +180,195 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<NativeSnapshot>
             Err(error) => last_error = Some(error),
         }
     }
-    match shared_guide::source_refresh(last_error.is_some(), merged.channels.is_empty(), guard.is_some())?.as_str() {
+    match shared_guide::source_refresh(last_error.is_some(), merged.channels.is_empty(), cache.is_some())?.as_str() {
         // A partial refresh retains ownership for this exact ordered source set.
-        "STALE" => return Ok(guard.as_ref().expect("core selected an existing stale entry").clone()),
+        "STALE" => return Ok(cache.expect("core selected an existing stale entry")),
         "FAIL" => return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Empty XMLTV sources"))),
         "REPLACE" => (),
         _ => anyhow::bail!("Invalid shared guide refresh decision"),
     }
     merged.fetched_at = now;
-    let fresh = Arc::new(tokio::task::spawn_blocking(move || NativeSnapshot::new(merged)).await??);
-    *guard = Some(fresh.clone());
-    Ok(fresh)
+    Ok(Arc::new(tokio::task::spawn_blocking(move || NativeSnapshot::new(merged)).await??))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    use tokio::sync::{mpsc, Semaphore};
+
+    struct GatedFeed {
+        urls: Vec<String>,
+        calls: Arc<AtomicUsize>,
+        healthy: Arc<AtomicBool>,
+        release: Arc<Semaphore>,
+        started: mpsc::UnboundedReceiver<usize>,
+        server: tokio::task::JoinHandle<()>,
+    }
+
+    impl Drop for GatedFeed { fn drop(&mut self) { self.server.abort(); } }
+
+    impl GatedFeed {
+        async fn new() -> Self {
+            use axum::{http::StatusCode, routing::get, Router};
+            let calls = Arc::new(AtomicUsize::new(0));
+            let healthy = Arc::new(AtomicBool::new(false));
+            let release = Arc::new(Semaphore::new(0));
+            let (started, receiver) = mpsc::unbounded_channel();
+            let app = Router::new().route("/feed", get({
+                let calls = calls.clone(); let healthy = healthy.clone(); let release = release.clone();
+                move || {
+                    let calls = calls.clone(); let healthy = healthy.clone();
+                    let release = release.clone(); let started = started.clone();
+                    async move {
+                        let call = calls.fetch_add(1, Ordering::SeqCst) + 1;
+                        let _ = started.send(call);
+                        release.acquire().await.unwrap().forget();
+                        if healthy.load(Ordering::SeqCst) {
+                            (StatusCode::OK, "<tv><channel id=\"fresh\"><display-name>Fresh</display-name></channel></tv>")
+                        } else { (StatusCode::SERVICE_UNAVAILABLE, "offline") }
+                    }
+                }
+            }));
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let urls = vec![format!("http://{}/feed", listener.local_addr().unwrap())];
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); });
+            Self { urls, calls, healthy, release, started: receiver, server }
+        }
+
+        async fn next_call(&mut self, expected: usize) {
+            assert_eq!(tokio::time::timeout(std::time::Duration::from_secs(3), self.started.recv()).await.unwrap(), Some(expected));
+        }
+
+        fn request(&self) -> tokio::task::JoinHandle<anyhow::Result<Arc<NativeSnapshot>>> {
+            let urls = self.urls.clone();
+            tokio::spawn(async move { load_sources(&urls).await })
+        }
+
+        async fn complete(request: tokio::task::JoinHandle<anyhow::Result<Arc<NativeSnapshot>>>) -> anyhow::Result<Arc<NativeSnapshot>> {
+            tokio::time::timeout(std::time::Duration::from_secs(3), request).await.unwrap().unwrap()
+        }
+    }
+
+    async fn wait_subscribers(slot: &SourceSlot, count: usize) {
+        tokio::time::timeout(std::time::Duration::from_secs(3), async {
+            loop {
+                if slot.0.lock().unwrap().attempt.strong_count() == count { break; }
+                tokio::task::yield_now().await;
+            }
+        }).await.unwrap();
+    }
+
+    async fn remove_sources(urls: &[String]) {
+        let mut sources = SOURCES.lock().await;
+        sources.resident.remove(urls);
+        sources.active.remove(urls);
+    }
+
+    #[tokio::test]
+    async fn failed_refresh_is_shared_by_queued_callers_but_next_request_retries() {
+        for with_stale in [false, true] {
+            let mut feed = GatedFeed::new().await;
+            let slot = SOURCES.lock().await.acquire(&feed.urls).unwrap();
+            let stale = Arc::new(NativeSnapshot::new(fixture("old", "Old", "old schedule")).unwrap());
+            if with_stale { slot.0.lock().unwrap().cache = Some(stale.clone()); }
+            let mut requests = vec![feed.request()];
+            feed.next_call(1).await;
+            requests.extend((0..3).map(|_| feed.request()));
+            wait_subscribers(&slot, 4).await;
+            // A cancelled follower must not cancel the leader or its other waiters.
+            let cancelled = requests.pop().unwrap();
+            cancelled.abort();
+            assert!(matches!(tokio::time::timeout(std::time::Duration::from_secs(3), cancelled).await.unwrap(), Err(error) if error.is_cancelled()));
+            wait_subscribers(&slot, 3).await;
+            feed.release.add_permits(3);
+            let mut errors = Vec::new();
+            for request in requests {
+                match GatedFeed::complete(request).await {
+                    Ok(snapshot) => {
+                        assert!(with_stale);
+                        assert!(Arc::ptr_eq(&snapshot, &stale));
+                        assert_eq!(snapshot.cache().fetched_at, 0);
+                    }
+                    Err(error) => { assert!(!with_stale); errors.push(format!("{error:#}")); }
+                }
+            }
+            assert_eq!(feed.calls.load(Ordering::SeqCst), 1, "queued callers must share the failed attempt");
+            if !with_stale {
+                assert_eq!(errors.len(), 3);
+                assert!(errors.iter().all(|error| error == &errors[0] && error.contains("503")));
+                assert!(slot.0.lock().unwrap().cache.is_none());
+            }
+            // No failure TTL: an independent request immediately performs a new attempt.
+            feed.healthy.store(true, Ordering::SeqCst);
+            let recovered = feed.request();
+            feed.next_call(2).await;
+            let snapshot = GatedFeed::complete(recovered).await.unwrap();
+            assert_eq!(snapshot.resolve("fresh", "", "").unwrap().as_deref(), Some("fresh"));
+            assert!(!Arc::ptr_eq(&snapshot, &stale));
+            assert!(Arc::ptr_eq(&GatedFeed::complete(feed.request()).await.unwrap(), &snapshot));
+            assert_eq!(feed.calls.load(Ordering::SeqCst), 2, "ordinary fresh reuse remains unchanged");
+            remove_sources(&feed.urls).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn cancelled_refresh_leader_can_be_replaced_by_waiter_or_next_request() {
+        for with_waiter in [false, true] {
+            let mut feed = GatedFeed::new().await;
+            feed.healthy.store(true, Ordering::SeqCst);
+            let slot = SOURCES.lock().await.acquire(&feed.urls).unwrap();
+            let leader = feed.request();
+            feed.next_call(1).await;
+            let waiting = if with_waiter {
+                let request = feed.request();
+                wait_subscribers(&slot, 2).await;
+                Some(request)
+            } else { None };
+            leader.abort();
+            assert!(matches!(tokio::time::timeout(std::time::Duration::from_secs(3), leader).await.unwrap(), Err(error) if error.is_cancelled()));
+            let successor = waiting.unwrap_or_else(|| feed.request());
+            feed.next_call(2).await;
+            feed.release.add_permits(2);
+            let snapshot = GatedFeed::complete(successor).await.unwrap();
+            assert_eq!(snapshot.resolve("fresh", "", "").unwrap().as_deref(), Some("fresh"));
+            assert!(Arc::ptr_eq(&GatedFeed::complete(feed.request()).await.unwrap(), &snapshot));
+            assert_eq!(feed.calls.load(Ordering::SeqCst), 2);
+            remove_sources(&feed.urls).await;
+        }
+    }
+
+    #[test]
+    fn resident_eviction_keeps_active_source_identity_and_shared_attempt() {
+        let mut registry = SourceRegistry::default();
+        while !shared_guide::evict_source_set(registry.resident.len(), false).unwrap() {
+            let urls = vec![format!("https://fixture/{}/feed", registry.resident.len())];
+            registry.acquire(&urls).unwrap();
+        }
+        let capacity = registry.resident.len();
+        let victim = registry.resident.keys().next().unwrap().clone();
+        let held = registry.resident[&victim].clone();
+        let attempt = Arc::new(SourceAttempt::new(None));
+        held.0.lock().unwrap().attempt = Arc::downgrade(&attempt);
+        registry.acquire(&["https://fixture/new/feed".into()]).unwrap();
+        assert!(!registry.resident.contains_key(&victim));
+        let reacquired = registry.acquire(&victim).unwrap();
+        assert!(Arc::ptr_eq(&held, &reacquired));
+        assert!(Arc::ptr_eq(&attempt, &reacquired.0.lock().unwrap().attempt.upgrade().unwrap()));
+        assert_eq!(registry.resident.len(), capacity);
+    }
+
+    #[test]
+    fn shared_source_errors_retain_original_context_and_cause() {
+        let original = anyhow::Error::new(std::io::Error::other("fixture cause")).context("fixture context");
+        let shared = SourceError(Arc::new(original));
+        let error: anyhow::Error = shared.clone().into();
+        assert_eq!(error.to_string(), "fixture context");
+        assert_eq!(error.chain().last().unwrap().to_string(), "fixture cause");
+        assert_eq!(format!("{error:#}"), "fixture context: fixture cause");
+        assert_eq!(format!("{shared:#}"), "fixture context: fixture cause");
+    }
+
     #[tokio::test]
     async fn partial_refresh_preserves_old_ownership_only_for_the_same_ordered_sources() {
         use axum::{http::StatusCode, routing::get, Router};
@@ -144,7 +382,8 @@ mod tests {
         let _server = Server(tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); }));
         let urls = vec![format!("http://{address}/bad"), format!("http://{address}/good")];
         let stale = Arc::new(NativeSnapshot::new(fixture("private-id", "Earlier source", "original schedule")).unwrap());
-        SOURCES.lock().await.insert(urls.clone(), Arc::new(Mutex::new(Some(stale.clone()))));
+        let slot = SOURCES.lock().await.acquire(&urls).unwrap();
+        slot.0.lock().unwrap().cache = Some(stale.clone());
         let retained = load_sources(&urls).await.unwrap();
         assert!(Arc::ptr_eq(&retained, &stale));
         assert_eq!(retained.cache.programs["private-id"][0].title, "original schedule");
@@ -153,8 +392,7 @@ mod tests {
         assert_eq!(partial.cache.channels["private-id"].name, "Later source");
         assert!(!Arc::ptr_eq(&partial, &stale));
         assert!(load_sources(&urls[..1]).await.is_err());
-        let mut sources = SOURCES.lock().await;
-        sources.remove(&urls); sources.remove(&reversed); sources.remove(&urls[..1]);
+        remove_sources(&urls).await; remove_sources(&reversed).await; remove_sources(&urls[..1]).await;
     }
     fn fixture(id: &str, name: &str, title: &str) -> XmltvCache {
         XmltvCache { channels: HashMap::from([(id.into(), xmltv::Channel { id: id.into(), name: name.into(), icon: "https://fixture/logo.png".into(), names: vec![name.into()] })]),
