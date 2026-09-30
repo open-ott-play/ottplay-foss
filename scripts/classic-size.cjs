@@ -51,7 +51,11 @@ const { gzipSync } = require("node:zlib");
 // 625983 / 190440. Include explicit paused startup for the core and PC2 engines.
 // With inline video and native single-tap rows, the combined build measures
 // 626111 / 190420 for web and 626069 / 190480 for native, within these limits.
-const BUDGET = Object.freeze({ bytes: 626450, gzipBytes: 190700 });
+// Cancellable iOS sign-in/proxy requests, peak touch movement and immediate PiP
+// Stop add 995 raw / 384 gzip bytes to fe79de1 on Node 22.23.2. With the accepted
+// EPG changes, web measures 627267 / 190842 and native 627225 / 190902. Allocate
+// this reviewed lifecycle cost while retaining release-version headroom.
+const BUDGET = Object.freeze({ bytes: 627650, gzipBytes: 191150 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -75,7 +79,10 @@ const BUDGET = Object.freeze({ bytes: 626450, gzipBytes: 190700 });
 // 691467 / 215268 for native; all five provider assets remain byte-identical.
 // The combined inline-video/tap build totals 691595 / 215248 for web and
 // 691553 / 215308 for native, still retaining bounded release suffix room.
-const TOTAL_BUDGET = Object.freeze({ bytes: 692000, gzipBytes: 215750 });
+// The same combined source plus every provider totals 692751 / 215670 for web
+// and 692709 / 215730 for native on Node 22.23.2. Provider assets are unchanged;
+// retain the complete-payload guard and release-version headroom.
+const TOTAL_BUDGET = Object.freeze({ bytes: 693200, gzipBytes: 216200 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

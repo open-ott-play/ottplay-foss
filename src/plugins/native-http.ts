@@ -63,8 +63,9 @@ function nativeHttpJsonpConverter(callback: string): (text: string) => string {
  */
 function installNativeHttpTransport(
     $: any,
-    request: (args: any) => Promise<NativeHttpResponse>,
-    cancel?: (requestId: string) => Promise<unknown>
+    request: (args: any, companion: boolean) => Promise<NativeHttpResponse>,
+    cancel?: (requestId: string, companion: boolean) => Promise<unknown>,
+    authenticationAllowance = 0
 ): void {
     $.ajaxTransport("+* +script", function (opts: any) {
         if (opts.async === false) return;
@@ -105,6 +106,14 @@ function installNativeHttpTransport(
                 String(opts.jsonpCallback)
             );
         }
+        // jQuery's deadline includes interactive sign-in; the native network
+        // request retains its original timeout. Explicit abort stays immediate.
+        var networkTimeout = opts.timeout > 0 ? Number(opts.timeout) : 30000;
+        if (
+            authenticationAllowance &&
+            (isCompanionProxy || (method === "GET" && /^https:\/\//i.test(url)))
+        )
+            opts.timeout = networkTimeout + authenticationAllowance;
         var aborted = false;
         var settled = false;
         var requestId: string | undefined;
@@ -115,7 +124,9 @@ function installNativeHttpTransport(
                 aborted = true;
                 if (cancel && requestId) {
                     try {
-                        cancel(requestId).catch(function () {});
+                        cancel(requestId, isCompanionProxy).catch(
+                            function () {}
+                        );
                     } catch (_error) {}
                 }
             },
@@ -143,12 +154,14 @@ function installNativeHttpTransport(
                         requestHeaders = {};
                         var ua = nativeHttpFormField(form, "ua");
                         if (ua) requestHeaders["User-Agent"] = ua;
+                        var referer = nativeHttpFormField(form, "referer");
+                        if (referer) requestHeaders.Referer = referer;
                     }
                     var args: any = {
                         body: requestBody,
                         headers: requestHeaders,
                         method: requestMethod,
-                        timeoutMs: opts.timeout > 0 ? opts.timeout : 30000,
+                        timeoutMs: networkTimeout,
                         url: requestUrl,
                     };
                     if (cancel) {
@@ -156,7 +169,7 @@ function installNativeHttpTransport(
                             "http-" + Date.now() + "-" + ++nativeHttpSequence;
                         args.requestId = requestId;
                     }
-                    request(args).then(
+                    request(args, isCompanionProxy).then(
                         function (response: NativeHttpResponse) {
                             settled = true;
                             if (aborted) return;
@@ -209,6 +222,10 @@ function nativeHttpInstallCapacitor(
         httpRequest(args: any): Promise<NativeHttpResponse>;
         cancelHttpRequest?(args: { requestId: string }): Promise<unknown>;
         swopRequest?(args: any): Promise<NativeHttpResponse>;
+    },
+    companion?: {
+        proxyFetch(args: any): Promise<{ body: string }>;
+        cancelProxyFetch?(args: { requestId: string }): Promise<unknown>;
     }
 ): void {
     var capacitor = (window as any).Capacitor;
@@ -218,17 +235,37 @@ function nativeHttpInstallCapacitor(
         !capacitor.isNativePlatform()
     )
         return;
+    var ios = capacitor?.getPlatform?.() === "ios";
     installNativeHttpTransport(
         $,
-        function (args) {
+        function (args, isCompanion) {
             args.url = String(args.url).replace(/^@/, "");
+            if (companion && isCompanion)
+                return companion
+                    .proxyFetch({
+                        referer: args.headers.Referer,
+                        requestId: args.requestId,
+                        url: args.url,
+                        userAgent: args.headers["User-Agent"],
+                    })
+                    .then(function (result) {
+                        return {
+                            body: result.body,
+                            headers: "Content-Type: text/plain\r\n",
+                            status: 200,
+                            statusText: "OK",
+                        };
+                    });
             return http.httpRequest(args);
         },
-        capacitor?.getPlatform?.() === "ios" && http.cancelHttpRequest
-            ? function (requestId) {
+        ios && http.cancelHttpRequest
+            ? function (requestId, isCompanion) {
+                  if (companion && isCompanion)
+                      return companion.cancelProxyFetch!({ requestId });
                   return http.cancelHttpRequest!({ requestId });
               }
-            : undefined
+            : undefined,
+        ios && capacitor.Plugins?.AccessMedia ? 300000 : 0
     );
     if (capacitor && capacitor.isNativePlatform?.() === true) {
         installNativeSwopTransport(

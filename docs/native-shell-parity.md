@@ -7,9 +7,12 @@ successfully is not a device playback result.
 ## Input and OS controls
 
 Capacitor single taps use the same target and coordinates as browser clicks.
+In native lists, one stationary tap focuses and activates the touched row.
 Native text inputs keep their trusted touch defaults so the WebView can focus
 them and open its keyboard. The touchscreen lock and four-finger unlock still
-take priority. Swipes remain remote-key gestures.
+take priority. Vertical swipes over native lists move through rows and pages;
+other swipes retain remote-key gestures. A moved gesture cannot activate its
+initial target on release, even if it returns to its starting point.
 
 Native media Next/Previous resolve the active device keymap at event time.
 Explicit Play/Pause/Stop go through the shared playback lifecycle. Explicit Play
@@ -34,6 +37,8 @@ queue draining, idle clients and startup/destroy races.
 ## Playback and PiP
 
 Normal Capacitor playback stays in the shared HTML/HLS/Shaka backend. The
+main and preview video elements opt into inline playback on iOS, keeping the
+programme footer and menus accessible without stopping the stream. The
 standalone Android ExoPlayer plugin is an explicit native API; it is not an
 automatic codec fallback for the shared player.
 
@@ -50,8 +55,9 @@ JSONP response envelopes are parsed without evaluating provider response code.
 An unexpected JavaScript MIME type never turns a playlist/API reply into code.
 Explicit remote matching services keep their URL and request body.
 
-JavaScript abort suppresses late callbacks; it does not currently cancel the
-already-dispatched native HTTP request. Native request timeout bounds that work.
+JavaScript abort suppresses late callbacks. The iOS HTTP bridge also cancels the
+matching native request and its pending sign-in waiter. Other bridges without
+request cancellation rely on the native timeout to bound already-dispatched work.
 The native HTTP clients do not import the WebView's cookie store; providers
 requiring ambient browser cookies need a separate transport contract.
 

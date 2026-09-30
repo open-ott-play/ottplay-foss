@@ -646,7 +646,8 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         guard let player = pipPlayer, player.currentItem?.status == .readyToPlay else { return }
 
         _ = configurePlaybackSession()
-        player.play()
+        // playPip already requested playback. Readiness must preserve a later
+        // Pause from the lock screen or Control Center while startup is pending.
         // Do not resolve ok:true here — wait for didStart / failedToStart / timeout.
         controller.startPictureInPicture()
     }

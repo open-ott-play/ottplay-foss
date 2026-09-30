@@ -34,6 +34,7 @@ const touchCode = functions("src/key-handler/index.ts", [
     "forwardNativeListTouch",
     "startNativeListTouch",
     "moveNativeListTouch",
+    "updateTouchPosition",
     "handleTouchCancel",
     "handleTouchStart",
     "handleTouchMove",
@@ -57,6 +58,7 @@ function touchFixture(platform) {
         touch_locked: false,
         touch_min_sensX: 60,
         touch_min_sensY: 40,
+        touchMaxDistance: 0,
         xDown: null,
         xMove1: null,
         xUp: null,
@@ -118,6 +120,104 @@ for (const platform of ["browser", "tauri", "capacitor"]) {
             "suppress compatibility click so activation happens once"
         );
         assert.equal(w.xDown, null);
+    }
+}
+
+// Overlay/footer controls are outside the native list gesture owner. A drag
+// must never click its original control, even when it returns to the start or
+// the WebView delivers the only movement together with the final touchend.
+for (const platform of ["browser", "tauri", "capacitor"]) {
+    for (const scenario of [
+        { end: [250, 100], moves: [], name: "coalesced horizontal end" },
+        { end: [100, 250], moves: [], name: "coalesced vertical end" },
+        {
+            moves: [
+                [220, 100],
+                [100, 100],
+            ],
+            name: "horizontal reversal",
+        },
+        {
+            moves: [
+                [100, 220],
+                [100, 100],
+            ],
+            name: "vertical reversal",
+        },
+        {
+            moves: [
+                [106, 100],
+                [100, 100],
+            ],
+            name: "tap threshold boundary",
+        },
+        { cancel: true, moves: [[220, 100]], name: "cancelled drag" },
+    ]) {
+        const { w, calls } = touchFixture(platform);
+        const target = {
+            dispatchEvent(event) {
+                calls.push([event.type]);
+            },
+            tagName: "BUTTON",
+        };
+        const touch = ([x, y]) => ({
+            clientX: x,
+            clientY: y,
+            screenX: x,
+            screenY: y,
+        });
+        const event = (coordinates, ended = false) => ({
+            changedTouches: [touch(coordinates)],
+            preventDefault() {},
+            target,
+            touches: ended ? [] : [touch(coordinates)],
+        });
+        w.handleTouchStart(event([100, 100]));
+        for (const coordinates of scenario.moves)
+            w.handleTouchMove(event(coordinates));
+        if (scenario.cancel) w.handleTouchCancel();
+        w.body_handleTouchEnd(event(scenario.end || [100, 100], true));
+        assert.equal(
+            calls.some(([type]) => type === "click"),
+            false,
+            platform + " " + scenario.name + " cannot activate the control"
+        );
+        if (scenario.name.endsWith("reversal"))
+            assert.equal(calls.length, 2, "both directional shortcuts remain");
+
+        // Reset after a completed drag: ordinary jitter and a repeated terminal
+        // event still produce exactly one click on the next stationary tap.
+        calls.length = 0;
+        w.handleTouchStart(event([100, 100]));
+        w.handleTouchMove(event([104, 103]));
+        w.body_handleTouchEnd(event([102, 101], true));
+        w.body_handleTouchEnd(event([102, 101], true));
+        assert.deepEqual(calls, [["click"]], platform + " next tap is single");
+    }
+}
+
+for (const platform of ["browser", "tauri", "capacitor"]) {
+    for (const fingers of [2, 3]) {
+        const { w, calls } = touchFixture(platform);
+        const touch = {
+            clientX: 100,
+            clientY: 100,
+            screenX: 100,
+            screenY: 100,
+        };
+        const event = {
+            changedTouches: [touch],
+            preventDefault() {},
+            target: { tagName: "BUTTON" },
+            touches: Array.from({ length: fingers }, () => ({ ...touch })),
+        };
+        w.handleTouchStart(event);
+        w.body_handleTouchEnd({ ...event, touches: [] });
+        assert.deepEqual(
+            calls,
+            [["key", fingers === 2 ? w.keys.ENTER : w.keys.SETUP]],
+            platform + " preserves " + fingers + "-finger shortcut"
+        );
     }
 }
 

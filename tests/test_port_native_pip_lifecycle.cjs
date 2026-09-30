@@ -31,10 +31,11 @@ const snippets = {
     ),
 };
 
-function fixture(platform, capacitorPlatform = "ios") {
+function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
     const nativeCalls = [];
     const boundsCalls = [];
     const requests = [];
+    const stopRequests = [];
     const cssPlays = [];
     const displays = [];
     let cssStops = 0;
@@ -60,7 +61,10 @@ function fixture(platform, capacitorPlatform = "ios") {
     }
     function nativeStop() {
         nativeCalls.push(["stop"]);
-        return Promise.resolve();
+        if (!deferStop) return Promise.resolve();
+        return new Promise((resolve, reject) =>
+            stopRequests.push({ reject, resolve })
+        );
     }
     const c = {
         __TAURI__: {},
@@ -188,6 +192,7 @@ function fixture(platform, capacitorPlatform = "ios") {
         play: (url) => c.stbPlayPip(url),
         requests,
         stop: () => c.stbStopPip(),
+        stopRequests,
         succeed: (request) =>
             request.resolve(
                 platform === "Capacitor" ? { ok: true } : undefined
@@ -222,9 +227,9 @@ for (const platform of ["Capacitor", "Tauri"]) {
     });
 }
 
-// Capacitor bridge operations remain serialized: an OS command cannot cancel a
-// previous in-flight bridge operation. Tauri's Rust controller owns cancellation
-// and waits for actual media playback, so its JS commands must not form a queue.
+// Capacitor Stop cancels a pending native play. Replacement plays wait only for
+// teardown acknowledgement, never for the cancelled player's readiness. Tauri's
+// Rust controller owns cancellation, so its JS commands must not form a queue.
 for (const platform of ["Capacitor"]) {
     const results = ["success", "failure", "unsupported"];
     for (const result of results) {
@@ -237,8 +242,8 @@ for (const platform of ["Capacitor"]) {
             const afterStop = f.displays.length;
             assert.deepEqual(
                 f.nativeCalls,
-                [["play", "A"]],
-                "Native stop must wait for in-flight native play"
+                [["play", "A"], ["stop"]],
+                "Native stop must cancel in-flight play before its acknowledgement"
             );
             if (result === "failure")
                 f.requests[0].reject(new Error("native failure"));
@@ -259,7 +264,7 @@ for (const platform of ["Capacitor"]) {
             assert.deepEqual(
                 f.nativeCalls,
                 [["play", "A"], ["stop"]],
-                "Queued stop executes after native play settles"
+                "Late play settlement must not issue another stop"
             );
         });
     }
@@ -278,8 +283,8 @@ for (const platform of ["Capacitor"]) {
             await settle();
             assert.deepEqual(
                 f.nativeCalls,
-                [["play", "A"]],
-                "B waits for A's native settlement"
+                [["play", "A"], ["stop"], ["play", "B"]],
+                "B starts after teardown without waiting for A's readiness"
             );
             const afterB = f.displays.length;
             if (oldResult === "failure")
@@ -328,7 +333,11 @@ for (const platform of ["Capacitor"]) {
         f.stop();
         f.play("B");
         await settle();
-        assert.deepEqual(f.nativeCalls, [["play", "A"]]);
+        assert.deepEqual(f.nativeCalls, [
+            ["play", "A"],
+            ["stop"],
+            ["play", "B"],
+        ]);
         f.succeed(f.requests[0]);
         await settle();
         assert.deepEqual(f.nativeCalls, [
@@ -359,6 +368,56 @@ for (const platform of ["Capacitor"]) {
                 "Stopping fallback must not restart it"
             );
             assert.equal(f.displays.at(-1), "stopped");
+        });
+    }
+}
+
+for (const oldResult of ["success", "failure"]) {
+    for (const stopResult of ["success", "failure"]) {
+        test(`Capacitor: pending teardown owns the queue after late A ${oldResult} and stop ${stopResult}`, async () => {
+            const f = fixture("Capacitor", "ios", true);
+            f.play("A");
+            await settle();
+            f.stop();
+            f.play("B");
+            await settle();
+            assert.deepEqual(f.nativeCalls, [["play", "A"], ["stop"]]);
+            assert.equal(f.stopRequests.length, 1);
+            if (oldResult === "failure")
+                f.requests[0].reject(new Error("retired A failed"));
+            else f.succeed(f.requests[0]);
+            await settle();
+            // A's old queue-tail completion must not clear the newer teardown.
+            // Replace queued B after A settles to exercise that queue ownership.
+            f.play("C");
+            await settle();
+            assert.deepEqual(
+                f.nativeCalls,
+                [["play", "A"], ["stop"]],
+                "No decoder may start before teardown settles"
+            );
+            if (stopResult === "failure")
+                f.stopRequests[0].reject(new Error("native teardown failed"));
+            else f.stopRequests[0].resolve();
+            await settle();
+            assert.deepEqual(f.nativeCalls, [
+                ["play", "A"],
+                ["stop"],
+                ["play", "C"],
+            ]);
+            assert.deepEqual(f.cssPlays, []);
+            f.succeed(f.requests[1]);
+            await settle();
+            assert.equal(f.displays.at(-1), "none");
+            f.stop();
+            f.stopRequests[1].resolve();
+            await settle();
+            f.play("D");
+            await settle();
+            assert.deepEqual(f.nativeCalls.at(-1), ["play", "D"]);
+            f.succeed(f.requests[2]);
+            await settle();
+            assert.deepEqual(f.cssPlays, [], "Settled queue can be reused");
         });
     }
 }

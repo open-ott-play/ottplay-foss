@@ -24,13 +24,40 @@ private func resolveUA(_ input: String?) -> String {
 public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
   public let identifier = "M3UProxyPlugin"
   public let jsName = "M3UProxy"
+  @MainActor private var requests: [String: (id: UUID, cancel: () -> Void)] = [:]
   public let pluginMethods: [CAPPluginMethod] = [
-    CAPPluginMethod(name: "proxyFetch", returnType: CAPPluginReturnPromise)
+    CAPPluginMethod(name: "proxyFetch", returnType: CAPPluginReturnPromise),
+    CAPPluginMethod(name: "cancelProxyFetch", returnType: CAPPluginReturnPromise)
   ]
 
   private static let defaultTimeout: TimeInterval = 15
 
+  private static func validRequestID(_ value: String?) -> Bool {
+    guard let value, !value.isEmpty, value.utf8.count <= 128 else { return false }
+    return value.utf8.allSatisfy {
+      (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0)
+        || $0 == 45 || $0 == 95
+    }
+  }
+
+  @objc func cancelProxyFetch(_ call: CAPPluginCall) {
+    guard let requestID = call.getString("requestId"), Self.validRequestID(requestID) else {
+      call.reject("Invalid proxy request identifier")
+      return
+    }
+    DispatchQueue.main.async {
+      let pending = self.requests.removeValue(forKey: requestID)
+      pending?.cancel()
+      call.resolve(["cancelled": pending != nil])
+    }
+  }
+
   @objc func proxyFetch(_ call: CAPPluginCall) {
+    let requestID = call.getString("requestId")
+    guard call.options["requestId"] == nil || Self.validRequestID(requestID) else {
+      call.reject("Invalid proxy request identifier")
+      return
+    }
     guard let rawURL = call.getString("url"), !rawURL.isEmpty else {
       call.reject("missing url")
       return
@@ -93,10 +120,29 @@ public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
       }
     }
 
-    #if os(iOS)
-    AccessMedia.fetch(request, completion: completion)
-    #else
-    URLSession.shared.dataTask(with: request, completionHandler: completion).resume()
-    #endif
+    // Register/cancel in bridge call order; a retired completion cannot remove
+    // a newer request that reused the same caller ID.
+    DispatchQueue.main.async {
+      if let requestID, self.requests[requestID] != nil {
+        call.reject("Proxy request is already pending")
+        return
+      }
+      let ownership = UUID()
+      let finish: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
+        DispatchQueue.main.async {
+          if let requestID, self.requests[requestID]?.id == ownership {
+            self.requests[requestID] = nil
+          }
+        }
+        completion(data, response, error)
+      }
+      #if os(iOS)
+      let task = AccessMedia.fetch(request, completion: finish)
+      #else
+      let task = URLSession.shared.dataTask(with: request, completionHandler: finish)
+      task.resume()
+      #endif
+      if let requestID { self.requests[requestID] = (ownership, { task.cancel() }) }
+    }
   }
 }

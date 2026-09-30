@@ -22,6 +22,10 @@ def main():
     capacitor = capacitor.replace(
         "public var error: String?", "public var error: String?; public var finished = false"
     ).replace("ready.signal()", "finished = true; ready.signal()")
+    capacitor = capacitor.replace(
+        "public init(_ values:",
+        "public var options: [String: Any] { values }\n    public init(_ values:",
+    )
     swift = r"""
 import Foundation
 import Capacitor
