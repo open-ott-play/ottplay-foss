@@ -46,10 +46,10 @@ final class AccessMediaHTTP {
         throw AccessMediaFailure.unavailable
     }
 }
-final class URLSession {
-    static let shared = URLSession()
+final class AccessMediaPublicHTTP {
     static var handler: (@MainActor (URLRequest) async throws -> (Data, URLResponse))?
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, URLResponse) {
+        assert(limit == 64 * 1024 * 1024)
         guard let handler = Self.handler else { throw AccessMediaFailure.unavailable }
         return try await handler(request)
     }
@@ -591,7 +591,7 @@ Task { @MainActor in
         for portal in [false, true] {
             let url = "https://text.fixture.invalid/" + (portal ? "load.php" : "list.m3u") + "?token=PRIVATE_FIXTURE"
             let requestID = portal ? "invalid-portal-text" : "invalid-http-text"
-            URLSession.handler = { request in
+            AccessMediaPublicHTTP.handler = { request in
                 return (Data([0xC3, 0x28]), HTTPURLResponse(url: request.url!, statusCode: 200,
                     httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain; charset=utf-8"])!)
             }
@@ -603,7 +603,7 @@ Task { @MainActor in
             assert(malformed.errorCode == "invalid_response")
 
             let text = "#EXTM3U\n#EXTINF:-1,Канал 🎵\nhttps://media.fixture.invalid/live\n"
-            URLSession.handler = { request in
+            AccessMediaPublicHTTP.handler = { request in
                 return (Data(text.utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
                     httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain; charset=utf-8"])!)
             }
@@ -617,7 +617,7 @@ Task { @MainActor in
             await until { completed.result != nil }
             assert(completed.result?["cancelled"] as? Bool == false)
         }
-        URLSession.handler = { request in
+        AccessMediaPublicHTTP.handler = { request in
             return (Data(), HTTPURLResponse(url: request.url!, statusCode: 204,
                 httpVersion: "HTTP/1.1", headerFields: [:])!)
         }
@@ -665,7 +665,7 @@ Task { @MainActor in
 
         var publicGate: CheckedContinuation<Void, Never>?
         var publicCancelled = false
-        URLSession.handler = { request in
+        AccessMediaPublicHTTP.handler = { request in
             await withTaskCancellationHandler(operation: {
                 await withCheckedContinuation { publicGate = $0 }
             }, onCancel: { Task { @MainActor in publicCancelled = true } })

@@ -18,7 +18,7 @@ use std::{
     collections::HashSet,
     io::Read,
     sync::{Arc, Mutex},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::{OwnedSemaphorePermit, RwLock, Semaphore};
 
@@ -69,14 +69,30 @@ struct Snapshot {
 
 impl Snapshot {
     fn from_xml(xml: &str, fetched_at: u64) -> anyhow::Result<Self> {
+        let parse_started = Instant::now();
         let (channels, programs, aliases) = xmltv::parse_xmltv_hosted(xml)?;
+        let alias_count = aliases.len();
+        eprintln!(
+            "[Hosted EPG] phase=parse elapsedMs={} bytes={} channels={} aliases={} programmes={}",
+            parse_started.elapsed().as_millis(),
+            xml.len(),
+            channels.len(),
+            alias_count,
+            programs.values().map(Vec::len).sum::<usize>()
+        );
         anyhow::ensure!(
             channels
                 .keys()
                 .any(|id| programs.get(id).is_some_and(|rows| !rows.is_empty())),
             "EPG_EMPTY"
         );
+        let index_started = Instant::now();
         let index = MatchIndex::web(aliases)?;
+        eprintln!(
+            "[Hosted EPG] phase=index elapsedMs={} aliases={}",
+            index_started.elapsed().as_millis(),
+            alias_count
+        );
         // This process-local opaque revision names a complete immutable snapshot;
         // it is not an authentication token and survives no server restart.
         let nonce = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
@@ -442,6 +458,7 @@ async fn programmes(
 }
 
 async fn fetch_snapshot(client: &reqwest::Client) -> anyhow::Result<Snapshot> {
+    let download_started = Instant::now();
     let mut response = client.get(SOURCE_URL).send().await?.error_for_status()?;
     anyhow::ensure!(
         response
@@ -454,8 +471,14 @@ async fn fetch_snapshot(client: &reqwest::Client) -> anyhow::Result<Snapshot> {
         anyhow::ensure!(bytes.len() + chunk.len() <= WIRE_LIMIT, "EPG_WIRE_LIMIT");
         bytes.extend_from_slice(&chunk);
     }
+    eprintln!(
+        "[Hosted EPG] phase=download elapsedMs={} bytes={}",
+        download_started.elapsed().as_millis(),
+        bytes.len()
+    );
     let fresh = now_ms();
     tokio::task::spawn_blocking(move || {
+        let decode_started = Instant::now();
         let mut raw = Vec::new();
         if bytes.starts_with(&[31, 139]) {
             flate2::read::GzDecoder::new(&bytes[..])
@@ -466,6 +489,11 @@ async fn fetch_snapshot(client: &reqwest::Client) -> anyhow::Result<Snapshot> {
         }
         anyhow::ensure!(raw.len() <= XML_LIMIT, "EPG_XML_LIMIT");
         let xml = std::str::from_utf8(&raw)?;
+        eprintln!(
+            "[Hosted EPG] phase=decode elapsedMs={} bytes={}",
+            decode_started.elapsed().as_millis(),
+            raw.len()
+        );
         Snapshot::from_xml(xml, fresh)
     })
     .await?
@@ -507,7 +535,7 @@ pub fn start() -> anyhow::Result<Router> {
                 }
                 Err(_) => {
                     failures = failures.saturating_add(1u32);
-                    tracing::warn!("Hosted EPG refresh failed; retaining accepted snapshot");
+                    eprintln!("[Hosted EPG] refresh failed; retaining accepted snapshot");
                 }
             }
             let delay = ottplay_core::epg_refresh_interval(failures).unwrap_or(300);

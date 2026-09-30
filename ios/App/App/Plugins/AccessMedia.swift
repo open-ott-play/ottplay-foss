@@ -409,7 +409,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
                     let generation = await shared.generation
                     var config = try await shared.configuration(for: url, discover: false)
                     if config == nil {
-                        let (data, response) = try await URLSession.shared.data(for: request)
+                        let (data, response) = try await AccessMediaPublicHTTP.fetch(request)
                         let http = response as? HTTPURLResponse
                         let challenge = [401, 403].contains(http?.statusCode ?? 0) ||
                             response.url?.host?.hasSuffix(".cloudflareaccess.com") == true
