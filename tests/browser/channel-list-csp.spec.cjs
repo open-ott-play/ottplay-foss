@@ -273,6 +273,421 @@ async function fixturePage(browser, profile, initialSettings, language) {
     return { close: () => context.close(), errors, page, unexpectedRequests };
 }
 
+async function listTouchFixture(browser, native = true) {
+    const fixture = await fixturePage(browser, "server");
+    await fixture.page.evaluate((native) => {
+        if (native) window.Capacitor = {};
+        window.__touchClicks = [];
+        window.__touchPlayed = [];
+        window.playChannel = (...args) => window.__touchPlayed.push(args);
+        const clicks = new WeakSet();
+        const recordClick = (event) => {
+            if (clicks.has(event)) return;
+            clicks.add(event);
+            window.__touchClicks.push(event.target.id);
+        };
+        window.addEventListener("click", recordClick, true);
+        window.__touchBegin = (index, fingers = 1) => {
+            const target =
+                typeof index === "number"
+                    ? document.getElementById("it" + index)
+                    : index;
+            if (!target) throw new Error("Touch target must be mounted");
+            const rect = target.getBoundingClientRect();
+            window.__touchGesture = {
+                height: window.__ottListRowH,
+                owner: window.__ottClassicScreenPort.listOwner(),
+                target,
+                x: rect.left + 20,
+                y: rect.top + rect.height / 2,
+            };
+            // Detached rows no longer bubble to window after showPage replaces
+            // innerHTML. Observe accidental clicks there as well as live rows.
+            target.addEventListener("click", recordClick, true);
+            return window.__touchSend("touchstart", 0, 0, false, fingers);
+        };
+        window.__touchSend = (
+            type,
+            rows = 0,
+            dx = 0,
+            fixedScreen = false,
+            fingers = 1
+        ) => {
+            const gesture = window.__touchGesture;
+            const x = gesture.x + dx;
+            const y = gesture.y + rows * gesture.height;
+            const touch = {
+                clientX: x,
+                clientY: y,
+                identifier: 7,
+                screenX: fixedScreen ? 0 : x,
+                screenY: fixedScreen ? 0 : y,
+                target: gesture.target,
+            };
+            const event = new Event(type, { bubbles: true, cancelable: true });
+            const ended = type === "touchend" || type === "touchcancel";
+            const touches = Array.from({ length: fingers }, (_, finger) => ({
+                ...touch,
+                identifier: touch.identifier + finger,
+            }));
+            Object.defineProperties(event, {
+                changedTouches: { value: touches },
+                targetTouches: { value: ended ? [] : touches },
+                touches: { value: ended ? [] : touches },
+            });
+            // Keep the original target, including after it has been detached.
+            gesture.target.dispatchEvent(event);
+            return {
+                connected: gesture.target.isConnected,
+                index: window.selIndex,
+                prevented: event.defaultPrevented,
+            };
+        };
+    }, native);
+    return fixture;
+}
+
+test("native list swipe continues across replaced pages and clamps both ends", async ({
+    browser,
+}) => {
+    const fixture = await listTouchFixture(browser);
+    const page = fixture.page;
+    try {
+        await page.evaluate(() => {
+            window.changeSelect(21);
+            window.__touchBegin(21);
+        });
+        // Vertical dominance still scrolls with substantial horizontal drift.
+        // Screen coordinates deliberately differ: this path uses client pixels.
+        const crossed = await page.evaluate(() =>
+            window.__touchSend("touchmove", -9.25, 30, true)
+        );
+        expect(crossed).toEqual({
+            connected: false,
+            index: 30,
+            prevented: true,
+        });
+        await expect(page.locator("#it30")).toBeVisible();
+        expect(
+            await page.evaluate(() =>
+                window.__touchSend("touchmove", -13.25, 35, true)
+            )
+        ).toMatchObject({ connected: false, index: 34, prevented: true });
+        expect(
+            await page.evaluate(() => window.__touchSend("touchmove", -80))
+        ).toMatchObject({ index: 39 });
+        // Overscroll must not have to be unwound before reversing direction.
+        expect(
+            await page.evaluate(() => window.__touchSend("touchmove", -77.75))
+        ).toMatchObject({ index: 37 });
+        expect(
+            await page.evaluate(() => window.__touchSend("touchmove", 80))
+        ).toMatchObject({ index: 0 });
+        expect(
+            await page.evaluate(() => window.__touchSend("touchmove", 90))
+        ).toMatchObject({ index: 0 });
+        await page.evaluate(() => window.__touchSend("touchend", 90));
+        await expect(page.locator("#it0")).toBeVisible();
+        expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
+        expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("native list swipe never becomes a tap after reversal or a coalesced end", async ({
+    browser,
+}) => {
+    const fixture = await listTouchFixture(browser);
+    const page = fixture.page;
+    try {
+        const reversed = await page.evaluate(() => {
+            window.changeSelect(10);
+            window.__touchBegin(10);
+            window.__touchSend("touchmove", -3.25);
+            window.__touchSend("touchmove", 0);
+            return window.__touchSend("touchend", 0);
+        });
+        expect(reversed.index).toBe(10);
+        expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
+        const ended = await page.evaluate(() => {
+            window.__touchBegin(10);
+            return window.__touchSend("touchend", -4.25);
+        });
+        expect(ended.index).toBe(14);
+        expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
+        await expect(page.locator("#it14")).toBeVisible();
+
+        // A stationary tap retains row hit-testing and the existing two-tap
+        // focus/activate behavior; a drag must not poison the next gesture.
+        await page.evaluate(() => {
+            window.__touchBegin(8);
+            window.__touchSend("touchend");
+        });
+        expect(await page.evaluate(() => window.selIndex)).toBe(8);
+        expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+        await page.evaluate(() => {
+            window.__touchBegin(8);
+            window.__touchSend("touchend");
+        });
+        expect(await page.evaluate(() => window.__touchClicks)).toEqual([
+            "it8",
+            "it8",
+        ]);
+        expect(await page.evaluate(() => window.__touchPlayed)).toEqual([
+            [0, 8],
+        ]);
+        expect(await page.evaluate(() => window.isListVisible)).toBe(false);
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("native list swipe cancellation and departed owners cannot operate another screen", async ({
+    browser,
+}) => {
+    const fixture = await listTouchFixture(browser);
+    const page = fixture.page;
+    try {
+        expect(
+            await page.evaluate(() => {
+                window.changeSelect(24);
+                window.__touchBegin(24);
+                window.__touchSend("touchmove", -3.25);
+                window.__touchSend("touchcancel", -3.25);
+                window.__touchSend("touchmove", -6.25);
+                return window.__touchSend("touchend", -6.25).index;
+            })
+        ).toBe(27);
+        const replaced = await page.evaluate(() => {
+            window.__touchBegin(27);
+            window.listArray = window.listArray.slice();
+            window.listDataArray = window.listArray;
+            window.selIndex = 0;
+            window.showPage();
+            window.__touchSend("touchmove", -5);
+            window.__touchSend("touchend", -5);
+            return {
+                index: window.selIndex,
+                oldActive: window.__touchGesture.owner.active(),
+            };
+        });
+        expect(replaced).toEqual({ index: 0, oldActive: false });
+        await page.evaluate(() => {
+            window.__touchBegin(0);
+            window.__touchAnswers = [];
+            window.confirmBox(
+                "Keep this dialog open?",
+                () => window.__touchAnswers.push("yes"),
+                () => window.__touchAnswers.push("no")
+            );
+            window.__touchSend("touchmove", -5);
+            window.__touchSend("touchend", 0);
+        });
+        await expect(page.locator("#dialogbox")).toBeVisible();
+        expect(await page.evaluate(() => window.selIndex)).toBe(0);
+        expect(await page.evaluate(() => window.__touchAnswers)).toEqual([]);
+        expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
+        expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("native list swipe leaves editor defaults and multifinger shortcuts intact", async ({
+    browser,
+}) => {
+    const fixture = await listTouchFixture(browser);
+    try {
+        const result = await fixture.page.evaluate(() => {
+            const host = document.createElement("div");
+            host.innerHTML =
+                '<input id="touch-input"><textarea id="touch-textarea"></textarea>' +
+                '<select id="touch-select"><option id="touch-option">Choice</option></select>' +
+                '<label for="touch-input"><span id="touch-label">Label</span></label>' +
+                '<div contenteditable="true"><span id="touch-editable">Text</span></div>';
+            document.getElementById("listIn").appendChild(host);
+            const editorDefaults = [];
+            for (const id of [
+                "touch-input",
+                "touch-textarea",
+                "touch-select",
+                "touch-option",
+                "touch-label",
+                "touch-editable",
+            ]) {
+                editorDefaults.push(
+                    window.__touchBegin(document.getElementById(id)).prevented,
+                    window.__touchSend("touchmove", -5).prevented,
+                    window.__touchSend("touchend", -5).prevented
+                );
+            }
+            host.remove();
+            const keys = [];
+            const alerts = [];
+            window._doKey = (key) => keys.push(key);
+            window.alert = (message) => alerts.push(message);
+            for (const fingers of [2, 3]) {
+                window.__touchBegin(0, fingers);
+                window.__touchSend("touchend", 0, 0, false, fingers);
+            }
+            window.__touchBegin(0, 4);
+            window.__touchSend("touchend", 0, 0, false, 4);
+            window.__touchBegin(0);
+            window.__touchSend("touchmove", -10);
+            window.__touchSend("touchend", -10);
+            const lockedIndex = window.selIndex;
+            window.__touchBegin(0, 4);
+            window.__touchSend("touchend", 0, 0, false, 4);
+            window.__touchBegin(0);
+            window.__touchSend("touchend", -3.25);
+            return {
+                alerts,
+                clicks: window.__touchClicks,
+                editorDefaults,
+                expectedKeys: [window.keys.ENTER, window.keys.SETUP],
+                index: window.selIndex,
+                keys,
+                lockedIndex,
+                played: window.__touchPlayed,
+            };
+        });
+        expect(result.editorDefaults).toEqual(Array(18).fill(false));
+        expect(result.keys).toEqual(result.expectedKeys);
+        expect(result.alerts).toEqual([
+            "Touchscreen LOCKED",
+            "Touchscreen UNLOCKED",
+        ]);
+        expect(result.lockedIndex).toBe(0);
+        expect(result.index).toBe(3);
+        expect(result.clicks).toEqual([]);
+        expect(result.played).toEqual([]);
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("native list swipe cancels an added finger after paging in either lift order", async ({
+    browser,
+}) => {
+    const fixture = await listTouchFixture(browser);
+    try {
+        for (const firstLift of ["original", "added"]) {
+            const result = await fixture.page.evaluate((firstLift) => {
+                const keys = [];
+                window._doKey = (key) => keys.push(key);
+                window.changeSelect(24 - window.selIndex);
+                window.__touchBegin(24);
+                window.__touchSend("touchmove", -3.25);
+                const gesture = window.__touchGesture;
+                const original = {
+                    clientX: gesture.x,
+                    clientY: gesture.y - 3.25 * gesture.height,
+                    identifier: 7,
+                    target: gesture.target,
+                };
+                const target = document.getElementById("it27");
+                const box = target.getBoundingClientRect();
+                const added = {
+                    clientX: box.left + 30,
+                    clientY: box.top + box.height / 2,
+                    identifier: 8,
+                    target,
+                };
+                for (const touch of [original, added]) {
+                    touch.screenX = touch.clientX;
+                    touch.screenY = touch.clientY;
+                }
+                function send(type, changed, touches) {
+                    const event = new Event(type, {
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    Object.defineProperties(event, {
+                        changedTouches: { value: [changed] },
+                        targetTouches: {
+                            value: touches.filter(
+                                (touch) => touch.target === changed.target
+                            ),
+                        },
+                        touches: { value: touches },
+                    });
+                    changed.target.dispatchEvent(event);
+                    return event.defaultPrevented;
+                }
+                const prevented = [
+                    send("touchstart", added, [original, added]),
+                ];
+                const first = firstLift === "original" ? original : added;
+                const last = firstLift === "original" ? added : original;
+                prevented.push(send("touchend", first, [last]));
+                last.clientY -= 5 * gesture.height;
+                last.screenY = last.clientY;
+                prevented.push(send("touchmove", last, [last]));
+                prevented.push(send("touchend", last, []));
+                const index = window.selIndex;
+                // The detached target must lose its temporary listeners after
+                // the last lift, not retain a callback into another gesture.
+                const released = !send("touchmove", original, [original]);
+                window.__touchBegin(27);
+                window.__touchSend("touchend", -3.25);
+                return {
+                    clicks: window.__touchClicks,
+                    detached: !original.target.isConnected,
+                    index,
+                    keys,
+                    nextIndex: window.selIndex,
+                    prevented,
+                    released,
+                };
+            }, firstLift);
+            expect(result, firstLift).toEqual({
+                clicks: [],
+                detached: true,
+                index: 27,
+                keys: [],
+                nextIndex: 30,
+                prevented: [true, true, true, true],
+                released: true,
+            });
+        }
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("browser list swipe retains legacy remote navigation", async ({
+    browser,
+}) => {
+    const fixture = await listTouchFixture(browser, false);
+    try {
+        const result = await fixture.page.evaluate(() => {
+            window.changeSelect(10);
+            window.__touchBegin(10);
+            window.__touchSend("touchmove", -10);
+            return window.__touchSend("touchend", -10);
+        });
+        expect(result.index).toBe(9);
+        expect(await fixture.page.evaluate(() => window.__touchClicks)).toEqual(
+            []
+        );
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
 for (const profile of ["server", "tauri"]) {
     test(
         profile + " confirmation buttons keep their meaning under CSP",

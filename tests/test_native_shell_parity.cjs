@@ -30,6 +30,11 @@ function functions(file, names) {
 const touchCode = functions("src/key-handler/index.ts", [
     "capacitorOnly",
     "isNativeTouchEditor",
+    "resetNativeListTouch",
+    "forwardNativeListTouch",
+    "startNativeListTouch",
+    "moveNativeListTouch",
+    "handleTouchCancel",
     "handleTouchStart",
     "handleTouchMove",
     "body_handleTouchEnd",
@@ -42,10 +47,12 @@ function touchFixture(platform) {
     const w = {
         _doKey: (key) => calls.push(["key", key]),
         alert: () => {},
+        document: { getElementById: () => null },
         keys: { DOWN: 40, ENTER: 13, LEFT: 37, RIGHT: 39, SETUP: 192, UP: 38 },
         MouseEvent: function (type, options) {
             Object.assign(this, { type }, options);
         },
+        nativeListTouch: null,
         tCount: undefined,
         touch_locked: false,
         touch_min_sensX: 60,

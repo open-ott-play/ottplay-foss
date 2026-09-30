@@ -104,6 +104,11 @@ The iOS interface uses landscape orientation. Settings, provider configuration,
 remote-control consent and JSON import/export continue to use the shared frontend.
 Tablet multitasking can override the requested orientation.
 
+On iPhone, swipe vertically over the channel list to move through its rows and
+pages; swipe up for later channels and down for earlier ones. A tap selects a
+channel, and tapping the selected channel starts playback. A swipe never opens
+the channel when you lift your finger.
+
 Device smoke: [Mode B checklist](docs/mode-b-device-smoke.md) and
 `./scripts/smoke-capacitor-device.sh --help` (build/sync target iOS only).
 Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
