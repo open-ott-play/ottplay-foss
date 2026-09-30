@@ -1,5 +1,5 @@
 //! Reproducible release-mode EPG CPU benchmark; input is a local XMLTV file.
-//! cargo run --release -p ottplay-core --example epg_bench -- feed.xml [parse|match]
+//! cargo run --release -p ottplay-core --example epg_bench -- feed.xml [parse|match|http-match]
 use ottplay_core::xmltv;
 use serde_json::json;
 use std::time::Instant;
@@ -8,6 +8,10 @@ fn main() -> anyhow::Result<()> {
     let args: Vec<_> = std::env::args().collect();
     let path = args.get(1).expect("local XMLTV file");
     let mode = args.get(2).map(String::as_str).unwrap_or("parse");
+    anyhow::ensure!(
+        matches!(mode, "parse" | "match" | "http-match"),
+        "Unknown benchmark mode"
+    );
     let xml = std::fs::read_to_string(path)?;
     let begin = Instant::now();
     let (channels, programmes) = xmltv::parse_xmltv(&xml)?;
@@ -17,12 +21,16 @@ fn main() -> anyhow::Result<()> {
         json!({"phase":"parse", "xml_bytes":xml.len(), "channels":channels.len(),
         "programmes":programmes.values().map(Vec::len).sum::<usize>(), "elapsed_ms":parse_ms})
     );
-    if mode == "match" {
+    if mode != "parse" {
         let begin = Instant::now();
-        let index = xmltv::build_match_index(&channels)?;
+        let index = if mode == "http-match" {
+            xmltv::build_http_match_index(&channels)?
+        } else {
+            xmltv::build_match_index(&channels)?
+        };
         println!(
             "{}",
-            json!({"phase":"index", "channels":channels.len(), "elapsed_ms":begin.elapsed().as_secs_f64()*1000.0})
+            json!({"phase":"index", "profile":mode, "channels":channels.len(), "elapsed_ms":begin.elapsed().as_secs_f64()*1000.0})
         );
         let mut names: Vec<_> = channels.values().map(|c| c.name.clone()).collect();
         names.sort();

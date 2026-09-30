@@ -6,6 +6,11 @@ XML event and programme through Kotlin/JS running inside QuickJS. Parsing and
 decompression remain on a blocking worker; request workers keep serving the
 published immutable guide snapshot.
 
+The startup placeholder creates its empty matching index only if an early request
+needs it, on the existing blocking worker. Every fetched snapshot, including an
+empty feed, still builds its complete index before publication and the `Loaded`
+message. Each snapshot owns its index so in-flight readers retain their generation.
+
 ## Scope and ownership
 
 `src-rs/core/src/xmltv/server_records.rs` is an explicit server-profile compatibility
@@ -52,6 +57,31 @@ Full real-feed checks compare every channel and programme field, including
 programme order, against the same reference. Timing comparisons must keep the
 input hash, node, resource limit and build profile fixed. Release images require
 separate Linux qualification; a fast local parser microbenchmark is insufficient.
+
+To separate parsing from construction of the persistent HTTP matching index:
+
+```sh
+cargo run --locked --release -p ottplay-core --example epg_bench -- feed.xml http-match
+```
+
+The `parse` phase ends before index construction. Add `parse` and `index` times
+when comparing cold computation with a version that did not build a persistent
+index before publishing its guide. The existing `match` mode builds the native
+name index; `http-match` also includes the retained HTTP aliases. Both modes
+measure three passes of up to 500 sorted channel names. The output fingerprint covers
+every parsed field and programme order outside the timed regions; it does not
+certify the selected channel IDs, which require the matching tests and HTTP
+schedule comparisons.
+
+These phase totals omit fetch ownership merging and server bootstrap. Use the
+complete server readiness boundary for the final comparison; phase timings only
+locate the remaining work.
+
+Alternate old and candidate binaries on the same host with the same frozen feed.
+Record complete readiness, process CPU, first and warm requests, and complete
+ordered programme responses. Check the selected channel identity explicitly:
+v1.1.43 can return a regional schedule for an unshifted name. A faster response
+with the wrong schedule is not a valid correctness baseline.
 
 ## Why the change is necessary
 
