@@ -7,6 +7,8 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
+import { handleRemoteProfiles } from "./remote-profiles";
+import { executeRemoteRestart } from "./remote-restart";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -32,7 +34,8 @@ function remoteSnapshot(read: any): any {
 /** Queries expose metadata only: never URLs, credentials or the settings store. */
 export function executeRemoteRequest(
     request: any,
-    done: (result: any) => void
+    done: (result: any) => void,
+    afterReply?: (effect: () => void) => void
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
@@ -97,10 +100,22 @@ export function executeRemoteRequest(
     function settingsLocked(): boolean {
         return w.__ottParental
             ? w.__ottParental.needs("providers") ||
-                  w.__ottParental.needs("options")
+                  w.__ottParental.needs("settings")
             : (w.sPSprovs || w.sPSoptions) &&
                   w.parentPIN !== "*" &&
                   !w.parentAccess;
+    }
+    if (
+        request.action === "profiles" ||
+        request.action === "profile" ||
+        request.action === "profile_settings"
+    ) {
+        handleRemoteProfiles(request, done);
+        return;
+    }
+    if (request.action === "restart") {
+        executeRemoteRestart(w, params, done, afterReply);
+        return;
     }
     if (request.action === "status") {
         reply({

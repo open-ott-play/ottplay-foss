@@ -100,8 +100,37 @@ function moduleOf(file, requireFn, window) {
         function player(device, token, initialVolume) {
             let volume = initialVolume,
                 dispatches = 0,
-                dropped = false;
+                dropped = false,
+                playlistLoads = 0,
+                reloads = 0,
+                streamRestarts = 0,
+                droppedReload = false;
+            let configuration = {
+                active: 0,
+                M3Us: Array.from({ length: 15 }, (_, index) => ({
+                    medUrl: "",
+                    name: "Profile " + (index + 1),
+                    rechours: 0,
+                    www: index === 0 ? "https://example.com/one.m3u" : "",
+                })),
+            };
+            const clone = (value) => JSON.parse(JSON.stringify(value));
             const host = {
+                __ottActiveProviderDriver: {
+                    configuration: () => clone(configuration),
+                    fixedSlot: () => -1,
+                    id: "m3u",
+                    saveConfiguration: (value) => {
+                        value.M3Us.forEach((slot, index) => {
+                            if (
+                                slot.medUrl !== configuration.M3Us[index].medUrl
+                            )
+                                slot.medSourceId = "test-media-source-" + index;
+                        });
+                        configuration = clone(value);
+                        return true;
+                    },
+                },
                 __ottClassicGuide: {
                     peek: (id) =>
                         id === "a"
@@ -130,12 +159,26 @@ function moduleOf(file, requireFn, window) {
                 commandChannelsReady: true,
                 curList: ["a", "b"],
                 deviceUUID: device,
+                loadPlaylist: () => playlistLoads++,
                 location: { protocol: "http:" },
                 playChannel: () => {},
+                restart: () => reloads++,
                 setTimeout,
                 stbGetItem: () => "demo",
                 stbGetVolume: () => volume,
             };
+            host.stbPlay = () => {};
+            host.__ottCoreTransport = { play: host.stbPlay };
+            host.__ottCoreBackend = () => ({
+                restart: () => {
+                    streamRestarts++;
+                    return {
+                        accepted: true,
+                        dispatched: true,
+                        target: "stream",
+                    };
+                },
+            });
             const dispatch = (command) => {
                 dispatches++;
                 if (command.volume_step !== undefined)
@@ -146,20 +189,35 @@ function moduleOf(file, requireFn, window) {
                 else if (command.volume !== undefined) volume = command.volume;
                 return "accepted";
             };
+            const dependencies = (name) =>
+                name === "../provider"
+                    ? {
+                          checkProviderUrl: () => true,
+                          isProviderAllowed: () => true,
+                          providerIds: ["demo", "m3u"],
+                          providerLabels: null,
+                          selectProviderByIndex: () => true,
+                      }
+                    : name === "./remote-profiles"
+                      ? moduleOf(
+                            "src/commands/remote-profiles.ts",
+                            dependencies,
+                            host
+                        )
+                      : name === "../plugins/vportal"
+                        ? moduleOf("src/plugins/vportal.ts", dependencies, host)
+                        : name === "./remote-restart"
+                          ? moduleOf(
+                                "src/commands/remote-restart.ts",
+                                dependencies,
+                                host
+                            )
+                          : name === "../utils/caseless"
+                            ? moduleOf("src/utils/caseless.ts", () => {}, host)
+                            : { handleCommand: dispatch };
             const execute = moduleOf(
                 "src/commands/remote-requests.ts",
-                (name) =>
-                    name === "../provider"
-                        ? {
-                              checkProviderUrl: () => true,
-                              isProviderAllowed: () => true,
-                              providerIds: ["demo"],
-                              providerLabels: null,
-                              selectProviderByIndex: () => true,
-                          }
-                        : name === "../utils/caseless"
-                          ? moduleOf("src/utils/caseless.ts", () => {}, host)
-                          : { handleCommand: dispatch },
+                dependencies,
                 host
             ).executeRemoteRequest;
             const transport = moduleOf(
@@ -177,6 +235,22 @@ function moduleOf(file, requireFn, window) {
                     async (response) => {
                         const body = await response.text();
                         if (aborted) return;
+                        if (
+                            request.url.endsWith("/api/responses") &&
+                            request.body.includes(
+                                '"effect":"reload-after-ack"'
+                            ) &&
+                            !droppedReload
+                        ) {
+                            assert.equal(
+                                reloads,
+                                0,
+                                "reload must wait for response delivery acknowledgement"
+                            );
+                            droppedReload = true;
+                            complete();
+                            return;
+                        }
                         if (
                             request.url.endsWith("/api/responses") &&
                             request.body.includes('"volume":35') &&
@@ -207,7 +281,16 @@ function moduleOf(file, requireFn, window) {
                 token,
             });
             controllers.push(controller);
-            return () => ({ dispatches, dropped, volume });
+            return () => ({
+                configuration: clone(configuration),
+                dispatches,
+                dropped,
+                droppedReload,
+                playlistLoads,
+                reloads,
+                streamRestarts,
+                volume,
+            });
         }
         const television = player("dev_test", "b".repeat(32), 30);
         const desktop = player("dev_second", "c".repeat(32), 70);
@@ -245,8 +328,74 @@ function moduleOf(file, requireFn, window) {
         assert.equal(television().volume, 34);
         assert.equal(desktop().volume, 60);
         assert.equal(desktop().dispatches, 1);
+        const original = television().configuration;
+        const settingsFile = path.join(dir, "profile.json");
+        fs.writeFileSync(
+            settingsFile,
+            JSON.stringify({
+                history_hours: 72,
+                name: "Movies",
+                playlist: "https://example.com/two.m3u?token=TEST_ONLY_TOKEN",
+                vportal:
+                    "portal::[key:TEST_ONLY_KEY]https://example.com/api/v1/",
+            }),
+            { mode: 0o600 }
+        );
+        const configured = await run("profile-config", "2", settingsFile);
+        assert(
+            !/TEST_ONLY/.test(configured.stdout + configured.stderr),
+            "configuration replies must not expose credentials"
+        );
+        assert.equal(television().configuration.active, 0);
+        assert.equal(
+            television().playlistLoads,
+            0,
+            "editing another profile must not reload playback"
+        );
+        assert.deepEqual(television().configuration.M3Us[0], original.M3Us[0]);
+        assert.deepEqual(
+            television().configuration.M3Us.slice(2),
+            original.M3Us.slice(2)
+        );
+        assert.equal(television().configuration.M3Us[1].rechours, 72);
+        const listed = await run("profiles");
+        assert.match(listed.stdout, /Movies/);
+        assert(!/TEST_ONLY/.test(listed.stdout + listed.stderr));
+        await run("profile", "2");
+        assert.equal(television().configuration.active, 1);
+        assert.equal(television().playlistLoads, 1);
+        await run("profile", "2", "name", "Cinema");
+        assert.equal(
+            television().playlistLoads,
+            1,
+            "renaming must not reload playback"
+        );
+        assert.equal(television().configuration.M3Us[1].name, "Cinema");
+        assert.equal(
+            desktop().configuration.active,
+            0,
+            "profile commands must remain device-scoped"
+        );
+        assert.deepEqual(desktop().configuration.M3Us[1], original.M3Us[1]);
+        await run("restart");
+        assert.equal(television().streamRestarts, 1);
+        const restart = await run("restart", "player");
+        assert.match(restart.stdout, /accepted/);
+        for (let attempt = 0; attempt < 30 && !television().reloads; attempt++)
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        assert(
+            television().droppedReload,
+            "must exercise a lost reload receipt acknowledgement"
+        );
+        assert.equal(
+            television().reloads,
+            1,
+            "a retried receipt must deliver the reload effect once"
+        );
+        assert.equal(desktop().reloads, 0);
+        assert.equal(desktop().streamRestarts, 0);
         console.log(
-            "PASS real Go + TS + Python through reverse-proxy prefix: two-player isolation, volume delta deduplication after lost response, Russian searches, EPG, numbering and providers"
+            "PASS real Go + TS + Python through reverse-proxy prefix: device isolation, lost-response deduplication, searches, providers, atomic M3U profile edits, secret-free replies and acknowledged restarts"
         );
     } finally {
         for (const controller of controllers)

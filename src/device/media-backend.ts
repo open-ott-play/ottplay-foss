@@ -9,7 +9,9 @@ interface MediaBackendContext {
 interface MediaBackendRequest {
     context?: MediaBackendContext;
     lane?: string;
+    paused?: boolean;
     position?: number;
+    timelineOffset?: number;
     url: string;
 }
 interface MediaBackendSample {
@@ -82,11 +84,18 @@ function createMediaBackend(ports: MediaBackendPorts) {
         var alive = true;
         var timer: any = null;
         var phase = "loading";
+        var retainPause = request.paused === true;
+        var restorePlaying = false;
+        var applyingPause = false;
         var desired = context
             ? context.position
             : Number(request.position) || 0;
         var offset: number | null =
-            context && context.kind === "archive" ? null : 0;
+            context && context.kind === "archive"
+                ? request.timelineOffset === undefined
+                    ? null
+                    : request.timelineOffset
+                : 0;
         var position = desired;
         var duration = NaN;
         var pendingEvents: string[] = [];
@@ -136,6 +145,29 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     context.sourceActive = latest.sourceActive;
                 }
             var sample = engine.sample();
+            // A resolver or engine may report autoplay after the lease attaches.
+            // Only restart requests retain pause; ordinary native controls may resume directly.
+            if (retainPause && handle.active() && type !== "ended") {
+                if (type === "playing" && sample.ready >= 2)
+                    restorePlaying = true;
+                if (!sample.paused && !applyingPause) {
+                    applyingPause = true;
+                    try {
+                        engine.pause();
+                    } finally {
+                        applyingPause = false;
+                    }
+                    if (!handle.active()) return;
+                    sample = engine.sample();
+                }
+                if (sample.paused) {
+                    // Once startup playback was actually paused, native controls
+                    // own later playing events just like an ordinary lease.
+                    if (restorePlaying) retainPause = false;
+                    phase = "paused";
+                    if (type === "playing") type = "pause";
+                } else if (type === "playing") type = "position";
+            }
             if (type === "pause" && phase !== "playing") type = "position";
             if (type === "playing" && !sample.paused && sample.ready >= 2) {
                 phase = "playing";
@@ -240,8 +272,65 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 engine.pause();
                 if (current()) publish(handle, "pause");
             },
+            restart: function () {
+                if (
+                    lane !== "main" ||
+                    !context ||
+                    ["live", "archive", "vod"].indexOf(context.kind) < 0 ||
+                    !engine ||
+                    !handle.active() ||
+                    phase === "stopped"
+                )
+                    return null;
+                observe();
+                if (!handle.active() || !engine) return null;
+                var sample = engine.sample();
+                var nextContext = ports.context();
+                if (!handle.active() || !nextContext) return null;
+                var live = context.kind === "live";
+                if (
+                    !live &&
+                    (sample.ready < 1 ||
+                        (phase !== "playing" && phase !== "paused") ||
+                        !isFinite(sample.position) ||
+                        sample.position < 0 ||
+                        !isFinite(position) ||
+                        position < 0)
+                )
+                    return null;
+                var paused =
+                    retainPause ||
+                    phase === "paused" ||
+                    (sample.ready >= 1 && sample.paused);
+                var savedPosition = live ? 0 : position;
+                var next = open({
+                    context: {
+                        active: nextContext.active,
+                        generation: nextContext.generation,
+                        kind: nextContext.kind,
+                        position: savedPosition,
+                        sourceActive: nextContext.sourceActive,
+                    },
+                    lane: "main",
+                    paused: paused,
+                    position: live ? 0 : sample.position,
+                    timelineOffset: live ? 0 : position - sample.position,
+                    url: request.url,
+                });
+                return next.active()
+                    ? {
+                          accepted: true,
+                          dispatched: true,
+                          kind: nextContext.kind,
+                          paused: paused,
+                          position: savedPosition,
+                          target: "stream",
+                      }
+                    : null;
+            },
             resume: function () {
                 if (!handle.active() || !engine) return;
+                retainPause = false;
                 engine.resume();
                 if (!current()) return;
                 phase = engine.sample().paused ? "paused" : "playing";
@@ -311,6 +400,13 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 return;
             }
             engine = opened;
+            if (retainPause) {
+                phase = "paused";
+                command("pause");
+                if (!handle.active()) return;
+                engine.pause();
+                if (!current()) return;
+            }
             publish(handle, "open");
             if (!current()) return;
             pendingEvents.forEach(observe);
@@ -342,6 +438,10 @@ function createMediaBackend(ports: MediaBackendPorts) {
             });
         },
         open: open,
+        restart: function () {
+            var handle = lanes.main;
+            return handle ? handle.restart() : null;
+        },
         seek: function (value: number) {
             var operation = seeks.main;
             if (operation && operation.handle === lanes.main)

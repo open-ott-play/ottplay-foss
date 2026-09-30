@@ -46,7 +46,10 @@ const { gzipSync } = require("node:zlib");
 // retaining candidate suffix room and the established Node 22 gzip allowance.
 // Server EPG metadata snapshots and catalogue-bound playback add 1885 raw /
 // 535 gzip bytes: 617817 / 187389 web on Node 26.8.2, without guide downloads.
-const BUDGET = Object.freeze({ bytes: 618050, gzipBytes: 188150 });
+// M3U profile management and acknowledged playback restarts add 8400 raw /
+// at most 2539 gzip bytes on Node 22.23.2: web 625886 / 190335 and native
+// 625844 / 190394. Preserve the existing measured release/toolchain headroom.
+const BUDGET = Object.freeze({ bytes: 626450, gzipBytes: 190700 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -66,7 +69,9 @@ const BUDGET = Object.freeze({ bytes: 618050, gzipBytes: 188150 });
 // Including the Edem queue bridge, the VPortal candidate totals 681416 raw /
 // 211638 gzip (native 681374 / 211697); all provider families remain counted.
 // The metadata RPCs add the same measured cost to the complete payload.
-const TOTAL_BUDGET = Object.freeze({ bytes: 683600, gzipBytes: 213200 });
+// The same profile/restart candidate totals 691370 / 215163 for web and
+// 691328 / 215222 for native; all five provider assets remain byte-identical.
+const TOTAL_BUDGET = Object.freeze({ bytes: 692000, gzipBytes: 215750 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

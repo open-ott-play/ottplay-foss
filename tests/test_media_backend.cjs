@@ -706,6 +706,202 @@ test("synchronous link resolution, failures and resolver reentry release the cor
     assert.equal(f.leases[1].disposed, 1);
 });
 
+test("restart reopens the original URL and preserves measured VOD position", (f) => {
+    const old = f.backend.open({ url: "movie" });
+    f.playing(0, 42.5);
+    const result = f.backend.restart();
+    assert.equal(result.dispatched, true);
+    assert.equal(result.position, 42.5);
+    assert.equal(result.paused, false);
+    assert.equal(f.leases[1].request.url, "movie");
+    assert.equal(f.leases[1].request.position, 42.5);
+    assert.equal(f.leases[0].disposed, 1);
+    assert.equal(old.active(), false);
+    const before = f.commands.length;
+    f.leases[0].event("ended");
+    assert.equal(f.commands.length, before);
+});
+test("restart preserves archive decoder offset and paused intent through late autoplay", (f) => {
+    f.domain({ generation: 1, kind: "archive", position: 15 });
+    const old = f.backend.open({ url: "archive" });
+    f.playing(0, 1200);
+    f.leases[0].sample.position = 1203.5;
+    old.pause();
+    const result = f.backend.restart();
+    assert.equal(result.position, 18.5);
+    assert.equal(result.paused, true);
+    assert.equal(f.leases[1].request.position, 1203.5);
+    f.playing(1, 1203.5);
+    assert.equal(f.leases[1].sample.paused, true);
+    assert.equal(f.backend.current().snapshot().phase, "paused");
+    assert.equal(f.backend.current().snapshot().position, 18.5);
+    f.backend.current().resume();
+    assert.equal(f.leases[1].sample.paused, false);
+    assert.equal(f.backend.current().snapshot().phase, "playing");
+});
+test("restart uses a fresh provider resolution and retires its predecessor", (f) => {
+    const pending = [];
+    let cancelled = 0;
+    f.ports.resolve = (url, done) => {
+        pending.push({ done, url });
+        return () => cancelled++;
+    };
+    f.backend.open({ url: "provider:virtual" });
+    pending[0].done("signed-old");
+    f.playing(0, 7);
+    f.backend.current().pause();
+    const result = f.backend.restart();
+    assert.equal(result.dispatched, true);
+    assert.equal(cancelled, 1);
+    assert.equal(pending[1].url, "provider:virtual");
+    assert.equal(f.leases.length, 1);
+    pending[0].done("stale");
+    pending[1].done("signed-new");
+    f.playing(1, 7);
+    assert.equal(f.leases[1].request.url, "signed-new");
+    assert.equal(f.leases[1].sample.paused, true);
+});
+test("restart refuses unready VOD, stale ownership and reentrant replacement", (f) => {
+    f.backend.open({ url: "movie" });
+    assert.equal(f.backend.restart(), null);
+    assert.equal(f.leases.length, 1);
+    f.playing(0, 2);
+    f.domain({ generation: 2, kind: "vod", position: 0 });
+    assert.equal(f.backend.restart(), null);
+    assert.equal(f.leases.length, 1);
+    f.backend.open({ url: "next" });
+    f.playing(1, 3);
+    let replaced = false;
+    f.backend.subscribe((event) => {
+        if (!replaced && event.type === "position") {
+            replaced = true;
+            f.backend.open({ url: "replacement" });
+        }
+    });
+    assert.equal(f.backend.restart(), null);
+    assert.equal(f.leases.length, 3);
+    assert.equal(f.leases[2].request.url, "replacement");
+});
+test("live restart returns to the live edge without touching other lanes", (f) => {
+    f.domain({ generation: 1, kind: "live", position: 200 });
+    f.backend.open({ url: "live" });
+    const preview = f.backend.open({ lane: "preview", url: "preview" });
+    const result = f.backend.restart();
+    assert.equal(result.position, 0);
+    assert.equal(result.kind, "live");
+    assert.equal(result.paused, false);
+    assert.equal(f.leases[2].request.position, 0);
+    assert.equal(preview.active(), true);
+    assert.equal(f.leases[1].disposed, 0);
+});
+
+test("restored pause cannot control an engine after its source is retired", (f) => {
+    let active = true;
+    f.domain({ active: () => active, generation: 1, kind: "vod", position: 7 });
+    f.backend.open({ url: "movie" });
+    f.playing(0, 7);
+    f.backend.current().pause();
+    f.backend.restart();
+    active = false;
+    f.playing(1, 7);
+    assert.equal(
+        f.leases[1].sample.paused,
+        false,
+        "stale owner cannot issue pause"
+    );
+    assert.equal(f.backend.restart(), null);
+    assert.equal(f.leases.length, 2);
+});
+test("restart refuses invalid measured positions and never exposes a source URL", (f) => {
+    f.backend.open({ url: "https://provider.example/private?token=secret" });
+    f.playing(0, 8);
+    f.leases[0].sample.position = NaN;
+    assert.equal(f.backend.restart(), null);
+    assert.equal(f.leases.length, 1);
+    f.leases[0].sample.position = 8;
+    const result = f.backend.restart();
+    assert.equal(JSON.stringify(result).includes("secret"), false);
+    assert.deepEqual(Object.keys(result).sort(), [
+        "accepted",
+        "dispatched",
+        "kind",
+        "paused",
+        "position",
+        "target",
+    ]);
+});
+
+test("ordinary manual pause allows a subsequent native engine resume", (f) => {
+    const handle = f.backend.open({ url: "native-controls" });
+    f.playing(0, 8);
+    handle.pause();
+    assert.equal(handle.snapshot().phase, "paused");
+    assert.equal(f.leases[0].sample.paused, true);
+    const before = f.commands.length;
+    // Browser or native engine controls can play directly, without handle.resume().
+    f.playing(0, 8);
+    assert.equal(f.leases[0].sample.paused, false);
+    assert.equal(handle.snapshot().phase, "playing");
+    assert.equal(
+        f.commands.slice(before).filter((event) => event.type === "pause")
+            .length,
+        0
+    );
+    assert.equal(
+        f.commands.slice(before).filter((event) => event.type === "playing")
+            .length,
+        1
+    );
+    assert.equal(f.timers.filter((timer) => timer.active).length, 1);
+});
+
+test("restart releases its startup pause latch before a later native resume", (f) => {
+    f.backend.open({ url: "native-controls" });
+    f.playing(0, 8);
+    f.backend.current().pause();
+    f.backend.restart();
+    // A premature event cannot consume restoration before the decoder is ready.
+    Object.assign(f.leases[1].sample, { paused: false, ready: 0 });
+    f.leases[1].event("playing");
+    assert.equal(f.leases[1].sample.paused, true);
+    f.playing(1, 8);
+    assert.equal(f.leases[1].sample.paused, true);
+    assert.equal(f.backend.current().snapshot().phase, "paused");
+    // Native controls now resume directly; no backend.resume() is required.
+    f.playing(1, 8);
+    assert.equal(f.leases[1].sample.paused, false);
+    assert.equal(f.backend.current().snapshot().phase, "playing");
+    assert.equal(f.timers.filter((timer) => timer.active).length, 1);
+});
+test("restart waits for asynchronous pause confirmation before releasing restoration", (f) => {
+    f.backend.open({ url: "native-controls" });
+    f.playing(0, 8);
+    f.backend.current().pause();
+    const open = f.ports.open;
+    let confirmPause;
+    f.ports.open = (request, event) => {
+        const engine = open(request, event);
+        const pause = engine.pause;
+        engine.pause = () => {
+            confirmPause = pause;
+        };
+        return engine;
+    };
+    f.backend.restart();
+    f.playing(1, 8);
+    assert.equal(
+        f.leases[1].sample.paused,
+        false,
+        "pause is still pending in the engine"
+    );
+    assert.equal(f.backend.current().snapshot().phase, "paused");
+    confirmPause();
+    assert.equal(f.leases[1].sample.paused, true);
+    f.playing(1, 8);
+    assert.equal(f.leases[1].sample.paused, false);
+    assert.equal(f.backend.current().snapshot().phase, "playing");
+});
+
 console.log(
     "PASS media backend: " + passed + " ES5 lease/observer/device scenarios"
 );
