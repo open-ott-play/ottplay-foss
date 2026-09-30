@@ -39,7 +39,12 @@ const { gzipSync } = require("node:zlib");
 // Native list swipes retain gesture ownership across paginated row replacement.
 // Node 26 measures 608740 raw / 184260 gzip (web), 608698 / 184317 (native).
 // Include release suffix room and the established Node 22 gzip variation.
-const BUDGET = Object.freeze({ bytes: 608900, gzipBytes: 185000 });
+// Remote VPortal collection, cancellation and per-visit URL renewal measure
+// 615932 raw / 186854 gzip on Node 26.8.2 (native 615890 / 186913).
+// Removing redundant canonicalization and metadata work saves 400 raw bytes.
+// Budget the new feature explicitly,
+// retaining candidate suffix room and the established Node 22 gzip allowance.
+const BUDGET = Object.freeze({ bytes: 616150, gzipBytes: 187600 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -56,7 +61,9 @@ const BUDGET = Object.freeze({ bytes: 608900, gzipBytes: 185000 });
 // The same candidate with every provider measures 671260 / 208569 for web
 // and 671218 / 208623 for native outputs; retain bounded suffix headroom.
 // The gesture candidate totals 673493 raw / 208815 gzip before version suffixes.
-const TOTAL_BUDGET = Object.freeze({ bytes: 673750, gzipBytes: 209800 });
+// Including the Edem queue bridge, the VPortal candidate totals 681416 raw /
+// 211638 gzip (native 681374 / 211697); all provider families remain counted.
+const TOTAL_BUDGET = Object.freeze({ bytes: 681700, gzipBytes: 212650 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

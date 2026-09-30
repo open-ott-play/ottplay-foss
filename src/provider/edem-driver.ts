@@ -770,6 +770,8 @@ function mountEdemProvider(
         previousDialog: any = null,
         pageIndex: number | null = null;
     var title = "Edem.tv / iLook.tv";
+    var remotePortal: any = null;
+    var remotePortalLink = "";
     var lists = [
         host._("epg.one (Standard)"),
         "soveni",
@@ -797,17 +799,62 @@ function mountEdemProvider(
         pageIndex = null;
         hideDialog();
         driver.mediaCancel();
+        if (remotePortal) remotePortal.cancel();
+    }
+    function queuePortal() {
+        if (!active()) return null;
+        var link = driver.settings().portal;
+        if (remotePortal && remotePortalLink === link) return remotePortal;
+        if (remotePortal) remotePortal.dispose();
+        remotePortal = null;
+        remotePortalLink = link;
+        var parsed =
+            typeof host.parseVPortalLink === "function"
+                ? host.parseVPortalLink(link)
+                : null;
+        if (
+            !active() ||
+            !parsed ||
+            typeof host.createVPortalClient !== "function" ||
+            (typeof host.checkProviderUrl === "function" &&
+                !host.checkProviderUrl(parsed.url))
+        )
+            return null;
+        remotePortal = host.createVPortalClient(link, {
+            isCurrent: function () {
+                return active() && driver.settings().portal === link;
+            },
+            sourceId: driver.mediaSource(),
+            title: title,
+        });
+        return remotePortal;
     }
     var client = {
         cancel: cancel,
-        dispose: cancel,
-        resolve: function (item: any, done: any) {
-            play(item, done);
+        cancelAutomatic: function () {
+            if (remotePortal) remotePortal.cancelAutomatic();
+        },
+        dispose: function () {
+            cancel();
+            if (remotePortal) remotePortal.dispose();
+            remotePortal = null;
+        },
+        resolve: function (item: any, done: any, automatic?: boolean) {
+            if (item.__ottVPortalQueue) {
+                var portal = queuePortal();
+                if (portal) portal.resolve(item, done, automatic);
+            } else play(item, done);
+        },
+        search: function (query: string, done: any, guard?: () => boolean) {
+            var portal = queuePortal();
+            if (portal) return portal.search(query, done, guard);
+            done({ error: "VPortal is not configured.", items: [] });
+            return function () {};
         },
     };
     host.providerMediaClient = client;
     owner.own(function () {
-        cancel();
+        client.dispose();
         if (host.providerMediaClient === client)
             host.providerMediaClient = null;
     });

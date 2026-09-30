@@ -41,3 +41,19 @@ the client. This integration does not transcode video or proxy its media bytes.
 In particular, an HTTPS browser page needs usable HTTPS media URLs. A local
 fixture verifies the integration, but an actual subscription, its streams, and
 physical TV devices require separate playback validation.
+
+## Remote title search and repeat playback
+
+With the updated command server, CLI and player connected, run:
+
+```sh
+ott t1 vp --list "title fragment"
+ott t1 vp "title fragment"
+```
+
+The first command lists matching videos and episodes. The second collects all
+matching search pages, starts the first result, then plays each result in order
+and loops back to the first. Use `o1` or another configured player name to target a
+different instance. Search is case-insensitive. Stop playback to interrupt the
+queue. See [Remote VPortal queues](media-library.md#remote-vportal-queues) for
+cancellation, URL renewal and catalog limits.

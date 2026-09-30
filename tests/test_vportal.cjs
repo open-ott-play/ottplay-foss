@@ -1071,3 +1071,5 @@ for (const trigger of ["#dialogbox", "#numprog"]) {
 console.log(
     "PASS VPortal parser, browser/native JSON transport, catalogue controls and paging, asynchronous lifecycle, quality and secret-safe failures"
 );
+
+require("./test_vportal_search.cjs");

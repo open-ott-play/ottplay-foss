@@ -119,6 +119,149 @@ export function executeRemoteRequest(
         reply({ providers: providers() });
         return;
     }
+    if (request.action === "vportal" || request.action === "vportal_search") {
+        var queryText =
+            typeof params.query === "string" ? params.query.trim() : "";
+        try {
+            if (
+                Object.keys(params).length !== 1 ||
+                !queryText ||
+                encodeURIComponent(queryText).replace(/%[0-9A-F]{2}/g, "x")
+                    .length > 1024
+            )
+                throw new Error();
+        } catch (_) {
+            reject("Use a VPortal title filter of 1 to 1024 UTF-8 bytes.");
+            return;
+        }
+        var media = w.__ottMedia;
+        var client = w.providerMediaClient;
+        var playback = w.__ottClassicPlayback;
+        if (
+            !media ||
+            !playback ||
+            !client ||
+            typeof client.search !== "function" ||
+            typeof client.resolve !== "function" ||
+            typeof media.playQueue !== "function" ||
+            typeof media.captureAuto !== "function" ||
+            typeof media.sourceId !== "function" ||
+            typeof playback.snapshot !== "function" ||
+            typeof w._playMedia !== "function"
+        ) {
+            done({
+                data: {
+                    error: "Configure VPortal on a player that supports remote media queues.",
+                },
+                status: "unsupported",
+            });
+            return;
+        }
+        var mediaSource = media.sourceId();
+        // Establish the legacy transport's current generation before guarding
+        // asynchronous search; the eventual VOD handoff reconciles it too.
+        if (typeof playback.reconcile === "function") playback.reconcile();
+        var playbackGeneration = playback.snapshot().generation;
+        var searchCurrent = media.captureAuto();
+        var collecting = true;
+        var complete = false;
+        var cancelSearch: (() => void) | void;
+        var cancelStart: (() => void) | void;
+        var mediaCurrent = function (): boolean {
+            return (
+                !complete &&
+                (!collecting || searchCurrent()) &&
+                w.providerMediaClient === client &&
+                media.sourceId() === mediaSource &&
+                playback.snapshot().generation === playbackGeneration
+            );
+        };
+        var cancelMediaRequest = function (): void {
+            if (complete) return;
+            complete = true;
+            w.clearTimeout(mediaTimer);
+            if (cancelSearch) cancelSearch();
+            if (cancelStart) cancelStart();
+        };
+        var finishMedia = function (data: any, error?: string): void {
+            if (complete) return;
+            cancelMediaRequest();
+            if (error) reject(error);
+            else reply(data);
+        };
+        var mediaTimer = w.setTimeout(function () {
+            finishMedia(null, "VPortal search or playback did not complete.");
+        }, 35000);
+        cancelSearch = client.search(
+            queryText,
+            function (result: any) {
+                if (!mediaCurrent()) return;
+                if (!result || result.error || !Array.isArray(result.items)) {
+                    finishMedia(
+                        null,
+                        "Could not load the complete VPortal search results."
+                    );
+                    return;
+                }
+                var records = result.items;
+                var data: any = {
+                    items: records.map(function (item: any, index: number) {
+                        return {
+                            number: index + 1,
+                            title: String(item.title || ""),
+                        };
+                    }),
+                    total: records.length,
+                };
+                // Bound metadata before dispatch so a huge provider title cannot
+                // turn a successful playback change into an unreadable receipt.
+                if (JSON.stringify(data).length > 500000) {
+                    finishMedia(
+                        null,
+                        "VPortal results are too large. Use a more specific title filter."
+                    );
+                    return;
+                }
+                if (request.action === "vportal_search") {
+                    finishMedia(data);
+                    return;
+                }
+                if (!records.length) {
+                    finishMedia(null, "No matching VPortal titles found.");
+                    return;
+                }
+                if (
+                    w.sPSchannels &&
+                    w.parentPIN !== "*" &&
+                    !w.parentAccess &&
+                    records.some(function (item: any) {
+                        return Number(item.adult) === 1;
+                    })
+                ) {
+                    finishMedia(
+                        null,
+                        "Unlock parental access on the player before starting this queue."
+                    );
+                    return;
+                }
+                // The queue takes over automatic cancellation from the search.
+                collecting = false;
+                cancelStart = media.playQueue(
+                    records,
+                    queryText,
+                    mediaCurrent,
+                    function () {
+                        data.dispatched = true;
+                        data.loop = true;
+                        finishMedia(data);
+                    }
+                );
+            },
+            mediaCurrent
+        );
+        if (complete && cancelSearch) cancelSearch();
+        return cancelMediaRequest;
+    }
     if (request.action === "provider") {
         var query = String(params.query).toLowerCase();
         var providerSearch = caselessKey(query);

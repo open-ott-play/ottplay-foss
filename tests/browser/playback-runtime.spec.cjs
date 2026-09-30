@@ -163,11 +163,20 @@ test("native editor remote button explains missing configuration and keeps the f
     expect(fixture.errors).toEqual([]);
 });
 
-async function episodeFixture(page, context, baseURL, holdNext = false) {
+async function episodeFixture(
+    page,
+    context,
+    baseURL,
+    holdNext = false,
+    remoteQueue = false
+) {
     const origin = new URL(baseURL).origin;
     const errors = [];
     const resolutions = [];
     const manifests = [];
+    const catalogRequests = [];
+    const remoteResults = [];
+    let remoteSent = false;
     let releaseNext;
     const nextResponse = new Promise((resolve) => {
         releaseNext = resolve;
@@ -176,6 +185,31 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
     await context.route("**/*", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
+        if (
+            remoteQueue &&
+            url.origin === origin &&
+            url.pathname.startsWith("/fixture-control/")
+        ) {
+            if (request.method() === "POST") {
+                remoteResults.push(request.postDataJSON());
+                return route.fulfill({ json: { status: "ok" } });
+            }
+            const serverTime = Date.now() / 1000;
+            const requests = remoteSent
+                ? []
+                : [
+                      {
+                          action: "vportal",
+                          expires_at: serverTime + 40,
+                          id: "1234567890abcdef1234567890abcdef",
+                          params: { query: "mAtCh" },
+                      },
+                  ];
+            remoteSent = true;
+            return route.fulfill({
+                json: { commands: [], requests, server_time: serverTime },
+            });
+        }
         if (url.origin === origin && url.pathname === "/vportal/api") {
             const { params } = request.postDataJSON();
             if (params.cmd === "play") {
@@ -192,6 +226,50 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
                     json: {
                         url: media("SD"),
                         variants: { HD: media("HD"), SD: media("SD") },
+                    },
+                });
+            }
+            if (remoteQueue) {
+                catalogRequests.push(params);
+                const movie = (id, title) => ({
+                    request: { cmd: "play", id },
+                    title,
+                    type: "stream",
+                });
+                let items;
+                if (params.cmd === "search") {
+                    items = params.offset
+                        ? [movie(4, "MATCH last movie")]
+                        : [
+                              movie(1, "Match first movie"),
+                              {
+                                  request: { cmd: "series", id: 10 },
+                                  title: "Match series",
+                                  type: "multistream",
+                              },
+                              movie(99, "Unrelated movie"),
+                              { request: { offset: 3 }, type: "next" },
+                          ];
+                } else if (params.cmd === "series" && params.id === 10) {
+                    items = params.offset
+                        ? [movie(3, "Episode 3")]
+                        : [
+                              movie(2, "Episode 2"),
+                              { request: { offset: 1 }, type: "next" },
+                          ];
+                } else {
+                    return route.fulfill({
+                        json: { type: "error" },
+                    });
+                }
+                return route.fulfill({
+                    json: {
+                        items,
+                        title: "Match series",
+                        type:
+                            params.cmd === "series"
+                                ? "multistream"
+                                : "category",
                     },
                 });
             }
@@ -240,7 +318,7 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
     await page.waitForFunction(
         () => window.__ottDevice && !document.body.classList.contains("booting")
     );
-    await page.evaluate(() => {
+    await page.evaluate((remoteQueue) => {
         window.stbStop();
         window.__ottMedia.cancel();
         window.host = location.origin;
@@ -264,18 +342,16 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
         window.getMediaArray = client.load;
         window.playMedia = client.play;
         const sourceId = window.__ottSourceIdentity.media(window);
-        // An unfinished second episode must not interrupt automatic playback
-        // with the manual resume prompt or start from its saved position.
+        // Unfinished media must not interrupt automatic playback with the
+        // manual resume prompt or start from its saved position.
         saved["mediaJournal.v1:" + sourceId] = JSON.stringify({
             favorites: [],
-            history: [
-                {
-                    itemId: 'request:{"cmd":"play","id":2}',
-                    payload: { title: "Fixture series - Episode 2" },
-                    position: 90,
-                    sourceId,
-                },
-            ],
+            history: (remoteQueue ? [1, 2] : [2]).map((id) => ({
+                itemId: 'request:{"cmd":"play","id":' + id + "}",
+                payload: { title: "Fixture series - Episode " + id },
+                position: 90,
+                sourceId,
+            })),
             sourceId,
             version: 1,
         });
@@ -289,8 +365,24 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
             window.__episodePickers++;
             return showSelectBox.apply(this, args);
         };
-        window.__ottMedia.open("");
-    });
+        if (remoteQueue) {
+            window.__ottCommandServer.configure({
+                address: location.origin + "/fixture-control",
+                enabled: true,
+                token: "SYNTHETIC_COMMAND_TOKEN_0123456789abcdef",
+            });
+        } else window.__ottMedia.open("");
+    }, remoteQueue);
+    if (remoteQueue) {
+        await pauseEpisode(page, 1);
+        return {
+            catalogRequests,
+            errors,
+            manifests,
+            remoteResults,
+            resolutions,
+        };
+    }
     await page.waitForFunction(() => {
         const view = window.__ottMedia.snapshot();
         return (
@@ -373,6 +465,68 @@ test("natural episode completion resolves the next episode and loops with fresh 
     ]);
     expect(await page.evaluate(() => window.__episodePickers)).toBe(1);
     expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+        { trusted: true },
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("remote VPortal search loops all matched movies and series through real media completion", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL, false, true);
+    await expect.poll(() => fixture.remoteResults.length).toBe(1);
+    expect(fixture.remoteResults[0]).toEqual({
+        data: {
+            dispatched: true,
+            items: [
+                { number: 1, title: "Match first movie" },
+                { number: 2, title: "Match series - Episode 2" },
+                { number: 3, title: "Match series - Episode 3" },
+                { number: 4, title: "MATCH last movie" },
+            ],
+            loop: true,
+            total: 4,
+        },
+        id: "1234567890abcdef1234567890abcdef",
+        status: "ok",
+    });
+    expect(
+        fixture.catalogRequests.map(({ cmd, id, offset, query }) => ({
+            cmd,
+            id,
+            offset,
+            query,
+        }))
+    ).toEqual([
+        { cmd: "search", id: undefined, offset: undefined, query: "mAtCh" },
+        { cmd: "series", id: 10, offset: undefined, query: undefined },
+        { cmd: "series", id: 10, offset: 1, query: undefined },
+        { cmd: "search", id: undefined, offset: 3, query: "mAtCh" },
+    ]);
+    for (const id of [2, 3, 4, 1]) {
+        await finishEpisode(page);
+        await pauseEpisode(page, id);
+        expect(
+            await page.evaluate(
+                () => document.querySelector("video").currentTime
+            )
+        ).toBeLessThan(1);
+    }
+    expect(fixture.resolutions).toEqual([1, 2, 3, 4, 1]);
+    expect(fixture.manifests).toEqual([
+        "/1/SD/index.m3u8?revision=1",
+        "/2/SD/index.m3u8?revision=2",
+        "/3/SD/index.m3u8?revision=3",
+        "/4/SD/index.m3u8?revision=4",
+        "/1/SD/index.m3u8?revision=5",
+    ]);
+    expect(await page.evaluate(() => window.__episodePickers)).toBe(0);
+    expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+        { trusted: true },
         { trusted: true },
         { trusted: true },
     ]);
