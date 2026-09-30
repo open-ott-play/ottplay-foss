@@ -48,9 +48,9 @@ try {
     }
     const sets = inspectBundleSets(root);
     assert.equal(sets.length, 3);
-    assert.equal(sets[0].providers.length, 5);
-    assert.equal(sets[0].total.bytes, measurement.bytes * 6);
-    assert.equal(sets[0].total.gzipBytes, measurement.gzipBytes * 6);
+    assert.equal(sets[0].providers.length, 6);
+    assert.equal(sets[0].total.bytes, measurement.bytes * 7);
+    assert.equal(sets[0].total.gzipBytes, measurement.gzipBytes * 7);
     const extra = path.join(root, "dist/provider-old.js");
     fs.writeFileSync(extra, source);
     assert.throws(() => inspectBundleSets(root), /Unexpected provider bundle/);
@@ -66,7 +66,7 @@ try {
     fs.writeFileSync(oversizedSet, source);
     fs.writeFileSync(additional, source);
     const optimizer = { outputSha256: measurement.sha256 };
-    // Android Play ships exactly the two permitted provider implementations.
+    // Android Play ships exactly the three permitted provider families.
     // Check both its retained flat export and the nested Capacitor entry point.
     const playArtifacts = ["play/player.js", "play/dist/player.js"];
     const playKinds = ["m3u", "plex", "stalker"];
@@ -82,9 +82,9 @@ try {
     }
     const playSets = inspectBundleSets(root, playArtifacts, playKinds);
     assert.equal(playSets.length, 2);
-    assert.equal(playSets[0].providers.length, 2);
-    assert.equal(playSets[0].total.bytes, measurement.bytes * 3);
-    assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 3);
+    assert.equal(playSets[0].providers.length, 3);
+    assert.equal(playSets[0].total.bytes, measurement.bytes * 4);
+    assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 4);
     // Android's configured output may be outside the repository entirely.
     // Both inventories are relative to that output root, not the default dist.
     const androidArtifacts = ["player.js", "dist/player.js"];
@@ -128,7 +128,7 @@ try {
         Array.from(androidSets, (set) => set.entry),
         androidArtifacts
     );
-    assert.equal(androidSets[1].total.bytes, measurement.bytes * 3);
+    assert.equal(androidSets[1].total.bytes, measurement.bytes * 4);
     const externalChunk = path.join(androidOutput, "dist/provider-m3u.js");
     fs.unlinkSync(externalChunk);
     assert.throws(
@@ -138,7 +138,7 @@ try {
     assert.equal(
         writeBundleReport(root, optimizer, [], playArtifacts, playKinds)
             .providerBundles[0].providers.length,
-        2
+        3
     );
     assert.throws(() => inspectBundleSets(root, playArtifacts), /ENOENT/);
     assert.throws(
