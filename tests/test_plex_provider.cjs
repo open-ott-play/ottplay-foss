@@ -4,7 +4,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
-const { fixture } = require("./helpers/provider-driver-fixture.cjs");
+const {
+    fixture,
+    integrationFixture,
+} = require("./helpers/provider-driver-fixture.cjs");
 const runtime = require("./helpers/private-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const plugin = ts.createSourceFile(
@@ -28,8 +31,10 @@ function test(name, body) {
     count++;
     console.log("PASS " + name);
 }
-function create(initial = {}) {
-    const f = fixture(initial);
+function create(initial = {}, integration = false) {
+    const f = integration
+        ? integrationFixture("plex", initial)
+        : fixture(initial);
     f.host.URL = URL;
     runtime(f.host, "src/plugins/plex-auth.ts");
     runtime(f.host, "src/provider/source-identity.ts");
@@ -106,6 +111,50 @@ function create(initial = {}) {
             return f.reloads;
         },
         signIns,
+    };
+}
+
+const remoteCode = ts.transpileModule(
+    fs.readFileSync(path.join(root, "src/commands/remote-requests.ts"), "utf8"),
+    {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }
+).outputText;
+function remote(f) {
+    f.host.exports = {};
+    f.host.require = (name) => {
+        if (name === "../provider")
+            return {
+                checkProviderUrl: (url) => f.host.checkProviderUrl(url),
+                isProviderAllowed: () => f.remoteAllowed !== false,
+            };
+        assert(
+            [
+                "../utils/caseless",
+                "./index",
+                "./remote-profiles",
+                "./remote-restart",
+            ].includes(name)
+        );
+        return {};
+    };
+    assert.equal(f.host.__ottActiveProviderDriver, f.driver);
+    vm.runInContext(remoteCode, f.host);
+    return (settings, extra = {}) => {
+        let result;
+        f.host.exports.executeRemoteRequest(
+            {
+                action: "provider_settings",
+                params: { provider: "plex", settings, ...extra },
+            },
+            (value) => {
+                result = JSON.parse(JSON.stringify(value));
+            }
+        );
+        return result;
     };
 }
 
@@ -421,6 +470,371 @@ test("Playback-only edits preserve account routing; manual server/token edits re
         f.host.getChannelsArray(() => {});
         assert.equal(f.probes.length, 0);
         assert.equal(f.clients.length, 1);
+    }
+});
+
+test("Remote Plex first setup requires one atomic pair and returns only saved metadata", () => {
+    const f = create({ m3um3uArr: "other-profile" });
+    const call = remote(f);
+    for (const settings of [
+        { server: config.address },
+        { token: config.token },
+    ]) {
+        assert.equal(call(settings).status, "rejected");
+        assert.equal(f.saved.has("plexcfg"), false);
+        assert.equal(f.reloads, 0);
+    }
+    const result = call({
+        server: "https://[2001:db8::1]:32400/plex/",
+        token: config.token,
+    });
+    assert.deepEqual(result, {
+        data: { fields: ["server", "token"], provider: "plex", saved: true },
+        status: "ok",
+    });
+    assert.deepEqual(JSON.parse(f.saved.get("plexcfg")), {
+        address: "https://[2001:db8::1]:32400/plex",
+        playback: "auto",
+        token: config.token,
+    });
+    assert.equal(f.saved.get("m3um3uArr"), "other-profile");
+    assert.equal(f.reloads, 1);
+    assert.equal(
+        f.driver.libraryReady(),
+        false,
+        "saving does not claim authenticated readiness"
+    );
+    assert.equal(f.clients.length, 0);
+});
+test("Remote partial Plex edits preserve mode and the other credential, clear routing and retire the library", () => {
+    for (const field of ["server", "token"]) {
+        const initial = { ...accountConfig, playback: "compatible" };
+        const f = create({ plexcfg: JSON.stringify(initial) });
+        const call = remote(f);
+        f.host.getChannelsArray(() => {});
+        f.probes[0].callbacks.onConnected({ url: config.address });
+        const oldClient = f.clients[0];
+        oldClient.ready();
+        assert.equal(f.driver.libraryReady(), true);
+        const value =
+            field === "server"
+                ? "https://manual.example:65535/base"
+                : "replacement-token";
+        const result = call({ [field]: value });
+        // Only the fixed metadata projection may leave the player.
+        assert.deepEqual(result, {
+            data: { fields: [field], provider: "plex", saved: true },
+            status: "ok",
+        });
+        const stored = JSON.parse(f.saved.get("plexcfg"));
+        assert.deepEqual(stored, {
+            address: field === "server" ? value : initial.address,
+            playback: "compatible",
+            token: field === "token" ? value : initial.token,
+        });
+        if (field === "server") {
+            const endpoint = new URL(stored.address);
+            assert.equal(endpoint.origin, "https://manual.example:65535");
+            assert.equal(endpoint.pathname, "/base");
+            assert.equal(endpoint.username, "");
+            assert.equal(endpoint.password, "");
+            assert.equal(endpoint.search, "");
+            assert.equal(endpoint.hash, "");
+        }
+        assert.equal(oldClient.disposed, 1);
+        assert.equal(f.driver.libraryReady(), false);
+        assert.equal(f.host.providerMediaClient, null);
+        oldClient.ready();
+        assert.equal(
+            f.driver.libraryReady(),
+            false,
+            "retired connection cannot restore the library"
+        );
+        assert.equal(f.reloads, 1);
+    }
+});
+test("Remote Plex rejects malformed fields, unsafe URLs and raw token whitespace before save or reload", () => {
+    const f = create({ plexcfg: JSON.stringify(accountConfig) });
+    const call = remote(f);
+    let saves = 0;
+    const save = f.driver.saveCredentials;
+    f.driver.saveCredentials = (value) => {
+        saves++;
+        return save(value);
+    };
+    const before = f.saved.get("plexcfg");
+    const invalid = [
+        null,
+        [],
+        {},
+        false,
+        "server",
+        { server: 1 },
+        { token: 1 },
+        { password: "alias" },
+        { address: config.address },
+        { mode: "original" },
+        { server: "x".repeat(8193) },
+        { token: "x".repeat(1025) },
+        { token: "" },
+        ...[
+            " token",
+            "token ",
+            "a b",
+            "a\tb",
+            "a\nb",
+            "a\u0000b",
+            "a\u007fb",
+            "a\u00a0b",
+        ].map((token) => ({ token })),
+        ...[
+            "",
+            "ftp://plex.test",
+            "https://user:pass@plex.test",
+            "https://plex.test?token=secret",
+            "https://plex.test/#secret",
+            "https://plex.test/base/../path",
+            "https://plex.test/%2e%2e/path",
+            "https://plex.test:0",
+            "https://plex.test:65536",
+            "https://plex.test:999999",
+            "https://[::::]:32400",
+            "https://plex.test/a b",
+            "https://plex.test/a\\b",
+        ].map((server) => ({ server })),
+    ];
+    for (const settings of invalid) {
+        const result = call(settings);
+        assert.equal(result.status, "rejected", JSON.stringify(settings));
+        assert.equal(
+            saves,
+            0,
+            "invalid settings must not reach the driver save operation"
+        );
+        assert.equal(f.saved.get("plexcfg"), before);
+        assert.equal(f.reloads, 0);
+        assert.equal(JSON.stringify(result).includes(config.token), false);
+    }
+    assert.equal(
+        call({ token: config.token }, { extra: "unsupported" }).status,
+        "rejected"
+    );
+    assert.equal(saves, 0);
+});
+test("Remote Plex retains provider, URL policy and parental guards and does not reload a failed save", () => {
+    const f = create({ plexcfg: JSON.stringify(accountConfig) });
+    const call = remote(f);
+    let saves = 0;
+    const save = f.driver.saveCredentials;
+    f.driver.saveCredentials = (value) => {
+        saves++;
+        return save(value);
+    };
+    assert.equal(
+        call({ token: "replacement" }, { provider: "xtream" }).status,
+        "rejected"
+    );
+    f.remoteAllowed = false;
+    assert.equal(call({ token: "replacement" }).status, "rejected");
+    f.remoteAllowed = true;
+    f.host.__ottParental = { needs: (scope) => scope === "settings" };
+    assert.equal(call({ token: "replacement" }).status, "rejected");
+    f.host.__ottParental = { needs: () => false };
+    f.host.checkProviderUrl = () => false;
+    assert.equal(call({ token: "replacement" }).status, "rejected");
+    f.host.checkProviderUrl = () => true;
+    assert.equal(saves, 0);
+    f.driver.saveCredentials = () => false;
+    assert.equal(call({ token: "replacement" }).status, "rejected");
+    assert.equal(f.reloads, 0);
+    f.driver.saveCredentials = save;
+    assert.equal(call({ token: accountConfig.token }).status, "ok");
+    assert.equal(
+        JSON.parse(f.saved.get("plexcfg")).account.id,
+        "server-one",
+        "same credential preserves account routing"
+    );
+});
+
+test("Remote Plex uses real loadChannels for initial setup and partial edits without calling stale playlist loaders", () => {
+    for (const stalePlaylist of [false, true]) {
+        const f = create({}, true);
+        const call = remote(f);
+        let unrelatedReloads = 0;
+        assert.equal(typeof f.host.loadPlaylist, "undefined");
+        if (stalePlaylist) f.host.loadPlaylist = () => unrelatedReloads++;
+        assert.equal(
+            call({ server: config.address, token: config.token }).status,
+            "ok"
+        );
+        assert.equal(
+            f.clients.length,
+            1,
+            "real loadChannels starts authenticated Plex connection"
+        );
+        assert.equal(f.driver.libraryReady(), false);
+        f.clients[0].ready();
+        assert.equal(f.driver.libraryReady(), true);
+        assert.equal(f.host.providerMediaClient, f.clients[0]);
+        for (const settings of [
+            { token: "new-token" },
+            { server: "https://new.example" },
+        ]) {
+            const old = f.clients.at(-1);
+            const previousCount = f.clients.length;
+            assert.equal(call(settings).status, "ok");
+            assert.equal(old.disposed, 1);
+            assert.equal(f.clients.length, previousCount + 1);
+            assert.equal(f.driver.libraryReady(), false);
+            old.ready();
+            assert.equal(f.driver.libraryReady(), false);
+            const next = f.clients.at(-1);
+            assert.equal(next.configuration.token, "new-token");
+            next.ready();
+            assert.equal(f.driver.libraryReady(), true);
+            assert.equal(f.host.providerMediaClient, next);
+        }
+        assert.equal(
+            f.clients.at(-1).configuration.address,
+            "https://new.example"
+        );
+        assert.equal(unrelatedReloads, 0);
+    }
+});
+test("Remote Plex refuses to retire a library when its owned settings, normalization or reload entry point is unavailable", () => {
+    for (const missing of ["saveRemoteSettings", "normalize", "loadChannels"]) {
+        const f = create({ plexcfg: JSON.stringify(config) });
+        const call = remote(f);
+        f.host.getChannelsArray(() => {});
+        f.clients[0].ready();
+        const before = f.saved.get("plexcfg");
+        if (missing === "saveRemoteSettings")
+            delete f.driver.saveRemoteSettings;
+        if (missing === "normalize") delete f.host.__ottPlex.normalize;
+        if (missing === "loadChannels") delete f.host.loadChannels;
+        let unrelatedReloads = 0;
+        f.host.loadPlaylist = () => unrelatedReloads++;
+        assert.equal(call({ token: "new-token" }).status, "rejected");
+        assert.equal(f.saved.get("plexcfg"), before);
+        assert.equal(f.clients[0].disposed, 0);
+        assert.equal(f.driver.libraryReady(), true);
+        assert.equal(unrelatedReloads, 0);
+    }
+});
+test("An old Plex owner's external settings method cannot save or reload after provider replacement", () => {
+    const f = create({ plexcfg: JSON.stringify(config) });
+    const saveRemoteSettings = f.driver.saveRemoteSettings;
+    f.mount("m3u");
+    const before = f.saved.get("plexcfg");
+    assert.equal(
+        typeof saveRemoteSettings({
+            provider: "plex",
+            settings: { token: "new-token" },
+        }),
+        "string"
+    );
+    assert.equal(f.saved.get("plexcfg"), before);
+    assert.equal(f.reloads, 0);
+});
+
+function pendingAccountSignIn(f) {
+    f.host.__ottEditProvider();
+    f.enter(0);
+    const server = {
+        connections: [{ url: config.address }],
+        id: "old-account",
+        name: "Old account",
+        token: "old-account-token",
+    };
+    const signIn = f.signIns.at(-1);
+    signIn.callbacks.onServers([server]);
+    f.enter(0);
+    return { probe: f.probes.at(-1), server, signIn };
+}
+test("Successful remote Plex save cancels pending sign-in and rejects late account callbacks", () => {
+    const f = create({ plexcfg: JSON.stringify(config) });
+    const call = remote(f);
+    const pending = pendingAccountSignIn(f);
+    const cancels = f.cancellations;
+    assert.equal(
+        call({ server: "https://new.example", token: "remote-token" }).status,
+        "ok"
+    );
+    assert.equal(f.cancellations, cancels + 1);
+    const saved = f.saved.get("plexcfg");
+    const screen = f.host.listArray.slice();
+    pending.probe.callbacks.onConnected({
+        token: pending.server.token,
+        url: config.address,
+    });
+    pending.signIn.callbacks.onServers([pending.server]);
+    pending.signIn.callbacks.onPin({
+        code: "STALE",
+        url: "https://app.plex.tv/auth#stale",
+    });
+    pending.probe.callbacks.onError();
+    assert.equal(f.saved.get("plexcfg"), saved);
+    assert.equal(JSON.parse(saved).token, "remote-token");
+    assert.equal(f.reloads, 1);
+    assert.deepEqual(f.host.listArray, screen);
+});
+test("Successful remote Plex save invalidates an old manual draft while a new UI editor still saves normally", () => {
+    const f = create({ plexcfg: JSON.stringify(config) });
+    const call = remote(f);
+    f.host.__ottEditProvider();
+    f.enter(2);
+    const oldSetter = f.host.setEdit;
+    const oldHandler = f.host.listKeyHandler;
+    assert.equal(call({ token: "remote-token" }).status, "ok");
+    f.host.editvar = "stale-draft-token";
+    oldSetter();
+    f.host.selIndex = 5;
+    assert.equal(oldHandler(f.host.keys.ENTER), false);
+    assert.equal(JSON.parse(f.saved.get("plexcfg")).token, "remote-token");
+    assert.equal(f.reloads, 1);
+    f.host.__ottEditProvider();
+    f.enter(2);
+    f.host.editvar = "fresh-ui-token";
+    f.host.setEdit();
+    f.enter(5);
+    assert.equal(JSON.parse(f.saved.get("plexcfg")).token, "fresh-ui-token");
+    assert.equal(f.reloads, 2);
+});
+test("Rejected remote Plex saves preserve pending account sign-in and stored credentials", () => {
+    for (const failure of ["invalid", "save", "reload"]) {
+        const f = create({ plexcfg: JSON.stringify(config) });
+        const call = remote(f);
+        const pending = pendingAccountSignIn(f);
+        const save = f.driver.saveCredentials;
+        const load = f.host.loadChannels;
+        const before = f.saved.get("plexcfg");
+        const cancels = f.cancellations;
+        if (failure === "save") f.driver.saveCredentials = () => false;
+        if (failure === "reload") delete f.host.loadChannels;
+        assert.equal(
+            call({
+                token: failure === "invalid" ? "bad token" : "remote-token",
+            }).status,
+            "rejected"
+        );
+        assert.equal(f.saved.get("plexcfg"), before);
+        assert.equal(f.cancellations, cancels);
+        assert.equal(f.reloads, 0);
+        f.driver.saveCredentials = save;
+        f.host.loadChannels = load;
+        pending.probe.callbacks.onConnected({
+            token: pending.server.token,
+            url: config.address,
+        });
+        assert.equal(
+            JSON.parse(f.saved.get("plexcfg")).token,
+            pending.server.token
+        );
+        assert.equal(
+            f.reloads,
+            1,
+            "the original UI flow remains valid after rejection"
+        );
     }
 });
 

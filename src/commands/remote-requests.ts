@@ -317,6 +317,15 @@ export function executeRemoteRequest(
             reject("Unlock provider settings on the player first.");
             return;
         }
+        if (driver.id === "plex") {
+            var plexSettings =
+                typeof driver.saveRemoteSettings === "function"
+                    ? driver.saveRemoteSettings(params)
+                    : "Plex settings are unavailable on this player.";
+            if (typeof plexSettings === "string") reject(plexSettings);
+            else reply({ fields: plexSettings, provider: "plex", saved: true });
+            return;
+        }
         var schemas: Record<string, string[]> = {
             m3u: ["playlist"],
             ottclub: ["server", "key"],
@@ -327,6 +336,9 @@ export function executeRemoteRequest(
         var fields = Object.keys(params.settings || {});
         if (
             !schema ||
+            !params.settings ||
+            typeof params.settings !== "object" ||
+            Array.isArray(params.settings) ||
             !fields.length ||
             fields.some(function (key) {
                 return (
