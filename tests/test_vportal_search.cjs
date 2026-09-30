@@ -161,9 +161,14 @@ const params = (request) => {
 function failure(result) {
     assert(result, "Search reports the failure");
     assert.equal(result.items.length, 0, "No partial result escapes");
-    assert.match(result.error, /VPortal search/);
-    assert(!result.error.includes(privateKey));
-    assert(!result.error.includes(endpoint));
+    assert(
+        [
+            "VPortal search could not collect a complete result",
+            "VPortal search timed out before collecting all results",
+            "VPortal search requires a title filter",
+        ].includes(result.error),
+        "Search failures expose only fixed public messages"
+    );
 }
 
 {
