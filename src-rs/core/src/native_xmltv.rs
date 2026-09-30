@@ -177,6 +177,67 @@ mod tests {
         assert_eq!(resolve_id(&cache, "missing", "News Extra", "Cinema").unwrap(), Some("cinema".into()));
         assert_eq!(resolve_id(&cache, "missing", "Films", "Renamed").unwrap(), Some("cinema".into()));
     }
+    fn portrait_snapshot(ids: [&str; 2], reversed: bool, native: bool) -> NativeSnapshot {
+        let base = format!(r#"<channel id="{}"><display-name>СТС Love</display-name><display-name>СТС Love orig</display-name></channel>"#, ids[0]);
+        let regional = format!(r#"<channel id="{}"><display-name>СТС LOVE (+7)</display-name><display-name>СТС Love +7</display-name></channel>"#, ids[1]);
+        let channels = if reversed { regional + &base } else { base + &regional };
+        // Public-feed episode from the report: the regional schedule is seven
+        // hours earlier, although its programme title is exactly the same.
+        let xml = format!(r#"<tv>{channels}
+            <programme channel="{}" start="20260930080300 +0300" stop="20260930081000 +0300"><title>Три кота (Портрет). Сезон: 3, Серия: 43.</title></programme>
+            <programme channel="{}" start="20260930010300 +0300" stop="20260930011000 +0300"><title>Три кота (Портрет). Сезон: 3, Серия: 43.</title></programme></tv>"#, ids[0], ids[1]);
+        let (channels, programs) = if native {
+            xmltv::parse_xmltv_native(&xml).unwrap()
+        } else {
+            // Tauri's default feed uses the same parser as the HTTP server.
+            xmltv::parse_xmltv(&xml).unwrap()
+        };
+        assert_eq!(programs[ids[0]][0].start, 1_790_744_580);
+        assert_eq!(programs[ids[1]][0].start, 1_790_719_380);
+        NativeSnapshot::new(XmltvCache { channels, programs, ..Default::default() }).unwrap()
+    }
+
+    fn assert_unshifted_portrait(tvg_id: &str) {
+        for ids in [["1322", "1109"], ["a-base", "z-regional"], ["z-base", "a-regional"]] {
+            for reversed in [false, true] {
+                for native in [false, true] {
+                    let snapshot = portrait_snapshot(ids, reversed, native);
+                    let id = snapshot.resolve(tvg_id, "", "СТС Love").unwrap().unwrap();
+                    assert_eq!(id, ids[0], "tvg_id={tvg_id:?}, native={native}, reversed={reversed}");
+                    let programme = &snapshot.cache().programs[&id][0];
+                    assert_eq!(programme.start, 1_790_744_580);
+                    let now = 1_790_744_880; // 22:08 PDT: base programme is current.
+                    assert!(programme.start <= now && now < programme.stop);
+                    assert_eq!(snapshot.index().extract_time_shift("СТС Love").unwrap(), 0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_unshifted_name_without_tvg_id_keeps_base_schedule() {
+        assert_unshifted_portrait("");
+    }
+
+    #[test]
+    fn native_unshifted_name_with_foreign_tvg_id_keeps_base_schedule() {
+        assert_unshifted_portrait("hlsproxy-409");
+    }
+
+    #[test]
+    fn native_real_xmltv_id_remains_authoritative_with_regional_aliases() {
+        for native in [false, true] {
+            let snapshot = portrait_snapshot(["1322", "1109"], false, native);
+            for (tvg_id, name, expected_time) in [
+                ("1322", "СТС Love +7", 1_790_744_580),
+                ("1109", "СТС Love", 1_790_719_380),
+            ] {
+                let id = snapshot.resolve(tvg_id, "", name).unwrap().unwrap();
+                assert_eq!(id, tvg_id, "an existing XMLTV ID is authoritative");
+                assert_eq!(snapshot.cache().programs[&id][0].start, expected_time);
+            }
+        }
+    }
     #[tokio::test]
     async fn retained_native_index_preserves_aliases_shifts_slices_and_old_generation() {
         let mut cache = fixture("news", "News", "current");
