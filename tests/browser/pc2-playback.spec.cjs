@@ -194,10 +194,15 @@ async function boot(
         )
         .toBe(2);
     await page.keyboard.press("Shift");
-    await page.evaluate(() => {
-        window.video.muted = true;
-        window.playChannel(window.catsArray.indexOf("Test"), 0);
-    });
+    // Loading the playlist already starts its first channel. Restarting here
+    // can terminate the HLS worker while it imports its runtime polyfills.
+    expect(
+        await page.evaluate(
+            () =>
+                window.curList[window.primaryIndex] === window.cats.Test[0] &&
+                window.playType === 0
+        )
+    ).toBe(true);
     if (!noWorker && !noMse)
         await expect
             .poll(() => page.evaluate(() => window.video.currentTime))
@@ -364,6 +369,7 @@ test("pc2 missing vendor falls back to ordinary libraries", async ({
     expect(requests).toContain("/js/hls.min.js");
     expect(requests).toContain("/js/shaka-player.compiled.js");
     expect(await page.evaluate(() => typeof window.videojs)).toBe("undefined");
+    expect(await page.evaluate(() => window.__pc2Workers.length)).toBe(1);
     expect(errors).toEqual([]);
 });
 
