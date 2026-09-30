@@ -1,5 +1,6 @@
 import { popupActionId } from "./compatibility/legacy-names";
 import { languageAssetPath, languageNames } from "./localization/assets";
+import { accessMediaPlugin, prepareAccessMedia } from "./plugins/access-media";
 import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
@@ -43,11 +44,13 @@ import {
     createCommandServerTransport,
     normalizeCommandServerAddress,
 } from "./plugins/command-server";
+import { createControlDiscovery } from "./plugins/control-discovery";
 import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
-import { installTauriHttpTransport } from "./plugins/native-http";
+import { tauriInvoke } from "./plugins/native-bridge";
+import "./plugins/native-http";
 import {
     StalkerPortal,
     setupStalkerPortalShim,
@@ -307,6 +310,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { executeRemoteRequest } from "./commands/remote-requests";
 // Key handler
 import {
     dispatchKey,
@@ -1780,6 +1784,7 @@ function onStbReady(): void {
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
             (window as any).ensureDeviceClientId();
+        (window as any).__ottControlDiscovery.start();
         if (typeof (window as any).applyLocalSwopConfig === "function")
             (window as any).applyLocalSwopConfig();
         if ((window as any).__ottNasLibrary)
@@ -1894,22 +1899,6 @@ window.keys = keys;
 // Tauri IPC detection and EPG override
 // When running under Tauri (Mode B), override getChannelEpg to use invoke()
 // When running in browser/STB (Mode A), leave getChannelEpg unchanged for provider HTTP fetch
-
-/**
- * Shared Tauri invoke helper. Uses @tauri-apps/api/core if available,
- * falls back to window.__TAURI__.invoke for bundled apps.
- */
-function tauriInvoke<T>(
-    command: string,
-    args: Record<string, unknown>
-): Promise<T> {
-    // Prefer core.invoke (Tauri v2 core API), fallback to global __TAURI__
-    const core = (window as any).__TAURI__?.core;
-    if (core?.invoke) {
-        return core.invoke(command, args) as Promise<T>;
-    }
-    return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
-}
 
 /**
  * Setup Tauri EPG override for getChannelEpg. Uses Tauri IPC instead of HTTP fetch.
@@ -2074,7 +2063,7 @@ function setupTauriCompanionShim(): void {
     (window as any).__ottTauriAjaxShim = true;
     const origAjax = $.ajax.bind($);
     // jQuery retains serialization, converters, callback order and jqXHR state.
-    installTauriHttpTransport($, tauriInvoke);
+    window.installTauriHttpTransport($, tauriInvoke);
 
     $.ajax = function (urlOrOpts: any, maybeOpts?: any) {
         let opts: any;
@@ -2425,7 +2414,7 @@ function _playChannel(catIdx: number, chIdx: number): void {
 }
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */
-function _playMedia(item: MediaHistoryEntry): void {
+function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     if (!item) return;
     var reference = (item as any).__ottMediaRef;
     if (
@@ -2433,10 +2422,12 @@ function _playMedia(item: MediaHistoryEntry): void {
         reference.sourceId !== (window as any).__ottMedia.sourceId()
     )
         return;
-    if ((window as any).__ottMedia.cancelRequest)
-        (window as any).__ottMedia.cancelRequest();
-    else if ((window as any).providerMediaClient)
-        (window as any).providerMediaClient.cancel();
+    if (!automatic) {
+        if ((window as any).__ottMedia.cancelRequest)
+            (window as any).__ottMedia.cancelRequest();
+        else if ((window as any).providerMediaClient)
+            (window as any).providerMediaClient.cancel();
+    }
     var streamUrl =
         typeof item.stream_url === "function"
             ? item.stream_url()
@@ -2678,6 +2669,27 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                               ? cap.playPip(args)
                               : cap.stopPip();
                       },
+                      prepare: function (
+                          args: any,
+                          onCancel: (cancel: () => void) => void
+                      ) {
+                          return new Promise(function (resolve, reject) {
+                              var cancel = prepareAccessMedia(
+                                  args.url,
+                                  function (url) {
+                                      resolve(
+                                          Object.assign({}, args, { url: url })
+                                      );
+                                  },
+                                  function () {
+                                      reject(
+                                          new Error("Source sign-in required")
+                                      );
+                                  }
+                              );
+                              if (cancel) onCancel(cancel);
+                          });
+                      },
                       ready: function () {
                           var el = document.getElementById("videopip");
                           if (el) el.style.display = "none";
@@ -2692,6 +2704,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                       serial: true,
                   })
                 : null,
+            prepareSource: ios ? prepareAccessMedia : null,
             standby: function (standby: boolean) {
                 (standby ? cap.allowSleep() : cap.preventSleep()).catch(
                     function (error: any) {
@@ -4714,6 +4727,14 @@ window.settingsManage = function (): void {
             action: w.saveOpt,
             name: w._("Save settings to storage") || "Save settings to storage",
         });
+    var sourceAccess = accessMediaPlugin();
+    if (sourceAccess)
+        w.listArray.push({
+            action: function () {
+                sourceAccess.manage();
+            },
+            name: w._("Source access"),
+        });
     w.selIndex = 0;
     w.getListItem = function (item: any, _idx: number) {
         return "&nbsp;&nbsp;" + (item.name || "");
@@ -5548,6 +5569,14 @@ var infoArr: any[] = [
         name: "Debug HUD",
     },
 ];
+if ((window as any).__OTTPLAY_HOSTED__) {
+    infoArr.push({
+        action: function () {
+            (window as any).__ottHostedEpg.showDiagnostics();
+        },
+        name: "EPG diagnostics",
+    });
+}
 if (isPlayDistribution()) {
     infoArr.push({
         action: function () {
@@ -5686,8 +5715,43 @@ window.showPopup = showPopup;
         )
             throw new Error("Command server settings could not be saved");
     },
-    handleCommand
+    handleCommand,
+    executeRemoteRequest
 );
+
+(window as any).__ottControlDiscovery = createControlDiscovery(
+    window,
+    createCommandServerTransport(
+        window,
+        typeof window.__TAURI__ !== "undefined"
+            ? function (request: any): Promise<any> {
+                  return tauriInvoke("proxy_http", request);
+              }
+            : undefined
+    ),
+    function () {
+        return {
+            address: settings.commandServerAddress,
+            enabled: settings.commandServerEnabled === 1,
+            generation: (window as any).__ottCommandServer.status().generation,
+            token: settings.commandServerToken,
+        };
+    },
+    function (config: any) {
+        (window as any).__ottCommandServer.configure(config);
+        if (!(window as any).__ottCommandServer.status().enabled)
+            throw new Error("Approved command server could not be configured");
+    },
+    function () {
+        return String((window as any).deviceUUID || "");
+    },
+    typeof window.__TAURI__ !== "undefined"
+        ? function (): Promise<any> {
+              return tauriInvoke("discover_control_servers", {});
+          }
+        : undefined
+);
+(window as any).__OTT_CONTROL_DISCOVERY_VERSION__ = 1;
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so
@@ -5831,8 +5895,54 @@ if (
 window.settingsCommands = function (): void {
     var w = window as any;
     var commandServer = w.__ottCommandServer;
+    var discovery = w.__ottControlDiscovery;
+    function refreshDiscovery(): void {
+        if (!discovery || closed) return;
+        var status = discovery.status();
+        var label = document.getElementById("commandServerDiscoveryStatus");
+        if (label)
+            label.textContent =
+                w._(status.message, status.messageArgument) +
+                (status.code ? " " + status.code : "");
+        var cancel = document.getElementById(
+            "commandServerDiscoveryCancel"
+        ) as HTMLButtonElement | null;
+        if (cancel)
+            cancel.disabled = !/^(discovering|choose|pairing|waiting)$/.test(
+                status.state
+            );
+        var choices = document.getElementById("commandServerDiscoveryChoices");
+        if (!choices) return;
+        choices.textContent = "";
+        controls.length = Math.min(controls.length, 9);
+        controlActions.length = Math.min(controlActions.length, 9);
+        status.servers.forEach(function (server: any, index: number) {
+            var button = document.createElement("button");
+            button.textContent =
+                server.address +
+                (server.domain ? " (" + server.domain + ")" : "");
+            choices!.appendChild(button);
+            var at = controlActions.length;
+            controlActions.push(function () {
+                discovery.choose(index);
+            });
+            bindControl(button, at);
+        });
+        if (selectedControl >= controls.length) selectControl(3, false);
+    }
     function refreshServerStatus(): void {
         if (!commandServer) return;
+        var address = document.getElementById("commandServerAddressValue");
+        if (address)
+            address.textContent =
+                settings.commandServerAddress || w._("not set");
+        var tokenPresence = document.getElementById(
+            "commandServerTokenPresence"
+        );
+        if (tokenPresence)
+            tokenPresence.textContent = w._(
+                settings.commandServerToken ? "saved on this device" : "not set"
+            );
         var status = commandServer.status();
         var label = document.getElementById("commandServerStatus");
         var message = status.message;
@@ -5848,6 +5958,7 @@ window.settingsCommands = function (): void {
             button.textContent = w._(status.enabled ? "Disconnect" : "Connect");
     }
     if (commandServer) commandServer.subscribe(refreshServerStatus);
+    if (discovery) discovery.subscribe(refreshDiscovery);
     var changingHttpRemote = false;
     var httpRemoteError = false;
     var closed = false;
@@ -5862,6 +5973,9 @@ window.settingsCommands = function (): void {
         },
         toggleServer,
         function (): void {
+            if (discovery) discovery.start(true);
+        },
+        function (): void {
             editUrl(false);
         },
         function (): void {
@@ -5869,6 +5983,9 @@ window.settingsCommands = function (): void {
         },
         toggleHttpRemote,
         close,
+        function (): void {
+            if (discovery) discovery.cancel();
+        },
     ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
         var element = document.getElementById(id);
@@ -5935,6 +6052,7 @@ window.settingsCommands = function (): void {
     function close(): void {
         closed = true;
         if (commandServer) commandServer.subscribe(null);
+        if (discovery) discovery.subscribe(null);
         $("#listAbout").hide().text("");
         ["listCaption", "listDetail", "listPodval"].forEach(
             function (id, index) {
@@ -6000,12 +6118,12 @@ window.settingsCommands = function (): void {
             "<br/>" +
             "<b>" +
             text(w._("Server address")) +
-            ":</b> " +
+            ':</b> <span id="commandServerAddressValue">' +
             text(settings.commandServerAddress || w._("not set")) +
-            "<br/>" +
+            "</span><br/>" +
             "<b>" +
             text(w._("Access code")) +
-            ":</b> " +
+            ':</b> <span id="commandServerTokenPresence">' +
             text(
                 w._(
                     settings.commandServerToken
@@ -6013,7 +6131,7 @@ window.settingsCommands = function (): void {
                         : "not set"
                 )
             ) +
-            "<br/>" +
+            "</span><br/>" +
             "<b>" +
             text(w._("Status")) +
             ':</b> <span id="commandServerStatus"></span><br/>' +
@@ -6026,6 +6144,11 @@ window.settingsCommands = function (): void {
             '<button id="commandServerConnect"><span class="btn">5</span> <span id="commandServerConnectLabel">' +
             text(w._("Connect")) +
             "</span></button><br/><br/>" +
+            '<button id="commandServerFind"><span class="btn">6</span> ' +
+            text(w._("Find command server")) +
+            '</button> <button id="commandServerDiscoveryCancel" disabled>' +
+            text(w._("Cancel pairing")) +
+            '</button><br/><span id="commandServerDiscoveryStatus" role="status"></span><div id="commandServerDiscoveryChoices"></div><br/>' +
             "<b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
@@ -6082,7 +6205,7 @@ window.settingsCommands = function (): void {
             text(uid) +
             "</span><br/><br/>" +
             "This ID identifies your player for commands from Home Assistant or other automation. " +
-            "For remote text entry (♥™), the Worker operator must allowlist this ID.<br/><br/>" +
+            "Remote text entry (♥™) uses the configured relay server's installation authorization; this ID identifies the player, not a credential.<br/><br/>" +
             "<b>Local command URL:</b><br/>" +
             text(lurl || "not set (local command polling disabled)") +
             "<br/><br/>" +
@@ -6113,6 +6236,11 @@ window.settingsCommands = function (): void {
         bindControl(document.getElementById("commandServerAddress")!, 0);
         bindControl(document.getElementById("commandServerToken")!, 1);
         bindControl(document.getElementById("commandServerConnect")!, 2);
+        bindControl(document.getElementById("commandServerFind")!, 3);
+        bindControl(
+            document.getElementById("commandServerDiscoveryCancel")!,
+            8
+        );
         var footerControls = footer
             ? footer.querySelectorAll("span[onclick]")
             : [];
@@ -6122,11 +6250,12 @@ window.settingsCommands = function (): void {
             if (footerControls[footerIndex])
                 bindControl(
                     footerControls[footerIndex] as HTMLElement,
-                    index + 3
+                    index + 4
                 );
         });
         selectControl(selectedControl, selectedControl >= 0);
         refreshServerStatus();
+        refreshDiscovery();
         var codeInput = document.getElementById(
             "localHttpDeviceCode"
         ) as HTMLInputElement | null;
@@ -6149,6 +6278,7 @@ window.settingsCommands = function (): void {
     }
 
     function editServer(secret: boolean): void {
+        if (discovery) discovery.cancel();
         var draft = beginSettingsDraft();
         $("#listAbout").hide();
         editSettingsText(
@@ -6206,6 +6336,7 @@ window.settingsCommands = function (): void {
         );
     }
     function toggleServer(): void {
+        if (discovery) discovery.cancel();
         if (commandServer)
             commandServer.configure({
                 address: settings.commandServerAddress,
@@ -6288,6 +6419,15 @@ window.settingsCommands = function (): void {
                           (e === w.keys.LEFT ? -1 : 1) +
                           controls.length) %
                       controls.length;
+            for (
+                var skip = 0;
+                skip < controls.length &&
+                (controls[next] as HTMLButtonElement).disabled;
+                skip++
+            )
+                next =
+                    (next + (e === w.keys.LEFT ? -1 : 1) + controls.length) %
+                    controls.length;
             selectControl(next, true);
             return true;
         }
@@ -6316,13 +6456,18 @@ window.settingsCommands = function (): void {
             toggleServer();
             return true;
         }
+        if (e === w.keys.N6 || e === 54) {
+            selectControl(3, false);
+            if (discovery) discovery.start(true);
+            return true;
+        }
         if (e === w.keys.ENTER || e === w.keys.N2 || e === 50) {
-            selectControl(e === w.keys.ENTER ? 3 : 4, false);
+            selectControl(e === w.keys.ENTER ? 4 : 5, false);
             editUrl(e !== w.keys.ENTER);
             return true;
         }
         if (e === w.keys.N1 || e === 49) {
-            selectControl(5, false);
+            selectControl(6, false);
             toggleHttpRemote();
             return true;
         }

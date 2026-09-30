@@ -49,7 +49,14 @@ function response(body, status = 200, contentType = "application/json") {
         statusText: status === 200 ? "OK" : "Forbidden",
     };
 }
-function runtime(invoke, native = true, platform = "tauri", url) {
+function runtime(
+    invoke,
+    native = true,
+    platform = "tauri",
+    url,
+    capabilities = {}
+) {
+    const cancelled = [];
     const dom = new JSDOM(
         "<!doctype html><html><head></head><body></body></html>",
         {
@@ -67,7 +74,11 @@ function runtime(invoke, native = true, platform = "tauri", url) {
     w.eval(read("js/jquery-1.11.1.min.js"));
     if (native && platform === "tauri") w.__TAURI__ = {};
     if (platform === "capacitor")
-        w.Capacitor = { isNativePlatform: () => native };
+        w.Capacitor = {
+            getPlatform: () => capabilities.platform || "ios",
+            isNativePlatform: () => native,
+            Plugins: capabilities.access ? { AccessMedia: {} } : {},
+        };
     w.tauriInvoke = invoke;
     w.eval(compile(read("src/plugins/jquery-bridge.ts")));
     w.eval(compile(read("src/plugins/native-http.ts")));
@@ -75,12 +86,21 @@ function runtime(invoke, native = true, platform = "tauri", url) {
     const originalAjax = w.$.ajax;
     if (native && platform === "capacitor") {
         w.installCapacitorHttpTransport(w.$, {
+            cancelHttpRequest:
+                capabilities.cancel === false
+                    ? undefined
+                    : ({ requestId }) => {
+                          cancelled.push(requestId);
+                          return Promise.reject(
+                              new Error("optional cancellation rejected")
+                          );
+                      },
             httpRequest: (args) => invoke("proxy_http", args),
         });
     } else {
         w.setupTauriCompanionShim();
     }
-    return { $: w.$, close: () => w.close(), originalAjax, w };
+    return { $: w.$, cancelled, close: () => w.close(), originalAjax, w };
 }
 function finished(xhr) {
     return new Promise((resolve) => {
@@ -700,6 +720,8 @@ async function run(platform) {
             url: "https://provider.example/api",
         });
         const pendingResult = finished(pending);
+        const cancelledRequest = calls.at(-1).args.requestId;
+        pending.abort();
         pending.abort();
         result = await pendingResult;
         assert.equal(result.status, "abort");
@@ -708,6 +730,13 @@ async function run(platform) {
         await delay(5);
         assert.equal(successes, 0);
         assert.equal(completions, 1);
+        assert.deepEqual(
+            r.cancelled,
+            platform === "capacitor" ? [cancelledRequest] : [],
+            "abort cancels only its native request, exactly once"
+        );
+        if (platform === "capacitor")
+            assert.match(cancelledRequest, /^[A-Za-z0-9_-]{1,128}$/);
         result = await finished(
             $.ajax({
                 complete() {
@@ -718,6 +747,11 @@ async function run(platform) {
             })
         );
         assert.equal(result.status, "timeout");
+        if (platform === "capacitor") {
+            const timeoutRequest = calls.at(-1).args.requestId;
+            assert.notEqual(timeoutRequest, cancelledRequest);
+            assert.deepEqual(r.cancelled, [cancelledRequest, timeoutRequest]);
+        }
         settle(response("{}"));
         await delay(5);
         assert.equal(completions, 2);
@@ -732,6 +766,33 @@ async function run(platform) {
         );
         assert.equal(result.status, "canceled");
         assert.equal(calls.length, count);
+
+        const held = [];
+        reply = () => new Promise((resolve) => held.push(resolve));
+        const first = $.ajax({ url: "https://provider.example/first" });
+        const second = $.ajax({ url: "https://provider.example/second" });
+        const firstID = calls.at(-2).args.requestId;
+        const secondID = calls.at(-1).args.requestId;
+        first.abort();
+        const secondResult = finished(second);
+        held[0](response("retired", 200, "text/plain"));
+        held[1](response("active", 200, "text/plain"));
+        assert.equal((await secondResult).data, "active");
+        const cancelledCount = r.cancelled.length;
+        second.abort();
+        assert.equal(
+            r.cancelled.length,
+            cancelledCount,
+            "settled request is not cancelled"
+        );
+        if (platform === "capacitor") {
+            assert.notEqual(firstID, secondID);
+            assert.equal(r.cancelled.at(-1), firstID);
+            assert(
+                !r.cancelled.includes(secondID),
+                "other native consumers remain active"
+            );
+        }
     } finally {
         clearTimeout(testDeadline);
         r.close();
@@ -753,9 +814,317 @@ async function run(platform) {
         `OK: ${platform} HTTP with real jQuery 1.11.1, provider JSON/JSONP, VPortal JSON POST opt-in, status, callbacks, abort/timeout and browser isolation`
     );
 }
+async function testCancellationCompatibility() {
+    for (const capabilities of [{ cancel: false }, { platform: "android" }]) {
+        let args;
+        let settle;
+        const r = runtime(
+            (requestCommand, requestArgs) => {
+                args = requestArgs;
+                return new Promise((resolve) => {
+                    settle = resolve;
+                });
+            },
+            true,
+            "capacitor",
+            undefined,
+            capabilities
+        );
+        try {
+            const request = r.$.ajax({
+                url: "https://provider.example/playlist",
+            });
+            const result = finished(request);
+            request.abort();
+            assert.equal((await result).status, "abort");
+            assert.equal(args.requestId, undefined);
+            assert.deepEqual(r.cancelled, []);
+            settle(response("retired", 200, "text/plain"));
+            await delay(0);
+        } finally {
+            r.close();
+        }
+    }
+}
+async function testAccessPlaylistLifetime() {
+    const m3uFixture = require("./helpers/m3u-driver-fixture.cjs");
+    const playlist = "#EXTM3U\n#EXTINF:-1,Fixture\nhttps://media.test/live\n";
+    for (const jquery of [
+        "js/jquery-1.11.1.min.js",
+        "node_modules/jquery/dist/jquery.min.js",
+    ]) {
+        for (const access of [true, false]) {
+            const f = m3uFixture({ native: true });
+            const dom = new JSDOM("<!doctype html>", {
+                runScripts: "outside-only",
+                url: "https://localhost/",
+            });
+            const w = dom.window,
+                calls = [],
+                cancelled = [],
+                outcomes = [];
+            let now = 0,
+                sequence = 0;
+            const timers = new Map();
+            try {
+                w.Capacitor = {
+                    getPlatform: () => "ios",
+                    isNativePlatform: () => true,
+                    Plugins: access ? { AccessMedia: {} } : {},
+                };
+                w.eval(read(jquery));
+                w.eval(compile(read("src/plugins/native-http.ts")));
+                w.eval(compile(read("src/plugins/jquery-bridge.ts")));
+                w.setTimeout = (fn, delay) => {
+                    const id = ++sequence;
+                    timers.set(id, { at: now + delay, fn });
+                    return id;
+                };
+                w.clearTimeout = (id) => timers.delete(id);
+                async function advance(delta) {
+                    const end = now + delta;
+                    for (;;) {
+                        const next = [...timers].sort(
+                            (a, b) => a[1].at - b[1].at
+                        )[0];
+                        if (!next || next[1].at > end) break;
+                        now = next[1].at;
+                        timers.delete(next[0]);
+                        next[1].fn();
+                        await Promise.resolve();
+                    }
+                    now = end;
+                    await Promise.resolve();
+                }
+                function request(route, args) {
+                    return new Promise((resolve, reject) =>
+                        calls.push({ args, reject, resolve, route })
+                    );
+                }
+                function cancel(route, args) {
+                    cancelled.push({ id: args.requestId, route });
+                    return Promise.resolve({ cancelled: true });
+                }
+                w.StalkerPortal = {
+                    cancelHttpRequest: (args) => cancel("http", args),
+                    httpRequest: (args) => request("http", args),
+                };
+                w.M3UProxy = {
+                    cancelProxyFetch: (args) => cancel("proxy", args),
+                    proxyFetch: (args) => request("proxy", args),
+                };
+                // Guide matching is independent of this playlist/auth fixture.
+                w.matchCapacitorM3u = () => Promise.resolve("{}\n\t\n");
+                w.eval(
+                    compile(
+                        functions("src/plugins/m3u-proxy.ts", [
+                            "setupCapacitorCompanionShim",
+                        ])
+                    )
+                );
+                w.setupCapacitorCompanionShim();
+                f.host.host = "https://localhost";
+                f.host.$.ajax = w.$.ajax.bind(w.$);
+                const driver = f.start();
+                const loaded = (catalog, error) =>
+                    outcomes.push({ count: catalog.ids.length, error });
+                driver.load(loaded);
+                assert.equal(
+                    calls[0].args.timeoutMs,
+                    5000,
+                    "Native network timeout remains five seconds"
+                );
+                await advance(5000);
+                if (access) {
+                    assert.equal(
+                        cancelled.length,
+                        0,
+                        "A legitimate Access login must outlive the direct network budget"
+                    );
+                    assert.equal(
+                        calls.length,
+                        1,
+                        "Do not retry the same login through the companion"
+                    );
+                    await advance(65000);
+                    calls[0].resolve(response(playlist, 200, "text/plain"));
+                    await advance(0);
+                    assert.deepEqual(outcomes, [
+                        { count: 1, error: undefined },
+                    ]);
+                    driver.load(loaded);
+                    const old = calls.at(-1);
+                    f.mount("demo");
+                    assert.deepEqual(cancelled, [
+                        { id: old.args.requestId, route: "http" },
+                    ]);
+                    old.resolve(response(playlist, 200, "text/plain"));
+                    await advance(0);
+                    assert.equal(
+                        outcomes.length,
+                        1,
+                        "Late login completion cannot publish a retired provider"
+                    );
+                    const timed = w.$.ajax({
+                        timeout: 5000,
+                        url: "https://source.test/list",
+                    });
+                    const result = finished(timed);
+                    await advance(305000);
+                    assert.equal(
+                        (await result).status,
+                        "timeout",
+                        "Interactive allowance is bounded"
+                    );
+                } else {
+                    assert.equal(
+                        cancelled.length,
+                        1,
+                        "No Access capability retains the five-second deadline"
+                    );
+                    const proxy = calls[1];
+                    assert.equal(proxy.route, "proxy");
+                    assert.equal(proxy.args.url, calls[0].args.url);
+                    assert.notEqual(
+                        proxy.args.requestId,
+                        calls[0].args.requestId
+                    );
+                    await advance(65000);
+                    assert.deepEqual(outcomes, [
+                        { count: 0, error: "m3u-network" },
+                    ]);
+                    assert.deepEqual(cancelled[1], {
+                        id: proxy.args.requestId,
+                        route: "proxy",
+                    });
+                    proxy.resolve({ body: playlist });
+                    await advance(0);
+                    assert.equal(outcomes.length, 1);
+                    driver.load(loaded);
+                    calls.at(-1).reject(new Error("fixture unavailable"));
+                    await advance(0);
+                    const retired = calls.at(-1);
+                    assert.equal(retired.route, "proxy");
+                    f.mount("demo");
+                    assert.deepEqual(cancelled.at(-1), {
+                        id: retired.args.requestId,
+                        route: "proxy",
+                    });
+                    retired.reject(new Error("late fixture failure"));
+                    await advance(0);
+                    assert.equal(outcomes.length, 1);
+                }
+                let successes = 0,
+                    failures = 0,
+                    completions = 0;
+                const proxyRequest = w.$.ajax({
+                    complete: () => completions++,
+                    data: {
+                        referer: "https://source.test/start?q=a+b",
+                        ua: "webos",
+                        url: "@https://source.test/list",
+                    },
+                    dataType: "text",
+                    error: () => failures++,
+                    success: () => successes++,
+                    timeout: 65000,
+                    type: "POST",
+                    url: "/m3u/cp.php",
+                });
+                const proxy = calls.at(-1);
+                assert.equal(proxy.route, "proxy");
+                assert.equal(proxy.args.userAgent, "webos");
+                assert.equal(
+                    proxy.args.referer,
+                    "https://source.test/start?q=a+b"
+                );
+                const rejected = finished(proxyRequest);
+                proxy.reject(new Error("fixture proxy failure"));
+                await advance(0);
+                assert.equal((await rejected).ok, false);
+                proxyRequest.abort();
+                assert.deepEqual([successes, failures, completions], [0, 1, 1]);
+                assert(
+                    !cancelled.some(
+                        (entry) => entry.id === proxy.args.requestId
+                    ),
+                    "Completed fallback needs no cancellation"
+                );
+                for (const [data, userAgent, referer] of [
+                    [
+                        {
+                            referer: false,
+                            ua: 3,
+                            url: "https://source.test/list",
+                        },
+                        undefined,
+                        undefined,
+                    ],
+                    [
+                        "url=https%3A%2F%2Fsource.test%2Flist&ua=Custom%2BPlayer%2F1.0&referer=https%3A%2F%2Fsource.test%2Fa%3Fq%3Da%2Bb",
+                        "Custom+Player/1.0",
+                        "https://source.test/a?q=a+b",
+                    ],
+                ]) {
+                    const headersRequest = w.$.ajax({
+                        data,
+                        dataType: "text",
+                        type: "POST",
+                        url: "/m3u/cp.php",
+                    });
+                    const headerCall = calls.at(-1);
+                    assert.equal(headerCall.route, "proxy");
+                    assert.equal(headerCall.args.userAgent, userAgent);
+                    assert.equal(headerCall.args.referer, referer);
+                    const headersResult = finished(headersRequest);
+                    headerCall.resolve({ body: playlist });
+                    await advance(0);
+                    assert.equal((await headersResult).data, playlist);
+                }
+                const beforeMalformed = calls.length;
+                assert.throws(
+                    () =>
+                        w.$.ajax({
+                            data: "url=%XX",
+                            type: "POST",
+                            url: "/m3u/cp.php",
+                        }),
+                    (error) => error.name === "URIError",
+                    "Malformed proxy data retains the existing synchronous failure"
+                );
+                assert.equal(
+                    calls.length,
+                    beforeMalformed,
+                    "Malformed form data must not reach native code"
+                );
+
+                const plainHttp = w.$.ajax({
+                    timeout: 5000,
+                    url: "http://source.test/list",
+                });
+                const plainResult = finished(plainHttp);
+                assert.equal(calls.at(-1).args.timeoutMs, 5000);
+                await advance(5000);
+                assert.equal(
+                    (await plainResult).status,
+                    "timeout",
+                    "HTTP sources cannot use Access and keep their original deadline"
+                );
+            } finally {
+                dom.window.close();
+                f.dom.window.close();
+            }
+        }
+    }
+    console.log(
+        "OK: actual M3U + jQuery + iOS bridges preserve auth allowance, fallback deadlines, cancellation and headers"
+    );
+}
 testTauriOriginRouting()
     .then(() => run("tauri"))
     .then(() => run("capacitor"))
+    .then(testCancellationCompatibility)
+    .then(testAccessPlaylistLifetime)
     .then(
         () => clearTimeout(testDeadline),
         (error) => {

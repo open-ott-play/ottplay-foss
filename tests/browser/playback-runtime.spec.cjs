@@ -19,11 +19,177 @@ test.beforeEach(async ({ context }) => {
     });
 });
 
-async function episodeFixture(page, context, baseURL, holdNext = false) {
+async function nativeRemoteInputFixture(
+    page,
+    context,
+    baseURL,
+    configured = true
+) {
+    const origin = new URL(baseURL).origin;
+    const requests = [];
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname.startsWith("/swop/")) {
+            requests.push({
+                body: request.postDataJSON(),
+                headers: request.headers(),
+                path: url.pathname,
+            });
+            return route.fulfill({
+                json:
+                    url.pathname === "/swop/session"
+                        ? {
+                              code: "ABCDEF",
+                              entryCode: "ABCDEF-GHJKLM",
+                              entryUrl: "https://swop.test/",
+                              sessionToken: "synthetic-read-token",
+                              url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                          }
+                        : { status: "ready", value: "Phone text & <literal>" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && !document.body.classList.contains("booting")
+    );
+    await page.evaluate((enabled) => {
+        window.stbStop();
+        window.popupList();
+        window.sSwopBaseUrl = enabled ? "/swop" : "";
+        window.settings.swopBaseUrl = window.sSwopBaseUrl;
+        window.__nativeRemoteSaves = [];
+        window.editCaption = "Search";
+        window.editvar = "before typing";
+        window.setEdit = () => window.__nativeRemoteSaves.push(window.editvar);
+        window.showEditKey(null, true);
+        window.__nativeRemoteOwner =
+            window.__ottClassicScreenPort.owner("editor");
+    }, configured);
+    return { errors, requests };
+}
+
+test("native editor remote button sends typed draft, resumes and saves only on confirmation", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(page, context, baseURL);
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Typed draft & <literal>");
+    const remote = page.getByRole("button", {
+        exact: true,
+        name: "Remote text entry",
+    });
+    await field.press("Tab");
+    await expect(remote).toBeFocused();
+    await remote.press("Shift+Tab");
+    await expect(field).toBeFocused();
+    await field.press("Tab");
+    await remote.press("Enter");
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests[0].body.draft).toBe("Typed draft & <literal>");
+    expect(fixture.requests[0].path).toBe("/swop/session");
+    await expect(field).toHaveValue("Phone text & <literal>");
+    await expect(field).toHaveAttribute("type", "password");
+    await expect(field).toBeFocused();
+    expect(
+        await page.evaluate(
+            () =>
+                window.__nativeRemoteOwner ===
+                window.__ottClassicScreenPort.owner("editor")
+        )
+    ).toBe(true);
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests.map((request) => request.path)).toEqual([
+        "/swop/session",
+        "/swop/val",
+    ]);
+    expect(
+        fixture.requests.every((request) => !request.headers.authorization)
+    ).toBe(true);
+    await field.press("Enter");
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([
+        "Phone text & <literal>",
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("native editor remote cancel preserves typing and Escape discards without saving", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(page, context, baseURL);
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Keep this draft");
+    await page
+        .getByRole("button", { exact: true, name: "Remote text entry" })
+        .click();
+    await expect(page.locator(".swop-code")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(field).toHaveValue("Keep this draft");
+    await expect(field).toHaveAttribute("type", "password");
+    await field.press("Escape");
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.requests.length).toBe(1);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("native editor remote button explains missing configuration and keeps the field", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await nativeRemoteInputFixture(
+        page,
+        context,
+        baseURL,
+        false
+    );
+    const field = page.getByLabel("Search", { exact: true });
+    await field.fill("Local draft");
+    await page
+        .getByRole("button", { exact: true, name: "Remote text entry" })
+        .click();
+    await expect(field).toHaveValue("Local draft");
+    await expect(page.locator("#info")).toHaveText(
+        "Remote text entry not configured"
+    );
+    await expect(page.locator("#info")).toBeVisible();
+    expect(fixture.requests).toEqual([]);
+    expect(await page.evaluate(() => window.__nativeRemoteSaves)).toEqual([]);
+    expect(fixture.errors).toEqual([]);
+});
+
+async function episodeFixture(
+    page,
+    context,
+    baseURL,
+    holdNext = false,
+    remoteQueue = false
+) {
     const origin = new URL(baseURL).origin;
     const errors = [];
     const resolutions = [];
     const manifests = [];
+    const catalogRequests = [];
+    const remoteResults = [];
+    let remoteSent = false;
     let releaseNext;
     const nextResponse = new Promise((resolve) => {
         releaseNext = resolve;
@@ -32,6 +198,31 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
     await context.route("**/*", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
+        if (
+            remoteQueue &&
+            url.origin === origin &&
+            url.pathname.startsWith("/fixture-control/")
+        ) {
+            if (request.method() === "POST") {
+                remoteResults.push(request.postDataJSON());
+                return route.fulfill({ json: { status: "ok" } });
+            }
+            const serverTime = Date.now() / 1000;
+            const requests = remoteSent
+                ? []
+                : [
+                      {
+                          action: "vportal",
+                          expires_at: serverTime + 40,
+                          id: "1234567890abcdef1234567890abcdef",
+                          params: { query: "mAtCh" },
+                      },
+                  ];
+            remoteSent = true;
+            return route.fulfill({
+                json: { commands: [], requests, server_time: serverTime },
+            });
+        }
         if (url.origin === origin && url.pathname === "/vportal/api") {
             const { params } = request.postDataJSON();
             if (params.cmd === "play") {
@@ -48,6 +239,50 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
                     json: {
                         url: media("SD"),
                         variants: { HD: media("HD"), SD: media("SD") },
+                    },
+                });
+            }
+            if (remoteQueue) {
+                catalogRequests.push(params);
+                const movie = (id, title) => ({
+                    request: { cmd: "play", id },
+                    title,
+                    type: "stream",
+                });
+                let items;
+                if (params.cmd === "search") {
+                    items = params.offset
+                        ? [movie(4, "MATCH last movie")]
+                        : [
+                              movie(1, "Match first movie"),
+                              {
+                                  request: { cmd: "series", id: 10 },
+                                  title: "Match series",
+                                  type: "multistream",
+                              },
+                              movie(99, "Unrelated movie"),
+                              { request: { offset: 3 }, type: "next" },
+                          ];
+                } else if (params.cmd === "series" && params.id === 10) {
+                    items = params.offset
+                        ? [movie(3, "Episode 3")]
+                        : [
+                              movie(2, "Episode 2"),
+                              { request: { offset: 1 }, type: "next" },
+                          ];
+                } else {
+                    return route.fulfill({
+                        json: { type: "error" },
+                    });
+                }
+                return route.fulfill({
+                    json: {
+                        items,
+                        title: "Match series",
+                        type:
+                            params.cmd === "series"
+                                ? "multistream"
+                                : "category",
                     },
                 });
             }
@@ -97,7 +332,7 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
         () => window.__ottDevice && !document.body.classList.contains("booting")
     );
     await page.keyboard.press("Shift");
-    await page.evaluate(() => {
+    await page.evaluate((remoteQueue) => {
         window.stbStop();
         window.__ottMedia.cancel();
         // Test episode ownership with real MSE decoding and media events.
@@ -124,18 +359,16 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
         window.getMediaArray = client.load;
         window.playMedia = client.play;
         const sourceId = window.__ottSourceIdentity.media(window);
-        // An unfinished second episode must not interrupt automatic playback
-        // with the manual resume prompt or start from its saved position.
+        // Unfinished media must not interrupt automatic playback with the
+        // manual resume prompt or start from its saved position.
         saved["mediaJournal.v1:" + sourceId] = JSON.stringify({
             favorites: [],
-            history: [
-                {
-                    itemId: 'request:{"cmd":"play","id":2}',
-                    payload: { title: "Fixture series - Episode 2" },
-                    position: 90,
-                    sourceId,
-                },
-            ],
+            history: (remoteQueue ? [1, 2] : [2]).map((id) => ({
+                itemId: 'request:{"cmd":"play","id":' + id + "}",
+                payload: { title: "Fixture series - Episode " + id },
+                position: 90,
+                sourceId,
+            })),
             sourceId,
             version: 1,
         });
@@ -149,8 +382,24 @@ async function episodeFixture(page, context, baseURL, holdNext = false) {
             window.__episodePickers++;
             return showSelectBox.apply(this, args);
         };
-        window.__ottMedia.open("");
-    });
+        if (remoteQueue) {
+            window.__ottCommandServer.configure({
+                address: location.origin + "/fixture-control",
+                enabled: true,
+                token: "SYNTHETIC_COMMAND_TOKEN_0123456789abcdef",
+            });
+        } else window.__ottMedia.open("");
+    }, remoteQueue);
+    if (remoteQueue) {
+        await pauseEpisode(page, 1);
+        return {
+            catalogRequests,
+            errors,
+            manifests,
+            remoteResults,
+            resolutions,
+        };
+    }
     await page.waitForFunction(() => {
         const view = window.__ottMedia.snapshot();
         return (
@@ -238,6 +487,123 @@ test("natural episode completion resolves the next episode and loops with fresh 
         { trusted: true },
         { trusted: true },
     ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("remote VPortal search loops all matched movies and series through real media completion", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL, false, true);
+    await expect.poll(() => fixture.remoteResults.length).toBe(1);
+    expect(fixture.remoteResults[0]).toEqual({
+        data: {
+            dispatched: true,
+            items: [
+                { number: 1, title: "Match first movie" },
+                { number: 2, title: "Match series - Episode 2" },
+                { number: 3, title: "Match series - Episode 3" },
+                { number: 4, title: "MATCH last movie" },
+            ],
+            loop: true,
+            total: 4,
+        },
+        id: "1234567890abcdef1234567890abcdef",
+        status: "ok",
+    });
+    expect(
+        fixture.catalogRequests.map(({ cmd, id, offset, query }) => ({
+            cmd,
+            id,
+            offset,
+            query,
+        }))
+    ).toEqual([
+        { cmd: "search", id: undefined, offset: undefined, query: "mAtCh" },
+        { cmd: "series", id: 10, offset: undefined, query: undefined },
+        { cmd: "series", id: 10, offset: 1, query: undefined },
+        { cmd: "search", id: undefined, offset: 3, query: "mAtCh" },
+    ]);
+    for (const id of [2, 3, 4, 1]) {
+        await finishEpisode(page);
+        await pauseEpisode(page, id);
+        expect(
+            await page.evaluate(
+                () => document.querySelector("video").currentTime
+            )
+        ).toBeLessThan(1);
+    }
+    expect(fixture.resolutions).toEqual([1, 2, 3, 4, 1]);
+    expect(fixture.manifests).toEqual([
+        "/1/SD/index.m3u8?revision=1",
+        "/2/SD/index.m3u8?revision=2",
+        "/3/SD/index.m3u8?revision=3",
+        "/4/SD/index.m3u8?revision=4",
+        "/1/SD/index.m3u8?revision=5",
+    ]);
+    expect(await page.evaluate(() => window.__episodePickers)).toBe(0);
+    expect(await page.evaluate(() => window.__episodeEvents)).toEqual([
+        { trusted: true },
+        { trusted: true },
+        { trusted: true },
+        { trusted: true },
+    ]);
+    expect(fixture.errors).toEqual([]);
+});
+
+test("SWOP filter confirmation survives a natural episode transition", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fixture = await episodeFixture(page, context, baseURL);
+    let submitPhone;
+    const phoneReply = new Promise((resolve) => {
+        submitPhone = resolve;
+    });
+    await context.route("**/swop/**", async (route) => {
+        if (new URL(route.request().url()).pathname === "/swop/session")
+            return route.fulfill({
+                json: {
+                    code: "ABCDEF",
+                    entryCode: "ABCDEF-GHJKLM",
+                    entryUrl: "https://swop.test/",
+                    sessionToken: "synthetic-read-token",
+                    url: "https://swop.test/?c=ABCDEF&t=synthetic-write-token",
+                },
+            });
+        await phoneReply;
+        return route.fulfill({
+            json: { status: "ready", value: "Episode" },
+        });
+    });
+    await page.evaluate(() => {
+        window.__ottMedia.open(null);
+        window.ott_device = "lg/webos";
+        window.showEditKey = window.showEditKey1;
+        window.editKey = window.editKey1;
+        window.sSwopBaseUrl = "/swop";
+        window.__ottMedia.filter();
+        window.swopLoadValue();
+    });
+    await expect(page.locator(".swop-code")).toHaveText("ABCDEF-GHJKLM");
+    await finishEpisode(page);
+    await pauseEpisode(page, 2);
+    await expect(page.locator(".swop-code")).toBeVisible();
+    submitPhone();
+    await expect
+        .poll(() => page.evaluate(() => window.editvar))
+        .toBe("Episode");
+    await page.evaluate(() => window._doKey(window.keys.ENTER));
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__ottMedia.snapshot().filter)).toBe(
+        "Episode"
+    );
+    await finishEpisode(page);
+    await pauseEpisode(page, 1);
+    expect(fixture.resolutions).toEqual([1, 2, 1]);
+    expect(await page.evaluate(() => window.__episodePickers)).toBe(1);
     expect(fixture.errors).toEqual([]);
 });
 
@@ -725,6 +1091,13 @@ test("built driver, media session and journal stay connected through playback", 
     });
     await page.goto("/f/pc/", { waitUntil: "load" });
     await page.keyboard.press("Shift");
+    // iPhone requires this element policy as well as the WKWebView's inline
+    // permission. Desktop playback alone cannot detect system fullscreen takeover.
+    await expect(page.locator("#video")).toHaveJSProperty("playsInline", true);
+    await expect(page.locator("#videopip")).toHaveJSProperty(
+        "playsInline",
+        true
+    );
     await expect
         .poll(() =>
             page.evaluate(() => {
@@ -739,6 +1112,46 @@ test("built driver, media session and journal stay connected through playback", 
         )
         .toBe(true);
     expect(providerScripts).toEqual([]);
+
+    const source = await page.evaluate(() => {
+        window.__overlayMediaEvents = [];
+        for (const type of ["pause", "emptied"])
+            video.addEventListener(type, () =>
+                window.__overlayMediaEvents.push(type)
+            );
+        window.infoBarHide();
+        return video.currentSrc;
+    });
+    await page.mouse.click(640, 670);
+    await expect(page.locator("#info1")).toBeVisible();
+    // Both the menu preview and full-size overlay must keep the same decoder
+    // running, instead of hiding the problem by stopping and restarting video.
+    for (const noSmall of [0, 1]) {
+        await page.evaluate((value) => {
+            window.settings.noSmall = window.sNoSmall = value;
+        }, noSmall);
+        await page.mouse.click(640, 70);
+        await expect(
+            page.locator(noSmall ? "#list_osd" : "#list_window")
+        ).toBeVisible();
+        // WebKit may decode this entire short fixture ahead of presentation,
+        // so measure the playhead after the menu opens, not decoded frame count.
+        const position = await page.evaluate(() => video.currentTime);
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (before) => Math.abs(video.currentTime - before),
+                    position
+                )
+            )
+            .toBeGreaterThan(0.05);
+        expect(await page.evaluate(() => video.paused)).toBe(false);
+        expect(await page.evaluate(() => video.currentSrc)).toBe(source);
+        await page.evaluate(() => window._doKey(window.keys.RETURN));
+        await expect(page.locator("#list_osd")).toBeHidden();
+        await expect(page.locator("#list_window")).toBeHidden();
+    }
+    expect(await page.evaluate(() => window.__overlayMediaEvents)).toEqual([]);
 
     // Use the actual user-facing media command. The provider supplies the URL,
     // while engine events drive typed state and the source-scoped media journal.

@@ -20,6 +20,18 @@ same ES5 artifact as the browser and Rust through system JavaScriptCore; the
 archived Android adapter links the JVM artifact. Native XML, HTTP, gzip, source
 ownership, caching and platform callbacks remain here.
 
+On iOS, XMLTV downloads and cached input are limited to 64 MiB of delivered
+bytes. This is the body after any HTTP content decoding, not a wire-size limit.
+Gzip expansion is streamed to a temporary file with a separate 512 MiB limit;
+`XMLParser` reads that file without a whole-document UTF-8 string conversion.
+Oversized or invalid input follows the existing source error and cache fallback
+policy. A large plain XML response can therefore be rejected even when the same
+document fits as a gzip file. Temporary XML files are removed when loading ends.
+
+These limits bound input and decompression, not the complete parsed programme
+graph or all cached sources. Physical-device playback and EPG checks remain
+necessary when qualifying a release.
+
 The Xcode target bundles the core script, source receipt and license directly
 from `vendor`. Its Swift bridge verifies the script hash before execution; data
 is passed through JSValue calls, never interpolated into code. JVM fixtures

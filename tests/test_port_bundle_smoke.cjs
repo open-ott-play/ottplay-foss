@@ -2222,6 +2222,12 @@ async function main() {
         w.ott_device = expected;
         vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
         assert.equal(
+            w.__OTT_CONTROL_DISCOVERY_VERSION__,
+            1,
+            "discovery deployment capability is installed"
+        );
+        assert.equal(typeof w.__ottControlDiscovery.start, "function");
+        assert.equal(
             w.ott_device,
             expected,
             pathname + ": bundle must preserve the boot device selection"

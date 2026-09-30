@@ -254,13 +254,17 @@ function createGuideService(ports: GuideServicePorts) {
                     if (
                         finished ||
                         pending[current.key] !== current ||
-                        current.generation !== generation ||
-                        !active(current.reference)
+                        current.generation !== generation
                     )
                         return;
                     finished = true;
                     delete pending[current.key];
                     if (running === current) running = null;
+                    // A retired row still releases its owned transport slot.
+                    if (!active(current.reference)) {
+                        scheduleDrain();
+                        return;
+                    }
                     var rows: GuideProgramme[] = [];
                     try {
                         rows = ports.decode(current.reference, raw);
@@ -268,8 +272,10 @@ function createGuideService(ports: GuideServicePorts) {
                     if (
                         !active(current.reference) ||
                         current.generation !== generation
-                    )
+                    ) {
+                        scheduleDrain();
                         return;
+                    }
                     retain(current.reference, rows);
                     project(current.reference, rows);
                     current.consumers.forEach(function (consumer) {

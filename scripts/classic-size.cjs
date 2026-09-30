@@ -15,10 +15,48 @@ const { gzipSync } = require("node:zlib");
 // The optional PC2 engine port also fits within these measured budgets.
 // Owned episode looping and the natural-ended bridge add about 1.8 KB raw.
 // Persistent page-title filtering adds about 1.5 KB, including its TV editor.
-// NAS discovery, independent media ownership and native session keepalives measure
-// 568476 raw / 170540 gzip bytes locally; retain native/release suffix headroom.
-// Plex adds a library-only boot path, per-item file routing and a lazy provider entry.
-const BUDGET = Object.freeze({ bytes: 570300, gzipBytes: 171500 });
+// Hosted EPG orchestration and encrypted same-Site input add ~14 KB raw;
+// gzip/XML parsing remains in separately loaded worker assets.
+// Visible hosted EPG diagnostics and retry add ~5.6 KB raw / 1.5 KB gzip.
+// Remote CLI queries, result delivery and provider adapters add ~9 KB raw.
+// Discovery, secure pairing and its UI measure 603103 raw / 182299 gzip
+// for web 1.1.50 on Node 22.23.3 (native gzip 182353). Retain release headroom.
+// Protected iOS sources retain cancellation and session checks after transport
+// helper deduplication. Native Node 22 output exceeded the previous gzip cap by
+// 16 bytes; allocate 50 bytes for this reviewed feature cost without raising raw
+// or complete-payload limits.
+// CSP-safe playback controls plus shared color-picker layout reduce raw output
+// by 119 bytes and add 210 gzip bytes to native output on Node 22.23.2. The beta
+// artifact measures 183726 gzip bytes; allow this reviewed feature cost and
+// version suffix headroom while retaining raw and complete-payload limits.
+// Producer-owned EPG/LG remote snapshots add 863 raw / 277 gzip bytes over
+// published beta.7 (605567 / 183673 on Node 22.23.2). The measured candidate
+// is 606430 / 183950 for web and 606388 / 184004 for native. Allocate 500 raw
+// and 50 gzip entry bytes for this reviewed feature and version suffix room.
+// Unicode remote matching on Node 22.23.3 measures 606636 raw / 184035 gzip
+// for web and 606594 raw / 184089 gzip for both native variants. Allocate its
+// measured cost plus candidate suffix room; retain the complete gzip limit.
+// Native list swipes retain gesture ownership across paginated row replacement.
+// Node 26 measures 608740 raw / 184260 gzip (web), 608698 / 184317 (native).
+// Include release suffix room and the established Node 22 gzip variation.
+// Remote VPortal collection, cancellation and per-visit URL renewal measure
+// 615932 raw / 186854 gzip on Node 26.8.2 (native 615890 / 186913).
+// Removing redundant canonicalization and metadata work saves 400 raw bytes.
+// Budget the new feature explicitly,
+// retaining candidate suffix room and the established Node 22 gzip allowance.
+// Server EPG metadata snapshots and catalogue-bound playback add 1885 raw /
+// 535 gzip bytes: 617817 / 187389 web on Node 26.8.2, without guide downloads.
+// M3U profile management and acknowledged playback restarts add 8539 raw /
+// at most 2585 gzip bytes on Node 22.23.2: web 626025 / 190382 and native
+// 625983 / 190440. Include explicit paused startup for the core and PC2 engines.
+// With inline video and native single-tap rows, the combined build measures
+// 626111 / 190420 for web and 626069 / 190480 for native, within these limits.
+// Cancellable iOS sign-in/proxy requests, peak touch movement and immediate PiP
+// Stop add 995 raw / 384 gzip bytes to fe79de1 on Node 22.23.2. With the accepted
+// EPG changes, web measures 627267 / 190842 and native 627225 / 190902. Allocate
+// this reviewed lifecycle cost while retaining release-version headroom.
+// NAS discovery and per-client Plex add bounded library boot and playback routing.
+const BUDGET = Object.freeze({ bytes: 635950, gzipBytes: 193850 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -29,9 +67,24 @@ const BUDGET = Object.freeze({ bytes: 570300, gzipBytes: 171500 });
 // outputs on CI Node 22.23.2 (192106 with a beta version). Keep suffix headroom.
 // VOD-owned native metadata and the late-guide guard measure 192222 on Node 22.
 // Include the VPortal automatic-quality resolver as part of episode looping.
-// The optional Plex family includes direct catalogs, playback, account PIN sign-in,
-// roaming server connections and cleanup of owned transcodes when a page closes.
-const TOTAL_BUDGET = Object.freeze({ bytes: 661000, gzipBytes: 205000 });
+// The same candidate plus every provider totals 667727 / 206833 for web;
+// native variants total 667685 / 206887. All complete payloads remain bounded.
+// The same bounded diagnostics addition needs 100 raw complete-payload bytes.
+// The same candidate with every provider measures 671260 / 208569 for web
+// and 671218 / 208623 for native outputs; retain bounded suffix headroom.
+// The gesture candidate totals 673493 raw / 208815 gzip before version suffixes.
+// Including the Edem queue bridge, the VPortal candidate totals 681416 raw /
+// 211638 gzip (native 681374 / 211697); all provider families remain counted.
+// The metadata RPCs add the same measured cost to the complete payload.
+// The same profile/restart candidate totals 691509 / 215210 for web and
+// 691467 / 215268 for native; all five provider assets remain byte-identical.
+// The combined inline-video/tap build totals 691595 / 215248 for web and
+// 691553 / 215308 for native, still retaining bounded release suffix room.
+// The same combined source plus every provider totals 692751 / 215670 for web
+// and 692709 / 215730 for native on Node 22.23.2. Provider assets are unchanged;
+// retain the complete-payload guard and release-version headroom.
+// Include direct Plex catalogs, PIN sign-in, roaming connections and session cleanup.
+const TOTAL_BUDGET = Object.freeze({ bytes: 728450, gzipBytes: 228200 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

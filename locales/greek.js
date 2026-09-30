@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Ρυθμίσεις All4you.tv",
     "Allowlist this Device ID": "Επιτρέψτε αυτό το αναγνωριστικό συσκευής",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Μια IP χωρίς θύρα χρησιμοποιεί τη θύρα HTTP 8081. Διαγράψτε τη διεύθυνση ή επιλέξτε Αποσύνδεση για διακοπή.",
     "API failed, trying M3U...": "Αποτυχία API, δοκιμή M3U…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL διακομιστή API",
     "Applying HTTP remote settings...":
         "Εφαρμογή ρυθμίσεων τηλεχειρισμού HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Εγκρίνετε τον κωδικό για %1 με ott approve NAME CODE:",
     Archive: "Αρχείο",
     "Archive - begin": "Αρχείο — αρχή",
     "Archive hours": "Ώρες αρχείου",
@@ -112,6 +116,7 @@ var keyStrings = {
     "Call PiP": "Άνοιγμα PiP",
     "Call PiP / PiP exchange": "Άνοιγμα PiP / εναλλαγή PiP",
     Cancel: "Ακύρωση",
+    "Cancel pairing": "Ακύρωση σύζευξης",
     "Cannot delete the last category":
         "Δεν είναι δυνατή η διαγραφή της τελευταίας κατηγορίας",
     Category: "Κατηγορία",
@@ -156,6 +161,15 @@ var keyStrings = {
     "Command server": "Διακομιστής εντολών",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Διεύθυνση διακομιστή εντολών, κωδικός πρόσβασης συσκευής, τοπικός έλεγχος HTTP και ρυθμίσεις απομακρυσμένης εισαγωγής κειμένου",
+    "Command server discovery canceled.":
+        "Η αναζήτηση διακομιστή εντολών ακυρώθηκε.",
+    "Command server discovery has not started.":
+        "Η αναζήτηση διακομιστή εντολών δεν έχει ξεκινήσει.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Η αναζήτηση διακομιστή εντολών δεν είναι διαθέσιμη. Επιλέξτε Εύρεση διακομιστή εντολών για να δοκιμάσετε ξανά.",
+    "Command server discovery timed out.":
+        "Έληξε το χρονικό όριο αναζήτησης διακομιστή εντολών.",
+    "Command server found.": "Βρέθηκε διακομιστής εντολών.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ρυθμίστε το All4you.tv από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
@@ -240,6 +254,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Αδυναμία σύνδεσης στον διακομιστή.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Δεν ήταν δυνατή η δημιουργία αιτήματος σύζευξης. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Could not save the approved command server settings.":
+        "Δεν ήταν δυνατή η αποθήκευση των εγκεκριμένων ρυθμίσεων του διακομιστή εντολών.",
     "Could not update HTTP remote control.":
         "Δεν ήταν δυνατή η ενημέρωση του τηλεχειρισμού HTTP.",
     Country: "Χώρα",
@@ -259,6 +277,8 @@ var keyStrings = {
     "Device info:": "Πληροφορίες συσκευής:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Απαιτείται η MAC της συσκευής για λίστες KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Το UUID της συσκευής δεν είναι ακόμη έτοιμο. Επιλέξτε Εύρεση διακομιστή εντολών για να δοκιμάσετε ξανά.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Ρυθμίσεις Diamond TV",
     Director: "Σκηνοθέτης",
@@ -357,6 +377,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Οδηγός TV",
     "EPG and archive. Channel: ": "EPG και αρχείο. Κανάλι: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Δεν ήταν δυνατή η εκκίνηση του EPG. Επανεκκινήστε το πρόγραμμα αναπαραγωγής για να φορτωθούν ξανά τα αρχεία του. Η αναπαραγωγή θα σταματήσει.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Σφάλμα!",
     "Error Code!": "Μη έγκυρος κωδικός!",
     Exit: "Έξοδος",
@@ -385,6 +450,8 @@ var keyStrings = {
         "Η επιλογή αρχείου δεν υποστηρίζεται σε αυτή τη συσκευή",
     Filter: "Φίλτρο",
     Filters: "Φίλτρα",
+    "Find command server": "Εύρεση διακομιστή εντολών",
+    "Finding command servers...": "Αναζήτηση διακομιστών εντολών...",
     "First Run Setup": "Ρύθμιση πρώτης εκκίνησης",
     Folders: "Folders",
     "Font type": "Γραμματοσειρά",
@@ -495,8 +562,12 @@ var keyStrings = {
     "Next TV program": "Επόμενη εκπομπή",
     No: "Όχι",
     "No channel name": "Χωρίς όνομα καναλιού",
+    "No command server was found on this network.":
+        "Δεν βρέθηκε διακομιστής εντολών σε αυτό το δίκτυο.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Δεν βρέθηκαν αποθηκευμένες ρυθμίσεις",
     "Not found": "Δεν βρέθηκε",
     "Not reduce video when showing the list (bugfix)":
@@ -516,6 +587,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ρυθμίσεις OTT Prime ONLINE",
@@ -526,6 +599,14 @@ var keyStrings = {
     on: "ενεργός",
     "on ": "ενεργό ",
     "or scan": "ή σαρώστε",
+    "Pairing approved. Command server configured.":
+        "Η σύζευξη εγκρίθηκε. Ο διακομιστής εντολών ρυθμίστηκε.",
+    "Pairing expired. Find the server again to retry.":
+        "Η σύζευξη έληξε. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Ο διακομιστής σύζευξης δεν είναι διαθέσιμος. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Η σύζευξη απορρίφθηκε ή επιστράφηκε μη έγκυρη έγκριση. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
     "Parental control": "Γονικός έλεγχος",
     Password: "Κωδικός πρόσβασης",
     Pause: "Παύση",
@@ -559,6 +640,7 @@ var keyStrings = {
         "Μετάβαση 10 δευτερόλεπτα πίσω μετά από παύση",
     PROST: "PROST",
     "PROST settings": "Ρυθμίσεις PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Προηγούμενο",
     "Preview in channel list": "Προεπισκόπηση στη λίστα καναλιών",
     Previous: "Προηγούμενο",
@@ -584,7 +666,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Τηλεχειριστήριο (χωρίς έγχρωμα πλήκτρα)",
     "Remote (number buttons N/A)": "Τηλεχειριστήριο (χωρίς αριθμητικά πλήκτρα)",
     "Remote control": "Τηλεχειρισμός",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Η απομακρυσμένη συνεδρία έληξε",
+    "Remote text entry": "Απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry denied":
         "Δεν επιτρέπεται η απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry error": "Σφάλμα απομακρυσμένης εισαγωγής κειμένου",
@@ -602,10 +689,12 @@ var keyStrings = {
     "Rename to": "Μετονομασία σε",
     "Repeat parental code": "Εισαγάγετε ξανά τον γονικό κωδικό",
     "Request sended!": "Το αίτημα στάλθηκε!",
+    "Requesting approval for %1": "Αίτημα έγκρισης για %1",
     "Restart player": "Επανεκκίνηση προγράμματος αναπαραγωγής",
     "Restart stream": "Επανεκκίνηση ροής",
     "Restart stream / Live": "Επανεκκίνηση ροής / ζωντανά",
     "Resume from archive?": "Συνέχεια από το αρχείο;",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Επιστροφή στο προηγούμενο κανάλι",
     Rewind: "Μετακίνηση",
     "Rewind step by buttons %1/%2": "Βήμα μετακίνησης με τα πλήκτρα %1/%2",
@@ -623,9 +712,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Αποθήκευση ρυθμίσεων και φόρτωση λίστας καναλιών",
     "Save settings to storage": "Αποθήκευση ρυθμίσεων στον χώρο αποθήκευσης",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Σενάριο",
     Search: "Αναζήτηση",
     "Search programme": "Αναζήτηση εκπομπής",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Επιλέξτε τύπο ροής:<br>%1",
     "Select category to add channel":
         "Επιλέξτε κατηγορία για προσθήκη καναλιού",
@@ -651,6 +748,8 @@ var keyStrings = {
     "Set parental code": "Ορισμός γονικού κωδικού",
     "Set timer?": "Ορισμός χρονοδιακόπτη;",
     Settings: "Ρυθμίσεις",
+    "Settings changed. Discovery was canceled.":
+        "Οι ρυθμίσεις άλλαξαν. Η αναζήτηση ακυρώθηκε.",
     "Settings could not be saved": "Δεν ήταν δυνατή η αποθήκευση των ρυθμίσεων",
     "Settings loaded from storage":
         "Οι ρυθμίσεις φορτώθηκαν από τον χώρο αποθήκευσης",
@@ -659,6 +758,8 @@ var keyStrings = {
     "Settings saved to storage":
         "Οι ρυθμίσεις αποθηκεύτηκαν στον χώρο αποθήκευσης",
     "Settings sended!": "Οι ρυθμίσεις στάλθηκαν!",
+    "Several command servers were found. Select one below.":
+        "Βρέθηκαν αρκετοί διακομιστές εντολών. Επιλέξτε έναν παρακάτω.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Ρυθμίσεις Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -691,6 +792,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Χρονοδιακόπτης ύπνου",
     "Sort channels": "Ταξινόμηση καναλιών",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Πάροχος πύλης Stalker",
     "Stalker portal settings": "Ρυθμίσεις πύλης Stalker",
     "Stalker portals": "Πύλες Stalker",
@@ -712,8 +815,17 @@ var keyStrings = {
     system: "συστήματος",
     Tabox: "Tabox",
     "Tabox settings": "Ρυθμίσεις Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Το URL εντοπισμού διακομιστή εντολών δεν είναι έγκυρο.",
     "The device ID in the address is invalid.":
         "Το αναγνωριστικό συσκευής στη διεύθυνση δεν είναι έγκυρο.",
+    "The discovery response is invalid.":
+        "Η απόκριση της αναζήτησης δεν είναι έγκυρη.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Αυτό το πρόγραμμα περιήγησης δεν μπορεί να εκτελέσει ασφαλή αυτόματη σύζευξη. Ενημερώστε το ή εισαγάγετε χειροκίνητα τις ρυθμίσεις του διακομιστή εντολών.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Αυτό το πρόγραμμα περιήγησης δεν έχει προφίλ εντοπισμού. Εισαγάγετε μια διεύθυνση διακομιστή ή ρυθμίστε το προφίλ εγκατάστασης.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Αυτό το πρόγραμμα αναπαραγωγής HTTPS δεν μπορεί να συνδεθεί σε διακομιστή HTTP. Χρησιμοποιήστε διακομιστή HTTPS ή ανοίξτε το πρόγραμμα αναπαραγωγής μέσω HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -757,6 +869,8 @@ var keyStrings = {
     Username: "Όνομα χρήστη",
     "Username or password is missing.":
         "Λείπει το όνομα χρήστη ή ο κωδικός πρόσβασης.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Ρυθμίσεις VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

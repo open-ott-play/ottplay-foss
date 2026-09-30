@@ -14,3 +14,19 @@ export function resolveNativePlugin<T>(name: string, createWeb: () => T): T {
     }
     return createWeb();
 }
+
+/**
+ * Shared Tauri invoke helper. Uses @tauri-apps/api/core if available,
+ * falls back to window.__TAURI__.invoke for bundled apps.
+ */
+export function tauriInvoke<T>(
+    command: string,
+    args: Record<string, unknown>
+): Promise<T> {
+    // Prefer core.invoke (Tauri v2 core API), fallback to global __TAURI__
+    const core = (window as any).__TAURI__?.core;
+    if (core?.invoke) {
+        return core.invoke(command, args) as Promise<T>;
+    }
+    return (window as any).__TAURI__.invoke(command, args) as Promise<T>;
+}

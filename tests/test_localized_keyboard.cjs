@@ -58,7 +58,20 @@ w.eval(
         process.argv.includes("--bundle") ? "dist/player.js" : undefined
     )
 );
+let languageReads = 0;
+const getLanguage = w.stbGetItem;
+w.stbGetItem = function (key) {
+    if (key === "ottplaylang") languageReads++;
+    return getLanguage(key);
+};
 try {
+    w.showEdit();
+    for (const key of [w.keys.RED, w.keys.GREEN])
+        assert.equal(
+            w.document.querySelector('[data-ott-key="' + key + '"]'),
+            null,
+            "direct render before initialization keeps unavailable actions hidden"
+        );
     for (const [code, locale] of Object.entries(fixture.locales)) {
         const file = path.join(root, languageAssetPath(code));
         assert(fs.existsSync(file), "Packaged locale must exist: " + code);
@@ -111,6 +124,12 @@ try {
             for (const char of w._keys)
                 for (const upper of w._keyboardCharacter(char))
                     reachable.add(upper);
+            languageReads = 0;
+            w.showEdit();
+            assert(
+                languageReads <= 1,
+                code + " uppercase page reads the language at most once"
+            );
             w._setCase(false);
             assert.equal(
                 w._keys,
@@ -159,6 +178,48 @@ try {
         w._setPunct(false);
         assert.equal(w._keyPages, pages);
     }
+    const translate = w.translate;
+    const translateAlias = w._;
+    let languageLabelLookups = 0;
+    // The classic optimizer resolves the shorthand alias to translate().
+    w._ = w.translate = function (key) {
+        if (["Russian", "lang", "English"].includes(key))
+            languageLabelLookups++;
+        return translate.apply(this, arguments);
+    };
+    try {
+        for (const code of Object.keys(fixture.locales)) {
+            w.eval(read(languageAssetPath(code)));
+            w.fixtureLocale = code;
+            w.showEditKey1();
+            for (const englishLayout of [true, false]) {
+                w._setLang(englishLayout);
+                languageLabelLookups = 0;
+                w.showEdit();
+                const label = englishLayout
+                    ? code === "_eng"
+                        ? w.keyStrings.Russian
+                        : w.keyStrings.lang
+                    : w.keyStrings.English;
+                const hint = w.document.querySelector(
+                    '[data-ott-key="' + w.keys.GREEN + '"]'
+                );
+                assert.equal(
+                    hint.getAttribute("aria-label").trim(),
+                    label,
+                    code + " footer names the other layout in the UI language"
+                );
+                assert.equal(
+                    languageLabelLookups,
+                    1,
+                    code + " footer translates its language label once"
+                );
+            }
+        }
+    } finally {
+        w.translate = translate;
+        w._ = translateAlias;
+    }
     function layout(code) {
         w.eval(read(languageAssetPath(code)));
         w.fixtureLocale = code;
@@ -166,6 +227,60 @@ try {
         w._setLang(false);
         w._setCase(true);
     }
+    for (const [code, character, expected] of [
+        ["_tur", "a", "A"],
+        ["_tur", "ı", "I"],
+        ["_ger", "ß", "ẞ"],
+        ["_arm", "և", "ԵՒ"],
+        ["_gre", "ΐ", "Ι\u0308\u0301"],
+        ["_tur", "i", "İ"],
+        ["_aze", "i", "İ"],
+    ]) {
+        layout(code);
+        w._keyPage = Math.floor(w.keyStrings.alhabet.indexOf(character) / 40);
+        w._buildKeyboard();
+        w._keyCur = w._keys.indexOf(character);
+        assert(w._keyCur >= 0, "insertion fixture character is reachable");
+        w.editvar = "";
+        w.editPos = 0;
+        languageReads = 0;
+        w.editKey1(w.keys.ENTER);
+        assert.equal(w.editvar, expected, code + " direct uppercase insertion");
+        assert.equal(
+            languageReads,
+            character === "i" ? 1 : 0,
+            "only locale-sensitive i insertion reads the current language"
+        );
+    }
+    layout("_tur");
+    w._keyCur = 0;
+    w.editvar = "ab";
+    w.editPos = 1;
+    w.showEdit();
+    const typedKey = w._keys.indexOf("i");
+    w.editKey1("İ".charCodeAt(0));
+    assert.equal(
+        w._keyCur,
+        typedKey,
+        "physical input focuses its matching key"
+    );
+    assert.equal(
+        w.editvar,
+        "aİb",
+        "physical input inserts at the current caret"
+    );
+    assert.equal(w.editPos, 2, "physical input advances the caret");
+    assert.equal(w.document.getElementById("ik0").style.backgroundColor, "");
+    assert.equal(w.document.getElementById("ik0").style.color, "");
+    assert.equal(
+        w.document.getElementById("ik" + typedKey).style.backgroundColor,
+        w.curColorB,
+        "physical input highlights the new focus"
+    );
+    assert.equal(
+        w.document.getElementById("ik" + typedKey).style.color,
+        w.curColor
+    );
     for (const previousFocus of [49, 50, 59]) {
         layout("_vie");
         w._keyCur = previousFocus;
@@ -183,6 +298,24 @@ try {
         layout(code);
         assert.equal(w._keyboardCharacter("i"), "İ");
         assert.equal(w._keyboardCharacter("ı"), "I");
+        w.showEdit();
+        const iKey = w._keys.indexOf("i");
+        assert.equal(w.document.getElementById("ik" + iKey).textContent, "İ");
+        w.fixtureLocale = "_eng";
+        languageReads = 0;
+        w.showEdit();
+        assert.equal(
+            languageReads,
+            1,
+            "the next render refreshes the language"
+        );
+        assert.equal(w.document.getElementById("ik" + iKey).textContent, "I");
+        w.fixtureLocale = code;
+        w.editvar = "";
+        w.editPos = 0;
+        w._keyCur = iKey;
+        w.editKey1(w.keys.ENTER);
+        assert.equal(w.editvar, "İ", "insertion reads the current language");
         w._setLang(true);
         assert.equal(
             w._keyboardCharacter("i"),
@@ -190,6 +323,20 @@ try {
             "English layout ignores UI locale casing"
         );
     }
+    layout("_tur");
+    w.fixtureLocale = undefined;
+    languageReads = 0;
+    w.showEdit();
+    assert.equal(
+        languageReads,
+        1,
+        "missing language is resolved once per render"
+    );
+    assert.equal(
+        w.document.getElementById("ik" + w._keys.indexOf("i")).textContent,
+        "I",
+        "missing language uses default casing"
+    );
     layout("_arm");
     w.editvar = "ab";
     w.editPos = 1;

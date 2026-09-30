@@ -60,12 +60,16 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "הגדרות All4you.tv",
     "Allowlist this Device ID": "הוסף את מזהה המכשיר הזה לרשימת המורשים",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "כתובת IP ללא יציאה משתמשת ביציאת HTTP 8081. כדי להפסיק, נקה את הכתובת או בחר ניתוק.",
     "API failed, trying M3U...": "ה-API נכשל, מנסה M3U…",
     "API Server": "שרת API",
     "API server URL": "כתובת שרת API",
     "Applying HTTP remote settings...": "החלת הגדרות השליטה דרך HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "יש לאשר את הקוד עבור %1 באמצעות ott approve NAME CODE:",
     Archive: "ארכיון",
     "Archive - begin": "ארכיון — התחלה",
     "Archive hours": "שעות ארכיון",
@@ -106,6 +110,7 @@ var keyStrings = {
     "Call PiP": "פתח PiP",
     "Call PiP / PiP exchange": "פתח PiP / החלף PiP",
     Cancel: "ביטול",
+    "Cancel pairing": "ביטול הצימוד",
     "Cannot delete the last category": "לא ניתן למחוק את הקטגוריה האחרונה",
     Category: "קטגוריה",
     "Category selection": "בחירת קטגוריה",
@@ -148,6 +153,12 @@ var keyStrings = {
     "Command server": "שרת פקודות",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "כתובת שרת הפקודות, קוד גישה למכשיר, שליטה מקומית דרך HTTP והגדרות הזנת טקסט מרחוק",
+    "Command server discovery canceled.": "חיפוש שרת הפקודות בוטל.",
+    "Command server discovery has not started.": "חיפוש שרת הפקודות טרם התחיל.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "חיפוש שרת הפקודות אינו זמין. יש לבחור ב״חיפוש שרת פקודות״ כדי לנסות שוב.",
+    "Command server discovery timed out.": "תם הזמן הקצוב לחיפוש שרת הפקודות.",
+    "Command server found.": "נמצא שרת פקודות.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "הגדר את All4you.tv בהגדרות -> הגדרות ספק",
@@ -232,6 +243,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "לא ניתן ליצור בקשת צימוד. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Could not save the approved command server settings.":
+        "לא ניתן לשמור את הגדרות שרת הפקודות שאושרו.",
     "Could not update HTTP remote control.":
         "לא ניתן לעדכן את הגדרות השליטה דרך HTTP.",
     Country: "מדינה",
@@ -250,6 +265,8 @@ var keyStrings = {
     "Device info:": "פרטי המכשיר:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "נדרשת כתובת MAC של המכשיר לפלייליסטים של KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "ה־UUID של המכשיר עדיין אינו מוכן. יש לבחור ב״חיפוש שרת פקודות״ כדי לנסות שוב.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "הגדרות Diamond TV",
     Director: "במאי",
@@ -342,6 +359,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "לוח שידורים",
     "EPG and archive. Channel: ": "לוח שידורים וארכיון. ערוץ: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "לא ניתן היה להפעיל את ה־EPG. יש להפעיל מחדש את הנגן כדי לטעון מחדש את קבציו. הניגון ייעצר.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "שגיאה!",
     "Error Code!": "קוד לא תקין!",
     Exit: "יציאה",
@@ -368,6 +430,8 @@ var keyStrings = {
         "בחירת קבצים אינה נתמכת במכשיר זה",
     Filter: "מסנן",
     Filters: "מסננים",
+    "Find command server": "חיפוש שרת פקודות",
+    "Finding command servers...": "חיפוש שרתי פקודות...",
     "First Run Setup": "הגדרות הפעלה ראשונה",
     Folders: "Folders",
     "Font type": "סוג גופן",
@@ -474,8 +538,12 @@ var keyStrings = {
     "Next TV program": "התוכנית הבאה",
     No: "לא",
     "No channel name": "אין שם ערוץ",
+    "No command server was found on this network.":
+        "לא נמצא שרת פקודות ברשת זו.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "לא נמצאו הגדרות שמורות",
     "Not found": "לא נמצא",
     "Not reduce video when showing the list (bugfix)":
@@ -495,6 +563,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "הגדרות OTT Prime ONLINE",
@@ -505,6 +575,14 @@ var keyStrings = {
     on: "פעיל",
     "on ": "פעיל ",
     "or scan": "או סרוק",
+    "Pairing approved. Command server configured.":
+        "הצימוד אושר. שרת הפקודות הוגדר.",
+    "Pairing expired. Find the server again to retry.":
+        "תוקף הצימוד פג. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "שרת הצימוד אינו זמין. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "הצימוד נדחה או שהתקבל אישור לא תקין. יש לחפש שוב את השרת כדי לנסות שוב.",
     "Parental control": "בקרת הורים",
     Password: "סיסמה",
     Pause: "השהה",
@@ -536,6 +614,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "חזור 10 שניות אחורה לאחר השהיה",
     PROST: "PROST",
     "PROST settings": "הגדרות PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "הקודם",
     "Preview in channel list": "תצוגה מקדימה ברשימת הערוצים",
     Previous: "הקודם",
@@ -560,7 +639,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "שלט (ללא לחצנים צבעוניים)",
     "Remote (number buttons N/A)": "שלט (ללא לחצני מספרים)",
     "Remote control": "שליטה מרחוק",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "תוקף ההפעלה המרוחקת פג",
+    "Remote text entry": "הזנת טקסט מרחוק",
     "Remote text entry denied": "הזנת טקסט מרחוק נדחתה",
     "Remote text entry error": "שגיאה בהזנת טקסט מרחוק",
     "Remote text entry needs a Device ID.": "הזנת טקסט מרחוק דורשת מזהה מכשיר.",
@@ -575,10 +659,12 @@ var keyStrings = {
     "Rename to": "שנה שם ל-",
     "Repeat parental code": "הזן שוב קוד הורים",
     "Request sended!": "הבקשה נשלחה!",
+    "Requesting approval for %1": "בקשת אישור עבור %1",
     "Restart player": "הפעל מחדש את הנגן",
     "Restart stream": "הפעל מחדש את השידור",
     "Restart stream / Live": "הפעל שידור מחדש / שידור חי",
     "Resume from archive?": "להמשיך מהארכיון?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "חזור לערוץ הקודם",
     Rewind: "דלג בזמן",
     "Rewind step by buttons %1/%2": "מרווח דילוג לאחור בלחצנים %1/%2",
@@ -595,9 +681,17 @@ var keyStrings = {
     "Save settings": "שמור הגדרות",
     "Save settings and load channel list": "שמור הגדרות וטען רשימת ערוצים",
     "Save settings to storage": "שמור הגדרות באחסון",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "תסריט",
     Search: "חיפוש",
     "Search programme": "חפש תוכנית",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "בחר סוג שידור:<br>%1",
     "Select category to add channel": "בחר קטגוריה להוספת ערוץ",
     "Select color": "בחר צבע",
@@ -622,12 +716,15 @@ var keyStrings = {
     "Set parental code": "הגדר קוד הורים",
     "Set timer?": "להגדיר טיימר?",
     Settings: "הגדרות",
+    "Settings changed. Discovery was canceled.": "ההגדרות השתנו. החיפוש בוטל.",
     "Settings could not be saved": "לא ניתן לשמור את ההגדרות",
     "Settings loaded from storage": "ההגדרות נטענו מהאחסון",
     "Settings STB": "הגדרות STB",
     "Settings saved": "ההגדרות נשמרו",
     "Settings saved to storage": "ההגדרות נשמרו באחסון",
     "Settings sended!": "ההגדרות נשלחו!",
+    "Several command servers were found. Select one below.":
+        "נמצאו כמה שרתי פקודות. יש לבחור אחד למטה.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "הגדרות Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -659,6 +756,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "טיימר שינה",
     "Sort channels": "מיין ערוצים",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "ספק פורטל Stalker",
     "Stalker portal settings": "הגדרות פורטל Stalker",
     "Stalker portals": "פורטלי Stalker",
@@ -679,7 +778,15 @@ var keyStrings = {
     system: "מערכת",
     Tabox: "Tabox",
     "Tabox settings": "הגדרות Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "כתובת ה־URL לחיפוש שרת הפקודות אינה תקינה.",
     "The device ID in the address is invalid.": "מזהה המכשיר בכתובת אינו תקין.",
+    "The discovery response is invalid.": "תשובת החיפוש אינה תקינה.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "דפדפן זה אינו יכול לבצע צימוד אוטומטי באופן בטוח. יש לעדכן אותו או להזין ידנית את הגדרות שרת הפקודות.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "לדפדפן זה אין פרופיל חיפוש. יש להזין כתובת שרת או להגדיר את פרופיל הפריסה.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "נגן HTTPS זה אינו יכול להתחבר לשרת HTTP. השתמש בשרת HTTPS או פתח את הנגן דרך HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -720,6 +827,8 @@ var keyStrings = {
         "השתמש בשמאל/ימין לבחירת פקד, ב-OK להפעלתו ובמעלה/מטה לגלילה.",
     Username: "שם משתמש",
     "Username or password is missing.": "שם המשתמש או הסיסמה חסרים.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "הגדרות VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

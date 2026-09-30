@@ -53,6 +53,14 @@ try {
     ];`
     );
     write("devices/example.js", '_("Adapter message");');
+    write(
+        "src/plugins/control-discovery.ts",
+        `
+        var message = "Discovery initial status";
+        notify("waiting", "Approve at %1", address);
+        finish("error", "Discovery failed");
+    `
+    );
     write("providers/example/provider.js", 'translate("Provider message");');
     const fixtureKeys = collectSourceKeys(fixture);
     for (const key of [
@@ -79,6 +87,9 @@ try {
         "Menu explanation",
         "Adapter message",
         "Provider message",
+        "Discovery initial status",
+        "Approve at %1",
+        "Discovery failed",
     ])
         assert(
             fixtureKeys.keys.has(key),
@@ -210,8 +221,15 @@ try {
         "PiP exchange",
         "Player and device info",
         "Filter",
+        "Folders",
+        "Sign in with Plex",
+        "Save and open library",
+        "Remote text entry",
+        "Find command server",
+        "Cancel pairing",
         "Enter the command server IP or address.",
         "OttPlay FOSS %1 is available. Download and install now?",
+        "EPG diagnostics could not load. Open it again to retry.",
     ])
         assert(Object.hasOwn(reference, key), `Audited UI key missing: ${key}`);
     const result = audit({
@@ -219,7 +237,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 28);
-    assert.equal(result.keyCount, 650);
+    assert.equal(result.keyCount, 721);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

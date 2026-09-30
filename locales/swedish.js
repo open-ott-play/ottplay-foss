@@ -60,6 +60,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv-inställningar",
     "Allowlist this Device ID": "Tillåt detta enhets-ID",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "En IP-adress utan port använder HTTP-port 8081. Rensa adressen eller välj Koppla från för att stoppa.",
     "API failed, trying M3U...": "API misslyckades, försöker med M3U…",
@@ -67,6 +69,8 @@ var keyStrings = {
     "API server URL": "API-serverns URL",
     "Applying HTTP remote settings...":
         "Tillämpar inställningar för HTTP-fjärrkontroll…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Godkänn koden för %1 med ott approve NAME CODE:",
     Archive: "Arkiv",
     "Archive - begin": "Arkiv — början",
     "Archive hours": "Arkivtimmar",
@@ -110,6 +114,7 @@ var keyStrings = {
     "Call PiP": "Öppna PiP",
     "Call PiP / PiP exchange": "Öppna PiP / växla PiP",
     Cancel: "Avbryt",
+    "Cancel pairing": "Avbryt parkoppling",
     "Cannot delete the last category": "Den sista kategorin kan inte tas bort",
     Category: "Kategori",
     "Category selection": "Välj kategori",
@@ -153,6 +158,15 @@ var keyStrings = {
     "Command server": "Kommandoserver",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Kommandoserverns adress, enhetens åtkomstkod, lokal HTTP-styrning och fjärrinmatning av text",
+    "Command server discovery canceled.":
+        "Sökningen efter kommandoserver avbröts.",
+    "Command server discovery has not started.":
+        "Sökningen efter kommandoserver har inte startat.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Sökning efter kommandoserver är inte tillgänglig. Välj ”Hitta kommandoserver” för att försöka igen.",
+    "Command server discovery timed out.":
+        "Tidsgränsen för sökning efter kommandoserver överskreds.",
+    "Command server found.": "Kommandoserver hittades.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurera All4you.tv under Inställningar -> Leverantörsinställningar",
@@ -237,6 +251,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Kunde inte skapa en parkopplingsbegäran. Sök efter servern igen för att försöka på nytt.",
+    "Could not save the approved command server settings.":
+        "Kunde inte spara de godkända inställningarna för kommandoservern.",
     "Could not update HTTP remote control.":
         "Kunde inte uppdatera HTTP-fjärrkontrollen.",
     Country: "Land",
@@ -256,6 +274,8 @@ var keyStrings = {
     "Device info:": "Enhetsinformation:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Enhetens MAC-adress krävs för KBC-spellistor (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Enhetens UUID är inte klart. Välj ”Hitta kommandoserver” för att försöka igen.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV-inställningar",
     Director: "Regissör",
@@ -349,6 +369,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Programguide",
     "EPG and archive. Channel: ": "Programguide och arkiv. Kanal: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG kunde inte startas. Starta om spelaren för att läsa in filerna igen. Uppspelningen stoppas.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Fel!",
     "Error Code!": "Ogiltig kod!",
     Exit: "Avsluta",
@@ -377,6 +442,8 @@ var keyStrings = {
         "Filval stöds inte på den här enheten",
     Filter: "Filter",
     Filters: "Filter",
+    "Find command server": "Hitta kommandoserver",
+    "Finding command servers...": "Söker efter kommandoservrar…",
     "First Run Setup": "Förstagångsinställning",
     Folders: "Folders",
     "Font type": "Typsnitt",
@@ -486,8 +553,12 @@ var keyStrings = {
     "Next TV program": "Nästa program",
     No: "Nej",
     "No channel name": "Kanalnamn saknas",
+    "No command server was found on this network.":
+        "Ingen kommandoserver hittades i det här nätverket.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Inga sparade inställningar hittades",
     "Not found": "Hittades inte",
     "Not reduce video when showing the list (bugfix)":
@@ -507,6 +578,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-inställningar",
@@ -517,6 +590,14 @@ var keyStrings = {
     on: "på",
     "on ": "vid ",
     "or scan": "eller skanna",
+    "Pairing approved. Command server configured.":
+        "Parkopplingen godkändes. Kommandoservern är konfigurerad.",
+    "Pairing expired. Find the server again to retry.":
+        "Tiden för parkoppling gick ut. Sök efter servern igen för att försöka på nytt.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Parkopplingsservern är inte tillgänglig. Sök efter servern igen för att försöka på nytt.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Parkopplingen avvisades eller gav ett ogiltigt godkännande. Sök efter servern igen för att försöka på nytt.",
     "Parental control": "Föräldrakontroll",
     Password: "Lösenord",
     Pause: "Paus",
@@ -549,6 +630,7 @@ var keyStrings = {
         "Hoppa tillbaka 10 sekunder efter paus",
     PROST: "PROST",
     "PROST settings": "PROST-inställningar",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Föregående",
     "Preview in channel list": "Förhandsvisning i kanallistan",
     Previous: "Föregående kanal",
@@ -574,7 +656,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Fjärrkontroll utan färgknappar",
     "Remote (number buttons N/A)": "Fjärrkontroll utan sifferknappar",
     "Remote control": "Fjärrkontroll",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Fjärrsessionen har gått ut",
+    "Remote text entry": "Fjärrinmatning av text",
     "Remote text entry denied": "Fjärrinmatning av text nekades",
     "Remote text entry error": "Fel vid fjärrinmatning av text",
     "Remote text entry needs a Device ID.":
@@ -591,10 +678,12 @@ var keyStrings = {
     "Rename to": "Byt namn till",
     "Repeat parental code": "Ange föräldrakoden igen",
     "Request sended!": "Begäran skickad!",
+    "Requesting approval for %1": "Begär godkännande för %1",
     "Restart player": "Starta om spelaren",
     "Restart stream": "Starta om strömmen",
     "Restart stream / Live": "Starta om strömmen / direktsändning",
     "Resume from archive?": "Fortsätta från arkivet?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Återgå till föregående kanal",
     Rewind: "Spola",
     "Rewind step by buttons %1/%2": "Spolningssteg för knapparna %1/%2",
@@ -612,9 +701,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Spara inställningar och läs in kanallistan",
     "Save settings to storage": "Spara inställningar i lagring",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Manus",
     Search: "Sök",
     "Search programme": "Sök program",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Välj strömtyp:<br>%1",
     "Select category to add channel": "Välj kategori att lägga till kanalen i",
     "Select color": "Välj färg",
@@ -639,12 +736,16 @@ var keyStrings = {
     "Set parental code": "Ställ in föräldrakod",
     "Set timer?": "Ställa in timer?",
     Settings: "Inställningar",
+    "Settings changed. Discovery was canceled.":
+        "Inställningarna ändrades. Sökningen avbröts.",
     "Settings could not be saved": "Inställningarna kunde inte sparas",
     "Settings loaded from storage": "Inställningar inlästa från lagring",
     "Settings STB": "Enhetsinställningar",
     "Settings saved": "Inställningarna sparades",
     "Settings saved to storage": "Inställningar sparade i lagring",
     "Settings sended!": "Inställningarna skickades!",
+    "Several command servers were found. Select one below.":
+        "Flera kommandoservrar hittades. Välj en nedan.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro)-inställningar",
     ShockTv: "ShockTv",
@@ -676,6 +777,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Insomningstimer",
     "Sort channels": "Sortera kanaler",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker-portalleverantör",
     "Stalker portal settings": "Inställningar för Stalker-portal",
     "Stalker portals": "Stalker-portaler",
@@ -697,8 +800,16 @@ var keyStrings = {
     system: "systemets",
     Tabox: "Tabox",
     "Tabox settings": "Tabox-inställningar",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL:en för att söka kommandoserver är ogiltig.",
     "The device ID in the address is invalid.":
         "Enhets-ID:t i adressen är ogiltigt.",
+    "The discovery response is invalid.": "Svaret på sökningen är ogiltigt.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Den här webbläsaren stöder inte säker automatisk parkoppling. Uppdatera den eller ange kommandoserverns inställningar manuellt.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Den här webbläsaren saknar sökprofil. Ange en serveradress eller konfigurera distributionsprofilen.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Denna HTTPS-spelare kan inte ansluta till en HTTP-server. Använd en HTTPS-server eller öppna spelaren via HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -741,6 +852,8 @@ var keyStrings = {
         "Använd VÄNSTER/HÖGER för att välja, OK för att aktivera och UPP/NED för att rulla.",
     Username: "Användarnamn",
     "Username or password is missing.": "Användarnamn eller lösenord saknas.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM-inställningar",
     "Vidok.TV": "Vidok.TV",

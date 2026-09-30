@@ -12,11 +12,15 @@ SPEC.loader.exec_module(scope)
 
 class ContainerValidationScopeTests(unittest.TestCase):
     def test_inputs_trigger_both_architectures(self):
-        for path in ["Dockerfile", "Cargo.lock", "src-rs/player/Cargo.toml", "src-rs/Cargo.toml", "scripts/container_validation_scope.py", ".github/release-tests/test_container_workspace.py"]:
+        for path in ["Dockerfile", "Cargo.lock", "src-rs/player/Cargo.toml", "src-rs/Cargo.toml", "scripts/container_validation_scope.py", ".github/release-tests/test_container_workspace.py", "src-rs/core/src/shared_guide.rs", "src-rs/core/src/xmltv.rs", "src-rs/core/src/native_xmltv.rs", "src-rs/server/src/main.rs", "vendor/ottplay-core.js", "scripts/check-epg-performance.py"]:
             self.assertTrue(scope.relevant([path]), path)
 
     def test_unrelated_changes_skip_builds(self):
         self.assertFalse(scope.relevant(["README.md", ".github/workflows/auto-approve.yml", "src/ui.ts"]))
+
+    def test_native_record_kernel_and_its_oracle_require_container_validation(self):
+        for path in ["src-rs/core/src/xmltv/server_records.rs", "src-rs/core/src/xmltv_differential_tests.rs"]:
+            self.assertTrue(scope.relevant([path]), path)
 
     def test_pr_and_queue_compare_immutable_commits(self):
         base, head = "a" * 40, "b" * 40

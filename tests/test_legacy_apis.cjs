@@ -213,12 +213,16 @@ $.fn = { hide() {}, show() {} };
 const selected = [];
 const keys = [];
 const savedValues = [];
+const windowEvents = new EventTarget();
+const runtimeErrors = [];
 const c = vm.createContext({
+    _: (value) => value,
     _doKey(key) {
         keys.push(key);
     },
     $,
-    console,
+    addEventListener: windowEvents.addEventListener.bind(windowEvents),
+    console: { ...console, error: (...args) => runtimeErrors.push(args) },
     document: {
         getElementById: node,
         querySelector() {
@@ -228,6 +232,7 @@ const c = vm.createContext({
     jQuery: $,
     keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
     list_OnClick() {},
+    removeEventListener: windowEvents.removeEventListener.bind(windowEvents),
     restoreListPanelState() {},
     saveListPanelState() {},
     setEdit() {
@@ -320,6 +325,11 @@ assert.deepEqual(
     savedValues,
     [c.editvar],
     "Old keyCode-only events submit exactly once"
+);
+assert.deepEqual(
+    runtimeErrors,
+    [],
+    "Native input teardown must not swallow runtime errors"
 );
 console.log(
     "PASS: denied/quota storage with cookie/memory fallback, legacy Date/mouse APIs and exact native input"

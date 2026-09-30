@@ -3,7 +3,7 @@
     <head>
         <title>OTT-play FOSS (__OTTP_VERSION__)</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <script src="/js/runtime-polyfills.js?v=6d5854d76476ff2c"></script>
+        <script src="/js/runtime-polyfills.js?v=7425e5b9360041d6"></script>
         <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0, user-scalable=no"
@@ -273,7 +273,7 @@
         var host = window.location.origin ||
             (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
         if (!Date.now) Date.now = function () { return new Date().getTime(); };
-        var __dev = true; // set false for production
+        var __dev = "__OTTP_VERSION__".charAt(0) === "_"; // Unstamped source keeps development cache keys.
         // Cache-busting labels are not secrets; boot also handles a missing runtime.
         function bootRandomHex(length) {
             var text = "";

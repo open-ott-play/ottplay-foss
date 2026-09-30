@@ -2,7 +2,8 @@
 """Compile real Android HTTP plugins and test edition policy against a local server.
 
 Reuses the queue test's small Capacitor double without importing/running its test.
-Uses Java, kotlinc, SDK36 and ANDROID_JSON_JAR; no app artifact mutation.
+Uses Java, kotlinc, SDK36, ANDROID_JSON_JAR and ANDROID_HTTP_CLASSPATH
+(real OkHttp/Okio jars); no app artifact mutation.
 """
 import ast
 from pathlib import Path
@@ -28,6 +29,14 @@ fun main() {
     val server = ServerSocket(0, 4, InetAddress.getByName("127.0.0.1"))
     val endpoint = "http://127.0.0.1:${server.localPort}/stalker_portal/api/?token=fixture"
     val generic = StalkerPortalPlugin(); val playlist = M3UProxyPlugin()
+    for (flavor in listOf("play", "full")) {
+        BuildConfig.FLAVOR = flavor
+        for (url in listOf("http://127.0.0.1:${server.localPort}/swop/session", "https://user:secret@relay.example/swop/val", "https://relay.example/swop/val?token=secret", "https://relay.example/x/../swop/val")) {
+            val swop = PluginCall(JSObject().put("url", url).put("body", "{}").put("clientId", "device"))
+            generic.swopRequest(swop); wait(swop)
+            check(swop.error == "Native remote text entry request failed")
+        }
+    }
     BuildConfig.FLAVOR = "play"
     val portal = PluginCall(JSObject().put("url",endpoint)); generic.portalRequest(portal); wait(portal)
     val http = PluginCall(JSObject().put("url",endpoint)); generic.httpRequest(http); wait(http)
@@ -56,11 +65,13 @@ fun main() {
     worker.join(5000); server.close(); check(!worker.isAlive)
     val failure = PluginCall(JSObject().put("url",endpoint)); generic.httpRequest(failure); wait(failure)
     check(failure.error != null && !failure.error!!.contains("token") && !failure.error!!.contains("127.0.0.1"))
-    println("PASS actual Android HTTP plugins: Play rejects HTTP before network with descriptive code; Full native HTTP/M3U retain requests; failure messages omit provider URLs")
+    println("PASS actual Android HTTP plugins: SWOP refuses plaintext/credentials/query/normalized paths in both editions; Play rejects HTTP before network; Full native HTTP/M3U retain requests; errors omit provider URLs")
 }
 '''
 SDK=Path(os.environ.get('ANDROID_SDK_ROOT',os.environ.get('ANDROID_HOME','/opt/homebrew/share/android-commandlinetools')))/'platforms/android-36/android.jar'
 JSON=Path(os.environ['ANDROID_JSON_JAR'])
+HTTP_JARS=[Path(p) for p in os.environ['ANDROID_HTTP_CLASSPATH'].split(os.pathsep)]
+assert HTTP_JARS and all(p.is_file() for p in HTTP_JARS), 'Real OkHttp and Okio jars are required'
 JAVA=Path(os.environ['JAVA_HOME'])/'bin' if os.environ.get('JAVA_HOME') else Path('/usr/bin')
 with tempfile.TemporaryDirectory(prefix='ott-http-policy-') as directory:
     temp=Path(directory); classes=temp/'classes';classes.mkdir()
@@ -74,5 +85,5 @@ with tempfile.TemporaryDirectory(prefix='ott-http-policy-') as directory:
     (temp/'Annotation.kt').write_text('package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)')
     (temp/'Main.kt').write_text(MAIN)
     sources=[str(ROOT/f'android/app/src/main/java/play/ott/foss/{name}.kt') for name in ['StalkerPortalPlugin','M3UProxyPlugin']]
-    subprocess.run([shutil.which('kotlinc') or 'kotlinc','-jvm-target','17','-cp',str(classes)+os.pathsep+str(SDK),*map(str,temp.glob('*.kt')),*sources,'-include-runtime','-d',str(temp/'test.jar')],check=True)
-    subprocess.run([str(JAVA/'java'),'-cp',os.pathsep.join(map(str,[temp/'test.jar',classes,JSON])),'fixture.MainKt'],check=True,timeout=30)
+    subprocess.run([shutil.which('kotlinc') or 'kotlinc','-jvm-target','17','-cp',os.pathsep.join(map(str,[classes,SDK,*HTTP_JARS])),*map(str,temp.glob('*.kt')),*sources,'-include-runtime','-d',str(temp/'test.jar')],check=True)
+    subprocess.run([str(JAVA/'java'),'-cp',os.pathsep.join(map(str,[temp/'test.jar',classes,JSON,*HTTP_JARS])),'fixture.MainKt'],check=True,timeout=30)

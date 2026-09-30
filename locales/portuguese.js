@@ -59,6 +59,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Configurações de All4you.tv",
     "Allowlist this Device ID": "Autorizar este ID de dispositivo",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Um IP sem porta usa a porta HTTP 8081. Apague o endereço ou selecione Desligar para parar.",
     "API failed, trying M3U...": "A API falhou, a tentar M3U…",
@@ -66,6 +68,8 @@ var keyStrings = {
     "API server URL": "URL do servidor API",
     "Applying HTTP remote settings...":
         "A aplicar as definições do controlo remoto HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Aprove o código de %1 com ott approve NAME CODE:",
     Archive: "Arquivo",
     "Archive - begin": "Arquivo — início",
     "Archive hours": "Horas de arquivo",
@@ -111,6 +115,7 @@ var keyStrings = {
     "Call PiP": "Abrir PiP",
     "Call PiP / PiP exchange": "Abrir PiP / trocar PiP",
     Cancel: "Cancelar",
+    "Cancel pairing": "Cancelar emparelhamento",
     "Cannot delete the last category":
         "Não é possível eliminar a última categoria",
     Category: "Categoria",
@@ -155,6 +160,15 @@ var keyStrings = {
     "Command server": "Servidor de comandos",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Endereço do servidor de comandos, código de acesso do dispositivo, controlo HTTP local e entrada de texto remota",
+    "Command server discovery canceled.":
+        "Procura do servidor de comandos cancelada.",
+    "Command server discovery has not started.":
+        "A procura do servidor de comandos ainda não foi iniciada.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "A procura do servidor de comandos está indisponível. Selecione Procurar servidor de comandos para voltar a tentar.",
+    "Command server discovery timed out.":
+        "O tempo de procura do servidor de comandos expirou.",
+    "Command server found.": "Servidor de comandos encontrado.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configure All4you.tv em Configurações -> Configurações do fornecedor",
@@ -239,6 +253,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Não foi possível ligar ao servidor.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Não foi possível criar um pedido de emparelhamento. Procure novamente o servidor para voltar a tentar.",
+    "Could not save the approved command server settings.":
+        "Não foi possível guardar as configurações aprovadas do servidor de comandos.",
     "Could not update HTTP remote control.":
         "Não foi possível atualizar o controlo remoto HTTP.",
     Country: "País",
@@ -257,6 +275,8 @@ var keyStrings = {
     "Device info:": "Informações do dispositivo:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "As listas KBC (Kinoboom) exigem o MAC do dispositivo",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "O UUID do dispositivo ainda não está pronto. Selecione Procurar servidor de comandos para voltar a tentar.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Configurações de Diamond TV",
     Director: "Realização",
@@ -353,6 +373,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Guia TV",
     "EPG and archive. Channel: ": "EPG e arquivo. Canal: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Não foi possível iniciar o EPG. Reinicie o leitor para voltar a carregar os seus ficheiros. A reprodução será interrompida.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Erro!",
     "Error Code!": "Código inválido!",
     Exit: "Sair",
@@ -382,6 +447,8 @@ var keyStrings = {
         "A seleção de ficheiros não é suportada neste dispositivo",
     Filter: "Filtro",
     Filters: "Filtros",
+    "Find command server": "Procurar servidor de comandos",
+    "Finding command servers...": "A procurar servidores de comandos...",
     "First Run Setup": "Configuração inicial",
     Folders: "Folders",
     "Font type": "Tipo de letra",
@@ -491,8 +558,12 @@ var keyStrings = {
     "Next TV program": "Programa seguinte",
     No: "Não",
     "No channel name": "Sem nome de canal",
+    "No command server was found on this network.":
+        "Não foi encontrado nenhum servidor de comandos nesta rede.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Não foram encontradas configurações guardadas",
     "Not found": "Não encontrado",
     "Not reduce video when showing the list (bugfix)":
@@ -512,6 +583,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Configurações de OTT Prime ONLINE",
@@ -522,6 +595,14 @@ var keyStrings = {
     on: "ativado",
     "on ": "ativado ",
     "or scan": "ou leia o código",
+    "Pairing approved. Command server configured.":
+        "Emparelhamento aprovado. Servidor de comandos configurado.",
+    "Pairing expired. Find the server again to retry.":
+        "O emparelhamento expirou. Procure novamente o servidor para voltar a tentar.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "O servidor de emparelhamento está indisponível. Procure novamente o servidor para voltar a tentar.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "O emparelhamento foi rejeitado ou devolveu uma aprovação inválida. Procure novamente o servidor para voltar a tentar.",
     "Parental control": "Controlo parental",
     Password: "Palavra-passe",
     Pause: "Pausa",
@@ -554,6 +635,7 @@ var keyStrings = {
         "Recuar 10 segundos após uma pausa",
     PROST: "PROST",
     "PROST settings": "Configurações de PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Anterior",
     "Preview in channel list": "Pré-visualização na lista de canais",
     Previous: "Anterior",
@@ -578,7 +660,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Comando sem botões coloridos",
     "Remote (number buttons N/A)": "Comando sem botões numéricos",
     "Remote control": "Controlo remoto",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sessão remota expirada",
+    "Remote text entry": "Entrada de texto remota",
     "Remote text entry denied": "Entrada de texto remota negada",
     "Remote text entry error": "Erro na entrada de texto remota",
     "Remote text entry needs a Device ID.":
@@ -595,10 +682,12 @@ var keyStrings = {
     "Rename to": "Mudar nome para",
     "Repeat parental code": "Repetir código parental",
     "Request sended!": "Pedido enviado!",
+    "Requesting approval for %1": "A solicitar aprovação para %1",
     "Restart player": "Reiniciar leitor",
     "Restart stream": "Reiniciar fluxo",
     "Restart stream / Live": "Reiniciar fluxo / direto",
     "Resume from archive?": "Retomar a partir do arquivo?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Voltar ao canal anterior",
     Rewind: "Deslocar reprodução",
     "Rewind step by buttons %1/%2": "Intervalo de recuo dos botões %1/%2",
@@ -616,9 +705,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Guardar configurações e carregar lista de canais",
     "Save settings to storage": "Guardar configurações no armazenamento",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Argumento",
     Search: "Pesquisar",
     "Search programme": "Pesquisar programa",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Selecione um tipo de fluxo:<br>%1",
     "Select category to add channel":
         "Selecionar categoria para adicionar canal",
@@ -644,12 +741,16 @@ var keyStrings = {
     "Set parental code": "Definir código parental",
     "Set timer?": "Definir temporizador?",
     Settings: "Configurações",
+    "Settings changed. Discovery was canceled.":
+        "Configurações alteradas. A procura foi cancelada.",
     "Settings could not be saved": "Não foi possível guardar as configurações",
     "Settings loaded from storage": "Configurações carregadas do armazenamento",
     "Settings STB": "Configurações STB",
     "Settings saved": "Configurações guardadas",
     "Settings saved to storage": "Configurações guardadas no armazenamento",
     "Settings sended!": "Configurações enviadas!",
+    "Several command servers were found. Select one below.":
+        "Foram encontrados vários servidores de comandos. Selecione um abaixo.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings":
         "Configurações de Shara.club (ClubTV.pro)",
@@ -683,6 +784,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Temporizador de suspensão",
     "Sort channels": "Ordenar canais",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Fornecedor do portal Stalker",
     "Stalker portal settings": "Configurações do portal Stalker",
     "Stalker portals": "Portais Stalker",
@@ -703,8 +806,16 @@ var keyStrings = {
     system: "sistema",
     Tabox: "Tabox",
     "Tabox settings": "Configurações de Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "O URL de descoberta do servidor de comandos é inválido.",
     "The device ID in the address is invalid.":
         "O ID do dispositivo no endereço é inválido.",
+    "The discovery response is invalid.": "A resposta à procura é inválida.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Este navegador não consegue efetuar um emparelhamento automático seguro. Atualize-o ou introduza manualmente as configurações do servidor de comandos.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Este navegador não tem um perfil de descoberta. Introduza um endereço de servidor ou configure o perfil de implementação.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Este leitor HTTPS não pode ligar a um servidor HTTP. Use um servidor HTTPS ou abra o leitor por HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -747,6 +858,8 @@ var keyStrings = {
     Username: "Nome de utilizador",
     "Username or password is missing.":
         "Falta o nome de utilizador ou a palavra-passe.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Configurações de VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

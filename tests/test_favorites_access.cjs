@@ -122,6 +122,7 @@ function fixture(saved = new Map()) {
     if (!process.argv.includes("--bundle"))
         attachSourceAliases(dom.getInternalVMContext());
     const calls = [];
+    const guideUpdates = [];
     const pending = [];
     Object.assign(w, {
         _: (value) => value,
@@ -164,6 +165,9 @@ function fixture(saved = new Map()) {
         sPreview: 0,
         stbPlayPip: (url) => calls.push(["pip", url]),
         stbToFullScreen() {},
+        updateChannelInfo(id) {
+            guideUpdates.push(id);
+        },
     });
     w.changeSelect = (delta) => {
         w.selIndex =
@@ -171,7 +175,14 @@ function fixture(saved = new Map()) {
     };
     w.loadFavoritesLists();
     w.cats.Favorites = w.favoritesArray;
-    return { calls, close: () => dom.window.close(), pending, saved, w };
+    return {
+        calls,
+        close: () => dom.window.close(),
+        guideUpdates,
+        pending,
+        saved,
+        w,
+    };
 }
 
 let passed = 0;
@@ -330,6 +341,11 @@ test("closing an overlay rechecks access before restoring PiP", (f) => {
     f.w.closeList();
     assert.equal(f.pending.length, 1);
     assert.deepEqual(f.calls, []);
+    assert.deepEqual(
+        f.guideUpdates,
+        [1],
+        "The playing footer is restored while PiP awaits PIN"
+    );
     f.w.parentAccess = true;
     f.pending[0]();
     assert.deepEqual(f.calls, [["pip", "https://fixture.invalid/channel/20"]]);

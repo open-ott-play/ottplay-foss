@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
+import { JSDOM } from "jsdom";
 import ts from "typescript";
 import sharedCoreRuntime from "./helpers/shared-core-runtime.cjs";
 
@@ -103,6 +104,7 @@ function fixture() {
             RIGHT: 39,
             UP: 38,
         },
+        nativeListTouch: null,
         nProg: "",
         playTime: 0,
         playType: 0,
@@ -124,6 +126,7 @@ function fixture() {
         touch_locked: false,
         touch_min_sensX: 100,
         touch_min_sensY: 50,
+        touchMaxDistance: 0,
         xDown: 100,
         xMove1: 100,
         xUp: 100,
@@ -144,6 +147,9 @@ function fixture() {
             "toggleMainPlayback",
             "handleMainKey",
             "handleTouchMove",
+            "updateTouchPosition",
+            "moveNativeListTouch",
+            "resetNativeListTouch",
             "getDirection",
             "keyHandler",
             "body_handleTouchEnd",
@@ -240,6 +246,72 @@ function fixture() {
         2,
         "switching stream must not create a second clock"
     );
+}
+
+{
+    const f = fixture();
+    const ids = ["current_t", "current_s", "list_t", "list_s", "permanentTime"];
+    const dom = new JSDOM(
+        ids.map((id) => '<div id="' + id + '"></div>').join("")
+    );
+    const document = dom.window.document;
+    f.w.document = document;
+    let now = new Date(2026, 0, 1, 12, 0, 0).getTime();
+    f.w.Date = class extends Date {
+        constructor() {
+            super(now);
+        }
+    };
+    const changes = new dom.window.MutationObserver(() => {});
+    changes.observe(document.body, { childList: true, subtree: true });
+    f.w.initBackgroundIntervals();
+    for (let second = 0; second < 60; second++) {
+        f.tick();
+        now += 1000;
+    }
+    assert.equal(document.getElementById("current_t")!.textContent, "12:00");
+    assert.equal(document.getElementById("current_s")!.textContent, ":59");
+    assert.equal(
+        changes.takeRecords().length,
+        123,
+        "minute labels remain mounted while seconds advance"
+    );
+    f.tick();
+    assert.equal(
+        document.getElementById("permanentTime")!.textContent,
+        "12:01"
+    );
+    assert.equal(document.getElementById("list_s")!.textContent, ":00");
+    assert.equal(
+        changes.takeRecords().length,
+        5,
+        "minute rollover updates all clocks"
+    );
+    const replacement = document.createElement("div");
+    replacement.id = "list_t";
+    document.getElementById("list_t")!.replaceWith(replacement);
+    changes.takeRecords();
+    f.tick();
+    assert.equal(
+        replacement.textContent,
+        "12:01",
+        "a remounted clock is refreshed"
+    );
+    assert.equal(
+        changes.takeRecords().length,
+        1,
+        "same-second tick repairs only the new node"
+    );
+    f.w.initBackgroundIntervals();
+    f.tick();
+    assert.equal(
+        f.intervals.size,
+        2,
+        "timer restart retains one clock and one guide timer"
+    );
+    assert.equal(changes.takeRecords().length, 0);
+    changes.disconnect();
+    dom.window.close();
 }
 
 for (const supported of [false, undefined]) {
@@ -502,7 +574,9 @@ for (const route of ["manifest", "native recovery"]) {
     };
     let dispatched: any;
     f.w.body_handleTouchEnd({
-        changedTouches: [{ clientX: 25, clientY: 45 }],
+        changedTouches: [
+            { clientX: 25, clientY: 45, screenX: 100, screenY: 100 },
+        ],
         preventDefault() {},
         target: {
             dispatchEvent(event: any) {

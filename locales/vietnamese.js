@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Cài đặt All4you.tv",
     "Allowlist this Device ID": "Cho phép ID thiết bị này",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Địa chỉ IP không có cổng sẽ dùng cổng HTTP 8081. Xóa địa chỉ hoặc chọn Ngắt kết nối để dừng.",
     "API failed, trying M3U...": "API thất bại, đang thử M3U…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL máy chủ API",
     "Applying HTTP remote settings...":
         "Đang áp dụng cài đặt điều khiển từ xa HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Phê duyệt mã cho %1 bằng lệnh ott approve NAME CODE:",
     Archive: "Lưu trữ",
     "Archive - begin": "Lưu trữ — bắt đầu",
     "Archive hours": "Số giờ lưu trữ",
@@ -112,6 +116,7 @@ var keyStrings = {
     "Call PiP": "Mở PiP",
     "Call PiP / PiP exchange": "Mở PiP / đổi PiP",
     Cancel: "Hủy",
+    "Cancel pairing": "Hủy ghép nối",
     "Cannot delete the last category": "Không thể xóa danh mục cuối cùng",
     Category: "Danh mục",
     "Category selection": "Chọn danh mục",
@@ -155,6 +160,13 @@ var keyStrings = {
     "Command server": "Máy chủ lệnh",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Địa chỉ máy chủ lệnh, mã truy cập thiết bị, điều khiển HTTP cục bộ và cài đặt nhập văn bản từ xa",
+    "Command server discovery canceled.": "Đã hủy tìm máy chủ lệnh.",
+    "Command server discovery has not started.":
+        "Chưa bắt đầu tìm máy chủ lệnh.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Không thể tìm máy chủ lệnh. Chọn Tìm máy chủ lệnh để thử lại.",
+    "Command server discovery timed out.": "Đã hết thời gian tìm máy chủ lệnh.",
+    "Command server found.": "Đã tìm thấy máy chủ lệnh.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Cấu hình All4you.tv trong Cài đặt -> Cài đặt nhà cung cấp",
@@ -239,6 +251,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Không thể tạo yêu cầu ghép nối. Hãy tìm lại máy chủ để thử lại.",
+    "Could not save the approved command server settings.":
+        "Không thể lưu cài đặt máy chủ lệnh đã được phê duyệt.",
     "Could not update HTTP remote control.":
         "Không thể cập nhật điều khiển từ xa HTTP.",
     Country: "Quốc gia",
@@ -257,6 +273,8 @@ var keyStrings = {
     "Device info:": "Thông tin thiết bị:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Danh sách phát KBC (Kinoboom) yêu cầu địa chỉ MAC của thiết bị",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID của thiết bị chưa sẵn sàng. Chọn Tìm máy chủ lệnh để thử lại.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Cài đặt Diamond TV",
     Director: "Đạo diễn",
@@ -350,6 +368,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG và lưu trữ. Kênh: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Không thể khởi động EPG. Hãy khởi động lại trình phát để tải lại các tệp của nó. Việc phát sẽ dừng lại.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Lỗi!",
     "Error Code!": "Mã không hợp lệ!",
     Exit: "Thoát",
@@ -377,6 +440,8 @@ var keyStrings = {
         "Thiết bị này không hỗ trợ chọn tệp",
     Filter: "Bộ lọc",
     Filters: "Bộ lọc",
+    "Find command server": "Tìm máy chủ lệnh",
+    "Finding command servers...": "Đang tìm máy chủ lệnh...",
     "First Run Setup": "Thiết lập lần đầu",
     Folders: "Folders",
     "Font type": "Kiểu chữ",
@@ -484,8 +549,12 @@ var keyStrings = {
     "Next TV program": "Chương trình tiếp theo",
     No: "Không",
     "No channel name": "Kênh không có tên",
+    "No command server was found on this network.":
+        "Không tìm thấy máy chủ lệnh trên mạng này.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Không tìm thấy cài đặt đã lưu",
     "Not found": "Không tìm thấy",
     "Not reduce video when showing the list (bugfix)":
@@ -505,6 +574,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cài đặt OTT Prime ONLINE",
@@ -515,6 +586,14 @@ var keyStrings = {
     on: "bật",
     "on ": "bật ",
     "or scan": "hoặc quét",
+    "Pairing approved. Command server configured.":
+        "Ghép nối đã được phê duyệt. Máy chủ lệnh đã được cấu hình.",
+    "Pairing expired. Find the server again to retry.":
+        "Phiên ghép nối đã hết hạn. Hãy tìm lại máy chủ để thử lại.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Máy chủ ghép nối không khả dụng. Hãy tìm lại máy chủ để thử lại.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Ghép nối bị từ chối hoặc nhận được phê duyệt không hợp lệ. Hãy tìm lại máy chủ để thử lại.",
     "Parental control": "Kiểm soát của phụ huynh",
     Password: "Mật khẩu",
     Pause: "Tạm dừng",
@@ -547,6 +626,7 @@ var keyStrings = {
         "Tua lùi 10 giây sau khi tạm dừng",
     PROST: "PROST",
     "PROST settings": "Cài đặt PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Trước",
     "Preview in channel list": "Xem trước trong danh sách kênh",
     Previous: "Trước",
@@ -571,7 +651,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Điều khiển từ xa không có nút màu",
     "Remote (number buttons N/A)": "Điều khiển từ xa không có nút số",
     "Remote control": "Điều khiển từ xa",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Phiên từ xa đã hết hạn",
+    "Remote text entry": "Nhập văn bản từ xa",
     "Remote text entry denied": "Nhập văn bản từ xa bị từ chối",
     "Remote text entry error": "Lỗi nhập văn bản từ xa",
     "Remote text entry needs a Device ID.":
@@ -587,10 +672,12 @@ var keyStrings = {
     "Rename to": "Đổi tên thành",
     "Repeat parental code": "Nhập lại mã phụ huynh",
     "Request sended!": "Đã gửi yêu cầu!",
+    "Requesting approval for %1": "Đang yêu cầu phê duyệt cho %1",
     "Restart player": "Khởi động lại trình phát",
     "Restart stream": "Khởi động lại luồng",
     "Restart stream / Live": "Khởi động lại luồng / trực tiếp",
     "Resume from archive?": "Tiếp tục từ lưu trữ?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Quay lại kênh trước",
     Rewind: "Tua",
     "Rewind step by buttons %1/%2": "Bước tua lùi của nút %1/%2",
@@ -607,9 +694,17 @@ var keyStrings = {
     "Save settings": "Lưu cài đặt",
     "Save settings and load channel list": "Lưu cài đặt và tải danh sách kênh",
     "Save settings to storage": "Lưu cài đặt vào bộ nhớ",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Kịch bản",
     Search: "Tìm kiếm",
     "Search programme": "Tìm chương trình",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Chọn loại luồng:<br>%1",
     "Select category to add channel": "Chọn danh mục để thêm kênh",
     "Select color": "Chọn màu",
@@ -634,12 +729,16 @@ var keyStrings = {
     "Set parental code": "Đặt mã phụ huynh",
     "Set timer?": "Đặt hẹn giờ?",
     Settings: "Cài đặt",
+    "Settings changed. Discovery was canceled.":
+        "Cài đặt đã thay đổi. Đã hủy tìm kiếm.",
     "Settings could not be saved": "Không thể lưu cài đặt",
     "Settings loaded from storage": "Đã tải cài đặt từ bộ nhớ",
     "Settings STB": "Cài đặt STB",
     "Settings saved": "Đã lưu cài đặt",
     "Settings saved to storage": "Đã lưu cài đặt vào bộ nhớ",
     "Settings sended!": "Đã gửi cài đặt!",
+    "Several command servers were found. Select one below.":
+        "Tìm thấy nhiều máy chủ lệnh. Hãy chọn một máy chủ bên dưới.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Cài đặt Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -672,6 +771,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Hẹn giờ ngủ",
     "Sort channels": "Sắp xếp kênh",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
     "Stalker portal settings": "Cài đặt cổng Stalker",
     "Stalker portals": "Cổng Stalker",
@@ -692,8 +793,16 @@ var keyStrings = {
     system: "hệ thống",
     Tabox: "Tabox",
     "Tabox settings": "Cài đặt Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL tìm máy chủ lệnh không hợp lệ.",
     "The device ID in the address is invalid.":
         "ID thiết bị trong địa chỉ không hợp lệ.",
+    "The discovery response is invalid.": "Phản hồi tìm kiếm không hợp lệ.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Trình duyệt này không thể ghép nối tự động một cách an toàn. Hãy cập nhật trình duyệt hoặc nhập thủ công cài đặt máy chủ lệnh.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Trình duyệt này không có hồ sơ tìm kiếm. Hãy nhập địa chỉ máy chủ hoặc cấu hình hồ sơ triển khai.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Trình phát HTTPS này không thể kết nối tới máy chủ HTTP. Dùng máy chủ HTTPS hoặc mở trình phát qua HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -735,6 +844,8 @@ var keyStrings = {
         "Dùng TRÁI/PHẢI để chọn điều khiển, OK để kích hoạt và LÊN/XUỐNG để cuộn.",
     Username: "Tên người dùng",
     "Username or password is missing.": "Thiếu tên người dùng hoặc mật khẩu.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Cài đặt VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

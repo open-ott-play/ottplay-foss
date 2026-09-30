@@ -127,6 +127,11 @@
       "reason": "Status messages come from command-server update/error/message declarations and the settingsCommands fallback assignments."
     },
     {
+      "file": "src/index.ts",
+      "expression": "status.message",
+      "reason": "Discovery statuses come from control-discovery notify/finish/message declarations extracted by localization-catalog.cjs; controller addresses are passed as placeholder arguments."
+    },
+    {
       "file": "src/plugins/vportal.ts",
       "expression": "text",
       "reason": "Forwarded translation parameter: callers and explicit wrapper/schema rules in localization-catalog.cjs provide the finite key set; provider titles and external error details are runtime data."
@@ -210,11 +215,6 @@
       "file": "src/ui/index.ts",
       "expression": "item.desc || item.name || \"\"",
       "reason": "Settings/information schema name and description fields are extracted at their declarations; external or already-rendered rows stay runtime data."
-    },
-    {
-      "file": "src/ui/index.ts",
-      "expression": "_keysSymbol[1].s ? _keyE ? _ottplaylang() == \"_eng\" ? _(\"Russian\") || \"Russian\" : _(\"lang\") || \"Lang\" : _(\"English\") || \"English\" : \"\"",
-      "reason": "Already-translated constituent labels plus runtime data or markup; nested literal calls are scanned independently."
     },
     {
       "file": "src/ui/index.ts",

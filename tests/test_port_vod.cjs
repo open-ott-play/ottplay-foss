@@ -4,8 +4,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { JSDOM } = require("jsdom");
 const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
+const selectorDocument = new JSDOM("").window.document;
 
 function sourceFunctions(file, names) {
     const source = fs.readFileSync(path.join(root, file), "utf8");
@@ -87,7 +89,7 @@ function fixture() {
         catIndex: 0,
         cats: { All: [1] },
         catsArray: ["All"],
-        channelNumberElement: element("#numprog"),
+        channelNumberElement: selectorDocument.createElement("div"),
         clearTimeout() {},
         closeList() {
             calls.push(["close"]);
@@ -101,7 +103,10 @@ function fixture() {
         curColorB: "black",
         curList: [1],
         Date,
-        document: { getElementById: (id) => element(`#${id}`) },
+        document: {
+            createElement: (tag) => selectorDocument.createElement(tag),
+            getElementById: (id) => element(`#${id}`),
+        },
         elements,
         encodeURIComponent,
         enterPinAndSetAccess(next) {

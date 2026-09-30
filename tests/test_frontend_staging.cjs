@@ -110,6 +110,11 @@ try {
         "src/src-tauri/pip/pip-player.js",
         "dist/index.html",
         "dist/player.js",
+        "dist/hosted/epg-worker.js",
+        "dist/hosted/pako-LICENSE",
+        "dist/hosted/sax-LICENSE",
+        "dist/swop-input/index.html",
+        "dist/swop-input/app.js",
         "stage/devices/logs/previous-build.json",
     ])
         write(name);
@@ -144,6 +149,19 @@ try {
             fs.readFileSync(path.join(fixture, "stage", name), "utf8"),
             fs.readFileSync(path.join(fixture, "src", name), "utf8"),
             name
+        );
+    }
+    for (const name of [
+        "hosted/epg-worker.js",
+        "hosted/pako-LICENSE",
+        "hosted/sax-LICENSE",
+        "swop-input/index.html",
+        "swop-input/app.js",
+    ]) {
+        assert.equal(
+            fs.readFileSync(path.join(fixture, "stage", name), "utf8"),
+            fs.readFileSync(path.join(fixture, "dist", name), "utf8"),
+            "Hosted assets come from the checked build: " + name
         );
     }
     for (const name of ["pip.html", "pip-player.js"]) {

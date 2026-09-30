@@ -218,6 +218,428 @@ async function testSource() {
     await testTransport();
 }
 
+async function testInputDiagnostics() {
+    const { JSDOM } = require("jsdom");
+    const source = fs.readFileSync(
+        path.join(root, "src/debug/playback-debug.ts"),
+        "utf8"
+    );
+    const code = bundle
+        ? fs.readFileSync(path.join(root, "dist/player.js"), "utf8")
+        : ts.transpileModule(source, {
+              compilerOptions: {
+                  module: ts.ModuleKind.None,
+                  target: ts.ScriptTarget.ES5,
+              },
+          }).outputText;
+    for (const enabledAtBoot of [false, true]) {
+        const dom = new JSDOM(
+            "<!doctype html><button id='target'>Select</button>",
+            {
+                runScripts: "outside-only",
+                url: "https://fixture.invalid/",
+            }
+        );
+        const context = dom.getInternalVMContext();
+        const timers = [];
+        const requests = [];
+        const nativeCalls = [];
+        context.setTimeout = () => 1;
+        context.setInterval = (callback, ms) => {
+            timers.push({ callback, ms });
+            return timers.length;
+        };
+        context.console = { error() {}, info() {}, log() {}, warn() {} };
+        context.fetch = (url) => {
+            requests.push(url);
+            return Promise.resolve({ ok: false });
+        };
+        context.__OTT_DEBUG__ = enabledAtBoot;
+        if (!enabledAtBoot)
+            context.localStorage.setItem("ottplay_debug_hud", "0");
+        context.webOS = {
+            device: { cursorVisible: (value) => nativeCalls.push(value) },
+        };
+        try {
+            if (bundle) {
+                vm.runInContext(
+                    fs.readFileSync(
+                        path.join(root, "js/runtime-polyfills.js"),
+                        "utf8"
+                    ),
+                    context
+                );
+                require("./helpers/shared-core-runtime.cjs")(context);
+            }
+            vm.runInContext(code, context);
+            context.version = "fixture";
+            vm.runInContext(
+                fs.readFileSync(
+                    path.join(root, "devices/lg/webos/device.js"),
+                    "utf8"
+                ),
+                context
+            );
+            const document = context.document;
+            const target = document.getElementById("target");
+            const snapshot = () =>
+                JSON.parse(JSON.stringify(context.__ottDebugInputSnapshot()));
+            function readSnapshot() {
+                const registrations = [];
+                const targets = [context, document];
+                const original = targets.map((item) => item.addEventListener);
+                const before = {
+                    enabled: context.__ottDebug.enabled,
+                    hud: document.getElementById("ott_debug_hud"),
+                    log: context.__ottDebug.dump(),
+                    native: nativeCalls.length,
+                    requests: requests.length,
+                    timers: timers.length,
+                };
+                targets.forEach((item, index) => {
+                    item.addEventListener = function (...args) {
+                        registrations.push(args[0]);
+                        return original[index].apply(this, args);
+                    };
+                });
+                let result;
+                try {
+                    result = snapshot();
+                } finally {
+                    targets.forEach((item, index) => {
+                        item.addEventListener = original[index];
+                    });
+                }
+                assert.deepEqual(registrations, []);
+                assert.equal(context.__ottDebug.enabled, before.enabled);
+                assert.equal(
+                    document.getElementById("ott_debug_hud"),
+                    before.hud
+                );
+                assert.equal(context.__ottDebug.dump(), before.log);
+                assert.equal(nativeCalls.length, before.native);
+                assert.equal(requests.length, before.requests);
+                assert.equal(timers.length, before.timers);
+                return result;
+            }
+            if (!enabledAtBoot) {
+                assert.deepEqual(readSnapshot(), {
+                    available: true,
+                    enabled: false,
+                });
+                const disabled = context.__ottDebugInputSnapshot();
+                disabled.enabled = true;
+                assert.deepEqual(readSnapshot(), {
+                    available: true,
+                    enabled: false,
+                });
+                assert.equal(
+                    context.__ottDebugInput,
+                    undefined,
+                    "Disabled diagnostics collect no pointer events"
+                );
+                assert.equal(document.getElementById("ott_debug_hud"), null);
+                target.dispatchEvent(
+                    new context.MouseEvent("mousemove", { bubbles: true })
+                );
+                assert.deepEqual(readSnapshot(), {
+                    available: true,
+                    enabled: false,
+                });
+                if (bundle) context.toggleDebugHudInfo();
+                else context.__ottDebug.toggleHud();
+            }
+            const api = context.__ottDebug;
+            assert.equal(
+                api.enabled,
+                true,
+                "The menu enables diagnostics immediately"
+            );
+            const hud = () => document.getElementById("ott_debug_hud");
+            assert(hud(), "No restart or video is needed for the HUD");
+            const refresh = () => {
+                const updates = timers.filter((timer) => timer.ms === 1000);
+                assert.equal(updates.length, 1);
+                updates[0].callback();
+            };
+            refresh();
+            assert(hud().textContent.includes("cursor=unknown"));
+            assert(hud().textContent.includes("move=0 down=0 click=0 wheel=0"));
+            assert(hud().textContent.includes("(no video)"));
+            assert.deepEqual(readSnapshot(), {
+                area: "unknown",
+                available: true,
+                click: 0,
+                cursor: "unknown",
+                down: 0,
+                enabled: true,
+                focus: document.hasFocus() ? "on" : "off",
+                move: 0,
+                page: "unknown",
+                wheel: 0,
+            });
+            const cursor = (visibility) =>
+                document.dispatchEvent(
+                    new context.CustomEvent("cursorStateChange", {
+                        detail: { visibility },
+                    })
+                );
+            cursor(true);
+            context.dispatchEvent(new context.Event("focus"));
+            document.dispatchEvent(
+                new context.CustomEvent("webOSMouse", {
+                    detail: { type: "Enter" },
+                })
+            );
+            refresh();
+            assert(hud().textContent.includes("cursor=on focus=on"));
+            assert(hud().textContent.includes("area=in"));
+            const active = readSnapshot();
+            assert.equal(active.cursor, "on");
+            assert.equal(active.focus, "on");
+            assert.equal(active.area, "in");
+            const returned = context.__ottDebugInputSnapshot();
+            returned.cursor = "DUMMY_SECRET";
+            returned.move = 9999;
+            assert.deepEqual(readSnapshot(), active);
+            for (const value of ["visible", "hidden", "DUMMY_SECRET"]) {
+                Object.defineProperty(document, "visibilityState", {
+                    configurable: true,
+                    value,
+                });
+                assert.equal(
+                    readSnapshot().page,
+                    value === "DUMMY_SECRET" ? "unknown" : value
+                );
+            }
+            delete document.visibilityState;
+            cursor("DUMMY_SECRET");
+            document.dispatchEvent(
+                new context.CustomEvent("webOSMouse", {
+                    detail: { type: "DUMMY_SECRET" },
+                })
+            );
+            assert(
+                !api.dump().includes("DUMMY_SECRET"),
+                "Only documented state values are retained"
+            );
+            const beforeMoves = api.dump();
+            let moves = 0;
+            let clicks = 0;
+            let wheels = 0;
+            target.addEventListener("mousemove", () => moves++);
+            target.addEventListener("click", () => clicks++);
+            target.addEventListener("wheel", () => wheels++);
+            target.addEventListener("mousewheel", () => wheels++);
+            function wheel(type) {
+                const event = new context.WheelEvent(type, {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: 9876,
+                    clientY: 5432,
+                    deltaY: 7654,
+                });
+                assert(target.dispatchEvent(event));
+                assert.equal(event.defaultPrevented, false);
+            }
+            wheel("wheel");
+            wheel("mousewheel");
+            for (let index = 0; index < 1000; index++) {
+                const event = new context.MouseEvent("mousemove", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: 9876,
+                    clientY: 5432,
+                });
+                assert(target.dispatchEvent(event));
+                assert.equal(event.defaultPrevented, false);
+            }
+            target.dispatchEvent(
+                new context.MouseEvent("mousedown", { bubbles: true })
+            );
+            target.dispatchEvent(
+                new context.MouseEvent("click", { bubbles: true })
+            );
+            target.dispatchEvent(
+                new context.KeyboardEvent("keydown", {
+                    bubbles: true,
+                    key: "DUMMY_SECRET",
+                })
+            );
+            assert.equal(
+                moves,
+                1000,
+                "Diagnostics leave pointer events available to the player"
+            );
+            assert.equal(clicks, 1);
+            assert.equal(wheels, 2);
+            assert.equal(
+                api.dump(),
+                beforeMoves,
+                "Mouse traffic does not flood the event ring"
+            );
+            refresh();
+            assert(
+                hud().textContent.includes("move=1000 down=1 click=1 wheel=2")
+            );
+            assert.deepEqual(readSnapshot(), {
+                ...active,
+                click: 1,
+                down: 1,
+                move: 1000,
+                wheel: 2,
+            });
+            cursor(false);
+            context.dispatchEvent(new context.Event("blur"));
+            document.dispatchEvent(
+                new context.CustomEvent("webOSMouse", {
+                    detail: { type: "Leave" },
+                })
+            );
+            refresh();
+            assert(hud().textContent.includes("cursor=off focus=off"));
+            assert(hud().textContent.includes("area=out"));
+            assert(!api.dump().includes("9876"));
+            assert(!api.dump().includes("7654"));
+            assert(!api.dump().includes("DUMMY_SECRET"));
+            const timerCount = timers.length;
+            api.toggleHud();
+            assert.equal(hud(), null);
+            const hidden = readSnapshot();
+            assert.equal(hidden.enabled, true);
+            assert.equal(hidden.cursor, "off");
+            assert.equal(hidden.focus, "off");
+            assert.equal(hidden.area, "out");
+            assert.equal(hidden.wheel, 2);
+            wheel("mousewheel");
+            assert.equal(readSnapshot().wheel, 3);
+            assert.equal(
+                hud(),
+                null,
+                "Reading input state keeps the HUD hidden"
+            );
+            api.toggleHud();
+            target.dispatchEvent(
+                new context.MouseEvent("mousemove", { bubbles: true })
+            );
+            refresh();
+            assert(
+                hud().textContent.includes("move=1001"),
+                "Reopening the HUD must not duplicate listeners"
+            );
+            wheel("wheel");
+            refresh();
+            assert(hud().textContent.includes("wheel=4"));
+            assert.equal(wheels, 4);
+            assert.equal(timers.length, timerCount);
+            assert.equal(
+                context.localStorage.getItem("ottplay_debug"),
+                null,
+                "Menu opt-in is limited to this page"
+            );
+            assert.equal(
+                requests.length,
+                0,
+                "Local diagnosis sends no requests without an explicit debug token"
+            );
+            assert.deepEqual(
+                nativeCalls,
+                [],
+                "Diagnostics never change native pointer visibility"
+            );
+            assert.notEqual(document.body.style.cursor, "none");
+        } finally {
+            dom.window.close();
+        }
+    }
+    // Exercise persisted preferences and opt-in through page boot, then render
+    // errors through the same public video-event API used during playback.
+    for (const [query, preference, enabled] of [
+        ["?nodebug=1", null, false],
+        ["?debug=10", null, false],
+        ["?debug=trueish", null, false],
+        ["?next=debug=1", null, false],
+        ["?next=https://example.invalid/?debug=1", null, false],
+        ["?next=https://example.invalid/?debug=true", null, false],
+        ["?debug=1&other=yes", null, true],
+        ["?other=yes&debug=true", null, true],
+        ["?debug=1", "0", true],
+        ["?debug=1", "1", true],
+    ]) {
+        const dom = new JSDOM("<!doctype html><video id='video'></video>", {
+            runScripts: "outside-only",
+            url: "https://fixture.invalid/" + query,
+        });
+        const context = dom.getInternalVMContext();
+        const timers = [];
+        let requests = 0;
+        context.setTimeout = () => 1;
+        context.setInterval = (callback, ms) => {
+            timers.push({ callback, ms });
+            return timers.length;
+        };
+        context.console = { error() {}, info() {}, log() {}, warn() {} };
+        context.fetch = () => {
+            requests++;
+            return Promise.resolve({ ok: false });
+        };
+        if (preference !== null)
+            context.localStorage.setItem("ottplay_debug_hud", preference);
+        try {
+            if (bundle) {
+                vm.runInContext(
+                    fs.readFileSync(
+                        path.join(root, "js/runtime-polyfills.js"),
+                        "utf8"
+                    ),
+                    context
+                );
+                require("./helpers/shared-core-runtime.cjs")(context);
+            }
+            vm.runInContext(code, context);
+            const api = context.__ottDebug;
+            const hud = () => context.document.getElementById("ott_debug_hud");
+            assert.equal(api.enabled, enabled, query);
+            if (!enabled) {
+                assert.equal(hud(), null);
+                assert.equal(timers.length, 0, "Unrelated queries do no work");
+            } else {
+                assert.equal(Boolean(hud()), preference !== "0");
+                if (preference === "0") api.toggleHud();
+                assert(hud(), "The menu can reopen a persisted hidden HUD");
+                const video = context.document.getElementById("video");
+                Object.defineProperty(video, "error", {
+                    value: {
+                        code: 4,
+                        message:
+                            "failed https://user:DUMMY_SECRET@provider.invalid/live/DUMMY_SECRET " +
+                            "<strong id='injected'>diagnostic</strong>",
+                    },
+                });
+                api.onVideoEvent(new context.Event("error"));
+                timers.find((timer) => timer.ms === 1000).callback();
+                assert(!hud().textContent.includes("DUMMY_SECRET"));
+                assert(
+                    hud().textContent.includes("provider.invalid/[redacted]")
+                );
+                assert(hud().textContent.includes("<strong"));
+                assert.equal(context.document.getElementById("injected"), null);
+                assert(!api.dump().includes("DUMMY_SECRET"));
+            }
+            assert.equal(
+                requests,
+                0,
+                "HUD diagnosis remains local without auth"
+            );
+        } finally {
+            dom.window.close();
+        }
+    }
+    console.log(
+        "PASS debug input/HUD: exact opt-in, persisted visibility, safe error text, menu activation, native state, pointer/wheel delivery, bounded counters, session scope and no upload"
+    );
+}
+
 // The packaged runtime is tested through its supported API, scheduled work and
 // real DOM lifecycle events. No private state is exposed for the test harness.
 async function testBundle() {
@@ -576,7 +998,9 @@ async function testBundle() {
     );
 }
 
-(bundle ? testBundle() : testSource()).catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+(bundle ? testBundle() : testSource())
+    .then(testInputDiagnostics)
+    .catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    });

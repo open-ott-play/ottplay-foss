@@ -98,11 +98,16 @@ function classicMediaRuntime(): any {
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
+    var screenOwner: any = null;
+    var screenRevision = -1;
     function bindScreen() {
         var screen = w.__ottClassicScreenPort;
         var owner = screen && screen.listOwner();
         if (!owner) return;
         var revision = library.revision();
+        if (screenOwner === owner && screenRevision === revision) return;
+        screenOwner = owner;
+        screenRevision = revision;
         owner.own(function () {
             if (!rendering && revision === library.revision()) api.cancel();
         });
@@ -173,16 +178,15 @@ function classicMediaRuntime(): any {
                 else if (row.request)
                     id = "request:" + serializeMediaIdentity(row.request);
                 else {
-                    var occurrence = titles[title] || 0;
-                    titles[title] = occurrence + 1;
+                    var origin = row.__ottMediaOrigin || route;
+                    var location = origin.target || "";
+                    var titleKey = serializeMediaIdentity([location, title]);
+                    var occurrence = titles[titleKey] || 0;
+                    titles[titleKey] = occurrence + 1;
                     // Providers without IDs get a catalog-local identity, never a signed stream URL.
                     id =
                         "catalog:" +
-                        serializeMediaIdentity([
-                            route.target || "",
-                            title,
-                            occurrence,
-                        ]);
+                        serializeMediaIdentity([location, title, occurrence]);
                 }
                 var identity = { itemId: id, sourceId: source };
                 payload.__ottMediaRef = identity;
@@ -310,7 +314,7 @@ function classicMediaRuntime(): any {
             }
             var records = w.mediaRecords;
             var title = w.mediaName;
-            project(library.snapshot(), false);
+            project(library.snapshot("none"), false);
             done(copy(records || []), title);
         };
         complete.isCurrent = function () {
@@ -348,10 +352,13 @@ function classicMediaRuntime(): any {
             .replace(/\s+/g, " ")
             .trim();
     }
-    library = w.__ottMediaLibrary.create({
+    var libraryPorts = {
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
-            if (library.snapshot().frames.length === 1 && w.sFavorites !== -1) {
+            if (
+                library.snapshot("none").frames.length === 1 &&
+                w.sFavorites !== -1
+            ) {
                 if (limit())
                     items.push({
                         payload: {
@@ -403,10 +410,21 @@ function classicMediaRuntime(): any {
         },
         load: load,
         render: project,
-    });
+    };
+    library = w.__ottMediaLibrary.create(libraryPorts);
+    // Background episode resolution must not revoke catalogue or editor ownership.
+    var automaticLibrary = w.__ottMediaLibrary.create(libraryPorts);
+    function cancelNavigationAuto() {
+        var admitted = library.capture();
+        api.cancelAuto();
+        return current() && admitted();
+    }
+    function navigate(route: MediaRoute, reset = false) {
+        if (cancelNavigationAuto()) library.open(route, reset);
+    }
     function sequenceFor(item: MediaLibraryItem) {
         if (!item.payload.__ottMediaSequence) return null;
-        var frame = library.snapshot().frame;
+        var frame = library.snapshot("current").frame;
         if (!frame || frame.route.kind !== "catalog") return null;
         var items = frame.items.filter(function (row: MediaLibraryItem) {
             return (
@@ -425,9 +443,10 @@ function classicMediaRuntime(): any {
         item: MediaLibraryItem,
         sequence: any = null,
         automatic = false,
-        guard: () => boolean = current
+        guard: () => boolean = current,
+        dispatched?: () => void
     ) {
-        if (!automatic) api.cancelAuto();
+        if (!automatic && !cancelNavigationAuto()) return;
         var request = {};
         if (automatic) automaticRequest = request;
         function valid() {
@@ -437,7 +456,7 @@ function classicMediaRuntime(): any {
                 (!automatic || automaticRequest === request)
             );
         }
-        library.resolve(
+        (automatic ? automaticLibrary : library).resolve(
             function (done: any) {
                 bindScreen();
                 var abortLoad: any = null;
@@ -477,8 +496,15 @@ function classicMediaRuntime(): any {
                 } else accept(copy(item.payload));
                 return function () {
                     if (abortLoad) abortLoad();
-                    if (current() && classicMediaClient())
-                        classicMediaClient().cancel();
+                    if (current() && classicMediaClient()) {
+                        var client = classicMediaClient();
+                        if (
+                            automatic &&
+                            typeof client.cancelAutomatic === "function"
+                        )
+                            client.cancelAutomatic();
+                        else client.cancel();
+                    }
                 };
             },
             function (payload: any) {
@@ -492,24 +518,40 @@ function classicMediaRuntime(): any {
                     sequence: sequence,
                     valid: guard,
                 };
+                var previousPlayback = mediaClassicPlayback;
                 pendingStart = start;
                 try {
-                    w._playMedia(payload);
+                    w._playMedia(payload, automatic);
                 } finally {
                     if (pendingStart === start) pendingStart = null;
                 }
+                var state = w.__ottClassicPlayback.snapshot();
+                if (
+                    dispatched &&
+                    current() &&
+                    mediaClassicPlayback &&
+                    mediaClassicPlayback !== previousPlayback &&
+                    mediaClassicPlayback.ref.itemId === item.ref.itemId &&
+                    state.target &&
+                    state.target.kind === "vod" &&
+                    state.target.channelId === item.ref.itemId &&
+                    state.phase !== "stopped"
+                )
+                    dispatched();
             }
         );
     }
     var api = {
         active: current,
         back: function () {
+            if (!cancelNavigationAuto()) return;
             var result = library.back();
             if (!result && w.popupList) w.popupList(w.popMedia);
         },
         cancel: function () {
-            automaticGeneration++;
-            automaticRequest = null;
+            var admitted = library.capture();
+            api.cancelAuto();
+            if (!admitted()) return;
             library.close();
             if (current() && classicMediaClient())
                 classicMediaClient().cancel();
@@ -518,12 +560,18 @@ function classicMediaRuntime(): any {
             automaticGeneration++;
             if (!automaticRequest) return;
             automaticRequest = null;
-            library.cancel();
+            automaticLibrary.cancel();
         },
         capture: function () {
             var valid = library.capture();
             return function () {
                 return current() && valid();
+            };
+        },
+        captureAuto: function () {
+            var revision = automaticGeneration;
+            return function () {
+                return current() && automaticGeneration === revision;
             };
         },
         checkpoint: function (ref: MediaRef, position: number, force = false) {
@@ -610,7 +658,8 @@ function classicMediaRuntime(): any {
         },
         favorite: function (payload: any) {
             if (payload.__ottMediaFilter) return;
-            var frame = library.snapshot().frame;
+            var admitted = api.capture();
+            var frame = library.snapshot("none").frame;
             var item = describe(
                 [payload],
                 frame ? frame.route : { kind: "catalog", target: "", title: "" }
@@ -621,25 +670,32 @@ function classicMediaRuntime(): any {
                 !journal.change(
                     removing ? "unfavorite" : "favorite",
                     entry(item)
-                )
+                ) ||
+                !admitted()
             )
                 return;
             collections();
-            if (removing) library.replaceItems(collectionItems("favorites"));
-            else if (w.showShift)
+            if (!admitted()) return;
+            if (removing) {
+                var items = collectionItems("favorites");
+                if (admitted()) library.replaceItems(items);
+            } else if (w.showShift)
                 w.showShift(item.title + w._(" added to favorites"));
         },
         filter: function () {
-            var frame = library.snapshot().frame;
+            var frame = library.snapshot("none").frame;
             if (!frame || frame.route.kind === "variants") return;
             var admitted = library.capture();
             w.editCaption = w._("Filter");
             w.editvar = filterText;
             w.setEdit = function () {
                 if (!current() || !admitted()) return;
-                filterText = String(w.editvar || "").trim();
+                var value = String(w.editvar || "").trim();
                 api.cancelAuto();
-                library.refilter();
+                if (!current() || !admitted()) return;
+                library.refilter(function () {
+                    filterText = value;
+                });
             };
             if (typeof w.showEditKey === "function") w.showEditKey();
         },
@@ -648,13 +704,13 @@ function classicMediaRuntime(): any {
                 library.highlight(index);
         },
         open: function (target: any, title?: string) {
-            var view = library.snapshot();
+            var view = library.snapshot("none");
             if (target === null && view.frame) {
                 library.show();
                 return;
             }
             if (target === -1 || target === -2) {
-                library.open({
+                navigate({
                     kind: target === -1 ? "history" : "favorites",
                     title:
                         target === -1
@@ -666,7 +722,7 @@ function classicMediaRuntime(): any {
             if (target === "submenu") {
                 var item = library.select(w.selIndex);
                 if (item && Array.isArray(item.payload.submenu))
-                    library.open({
+                    navigate({
                         kind: "variants",
                         target: item.payload.submenu,
                         title: item.title,
@@ -687,7 +743,7 @@ function classicMediaRuntime(): any {
                 (view.frames[0].route.kind === "catalog" &&
                     serializeMediaIdentity(view.frames[0].route.target) ===
                         serializeMediaIdentity(target));
-            library.open(
+            navigate(
                 {
                     kind: "catalog",
                     target: target === null ? "" : target,
@@ -701,6 +757,48 @@ function classicMediaRuntime(): any {
                 },
                 reset
             );
+        },
+        playQueue: function (
+            records: any[],
+            query: string,
+            guard: () => boolean,
+            dispatched: () => void
+        ) {
+            var items = describe(records, {
+                kind: "catalog",
+                target: "search?query=" + encodeURIComponent(query),
+                title: query,
+            });
+            if (!items.length || !current() || !guard()) return;
+            items.forEach(function (item: MediaLibraryItem) {
+                item.payload.__ottVPortalQueue = true;
+            });
+            api.cancelAuto();
+            var revision = automaticGeneration;
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            function valid() {
+                return (
+                    current() &&
+                    guard() &&
+                    automaticGeneration === revision &&
+                    w.__ottClassicPlayback.snapshot().generation === generation
+                );
+            }
+            var started = false;
+            resolve(
+                items[0],
+                { index: 0, items: items, replace: true },
+                true,
+                valid,
+                function () {
+                    started = true;
+                    dispatched();
+                }
+            );
+            return function () {
+                if (!started && revision === automaticGeneration)
+                    api.cancelAuto();
+            };
         },
         prepare: function (payload: any, url: string) {
             if (
@@ -722,6 +820,7 @@ function classicMediaRuntime(): any {
             if (!admitted()) return null;
             var state = w.__ottClassicPlayback.snapshot();
             if (
+                !(start && start.sequence && start.sequence.replace) &&
                 state.target &&
                 state.target.sourceId === source &&
                 state.target.channelId === item.ref.itemId &&
@@ -782,7 +881,7 @@ function classicMediaRuntime(): any {
         },
         restoreProjection: function () {
             collections();
-            project(library.snapshot(), false);
+            project(library.snapshot("none"), false);
         },
         select: function (index: number) {
             var item = library.select(index);
@@ -793,7 +892,7 @@ function classicMediaRuntime(): any {
                 var payload = item.payload;
                 if (payload.__ottMediaFilter) api.filter();
                 else if (payload.__ottMediaRoute)
-                    library.open({
+                    navigate({
                         kind: payload.__ottMediaRoute,
                         title: item.title,
                     });
@@ -803,7 +902,7 @@ function classicMediaRuntime(): any {
                         payload.playlist_url === "submenu" &&
                         Array.isArray(payload.submenu)
                     )
-                        library.open({
+                        navigate({
                             kind: "variants",
                             target: payload.submenu,
                             title: item.title,
@@ -855,6 +954,9 @@ function classicMediaRuntime(): any {
     capture: function () {
         return classicMediaRuntime().capture();
     },
+    captureAuto: function () {
+        return classicMediaRuntime().captureAuto();
+    },
     checkpoint: function (ref: MediaRef, position: number, force = false) {
         var playback = mediaClassicPlayback;
         var runtime =
@@ -904,6 +1006,19 @@ function classicMediaRuntime(): any {
         var client = playback.client;
         if (client && typeof client.stop === "function")
             client.stop(playback.payload.stream_url);
+    },
+    playQueue: function (
+        records: any[],
+        query: string,
+        guard: () => boolean,
+        dispatched: () => void
+    ) {
+        return classicMediaRuntime().playQueue(
+            records,
+            query,
+            guard,
+            dispatched
+        );
     },
     prepare: function (item: any, url: string) {
         return classicMediaRuntime().prepare(item, url);

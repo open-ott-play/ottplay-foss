@@ -763,6 +763,13 @@ export function installTauriFsKeyCapture(): void {
                 ) {
                     return;
                 }
+                // The native editor owns Escape on its remote-input button,
+                // just as it does while its text field has focus.
+                if (t && t.id === "editRemoteInput") {
+                    var port = (window as any).__ottClassicScreenPort;
+                    var editor = port && port.owner("editor");
+                    if (editor && editor.foreground()) return;
+                }
             } catch (_t) {}
             var key = ev.key || "";
             var code = ev.code || "";
@@ -914,10 +921,18 @@ export function stbEventToKeyCode(event: any): number {
  * - Calls video!.play() exactly once.
  * - Automatically restores previous audio/subtitle track settings via applyChannelPreference.
  */
+var coreSourcePreparationCancel: (() => void) | null = null;
+function cancelCoreSourcePreparation(): void {
+    var cancel = coreSourcePreparationCancel;
+    coreSourcePreparationCancel = null;
+    if (cancel) cancel();
+}
+
 function startCoreEngine(
     url: string,
     position?: number,
-    observe?: () => void
+    observe?: () => void,
+    paused = false
 ): void {
     setCoreDemoMute((window as any).ottplayDemoActive === true);
     if (video) video.loop = (window as any).ottplayDemoActive === true;
@@ -927,9 +942,12 @@ function startCoreEngine(
         liveRestartPolicy().reset();
         _coreAutoHlsUsed = false;
     }
+    cancelCoreSourcePreparation();
     cancelCoreAutoPlayback();
     cancelCoreNativeHls();
-    (window as any).forcePlay = true;
+    // Set intent before source preparation, HLS manifests or Shaka attachment.
+    (window as any).forcePlay = !paused;
+    if (video && paused) video.autoplay = false;
     var session = _playSession;
     var plexHint = corePlexPlaybackHint(url);
     if (hlsInstance) {
@@ -949,14 +967,36 @@ function startCoreEngine(
     // Shaka detach is asynchronous and may otherwise clear the next engine's src.
     var start = function (): void {
         if (session !== _playSession) return;
-        if (observe) observe();
-        startCorePlayback(
-            url,
-            position,
-            session,
-            plexHint === "file",
-            plexHint === "mse"
-        );
+        var settled = false;
+        var ready = function (playbackUrl: string): void {
+            if (session !== _playSession) return;
+            settled = true;
+            coreSourcePreparationCancel = null;
+            if (observe) observe();
+            startCorePlayback(
+                playbackUrl,
+                position,
+                session,
+                url,
+                plexHint === "file",
+                plexHint === "mse"
+            );
+        };
+        if (coreDeviceEffects.prepareSource) {
+            var cancel = coreDeviceEffects.prepareSource(
+                url,
+                ready,
+                function () {
+                    if (session !== _playSession) return;
+                    settled = true;
+                    coreSourcePreparationCancel = null;
+                    $("#buffering").hide();
+                    showShift(_("Source sign-in required"));
+                }
+            );
+            if (!settled && typeof cancel === "function")
+                coreSourcePreparationCancel = cancel;
+        } else ready(url);
     };
     if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
     else start();
@@ -968,6 +1008,7 @@ function startCorePlayback(
     url: string,
     position: number | undefined,
     session: number,
+    originalUrl: string = url,
     nativeFile = false,
     forceMse = false
 ): void {
@@ -1210,7 +1251,7 @@ function startCorePlayback(
                                 _liveRestartTimer = null;
                                 _inLiveRestart = true;
                                 try {
-                                    startCoreEngine(url, 0);
+                                    startCoreEngine(originalUrl, 0);
                                 } finally {
                                     _inLiveRestart = false;
                                     liveRestartPolicy().finish();
@@ -1378,7 +1419,12 @@ function startCorePlayback(
                             console.log(
                                 "[Auto] native HLS incompatible, using hls.js"
                             );
-                            startCorePlayback(url, nextPosition, session);
+                            startCorePlayback(
+                                url,
+                                nextPosition,
+                                session,
+                                originalUrl
+                            );
                         },
                         restore: function () {
                             _coreAutoCancel = null;
@@ -1424,6 +1470,7 @@ function startCorePlayback(
 function stopCoreEngine(): void {
     if (video) video.loop = false;
     _playSession++;
+    cancelCoreSourcePreparation();
     cancelLiveRestart();
     cancelCoreSeek();
     cancelCoreAutoPlayback();
@@ -2086,7 +2133,7 @@ export function stbInit(): void {
     try {
         if (!document.getElementById("vdiv")) {
             $("body").prepend(
-                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; display: flex; align-items: center; justify-content: center;"><video id="video" style="object-fit: contain; object-position: center center; max-width: 100%; max-height: 100%;"></video></div><video id="videopip" muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
+                '<div id="vdiv" style="position: absolute; overflow: hidden; background-color: black; display: flex; align-items: center; justify-content: center;"><video id="video" playsinline style="object-fit: contain; object-position: center center; max-width: 100%; max-height: 100%;"></video></div><video id="videopip" playsinline muted style="position: absolute; display: none; background-color: black; object-fit: cover; object-position: center center;"></video>'
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
@@ -2579,9 +2626,18 @@ function openCoreEngineLease(
     var pip = request.lane === "pip";
     if (pip && coreDeviceEffects.pip && !cssOnly) {
         stopCorePipEngine();
-        return coreDeviceEffects.pip.open(request, function () {
-            return openCoreEngineLease(request, event, true);
-        });
+        return coreDeviceEffects.pip.open(
+            request,
+            function (playbackUrl: string) {
+                // Keep request identity on the original source while the fallback
+                // decoder uses the same authenticated transport as native PiP.
+                var fallbackRequest =
+                    playbackUrl === request.url
+                        ? request
+                        : Object.assign({}, request, { url: playbackUrl });
+                return openCoreEngineLease(fallbackRequest, event, true);
+            }
+        );
     }
     var media = pip ? videoPip : video;
     // Optional device engines retain the same request ownership and UI commands.
@@ -2662,6 +2718,7 @@ function openCoreEngineLease(
             if (kind === "audio") setAudioTrack(index);
             else if (kind === "subtitle") setSubtitleTrack(index);
         },
+        supportsPausedStart: !pip,
         tracks: function (kind: string) {
             if (!active() || !media) return [];
             var source =
@@ -2707,7 +2764,13 @@ function openCoreEngineLease(
         if (pip) {
             observe();
             startCorePipEngine(request.url);
-        } else startCoreEngine(request.url, request.position, observe);
+        } else
+            startCoreEngine(
+                request.url,
+                request.position,
+                observe,
+                request.paused === true
+            );
     } catch (error) {
         lease.dispose();
         throw error;

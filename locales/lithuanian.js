@@ -60,12 +60,16 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv nustatymai",
     "Allowlist this Device ID": "Įtraukti šį įrenginio ID į leidžiamųjų sąrašą",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP adresas be prievado naudoja HTTP prievadą 8081. Norėdami sustabdyti, išvalykite adresą arba pasirinkite Atsijungti.",
     "API failed, trying M3U...": "API klaida, bandomas M3U…",
     "API Server": "API serveris",
     "API server URL": "API serverio URL",
     "Applying HTTP remote settings...": "Taikomi HTTP valdymo nustatymai...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Patvirtinkite %1 kodą naudodami komandą ott approve NAME CODE:",
     Archive: "Archyvas",
     "Archive - begin": "Archyvas — pradžia",
     "Archive hours": "Archyvo valandos",
@@ -109,6 +113,7 @@ var keyStrings = {
     "Call PiP": "Atverti PiP",
     "Call PiP / PiP exchange": "Atverti PiP / sukeisti PiP",
     Cancel: "Atšaukti",
+    "Cancel pairing": "Atšaukti susiejimą",
     "Cannot delete the last category":
         "Paskutinės kategorijos pašalinti negalima",
     Category: "Kategorija",
@@ -153,6 +158,14 @@ var keyStrings = {
     "Command server": "Komandų serveris",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Komandų serverio adresas, įrenginio prieigos kodas, vietinio HTTP valdymo ir nuotolinės teksto įvesties nustatymai",
+    "Command server discovery canceled.": "Komandų serverio paieška atšaukta.",
+    "Command server discovery has not started.":
+        "Komandų serverio paieška dar nepradėta.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Komandų serverio paieška nepasiekiama. Norėdami bandyti dar kartą, pasirinkite „Rasti komandų serverį“.",
+    "Command server discovery timed out.":
+        "Komandų serverio paieškos laikas baigėsi.",
+    "Command server found.": "Komandų serveris rastas.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nustatykite All4you.tv skiltyje Nustatymai -> Teikėjo nustatymai",
@@ -237,6 +250,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nepavyko sukurti susiejimo užklausos. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Could not save the approved command server settings.":
+        "Nepavyko išsaugoti patvirtintų komandų serverio nustatymų.",
     "Could not update HTTP remote control.":
         "Nepavyko atnaujinti HTTP valdymo nustatymų.",
     Country: "Šalis",
@@ -256,6 +273,8 @@ var keyStrings = {
     "Device info:": "Įrenginio informacija:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) grojaraščiams būtinas įrenginio MAC adresas",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Įrenginio UUID dar neparengtas. Norėdami bandyti dar kartą, pasirinkite „Rasti komandų serverį“.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV nustatymai",
     Director: "Režisierius",
@@ -351,6 +370,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "TV programa",
     "EPG and archive. Channel: ": "EPG ir archyvas. Kanalas: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Nepavyko paleisti EPG. Paleiskite grotuvą iš naujo, kad jo failai būtų įkelti iš naujo. Atkūrimas bus sustabdytas.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Klaida!",
     "Error Code!": "Netinkamas kodas!",
     Exit: "Išeiti",
@@ -379,6 +443,8 @@ var keyStrings = {
         "Šiame įrenginyje failų pasirinkimas nepalaikomas",
     Filter: "Filtras",
     Filters: "Filtrai",
+    "Find command server": "Rasti komandų serverį",
+    "Finding command servers...": "Ieškoma komandų serverių...",
     "First Run Setup": "Pirmojo paleidimo nustatymas",
     Folders: "Folders",
     "Font type": "Šriftas",
@@ -487,8 +553,12 @@ var keyStrings = {
     "Next TV program": "Kita laida",
     No: "Ne",
     "No channel name": "Nėra kanalo pavadinimo",
+    "No command server was found on this network.":
+        "Šiame tinkle nerasta komandų serverio.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Išsaugotų nustatymų nerasta",
     "Not found": "Nerasta",
     "Not reduce video when showing the list (bugfix)":
@@ -508,6 +578,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nustatymai",
@@ -518,6 +590,14 @@ var keyStrings = {
     on: "įjungta",
     "on ": "įjungta ",
     "or scan": "arba nuskaitykite",
+    "Pairing approved. Command server configured.":
+        "Susiejimas patvirtintas. Komandų serveris sukonfigūruotas.",
+    "Pairing expired. Find the server again to retry.":
+        "Susiejimo galiojimo laikas baigėsi. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Susiejimo serveris nepasiekiamas. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Susiejimas atmestas arba gautas netinkamas patvirtinimas. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
     "Parental control": "Tėvų kontrolė",
     Password: "Slaptažodis",
     Pause: "Pristabdyti",
@@ -549,6 +629,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Po pauzės atsukti 10 sekundžių",
     PROST: "PROST",
     "PROST settings": "PROST nustatymai",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Ankstesnis",
     "Preview in channel list": "Peržiūra kanalų sąraše",
     Previous: "Ankstesnis",
@@ -573,7 +654,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pultas (be spalvotų mygtukų)",
     "Remote (number buttons N/A)": "Pultas (be skaitmenų mygtukų)",
     "Remote control": "Nuotolinis valdymas",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Nuotolinio seanso galiojimas baigėsi",
+    "Remote text entry": "Nuotolinė teksto įvestis",
     "Remote text entry denied": "Nuotolinė teksto įvestis uždrausta",
     "Remote text entry error": "Nuotolinės teksto įvesties klaida",
     "Remote text entry needs a Device ID.":
@@ -590,10 +676,12 @@ var keyStrings = {
     "Rename to": "Pervadinti į",
     "Repeat parental code": "Dar kartą įveskite tėvų kontrolės kodą",
     "Request sended!": "Užklausa išsiųsta!",
+    "Requesting approval for %1": "Prašoma patvirtinimo: %1",
     "Restart player": "Paleisti grotuvą iš naujo",
     "Restart stream": "Paleisti srautą iš naujo",
     "Restart stream / Live": "Paleisti srautą iš naujo / tiesiogiai",
     "Resume from archive?": "Tęsti iš archyvo?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Grįžti į ankstesnį kanalą",
     Rewind: "Persukti",
     "Rewind step by buttons %1/%2": "Atsukimo žingsnis mygtukais %1/%2",
@@ -611,9 +699,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Išsaugoti nustatymus ir įkelti kanalų sąrašą",
     "Save settings to storage": "Išsaugoti nustatymus saugykloje",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenarijus",
     Search: "Paieška",
     "Search programme": "Ieškoti laidos",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Pasirinkite srauto tipą:<br>%1",
     "Select category to add channel": "Pasirinkite kategoriją kanalui pridėti",
     "Select color": "Pasirinkti spalvą",
@@ -638,12 +734,16 @@ var keyStrings = {
     "Set parental code": "Nustatyti tėvų kontrolės kodą",
     "Set timer?": "Nustatyti laikmatį?",
     Settings: "Nustatymai",
+    "Settings changed. Discovery was canceled.":
+        "Nustatymai pasikeitė. Paieška atšaukta.",
     "Settings could not be saved": "Nepavyko išsaugoti nustatymų",
     "Settings loaded from storage": "Nustatymai įkelti iš saugyklos",
     "Settings STB": "STB nustatymai",
     "Settings saved": "Nustatymai išsaugoti",
     "Settings saved to storage": "Nustatymai išsaugoti saugykloje",
     "Settings sended!": "Nustatymai išsiųsti!",
+    "Several command servers were found. Select one below.":
+        "Rasti keli komandų serveriai. Toliau pasirinkite vieną iš jų.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) nustatymai",
     ShockTv: "ShockTv",
@@ -675,6 +775,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Miego laikmatis",
     "Sort channels": "Rikiuoti kanalus",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portalo teikėjas",
     "Stalker portal settings": "Stalker portalo nustatymai",
     "Stalker portals": "Stalker portalai",
@@ -696,8 +798,16 @@ var keyStrings = {
     system: "sistemos",
     Tabox: "Tabox",
     "Tabox settings": "Tabox nustatymai",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Komandų serverio paieškos URL netinkamas.",
     "The device ID in the address is invalid.":
         "Įrenginio ID adrese netinkamas.",
+    "The discovery response is invalid.": "Paieškos atsakymas netinkamas.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Ši naršyklė negali saugiai atlikti automatinio susiejimo. Atnaujinkite ją arba įveskite komandų serverio nustatymus rankiniu būdu.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Ši naršyklė neturi paieškos profilio. Įveskite serverio adresą arba sukonfigūruokite diegimo profilį.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Šis HTTPS grotuvas negali prisijungti prie HTTP serverio. Naudokite HTTPS serverį arba atverkite grotuvą per HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -740,6 +850,8 @@ var keyStrings = {
     Username: "Naudotojo vardas",
     "Username or password is missing.":
         "Trūksta naudotojo vardo arba slaptažodžio.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM nustatymai",
     "Vidok.TV": "Vidok.TV",

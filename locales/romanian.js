@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Setări All4you.tv",
     "Allowlist this Device ID": "Permite acest ID de dispozitiv",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "O adresă IP fără port folosește portul HTTP 8081. Ștergeți adresa sau alegeți Deconectare pentru a opri.",
     "API failed, trying M3U...": "API a eșuat, se încearcă M3U…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL server API",
     "Applying HTTP remote settings...":
         "Se aplică setările controlului HTTP...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Aprobați codul pentru %1 folosind ott approve NAME CODE:",
     Archive: "Arhivă",
     "Archive - begin": "Arhivă — început",
     "Archive hours": "Ore de arhivă",
@@ -113,6 +117,7 @@ var keyStrings = {
     "Call PiP": "Deschide PiP",
     "Call PiP / PiP exchange": "Deschide PiP / schimbă ferestrele PiP",
     Cancel: "Anulează",
+    "Cancel pairing": "Anulează asocierea",
     "Cannot delete the last category": "Ultima categorie nu poate fi ștearsă",
     Category: "Categorie",
     "Category selection": "Selectarea categoriei",
@@ -156,6 +161,15 @@ var keyStrings = {
     "Command server": "Server de comenzi",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adresa serverului de comenzi, codul de acces al dispozitivului, controlul HTTP local și setările introducerii de text de la distanță",
+    "Command server discovery canceled.":
+        "Căutarea serverului de comenzi a fost anulată.",
+    "Command server discovery has not started.":
+        "Căutarea serverului de comenzi nu a început.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Căutarea serverului de comenzi nu este disponibilă. Selectați Caută server de comenzi pentru a reîncerca.",
+    "Command server discovery timed out.":
+        "Căutarea serverului de comenzi a expirat.",
+    "Command server found.": "Server de comenzi găsit.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configurați All4you.tv în Setări -> Setările furnizorului",
@@ -240,6 +254,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nu s-a putut crea o cerere de asociere. Căutați din nou serverul pentru a reîncerca.",
+    "Could not save the approved command server settings.":
+        "Nu s-au putut salva setările aprobate ale serverului de comenzi.",
     "Could not update HTTP remote control.":
         "Nu s-au putut actualiza setările controlului HTTP.",
     Country: "Țară",
@@ -258,6 +276,8 @@ var keyStrings = {
     "Device info:": "Informații despre dispozitiv:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Adresa MAC a dispozitivului este necesară pentru listele KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID-ul dispozitivului nu este încă pregătit. Selectați Caută server de comenzi pentru a reîncerca.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Setări Diamond TV",
     Director: "Regizor",
@@ -354,6 +374,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Ghid TV",
     "EPG and archive. Channel: ": "EPG și arhivă. Canal: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG nu a putut porni. Reporniți playerul pentru a-i reîncărca fișierele. Redarea se va opri.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Eroare!",
     "Error Code!": "Cod nevalid!",
     Exit: "Ieșire",
@@ -383,6 +448,8 @@ var keyStrings = {
         "Selectarea fișierelor nu este acceptată pe acest dispozitiv",
     Filter: "Filtru",
     Filters: "Filtre",
+    "Find command server": "Caută server de comenzi",
+    "Finding command servers...": "Se caută servere de comenzi...",
     "First Run Setup": "Configurare la prima pornire",
     Folders: "Folders",
     "Font type": "Tip de font",
@@ -493,8 +560,12 @@ var keyStrings = {
     "Next TV program": "Emisiunea următoare",
     No: "Nu",
     "No channel name": "Fără nume de canal",
+    "No command server was found on this network.":
+        "Nu s-a găsit niciun server de comenzi în această rețea.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nu au fost găsite setări salvate",
     "Not found": "Nu a fost găsit",
     "Not reduce video when showing the list (bugfix)":
@@ -514,6 +585,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Setări OTT Prime ONLINE",
@@ -524,6 +597,14 @@ var keyStrings = {
     on: "activat",
     "on ": "pornit ",
     "or scan": "sau scanați",
+    "Pairing approved. Command server configured.":
+        "Asociere aprobată. Serverul de comenzi a fost configurat.",
+    "Pairing expired. Find the server again to retry.":
+        "Asocierea a expirat. Căutați din nou serverul pentru a reîncerca.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Serverul de asociere nu este disponibil. Căutați din nou serverul pentru a reîncerca.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Asocierea a fost respinsă sau a returnat o aprobare nevalidă. Căutați din nou serverul pentru a reîncerca.",
     "Parental control": "Control parental",
     Password: "Parolă",
     Pause: "Pauză",
@@ -555,6 +636,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Revino cu 10 secunde după pauză",
     PROST: "PROST",
     "PROST settings": "Setări PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Anterior",
     "Preview in channel list": "Previzualizare în lista de canale",
     Previous: "Anterior",
@@ -580,7 +662,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Telecomandă (fără butoane colorate)",
     "Remote (number buttons N/A)": "Telecomandă (fără butoane numerice)",
     "Remote control": "Control la distanță",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sesiunea de la distanță a expirat",
+    "Remote text entry": "Introducerea textului de la distanță",
     "Remote text entry denied":
         "Introducerea textului de la distanță a fost refuzată",
     "Remote text entry error": "Eroare la introducerea textului de la distanță",
@@ -598,10 +685,12 @@ var keyStrings = {
     "Rename to": "Redenumește în",
     "Repeat parental code": "Introduceți din nou codul parental",
     "Request sended!": "Cerere trimisă!",
+    "Requesting approval for %1": "Se solicită aprobarea pentru %1",
     "Restart player": "Repornește playerul",
     "Restart stream": "Repornește fluxul",
     "Restart stream / Live": "Repornește fluxul / în direct",
     "Resume from archive?": "Reluați din arhivă?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Revino la canalul anterior",
     Rewind: "Derulare",
     "Rewind step by buttons %1/%2": "Pasul derulării cu butoanele %1/%2",
@@ -619,9 +708,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Salvează setările și încarcă lista de canale",
     "Save settings to storage": "Salvează setările în stocare",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenariu",
     Search: "Căutare",
     "Search programme": "Caută emisiunea",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Alegeți tipul de flux:<br>%1",
     "Select category to add channel":
         "Selectați categoria pentru a adăuga canalul",
@@ -648,12 +745,16 @@ var keyStrings = {
     "Set parental code": "Setează codul parental",
     "Set timer?": "Setați temporizatorul?",
     Settings: "Setări",
+    "Settings changed. Discovery was canceled.":
+        "Setările s-au schimbat. Căutarea a fost anulată.",
     "Settings could not be saved": "Setările nu au putut fi salvate",
     "Settings loaded from storage": "Setările au fost încărcate din stocare",
     "Settings STB": "Setări STB",
     "Settings saved": "Setări salvate",
     "Settings saved to storage": "Setările au fost salvate în stocare",
     "Settings sended!": "Setări trimise!",
+    "Several command servers were found. Select one below.":
+        "S-au găsit mai multe servere de comenzi. Selectați unul mai jos.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Setări Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -686,6 +787,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Temporizator de oprire",
     "Sort channels": "Sortează canalele",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Furnizor de portal Stalker",
     "Stalker portal settings": "Setările portalului Stalker",
     "Stalker portals": "Portaluri Stalker",
@@ -707,8 +810,16 @@ var keyStrings = {
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Setări Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL-ul de descoperire a serverului de comenzi nu este valid.",
     "The device ID in the address is invalid.":
         "ID-ul dispozitivului din adresă este nevalid.",
+    "The discovery response is invalid.": "Răspunsul la căutare nu este valid.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Acest browser nu poate efectua o asociere automată în siguranță. Actualizați-l sau introduceți manual setările serverului de comenzi.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Acest browser nu are un profil de descoperire. Introduceți adresa unui server sau configurați profilul de implementare.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Acest player HTTPS nu se poate conecta la un server HTTP. Folosiți un server HTTPS sau deschideți playerul prin HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -752,6 +863,8 @@ var keyStrings = {
     Username: "Nume de utilizator",
     "Username or password is missing.":
         "Lipsește numele de utilizator sau parola.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Setări VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

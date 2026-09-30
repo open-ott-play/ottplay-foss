@@ -624,6 +624,270 @@ for (const query of [
     assert.equal(f.alerts.length, 3);
 }
 
+for (const automaticFirst of [true, false]) {
+    const previous = () => {},
+        editor = () => {},
+        picker = () => {},
+        f = fixture({
+            dialogBoxKeyHandler: previous,
+            editKey: editor,
+            selectBoxKeyHandler: picker,
+        });
+    let catalogCalls = 0;
+    const resolved = [];
+    f.client.load("search?q=current", () => catalogCalls++);
+    const catalog = f.requests[0],
+        busy = f.w.dialogBoxKeyHandler;
+    f.client.resolve(
+        { request: { cmd: "play", fid: 2 }, title: "Next episode" },
+        (item) => resolved.push(item),
+        true
+    );
+    const automatic = f.requests[1];
+    assert.equal(catalog.aborted, undefined);
+    assert.strictEqual(f.w.dialogBoxKeyHandler, busy);
+    assert.equal(f.dom["#dialogbox"].visible, true);
+    const receiveCatalog = () =>
+        catalog.receive({
+            items: [
+                {
+                    title: "Current catalog",
+                    type: "stream",
+                    url: "https://cdn.example/catalog.mp4",
+                },
+            ],
+            type: "category",
+        });
+    const receiveAutomatic = () =>
+        automatic.receive({ url: "https://cdn.example/episode-2-fresh.mp4" });
+    if (automaticFirst) {
+        receiveAutomatic();
+        assert.strictEqual(f.w.dialogBoxKeyHandler, busy);
+        assert.equal(f.dom["#dialogbox"].visible, true);
+        receiveCatalog();
+    } else {
+        receiveCatalog();
+        receiveAutomatic();
+    }
+    assert.equal(catalogCalls, 1);
+    assert.equal(f.w.mediaRecords[0].title, "Current catalog");
+    assert.equal(resolved.length, 1);
+    assert.equal(
+        resolved[0].stream_url,
+        "https://cdn.example/episode-2-fresh.mp4"
+    );
+    assert.strictEqual(f.w.dialogBoxKeyHandler, previous);
+    assert.strictEqual(f.w.editKey, editor);
+    assert.strictEqual(f.w.selectBoxKeyHandler, picker);
+    assert.equal(f.dom["#dialogbox"].visible, false);
+}
+
+{
+    const f = fixture();
+    let catalogCalls = 0,
+        automaticCalls = 0;
+    f.client.load("", () => catalogCalls++);
+    const busy = f.w.dialogBoxKeyHandler;
+    const next = () =>
+        f.client.resolve(
+            { request: { cmd: "play", fid: 2 } },
+            () => automaticCalls++,
+            true
+        );
+    next();
+    const replaced = f.requests[1];
+    next();
+    assert.equal(replaced.aborted, true);
+    assert.equal(f.requests[0].aborted, undefined);
+    assert.strictEqual(f.w.dialogBoxKeyHandler, busy);
+    f.client.cancelAutomatic();
+    assert.equal(f.requests[2].aborted, true);
+    assert.equal(f.requests[0].aborted, undefined);
+    for (const old of f.requests.slice(1)) {
+        old.receive({ url: "https://cdn.example/stale.mp4" });
+        old.fail();
+    }
+    assert.equal(automaticCalls, 0);
+    assert.equal(f.alerts.length, 0);
+    assert.strictEqual(f.w.dialogBoxKeyHandler, busy);
+    assert.equal(f.dom["#dialogbox"].visible, true);
+    f.requests[0].receive({ items: [], type: "category" });
+    assert.equal(catalogCalls, 1);
+}
+
+for (const action of ["cancel", "dispose", "load", "play", "resolve"]) {
+    const f = fixture();
+    let retiredCalls = 0;
+    f.client.load("", () => retiredCalls++);
+    f.client.resolve(
+        { request: { cmd: "play", fid: 2 } },
+        () => retiredCalls++,
+        true
+    );
+    const retired = f.requests.slice();
+    if (action === "load") f.client.load("search?q=new", () => {});
+    else if (action === "play" || action === "resolve")
+        f.client[action]({ request: { cmd: "play", fid: 3 } }, () => {});
+    else f.client[action]();
+    for (const old of retired) {
+        assert.equal(old.aborted, true, action + " aborts both lanes");
+        old.receive({
+            items: [],
+            type: "category",
+            url: "https://cdn.example/stale.mp4",
+        });
+        old.fail();
+    }
+    assert.equal(retiredCalls, 0);
+    assert.equal(f.played.length, 0);
+    assert.equal(f.alerts.length, 0);
+    assert.equal(
+        f.requests.length,
+        action === "cancel" || action === "dispose" ? 2 : 3
+    );
+}
+
+for (const sourceActive of [true, false]) {
+    const f = fixture();
+    let calls = 0;
+    f.client.resolve({ request: { cmd: "play", fid: 2 } }, () => calls++, true);
+    f.w._mediaLoadState = {};
+    f.setActive(sourceActive);
+    f.requests[0].receive({ url: "https://cdn.example/fresh.mp4" });
+    assert.equal(
+        calls,
+        sourceActive ? 1 : 0,
+        "Automatic playback follows source ownership, not the catalog marker"
+    );
+}
+
+for (const failure of ["network", "provider", "url", "throw"]) {
+    const editor = () => {},
+        previous = () => {},
+        toasts = [],
+        f = fixture({
+            dialogBoxKeyHandler: previous,
+            editKey: editor,
+            showShift: (text) => toasts.push(text),
+        });
+    f.client.load("", () => {});
+    const busy = f.w.dialogBoxKeyHandler;
+    if (failure === "throw")
+        f.w.$.ajax = () => {
+            throw Error("fixture-private-key");
+        };
+    f.client.resolve(
+        { request: { cmd: "play", fid: 2 } },
+        () => assert.fail("Failed automatic request resolved"),
+        true
+    );
+    if (failure === "network") f.requests[1].fail();
+    else if (failure !== "throw")
+        f.requests[1].receive({
+            type: failure === "provider" ? "error" : "stream",
+            url: "fixture-private-key",
+        });
+    assert.deepEqual(toasts, ["VPortal request failed"]);
+    assert.equal(f.alerts.length, 0);
+    assert.strictEqual(f.w.dialogBoxKeyHandler, busy);
+    assert.strictEqual(f.w.editKey, editor);
+    assert.equal(f.dom["#dialogbox"].visible, true);
+    assert.equal(f.requests[0].aborted, undefined);
+    f.requests[0].fail();
+    assert.deepEqual(
+        f.alerts,
+        ["VPortal request failed"],
+        "Manual errors stay visible"
+    );
+    assert.strictEqual(f.w.dialogBoxKeyHandler, previous);
+}
+
+{
+    const f = fixture();
+    f.client.resolve({ request: { cmd: "play" } }, () => {}, true);
+    f.requests[0].fail();
+    assert.equal(
+        f.alerts.length,
+        0,
+        "Missing toast support never falls back to a modal"
+    );
+    assert.equal(f.dom["#dialogbox"], undefined);
+}
+
+for (const trigger of ["foreground", "background"]) {
+    const previous = () => {},
+        f = fixture({ dialogBoxKeyHandler: previous });
+    let newestCalls = 0,
+        newestHandler;
+    f.client.load("", () => assert.fail("Canceled catalog completed"));
+    f.client.resolve(
+        { request: { cmd: "play", fid: 2 } },
+        () => assert.fail("Canceled automatic playback resolved"),
+        true
+    );
+    const old = f.requests[trigger === "foreground" ? 0 : 1],
+        abort = old.abort;
+    old.abort = function () {
+        abort.call(this);
+        if (trigger === "foreground")
+            f.client.resolve(
+                { request: { cmd: "play", fid: 3 } },
+                () => newestCalls++,
+                true
+            );
+        else {
+            f.client.load("search?q=newest", () => newestCalls++);
+            newestHandler = f.w.dialogBoxKeyHandler;
+        }
+    };
+    f.client.cancel();
+    assert.equal(f.requests.length, 3);
+    assert.equal(f.requests[0].aborted, true);
+    assert.equal(f.requests[1].aborted, true);
+    assert.equal(
+        f.requests[2].aborted,
+        undefined,
+        "Global cancellation preserves newer work from either abort callback"
+    );
+    if (trigger === "background") {
+        assert.strictEqual(f.w.dialogBoxKeyHandler, newestHandler);
+        assert.equal(f.dom["#dialogbox"].visible, true);
+    } else assert.strictEqual(f.w.dialogBoxKeyHandler, previous);
+    f.requests[2].receive({
+        items: [],
+        type: "category",
+        url: "https://cdn.example/newest.mp4",
+    });
+    assert.equal(newestCalls, 1);
+    for (const retired of f.requests.slice(0, 2)) retired.fail();
+    assert.equal(f.alerts.length, 0);
+    assert.strictEqual(f.w.dialogBoxKeyHandler, previous);
+}
+
+{
+    const f = fixture();
+    let newestCalls = 0;
+    const resolve = (fid, done) =>
+        f.client.resolve({ request: { cmd: "play", fid } }, done, true);
+    resolve(1, () => assert.fail("Old automatic request resolved"));
+    const old = f.requests[0],
+        abort = old.abort;
+    old.abort = function () {
+        abort.call(this);
+        resolve(3, () => newestCalls++);
+    };
+    resolve(2, () => assert.fail("Superseded automatic request resolved"));
+    assert.equal(
+        f.requests.length,
+        2,
+        "Automatic replacement yields to abort reentry"
+    );
+    assert.equal(JSON.parse(f.requests[1].options.data).params.fid, 3);
+    f.requests[1].receive({ url: "https://cdn.example/newest.mp4" });
+    old.receive({ url: "https://cdn.example/stale.mp4" });
+    assert.equal(newestCalls, 1);
+}
+
 for (const action of ["load", "play", "resolve", "cancel"]) {
     const previous = () => {},
         f = fixture({ dialogBoxKeyHandler: previous });
@@ -721,6 +985,91 @@ for (const trigger of ["#dialogbox", "#numprog"]) {
     assert.strictEqual(f.w.selectBoxKeyHandler, foreign);
 }
 
+{
+    const profile = {
+        version: 1,
+        vportal: {
+            routes: [
+                {
+                    path: "/vportal/provider-1",
+                    upstream: "http://portal.example/api/v1/",
+                },
+            ],
+        },
+    };
+    const f = fixture({ __OTTPLAY_HOSTED__: profile });
+    f.client.load("", () => {});
+    const request = f.requests[0].options;
+    assert.equal(request.url, "/vportal/provider-1");
+    assert.equal(request.type, "POST");
+    assert.equal(request.contentType, "application/json; charset=UTF-8");
+    assert.deepEqual(JSON.parse(request.data), {
+        app: "ott-play",
+        key: "fixture-private-key",
+        limit: 300,
+    });
+    assert(!request.url.includes("fixture-private-key"));
+    assert.equal(JSON.parse(request.data).url, undefined);
+    assert.equal(JSON.parse(request.data).params, undefined);
+
+    for (const invalid of [
+        null,
+        {},
+        { ...profile, version: 2 },
+        { version: 1, vportal: { routes: [] } },
+        {
+            version: 1,
+            vportal: {
+                routes: [
+                    {
+                        ...profile.vportal.routes[0],
+                        upstream: "https://portal.example/api/v1/",
+                    },
+                ],
+            },
+        },
+        ...[
+            "//attacker.example",
+            "https://attacker.example/api",
+            "/vportal/provider-1?url=external",
+            "/vportal/../api",
+            "/vportal/provider-1/extra",
+        ].map((path) => ({
+            version: 1,
+            vportal: { routes: [{ ...profile.vportal.routes[0], path }] },
+        })),
+        {
+            version: 1,
+            vportal: {
+                routes: [profile.vportal.routes[0], profile.vportal.routes[0]],
+            },
+        },
+    ]) {
+        const rejected = fixture({ __OTTPLAY_HOSTED__: invalid });
+        let completed = 0;
+        rejected.client.load("", () => completed++);
+        assert.equal(
+            rejected.requests.length,
+            0,
+            "Invalid hosted route cannot fall back to another relay"
+        );
+        assert.equal(completed, 1);
+        assert.equal(rejected.alerts.length, 1);
+        assert(!rejected.alerts[0].includes("fixture-private-key"));
+        assert.equal(rejected.dom["#dialogbox"].visible, false);
+    }
+
+    const native = fixture({ __OTTPLAY_HOSTED__: profile, __TAURI__: {} });
+    native.client.load("", () => {});
+    assert.equal(
+        native.requests[0].options.url,
+        "http://portal.example/api/v1/"
+    );
+    assert.equal(JSON.parse(native.requests[0].options.data).params, undefined);
+}
+
 console.log(
     "PASS VPortal parser, browser/native JSON transport, catalogue controls and paging, asynchronous lifecycle, quality and secret-safe failures"
 );
+
+require("./test_vportal_search.cjs");

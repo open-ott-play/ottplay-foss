@@ -133,14 +133,31 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 577,000 UTF-8 bytes and 169,000
+Each final classic entry bundle is limited to 606,000 UTF-8 bytes and 184,000
 bytes compressed with gzip level 9. The entry plus all five provider families
-must also fit within 639,000 bytes and 192,000 gzip bytes, summed per file.
+must also fit within 671,000 bytes and 209,000 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `player.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
+
+The iOS protected-source integration retains its authentication and cancellation
+checks after sharing native transport helpers. Its combined beta candidate on
+Node 22.23.2 / zlib 1.3.1-e00f703 measures 183,516 gzip bytes after native staging,
+16 bytes over the previous entry limit. The reviewed tradeoff adds 50 gzip bytes
+to that limit; the raw and complete-payload limits remain unchanged. Validate
+both base and candidate versions against every final artifact.
+
+CSP-safe playback selection and confirmation controls share the color-picker
+layout to recover raw bytes. Relative to that protected-source baseline, the
+combined change removes 119 raw bytes and adds 209 gzip bytes for server output
+and 210 gzip bytes for native output. On the same Node/zlib toolchain, version
+1.1.51-beta.3 measures 605,567 raw / 183,673 gzip bytes for server and 605,525 raw /
+183,726 gzip bytes for Tauri and Capacitor after staging. The reviewed entry gzip
+limit increases from 183,550 to 184,000 bytes; raw and complete-payload limits stay
+unchanged. The largest complete beta payload is 670,191 raw / 208,260 gzip bytes
+(the raw maximum is server; the gzip maximum is native).
 
 ### Measuring delivery size
 

@@ -599,7 +599,10 @@ try {
             }),
             changeSelect: (delta) => moved.push(delta),
             console: { log() {} },
-            document: { activeElement: input },
+            document: {
+                activeElement: input,
+                getElementById: (id) => (id === "editvar" ? input : null),
+            },
             isEditMode: false,
             isListVisible: true,
             isSelectBox: false,

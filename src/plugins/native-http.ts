@@ -1,10 +1,17 @@
 /** Native HTTP underneath jQuery, leaving its public AJAX contract intact. */
-export interface NativeHttpResponse {
+interface NativeHttpResponse {
     body: string;
     headers: string;
     status: number;
     statusText: string;
 }
+
+interface Window {
+    installCapacitorHttpTransport: typeof nativeHttpInstallCapacitor;
+    installTauriHttpTransport: typeof nativeHttpInstallTauri;
+}
+
+var nativeHttpSequence = 0;
 
 function nativeHttpRemoteUrl(url: string): boolean {
     if (!/^https?:\/\//i.test(url)) return false;
@@ -56,7 +63,9 @@ function nativeHttpJsonpConverter(callback: string): (text: string) => string {
  */
 function installNativeHttpTransport(
     $: any,
-    request: (args: any) => Promise<NativeHttpResponse>
+    request: (args: any, companion: boolean) => Promise<NativeHttpResponse>,
+    cancel?: (requestId: string, companion: boolean) => Promise<unknown>,
+    authenticationAllowance = 0
 ): void {
     $.ajaxTransport("+* +script", function (opts: any) {
         if (opts.async === false) return;
@@ -107,12 +116,29 @@ function installNativeHttpTransport(
                 String(opts.jsonpCallback)
             );
         }
+        // jQuery's deadline includes interactive sign-in; the native network
+        // request retains its original timeout. Explicit abort stays immediate.
+        var networkTimeout = opts.timeout > 0 ? Number(opts.timeout) : 30000;
+        if (
+            authenticationAllowance &&
+            (isCompanionProxy || (method === "GET" && /^https:\/\//i.test(url)))
+        )
+            opts.timeout = networkTimeout + authenticationAllowance;
         var aborted = false;
+        var settled = false;
+        var requestId: string | undefined;
         return {
-            // Native IPC cannot cancel an in-flight request. jQuery settles abort/timeout
-            // immediately; discard late native responses (native timeout is bounded).
+            // jQuery settles immediately; retire only this native request as well.
             abort: function (): void {
+                if (aborted || settled) return;
                 aborted = true;
+                if (cancel && requestId) {
+                    try {
+                        cancel(requestId, isCompanionProxy).catch(
+                            function () {}
+                        );
+                    } catch (_error) {}
+                }
             },
             send: function (
                 headers: Record<string, string>,
@@ -138,15 +164,24 @@ function installNativeHttpTransport(
                         requestHeaders = {};
                         var ua = nativeHttpFormField(form, "ua");
                         if (ua) requestHeaders["User-Agent"] = ua;
+                        var referer = nativeHttpFormField(form, "referer");
+                        if (referer) requestHeaders.Referer = referer;
                     }
-                    request({
+                    var args: any = {
                         body: requestBody,
                         headers: requestHeaders,
                         method: requestMethod,
-                        timeoutMs: opts.timeout > 0 ? opts.timeout : 30000,
+                        timeoutMs: networkTimeout,
                         url: requestUrl,
-                    }).then(
+                    };
+                    if (cancel) {
+                        requestId =
+                            "http-" + Date.now() + "-" + ++nativeHttpSequence;
+                        args.requestId = requestId;
+                    }
+                    request(args, isCompanionProxy).then(
                         function (response: NativeHttpResponse) {
+                            settled = true;
                             if (aborted) return;
                             complete(
                                 response.status,
@@ -156,6 +191,7 @@ function installNativeHttpTransport(
                             );
                         },
                         function (error: any) {
+                            settled = true;
                             if (aborted) return;
                             var message =
                                 error && error.message
@@ -172,6 +208,7 @@ function installNativeHttpTransport(
                         }
                     );
                 } catch (error) {
+                    settled = true;
                     complete(0, "error", { text: String(error) });
                 }
             },
@@ -179,18 +216,27 @@ function installNativeHttpTransport(
     });
 }
 
-export function installTauriHttpTransport(
+function nativeHttpInstallTauri(
     $: any,
     invoke: (command: string, args: any) => Promise<NativeHttpResponse>
 ): void {
     installNativeHttpTransport($, function (args) {
         return invoke("proxy_http", args);
     });
+    installNativeSwopTransport($, (args) => invoke("swop_http", args), true);
 }
 
-export function installCapacitorHttpTransport(
+function nativeHttpInstallCapacitor(
     $: any,
-    http: { httpRequest(args: any): Promise<NativeHttpResponse> }
+    http: {
+        httpRequest(args: any): Promise<NativeHttpResponse>;
+        cancelHttpRequest?(args: { requestId: string }): Promise<unknown>;
+        swopRequest?(args: any): Promise<NativeHttpResponse>;
+    },
+    companion?: {
+        proxyFetch(args: any): Promise<{ body: string }>;
+        cancelProxyFetch?(args: { requestId: string }): Promise<unknown>;
+    }
 ): void {
     var capacitor = (window as any).Capacitor;
     if (
@@ -199,8 +245,155 @@ export function installCapacitorHttpTransport(
         !capacitor.isNativePlatform()
     )
         return;
-    installNativeHttpTransport($, function (args) {
-        args.url = String(args.url).replace(/^@/, "");
-        return http.httpRequest(args);
+    var ios = capacitor?.getPlatform?.() === "ios";
+    installNativeHttpTransport(
+        $,
+        function (args, isCompanion) {
+            args.url = String(args.url).replace(/^@/, "");
+            if (companion && isCompanion)
+                return companion
+                    .proxyFetch({
+                        referer: args.headers.Referer,
+                        requestId: args.requestId,
+                        url: args.url,
+                        userAgent: args.headers["User-Agent"],
+                    })
+                    .then(function (result) {
+                        return {
+                            body: result.body,
+                            headers: "Content-Type: text/plain\r\n",
+                            status: 200,
+                            statusText: "OK",
+                        };
+                    });
+            return http.httpRequest(args);
+        },
+        ios && http.cancelHttpRequest
+            ? function (requestId, isCompanion) {
+                  if (companion && isCompanion)
+                      return companion.cancelProxyFetch!({ requestId });
+                  return http.cancelHttpRequest!({ requestId });
+              }
+            : undefined,
+        ios && capacitor.Plugins?.AccessMedia ? 300000 : 0
+    );
+    if (capacitor && capacitor.isNativePlatform?.() === true) {
+        installNativeSwopTransport(
+            $,
+            (args) => {
+                if (!http.swopRequest)
+                    throw new Error("Native SWOP unavailable");
+                return http.swopRequest(args);
+            },
+            false
+        );
+    }
+}
+
+// Preserve the classic installation API while keeping transport helpers private.
+window.installTauriHttpTransport = nativeHttpInstallTauri;
+window.installCapacitorHttpTransport = nativeHttpInstallCapacitor;
+
+/** Dedicated, explicit SWOP capability. Never fall back to provider HTTP/XHR. */
+function installNativeSwopTransport(
+    $: any,
+    request: (args: {
+        url: string;
+        body: string;
+        clientId: string;
+    }) => Promise<NativeHttpResponse>,
+    allowLoopback: boolean
+): void {
+    $.ajaxTransport("+*", function (opts: any, original: any) {
+        if (opts.swopNativeRequest !== true) return;
+        var aborted = false;
+        return {
+            abort: function (): void {
+                aborted = true;
+            },
+            send: function (
+                headers: Record<string, string>,
+                complete: any
+            ): void {
+                function fail(timeout?: boolean): void {
+                    if (!aborted)
+                        complete(0, timeout ? "timeout" : "error", {
+                            text: "Native remote text entry request failed",
+                        });
+                }
+                try {
+                    var url = String(original.url || "");
+                    if (url !== String(opts.url || "")) throw new Error();
+                    // Reject URL normalization tricks before parsing (encoded paths,
+                    // userinfo, query, fragment, whitespace and backslashes).
+                    var match =
+                        /^(https?):\/\/([A-Za-z0-9.-]+|\[[0-9a-fA-F:]+\])(?::([0-9]{1,5}))?\/swop\/(session|val)$/.exec(
+                            url
+                        );
+                    if (
+                        !match ||
+                        (match[1] !== "https" &&
+                            !(
+                                allowLoopback &&
+                                (match[2] === "127.0.0.1" ||
+                                    match[2] === "[::1]")
+                            ))
+                    )
+                        throw new Error();
+                    var parsed = new URL(url);
+                    if (
+                        !parsed.hostname ||
+                        (match[3] && (+match[3] < 1 || +match[3] > 65535))
+                    )
+                        throw new Error();
+                    var body = String(opts.data || "");
+                    var value = JSON.parse(body);
+                    if (
+                        !value ||
+                        typeof value !== "object" ||
+                        Array.isArray(value) ||
+                        unescape(encodeURIComponent(body)).length > 65536 ||
+                        opts.type !== "POST" ||
+                        opts.async === false ||
+                        !/^application\/json(?:\s*;|$)/i.test(
+                            String(opts.contentType || "")
+                        ) ||
+                        (opts.dataTypes || []).indexOf("json") === -1
+                    )
+                        throw new Error();
+                    var clientId = "";
+                    for (var key in headers) {
+                        var name = key.toLowerCase();
+                        if (name === "x-swop-client-id")
+                            clientId = headers[key];
+                        else if (name !== "accept" && name !== "content-type")
+                            throw new Error();
+                    }
+                    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(clientId))
+                        throw new Error();
+                    // Only these fields cross IPC; native code independently validates
+                    // and creates its own fixed headers, origin and ten-second deadline.
+                    request({ body: body, clientId: clientId, url: url }).then(
+                        function (response) {
+                            if (!aborted)
+                                complete(
+                                    response.status,
+                                    response.statusText,
+                                    { text: response.body },
+                                    response.headers
+                                );
+                        },
+                        function (error) {
+                            fail(
+                                error &&
+                                    (error.timeout || error.code === "timeout")
+                            );
+                        }
+                    );
+                } catch (_error) {
+                    fail();
+                }
+            },
+        };
     });
 }

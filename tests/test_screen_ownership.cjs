@@ -139,6 +139,9 @@ function fixture() {
             "infoBox",
             "confirmBox",
             "showSelectBox",
+            "showShift",
+            "selectValue",
+            "clickVal",
             "saveListPanelState",
             "restoreListPanelState",
             "showEditKey2",
@@ -148,6 +151,7 @@ function fixture() {
             "popupList",
             "hsvToRgb",
             "bindColorDialogInput",
+            "showColorDialog",
             "colorDialog",
             "selColorDialog",
             "backColorDialog",
@@ -406,8 +410,19 @@ test("saved native key callback cannot save a replacement editor", ({ w }) => {
         newSaves = 0;
     w.editvar = "old";
     w.setEdit = () => oldSaves++;
-    w.showEditKey2();
-    const handler = w.document.getElementById("editvar").__ottEditKey2Handler;
+    let handler;
+    const events = w.EventTarget.prototype;
+    const add = events.addEventListener;
+    events.addEventListener = function (type, callback, options) {
+        if (this.id === "editvar" && type === "keydown") handler = callback;
+        return add.call(this, type, callback, options);
+    };
+    try {
+        w.showEditKey2();
+    } finally {
+        events.addEventListener = add;
+    }
+    assert.equal(typeof handler, "function");
     w.setEdit = () => newSaves++;
     w.editvar = "new";
     w.showEditKey2();
@@ -459,7 +474,150 @@ function configureSwopEditor(w, mode) {
     // Exercise the desktop redirect as well as the TV renderer.
     w.showEditKey = w.showEditKey1;
 }
-function beginSwopEditor({ w, jobs }, mode) {
+test("native editor consumes its opening key until release and releases stale listeners", ({
+    w,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    const event = (type, code, repeat = false) =>
+        new w.KeyboardEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            keyCode: code,
+            repeat,
+        });
+    w.aboutKeyHandler = () => w.showEditKey2();
+    w.$("#listAbout").show();
+    w.keyHandler(event("keydown", 51));
+    const input = w.document.getElementById("editvar");
+    assert.equal(
+        port.keyEvent(),
+        null,
+        "dispatch context ends with the opening action"
+    );
+    assert.equal(input.readOnly, true);
+    for (const type of ["keydown", "keypress"]) {
+        const held = event(type, 51, true);
+        input.dispatchEvent(held);
+        assert.equal(
+            held.defaultPrevented,
+            true,
+            type + " cannot insert the shortcut digit"
+        );
+    }
+    input.dispatchEvent(event("keyup", 51));
+    assert.equal(input.readOnly, false);
+    assert.equal(w.document.activeElement, input);
+    const typed = event("keydown", 51);
+    input.dispatchEvent(typed);
+    assert.equal(
+        typed.defaultPrevented,
+        false,
+        "a fresh digit press remains normal typing"
+    );
+    w.editKey2(w.keys.EXIT);
+    w.$("#listAbout").show();
+    w.keyHandler(event("keydown", 52));
+    const previous = w.document.getElementById("editvar");
+    assert.equal(previous.readOnly, true);
+    w.showEditKey2();
+    const replacement = w.document.getElementById("editvar");
+    previous.dispatchEvent(event("keyup", 52));
+    assert.equal(w.document.activeElement, replacement);
+    assert.equal(replacement.readOnly, false);
+    const fresh = event("keydown", 52);
+    replacement.dispatchEvent(fresh);
+    assert.equal(
+        fresh.defaultPrevented,
+        false,
+        "retired opening-key capture cannot swallow later input"
+    );
+});
+test("forced native editor keeps its hidden settings parent and routes remote save", ({
+    w,
+    key,
+}) => {
+    const port = w.__ottClassicScreenPort;
+    w.aboutKeyHandler = () => true;
+    w.$("#listAbout").show();
+    const parent = port.owner("about");
+    w.editKey1 = () =>
+        assert.fail("Native settings must not route to the graphical editor");
+    w.editKey = w.editKey1;
+    const saved = [];
+    w.setEdit = () => saved.push(w.editvar);
+    w.$("#listAbout").hide();
+    w.showEditKey2();
+    const editor = port.owner("editor");
+    key(w.keys.DOWN);
+    assert.equal(editor.active(), true);
+    assert.equal(
+        parent.active(),
+        true,
+        "hidden settings parent is suspended, not retired"
+    );
+    assert.equal(w.document.activeElement.id, "editRemoteInput");
+    key(w.keys.UP);
+    w.document.getElementById("editvar").value =
+        "https://fixture.invalid/control";
+    key(w.keys.ENTER);
+    assert.deepEqual(saved, ["https://fixture.invalid/control"]);
+    assert.equal(editor.active(), false);
+    assert.equal(parent.active(), true);
+    port.reconcile();
+    assert.equal(
+        parent.active(),
+        false,
+        "hidden foreground screens still retire normally"
+    );
+});
+test("native editor D-pad reaches remote input, keeps cursor keys, and hands off the draft once", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    let saves = 0;
+    const requests = [];
+    w.setEdit = () => saves++;
+    w.$.ajax = (request) => requests.push(request);
+    w.showEditKey2(undefined, true);
+    const input = w.document.getElementById("editvar");
+    const button = w.document.getElementById("editRemoteInput");
+    input.value = "https://fixture.invalid:8081/path?x=&y=3";
+    function press(target, key, keyCode, isComposing = false) {
+        const event = new w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            isComposing,
+            key,
+            keyCode,
+        });
+        target.dispatchEvent(event);
+        return event;
+    }
+    assert.equal(press(input, "ArrowLeft", 37).defaultPrevented, false);
+    assert.equal(
+        press(input, "ArrowDown", 40, true).defaultPrevented,
+        false,
+        "IME keeps candidate navigation"
+    );
+    assert.equal(w.document.activeElement, input);
+    assert.equal(press(input, "ArrowDown", 40).defaultPrevented, true);
+    assert.equal(w.document.activeElement, button);
+    press(button, "ArrowUp", 38);
+    assert.equal(w.document.activeElement, input);
+    press(input, "ArrowUp", 38);
+    assert.equal(w.document.activeElement, button);
+    press(button, "Enter", 13);
+    assert.equal(requests.length, 1);
+    assert.equal(JSON.parse(requests[0].data).draft, input.value);
+    assert.equal(saves, 0, "OK on remote input does not save the editor");
+    press(button, "Enter", 13);
+    assert.equal(
+        requests.length,
+        1,
+        "detached remote button cannot start another session"
+    );
+});
+function beginSwopEditor({ w, jobs }, mode, pendingSession = false) {
     configureSwopEditor(w, mode);
     const port = w.__ottClassicScreenPort;
     const requests = [],
@@ -468,7 +626,7 @@ function beginSwopEditor({ w, jobs }, mode) {
     w.listKeyHandler = () => true;
     port.commitList();
     w.editCaption = "Search";
-    w.editvar = "initial draft";
+    w.editvar = mode === "native" ? "before typing" : "initial draft";
     let editor;
     const save = () => {
         // Channel search captures this original owner when opening the editor.
@@ -476,14 +634,42 @@ function beginSwopEditor({ w, jobs }, mode) {
         saves.push(w.editvar);
     };
     w.setEdit = save;
-    w.showEditKey();
+    w.showEditKey(null, true);
     editor = port.owner("editor");
     const handler = w.editKey,
         panel = port.savedPanel();
-    w.swopLoadValue();
+    const button = w.document.getElementById("editRemoteInput");
+    if (mode === "native") {
+        assert.equal(button.textContent, "Remote text entry");
+        let bodyClicks = 0;
+        w.document.body.addEventListener("click", () => bodyClicks++);
+        const input = w.document.getElementById("editvar");
+        input.value = "initial draft";
+        button.click();
+        assert.equal(
+            bodyClicks,
+            0,
+            "remote button must not reach the body click-to-close router"
+        );
+        input.dispatchEvent(
+            new w.KeyboardEvent("keydown", { key: "Enter", keyCode: 13 })
+        );
+        button.dispatchEvent(
+            new w.KeyboardEvent("keydown", { key: "Escape", keyCode: 27 })
+        );
+        assert(
+            editor.active(),
+            "detached native controls cannot finish a pending remote session"
+        );
+    } else w.swopLoadValue();
     assert.notEqual(w.editKey, handler);
     assert.equal(requests.length, 1);
     assert.equal(requests[0].url, "/swop/session");
+    assert.equal(JSON.parse(requests[0].data).draft, "initial draft");
+    assert.deepEqual(saves, []);
+    assert.deepEqual(Object.keys(requests[0].headers), ["X-Swop-Client-Id"]);
+    if (pendingSession)
+        return { button, editor, handler, panel, port, requests, save, saves };
     requests[0].success({
         code: "ABCDEF",
         entryCode: "ABCDEF-GHJKLM",
@@ -497,8 +683,59 @@ function beginSwopEditor({ w, jobs }, mode) {
     poll.callback();
     assert.equal(requests.length, 2);
     assert.equal(requests[1].url, "/swop/val");
-    return { editor, handler, panel, port, requests, save, saves };
+    return { button, editor, handler, panel, port, requests, save, saves };
 }
+for (const platform of ["__TAURI__", "Capacitor"]) {
+    test(
+        platform +
+            " redirect exposes native remote input instead of the TV keyboard",
+        ({ w }) => {
+            configureSwopEditor(w, "TV");
+            w[platform] = {};
+            w.showEditKey();
+            assert(w.document.getElementById("editvar"));
+            assert.equal(
+                w.document.getElementById("editRemoteInput").textContent,
+                "Remote text entry"
+            );
+        }
+    );
+}
+test("Tauri fullscreen capture lets native remote-button Escape discard the editor", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    const fullscreenCalls = [],
+        saves = [];
+    w.__TAURI__ = {};
+    w.__ottTauriNativeFs = true;
+    w.stbSetTauriNativeFullscreen = (value) => fullscreenCalls.push(value);
+    w.eval(functions("src/core/index.ts", ["installTauriFsKeyCapture"]));
+    w.installTauriFsKeyCapture();
+    w.setEdit = () => saves.push(w.editvar);
+    w.showEditKey();
+    const owner = w.__ottClassicScreenPort.owner("editor");
+    const button = w.document.getElementById("editRemoteInput");
+    const escape = () =>
+        new w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            code: "Escape",
+            key: "Escape",
+            keyCode: 27,
+        });
+    button.focus();
+    button.dispatchEvent(escape());
+    assert.equal(owner.active(), false);
+    assert.deepEqual(saves, []);
+    assert.deepEqual(fullscreenCalls, []);
+    w.document.body.dispatchEvent(escape());
+    assert.deepEqual(
+        fullscreenCalls,
+        [false],
+        "Escape outside the editor still exits fullscreen"
+    );
+});
 for (const mode of ["native", "TV"]) {
     test(
         "SWOP " + mode + " resumes the original editor and Enter saves once",
@@ -515,7 +752,14 @@ for (const mode of ["native", "TV"]) {
             if (mode === "native") {
                 const input = w.document.getElementById("editvar");
                 assert.equal(input.value, value);
+                assert.equal(input.type, "password");
                 assert.equal(w.document.activeElement, input);
+                s.button.click();
+                assert.equal(
+                    s.requests.length,
+                    2,
+                    "retired button is detached"
+                );
             } else {
                 const selected = w.document.getElementById("ik" + w._keyCur);
                 assert.equal(selected.textContent.trim(), "Ok");
@@ -542,6 +786,11 @@ for (const mode of ["native", "TV"]) {
             assert.equal(s.port.savedPanel(), s.panel);
             assert.equal(w.editKey, s.handler);
             assert.equal(w.editvar, "initial draft");
+            if (mode === "native")
+                assert.equal(
+                    w.document.getElementById("editvar").type,
+                    "password"
+                );
             assert.equal(w.$("#listEdit").is(":visible"), true);
             assert.deepEqual(s.saves, []);
             s.requests[1].success({
@@ -568,6 +817,95 @@ for (const mode of ["native", "TV"]) {
         }
     );
 }
+test("native remote button reports unconfigured service without saving or leaving the field", ({
+    w,
+}) => {
+    configureSwopEditor(w, "native");
+    const alerts = [];
+    w.alert = (message) => alerts.push(message);
+    w.getSwopBaseUrl = () => "";
+    w.$.ajax = () => assert.fail("unconfigured input must not make a request");
+    w.setEdit = () => assert.fail("opening remote input must not save");
+    w.showEditKey();
+    const input = w.document.getElementById("editvar");
+    input.value = "typed & <literal>";
+    w.document.getElementById("editRemoteInput").click();
+    assert.deepEqual(alerts, ["Remote text entry not configured"]);
+    assert.equal(w.document.getElementById("editvar"), input);
+    assert.equal(w.editvar, input.value);
+});
+for (const mode of ["native", "TV"]) {
+    test(
+        "SWOP " +
+            mode +
+            " owner cleanup rejects late session callbacks and stale input",
+        (f) => {
+            const { w, jobs } = f;
+            const s = beginSwopEditor(f, mode, true);
+            const staleKey = w.editKey;
+            w.setEdit = () =>
+                assert.fail("stale session cannot save replacement");
+            w.editvar = "replacement draft";
+            w.showEditKey();
+            const replacement = s.port.owner("editor");
+            const html = w.document.getElementById("listEdit").innerHTML;
+            const handler = w.editKey;
+            assert.equal(s.editor.active(), false);
+            assert.equal(
+                jobs.some((job) => job.active && job.delay === 600000),
+                false
+            );
+            s.requests[0].error({
+                responseJSON: { error: "late denial" },
+                status: 403,
+            });
+            s.requests[0].success({ code: "OLDOLD", sessionToken: "stale" });
+            jobs.forEach((job) => job.callback());
+            staleKey(w.keys.RETURN);
+            if (s.button) s.button.click();
+            assert.equal(s.port.owner("editor"), replacement);
+            assert.equal(w.editKey, handler);
+            assert.equal(w.editvar, "replacement draft");
+            assert.equal(w.document.getElementById("listEdit").innerHTML, html);
+            assert.equal(s.requests.length, 1);
+        }
+    );
+    test(
+        "SWOP " +
+            mode +
+            " invalidation cancels polls and ignores late ready/error callbacks",
+        (f) => {
+            const { w, jobs } = f;
+            const s = beginSwopEditor(f, mode);
+            s.port.invalidate();
+            w.editvar = "new source";
+            w.$("#listEdit").html("new screen").show();
+            s.requests[1].error({ status: 500 });
+            s.requests[1].success({ status: "ready", value: "stale value" });
+            jobs.forEach((job) => job.callback());
+            assert.equal(w.editvar, "new source");
+            assert.equal(w.$("#listEdit").text(), "new screen");
+            assert.equal(s.requests.length, 2);
+            assert.equal(
+                jobs.some((job) => job.active),
+                false
+            );
+        }
+    );
+}
+test("native SWOP timeout restores the typed draft and original save callback", (f) => {
+    const { w, jobs } = f;
+    const alerts = [];
+    w.alert = (message) => alerts.push(message);
+    const s = beginSwopEditor(f, "native", true);
+    jobs.find((job) => job.active && job.delay === 600000).callback();
+    assert.deepEqual(alerts, ["Remote session expired"]);
+    assert.equal(s.port.owner("editor"), s.editor);
+    assert.equal(s.editor.model.save, s.save);
+    assert.equal(w.document.getElementById("editvar").value, "initial draft");
+    assert.equal(w.document.getElementById("editvar").type, "password");
+    assert.deepEqual(s.saves, []);
+});
 test("source replacement retires dialogs, editor and scheduled list detail", ({
     w,
     jobs,
@@ -648,6 +986,52 @@ test("picker timeout and saved callback cannot affect newer picker", ({
     w.selectBoxKeyHandler(13);
     assert.deepEqual(chosen, [["new", 1]]);
 });
+test("retired focused picker row lets Enter reach the new confirmation", ({
+    w,
+}) => {
+    let selected = 0,
+        resumed = 0;
+    w._doKey = w.dispatchKey;
+    w.addEventListener("keydown", w.keyHandler);
+    w.showSelectBox(
+        0,
+        ["HD", "SD"],
+        () => {
+            selected++;
+            w.confirmBox("Continue?", () => resumed++);
+        },
+        -1
+    );
+    const old = w.channelNumberElement.firstChild;
+    const press = (target, code) =>
+        target.dispatchEvent(
+            new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                keyCode: code,
+                which: code,
+            })
+        );
+    press(old, w.keys.ENTER);
+    assert.equal(selected, 1);
+    assert.equal(resumed, 0, "opening key cannot also accept the confirmation");
+    assert.equal(w.channelNumberElement.style.display, "none");
+    // Chromium may target this old focused node until the next rendering frame.
+    press(old, w.keys.ENTER);
+    assert.equal(selected, 1);
+    assert.equal(
+        resumed,
+        1,
+        "retired node does not swallow the current modal's key"
+    );
+    w.showSelectBox(0, ["HD", "SD"], () => selected++, -1);
+    press(w.channelNumberElement.firstChild, 32);
+    assert.equal(
+        selected,
+        2,
+        "Space still accepts a foreground quality option once"
+    );
+});
 test("quality picker suspends and restores its media parent", ({
     w,
     events,
@@ -710,6 +1094,192 @@ test("explicit picker decoration preserves its owner, input dispatch and stale g
     assert.equal(calls, 2);
     assert.deepEqual(chosen, [1]);
 });
+test("notification replacement cancels the earlier hide timer", ({
+    w,
+    jobs,
+}) => {
+    const info = w.document.createElement("div");
+    info.id = "info";
+    w.document.body.appendChild(info);
+    w.showShift("First");
+    w.showShift("Settings saved");
+    assert.equal(jobs.filter((job) => job.active).length, 1);
+    assert.equal(jobs[0].active, false);
+    assert.equal(info.style.display, "block");
+    assert.equal(info.textContent, "Settings saved");
+    jobs[1].callback();
+    assert.equal(info.style.display, "none");
+});
+test("notification delay belongs to its node after replacement", ({
+    w,
+    jobs,
+}) => {
+    w.showShift("Missing node");
+    assert.equal(jobs.length, 0);
+    const oldInfo = w.document.createElement("div");
+    oldInfo.id = "info";
+    w.document.body.appendChild(oldInfo);
+    w.showShift("Old node");
+    oldInfo.remove();
+    const info = w.document.createElement("div");
+    info.id = "info";
+    info.style.display = "inline";
+    w.document.body.appendChild(info);
+    w.showShift("Replacement node");
+    assert.equal(info.style.display, "block");
+    jobs[0].callback();
+    assert.equal(oldInfo.style.display, "none");
+    assert.equal(info.style.display, "block");
+    assert.equal(info.textContent, "Replacement node");
+    jobs[1].callback();
+    assert.equal(info.style.display, "none");
+});
+test("settings value clicks honor filtered indices and the current overlay", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    const row = { name: "Fixture", val: 0, values: ["A", "@@@", "B", "C"] };
+    w.selectValue(row);
+    const button = w.document.getElementById("ik1");
+    assert.equal(button.getAttribute("onclick"), null);
+    assert.equal(button.style.lineHeight, "32px");
+    assert(button.style.width);
+    w.confirmBox("Overlay", () =>
+        assert.fail("grid cannot activate the dialog")
+    );
+    button.click();
+    assert.equal(w._curVal, 0, "covered grid cannot change selection");
+    key(w.keys.RETURN);
+    button.click();
+    assert.equal(w._curVal, 1);
+    assert.equal(row.val, 0, "first click only focuses");
+    assert.equal(w.listDetailElement.textContent, "B");
+    button.click();
+    assert.equal(
+        row.val,
+        2,
+        "second click commits the original, unfiltered index"
+    );
+    assert.equal(w.$("#listAbout").is(":visible"), false);
+    w.selectValue(row);
+    key(w.keys.RIGHT);
+    key(w.keys.RETURN);
+    assert.equal(row.val, 2, "Back cancels the uncommitted keyboard selection");
+    w.selectValue(row);
+    key(w.keys.RIGHT);
+    key(w.keys.ENTER);
+    assert.equal(row.val, 3, "keyboard acceptance still commits");
+});
+test("settings grid keeps label markup consistent without confirming zero movement", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    const row = {
+        name: "Fixture",
+        val: 0,
+        values: ["Rock &amp; Roll <b>HD</b>", "News &lt;Live&gt; <i>2</i>"],
+    };
+    w.selectValue(row);
+    const first = w.document.getElementById("ik0");
+    const second = w.document.getElementById("ik1");
+    assert.equal(w.listDetailElement.innerHTML, first.innerHTML);
+    assert.equal(w.listDetailElement.textContent, "Rock & Roll HD");
+    key(w.keys.UP);
+    assert.equal(
+        w._curVal,
+        0,
+        "Up at the first short row moves zero positions"
+    );
+    assert.equal(w.$("#listAbout").is(":visible"), true);
+    assert.equal(row.val, 0);
+    key(w.keys.RIGHT);
+    assert.equal(w.listDetailElement.innerHTML, second.innerHTML);
+    assert.equal(w.listDetailElement.textContent, "News <Live> 2");
+    first.click();
+    assert.equal(w.listDetailElement.innerHTML, first.innerHTML);
+    assert.equal(w.listDetailElement.textContent, "Rock & Roll HD");
+    assert.equal(w.$("#listAbout").is(":visible"), true);
+});
+test("settings grid measures each visible label once and clears the probe once", ({
+    w,
+    key,
+}) => {
+    w.settings = { pageSize: 25 };
+    w.getViewportHeightScale = () => 1;
+    w._curVal = 0;
+    w.showPage();
+    w.$("body").append('<div id="testFont"></div>');
+    const widths = { A: 40, B: 120, C: 80, D: 40, E: 100, Wide: 250 };
+    const measured = [];
+    let clears = 0;
+    const originalWidth = w.$.fn.width;
+    const originalText = w.$.fn.text;
+    w.$.fn.width = function () {
+        if (this[0]?.id === "testFont") {
+            const label = this[0].textContent.trim();
+            measured.push(label);
+            return widths[label];
+        }
+        if (this[0]?.id === "listAbout") return 1000;
+        return originalWidth.apply(this, arguments);
+    };
+    w.$.fn.text = function (value) {
+        if (this[0]?.id === "testFont" && value === "") clears++;
+        return originalText.apply(this, arguments);
+    };
+    const row = {
+        name: "Fixture",
+        val: 0,
+        values: ["A", "@@@", "Wide", "B", "C", "D", "E"],
+    };
+    w.selectValue(row);
+    assert.deepEqual(measured, ["A", "Wide", "B", "C", "D", "E"]);
+    assert.equal(clears, 1);
+    assert.equal(w.document.getElementById("testFont").textContent, "");
+    assert.equal(
+        parseFloat(w.document.getElementById("ik0").style.width),
+        98 / 3,
+        "the widest label determines three columns"
+    );
+    key(w.keys.DOWN);
+    assert.equal(w.listDetailElement.textContent, "C");
+    key(w.keys.ENTER);
+    assert.equal(
+        row.val,
+        4,
+        "vertical movement retains the filtered value map"
+    );
+});
+for (const width of [0, undefined]) {
+    test(
+        "settings grid retains six-column fallback for width " + width,
+        ({ w }) => {
+            w.settings = { pageSize: 25 };
+            w.getViewportHeightScale = () => 1;
+            w._curVal = 0;
+            w.showPage();
+            const originalWidth = w.$.fn.width;
+            w.$.fn.width = function () {
+                if (this[0]?.id === "listAbout") return 1000;
+                if (!this.length) return width;
+                return originalWidth.apply(this, arguments);
+            };
+            w.selectValue({ name: "Fixture", val: 0, values: ["A", "B"] });
+            assert.equal(
+                parseFloat(w.document.getElementById("ik0").style.width),
+                98 / 6
+            );
+        }
+    );
+}
 test("color picker old callback cannot commit to a new settings draft", ({
     w,
 }) => {

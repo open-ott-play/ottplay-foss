@@ -17,12 +17,14 @@ export interface CommandServerRequest {
     body?: string;
     headers: Record<string, string>;
     method: string;
+    secureControl?: boolean;
     timeoutMs: number;
     url: string;
 }
 
 export interface CommandServerResponse {
     body: string;
+    error?: string;
     status: number;
 }
 
@@ -100,7 +102,12 @@ export function createCommandServer(
         complete: (response?: CommandServerResponse) => void
     ) => () => void,
     persist: (config: CommandServerConfig) => void,
-    dispatch: (command: any) => string | void
+    dispatch: (command: any) => string | void,
+    execute?: (
+        request: any,
+        done: (result: any) => void,
+        afterReply: (effect: () => void) => void
+    ) => (() => void) | void
 ): any {
     var config: CommandServerConfig = {
         address: "",
@@ -122,6 +129,18 @@ export function createCommandServer(
     var state = "disconnected";
     var message = "Disconnected";
     var listener: (() => void) | null = null;
+    var responses: string[] = [];
+    var responseHistory: Record<string, string> = Object.create(null);
+    var responseOrder: string[] = [];
+    var historySize = 0;
+    var moreRequests = false;
+    var cancelExecution: (() => void) | null = null;
+    // Delivery effects are local capabilities, never part of JSON or replay history.
+    var pendingEffect: {
+        body: string;
+        deadline: number;
+        run: () => void;
+    } | null = null;
 
     function status(): any {
         return {
@@ -144,6 +163,16 @@ export function createCommandServer(
         var abort = cancel;
         cancel = null;
         active = false;
+        var abortWork = cancelExecution;
+        cancelExecution = null;
+        if (abortWork) {
+            try {
+                abortWork();
+            } catch (_error) {}
+        }
+        responses = [];
+        pendingEffect = null;
+        moreRequests = false;
         if (abort) {
             try {
                 abort();
@@ -177,14 +206,24 @@ export function createCommandServer(
                 Math.floor(Math.random() * 500)
         );
     }
-    function request(method: string, ids?: string[]): void {
+    function request(
+        method: string,
+        ids?: string[],
+        responseToSend?: string
+    ): void {
         if (!config.enabled || active) return;
         var current = generation;
         var requestStarted = Date.now();
         active = true;
         var url = config.address;
         var queryIndex = url.indexOf("?");
-        if (ids)
+        if (responseToSend)
+            url =
+                (queryIndex < 0 ? url : url.slice(0, queryIndex)).slice(
+                    0,
+                    -wire.commandPath.length
+                ) + "/api/responses";
+        else if (ids)
             url =
                 (queryIndex < 0 ? url : url.slice(0, queryIndex)) +
                 wire.ackPath.slice(wire.commandPath.length) +
@@ -193,13 +232,20 @@ export function createCommandServer(
         var headers: Record<string, string> = {
             Authorization: "Bearer " + config.token,
         };
-        if (ids) headers["Content-Type"] = "application/json";
+        if (ids || responseToSend) headers["Content-Type"] = "application/json";
         var finished = false;
         function complete(response?: CommandServerResponse): void {
             if (finished || current !== generation || !config.enabled) return;
             finished = true;
             active = false;
             cancel = null;
+            // The server may have restarted or expired a request during execution.
+            if (responseToSend && response && response.status === 404) {
+                responses.shift();
+                pendingEffect = null;
+                schedule(1000);
+                return;
+            }
             if (!response || response.status !== 200) {
                 failed(response);
                 return;
@@ -212,7 +258,26 @@ export function createCommandServer(
                 return;
             }
             var waiting = false;
-            if (ids) {
+            if (responseToSend) {
+                if (!data || data.status !== "ok") {
+                    failed();
+                    return;
+                }
+                responses.shift();
+                var effect = pendingEffect;
+                pendingEffect = null;
+                if (
+                    effect &&
+                    effect.body === responseToSend &&
+                    Date.now() < effect.deadline
+                ) {
+                    // Retire before invocation: lost ACKs or reentrant reloads cannot replay it.
+                    try {
+                        effect.run();
+                    } catch (_error) {}
+                    if (current !== generation || !config.enabled) return;
+                }
+            } else if (ids) {
                 if (!data || data.status !== "ok") {
                     failed();
                     return;
@@ -225,6 +290,7 @@ export function createCommandServer(
                     failed();
                     return;
                 }
+                moreRequests = false;
                 var now = Date.now();
                 for (var j = 0; j < data.commands.length; j++) {
                     var command = data.commands[j];
@@ -286,6 +352,178 @@ export function createCommandServer(
                     if (pending.indexOf(command.id) === -1)
                         pending.push(command.id);
                 }
+                if (
+                    execute &&
+                    Array.isArray(data.requests) &&
+                    data.requests.length
+                ) {
+                    var item = data.requests[0];
+                    if (
+                        item &&
+                        typeof item.id === "string" &&
+                        /^[a-f0-9]{32}$/.test(item.id) &&
+                        typeof item.expires_at === "number" &&
+                        isFinite(item.expires_at) &&
+                        typeof data.server_time === "number" &&
+                        isFinite(data.server_time) &&
+                        (item.expires_at - data.server_time) * 1000 >
+                            Date.now() - requestStarted
+                    ) {
+                        // A replay does not prove the server made queue progress.
+                        moreRequests =
+                            data.requests.length > 1 &&
+                            !responseHistory[item.id];
+                        if (responseHistory[item.id])
+                            responses.push(responseHistory[item.id]);
+                        else {
+                            active = true;
+                            var completed = false;
+                            var afterReplyEffect: (() => void) | null = null;
+                            var executionMs = Math.min(
+                                40000,
+                                Math.max(
+                                    1,
+                                    (item.expires_at - data.server_time) *
+                                        1000 -
+                                        (Date.now() - requestStarted)
+                                )
+                            );
+                            var executionDeadline = Date.now() + executionMs;
+                            var executionTimer = w.setTimeout(function () {
+                                var abortWork = cancelExecution;
+                                finishExecution({
+                                    data: {
+                                        error: "Request timed out in the player.",
+                                    },
+                                    status: "rejected",
+                                });
+                                if (abortWork) {
+                                    try {
+                                        abortWork();
+                                    } catch (_error) {}
+                                }
+                            }, executionMs);
+                            var finishExecution = function (value: any): void {
+                                if (
+                                    completed ||
+                                    current !== generation ||
+                                    !config.enabled
+                                )
+                                    return;
+                                completed = true;
+                                w.clearTimeout(executionTimer);
+                                active = false;
+                                cancelExecution = null;
+                                var serialized: string;
+                                var error =
+                                    "The player returned an invalid result.";
+                                try {
+                                    var resultStatus = value && value.status;
+                                    if (
+                                        resultStatus !== "ok" &&
+                                        resultStatus !== "rejected" &&
+                                        resultStatus !== "unsupported"
+                                    )
+                                        throw new Error();
+                                    var data = JSON.stringify(value.data);
+                                    if (typeof data !== "string")
+                                        throw new Error();
+                                    serialized =
+                                        '{"data":' +
+                                        data +
+                                        ',"id":"' +
+                                        item.id +
+                                        '","status":"' +
+                                        resultStatus +
+                                        '"}';
+                                } catch (_error) {
+                                    serialized = "";
+                                }
+                                // Conservative UTF-8 bound, including JSON escaping. Limit
+                                // cached results independently of the number of request IDs.
+                                if (serialized.length * 3 > 2 * 1024 * 1024) {
+                                    serialized = "";
+                                    error =
+                                        "Result is too large. Narrow the search.";
+                                }
+                                if (!serialized) {
+                                    resultStatus = "rejected";
+                                    serialized = JSON.stringify({
+                                        data: {
+                                            error: error,
+                                        },
+                                        id: item.id,
+                                        status: "rejected",
+                                    });
+                                }
+                                if (current !== generation || !config.enabled)
+                                    return;
+                                if (
+                                    afterReplyEffect &&
+                                    resultStatus === "ok" &&
+                                    Date.now() < executionDeadline
+                                )
+                                    pendingEffect = {
+                                        body: serialized,
+                                        deadline: executionDeadline,
+                                        run: afterReplyEffect,
+                                    };
+                                afterReplyEffect = null;
+                                responseHistory[item.id] = serialized;
+                                historySize += serialized.length;
+                                responseOrder.push(item.id);
+                                while (
+                                    responseOrder.length > 50 ||
+                                    historySize > 2 * 1024 * 1024
+                                ) {
+                                    var oldest = responseOrder.shift()!;
+                                    historySize -=
+                                        responseHistory[oldest].length;
+                                    delete responseHistory[oldest];
+                                }
+                                responses.push(serialized);
+                                failures = 0;
+                                schedule(0);
+                            };
+                            try {
+                                var cancelWork = execute(
+                                    item,
+                                    finishExecution,
+                                    function (effect: () => void) {
+                                        if (
+                                            !completed &&
+                                            current === generation &&
+                                            config.enabled &&
+                                            !afterReplyEffect &&
+                                            typeof effect === "function"
+                                        )
+                                            afterReplyEffect = effect;
+                                    }
+                                );
+                                if (current !== generation || !config.enabled) {
+                                    w.clearTimeout(executionTimer);
+                                    if (cancelWork) {
+                                        try {
+                                            cancelWork();
+                                        } catch (_error) {}
+                                    }
+                                } else if (!completed)
+                                    cancelExecution = function () {
+                                        w.clearTimeout(executionTimer);
+                                        if (cancelWork) cancelWork();
+                                    };
+                            } catch (_error) {
+                                finishExecution({
+                                    data: {
+                                        error: "The player could not handle this request.",
+                                    },
+                                    status: "rejected",
+                                });
+                            }
+                            return;
+                        }
+                    }
+                }
             }
             failures = 0;
             update(
@@ -294,12 +532,18 @@ export function createCommandServer(
                     ? "Connected. Waiting for the channel list..."
                     : lastCommandMessage || "Connected"
             );
-            schedule(pending.length ? 0 : 1000);
+            schedule(
+                pending.length || responses.length || moreRequests ? 0 : 1000
+            );
         }
         try {
             var abort = send(
                 {
-                    body: ids ? JSON.stringify({ ids: ids }) : undefined,
+                    body: responseToSend
+                        ? responseToSend
+                        : ids
+                          ? JSON.stringify({ ids: ids })
+                          : undefined,
                     headers: headers,
                     method: method,
                     timeoutMs: 8000,
@@ -314,6 +558,7 @@ export function createCommandServer(
     }
     function poll(): void {
         if (pending.length) request("POST", pending.slice(0, wire.ackBatchMax));
+        else if (responses.length) request("POST", undefined, responses[0]);
         else request("GET");
     }
     function configure(next: CommandServerConfig): void {
@@ -336,6 +581,9 @@ export function createCommandServer(
         ) {
             seen = Object.create(null);
             seenOrder = [];
+            responseHistory = Object.create(null);
+            responseOrder = [];
+            historySize = 0;
         }
         seenAddress = normalizedAddress;
         seenToken = config.token;
@@ -420,6 +668,63 @@ export function createCommandServerTransport(
                 nativeRequest(request).then(finish, function () {
                     finish();
                 });
+            } catch (_error) {
+                finish();
+            }
+        } else if (request.secureControl) {
+            try {
+                var target = new URL(request.url);
+                if (
+                    target.protocol !== "https:" ||
+                    target.username ||
+                    target.password ||
+                    target.hash
+                )
+                    throw new Error();
+                if (
+                    typeof w.fetch !== "function" ||
+                    typeof w.Request !== "function" ||
+                    typeof w.AbortController !== "function"
+                ) {
+                    finish({
+                        body: "",
+                        error: "secure_control_unavailable",
+                        status: 0,
+                    });
+                } else {
+                    xhr = new w.AbortController();
+                    var fetchRequest = new w.Request(request.url, {
+                        body: request.body,
+                        cache: "no-store",
+                        credentials: "omit",
+                        headers: request.headers,
+                        method: request.method,
+                        redirect: "error",
+                        signal: xhr.signal,
+                    });
+                    if (fetchRequest.redirect !== "error") {
+                        finish({
+                            body: "",
+                            error: "secure_control_unavailable",
+                            status: 0,
+                        });
+                    } else {
+                        w.fetch(fetchRequest)
+                            .then(function (response: any) {
+                                return response.text().then(function (
+                                    body: string
+                                ) {
+                                    finish({
+                                        body: body,
+                                        status: response.status,
+                                    });
+                                });
+                            })
+                            .catch(function () {
+                                finish();
+                            });
+                    }
+                }
             } catch (_error) {
                 finish();
             }

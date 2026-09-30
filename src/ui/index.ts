@@ -295,14 +295,6 @@ export function uiInit(): void {
     });
     $("#listEdit").on("hide.ottUi", function () {
         $("#listIn").show();
-        var editEl = document.getElementById(
-            "editvar"
-        ) as HTMLInputElement | null;
-        var handler = editEl && (editEl as any).__ottEditKey2Handler;
-        if (editEl && typeof handler === "function") {
-            editEl.removeEventListener("keydown", handler);
-            delete (editEl as any).__ottEditKey2Handler;
-        }
         $("#listEdit").text("");
     });
     $("#dialogbox").on("show.ottUi", function () {
@@ -312,6 +304,44 @@ export function uiInit(): void {
                 left: (1260 * getViewportWidthScale() - $(this).width()) / 2,
                 top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
+    });
+    ["dialogbox", "listPopUp"].forEach(function (id) {
+        var root = document.getElementById(id);
+        if (!root || (root as any).__ottButtonsBound) return;
+        (root as any).__ottButtonsBound = true;
+        var popup = id === "listPopUp";
+        var dispatchButton = function (event: Event): void {
+            var target = event.target as Node | null;
+            if (target && target.nodeType !== 1) target = target.parentNode;
+            var button = target && $(target).closest("span[data-ott-key]")[0];
+            if (!button || !root!.contains(button)) return;
+            // Consume before ownership checks so obsolete controls cannot
+            // activate inline fallbacks or the video surface underneath.
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            var w = window as any;
+            var port = w.__ottClassicScreenPort;
+            var owner = popup ? port.listOwner() : port.owner("dialog");
+            var key = Number(button.getAttribute("data-ott-key"));
+            if (
+                owner &&
+                owner.foreground() &&
+                (!popup || $(root!).is(":visible")) &&
+                key &&
+                isFinite(key)
+            )
+                w._doKey(key, event);
+        };
+        root.addEventListener("click", dispatchButton, true);
+        root.addEventListener(
+            "keydown",
+            function (event: KeyboardEvent): void {
+                if (event.keyCode === 13 || event.keyCode === 32)
+                    dispatchButton(event);
+            },
+            true
+        );
     });
 
     // Click on info bar toggles channel info display
@@ -410,9 +440,12 @@ export function uiInit(): void {
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    if (usesLgPointerInput()) {
-                        // A click can arrive without movement after a menu opens.
-                        // Focus first, then dispatch exactly one OK action.
+                    if (
+                        usesLgPointerInput() ||
+                        (ev as any).ottNativeListTap === true
+                    ) {
+                        // Touch taps and LG pointer clicks focus and activate
+                        // in one action, including an already selected row.
                         if (idx !== selIndex) setSelect(idx);
                         dispatchKey(keys.ENTER);
                     } else if (
@@ -1114,6 +1147,9 @@ export function setSelect(index: number): void {
  * @analysis Errors during DOM manipulation are silently caught and logged.
  */
 export function closeList(restorePip = true): void {
+    var wasListVisible = isListVisible;
+    if (wasListVisible && (window as any).__ottClassicGuide)
+        (window as any).__ottClassicGuide.cancelConsumers();
     (window as any).__ottClassicScreenPort.closeList();
     if ((window as any).__ottClassicGuideScreen)
         (window as any).__ottClassicGuideScreen.close();
@@ -1162,6 +1198,12 @@ export function closeList(restorePip = true): void {
     } catch (e) {
         console.error(e);
     }
+    // Visible rows owned the guide callbacks; fullscreen returns ownership
+    // to the playing channel, which can differ from the selected list row.
+    if (wasListVisible && !(window as any).playType)
+        updateChannelInfo(
+            ((window as any).curList || [])[(window as any).primaryIndex]
+        );
 }
 
 /**
@@ -1170,16 +1212,16 @@ export function closeList(restorePip = true): void {
  *
  * @param message - HTML string to display.
  * @returns void
- * @sideeffect Sets `#info` innerHTML and display style, then hides it after 3000ms via setTimeout.
+ * @sideeffect Replaces the per-element timer and hides `#info` after 3000ms.
  */
 export function showShift(message: string): void {
-    var info = document.getElementById("info");
-    if (info) {
-        info.innerHTML = metadataHtml(message);
-        info.style.display = "";
-    }
-    setTimeout(function () {
-        if (info) info.style.display = "none";
+    var info: any = document.getElementById("info");
+    if (!info) return;
+    clearTimeout(info.__ottShiftTimer);
+    info.innerHTML = metadataHtml(message);
+    info.style.display = "block";
+    info.__ottShiftTimer = setTimeout(function () {
+        info.style.display = "none";
     }, 3000);
 }
 
@@ -1303,21 +1345,36 @@ export function showSelectBox(
         owner.model.focus = focus;
         if (immediate) choose(focus);
         if (!owner.active()) return;
-        var html = "";
-        labels.forEach(function (label, index) {
-            html +=
-                '<div style="' +
-                (index === focus
-                    ? "color:" + w.curColor + ";background-color:" + w.curColorB
-                    : "") +
-                '" onclick="_doKey(' +
-                (-100 + index) +
-                ');">&nbsp;&nbsp;' +
-                metadataHtml(label) +
-                "&nbsp;&nbsp;</div>";
-        });
         if (channelNumberElement) {
-            channelNumberElement.innerHTML = html;
+            channelNumberElement.innerHTML = "";
+            labels.forEach(function (label, index) {
+                var row = document.createElement("div");
+                row.setAttribute("role", "button");
+                row.setAttribute("aria-pressed", String(index === focus));
+                row.tabIndex = index === focus ? 0 : -1;
+                row.innerHTML =
+                    "&nbsp;&nbsp;" + metadataHtml(label) + "&nbsp;&nbsp;";
+                if (index === focus) {
+                    row.style.color = w.curColor;
+                    row.style.backgroundColor = w.curColorB;
+                }
+                // Native CSP rejects inline handlers/styles; consume the click
+                // before the video surface can open its menu underneath us.
+                row.onclick = function (event) {
+                    event.stopPropagation();
+                    if (owner.foreground()) w._doKey(-100 + index, event);
+                };
+                row.onkeydown = function (event) {
+                    if (
+                        owner.foreground() &&
+                        (event.keyCode === 13 || event.keyCode === 32)
+                    ) {
+                        event.preventDefault();
+                        row.onclick!(event as any);
+                    }
+                };
+                channelNumberElement!.appendChild(row);
+            });
             channelNumberElement.style.display = "";
         }
         clearTimeout(timer);
@@ -1393,8 +1450,9 @@ export function virtualTimeshiftProg(nowSec?: number): {
 }
 
 export function updateChannelInfo(channelId: number): void {
-    // Guide callbacks can arrive after playback has switched to a movie.
-    if (channelId == null || (window as any).playType < 0) return;
+    // A retained live guide subscription can fire during archive or VOD.
+    // Those modes own their programme, playhead and footer rendering.
+    if (channelId == null || (window as any).playType) return;
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
     if (channelId !== curList[primaryIndex]) return;
@@ -1506,8 +1564,7 @@ export function updateChannelInfo(channelId: number): void {
     } else {
         // No current EPG program
         var wAny = window as any;
-        var playType = wAny.playType || 0;
-        var canTimeshift = !playType && t && t.rec && Number(t.rec) > 0;
+        var canTimeshift = t && t.rec && Number(t.rec) > 0;
         if (canTimeshift) {
             // Live + catchup available, no EPG: 1h lookback, live at ~80%
             var _p = virtualTimeshiftProg();
@@ -1535,34 +1592,6 @@ export function updateChannelInfo(channelId: number): void {
             if (programName2El) programName2El.innerHTML = "";
             if (programDurationEl) programDurationEl.textContent = "";
             if (programDescrEl) programDescrEl.textContent = "";
-        } else if (
-            playType > 0 &&
-            wAny._prog100 &&
-            wAny._prog100.time &&
-            wAny._prog100.time_to
-        ) {
-            // Archive with synthetic/_prog100 window — keep driving the bar
-            var _pa = wAny._prog100;
-            var nowA = Date.now() / 1000;
-            var posA = playType + (wAny.playTime || 0);
-            var durA = _pa.time_to - _pa.time;
-            var pctA = durA > 0 ? ((posA - _pa.time) / durA) * 100 : 0;
-            if (pctA < 0) pctA = 0;
-            if (pctA > 100) pctA = 100;
-            if (progressEl) progressEl.style.width = pctA + "%";
-            if (progressREl)
-                progressREl.style.width =
-                    _pa.time_to > nowA
-                        ? Math.min(
-                              100,
-                              Math.max(0, ((_pa.time_to - nowA) / durA) * 100)
-                          ) + "%"
-                        : "0%";
-            if (progressDivEl) progressDivEl.style.backgroundColor = "#600";
-            if (beginTimeEl) beginTimeEl.textContent = time2time(_pa.time);
-            if (endTimeEl)
-                endTimeEl.textContent =
-                    "+" + Math.max(0, Math.round((_pa.time_to - posA) / 60));
         } else {
             if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
             wAny._prog100 = 0;
@@ -1575,37 +1604,27 @@ export function updateChannelInfo(channelId: number): void {
             if (programDescrEl) programDescrEl.textContent = "";
         }
     }
-    // Auto-show on programme change when enabled, but never flash an empty
-    // #info1: require channel name and/or current programme, and defer while
-    // observeCurrentProgramme still has an EPG fetch pending (callback re-enters here).
+    // A repaint is not a programme change. Keep the last accepted identity
+    // through guide misses so a refresh or periodic tick cannot reopen the bar.
     try {
         var w = window as any;
-        var nowGate = Date.now() / 1000;
-        var channelLabel = (t && t.channel_name) || "";
-        var progLabel =
-            (hasProg && t && t.name) ||
-            (programNameEl &&
-                String(programNameEl.textContent || "")
-                    .replace(/\u00a0/g, " ")
-                    .trim()) ||
-            "";
-        var hasTimes = !!(
-            beginTimeEl && String(beginTimeEl.textContent || "").trim()
-        );
-        // Pending when no programme yet and time_request is not parked in the
-        // future (miss / in-flight park). Callback will populate then re-show.
-        var epgPending =
-            !hasProg &&
-            !!t &&
-            !(typeof t.time_request === "number" && t.time_request > nowGate);
-        var hasMeaningful = !!(
-            progLabel ||
-            hasTimes ||
-            (channelLabel && !epgPending)
-        );
+        var programmeKey =
+            hasProg && t
+                ? JSON.stringify([
+                      w.__ottClassicGuide ? w.__ottClassicGuide.source() : "",
+                      channelId,
+                      t.time,
+                  ])
+                : "";
+        var previous = w.__ottChannelInfoProgramme;
+        var changed =
+            programmeKey &&
+            (!previous || previous.row !== t || previous.key !== programmeKey);
+        if (programmeKey)
+            w.__ottChannelInfoProgramme = { key: programmeKey, row: t };
         if (
             w.sInfoChange &&
-            hasMeaningful &&
+            changed &&
             $infoBar &&
             typeof $infoBar.is === "function" &&
             !$infoBar.is(":visible") &&
@@ -1644,21 +1663,22 @@ export function initBackgroundIntervals(): void {
         clearInterval(previous.clock);
         clearInterval(previous.guide);
     }
+    function updateClockText(id: string, value: string): void {
+        // Resolve the current node because menus can replace clock elements.
+        var element = document.getElementById(id);
+        if (element && element.textContent !== value)
+            element.textContent = value;
+    }
     owner.clock = setInterval(function () {
         if (host.__ottUiTimers !== owner) return;
         var now = new Date();
         var timeStr = _t2(now.getHours()) + ":" + _t2(now.getMinutes());
         var secStr = ":" + _t2(now.getSeconds());
-        var currentTEl = document.getElementById("current_t");
-        var currentSEl = document.getElementById("current_s");
-        var listTEl = document.getElementById("list_t");
-        var listSEl = document.getElementById("list_s");
-        var permTEl = document.getElementById("permanentTime");
-        if (currentTEl) currentTEl.innerHTML = timeStr;
-        if (currentSEl) currentSEl.innerHTML = secStr;
-        if (listTEl) listTEl.innerHTML = timeStr;
-        if (listSEl) listSEl.innerHTML = secStr;
-        if (permTEl) permTEl.innerHTML = timeStr;
+        updateClockText("current_t", timeStr);
+        updateClockText("current_s", secStr);
+        updateClockText("list_t", timeStr);
+        updateClockText("list_s", secStr);
+        updateClockText("permanentTime", timeStr);
         // Drive archive OSD progress bar (stbPlayer.js:1744-1746 tick).
         // Skip live mode (playType === 0) — showChannelInfo already covers it.
         var w_t = window as any;
@@ -1683,7 +1703,9 @@ export function initBackgroundIntervals(): void {
             !(window as any).playType &&
             typeof (window as any).updateChannelInfo === "function"
         ) {
-            (window as any).updateChannelInfo((window as any).listChannel);
+            (window as any).updateChannelInfo(
+                ((window as any).curList || [])[(window as any).primaryIndex]
+            );
         }
     }, 30000);
 }
@@ -1826,6 +1848,8 @@ export function renderButtonHint(
     return (
         '<span role="button" tabindex="0" aria-label="' +
         metadataText(description.replace(/<[^>]*>/g, " ")) +
+        '" data-ott-key="' +
+        keyLabel +
         '" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();event.stopPropagation();this.click();}" onclick="event.stopPropagation();_doKey(' +
         keyLabel +
         ');">' +
@@ -2665,129 +2689,84 @@ function bindColorDialogInput(
     preview();
 }
 
-/**
- * Open the foreground color picker dialog (HSV selector).
- * The user adjusts hue (LEFT/RIGHT) and saturation (UP/DOWN) with presets via color keys.
- * The selected color is stored in `window.eSHLcolor` as "hue,saturation".
- *
- * @returns void
- * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer/detail. Shows `#listAbout` with color controls.
- *             Registers `aboutKeyHandler` for color adjustment keys.
- * @analysis The live preview updates the `#step` span's CSS color. YELLOW/GREEN/BLUE keys set predefined hues.
- *             ENTER saves and closes; RETURN closes without saving (fall-through in switch).
- */
-export function colorDialog(): void {
-    var s = 50,
-        n = 85;
-    s = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[0]);
-    n = Number.parseInt(((window as any).eSHLcolor || "50,85").split(",")[1]);
+/** Share color-picker layout without changing the public dialog identities. */
+function showColorDialog(
+    settingKey: string,
+    fallback: string,
+    caption: string,
+    value: number,
+    foreground = false
+): void {
+    var setting = (window as any)[settingKey] || fallback;
+    var hue = Number.parseInt(setting.split(",")[0]);
+    var saturation = Number.parseInt(setting.split(",")[1]);
     saveListPanelState();
-    if (listCaptionElement) listCaptionElement.innerHTML = _("Color spectrum");
+    if (listCaptionElement) listCaptionElement.innerHTML = caption;
     if (listFooterElement)
         listFooterElement.innerHTML =
             renderButtonHint(keys.RETURN, strRETURN, "Close") +
             renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
+    var preview = foreground
+        ? '<span id="step" style="font-size: 150%;">&nbsp;1234567890&nbsp;<span style="background-color:' +
+          (window as any).curColorB +
+          '">&nbsp;1234567890&nbsp;</span></span>'
+        : '<span id="step" style="font-size: 150%;background-color:' +
+          (window as any).curColorB +
+          '">&nbsp;1234567890&nbsp;</span>';
+    var controls = foreground
+        ? '<br/><br><div class="btn" onclick="_doKey(keys.LEFT);">' +
+          strLEFT +
+          '</div>&nbsp;<div class="btn" onclick="_doKey(keys.RIGHT);">' +
+          strRIGHT +
+          "</div>&nbsp;" +
+          _("Color") +
+          '<br><div class="btn" onclick="_doKey(keys.UP);">' +
+          strUP +
+          '</div>&nbsp;<div class="btn" onclick="_doKey(keys.DOWN);">' +
+          strDOWN +
+          "</div>&nbsp;" +
+          _("Saturation") +
+          "<br>" +
+          renderButtonHint(keys.YELLOW, "", "Yellow") +
+          "<br>" +
+          renderButtonHint(keys.GREEN, "", "Green") +
+          "<br>" +
+          renderButtonHint(keys.BLUE, "", "Blue")
+        : "";
     $("#listAbout")
         .html(
             '<div style="font-size:larger;">' +
                 _("Color") +
-                ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;">&nbsp;1234567890&nbsp;<span style="background-color:' +
-                (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span></span>&nbsp;<br/>' +
-                '<br><div class="btn" onclick="_doKey(keys.LEFT);">' +
-                strLEFT +
-                '</div>&nbsp;<div class="btn" onclick="_doKey(keys.RIGHT);">' +
-                strRIGHT +
-                "</div>&nbsp;" +
-                _("Color") +
-                '<br><div class="btn" onclick="_doKey(keys.UP);">' +
-                strUP +
-                '</div>&nbsp;<div class="btn" onclick="_doKey(keys.DOWN);">' +
-                strDOWN +
-                "</div>&nbsp;" +
-                _("Saturation") +
-                "<br>" +
-                renderButtonHint(keys.YELLOW, "", "Yellow") +
-                "<br>" +
-                renderButtonHint(keys.GREEN, "", "Green") +
-                "<br>" +
-                renderButtonHint(keys.BLUE, "", "Blue") +
+                ":<br/><br/>&nbsp;" +
+                preview +
+                "&nbsp;" +
+                controls +
                 "</div>"
         )
         .show();
-    bindColorDialogInput(s, n, 100, "color", "eSHLcolor");
+    bindColorDialogInput(
+        hue,
+        saturation,
+        value,
+        foreground ? "color" : "background-color",
+        settingKey
+    );
 }
 
-/**
- * Open the selection/background text color picker (HSV with fixed value=50).
- * Hue (LEFT/RIGHT) and saturation (UP/DOWN) are adjustable. The selected color is stored
- * in `window.eSHLcolSel`.
- *
- * @returns void
- * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer. Shows `#listAbout` with preview.
- *             Registers `aboutKeyHandler`. Updates `#step` background-color in real time.
- * @analysis Unlike `colorDialog`, this one modifies background-color (not color) and uses V=50.
- */
+/** Adjust foreground text color, stored in eSHLcolor. */
+export function colorDialog(): void {
+    showColorDialog("eSHLcolor", "50,85", _("Color spectrum"), 100, true);
+}
+
+/** Adjust the selection background at HSV value 50, stored in eSHLcolSel. */
 export function selColorDialog(): void {
-    var s = Number.parseInt(
-        ((window as any).eSHLcolSel || "50,85").split(",")[0]
-    );
-    var n = Number.parseInt(
-        ((window as any).eSHLcolSel || "50,85").split(",")[1]
-    );
-    saveListPanelState();
-    if (listCaptionElement) listCaptionElement.innerHTML = _("Select color");
-    if (listFooterElement)
-        listFooterElement.innerHTML =
-            renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            renderButtonHint(keys.ENTER, strENTER, "Set");
-    if (listDetailElement) listDetailElement.innerHTML = "";
-    $("#listAbout")
-        .html(
-            '<div style="font-size:larger;">' +
-                _("Color") +
-                ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
-                (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
-        )
-        .show();
-    bindColorDialogInput(s, n, 50, "background-color", "eSHLcolSel");
+    showColorDialog("eSHLcolSel", "50,85", _("Select color"), 50);
 }
 
-/**
- * Open the background color picker dialog. Same interface as `colorDialog` but stores
- * the result in `window.eSHLcolorB` and applies it as background-color.
- *
- * @returns void
- * @sideeffect Calls `saveListPanelState()`. Modifies list caption/footer. Shows `#listAbout`.
- *             Registers `aboutKeyHandler`. Updates `#step` background-color preview.
- */
+/** Adjust the list background at HSV value 100, stored in eSHLcolorB. */
 export function backColorDialog(): void {
-    var s = Number.parseInt(
-        ((window as any).eSHLcolorB || "255,0").split(",")[0]
-    );
-    var n = Number.parseInt(
-        ((window as any).eSHLcolorB || "255,0").split(",")[1]
-    );
-    saveListPanelState();
-    if (listCaptionElement)
-        listCaptionElement.innerHTML = _("Background color");
-    if (listFooterElement)
-        listFooterElement.innerHTML =
-            renderButtonHint(keys.RETURN, strRETURN, "Close") +
-            renderButtonHint(keys.ENTER, strENTER, "Set");
-    if (listDetailElement) listDetailElement.innerHTML = "";
-    $("#listAbout")
-        .html(
-            '<div style="font-size:larger;">' +
-                _("Color") +
-                ':<br/><br/>&nbsp;<span id="step" style="font-size: 150%;background-color:' +
-                (window as any).curColorB +
-                '">&nbsp;1234567890&nbsp;</span>&nbsp;</div>'
-        )
-        .show();
-    bindColorDialogInput(s, n, 100, "background-color", "eSHLcolorB");
+    showColorDialog("eSHLcolorB", "255,0", _("Background color"), 100);
 }
 
 /* ---------------------------------------------------------------------------
@@ -2903,10 +2882,8 @@ function _setCase(e: boolean): void {
 /** Case is derived from the original cell, never from a previous conversion. */
 function _keyboardCharacter(value: string): string {
     if (!_keyUp || _keyP) return value;
-    if (!_keyE && /^_(tur|aze)$/.test(String(_ottplaylang()))) {
-        if (value === "i") return "İ";
-        if (value === "ı") return "I";
-    }
+    if (value === "i" && !_keyE && /^_(tur|aze)$/.test(_ottplaylang()))
+        return "İ";
     if (value === "ß") return "ẞ";
     // Expanded uppercase forms (e.g. Armenian և) still occupy one key cell.
     return value.toUpperCase();
@@ -2928,14 +2905,6 @@ function _localizedAlphabet(): string {
     var t = _("alhabet");
     if (typeof t === "string" && t.length > 0 && t !== "alhabet") return t;
     return _keysRu;
-}
-
-/**
- * Always show Lang: English UI still needs a Cyrillic layout for search/edit.
- * (Legacy hid Lang when ottplaylang == "_eng".)
- */
-function _showLangKey(): boolean {
-    return true;
 }
 
 /** Start the English or localized layout at its first page. */
@@ -3009,38 +2978,41 @@ export function showEditKey1(
         typeof w.__TAURI__ !== "undefined" ||
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
     var isCap = typeof w.Capacitor !== "undefined";
-    if ((isPc || isCap) && typeof w.showEditKey2 === "function") {
+    var port = w.__ottClassicScreenPort;
+    var previousEditor = resume && port.owner("editor");
+    var nativeResume =
+        previousEditor && previousEditor.model.nativeInputSecret !== undefined;
+    if (
+        (isPc || isCap || nativeResume) &&
+        typeof w.showEditKey2 === "function"
+    ) {
         w.showEditKey2(_initKeys, secret, resume);
         return;
     }
     if (!resume) saveListPanelState();
-    var port = w.__ottClassicScreenPort;
-    var editorOwner = resume ? port.owner("editor") : port.openEditor();
+    var editorOwner = resume ? previousEditor : port.openEditor();
     if (!editorOwner || !editorOwner.active()) return;
     // Legacy stbPlayer.js:3993 uses == "_eng" (not ===)
     if (_ottplaylang() == "_eng") _keyE = true;
-    _keysSymbol[1].s = _showLangKey()
-        ? '<span style="font-family:fontello;padding:0.2em;">&#xe80E;</span>'
-        : "";
+    // English UI still needs access to its Cyrillic keyboard layout.
+    _keysSymbol[1].s =
+        '<span style="font-family:fontello;padding:0.2em;">&#xe80E;</span>';
     _keysSymbol[7].s =
         '<span style="font-family:fontello;padding:0.2em;">&#xe804;</span>';
     _keysSymbol[9].s = "Ok";
     if (!(window as any).sNoColorKeys) {
-        if (_keysSymbol[1].s)
-            _keysSymbol[1].s =
-                '<span style="border-bottom:3px solid green;">' +
-                _keysSymbol[1].s +
-                "</span>";
-        if (_keysSymbol[7].s)
-            _keysSymbol[7].s =
-                '<span style="border-bottom:3px solid #bb0;">' +
-                _keysSymbol[7].s +
-                "</span>";
-        if (_keysSymbol[9].s)
-            _keysSymbol[9].s =
-                '<span style="border-bottom:3px solid blue;">' +
-                _keysSymbol[9].s +
-                "</span>";
+        _keysSymbol[1].s =
+            '<span style="border-bottom:3px solid green;">' +
+            _keysSymbol[1].s +
+            "</span>";
+        _keysSymbol[7].s =
+            '<span style="border-bottom:3px solid #bb0;">' +
+            _keysSymbol[7].s +
+            "</span>";
+        _keysSymbol[9].s =
+            '<span style="border-bottom:3px solid blue;">' +
+            _keysSymbol[9].s +
+            "</span>";
     }
     editPos = (window as any).editvar.length;
     var r = _keyCur >= _keys.length - 10 ? 14 : _keyCur;
@@ -3073,41 +3045,29 @@ export function showEdit(): void {
         ((window as any).editCaption || "") +
         "</div>";
     r += '<div id="ee" dir="auto"></div><div class="osk-grid">';
+    var combiningMark = /^[\u0300-\u036f]/;
     for (var s = 0; s < _keys.length; s++) {
         if (s > 0 && s % 10 === 0) r += "<br/>";
-        var sym = _keysSymbol[_keys.charCodeAt(s)];
-        var character = _keyboardCharacter(_keys[s]);
-        var n = sym
-            ? sym.s
-            : metadataText(
-                  /^[\u0300-\u036f]/.test(character)
-                      ? "◌" + character
-                      : character
-              );
+        var charCode = _keys.charCodeAt(s);
+        var sym = _keysSymbol[charCode];
+        var n = sym ? sym.s : _keyboardCharacter(_keys[s]);
+        if (!sym) n = metadataText(combiningMark.test(n) ? "◌" + n : n);
         r +=
             '<div id="ik' +
             s +
             '" class="osk-key"' +
-            (_keys.charCodeAt(s) === 8 && _keyPages > 1
+            (charCode === 8 && _keyPages > 1
                 ? ' aria-label="' + metadataText(_("Next keyboard page")) + '"'
                 : "") +
             ' onclick="clickKey(' +
             s +
-            ');" style="width:' +
-            t +
-            "px;height:" +
-            t +
-            "px;line-height:" +
-            t +
-            'px;">' +
+            ');">' +
             n +
             "</div>";
     }
     e.html(r + "</div>");
-    var textSize = Math.min(
-        parseFloat(e.css("font-size")) || 24,
-        (e.height() || 600) / 14
-    );
+    var fontSize = parseFloat(e.css("font-size")) || 24;
+    var textSize = Math.min(fontSize, (e.height() || 600) / 14);
     e.find(".osk-cap, #ee").css("font-size", textSize);
     _changeEdit();
     // Text settings can make the caption/input taller. Constrain cells by
@@ -3120,12 +3080,10 @@ export function showEdit(): void {
     var height = Math.max(16, Math.min(t, Math.floor(available / rows) - 4));
     grid.css({ "font-size": 0, "line-height": height + 4 + "px" });
     grid.find(".osk-key").css({
-        "font-size": Math.min(
-            parseFloat(e.css("font-size")) || 24,
-            height * 0.65
-        ),
+        "font-size": Math.min(fontSize, height * 0.65),
         height: height,
         "line-height": height + "px",
+        width: t,
     });
     $("#ik" + _keyCur).css({
         "background-color": (window as any).curColorB,
@@ -3147,9 +3105,9 @@ export function showEdit(): void {
                     ? _keyE
                         ? // Offer the other layout in the *current* UI language.
                           _ottplaylang() == "_eng"
-                            ? _("Russian") || "Russian"
-                            : _("lang") || "Lang"
-                        : _("English") || "English"
+                            ? "Russian"
+                            : "lang"
+                        : "English"
                     : "",
                 strFF
             ) +
@@ -3234,47 +3192,29 @@ export function clickKey(e: number): void {
  *             Symbol keys (charCode <= 9) invoke their action function instead of typing.
  */
 export function editKey1(e: number): void {
+    function focusKeyboardKey(index: number): void {
+        $("#ik" + _keyCur).css({ "background-color": "", color: "" });
+        _keyCur = index;
+        $("#ik" + _keyCur).css({
+            "background-color": (window as any).curColorB,
+            color: (window as any).curColor,
+        });
+    }
     switch (e) {
         case (window as any).keys.UP:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += _keyCur > 9 ? -10 : _keys.length - 10;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(_keyCur + (_keyCur > 9 ? -10 : _keys.length - 10));
             return;
         case (window as any).keys.DOWN:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur +=
-                    _keyCur < _keys.length - 10 ? 10 : -_keys.length + 10;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(
+                _keyCur +
+                    (_keyCur < _keys.length - 10 ? 10 : -_keys.length + 10)
+            );
             return;
         case (window as any).keys.LEFT:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += _keyCur % 10 > 0 ? -1 : 9;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(_keyCur + (_keyCur % 10 > 0 ? -1 : 9));
             return;
         case (window as any).keys.RIGHT:
-            {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += _keyCur % 10 < 9 ? 1 : -9;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
-            }
+            focusKeyboardKey(_keyCur + (_keyCur % 10 < 9 ? 1 : -9));
             return;
         case (window as any).keys.TOOLS:
         case (window as any).keys.RED:
@@ -3315,19 +3255,15 @@ export function editKey1(e: number): void {
             return;
         default: {
             var idx = -1;
+            var typedCharacter = String.fromCharCode(e);
             for (var i = 0; i < _keys.length; i++) {
-                if (_keyboardCharacter(_keys[i]) === String.fromCharCode(e)) {
+                if (_keyboardCharacter(_keys[i]) === typedCharacter) {
                     idx = i;
                     break;
                 }
             }
             if (idx > -1) {
-                $("#ik" + _keyCur).css({ "background-color": "", color: "" });
-                _keyCur += idx - _keyCur;
-                $("#ik" + _keyCur).css({
-                    "background-color": (window as any).curColorB,
-                    color: (window as any).curColor,
-                });
+                focusKeyboardKey(idx);
                 editKey1((window as any).keys.ENTER);
             }
             return;
@@ -3346,11 +3282,25 @@ export function editKey1(e: number): void {
  */
 export function editKey2(code: number): void {
     var w = window as any;
+    var port = w.__ottClassicScreenPort;
+    var owner = port.owner("editor");
+    if (!owner || !owner.foreground()) return;
+    var input = document.getElementById("editvar");
+    var remote = document.getElementById("editRemoteInput");
+    if (code === w.keys.UP || code === w.keys.DOWN) {
+        var next = document.activeElement === remote ? input : remote;
+        if (next) next.focus();
+        return;
+    }
+    if (code === w.keys.ENTER && remote && document.activeElement === remote) {
+        remote.click();
+        return;
+    }
     if (code !== w.keys.ENTER && code !== w.keys.EXIT && code !== w.keys.RETURN)
         return;
     if (code === w.keys.ENTER)
         w.editvar = ($("#editvar").val() as string) || "";
-    w.__ottClassicScreenPort.finishEditor(code === w.keys.ENTER, function () {
+    port.finishEditor(code === w.keys.ENTER, function () {
         $("#listEdit").hide();
         if (typeof w.restoreListPanelState === "function")
             w.restoreListPanelState();
@@ -3365,82 +3315,156 @@ export function editKey2(code: number): void {
  * @param resume - Redraw after SWOP while retaining the current editor owner.
  * @returns void
  * @sideeffect Calls `window.saveListPanelState()` if available. Renders `#listEdit` with an `<input>` field
- *             and save/discard buttons. Focuses the input field.
+ *             with remote input and save/discard controls. Focuses the input field.
  */
 export function showEditKey2(
     _initKeys?: number[],
     secret?: boolean,
     resume?: boolean
 ): void {
-    if (!resume && typeof (window as any).saveListPanelState === "function")
-        (window as any).saveListPanelState();
-    var port = (window as any).__ottClassicScreenPort;
+    var w = window as any;
+    if (!resume && typeof w.saveListPanelState === "function")
+        w.saveListPanelState();
+    var port = w.__ottClassicScreenPort;
     var editorOwner = resume ? port.owner("editor") : port.openEditor();
     if (!editorOwner || !editorOwner.active()) return;
-    var caption = (window as any).editCaption || "";
-    var val = (window as any).editvar || "";
-    var keys = (window as any).keys || {};
-    var strExit = (window as any).strEXIT || "Esc";
-    var strEnter = (window as any).strENTER || "ENTER";
-    if ((window as any).listCaptionElement)
-        (window as any).listCaptionElement.textContent = caption;
-    var html = metadataText(caption) + ":<br/><br/>";
+    if (!resume) editorOwner.model.nativeInputSecret = !!secret;
+    if (editorOwner.model.releaseNativeInput)
+        editorOwner.model.releaseNativeInput();
+    var caption = w.editCaption || "";
+    var val = w.editvar || "";
+    var keys = w.keys || {};
+    var strExit = w.strEXIT || "Esc";
+    var strEnter = w.strENTER || "ENTER";
+    if (w.listCaptionElement) w.listCaptionElement.textContent = caption;
+    var escapedCaption = metadataText(caption);
+    var hint =
+        w.renderButtonHint ||
+        function () {
+            return "";
+        };
+    var html = escapedCaption + ":<br/><br/>";
     html +=
         '<br/><input type="' +
-        (secret ? "password" : "text") +
+        (editorOwner.model.nativeInputSecret ? "password" : "text") +
         '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
-        metadataText(caption) +
+        escapedCaption +
         '" id="editvar" style="color:' +
-        ((window as any).curColor || "#fff") +
-        ';" autofocus><br/><br/>';
+        (w.curColor || "#fff") +
+        ';"><br/><br/>';
     html +=
-        "<br/>" +
-        (
-            (window as any).renderButtonHint ||
-            function () {
-                return "";
-            }
-        )(keys.EXIT || 27, strExit, "- return without save");
-    html +=
-        "<br/>" +
-        (
-            (window as any).renderButtonHint ||
-            function () {
-                return "";
-            }
-        )(keys.ENTER || 13, strEnter, "- save");
+        '<button type="button" id="editRemoteInput">' +
+        metadataText(_("Remote text entry")) +
+        "</button>";
+    html += "<br/>" + hint(keys.EXIT || 27, strExit, "- return without save");
+    html += "<br/>" + hint(keys.ENTER || 13, strEnter, "- save");
     $("#listEdit").show().html(html);
     var editEl = document.getElementById("editvar") as HTMLInputElement | null;
+    var remoteButton = document.getElementById("editRemoteInput");
+    function consumeEvent(event: Event): void {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     if (editEl) {
         // Assign the value as text: HTML entities in URLs/passwords must round-trip.
         editEl.value = String(val);
-        var prev = (editEl as any).__ottEditKey2Handler;
-        if (typeof prev === "function") {
-            editEl.removeEventListener("keydown", prev);
-        }
-        var onKeyDown = editorOwner.guard(function (ev: KeyboardEvent): void {
-            if (!editorOwner.foreground()) return;
-            if (ev.isComposing || ev.keyCode === 229) {
+        var openingEvent = port.keyEvent();
+        var openingCode =
+            openingEvent &&
+            openingEvent.type === "keydown" &&
+            (openingEvent.keyCode || openingEvent.which);
+        // LG can send keypress/repeats after a shortcut opens and focuses an
+        // editor. Keep the field read-only until that physical key is released.
+        editEl.readOnly = !!openingCode;
+        var openingListeners = function (enabled: boolean): void {
+            ["keydown", "keypress", "keyup"].forEach(function (type) {
+                w[enabled ? "addEventListener" : "removeEventListener"](
+                    type,
+                    openingKey,
+                    true
+                );
+            });
+        };
+        var releaseOpeningKey = function (): void {
+            openingCode = 0;
+            editEl!.readOnly = false;
+            openingListeners(false);
+        };
+        var openingKey = editorOwner.guard(function (ev: KeyboardEvent): void {
+            if (!openingCode || !editorOwner.foreground()) return;
+            if ((ev.keyCode || ev.which) !== openingCode) {
+                if (ev.type === "keydown") releaseOpeningKey();
+                return;
+            }
+            consumeEvent(ev);
+            if (ev.type === "keyup") {
+                releaseOpeningKey();
+                editEl!.focus();
+            }
+        });
+        if (openingCode) openingListeners(true);
+        var onInput = editorOwner.guard(function (
+            ev: KeyboardEvent | MouseEvent
+        ): void {
+            if (
+                !editorOwner.foreground() ||
+                document.getElementById("editvar") !== editEl
+            )
+                return;
+            if (ev.type === "click") {
+                consumeEvent(ev);
+                // Native typing lives in the input until save or remote handoff.
+                w.editvar = editEl!.value;
+                swopLoadValue();
+                return;
+            }
+            // The only other registered event is keydown.
+            var keyEvent = ev as KeyboardEvent;
+            if (keyEvent.isComposing || keyEvent.keyCode === 229) {
                 // Keep IME default handling, but do not let the window key router save.
                 ev.stopPropagation();
                 return;
             }
-            if (ev.key === "Enter" || ev.keyCode === 13) {
-                ev.preventDefault();
+            var command = 0;
+            if (
+                keyEvent.key === "ArrowUp" ||
+                keyEvent.keyCode === (keys.UP || 38) ||
+                keyEvent.key === "ArrowDown" ||
+                keyEvent.keyCode === (keys.DOWN || 40)
+            )
+                command = keys.DOWN || 40;
+            else if (keyEvent.key === "Enter" || keyEvent.keyCode === 13)
+                command = keys.ENTER || 13;
+            else if (keyEvent.key === "Escape" || keyEvent.keyCode === 27)
+                command = keys.EXIT || 27;
+            if (command) {
+                consumeEvent(ev);
+                editKey2(command);
+            } else if (
+                ev.currentTarget === remoteButton &&
+                (keyEvent.key === " " ||
+                    keyEvent.key === "Tab" ||
+                    keyEvent.keyCode === 9 ||
+                    keyEvent.keyCode === 32)
+            ) {
+                // Keep Space/Tab native; do not let the global router save.
                 ev.stopPropagation();
-                editKey2(keys.ENTER || 13);
-            } else if (ev.key === "Escape" || ev.keyCode === 27) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                editKey2(keys.EXIT || 27);
             }
         });
-        editorOwner.own(function () {
-            editEl!.removeEventListener("keydown", onKeyDown);
+        editorOwner.model.releaseNativeInput = editorOwner.own(function () {
+            releaseOpeningKey();
+            editEl!.removeEventListener("keydown", onInput);
+            if (remoteButton) {
+                remoteButton.removeEventListener("click", onInput);
+                remoteButton.removeEventListener("keydown", onInput);
+            }
         });
-        (editEl as any).__ottEditKey2Handler = onKeyDown;
-        editEl.addEventListener("keydown", onKeyDown);
-        editEl.focus();
+        editEl.addEventListener("keydown", onInput);
+        if (remoteButton) {
+            remoteButton.addEventListener("click", onInput);
+            remoteButton.addEventListener("keydown", onInput);
+        }
+        if (!openingCode) editEl.focus();
     }
 }
 
@@ -3592,24 +3616,22 @@ export function mediaList(target: MediaTarget | null): void {
  *
  * @param e - The zero-based index of the clicked option.
  * @returns void
- * @sideeffect Stops event propagation. Updates highlight styles for old and new selection.
+ * @sideeffect Updates highlight styles for old and new selection. The grid consumes the DOM click.
  *             Calls `aboutKeyHandler(keys.ENTER)` if clicking the already-selected item.
  */
 export function clickVal(e: number): void {
-    if (
-        typeof (window as any).event !== "undefined" &&
-        (window as any).event &&
-        (window as any).event.stopPropagation
-    )
-        (window as any).event.stopPropagation();
-    if (_curVal === e && aboutKeyHandler)
+    if (_curVal === e && aboutKeyHandler) {
         aboutKeyHandler((window as any).keys.ENTER);
+        return;
+    }
     $("#ik" + _curVal).css({ "background-color": "", color: "" });
     _curVal = e;
-    $("#ik" + _curVal).css({
+    var key = $("#ik" + _curVal);
+    key.css({
         "background-color": (window as any).curColorB,
         color: (window as any).curColor,
     });
+    if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
 }
 
 /**
@@ -3625,6 +3647,14 @@ export function clickVal(e: number): void {
  *             RETURN/EXIT discards and calls `restoreListPanelState()`.
  */
 export function selectValue(t: any): void {
+    function paintSelectedValue(): void {
+        var key = $("#ik" + _curVal);
+        key.css({
+            "background-color": (window as any).curColorB,
+            color: (window as any).curColor,
+        });
+        if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
+    }
     var r = t.values.filter(function (v: any) {
         return v !== "@@@";
     });
@@ -3643,9 +3673,9 @@ export function selectValue(t: any): void {
     var maxW = 0;
     for (var i = 0; i < r.length; i++) {
         testEl.html("&nbsp;" + r[i] + "&nbsp;");
-        maxW = maxW > testEl.width() ? maxW : testEl.width();
-        testEl.text("");
+        maxW = Math.max(maxW, testEl.width());
     }
+    testEl.text("");
     var listAboutW = $("#listAbout").width();
     var n = 6;
     if (maxW > 0 && listAboutW > 0) {
@@ -3662,27 +3692,22 @@ export function selectValue(t: any): void {
     var html = "";
     for (var i = 0; i < r.length; i++) {
         if (i % n === 0) html += "<br/>";
-        html +=
-            '<div id="ik' +
-            i +
-            '" class="osk-key" onclick="clickVal(' +
-            i +
-            ');" style="width:' +
-            98 / n +
-            "%;line-height:" +
-            lineHeight +
-            'px;">' +
-            r[i] +
-            "</div>";
+        html += '<div id="ik' + i + '" class="osk-key">' + r[i] + "</div>";
     }
-    $("#listAbout")
-        .html('<div style="font-size:larger;">' + html + "</div>")
-        .show();
-    $("#ik" + _curVal).css({
-        "background-color": (window as any).curColorB,
-        color: (window as any).curColor,
+    var grid = $("#listAbout")
+        .html("<div>" + html + "</div>")
+        .show()
+        .children()
+        .css("font-size", "larger");
+    grid.find(".osk-key").css({
+        lineHeight: lineHeight + "px",
+        width: 98 / n + "%",
     });
-    if (listDetailElement) listDetailElement.innerHTML = r[_curVal];
+    grid.on("click", ".osk-key", function (event: any) {
+        event.stopPropagation();
+        if (input.owner.foreground()) clickVal(Number(this.id.slice(2)));
+    });
+    paintSelectedValue();
 
     /**
      * Move the selection cursor by `delta` positions in the grid, wrapping at edges.
@@ -3696,14 +3721,10 @@ export function selectValue(t: any): void {
         _curVal += delta;
         if (_curVal < 0) _curVal = r.length - 1;
         if (_curVal >= r.length) _curVal = 0;
-        $("#ik" + _curVal).css({
-            "background-color": (window as any).curColorB,
-            color: (window as any).curColor,
-        });
-        if (listDetailElement) listDetailElement.innerHTML = r[_curVal];
+        paintSelectedValue();
     }
 
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
+    var input = (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
         function (e: number): boolean {
             switch (e) {

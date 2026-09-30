@@ -14,6 +14,74 @@ test("Scalar navigation reads and highlights never copy a catalog", () => {
     require("./helpers/media-read-cost.cjs").assertMediaReadContract(fixture());
 });
 
+test("Scoped internal snapshots detach metadata and preserve full public snapshots", () => {
+    const c = fixture();
+    require("./helpers/media-read-cost.cjs").trackMediaSnapshots(c);
+    let reads = 0;
+    let rendered;
+    const library = c.__ottMediaLibrary.create({
+        describe: (rows) => rows,
+        items: () => [],
+        load: (route, done) =>
+            done([
+                {
+                    payload: {
+                        get title() {
+                            reads++;
+                            return route.title;
+                        },
+                    },
+                    ref: { itemId: route.title, sourceId: "scope-fixture" },
+                    title: route.title,
+                },
+            ]),
+        render: (view) => {
+            rendered = view;
+        },
+    });
+    library.open({ kind: "catalog", target: "parent", title: "Parent" });
+    library.open({ kind: "catalog", target: "child", title: "Child" });
+    assert.equal(rendered.frames[0].items.length, 0);
+    assert.equal(rendered.frame.items[0].title, "Child");
+    reads = 0;
+    const navigation = library.snapshot("none");
+    assert.equal(reads, 0, "Navigation reads no ancestor or current payloads");
+    navigation.frame.route.title = "Poisoned route";
+    const current = library.snapshot("current");
+    assert.equal(reads, 1, "Current scope reads only the visible page");
+    assert.equal(current.frame.route.title, "Child");
+    current.frame.items[0].payload.title = "Poisoned current item";
+    reads = 0;
+    const all = library.snapshot();
+    assert.equal(reads, 2, "Public default still detaches every page");
+    assert.equal(all.frames[0].items[0].payload.title, "Parent");
+    assert.equal(all.frame.items[0].payload.title, "Child");
+});
+
+test("Filter and paging copy costs exclude ancestor payloads at catalog scale", () => {
+    const { mediaFilterCost } = require("./helpers/media-filter-cost.cjs");
+    for (const rows of [300, 1000]) {
+        const depth = 6;
+        const cost = mediaFilterCost({ depth, rows, samples: 1 });
+        assert(
+            cost.filterOpen.objects <= depth * 4,
+            "Opening the editor must copy only page metadata"
+        );
+        assert(
+            cost.show.objects <= rows * 19 + depth * 4,
+            "Rendering must detach current UI and provider projections only"
+        );
+        assert(
+            cost.filterApplyAndClear.objects <= rows * 30 + depth * 40,
+            "Refiltering must not clone retained parent pages"
+        );
+        assert(
+            cost.nextAndBack.objects <= rows * 50 + depth * 40,
+            "Paging cost must not include prior pages' payloads"
+        );
+    }
+});
+
 test("Facade highlight and screen release read revision without detached snapshots", () => {
     const c = fixture();
     const counts = require("./helpers/media-read-cost.cjs").trackMediaSnapshots(
@@ -695,7 +763,11 @@ function episodeFixture(ids = [30, 2, 11]) {
             c.resolutions.push({ automatic, item });
             const resolved = {
                 ...item,
-                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+                stream_url:
+                    item.id +
+                    "-" +
+                    (c.fixedUrls ? 1 : c.resolutions.length) +
+                    ".mp4",
             };
             if (c.defer) c.pendingEpisode = () => done(resolved);
             else done(resolved);
@@ -1133,4 +1205,369 @@ test("Saved episode entries remain filterable in history and favorites", () => {
     }
 });
 
+test("Independent NAS leases preserve foreground catalogs while automatic episodes resolve", () => {
+    for (const catalogFirst of [false, true]) {
+        const c = fixture(),
+            requests = [],
+            timers = new Map();
+        let timerId = 0,
+            catalogs = 0;
+        const played = [];
+        c.location = { host: "player.test", protocol: "https:" };
+        c.__OTTPLAY_HOSTED__ = { version: 1, vportal: { routes: [] } };
+        c.setInterval = (run) => {
+            timers.set(++timerId, run);
+            return timerId;
+        };
+        c.clearInterval = (id) => timers.delete(id);
+        vm.runInContext(
+            sourceFunctions("src/plugins/vportal.ts", [
+                "parseVPortalLink",
+                "createVPortalClient",
+            ]),
+            c
+        );
+        c.$.ajax = (options) => {
+            const request = {
+                abort() {
+                    this.aborted = true;
+                    options.error?.({}, "abort");
+                    options.complete?.();
+                },
+                aborted: false,
+                options,
+                reply(data) {
+                    options.success?.(data);
+                    options.complete?.();
+                },
+            };
+            requests.push(request);
+            return request;
+        };
+        const source = "nas:independent",
+            client = c.createVPortalClient("", {
+                directEndpoint: "/nas/api",
+                preferDefault: true,
+                sourceId: source,
+            });
+        const payload = (id) => ({
+            request: { cmd: "play", id },
+            title: "Episode",
+            vportalSource: source,
+        });
+        const lease = (id) => ({
+            heartbeat:
+                "https://player.test/nas/stream/ping" + id + ".sig/media.ts",
+            stop: "https://player.test/nas/stream/stop" + id + ".sig/media.ts",
+            url:
+                "https://player.test/nas/stream/video" + id + ".sig/media.m3u8",
+        });
+        client.resolve(payload(1), (item) => played.push(item));
+        requests.at(-1).reply(lease(1));
+        client.load(
+            { request: { cmd: "browse" }, vportalSource: source },
+            () => catalogs++
+        );
+        const catalog = requests.at(-1);
+        client.resolve(payload(2), (item) => played.push(item), true);
+        assert.equal(catalog.aborted, false);
+        assert.equal(
+            requests.at(-1).options.url,
+            "/nas/stream/stop1.sig/media.ts"
+        );
+        assert.equal(timers.size, 0);
+        requests.at(-1).reply("");
+        const episode = requests.at(-1);
+        assert.equal(
+            episode.options.url,
+            "/nas/api",
+            "An installation keeps its explicit endpoint on hosted pages"
+        );
+        assert.equal(JSON.parse(episode.options.data).key, undefined);
+        const catalogReply = () =>
+            catalog.reply({ items: [], type: "category" });
+        if (catalogFirst) catalogReply();
+        episode.reply(lease(2));
+        if (!catalogFirst) catalogReply();
+        assert.equal(catalogs, 1);
+        assert.equal(played.length, 2);
+        assert.equal(timers.size, 1);
+        client.cancelAutomatic();
+        assert.equal(
+            timers.size,
+            1,
+            "Automatic cancellation preserves admitted playback"
+        );
+        client.resolve(payload(3), (item) => played.push(item));
+        requests.at(-1).reply("");
+        const foreground = requests.at(-1);
+        foreground.options.success(lease(3));
+        const count = requests.length;
+        client.cancelAutomatic();
+        assert.equal(
+            requests.length,
+            count,
+            "A pending foreground lease does not belong to the automatic request lane"
+        );
+        foreground.options.complete();
+        assert.equal(played.length, 3);
+        assert.equal(timers.size, 1);
+        client.dispose();
+        assert.equal(timers.size, 0);
+        assert.equal(
+            requests.at(-1).options.url,
+            "/nas/stream/stop3.sig/media.ts"
+        );
+    }
+});
+
+function remoteQueueFixture() {
+    const c = fixture();
+    c.commandChannelsReady = false;
+    c.resolutions = [];
+    c.replies = [];
+    c.providerMediaClient = {
+        cancel() {},
+        cancelAutomatic() {},
+        resolve(item, done, automatic) {
+            c.resolutions.push({ automatic, item });
+            const playable = {
+                ...item,
+                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+            };
+            c.completeResolve = () => done(playable);
+            if (!c.deferResolve) c.completeResolve();
+        },
+        search(query, done, guard) {
+            c.searchQuery = query;
+            c.completeSearch = (items, error) => {
+                if (guard()) done({ error, items });
+            };
+            return () => {
+                c.searchCancelled = true;
+            };
+        },
+    };
+    vm.runInContext(
+        sourceFunctions("src/commands/remote-requests.ts", [
+            "executeRemoteRequest",
+        ]),
+        c
+    );
+    c.requestQueue = (action = "vportal", query = "  Фильм  ") =>
+        c.executeRemoteRequest({ action, params: { query } }, (reply) =>
+            c.replies.push(plain(reply))
+        );
+    c.finishItem = () => {
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    };
+    return c;
+}
+
+test("Remote VPortal queue loops every result in order with fresh URLs and no resume or quality prompt", () => {
+    for (const ids of [[30, 2, 11], [7]]) {
+        const c = remoteQueueFixture();
+        c.requestQueue();
+        assert.equal(c.searchQuery, "Фильм");
+        assert.equal(c.resolutions.length, 0, "Wait for the complete search");
+        c.completeSearch(
+            ids.map((id) => ({ id, request: { id }, title: "Фильм " + id }))
+        );
+        assert.equal(
+            c.replies.length,
+            1,
+            JSON.stringify({
+                calls: c.calls,
+                resolutions: c.resolutions,
+                state: c.__ottClassicPlayback.snapshot(),
+            })
+        );
+        assert.deepEqual(c.replies[0], {
+            data: {
+                dispatched: true,
+                items: ids.map((id, index) => ({
+                    number: index + 1,
+                    title: "Фильм " + id,
+                })),
+                loop: true,
+                total: ids.length,
+            },
+            status: "ok",
+        });
+        for (let n = 0; n < ids.length; n++) c.finishItem();
+        assert.deepEqual(
+            c.resolutions.map((row) => row.item.id),
+            [...ids, ids[0]]
+        );
+        assert(c.resolutions.every((row) => row.automatic));
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            ids.length + 1
+        );
+        assert(
+            !c.calls.some((row) => row[0] === "confirm" || row[0] === "pin")
+        );
+        assert(!JSON.stringify(c.replies).includes(".mp4"));
+    }
+});
+
+test("Remote VPortal list-only and empty or failed searches never start a queue", () => {
+    const listing = remoteQueueFixture();
+    listing.requestQueue("vportal_search");
+    listing.completeSearch([
+        {
+            id: 1,
+            request: { key: "not-public" },
+            stream_url: "https://private.invalid/video?token=secret",
+            title: "Film",
+        },
+    ]);
+    assert.deepEqual(listing.replies, [
+        {
+            data: { items: [{ number: 1, title: "Film" }], total: 1 },
+            status: "ok",
+        },
+    ]);
+    assert.equal(listing.resolutions.length, 0);
+    for (const error of [undefined, "provider URL and key must not leak"]) {
+        const c = remoteQueueFixture();
+        c.requestQueue();
+        c.completeSearch([], error);
+        assert.equal(c.replies[0].status, "rejected");
+        assert.equal(c.resolutions.length, 0);
+        assert(!JSON.stringify(c.replies).includes("must not leak"));
+    }
+});
+
+test("A replacement remote queue restarts its shared first item and advances through the new selection", () => {
+    const c = remoteQueueFixture();
+    c.fixedUrls = true;
+    for (const ids of [
+        [1, 2],
+        [1, 3],
+    ]) {
+        c.requestQueue();
+        c.completeSearch(
+            ids.map((id) => ({ id, request: { id }, title: "Film " + id }))
+        );
+    }
+    assert.equal(c.replies.length, 2);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 2);
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [1, 1, 3]
+    );
+});
+
+test("Repeated Stop while already stopped cancels a pending remote search", () => {
+    const c = remoteQueueFixture();
+    c.__ottClassicPlayback.reconcile();
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.requestQueue();
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    c.__ottMedia.cancelAuto();
+    c.__ottClassicPlayback.command({ type: "stop" });
+    assert.equal(c.__ottClassicPlayback.snapshot().generation, generation);
+    c.completeSearch([{ id: 1, request: { id: 1 }, title: "Film" }]);
+    assert.equal(c.resolutions.length, 0);
+    assert.equal(c.replies.length, 0);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+});
+
+test("Oversized remote queue metadata is rejected before playback dispatch", () => {
+    const c = remoteQueueFixture();
+    c.requestQueue();
+    c.completeSearch([
+        { id: 1, request: { id: 1 }, title: "я".repeat(500000) },
+    ]);
+    assert.equal(c.replies[0].status, "rejected");
+    assert.match(c.replies[0].data.error, /more specific/);
+    assert.equal(c.resolutions.length, 0);
+});
+
+test("Remote VPortal validates queries and rejects unavailable or parental-locked queues", () => {
+    for (const query of ["", "   ", "я".repeat(513), "\ud800"]) {
+        const c = remoteQueueFixture();
+        c.requestQueue("vportal", query);
+        assert.equal(c.replies[0].status, "rejected");
+        assert.equal(c.searchQuery, undefined);
+    }
+    const missing = remoteQueueFixture();
+    delete missing.providerMediaClient.search;
+    missing.requestQueue();
+    assert.equal(missing.replies[0].status, "unsupported");
+    const locked = remoteQueueFixture();
+    locked.requestQueue();
+    locked.completeSearch([
+        { adult: 1, id: 1, request: { id: 1 }, title: "Film" },
+    ]);
+    assert.equal(locked.replies[0].status, "rejected");
+    assert.equal(locked.resolutions.length, 0);
+    assert(!locked.calls.some((row) => row[0] === "pin"));
+});
+
+test("Remote request cancellation, Stop and source replacement block late search and stream replies", () => {
+    for (const at of ["search", "resolve"]) {
+        for (const action of ["cancel", "stop", "source"]) {
+            const c = remoteQueueFixture();
+            c.deferResolve = true;
+            const cancel = c.requestQueue();
+            if (at === "resolve")
+                c.completeSearch([
+                    { id: 1, request: { id: 1 }, title: "Film" },
+                ]);
+            if (action === "cancel") cancel();
+            if (action === "stop") {
+                c.__ottMedia.cancelAuto();
+                c.__ottClassicPlayback.command({ type: "stop" });
+            }
+            if (action === "source") c.providerMediaClient = {};
+            if (at === "search")
+                c.completeSearch([
+                    { id: 1, request: { id: 1 }, title: "Film" },
+                ]);
+            else c.completeResolve();
+            assert.equal(
+                c.calls.filter((row) => row[0] === "play").length,
+                0,
+                at + ": " + action
+            );
+            assert.equal(c.replies.length, 0);
+        }
+    }
+});
+
+test("A remote queue's direct-URL identity retains its provider page when reloaded from history", () => {
+    const c = remoteQueueFixture();
+    c.requestQueue();
+    const origin = {
+        kind: "catalog",
+        target: "provider-page",
+        title: "Provider page",
+    };
+    c.completeSearch([
+        {
+            __ottMediaOrigin: origin,
+            stream_url: "old.mp4",
+            title: "Same title",
+        },
+    ]);
+    const original = c.__ottMedia.current().ref.itemId;
+    c.__ottMedia.checkpoint(c.__ottMedia.current().ref, 150, true);
+    c.catalogs["provider-page"] = [
+        { stream_url: "renewed.mp4", title: "Same title" },
+    ];
+    c.mediaList(-1);
+    c.selectMedia(0);
+    assert.equal(c.__ottMedia.current().ref.itemId, original);
+    assert.equal(
+        c.resolutions.length,
+        2,
+        "History found the item in its originating page"
+    );
+});
+
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
+require("./test_media_filter_ownership.cjs");

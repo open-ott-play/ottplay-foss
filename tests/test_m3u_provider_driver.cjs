@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { JSDOM } = require("jsdom");
 const fixture = require("./helpers/m3u-driver-fixture.cjs");
 const corrected = require("./helpers/playlist-corrected-expectations.cjs");
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -65,6 +66,126 @@ test("14 captured M3U catalogs and matching request bodies retain legacy channel
     }
 });
 
+test("invalid playlist responses fail once without exposing their body or starting matching", () => {
+    const privateBody = "PRIVATE_RESPONSE_FIXTURE";
+    const bodies = [
+        "<!doctype html><html>" + privateBody + "</html>",
+        "\ufeff \r\n<html>" + playlist + "</html>",
+        "# upstream comment\r\n\n <html>" + privateBody + "</html>",
+        "# upstream comment\r<html>" + privateBody + "</html>",
+        '\n {"error":"' + privateBody + '"}',
+        '\ufeff# upstream comment\n ["' + privateBody + '"]',
+        "",
+        " \t\r\n\ufeff",
+        null,
+        undefined,
+        false,
+        42,
+        [],
+        { error: privateBody },
+        {
+            toString() {
+                throw new Error("Responses must not be coerced to text");
+            },
+        },
+    ];
+    for (const route of ["direct", "proxy", "local"])
+        for (const body of bodies) {
+            const f = fixture(
+                route === "local"
+                    ? {
+                          config: {
+                              active: 0,
+                              M3Us: [{ www: "/sdcard/list.m3u" }],
+                          },
+                          readFile: () => body,
+                      }
+                    : {}
+            );
+            try {
+                const driver = f.start();
+                const outcomes = [];
+                driver.load((catalog, error) =>
+                    outcomes.push({ count: catalog.ids.length, error })
+                );
+                if (route !== "local") {
+                    if (route === "proxy") f.requests[0].reject();
+                    const request = f.requests.at(-1);
+                    request.resolve(body);
+                    request.resolve(playlist);
+                    request.reject();
+                }
+                assert.deepEqual(outcomes, [
+                    { count: 0, error: "m3u-processing" },
+                ]);
+                assert.equal(
+                    f.requests.length,
+                    route === "local" ? 0 : route === "proxy" ? 2 : 1,
+                    "Invalid content must not start guide/logo matching or a retry"
+                );
+            } finally {
+                f.dom.window.close();
+            }
+        }
+    const f = fixture();
+    try {
+        load(f, bodies[0]);
+        assert.deepEqual(f.errors, ["Failed to load channel list!"]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("playlist validation preserves headers, comments, BOM, bare URLs and empty M3U documents", () => {
+    for (const [body, count] of [
+        [playlist, 2],
+        [playlist.slice(playlist.indexOf("\n") + 1), 2],
+        ["\ufeff" + playlist.replace(/\n/g, "\r\n"), 2],
+        ["# leading comment\r\n\r\n" + playlist, 2],
+        ["# leading comment\r\n".repeat(10000) + playlist, 2],
+        ["#EXTM3U", 0],
+        ['\ufeff#EXTM3U url-tvg="https://xml.test/main.xml"\r\n# comment\n', 0],
+        ["# comment only\n", 0],
+        ["https://cdn.test/unadorned.m3u8\n", 0],
+    ]) {
+        const f = fixture();
+        try {
+            const driver = f.start();
+            const outcomes = [];
+            driver.load((catalog, error) =>
+                outcomes.push({ count: catalog.ids.length, error })
+            );
+            f.host.resolveValidationResponse = () =>
+                f.requests[0].resolve(body);
+            vm.runInContext("resolveValidationResponse()", f.host, {
+                timeout: 5000,
+            });
+            assert.deepEqual(outcomes, [{ count, error: undefined }]);
+        } finally {
+            f.dom.window.close();
+        }
+    }
+});
+
+test("cancelled playlist responses cannot report validation errors into a replacement load", () => {
+    const f = fixture();
+    try {
+        const driver = f.start();
+        const outcomes = [];
+        driver.load(() => outcomes.push("old"));
+        const previous = f.requests[0];
+        driver.load((catalog, error) =>
+            outcomes.push({ count: catalog.ids.length, error })
+        );
+        previous.resolve("<html>expired login</html>");
+        assert.deepEqual(outcomes, []);
+        f.requests.at(-1).resolve(playlist);
+        assert.deepEqual(outcomes, [{ count: 2, error: undefined }]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
 test("15 slots normalize corrupt configurations and preserve per-slot history/journal namespaces", () => {
     for (const raw of [
         "invalid",
@@ -120,7 +241,7 @@ test("direct timeout/proxy fallback/interception/local files retain request cont
         data: { url: "@https://playlist.test/list.m3u" },
         dataType: "text",
         method: "post",
-        timeout: 15000,
+        timeout: 65000,
         url: "https://relay.test/m3u/cp.php",
     });
     f.requests[1].resolve(playlist);
@@ -137,6 +258,161 @@ test("direct timeout/proxy fallback/interception/local files retain request cont
     local.host.getChannelsArray(() => {});
     assert.equal(local.host.cList.length, 2);
     assert(local.requests.every((r) => r.settings.type === "POST"));
+});
+
+test("direct playlists remain text under legacy and native jQuery MIME detection", () => {
+    for (const file of [
+        "js/jquery-1.11.1.min.js",
+        "node_modules/jquery/dist/jquery.min.js",
+    ]) {
+        for (const mime of [
+            "text/plain",
+            "application/json",
+            "application/xml",
+            "application/javascript",
+        ]) {
+            const f = fixture();
+            const browser = new JSDOM("<!doctype html>", {
+                runScripts: "outside-only",
+                url: "https://playlist.test/",
+            });
+            try {
+                const w = browser.window;
+                w.eval(
+                    fs.readFileSync(path.join(__dirname, "..", file), "utf8")
+                );
+                const requests = [];
+                let response = playlist;
+                w.$.ajaxTransport("+*", (options) => ({
+                    abort() {},
+                    send(_headers, complete) {
+                        requests.push(options.url);
+                        if (options.url === "https://playlist.test/list.m3u")
+                            complete(
+                                200,
+                                "OK",
+                                { text: response },
+                                "Content-Type: " + mime
+                            );
+                        else complete(503, "Unavailable", { text: "" });
+                    },
+                }));
+                f.host.$.ajax = w.$.ajax.bind(w.$);
+                const driver = f.start();
+                let completed = 0;
+                driver.load((catalog, error) => {
+                    assert.equal(error, undefined, file + ": " + mime);
+                    assert.equal(catalog.ids.length, 2);
+                    completed++;
+                });
+                assert.equal(completed, 1);
+                assert.equal(
+                    requests.some((url) => url.endsWith("/m3u/cp.php")),
+                    false,
+                    "A mislabeled response must not require the companion proxy"
+                );
+                if (mime === "application/javascript") {
+                    response = "window.__ottPlaylistMimeExecuted = true;";
+                    driver.load(() => completed++);
+                    assert.equal(completed, 2);
+                    assert.equal(w.__ottPlaylistMimeExecuted, undefined);
+                }
+            } finally {
+                browser.window.close();
+                f.dom.window.close();
+            }
+        }
+    }
+});
+
+test("slow companion playlists get the upstream budget and still terminate at the client deadline", () => {
+    const f = fixture();
+    const browser = new JSDOM("<!doctype html>", {
+        runScripts: "outside-only",
+        url: "https://playlist.test/",
+    });
+    try {
+        const w = browser.window;
+        w.eval(
+            fs.readFileSync(
+                path.join(__dirname, "../js/jquery-1.11.1.min.js"),
+                "utf8"
+            )
+        );
+        const timers = new Map();
+        let now = 0;
+        let nextTimer = 0;
+        w.setTimeout = (callback, delay) => {
+            const id = ++nextTimer;
+            timers.set(id, { at: now + delay, callback });
+            return id;
+        };
+        w.clearTimeout = (id) => timers.delete(id);
+        function advance(milliseconds) {
+            const until = now + milliseconds;
+            for (;;) {
+                const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+                if (!next || next[1].at > until) break;
+                now = next[1].at;
+                timers.delete(next[0]);
+                next[1].callback();
+            }
+            now = until;
+        }
+        let proxyResponse;
+        let aborts = 0;
+        w.$.ajaxTransport("+*", (options) => ({
+            abort() {
+                aborts++;
+            },
+            send(_headers, complete) {
+                if (options.url.endsWith("/m3u/cp.php"))
+                    proxyResponse = complete;
+                else complete(503, "Unavailable", { text: "" });
+            },
+        }));
+        f.host.$.ajax = w.$.ajax.bind(w.$);
+        const driver = f.start();
+        const outcomes = [];
+        function completed(catalog, error) {
+            outcomes.push({ count: catalog.ids.length, error });
+        }
+        driver.load(completed);
+        advance(30000);
+        assert.equal(
+            outcomes.length,
+            0,
+            "Slow upstream playlists remain pending after 30 seconds"
+        );
+        proxyResponse(
+            200,
+            "OK",
+            { text: playlist },
+            "Content-Type: text/plain"
+        );
+        assert.deepEqual(outcomes, [{ count: 2, error: undefined }]);
+        assert.equal(aborts, 0);
+        driver.load(completed);
+        advance(64999);
+        assert.equal(outcomes.length, 1);
+        advance(1);
+        assert.deepEqual(outcomes[1], { count: 0, error: "m3u-network" });
+        assert.equal(aborts, 1);
+        proxyResponse(
+            200,
+            "OK",
+            { text: playlist },
+            "Content-Type: text/plain"
+        );
+        assert.equal(
+            outcomes.length,
+            2,
+            "Timed-out responses cannot publish a late catalog"
+        );
+    } finally {
+        browser.window.close();
+        f.dom.window.close();
+    }
 });
 
 test("matching companion uses the relay hostname and preserves custom and relative relays without URL", () => {
@@ -1013,6 +1289,121 @@ test("programmatic and raw portal replacement rotate media identity and reject r
         const count = f.requests.length;
         f.host.playMedia(item);
         assert.equal(f.requests.length, count);
+    }
+});
+
+test("hosted M3U owns XMLTV without companion requests and disposes stale guide sessions", () => {
+    const f = fixture();
+    let rows,
+        notify,
+        stopped = 0;
+    f.host.__ottHostedEpg = {
+        enabled: () => true,
+        open(entries, callback) {
+            rows = entries;
+            notify = callback;
+            return {
+                close() {
+                    stopped++;
+                },
+                guide(id, callback) {
+                    callback([
+                        {
+                            descr: "",
+                            name: "Hosted",
+                            time: 10000,
+                            time_to: 11000,
+                        },
+                    ]);
+                },
+            };
+        },
+    };
+    const { driver } = load(f);
+    assert.equal(
+        f.requests.length,
+        1,
+        "only the playlist is fetched; no matching POST"
+    );
+    assert.deepEqual(clone(rows[0].xmltv_urls), ["https://xml.test/main.xml"]);
+    const id = f.host.cList[0];
+    notify({ [id]: { logo: "https://logos.test/one.png" } });
+    let result;
+    driver.guide(id, (value) => (result = value));
+    assert.equal(result[0].name, "Hosted");
+    assert.equal(f.requests.length, 1, "guide comes from worker bridge");
+    driver.load(() => {});
+    assert.equal(stopped, 1);
+    notify({ [id]: { logo: "https://logos.test/stale.png" } });
+    assert.equal(
+        driver.logo(id),
+        "",
+        "old worker cannot publish into the new catalog"
+    );
+    f.requests[1].reject();
+    assert.equal(
+        f.requests.length,
+        2,
+        "hosted playlist failure never falls back to companion cp.php"
+    );
+    f.dom.window.close();
+});
+
+test("hosted M3U ignores retired companion directives and retains explicit provider JSON guides", () => {
+    const f = fixture();
+    let entries;
+    f.host.__ottHostedEpg = {
+        enabled: () => true,
+        open(rows) {
+            entries = rows;
+            return { close() {}, guide() {} };
+        },
+    };
+    const body = playlist
+        .replace(
+            "#EXTM3U",
+            '#EXTM3U foss-tvg="!epg-server::https://epg.2560801.xyz,!ico-server::https://epg.2560801.xyz,=provider::https://provider.test/guide/"'
+        )
+        .replace('tvg-id="one"', 'tvg-id="one" tvg-source="=provider"');
+    const { driver } = load(f, body);
+    try {
+        assert.equal(f.requests.length, 1, "no guide or logo companion POST");
+        assert.equal(
+            entries.length,
+            1,
+            "only the XMLTV channel enters the worker"
+        );
+        assert.equal(entries[0].id, f.host.cList[1]);
+        assert.equal(entries[0].epg_external, false);
+        assert.deepEqual(clone(entries[0].xmltv_urls), [
+            "https://xml.test/main.xml",
+        ]);
+        const id = f.host.cList[0];
+        assert.equal(f.host.channels[id].epg_src, "=provider");
+        let programme;
+        driver.guide(id, (rows) => (programme = rows));
+        assert.equal(
+            f.requests.length,
+            2,
+            "an explicit provider guide remains direct"
+        );
+        assert(
+            f.requests[1].settings.url.startsWith(
+                "https://provider.test/guide/"
+            )
+        );
+        f.requests[1].resolve({
+            epg_data: [{ name: "Provider guide", time: 100, time_to: 200 }],
+        });
+        assert.equal(programme[0].name, "Provider guide");
+        assert(
+            f.requests.every(
+                (request) => !request.settings.url.includes("2560801.xyz")
+            )
+        );
+    } finally {
+        driver.dispose();
+        f.dom.window.close();
     }
 });
 

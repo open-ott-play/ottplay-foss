@@ -59,6 +59,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Nastavení All4you.tv",
     "Allowlist this Device ID": "Povolte toto ID zařízení",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP bez portu používá port HTTP 8081. Pro odpojení smažte adresu nebo zvolte Odpojit.",
     "API failed, trying M3U...": "Chyba API, zkoušíme M3U…",
@@ -66,6 +68,8 @@ var keyStrings = {
     "API server URL": "URL serveru API",
     "Applying HTTP remote settings...":
         "Používání nastavení ovládání přes HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Potvrďte kód pro %1 příkazem ott approve NAME CODE:",
     Archive: "Archiv",
     "Archive - begin": "Archiv — začátek",
     "Archive hours": "Hodiny archivu",
@@ -108,6 +112,7 @@ var keyStrings = {
     "Call PiP": "Otevřít PiP",
     "Call PiP / PiP exchange": "Otevřít PiP / prohodit obrazy",
     Cancel: "Zrušit",
+    "Cancel pairing": "Zrušit párování",
     "Cannot delete the last category": "Poslední kategorii nelze smazat",
     Category: "Kategorie",
     "Category selection": "Výběr kategorie",
@@ -151,6 +156,15 @@ var keyStrings = {
     "Command server": "Příkazový server",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adresa příkazového serveru, přístupový kód zařízení, místní ovládání HTTP a vzdálené zadávání textu",
+    "Command server discovery canceled.":
+        "Hledání příkazového serveru bylo zrušeno.",
+    "Command server discovery has not started.":
+        "Hledání příkazového serveru ještě nezačalo.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Hledání příkazového serveru není dostupné. Zvolte „Najít příkazový server“ a zkuste to znovu.",
+    "Command server discovery timed out.":
+        "Vypršel časový limit hledání příkazového serveru.",
+    "Command server found.": "Příkazový server nalezen.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nastavte All4you.tv v Nastavení -> Nastavení poskytovatele",
@@ -235,6 +249,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nepodařilo se vytvořit žádost o párování. Pro další pokus znovu vyhledejte server.",
+    "Could not save the approved command server settings.":
+        "Nepodařilo se uložit schválená nastavení příkazového serveru.",
     "Could not update HTTP remote control.":
         "Nastavení ovládání HTTP se nepodařilo aktualizovat.",
     Country: "Země",
@@ -253,6 +271,8 @@ var keyStrings = {
     "Device info:": "Informace o zařízení:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Playlisty KBC (Kinoboom) vyžadují MAC adresu zařízení",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID zařízení ještě není připraveno. Zvolte „Najít příkazový server“ a zkuste to znovu.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Nastavení Diamond TV",
     Director: "Režie",
@@ -346,6 +366,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program a archiv. Kanál: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG se nepodařilo spustit. Restartujte přehrávač, aby znovu načetl své soubory. Přehrávání se zastaví.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Chyba!",
     "Error Code!": "Neplatný kód!",
     Exit: "Ukončit",
@@ -374,6 +439,8 @@ var keyStrings = {
         "Výběr souboru není na tomto zařízení podporován",
     Filter: "Filtr",
     Filters: "Filtry",
+    "Find command server": "Najít příkazový server",
+    "Finding command servers...": "Hledání příkazových serverů…",
     "First Run Setup": "Počáteční nastavení",
     Folders: "Folders",
     "Font type": "Druh písma",
@@ -480,8 +547,12 @@ var keyStrings = {
     "Next TV program": "Další pořad",
     No: "Ne",
     "No channel name": "Kanál nemá název",
+    "No command server was found on this network.":
+        "V této síti nebyl nalezen příkazový server.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Uložená nastavení nebyla nalezena",
     "Not found": "Nenalezeno",
     "Not reduce video when showing the list (bugfix)":
@@ -501,6 +572,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Nastavení OTT Prime ONLINE",
@@ -511,6 +584,14 @@ var keyStrings = {
     on: "zapnuto",
     "on ": "při ",
     "or scan": "nebo naskenujte",
+    "Pairing approved. Command server configured.":
+        "Párování schváleno. Příkazový server je nastaven.",
+    "Pairing expired. Find the server again to retry.":
+        "Čas pro párování vypršel. Pro další pokus znovu vyhledejte server.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Párovací server není dostupný. Pro další pokus znovu vyhledejte server.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Párování bylo odmítnuto nebo přišlo neplatné schválení. Pro další pokus znovu vyhledejte server.",
     "Parental control": "Rodičovská kontrola",
     Password: "Heslo",
     Pause: "Pauza",
@@ -542,6 +623,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Vrátit o 10 sekund po pauze",
     PROST: "PROST",
     "PROST settings": "Nastavení PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Předchozí",
     "Preview in channel list": "Náhled v seznamu kanálů",
     Previous: "Předchozí kanál",
@@ -566,7 +648,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Ovladač bez barevných tlačítek",
     "Remote (number buttons N/A)": "Ovladač bez číselných tlačítek",
     "Remote control": "Dálkové ovládání",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Platnost vzdálené relace vypršela",
+    "Remote text entry": "Vzdálené zadávání textu",
     "Remote text entry denied": "Vzdálené zadávání textu bylo zamítnuto",
     "Remote text entry error": "Chyba vzdáleného zadávání textu",
     "Remote text entry needs a Device ID.":
@@ -583,10 +670,12 @@ var keyStrings = {
     "Rename to": "Přejmenovat na",
     "Repeat parental code": "Zopakujte rodičovský kód",
     "Request sended!": "Požadavek odeslán!",
+    "Requesting approval for %1": "Žádost o schválení pro %1",
     "Restart player": "Restartovat přehrávač",
     "Restart stream": "Restartovat stream",
     "Restart stream / Live": "Restartovat stream / živě",
     "Resume from archive?": "Pokračovat z archivu?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Vrátit se na předchozí kanál",
     Rewind: "Přetáčení",
     "Rewind step by buttons %1/%2": "Krok přetáčení tlačítky %1/%2",
@@ -604,9 +693,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Uložit nastavení a načíst seznam kanálů",
     "Save settings to storage": "Uložit nastavení do úložiště",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scénář",
     Search: "Hledat",
     "Search programme": "Hledat pořad",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Vyberte typ streamu:<br>%1",
     "Select category to add channel": "Vyberte kategorii pro přidání kanálu",
     "Select color": "Vyberte barvu",
@@ -631,12 +728,16 @@ var keyStrings = {
     "Set parental code": "Nastavte rodičovský kód",
     "Set timer?": "Nastavit časovač?",
     Settings: "Nastavení",
+    "Settings changed. Discovery was canceled.":
+        "Nastavení se změnilo. Hledání bylo zrušeno.",
     "Settings could not be saved": "Nastavení se nepodařilo uložit",
     "Settings loaded from storage": "Nastavení načteno z úložiště",
     "Settings STB": "Nastavení zařízení",
     "Settings saved": "Nastavení uloženo",
     "Settings saved to storage": "Nastavení uloženo do úložiště",
     "Settings sended!": "Nastavení odesláno!",
+    "Several command servers were found. Select one below.":
+        "Bylo nalezeno několik příkazových serverů. Jeden vyberte níže.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Nastavení Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -669,6 +770,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Časovač vypnutí",
     "Sort channels": "Řadit kanály",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Poskytovatel portálu Stalker",
     "Stalker portal settings": "Nastavení portálu Stalker",
     "Stalker portals": "Portály Stalker",
@@ -690,8 +793,17 @@ var keyStrings = {
     system: "systémový",
     Tabox: "Tabox",
     "Tabox settings": "Nastavení Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL pro hledání příkazového serveru je neplatná.",
     "The device ID in the address is invalid.":
         "ID zařízení v adrese není platné.",
+    "The discovery response is invalid.":
+        "Odpověď na požadavek vyhledávání je neplatná.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Tento prohlížeč nepodporuje bezpečné automatické párování. Aktualizujte jej nebo zadejte nastavení příkazového serveru ručně.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Tento prohlížeč nemá profil vyhledávání. Zadejte adresu serveru nebo nastavte profil nasazení.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Tento přehrávač HTTPS se nemůže připojit k serveru HTTP. Použijte server HTTPS nebo otevřete přehrávač přes HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -733,6 +845,8 @@ var keyStrings = {
         "VLEVO/VPRAVO — výběr prvku, OK — aktivace, NAHORU/DOLŮ — posouvání.",
     Username: "Uživatelské jméno",
     "Username or password is missing.": "Chybí uživatelské jméno nebo heslo.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Nastavení VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

@@ -93,7 +93,8 @@ var keys = {
         }
         var tech = player.tech({ IWillNotUseThisInPlugins: true });
         var alive = true;
-        var wantsPlay = true;
+        var wantsPlay = request.paused !== true;
+        if (!wantsPlay) media.autoplay = false;
         var sourceAttached = false;
         var pendingSeek =
             request.position > 0 ? Number(request.position) : null;
@@ -178,7 +179,7 @@ var keys = {
         on(player.audioTracks(), "addtrack", restoreTracks);
         on(player.textTracks(), "addtrack", restoreTracks);
         if (!pip) {
-            w.forcePlay = true;
+            w.forcePlay = wantsPlay;
             if (w.__ottDebug && w.__ottDebug.enabled)
                 w.__ottDebug.beginSession(request.url);
         }
@@ -254,6 +255,7 @@ var keys = {
                 applySeek();
             },
             selectTrack: selectTrack,
+            supportsPausedStart: true,
             tracks: function (kind) {
                 var rows = [];
                 if (!alive) return rows;

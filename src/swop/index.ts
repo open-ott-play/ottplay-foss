@@ -1,5 +1,5 @@
 /**
- * Remote text entry (swop) — Cloudflare Worker session handoff for the ♥™ VKB key.
+ * Remote text entry (swop) — session handoff for native input and the ♥™ VKB key.
  *
  * Uses a server-authenticated same-origin relay against `settings.swopBaseUrl`.
  * The Device UUID identifies sessions; installation credentials stay on the server.
@@ -16,6 +16,7 @@ import {
     wire,
 } from "../shared/wire-contracts";
 import { makeQrSvg } from "../utils/qr-code";
+import { openHereNowSwop } from "./herenow-ui";
 
 declare var $: any;
 declare var keys: any;
@@ -50,7 +51,7 @@ interface LocalSwopConfig {
 }
 
 /**
- * Ensure a stable Device UUID suitable for the Worker allowlist charset.
+ * Ensure a stable Device UUID suitable for the SWOP identity charset.
  * Prefers an explicit id, then window/localStorage/settings; generates a secure id if possible.
  * Returns empty when no id is provisioned and the engine has no secure random API.
  */
@@ -140,6 +141,10 @@ function persistSwopBaseUrl(url: string): void {
  */
 export function applyLocalSwopConfig(done?: () => void): void {
     var finish = typeof done === "function" ? done : function () {};
+    if ((window as any).__OTTPLAY_HOSTED__) {
+        finish();
+        return;
+    }
     try {
         $.ajax({
             cache: false,
@@ -197,10 +202,22 @@ function authErrorMessage(status: number, body: any): string {
 }
 
 /**
- * ♥™ key handler: start a swop session, show code/URL, poll until phone submits,
- * then fill `editvar` and return to the on-screen keyboard.
+ * Start a swop session, show code/URL, poll until the phone submits, then fill
+ * `editvar` and resume the original editor without saving it.
  */
 export function swopLoadValue(): void {
+    if ((window as any).__OTTPLAY_HOSTED__) {
+        try {
+            openHereNowSwop(window, _, makeQrSvg);
+        } catch (_) {
+            alert(
+                _(
+                    "Secure remote input could not start. Please use the on-screen keyboard."
+                )
+            );
+        }
+        return;
+    }
     var base = getSwopBaseUrl();
     if (!base) {
         alert(_("Remote text entry not configured"));
@@ -219,18 +236,35 @@ export function swopLoadValue(): void {
     var sessionToken = "";
     var pollTimer: any = null;
     var w = window as any;
+    var screen = w.__ottClassicScreenPort;
+    var editor = screen && screen.owner("editor");
+    if (screen && (!editor || !editor.active())) return;
     var prevEditKey = w.editKey;
+    var releaseOwner: (() => void) | null = null;
+    var sessionTimer: any = null;
+
+    function ownsSession(): boolean {
+        return (
+            !cancelled &&
+            (!editor ||
+                (editor.active() && screen.owner("editor") === editor)) &&
+            w.editKey === sessionKey
+        );
+    }
 
     function cleanup(): void {
+        if (cancelled) return;
         cancelled = true;
         sessionToken = "";
         if (pollTimer) clearTimeout(pollTimer);
         clearTimeout(sessionTimer);
-        if (prevEditKey) w.editKey = prevEditKey;
-        $("#listEdit").hide();
+        if (w.editKey === sessionKey) w.editKey = prevEditKey;
+        if (releaseOwner) {
+            var release = releaseOwner;
+            releaseOwner = null;
+            release();
+        }
     }
-
-    var sessionTimer = setTimeout(cleanup, SESSION_TIMEOUT_MS);
 
     function escapeHtml(s: string): string {
         return String(s)
@@ -241,6 +275,7 @@ export function swopLoadValue(): void {
     }
 
     function showMsg(msg: string, isError?: boolean, asHtml?: boolean): void {
+        if (!ownsSession()) return;
         var listEdit = $("#listEdit");
         listEdit
             .html(
@@ -257,11 +292,8 @@ export function swopLoadValue(): void {
     }
 
     function returnToVkb(value: string): void {
-        cancelled = true;
-        sessionToken = "";
-        if (pollTimer) clearTimeout(pollTimer);
-        clearTimeout(sessionTimer);
-        if (prevEditKey) w.editKey = prevEditKey;
+        if (!ownsSession()) return;
+        cleanup();
         w.editvar = value == null ? "" : String(value);
         if (typeof w.showEditKey === "function")
             w.showEditKey(null, undefined, true);
@@ -270,7 +302,7 @@ export function swopLoadValue(): void {
     }
 
     function poll(): void {
-        if (cancelled || !code) return;
+        if (!ownsSession() || !code) return;
         $.ajax({
             cache: false,
             contentType: "application/json",
@@ -281,7 +313,7 @@ export function swopLoadValue(): void {
             }),
             dataType: "json",
             error: function (jqXHR: any) {
-                if (cancelled) return;
+                if (!ownsSession()) return;
                 var body: any = null;
                 try {
                     body = jqXHR.responseJSON || JSON.parse(jqXHR.responseText);
@@ -296,7 +328,7 @@ export function swopLoadValue(): void {
             },
             headers: swopHeaders(clientId),
             success: function (data: ValResponse) {
-                if (cancelled) return;
+                if (!ownsSession()) return;
                 var st = data && data.status;
                 if (st === "waiting") {
                     pollTimer = setTimeout(poll, POLL_MS);
@@ -308,6 +340,7 @@ export function swopLoadValue(): void {
                     pollTimer = setTimeout(poll, POLL_MS);
                 }
             },
+            swopNativeRequest: true,
             timeout: 10000,
             type: "POST",
             url: base + wire.swopValuePath,
@@ -322,18 +355,19 @@ export function swopLoadValue(): void {
             "Close"
         );
 
-    showMsg(_("Send request") + "...");
-    w.editKey = function (key: number): boolean {
-        if (key === keys.RETURN || key === keys.EXIT) {
-            cleanup();
-            if (typeof w.showEditKey === "function")
-                w.showEditKey(null, undefined, true);
-            else if (typeof showEditKey1 === "function")
-                showEditKey1(null, undefined, true);
-            return true;
-        }
+    function sessionKey(key: number): boolean {
+        if (key === keys.RETURN || key === keys.EXIT) returnToVkb(w.editvar);
         return true;
-    };
+    }
+    w.editKey = sessionKey;
+    if (editor) releaseOwner = editor.own(cleanup);
+    if (cancelled) return;
+    sessionTimer = setTimeout(function () {
+        if (!ownsSession()) return;
+        returnToVkb(w.editvar);
+        alert(_("Remote session expired"));
+    }, SESSION_TIMEOUT_MS);
+    showMsg(_("Send request") + "...");
 
     var caption =
         (typeof w.editCaption === "string" && w.editCaption) ||
@@ -350,6 +384,7 @@ export function swopLoadValue(): void {
         }),
         dataType: "json",
         error: function (jqXHR: any) {
+            if (!ownsSession()) return;
             var body: any = null;
             try {
                 body = jqXHR.responseJSON || JSON.parse(jqXHR.responseText);
@@ -365,7 +400,7 @@ export function swopLoadValue(): void {
         },
         headers: swopHeaders(clientId),
         success: function (data: AuthenticatedSessionResponse) {
-            if (cancelled) return;
+            if (!ownsSession()) return;
             if (!data || !data.code) {
                 showMsg(_("Error Code!"), true);
                 return;
@@ -412,6 +447,7 @@ export function swopLoadValue(): void {
             );
             pollTimer = setTimeout(poll, 3000);
         },
+        swopNativeRequest: true,
         timeout: 10000,
         type: "POST",
         url: base + wire.swopSessionPath,

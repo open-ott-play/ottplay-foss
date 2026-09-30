@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Tetapan All4you.tv",
     "Allowlist this Device ID": "Benarkan ID peranti ini",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP tanpa port menggunakan port HTTP 8081. Kosongkan alamat atau pilih Putuskan untuk berhenti.",
     "API failed, trying M3U...": "API gagal, mencuba M3U…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "URL pelayan API",
     "Applying HTTP remote settings...":
         "Menggunakan tetapan kawalan jauh HTTP…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Luluskan kod untuk %1 dengan ott approve NAME CODE:",
     Archive: "Arkib",
     "Archive - begin": "Arkib — mula",
     "Archive hours": "Jam arkib",
@@ -111,6 +115,7 @@ var keyStrings = {
     "Call PiP": "Buka PiP",
     "Call PiP / PiP exchange": "Buka PiP / tukar PiP",
     Cancel: "Batal",
+    "Cancel pairing": "Batalkan pemasangan",
     "Cannot delete the last category": "Tidak boleh memadam kategori terakhir",
     Category: "Kategori",
     "Category selection": "Pilih kategori",
@@ -154,6 +159,13 @@ var keyStrings = {
     "Command server": "Pelayan arahan",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Alamat pelayan arahan, kod akses peranti, kawalan HTTP setempat dan tetapan input teks jauh",
+    "Command server discovery canceled.": "Carian pelayan arahan dibatalkan.",
+    "Command server discovery has not started.":
+        "Carian pelayan arahan belum bermula.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Carian pelayan arahan tidak tersedia. Gunakan Cari pelayan arahan untuk mencuba semula.",
+    "Command server discovery timed out.": "Carian pelayan arahan tamat masa.",
+    "Command server found.": "Pelayan arahan ditemui.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurasikan All4you.tv dalam Tetapan -> Tetapan penyedia",
@@ -238,6 +250,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Tidak dapat menyambung ke pelayan.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Tidak dapat membuat permintaan pemasangan. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Could not save the approved command server settings.":
+        "Tidak dapat menyimpan tetapan pelayan arahan yang diluluskan.",
     "Could not update HTTP remote control.":
         "Tidak dapat mengemas kini kawalan jauh HTTP.",
     Country: "Negara",
@@ -256,6 +272,8 @@ var keyStrings = {
     "Device info:": "Maklumat peranti:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "MAC peranti diperlukan untuk senarai main KBC (Kinoboom)",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID peranti belum sedia. Gunakan Cari pelayan arahan untuk mencuba semula.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Tetapan Diamond TV",
     Director: "Pengarah",
@@ -349,6 +367,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG dan arkib. Saluran: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG tidak dapat dimulakan. Mulakan semula pemain untuk memuatkan semula failnya. Main balik akan dihentikan.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Ralat!",
     "Error Code!": "Kod tidak sah!",
     Exit: "Keluar",
@@ -376,6 +439,8 @@ var keyStrings = {
         "Pemilihan fail tidak disokong pada peranti ini",
     Filter: "Penapis",
     Filters: "Penapis",
+    "Find command server": "Cari pelayan arahan",
+    "Finding command servers...": "Mencari pelayan arahan...",
     "First Run Setup": "Persediaan kali pertama",
     Folders: "Folders",
     "Font type": "Jenis fon",
@@ -483,8 +548,12 @@ var keyStrings = {
     "Next TV program": "Rancangan seterusnya",
     No: "Tidak",
     "No channel name": "Saluran tanpa nama",
+    "No command server was found on this network.":
+        "Tiada pelayan arahan ditemui pada rangkaian ini.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Tiada tetapan tersimpan ditemukan",
     "Not found": "Tidak ditemukan",
     "Not reduce video when showing the list (bugfix)":
@@ -504,6 +573,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Tetapan OTT Prime ONLINE",
@@ -514,6 +585,14 @@ var keyStrings = {
     on: "hidup",
     "on ": "hidup ",
     "or scan": "atau imbas",
+    "Pairing approved. Command server configured.":
+        "Pemasangan diluluskan. Pelayan arahan telah dikonfigurasikan.",
+    "Pairing expired. Find the server again to retry.":
+        "Pemasangan telah tamat tempoh. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Pelayan pemasangan tidak tersedia. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Pemasangan ditolak atau kelulusan yang diterima tidak sah. Cari pelayan sekali lagi untuk mencuba semula.",
     "Parental control": "Kawalan ibu bapa",
     Password: "Kata laluan",
     Pause: "Jeda",
@@ -545,6 +624,7 @@ var keyStrings = {
     "Position shift -10 seconds after pause": "Undur 10 saat selepas jeda",
     PROST: "PROST",
     "PROST settings": "Tetapan PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Sebelumnya",
     "Preview in channel list": "Pratonton dalam senarai saluran",
     Previous: "Sebelumnya",
@@ -570,7 +650,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Kawalan jauh tanpa butang warna",
     "Remote (number buttons N/A)": "Kawalan jauh tanpa butang nombor",
     "Remote control": "Kawalan jauh",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Sesi jauh tamat tempoh",
+    "Remote text entry": "Input teks jauh",
     "Remote text entry denied": "Input teks jauh ditolak",
     "Remote text entry error": "Ralat input teks jauh",
     "Remote text entry needs a Device ID.":
@@ -587,10 +672,12 @@ var keyStrings = {
     "Rename to": "Namakan semula kepada",
     "Repeat parental code": "Masukkan semula kod ibu bapa",
     "Request sended!": "Permintaan dihantar!",
+    "Requesting approval for %1": "Meminta kelulusan untuk %1",
     "Restart player": "Mulakan semula pemain",
     "Restart stream": "Mulakan semula strim",
     "Restart stream / Live": "Mulakan semula strim / langsung",
     "Resume from archive?": "Sambung daripada arkib?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Kembali ke saluran sebelumnya",
     Rewind: "Cari kedudukan",
     "Rewind step by buttons %1/%2": "Langkah undur butang %1/%2",
@@ -608,9 +695,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Simpan tetapan dan muatkan senarai saluran",
     "Save settings to storage": "Simpan tetapan ke storan",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Lakon layar",
     Search: "Cari",
     "Search programme": "Cari rancangan",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Pilih jenis strim:<br>%1",
     "Select category to add channel": "Pilih kategori untuk menambah saluran",
     "Select color": "Pilih warna",
@@ -635,12 +730,16 @@ var keyStrings = {
     "Set parental code": "Tetapkan kod ibu bapa",
     "Set timer?": "Tetapkan pemasa?",
     Settings: "Tetapan",
+    "Settings changed. Discovery was canceled.":
+        "Tetapan telah berubah. Carian dibatalkan.",
     "Settings could not be saved": "Tetapan tidak dapat disimpan",
     "Settings loaded from storage": "Tetapan dimuatkan daripada storan",
     "Settings STB": "Tetapan STB",
     "Settings saved": "Tetapan disimpan",
     "Settings saved to storage": "Tetapan disimpan ke storan",
     "Settings sended!": "Tetapan dihantar!",
+    "Several command servers were found. Select one below.":
+        "Beberapa pelayan arahan ditemui. Pilih satu di bawah.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Tetapan Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -673,6 +772,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Pemasa tidur",
     "Sort channels": "Isih saluran",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Penyedia portal Stalker",
     "Stalker portal settings": "Tetapan portal Stalker",
     "Stalker portals": "Portal Stalker",
@@ -694,8 +795,16 @@ var keyStrings = {
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Tetapan Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "URL carian pelayan arahan tidak sah.",
     "The device ID in the address is invalid.":
         "ID peranti dalam alamat tidak sah.",
+    "The discovery response is invalid.": "Respons carian tidak sah.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Pelayar ini tidak dapat melakukan pemasangan automatik dengan selamat. Kemas kini pelayar atau masukkan tetapan pelayan arahan secara manual.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Pelayar ini tiada profil carian. Masukkan alamat pelayan atau konfigurasikan profil penempatan.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Pemain HTTPS ini tidak dapat menyambung ke pelayan HTTP. Gunakan pelayan HTTPS atau buka pemain melalui HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -738,6 +847,8 @@ var keyStrings = {
         "Gunakan KIRI/KANAN untuk memilih kawalan, OK untuk mengaktifkannya dan ATAS/BAWAH untuk menatal.",
     Username: "Nama pengguna",
     "Username or password is missing.": "Nama pengguna atau kata laluan tiada.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Tetapan VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

@@ -526,13 +526,25 @@ var xDown: number | null = null,
 var xMove1: number | null = null,
     yMove1: number | null = null,
     tCount: number | undefined;
+var touchMaxDistance = 0;
 var touch_min_sensY = Math.round(screen.height / 10);
 var touch_min_sensX = Math.round(
     touch_min_sensY * (screen.width / screen.height) * 2
 );
+var nativeListTouch: {
+    target: HTMLElement;
+    owner: any;
+    rows: any[];
+    startX: number;
+    startY: number;
+    referenceY: number;
+    rowHeight: number;
+    axis: "" | "vertical" | "horizontal";
+    moved: boolean;
+    cancelled: boolean;
+} | null = null;
 
-// Cap-only tweaks (e.g. 1-finger tap → ENTER). Swipe/multi-finger stay global
-// so Mode A browser/STB and Tauri keep existing touch behavior.
+// Native list gestures use row distances; other shells retain remote gestures.
 function capacitorOnly(): boolean {
     return typeof (window as any).Capacitor !== "undefined";
 }
@@ -922,7 +934,133 @@ function isNativeTouchEditor(target: any): boolean {
     return false;
 }
 
+function resetNativeListTouch(): void {
+    if (!nativeListTouch) return;
+    var target = nativeListTouch.target;
+    target.removeEventListener("touchmove", forwardNativeListTouch);
+    target.removeEventListener("touchend", forwardNativeListTouch);
+    target.removeEventListener("touchcancel", forwardNativeListTouch);
+    nativeListTouch = null;
+}
+
+function forwardNativeListTouch(e: TouchEvent): void {
+    // Paging replaces the starting row. Its remaining touch events still target
+    // that detached node, so a body listener alone loses the rest of the gesture.
+    e.stopPropagation();
+    if (e.type === "touchmove") handleTouchMove(e);
+    else if (e.type === "touchend") body_handleTouchEnd(e);
+    else handleTouchCancel();
+}
+
+function startNativeListTouch(e: any): void {
+    if (!capacitorOnly() || tCount !== 1) return;
+    var w = window as any;
+    var target = e.target as HTMLElement;
+    var list = document.getElementById("listIn");
+    var owner = w.__ottClassicScreenPort?.listOwner();
+    var rows = w.listDataArray?.length ? w.listDataArray : w.listArray;
+    var height = Number(w.__ottListRowH);
+    if (
+        !target ||
+        !list?.contains(target) ||
+        !w.isListVisible ||
+        !owner?.foreground() ||
+        !rows?.length ||
+        !(height > 0) ||
+        !isFinite(height)
+    )
+        return;
+    var touch = e.touches[0];
+    nativeListTouch = {
+        axis: "",
+        cancelled: false,
+        moved: false,
+        owner: owner,
+        referenceY: touch.clientY,
+        rowHeight: height,
+        rows: rows,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        target: target,
+    };
+    target.addEventListener("touchmove", forwardNativeListTouch, {
+        passive: false,
+    });
+    target.addEventListener("touchend", forwardNativeListTouch, {
+        passive: false,
+    });
+    target.addEventListener("touchcancel", forwardNativeListTouch, {
+        passive: false,
+    });
+}
+
+function moveNativeListTouch(touch: any): boolean {
+    var gesture = nativeListTouch;
+    if (!gesture) return false;
+    var w = window as any;
+    var rows = w.listDataArray?.length ? w.listDataArray : w.listArray;
+    if (
+        gesture.cancelled ||
+        !gesture.owner.foreground() ||
+        !w.isListVisible ||
+        rows !== gesture.rows
+    ) {
+        gesture.cancelled = gesture.moved = true;
+        return true;
+    }
+    if (!touch) return true;
+    var dx = touch.clientX - gesture.startX;
+    var dy = touch.clientY - gesture.startY;
+    if (!gesture.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= 8) {
+        gesture.moved = true;
+        gesture.axis = Math.abs(dy) >= Math.abs(dx) ? "vertical" : "horizontal";
+    }
+    if (gesture.axis === "horizontal") return false;
+    if (gesture.axis !== "vertical") return true;
+    var distance = (gesture.referenceY - touch.clientY) / gesture.rowHeight;
+    var steps = distance < 0 ? Math.ceil(distance) : Math.floor(distance);
+    if (!steps) return true;
+    var current = w.selIndex;
+    var next = Math.max(0, Math.min(rows.length - 1, current + steps));
+    gesture.referenceY -= steps * gesture.rowHeight;
+    // Discard overscroll so reversing at either end responds immediately.
+    if (next !== current + steps) gesture.referenceY = touch.clientY;
+    if (next !== current) w.changeSelect(next - current);
+    return true;
+}
+
+function updateTouchPosition(touch: any): void {
+    if (!touch) return;
+    xUp = Math.round(touch.screenX);
+    yUp = Math.round(touch.screenY);
+    if (tCount === 1)
+        touchMaxDistance = Math.max(
+            touchMaxDistance,
+            Math.abs(xUp - xDown!),
+            Math.abs(yUp - yDown!)
+        );
+}
+
+function handleTouchCancel(): void {
+    resetNativeListTouch();
+    xDown = yDown = xUp = yUp = xMove1 = yMove1 = null;
+    tCount = undefined;
+    touchMaxDistance = 0;
+}
+
 function handleTouchStart(e: any): void {
+    if (
+        nativeListTouch &&
+        e.touches.length > 1 &&
+        (nativeListTouch.moved || !nativeListTouch.target.isConnected)
+    ) {
+        // Adding a finger after paging cancels the swipe. Keep its original
+        // target subscribed until the last finger lifts, in either lift order.
+        e.preventDefault();
+        nativeListTouch.cancelled = nativeListTouch.moved = true;
+        return;
+    }
+    handleTouchCancel();
     // Let the WebView focus editors, open its keyboard and handle native controls.
     // Synthesized clicks cannot replace those trusted touch default actions.
     if (
@@ -947,6 +1085,7 @@ function handleTouchStart(e: any): void {
     yUp = yDown;
     xMove1 = xDown;
     yMove1 = yDown;
+    startNativeListTouch(e);
 }
 
 /**
@@ -965,8 +1104,8 @@ function handleTouchStart(e: any): void {
 function handleTouchMove(e: any): void {
     if (touch_locked || xDown === null || yDown === null) return;
     e.preventDefault();
-    xUp = Math.round(e.touches[0].screenX);
-    yUp = Math.round(e.touches[0].screenY);
+    updateTouchPosition(e.touches[0]);
+    if (moveNativeListTouch(e.touches[0])) return;
     if (tCount === 1) {
         var dir = getDirection(
             xMove1!,
@@ -1007,6 +1146,13 @@ function body_handleTouchEnd(e: any): void {
     if (xDown === null || yDown === null) return;
     e.preventDefault();
     if (e.touches.length === 0) {
+        // Some WebViews coalesce the last movement into touchend.
+        if (tCount === 1) updateTouchPosition(e.changedTouches[0]);
+        if (nativeListTouch) moveNativeListTouch(e.changedTouches[0]);
+        if (nativeListTouch?.cancelled) {
+            handleTouchCancel();
+            return;
+        }
         if (tCount === 3) {
             // 3-finger tap → SETUP
             if (
@@ -1060,14 +1206,10 @@ function body_handleTouchEnd(e: any): void {
         } else if (tCount === 1) {
             // Preserve the TS click target and coordinates in every shell.
             if (
-                checkTap(
-                    xDown!,
-                    yDown!,
-                    xUp!,
-                    yUp!,
-                    touch_min_sensX / 2,
-                    touch_min_sensY / 2
-                )
+                !nativeListTouch?.moved &&
+                // Retain checkTap's tolerance, but measure the whole gesture
+                // so returning to its starting point cannot activate a control.
+                touchMaxDistance < touch_min_sensX / 10
             ) {
                 var touch = e.changedTouches[0];
                 var clickEvent: MouseEvent;
@@ -1100,12 +1242,17 @@ function body_handleTouchEnd(e: any): void {
                         null
                     );
                 }
+                // Only a stationary native list gesture activates on its first
+                // tap. Mouse clicks and remote navigation retain their policy.
+                (clickEvent as any).ottNativeListTap = !!nativeListTouch;
                 e.target.dispatchEvent(clickEvent);
             }
         }
         xDown = null;
         yDown = null;
         tCount = undefined;
+        touchMaxDistance = 0;
+        resetNativeListTouch();
     }
 }
 
@@ -1215,6 +1362,7 @@ document.body.addEventListener("touchmove", handleTouchMove, {
 document.body.addEventListener("touchend", body_handleTouchEnd, {
     passive: false,
 });
+document.body.addEventListener("touchcancel", handleTouchCancel);
 // Bubble on body (browser / non-video targets). Tauri also attaches a
 // capture-phase video-surface listener in src/index.ts because WKWebView
 // <video> clicks often never reach body.onclick.

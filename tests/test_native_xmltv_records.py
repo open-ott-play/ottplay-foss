@@ -25,7 +25,11 @@ SWIFT_METHOD = r'''
     func captureRecord(_ label: String, _ xml: String) {
         var output: [String: Any]
         do {
-            let parsed = try parseXmltv(xml)
+            // These captures exercise parsing, including invalid XML that never
+            // passed the loader's plain-XML sniff. Adapt only the input medium.
+            let document = try XmltvDocument(parent: xmlTemporaryDirectory)
+            try Data(xml.utf8).write(to: document.url)
+            let parsed = try parseXmltv(document)
             var programmes: [String: [[String: Any]]] = [:]
             for (id, entries) in parsed.programs {
                 programmes[id] = entries.map { ["start": $0.start, "stop": $0.stop, "title": $0.title, "desc": $0.desc] }

@@ -60,6 +60,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Instellingen voor All4you.tv",
     "Allowlist this Device ID": "Deze apparaat-ID toestaan",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Een IP-adres zonder poort gebruikt HTTP-poort 8081. Wis het adres of kies Verbinding verbreken om te stoppen.",
     "API failed, trying M3U...": "API mislukt, M3U proberen…",
@@ -67,6 +69,8 @@ var keyStrings = {
     "API server URL": "URL van API-server",
     "Applying HTTP remote settings...":
         "Instellingen voor HTTP-afstandsbediening toepassen…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Keur de code voor %1 goed met ott approve NAME CODE:",
     Archive: "Archief",
     "Archive - begin": "Archief — begin",
     "Archive hours": "Archiefuren",
@@ -111,6 +115,7 @@ var keyStrings = {
     "Call PiP": "PiP openen",
     "Call PiP / PiP exchange": "PiP openen / PiP wisselen",
     Cancel: "Annuleren",
+    "Cancel pairing": "Koppeling annuleren",
     "Cannot delete the last category":
         "De laatste categorie kan niet worden verwijderd",
     Category: "Categorie",
@@ -155,6 +160,15 @@ var keyStrings = {
     "Command server": "Opdrachtserver",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Adres van opdrachtserver, toegangscode voor apparaat, lokale HTTP-bediening en tekstinvoer op afstand",
+    "Command server discovery canceled.":
+        "Zoeken naar een opdrachtserver geannuleerd.",
+    "Command server discovery has not started.":
+        "Het zoeken naar een opdrachtserver is nog niet gestart.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Zoeken naar een opdrachtserver is niet beschikbaar. Kies Opdrachtserver zoeken om het opnieuw te proberen.",
+    "Command server discovery timed out.":
+        "De wachttijd voor het zoeken naar een opdrachtserver is verstreken.",
+    "Command server found.": "Opdrachtserver gevonden.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configureer All4you.tv via Instellingen -> Providerinstellingen",
@@ -240,6 +254,10 @@ var keyStrings = {
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
         "Kan geen verbinding maken met de server.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Kan geen koppelingsverzoek aanmaken. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Could not save the approved command server settings.":
+        "Kan de goedgekeurde opdrachtserverinstellingen niet opslaan.",
     "Could not update HTTP remote control.":
         "Kan HTTP-afstandsbediening niet bijwerken.",
     Country: "Land",
@@ -259,6 +277,8 @@ var keyStrings = {
     "Device info:": "Apparaatgegevens:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Voor KBC-afspeellijsten (Kinoboom) is het MAC-adres van het apparaat vereist",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "De UUID van het apparaat is nog niet gereed. Kies Opdrachtserver zoeken om het opnieuw te proberen.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Instellingen voor Diamond TV",
     Director: "Regisseur",
@@ -354,6 +374,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG en archief. Zender: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG kon niet worden gestart. Start de speler opnieuw om de bestanden opnieuw te laden. Het afspelen wordt gestopt.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Fout!",
     "Error Code!": "Ongeldige code!",
     Exit: "Afsluiten",
@@ -382,6 +447,8 @@ var keyStrings = {
         "Bestandsselectie wordt niet ondersteund op dit apparaat",
     Filter: "Filter",
     Filters: "Filters",
+    "Find command server": "Opdrachtserver zoeken",
+    "Finding command servers...": "Opdrachtservers zoeken...",
     "First Run Setup": "Eerste configuratie",
     Folders: "Folders",
     "Font type": "Lettertype",
@@ -490,8 +557,12 @@ var keyStrings = {
     "Next TV program": "Volgend programma",
     No: "Nee",
     "No channel name": "Geen zendernaam",
+    "No command server was found on this network.":
+        "Geen opdrachtserver gevonden op dit netwerk.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Geen opgeslagen instellingen gevonden",
     "Not found": "Niet gevonden",
     "Not reduce video when showing the list (bugfix)":
@@ -511,6 +582,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Instellingen voor OTT Prime ONLINE",
@@ -521,6 +594,14 @@ var keyStrings = {
     on: "aan",
     "on ": "aan ",
     "or scan": "of scan",
+    "Pairing approved. Command server configured.":
+        "Koppeling goedgekeurd. Opdrachtserver geconfigureerd.",
+    "Pairing expired. Find the server again to retry.":
+        "De koppeling is verlopen. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "De koppelingsserver is niet beschikbaar. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "De koppeling is geweigerd of er is een ongeldige goedkeuring ontvangen. Zoek de server opnieuw om het nogmaals te proberen.",
     "Parental control": "Ouderlijk toezicht",
     Password: "Wachtwoord",
     Pause: "Pauze",
@@ -553,6 +634,7 @@ var keyStrings = {
         "Na pauze 10 seconden terugspringen",
     PROST: "PROST",
     "PROST settings": "Instellingen voor PROST",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Vorige",
     "Preview in channel list": "Voorbeeld in zenderlijst",
     Previous: "Vorige",
@@ -578,7 +660,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Afstandsbediening zonder kleurknoppen",
     "Remote (number buttons N/A)": "Afstandsbediening zonder cijferknoppen",
     "Remote control": "Afstandsbediening",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Externe sessie verlopen",
+    "Remote text entry": "Tekstinvoer op afstand",
     "Remote text entry denied": "Tekstinvoer op afstand geweigerd",
     "Remote text entry error": "Fout bij tekstinvoer op afstand",
     "Remote text entry needs a Device ID.":
@@ -595,10 +682,12 @@ var keyStrings = {
     "Rename to": "Hernoemen naar",
     "Repeat parental code": "Ouderlijke code opnieuw invoeren",
     "Request sended!": "Verzoek verzonden!",
+    "Requesting approval for %1": "Goedkeuring aanvragen voor %1",
     "Restart player": "Speler herstarten",
     "Restart stream": "Stream herstarten",
     "Restart stream / Live": "Stream herstarten / live",
     "Resume from archive?": "Hervatten vanuit archief?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Terug naar vorige zender",
     Rewind: "Spoelen",
     "Rewind step by buttons %1/%2": "Spoelstap voor knoppen %1/%2",
@@ -616,9 +705,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Instellingen opslaan en zenderlijst laden",
     "Save settings to storage": "Instellingen in opslag bewaren",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenario",
     Search: "Zoeken",
     "Search programme": "Programma zoeken",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Kies een streamtype:<br>%1",
     "Select category to add channel":
         "Categorie kiezen om zender toe te voegen",
@@ -644,12 +741,16 @@ var keyStrings = {
     "Set parental code": "Ouderlijke code instellen",
     "Set timer?": "Timer instellen?",
     Settings: "Instellingen",
+    "Settings changed. Discovery was canceled.":
+        "Instellingen gewijzigd. Het zoeken is geannuleerd.",
     "Settings could not be saved": "Instellingen konden niet worden opgeslagen",
     "Settings loaded from storage": "Instellingen geladen uit opslag",
     "Settings STB": "STB-instellingen",
     "Settings saved": "Instellingen opgeslagen",
     "Settings saved to storage": "Instellingen bewaard in opslag",
     "Settings sended!": "Instellingen verzonden!",
+    "Several command servers were found. Select one below.":
+        "Meerdere opdrachtservers gevonden. Kies er hieronder één.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings":
         "Instellingen voor Shara.club (ClubTV.pro)",
@@ -683,6 +784,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Slaaptimer",
     "Sort channels": "Zenders sorteren",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker-portaalprovider",
     "Stalker portal settings": "Instellingen van Stalker-portaal",
     "Stalker portals": "Stalker-portalen",
@@ -704,8 +807,17 @@ var keyStrings = {
     system: "systeem",
     Tabox: "Tabox",
     "Tabox settings": "Instellingen voor Tabox",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "De zoek-URL voor de opdrachtserver is ongeldig.",
     "The device ID in the address is invalid.":
         "De apparaat-ID in het adres is ongeldig.",
+    "The discovery response is invalid.":
+        "Het antwoord op het zoekverzoek is ongeldig.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Deze browser kan niet veilig automatisch koppelen. Werk de browser bij of voer de opdrachtserverinstellingen handmatig in.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Deze browser heeft geen zoekprofiel. Voer een serveradres in of configureer het implementatieprofiel.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Deze HTTPS-speler kan geen verbinding maken met een HTTP-server. Gebruik een HTTPS-server of open de speler via HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -748,6 +860,8 @@ var keyStrings = {
     Username: "Gebruikersnaam",
     "Username or password is missing.":
         "Gebruikersnaam of wachtwoord ontbreekt.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Instellingen voor VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

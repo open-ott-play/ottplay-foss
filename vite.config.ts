@@ -33,6 +33,12 @@ const { inspectBundleSets, measureBundle, writeBundleReport } = classicRequire(
 const { stageNativeRuntime } = classicRequire(
     resolve(__dirname, "scripts/native-runtime.cjs")
 );
+const { stage: stageHostedEpg } = classicRequire(
+    resolve(__dirname, "scripts/hosted-epg.cjs")
+);
+const { stageHostedSwop } = classicRequire(
+    resolve(__dirname, "scripts/hosted-swop.cjs")
+);
 const { configureNativeDev } = classicRequire(
     resolve(__dirname, "scripts/native-dev.cjs")
 );
@@ -90,9 +96,10 @@ function copyRuntimeAssets(
             return (
                 info.isDirectory() ||
                 (info.isFile() &&
-                    /\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
+                    (/\.(html|js|css|json|webmanifest|txt|png|gif|ico|jpe?g|svg|ttf|otf|eot|woff2?)$/i.test(
                         name
-                    ))
+                    ) ||
+                        /^(?:pako|sax)-LICENSE$/.test(name)))
             );
         },
         recursive: true,
@@ -209,6 +216,9 @@ function stageTauriFrontend(
     }
 
     stagePlayerAssets(srcRoot, stageDir);
+    for (const directory of ["hosted", "swop-input"]) {
+        copyRuntimeAssets(join(distDir, directory), join(stageDir, directory));
+    }
 
     // js player libs
     const jsSrc = join(srcRoot, "js");
@@ -511,6 +521,11 @@ export default defineConfig(({ mode }) => ({
 
                 // All targets receive the same styles, logo and language packs.
                 stagePlayerAssets(__dirname, outDir, androidFlavor || "full");
+                stageHostedEpg(outDir);
+                await stageHostedSwop(
+                    outDir,
+                    androidCompileRoot || resolve(__dirname, "build")
+                );
                 if (androidFlavor === "play") {
                     // This translation belongs to the excluded legacy adapter.
                     const locale = join(outDir, "locales/english.js");

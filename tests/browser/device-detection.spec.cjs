@@ -634,6 +634,176 @@ test.describe("webOS fullscreen remote navigation", () => {
         expect(errors).toEqual([]);
     });
 
+    for (const digit of ["3", "4"]) {
+        test(
+            "remote settings shortcut " +
+                digit +
+                " does not type or repeat into the native editor",
+            async ({ page, context, baseURL }) => {
+                const errors = await bootForWebosRemote(page, context, baseURL);
+                await page.evaluate(() => {
+                    window.optionsList();
+                    window.settingsCommands();
+                });
+                await page.keyboard.down(digit);
+                const input = page.locator("#editvar");
+                await expect(input).toBeVisible();
+                await expect(input).toHaveValue("");
+                await expect(input).toHaveJSProperty("readOnly", true);
+                await page.keyboard.down(digit);
+                await page.keyboard.down(digit);
+                await expect(input).toHaveValue("");
+                await page.keyboard.up(digit);
+                await expect(input).toBeFocused();
+                await expect(input).toHaveJSProperty("readOnly", false);
+                await page.keyboard.type("L3");
+                await expect(input).toHaveValue("L3");
+                await input.press("Backspace");
+                await expect(input).toHaveValue("L");
+                await remoteKey(page, 461, "BrowserBack");
+                await expect(page.locator("#listEdit")).toBeHidden();
+                expect(errors).toEqual([]);
+            }
+        );
+    }
+    test("LG D-pad opens native remote text entry with the current draft", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForWebosRemote(page, context, baseURL);
+        await page.evaluate(() => {
+            window.optionsList();
+            window.settingsCommands();
+            window.sSwopBaseUrl = "/swop";
+            window.__swopDrafts = [];
+            window.$.ajax = (request) =>
+                window.__swopDrafts.push(JSON.parse(request.data).draft);
+        });
+        await page.keyboard.press("3");
+        const input = page.locator("#editvar");
+        const remote = page.getByRole("button", {
+            exact: true,
+            name: "Remote text entry",
+        });
+        await input.fill("https://fixture.invalid/path?x=3&y=4");
+        await page.keyboard.press("ArrowDown");
+        await expect(remote).toBeFocused();
+        await expect(remote).toHaveCSS("outline-style", "solid");
+        await page.keyboard.press("ArrowUp");
+        await expect(input).toBeFocused();
+        await page.keyboard.press("ArrowUp");
+        await expect(remote).toBeFocused();
+        await page.keyboard.press("Enter");
+        expect(await page.evaluate(() => window.__swopDrafts)).toEqual([
+            "https://fixture.invalid/path?x=3&y=4",
+        ]);
+        await expect(input).toHaveCount(0);
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(input).toBeVisible();
+        await expect(input).toHaveValue("https://fixture.invalid/path?x=3&y=4");
+        await expect(input).toBeFocused();
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(page.locator("#listEdit")).toBeHidden();
+        await expect(page.locator("#remoteSettingsContent")).toBeVisible();
+        await page.keyboard.press("4");
+        await expect(input).toBeVisible();
+        await expect(input).toHaveAttribute("type", "password");
+        expect(errors).toEqual([]);
+    });
+
+    test("resumed archive can leave an empty guide with LG Back", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForMagicRemote(
+            page,
+            context,
+            baseURL,
+            "lg/webos",
+            false
+        );
+        const archiveStart = await page.evaluate(() => {
+            const start = Math.floor(Date.now() / 1000) - 3600;
+            const stored = new Map([
+                [
+                    "continueWatch",
+                    JSON.stringify({
+                        catIndex: 0,
+                        channelId: 101,
+                        mode: "archive",
+                        playTime: 25,
+                        playType: start,
+                        updatedAt: Date.now(),
+                        v: 1,
+                    }),
+                ],
+            ]);
+            // Keep the actual restore, archive controller, guide and key router.
+            // Only isolate provider responses and native decoder side effects.
+            window.__resumeEffects = { played: [], seeks: [], stops: 0 };
+            window.stbPlay = (url, offset) =>
+                window.__resumeEffects.played.push({ offset, url });
+            window.stbStop = () => window.__resumeEffects.stops++;
+            window.stbIsPlaying = () =>
+                window.__resumeEffects.played.length > 0;
+            window.stbSetPosTime = (time) =>
+                window.__resumeEffects.seeks.push(time);
+            window.sStopPlay = window.sInfoRew = false;
+            window.providerGetItem = (key) => stored.get(key) ?? null;
+            window.providerSetItem = (key, value) => stored.set(key, value);
+            window.p_pref = "archive-fixture";
+            window.channels = window.chanels = {
+                101: {
+                    category: { name: "Fixture" },
+                    channel_name: "Channel 101",
+                    rec: 24,
+                },
+            };
+            window.catsArray = ["Fixture"];
+            window.cats = { Fixture: [101] };
+            window.curList = window.cList = window.cats.Fixture;
+            window.catIndex = window.primaryIndex = 0;
+            window.playType = window.playTime = 0;
+            window.epgArray = window.parentalArray = [];
+            window.fetchChannelGuide = (id, complete) => complete(id, []);
+            window.getArchiveUrl = () =>
+                location.origin + "/archive-fixture.m3u8";
+            window.closeList();
+            window.infoBarHide();
+            if (!window.restoreContinueWatch())
+                throw new Error("Fresh archive bookmark was not offered");
+            return start;
+        });
+        await expect(page.locator("#dialogbox")).toContainText(
+            "Resume from archive?"
+        );
+        await page.keyboard.press("Enter");
+        await expect
+            .poll(() => page.evaluate(() => window.__resumeEffects.seeks))
+            .toEqual([25]);
+        expect(await page.evaluate(() => window.playType)).toBe(archiveStart);
+        await expect(page.locator("#list")).toBeHidden();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#listCaption")).toHaveText(
+            "EPG and archive. Channel: Channel 101"
+        );
+        await expect(page.locator("#list")).toBeVisible();
+        expect(await page.evaluate(() => window.listArray)).toEqual([]);
+        if (await page.locator("#dialogbox").isVisible())
+            await remoteKey(page, 461, "BrowserBack");
+        await remoteKey(page, 461, "BrowserBack");
+        await expect(page.locator("#list")).toBeHidden();
+        await expect(page.locator("#dialogbox")).toBeHidden();
+        const effects = await page.evaluate(() => window.__resumeEffects);
+        expect(effects.played).toHaveLength(1);
+        expect(effects.seeks).toEqual([25]);
+        expect(effects.stops).toBe(0);
+        expect(await page.evaluate(() => window.playType)).toBe(archiveStart);
+        expect(errors).toEqual([]);
+    });
+
     test("default Right opens the guide without adjusting volume", async ({
         page,
         context,
@@ -865,6 +1035,138 @@ test.describe("LG Magic Remote pointer and button transitions", () => {
     test.use({
         userAgent:
             "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/120.0 Safari/537.36 WebAppManager",
+    });
+
+    test("status RPC reports opt-in diagnostics from the shipped LG player", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForMagicRemote(
+            page,
+            context,
+            baseURL,
+            "lg/webos",
+            false
+        );
+        const controller = baseURL + "/__diagnostics-controller";
+        const token = "browser-diagnostics-device-code-1234567890";
+        const privateValue = "private-input-and-debug-value";
+        const queued = [];
+        const responses = [];
+        const methods = [];
+        // Keep the shipped controller, remote dispatcher and response transport.
+        // Only the same-origin controller service is replaced with local replies.
+        await context.route(controller + "/**", async (route) => {
+            const request = route.request();
+            const url = new URL(request.url());
+            methods.push(request.method());
+            expect(request.headers().authorization).toBe("Bearer " + token);
+            let body;
+            if (url.pathname.endsWith("/api/responses")) {
+                expect(request.method()).toBe("POST");
+                responses.push(request.postDataJSON());
+                body = { status: "ok" };
+            } else {
+                expect(url.pathname).toBe(
+                    "/__diagnostics-controller/api/webhook/commands"
+                );
+                expect(url.search).toBe("?delivery=ack");
+                expect(request.method()).toBe("GET");
+                const serverTime = Date.now() / 1000;
+                body = {
+                    commands: [],
+                    requests: queued.splice(0).map((id) => ({
+                        action: "status",
+                        expires_at: serverTime + 30,
+                        id,
+                        params: {},
+                    })),
+                    server_time: serverTime,
+                };
+            }
+            await route.fulfill({
+                body: JSON.stringify(body),
+                contentType: "application/json",
+            });
+        });
+        const disabledId = "1".repeat(32);
+        queued.push(disabledId);
+        await page.evaluate(
+            ({ address, token }) => {
+                window.__ottCommandServer.configure({
+                    address,
+                    enabled: true,
+                    token,
+                });
+            },
+            { address: controller, token }
+        );
+        await expect.poll(() => responses.length).toBe(1);
+        expect(responses[0]).toMatchObject({ id: disabledId, status: "ok" });
+        expect(responses[0].data.diagnostics).toEqual({
+            epg: { available: true, enabled: false },
+            input: { available: true, enabled: false },
+            version: 1,
+        });
+        expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(
+            false
+        );
+        await expect(page.locator("#ott_debug_hud")).toHaveCount(0);
+
+        await page.evaluate((secret) => {
+            window.closeList();
+            // Public HUD opt-in installs the real adapter's passive listeners.
+            window.__ottDebug.toggleHud();
+            window.__ottDebug.push("sys", "fixture", secret);
+            document.dispatchEvent(
+                new CustomEvent("cursorStateChange", {
+                    detail: { privateValue: secret, visibility: true },
+                })
+            );
+            document.dispatchEvent(
+                new CustomEvent("webOSMouse", {
+                    detail: { privateValue: secret, type: "Enter" },
+                })
+            );
+            window.dispatchEvent(new Event("focus"));
+        }, privateValue);
+        await expect(page.locator("#ott_debug_hud")).toBeVisible();
+        await page.mouse.move(1100, 650);
+        await page.mouse.down();
+        await page.mouse.up();
+        await page.mouse.wheel(0, 120);
+        const enabledId = "2".repeat(32);
+        queued.push(enabledId);
+        await expect.poll(() => responses.length).toBe(2);
+        expect(responses[1]).toMatchObject({ id: enabledId, status: "ok" });
+        const diagnostics = responses[1].data.diagnostics;
+        expect(diagnostics).toEqual({
+            epg: { available: true, enabled: false },
+            input: {
+                area: "in",
+                available: true,
+                click: expect.any(Number),
+                cursor: "on",
+                down: expect.any(Number),
+                enabled: true,
+                focus: "on",
+                move: expect.any(Number),
+                page: "visible",
+                wheel: expect.any(Number),
+            },
+            version: 1,
+        });
+        for (const name of ["move", "down", "click", "wheel"])
+            expect(diagnostics.input[name]).toBeGreaterThan(0);
+        expect(JSON.stringify(responses)).not.toContain(token);
+        expect(JSON.stringify(responses)).not.toContain(privateValue);
+        expect(methods).toContain("GET");
+        expect(methods).toContain("POST");
+        expect(await page.evaluate(() => window.__testCursor.changes)).toEqual(
+            []
+        );
+        expect(errors).toEqual([]);
     });
 
     for (const visible of [true, false]) {

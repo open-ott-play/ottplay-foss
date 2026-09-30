@@ -1299,23 +1299,21 @@ export function loadChannels(): void {
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     if ((window as any).__ottChannels) (window as any).__ottChannels.reset();
+    var driverOwned = !!(window as any).__ottActiveProviderDriver;
     var catalogSession = (
         window as any
-    ).__ottProviderRuntime.classic.beginCatalog(
-        !!(window as any).__ottActiveProviderDriver
-    );
+    ).__ottProviderRuntime.classic.beginCatalog(driverOwned);
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
     if (!$("#launch").is(":visible")) {
         if (stbIsPlaying()) stbStop();
-        if (launch_id !== "#dialogbox")
-            $("#dialogbox")
-                .html(
-                    '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center>'
-                )
-                .show();
+        $("#dialogbox")
+            .html(
+                '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center>'
+            )
+            .show();
         launch_id = "#dialogbox";
         closeList();
     }
@@ -1349,22 +1347,24 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append("<br/>Loading channel list...");
-    // If getChannelsArray doesn't call back (e.g. empty playlist URL), hide spinners after timeout
-    var _loadTimer = setTimeout(function () {
-        if (!catalogSession.active()) return;
-        $("#dialogbox").hide();
-        $("#buffering").hide();
-        $("#launch").hide();
+    var loadTimer: ReturnType<typeof setTimeout> | number = -1;
+    function dismissLoading(): void {
+        if (!loadTimer) return;
+        clearTimeout(loadTimer);
+        loadTimer = 0;
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+        $("#dialogbox,#buffering,#launch").hide();
         if (typeof (window as any).clearBootHide === "function")
             (window as any).clearBootHide();
-    }, 3000);
-    catalogSession.own(function () {
-        clearTimeout(_loadTimer);
-    });
+    }
+    // Managed drivers settle explicitly, including credential editors. Only
+    // dealer scripts that may omit their callback need the compatibility timer.
+    if (!driverOwned) loadTimer = setTimeout(dismissLoading, 3000);
+    catalogSession.own(dismissLoading);
     catalogSession.run(function () {
         getChannelsArray(
             catalogSession.guard(function () {
-                clearTimeout(_loadTimer);
+                dismissLoading();
                 if ((window as any).__ottCommandChannelLoad !== commandLoad)
                     return;
                 finishPortChannelIdMigration(idMigration);
@@ -1372,7 +1372,8 @@ export function loadChannels(): void {
                 // Startup callbacks may synchronously switch provider or reload channels.
                 if ((window as any).__ottCommandChannelLoad === commandLoad)
                     (window as any).commandChannelsReady = true;
-            })
+            }),
+            dismissLoading
         );
     });
 }
@@ -1936,7 +1937,10 @@ declare var duneAddSettings: ((_index: number) => void) | null;
  *
  * @param _callback - Function to call once channel data is loaded.
  */
-export function getChannelsArray(_callback: () => void): void {
+export function getChannelsArray(
+    _callback: () => void,
+    _settled?: () => void
+): void {
     // Override in provider scripts
     _callback();
 }

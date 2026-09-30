@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv կարգավորումներ",
     "Allowlist this Device ID": "Թույլատրել այս սարքի ID-ն",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Առանց պորտի IP-ն օգտագործում է HTTP 8081 պորտը։ Դադարեցնելու համար մաքրեք հասցեն կամ ընտրեք «Անջատել»։",
     "API failed, trying M3U...": "API-ն չաշխատեց, փորձարկվում է M3U…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "API սերվերի URL",
     "Applying HTTP remote settings...":
         "HTTP հեռակառավարման կարգավորումների կիրառում...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Հաստատեք %1-ի կոդը՝ օգտագործելով ott approve NAME CODE հրամանը՝",
     Archive: "Արխիվ",
     "Archive - begin": "Արխիվ — սկիզբ",
     "Archive hours": "Արխիվի ժամեր",
@@ -110,6 +114,7 @@ var keyStrings = {
     "Call PiP": "Բացել PiP-ը",
     "Call PiP / PiP exchange": "Բացել PiP-ը / փոխանակել PiP-ը",
     Cancel: "Չեղարկել",
+    "Cancel pairing": "Չեղարկել զուգակցումը",
     "Cannot delete the last category": "Վերջին կատեգորիան հնարավոր չէ ջնջել",
     Category: "Կատեգորիա",
     "Category selection": "Կատեգորիայի ընտրություն",
@@ -153,6 +158,15 @@ var keyStrings = {
     "Command server": "Հրամանների սերվեր",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Հրամանների սերվերի հասցե, սարքի մուտքի կոդ, տեղային HTTP կառավարման և հեռակա տեքստի մուտքագրման կարգավորումներ",
+    "Command server discovery canceled.":
+        "Հրամանների սերվերի որոնումը չեղարկվել է։",
+    "Command server discovery has not started.":
+        "Հրամանների սերվերի որոնումը դեռ չի սկսվել։",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Հրամանների սերվերի որոնումը հասանելի չէ։ Կրկին փորձելու համար ընտրեք «Գտնել հրամանների սերվերը»։",
+    "Command server discovery timed out.":
+        "Հրամանների սերվերի որոնման սպասման ժամանակը սպառվել է։",
+    "Command server found.": "Հրամանների սերվերը գտնվել է։",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Կարգավորեք All4you.tv-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
@@ -237,6 +251,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Չհաջողվեց ստեղծել զուգակցման հարցում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Could not save the approved command server settings.":
+        "Չհաջողվեց պահպանել հրամանների սերվերի հաստատված կարգավորումները։",
     "Could not update HTTP remote control.":
         "Չհաջողվեց թարմացնել HTTP հեռակառավարման կարգավորումները։",
     Country: "Երկիր",
@@ -256,6 +274,8 @@ var keyStrings = {
     "Device info:": "Սարքի տվյալներ՝",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) ցուցակների համար պահանջվում է սարքի MAC հասցեն",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Սարքի UUID-ն դեռ պատրաստ չէ։ Կրկին փորձելու համար ընտրեք «Գտնել հրամանների սերվերը»։",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV կարգավորումներ",
     Director: "Ռեժիսոր",
@@ -350,6 +370,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Հեռուստածրագիր",
     "EPG and archive. Channel: ": "Հեռուստածրագիր և արխիվ։ Ալիք՝ ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Չհաջողվեց գործարկել EPG-ն։ Վերագործարկեք նվագարկիչը՝ դրա ֆայլերը նորից բեռնելու համար։ Նվագարկումը կդադարեցվի։",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Սխալ։",
     "Error Code!": "Անվավեր կոդ։",
     Exit: "Ելք",
@@ -377,6 +442,8 @@ var keyStrings = {
         "Այս սարքը չի աջակցում ֆայլի ընտրությանը",
     Filter: "Զտիչ",
     Filters: "Զտիչներ",
+    "Find command server": "Գտնել հրամանների սերվերը",
+    "Finding command servers...": "Հրամանների սերվերների որոնում...",
     "First Run Setup": "Առաջին գործարկման կարգավորում",
     Folders: "Folders",
     "Font type": "Տառատեսակ",
@@ -485,8 +552,12 @@ var keyStrings = {
     "Next TV program": "Հաջորդ հաղորդում",
     No: "Ոչ",
     "No channel name": "Ալիքի անուն չկա",
+    "No command server was found on this network.":
+        "Այս ցանցում հրամանների սերվեր չի գտնվել։",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Պահպանված կարգավորումներ չեն գտնվել",
     "Not found": "Չի գտնվել",
     "Not reduce video when showing the list (bugfix)":
@@ -506,6 +577,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE կարգավորումներ",
@@ -516,6 +589,14 @@ var keyStrings = {
     on: "միացված",
     "on ": "միացված ",
     "or scan": "կամ սկանավորեք",
+    "Pairing approved. Command server configured.":
+        "Զուգակցումը հաստատվել է։ Հրամանների սերվերը կարգավորված է։",
+    "Pairing expired. Find the server again to retry.":
+        "Զուգակցման ժամկետը լրացել է։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Զուգակցման սերվերը հասանելի չէ։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Զուգակցումը մերժվել է կամ ստացվել է անվավեր հաստատում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
     "Parental control": "Ծնողական վերահսկողություն",
     Password: "Գաղտնաբառ",
     Pause: "Դադար",
@@ -548,6 +629,7 @@ var keyStrings = {
         "Դադարից հետո 10 վայրկյան հետ անցնել",
     PROST: "PROST",
     "PROST settings": "PROST կարգավորումներ",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Նախորդ",
     "Preview in channel list": "Նախադիտում ալիքների ցուցակում",
     Previous: "Նախորդ",
@@ -575,7 +657,12 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Հեռակառավարման վահանակ (առանց թվային կոճակների)",
     "Remote control": "Հեռակառավարում",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Հեռակա աշխատաշրջանի ժամկետը լրացել է",
+    "Remote text entry": "Հեռակա տեքստի մուտքագրում",
     "Remote text entry denied": "Հեռակա տեքստի մուտքագրումը մերժված է",
     "Remote text entry error": "Հեռակա տեքստի մուտքագրման սխալ",
     "Remote text entry needs a Device ID.":
@@ -592,10 +679,12 @@ var keyStrings = {
     "Rename to": "Վերանվանել որպես",
     "Repeat parental code": "Կրկին մուտքագրեք ծնողական կոդը",
     "Request sended!": "Հարցումն ուղարկված է։",
+    "Requesting approval for %1": "Հաստատում է պահանջվում %1-ի համար",
     "Restart player": "Վերագործարկել նվագարկիչը",
     "Restart stream": "Վերագործարկել հոսքը",
     "Restart stream / Live": "Վերագործարկել հոսքը / ուղիղ եթեր",
     "Resume from archive?": "Շարունակե՞լ արխիվից։",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Վերադառնալ նախորդ ալիքին",
     Rewind: "Տեղաշարժել",
     "Rewind step by buttons %1/%2": "Հետ պտտելու քայլը %1/%2 կոճակներով",
@@ -613,9 +702,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Պահպանել կարգավորումները և բեռնել ալիքների ցուցակը",
     "Save settings to storage": "Պահպանել կարգավորումները պահոցում",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Սցենար",
     Search: "Որոնել",
     "Search programme": "Որոնել հաղորդումը",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Ընտրեք հոսքի տեսակը՝<br>%1",
     "Select category to add channel":
         "Ընտրեք կատեգորիա ալիքը ավելացնելու համար",
@@ -641,12 +738,16 @@ var keyStrings = {
     "Set parental code": "Սահմանել ծնողական կոդը",
     "Set timer?": "Սահմանե՞լ ժամանակաչափ։",
     Settings: "Կարգավորումներ",
+    "Settings changed. Discovery was canceled.":
+        "Կարգավորումները փոխվել են։ Որոնումը չեղարկվել է։",
     "Settings could not be saved": "Չհաջողվեց պահպանել կարգավորումները",
     "Settings loaded from storage": "Կարգավորումները բեռնված են պահոցից",
     "Settings STB": "STB կարգավորումներ",
     "Settings saved": "Կարգավորումները պահպանված են",
     "Settings saved to storage": "Կարգավորումները պահպանված են պահոցում",
     "Settings sended!": "Կարգավորումներն ուղարկված են։",
+    "Several command servers were found. Select one below.":
+        "Գտնվել են հրամանների մի քանի սերվերներ։ Ստորև ընտրեք դրանցից մեկը։",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings":
         "Shara.club (ClubTV.pro) կարգավորումներ",
@@ -681,6 +782,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Քնի ժամանակաչափ",
     "Sort channels": "Դասավորել ալիքները",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
     "Stalker portal settings": "Stalker պորտալի կարգավորումներ",
     "Stalker portals": "Stalker պորտալներ",
@@ -702,8 +805,16 @@ var keyStrings = {
     system: "համակարգային",
     Tabox: "Tabox",
     "Tabox settings": "Tabox կարգավորումներ",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Հրամանների սերվերի որոնման URL-ն անվավեր է։",
     "The device ID in the address is invalid.":
         "Հասցեում սարքի ID-ն անվավեր է։",
+    "The discovery response is invalid.": "Որոնման պատասխանը անվավեր է։",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Այս դիտարկիչը չի կարող անվտանգ կատարել ավտոմատ զուգակցում։ Թարմացրեք այն կամ ձեռքով մուտքագրեք հրամանների սերվերի կարգավորումները։",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Այս դիտարկիչը չունի որոնման պրոֆիլ։ Մուտքագրեք սերվերի հասցեն կամ կարգավորեք տեղակայման պրոֆիլը։",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Այս HTTPS նվագարկիչը չի կարող միանալ HTTP սերվերին։ Օգտագործեք HTTPS սերվեր կամ բացեք նվագարկիչը HTTP-ով։",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -747,6 +858,8 @@ var keyStrings = {
     Username: "Օգտանուն",
     "Username or password is missing.":
         "Օգտանունը կամ գաղտնաբառը բացակայում է։",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM կարգավորումներ",
     "Vidok.TV": "Vidok.TV",

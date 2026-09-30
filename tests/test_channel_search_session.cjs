@@ -18,6 +18,7 @@ const modules = {
 };
 const wrappers = [
     "searchChannel",
+    "showActionsDialog",
     "hasParentalLock",
     "ifParentalAccess",
     "ifParentalAccessChId",
@@ -342,7 +343,10 @@ function fixture(code) {
         },
     };
     host.$ = (selector) => {
-        const node = element(selector.slice(1));
+        const node =
+            typeof selector === "string"
+                ? element(selector.slice(1))
+                : selector;
         const chain = {
             hide() {
                 node.visible = false;
@@ -377,6 +381,7 @@ function fixture(code) {
     };
     host.showEditKey = () => {
         port.openEditor();
+        element("listEdit").visible = true;
         effect("editor");
     };
     host.setCurrent = (category, index) => {
@@ -509,6 +514,101 @@ for (const [profile, code] of profiles) {
             failures.push(profile + ": " + name + "\n" + error.stack);
         }
     }
+    for (const shortcut of ["YELLOW", "TOOLS"]) {
+        for (const outcome of ["save", "cancel", "replace source"]) {
+            check(
+                "Actions " +
+                    shortcut +
+                    " Search survives navigation and " +
+                    outcome,
+                (f) => {
+                    f.host.showActionsDialog();
+                    const dialog = f.port.owner("dialog");
+                    assert(dialog.foreground());
+                    f.key(shortcut);
+                    const editor = f.port.owner("editor");
+                    assert.equal(
+                        dialog.active(),
+                        false,
+                        "hidden Actions owner retires before the editor opens"
+                    );
+                    assert(
+                        editor && editor.foreground(),
+                        "Search editor owns input immediately"
+                    );
+                    assert.equal(editor.model.parent, f.port.listOwner());
+                    assert.equal(f.element("dialogbox").visible, false);
+                    const save = f.host.setEdit;
+                    f.key("DOWN");
+                    assert.equal(
+                        f.port.owner("editor"),
+                        editor,
+                        "next input does not reconcile away Search"
+                    );
+                    assert(editor.foreground());
+                    assert.equal(f.element("listEdit").visible, true);
+                    if (outcome === "save") {
+                        f.submit("News One");
+                        save();
+                        assert.deepEqual(Array.from(f.host.listArray), [11]);
+                        assert.equal(f.take("write").length, 1);
+                    } else {
+                        if (outcome === "cancel")
+                            f.port.finishEditor(false, () => {});
+                        else f.replaceSource();
+                        f.host.editvar = "News One";
+                        save();
+                        assert.equal(f.take("write").length, 0);
+                        assert.equal(editor.active(), false);
+                    }
+                    assert(f.port.listOwner().foreground());
+                }
+            );
+        }
+    }
+    for (const finish of ["ENTER", "RETURN"]) {
+        check(
+            "Actions category picker remains usable through " + finish,
+            (f) => {
+                f.host.showActionsDialog();
+                const dialog = f.port.owner("dialog");
+                f.key("ENTER");
+                assert.equal(dialog.active(), false);
+                assert(f.port.listOwner().foreground());
+                assert.deepEqual(Array.from(f.host.listArray), [
+                    "News",
+                    "Sport",
+                ]);
+                f.key("DOWN");
+                assert(f.port.listOwner().foreground());
+                f.host.selIndex = 1;
+                f.key(finish);
+                assert.equal(
+                    f.host.cats.Sport.includes(11),
+                    finish === "ENTER"
+                );
+                assert.deepEqual(Array.from(f.host.listArray), [11, 22]);
+                assert(f.port.listOwner().foreground());
+            }
+        );
+    }
+    check("Search retires only the current replacement Actions dialog", (f) => {
+        f.host.showActionsDialog();
+        const previous = f.port.owner("dialog");
+        f.host.showActionsDialog();
+        const current = f.port.owner("dialog");
+        assert.notEqual(current, previous);
+        assert.equal(previous.active(), false);
+        f.key("YELLOW");
+        assert.equal(current.active(), false);
+        const editor = f.port.owner("editor");
+        assert(editor.foreground());
+        f.key("DOWN");
+        assert(editor.foreground());
+        f.port.finishEditor(false, () => {});
+        assert(f.port.listOwner().foreground());
+        assert.equal(f.take("write").length, 0);
+    });
     check(
         "search publishes native input once and uses real list owner",
         (f) => {

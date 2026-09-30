@@ -61,12 +61,16 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Настройки All4you.tv",
     "Allowlist this Device ID": "Разрешите этот ID устройства",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "Плеер по HTTPS не может скачать EPG по HTTP. Укажите источник HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Для IP без порта используется HTTP-порт 8081. Для отключения очистите адрес или выберите «Отключить».",
     "API failed, trying M3U...": "Ошибка API, пробуем M3U…",
     "API Server": "Сервер API",
     "API server URL": "Адрес сервера API",
     "Applying HTTP remote settings...": "Применение настроек HTTP-пульта...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Подтвердите код для %1 командой ott approve NAME CODE:",
     Archive: "Архив",
     "Archive - begin": "Архив — начало",
     "Archive hours": "Количество часов архива",
@@ -109,6 +113,7 @@ var keyStrings = {
     "Call PiP": "Открыть PiP",
     "Call PiP / PiP exchange": "Открыть PiP / поменять местами",
     Cancel: "Отмена",
+    "Cancel pairing": "Отменить сопряжение",
     "Cannot delete the last category": "Нельзя удалить последнюю категорию",
     Category: "Категории",
     "Category selection": "Выбор категории",
@@ -152,6 +157,14 @@ var keyStrings = {
     "Command server": "Сервер команд",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Адрес сервера команд, код доступа устройства, локальное HTTP-управление и удалённый ввод текста",
+    "Command server discovery canceled.": "Поиск сервера команд отменён.",
+    "Command server discovery has not started.":
+        "Поиск сервера команд ещё не начат.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Поиск сервера команд недоступен. Нажмите «Найти сервер команд», чтобы повторить.",
+    "Command server discovery timed out.":
+        "Время поиска сервера команд истекло.",
+    "Command server found.": "Сервер команд найден.",
     "Compatible HLS": "Совместимый HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в разделе Настройки -> Настройки провайдера",
@@ -236,6 +249,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Не удалось подключиться к Plex. Проверьте адрес сервера, токен и доступ к сети.",
     "Could not connect to the server.": "Не удалось подключиться к серверу.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Не удалось создать запрос на сопряжение. Повторите поиск сервера, чтобы попробовать снова.",
+    "Could not save the approved command server settings.":
+        "Не удалось сохранить подтверждённые настройки сервера команд.",
     "Could not update HTTP remote control.":
         "Не удалось изменить настройки HTTP-пульта.",
     Country: "Страна",
@@ -254,6 +271,8 @@ var keyStrings = {
     "Device info:": "Информация об устройстве:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "Для плейлистов KBC (Kinoboom) нужен MAC-адрес устройства",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "UUID устройства ещё не готов. Нажмите «Найти сервер команд», чтобы повторить.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Настройки Diamond TV",
     Director: "Режиссёр",
@@ -349,6 +368,50 @@ var keyStrings = {
         "Введите адрес сервера Plex, например http://192.168.1.25:32400",
     EPG: "Программа",
     "EPG and archive. Channel: ": "Программа и архив. Канал: ",
+    "EPG archive or XML is invalid.":
+        "Архив или XML программы передач повреждён.",
+    "EPG cache and wait time: %1": "Кэш и ожидание: %1",
+    "EPG cache updated: %1": "Кеш обновлён: %1",
+    "EPG channels: %1": "Каналов с EPG: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Не удалось запустить EPG. Перезапустите плеер, чтобы обновить его файлы. Воспроизведение остановится.",
+    "EPG diagnostics": "Диагностика EPG",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "Не удалось загрузить диагностику EPG. Откройте её снова, чтобы повторить попытку.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "Не удалось скачать EPG. Проверьте соединение, HTTPS и разрешение CORS у источника.",
+    "EPG download time: %1": "Скачивание EPG: %1",
+    "EPG download timed out. Retry the download.":
+        "Истекло время загрузки EPG. Повторите загрузку.",
+    "EPG elapsed: %1": "Прошло: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "Ошибка EPG. Откройте «Информация → Диагностика EPG».",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG превышает лимит обработки. Выберите меньший источник или глубину архива.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG ещё не загружается. Загрузите плейлист M3U.",
+    "EPG local storage is unavailable or full.":
+        "Локальное хранилище EPG недоступно или заполнено.",
+    "EPG processing and storage time: %1": "Обработка и сохранение EPG: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "Обработка EPG остановилась. Повторите загрузку и проверьте поддержку браузера.",
+    "EPG programmes: %1": "Передач: %1",
+    "EPG progress: %1": "Обработано: %1",
+    "EPG ready": "EPG готова",
+    "EPG source returned HTTP %1": "Источник EPG вернул HTTP %1",
+    "EPG source: %1": "Источник EPG: %1",
+    "EPG stopped during: %1": "Этап сбоя: %1",
+    "EPG unavailable on this browser": "EPG недоступна в этом браузере",
+    "EPG unavailable: %1": "EPG недоступна: %1",
+    "EPG update failed; using saved programme guide":
+        "Не удалось обновить EPG; используется сохранённая программа передач",
+    "EPG: downloading programme guide...": "EPG: загрузка программы передач...",
+    "EPG: opening local cache...": "EPG: открытие локального кеша...",
+    "EPG: processing programme guide...": "EPG: обработка программы передач...",
+    "EPG: updating saved programme guide...":
+        "EPG: обновление сохранённой программы передач...",
+    "EPG: waiting for another player tab...":
+        "EPG: ожидание другой вкладки плеера...",
     "ERROR!": "Ошибка!",
     "Error Code!": "Неверный код!",
     Exit: "Выход",
@@ -377,6 +440,8 @@ var keyStrings = {
         "Выбор файла не поддерживается на этом устройстве",
     Filter: "Фильтр",
     Filters: "Фильтры",
+    "Find command server": "Найти сервер команд",
+    "Finding command servers...": "Поиск серверов команд…",
     "First Run Setup": "Первоначальная настройка",
     Folders: "Папки",
     "Font type": "Шрифт",
@@ -483,8 +548,12 @@ var keyStrings = {
     "Next TV program": "Следующая передача",
     No: "Нет",
     "No channel name": "Нет названия канала",
+    "No command server was found on this network.":
+        "В этой сети не найден сервер команд.",
     "No Plex servers are available for this account.":
         "Для этой учетной записи нет доступных серверов Plex.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "Не найдены передачи для каналов и дат плейлиста. Проверьте источник и часы устройства.",
     "No saved settings found": "Сохранённые настройки не найдены",
     "Not found": "Не найдено",
     "Not reduce video when showing the list (bugfix)":
@@ -504,6 +573,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Открыть страницу входа Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Откройте plex.tv/link на телефоне или компьютере и введите этот код.",
+    "Or open this complete private link on another device:":
+        "Или откройте эту полную секретную ссылку на другом устройстве:",
     "Original file": "Оригинальный файл",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки OTT Prime ONLINE",
@@ -514,6 +585,14 @@ var keyStrings = {
     on: "включен",
     "on ": "по ",
     "or scan": "или отсканируйте",
+    "Pairing approved. Command server configured.":
+        "Сопряжение подтверждено. Сервер команд настроен.",
+    "Pairing expired. Find the server again to retry.":
+        "Время сопряжения истекло. Повторите поиск сервера, чтобы попробовать снова.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Сервер сопряжения недоступен. Повторите поиск сервера, чтобы попробовать снова.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Сопряжение отклонено или получено неверное подтверждение. Повторите поиск сервера, чтобы попробовать снова.",
     "Parental control": "Родительский контроль",
     Password: "Пароль",
     Pause: "Пауза",
@@ -546,6 +625,8 @@ var keyStrings = {
         "Отступить на 10 секунд после паузы",
     PROST: "PROST",
     "PROST settings": "Настройки PROST",
+    "Preparing secure remote input...":
+        "Подготовка защищённого удалённого ввода...",
     Prev: "Предыдущая",
     "Preview in channel list": "Предпросмотр в списке каналов",
     Previous: "Предыдущий канал",
@@ -570,7 +651,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт без цветных кнопок",
     "Remote (number buttons N/A)": "Пульт без цифровых кнопок",
     "Remote control": "Удалённое управление",
+    "Remote input expired. Open a new session to try again.":
+        "Время удалённого ввода истекло. Откройте новый сеанс.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Сеанс удалённого ввода недоступен. Откройте новый сеанс.",
     "Remote session expired": "Сеанс удалённого доступа истёк",
+    "Remote text entry": "Удалённый ввод текста",
     "Remote text entry denied": "Удалённый ввод текста запрещён",
     "Remote text entry error": "Ошибка удалённого ввода текста",
     "Remote text entry needs a Device ID.":
@@ -586,10 +672,12 @@ var keyStrings = {
     "Rename to": "Переименовать в",
     "Repeat parental code": "Повторите родительский код",
     "Request sended!": "Запрос отправлен!",
+    "Requesting approval for %1": "Запрос подтверждения для %1",
     "Restart player": "Перезапустить плеер",
     "Restart stream": "Перезапустить поток",
     "Restart stream / Live": "Перезапустить поток / прямой эфир",
     "Resume from archive?": "Продолжить из архива?",
+    "Retry EPG download": "Повторить загрузку EPG",
     "Return to previous channel": "Вернуться к предыдущему каналу",
     Rewind: "Перемотка",
     "Rewind step by buttons %1/%2": "Шаг перемотки кнопками %1/%2",
@@ -607,9 +695,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Сохранить настройки и загрузить список каналов",
     "Save settings to storage": "Сохранить настройки в хранилище",
+    "Scan this QR code with your phone to enter text.":
+        "Отсканируйте QR-код телефоном, чтобы ввести текст.",
     Script: "Сценарий",
     Search: "Поиск",
     "Search programme": "Поиск передачи",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Не удалось начать защищённый удалённый ввод. Повторите попытку или используйте экранную клавиатуру.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Не удалось начать защищённый удалённый ввод. Используйте экранную клавиатуру.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "На этом устройстве недоступен защищённый удалённый ввод. Используйте экранную клавиатуру.",
     "Select a stream type:<br>%1": "Выберите тип потока:<br>%1",
     "Select category to add channel": "Выбор категории для добавления канала",
     "Select color": "Выберите цвет",
@@ -634,12 +730,16 @@ var keyStrings = {
     "Set parental code": "Установите родительский код",
     "Set timer?": "Установить таймер?",
     Settings: "Настройки",
+    "Settings changed. Discovery was canceled.":
+        "Настройки изменились. Поиск отменён.",
     "Settings could not be saved": "Не удалось сохранить настройки",
     "Settings loaded from storage": "Настройки загружены из хранилища",
     "Settings STB": "Настройки устройства",
     "Settings saved": "Настройки сохранены",
     "Settings saved to storage": "Настройки сохранены в хранилище",
     "Settings sended!": "Настройки отправлены!",
+    "Several command servers were found. Select one below.":
+        "Найдено несколько серверов команд. Выберите один ниже.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Настройки Shara.club (ClubTV.pro)",
     ShockTv: "ShockTv",
@@ -671,6 +771,8 @@ var keyStrings = {
     "Sign in with Plex": "Войти через Plex",
     "Sleep timer": "Таймер сна",
     "Sort channels": "Сортировать каналы",
+    "Source access": "Доступ к источникам",
+    "Source sign-in required": "Войдите для доступа к источнику",
     "Stalker Portal Provider": "Провайдер портала Stalker",
     "Stalker portal settings": "Настройки портала Stalker",
     "Stalker portals": "Сталкер порталы",
@@ -692,8 +794,18 @@ var keyStrings = {
     system: "системный",
     Tabox: "Tabox",
     "Tabox settings": "Настройки Tabox",
+    "Text is too long for remote input.":
+        "Текст слишком длинный для удалённого ввода.",
+    "The command server discovery URL is invalid.":
+        "Неверный URL для поиска сервера команд.",
     "The device ID in the address is invalid.":
         "В адресе указан неверный ID устройства.",
+    "The discovery response is invalid.":
+        "Получен неверный ответ на запрос поиска.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Этот браузер не поддерживает безопасное автоматическое сопряжение. Обновите его или введите настройки сервера команд вручную.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Для этого браузера не задан профиль поиска. Введите адрес сервера или настройте профиль развёртывания.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Этот HTTPS-плеер не может подключиться к HTTP-серверу. Используйте HTTPS-сервер или откройте плеер по HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -736,6 +848,8 @@ var keyStrings = {
     Username: "Имя пользователя",
     "Username or password is missing.":
         "Не указано имя пользователя или пароль.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Действует 10 минут. Кнопка «Назад» закрывает сеанс.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Настройки VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

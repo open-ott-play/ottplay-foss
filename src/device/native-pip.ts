@@ -8,9 +8,12 @@ function createNativePipPort(ports: any) {
         }
         var task: any;
         try {
-            task = ports.serial
-                ? (pending || Promise.resolve()).then(run)
-                : Promise.resolve(run());
+            // Stop cancels native startup. Queue the next play behind teardown,
+            // rather than holding cancellation behind the readiness it aborts.
+            task =
+                ports.serial && action !== "stop"
+                    ? (pending || Promise.resolve()).then(run)
+                    : Promise.resolve(run());
         } catch (error) {
             task = Promise.reject(error);
         }
@@ -29,11 +32,14 @@ function createNativePipPort(ports: any) {
     return {
         open: function (
             request: any,
-            fallback: () => MediaEngineLease
+            fallback: (url: string) => MediaEngineLease
         ): MediaEngineLease {
             var id = ++sequence;
             var alive = true;
+            var nativeStarted = false;
+            var fallbackUrl = request.url;
             var css: MediaEngineLease | null = null;
+            var cancelPreparation: (() => void) | null = null;
             function current() {
                 return alive && sequence === id;
             }
@@ -41,12 +47,16 @@ function createNativePipPort(ports: any) {
                 if (!current()) return;
                 ports.error(error);
                 if (!current()) return;
-                var opened = fallback();
+                var opened = fallback(fallbackUrl);
                 if (!current()) opened.dispose();
                 else css = opened;
             }
-            invoke("play", ports.request(request.url, id), current).then(
-                function (response: any) {
+            function play(args: any) {
+                return invoke("play", args, function () {
+                    if (!current()) return false;
+                    nativeStarted = true;
+                    return true;
+                }).then(function (response: any) {
                     if (!current()) return;
                     if (
                         (response &&
@@ -57,13 +67,42 @@ function createNativePipPort(ports: any) {
                         return;
                     }
                     ports.ready();
-                },
-                fail
-            );
+                }, fail);
+            }
+            var args = ports.request(request.url, id);
+            if (ports.prepare) {
+                // Sign-in must not occupy the native command queue: Stop stays
+                // responsive while a browser prompt is open. A rejected sign-in
+                // must never start the unauthenticated CSS fallback.
+                function preparationFailed(error: any) {
+                    cancelPreparation = null;
+                    if (current()) ports.error(error);
+                }
+                try {
+                    Promise.resolve(
+                        ports.prepare(args, function (cancel: () => void) {
+                            if (current()) cancelPreparation = cancel;
+                            else cancel();
+                        })
+                    ).then(function (prepared) {
+                        cancelPreparation = null;
+                        if (current()) {
+                            fallbackUrl = prepared.url;
+                            play(prepared);
+                        }
+                    }, preparationFailed);
+                } catch (error) {
+                    preparationFailed(error);
+                }
+            } else play(args);
             return {
                 dispose: function (replaced?: boolean) {
                     if (!alive) return;
                     alive = false;
+                    if (cancelPreparation) {
+                        cancelPreparation();
+                        cancelPreparation = null;
+                    }
                     if (css) css.dispose();
                     if (sequence !== id) return;
                     var stopId = ++sequence;
@@ -73,9 +112,12 @@ function createNativePipPort(ports: any) {
                                 ports.error
                             );
                     }
-                    // A replacing native open supersedes the old request itself. If it
-                    // is abandoned reentrantly, the retired decoder still gets stopped.
-                    if (replaced) Promise.resolve().then(stop);
+                    // Preparation can wait for sign-in or fail before a replacing
+                    // play reaches native code. Retire any started decoder now;
+                    // its replacement waits only for teardown acknowledgement.
+                    if (replaced && ports.prepare) {
+                        if (nativeStarted) stop();
+                    } else if (replaced) Promise.resolve().then(stop);
                     else stop();
                 },
                 pause: function () {

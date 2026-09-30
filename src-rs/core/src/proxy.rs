@@ -11,6 +11,9 @@ const MAX_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REQUESTS: usize = 8;
 const MAX_REDIRECTS: usize = 5;
 const TIMEOUT: Duration = Duration::from_secs(15);
+// Playlist generation can exceed the short portal/API budget even for modest
+// catalogs. This remains a total deadline, including DNS, redirects and reads.
+const PLAYLIST_TIMEOUT: Duration = Duration::from_secs(60);
 static REQUESTS: Semaphore = Semaphore::const_new(MAX_REQUESTS);
 static DNS_REQUESTS: Semaphore = Semaphore::const_new(MAX_REQUESTS);
 
@@ -172,7 +175,8 @@ fn pinned_client(url: &Url, addresses: &[SocketAddr], title_case: bool) -> Resul
     builder
         .no_proxy()
         .redirect(redirect::Policy::none())
-        .timeout(TIMEOUT)
+        // The operation's outer deadline covers all hops and response reads.
+        // A shorter client deadline would silently truncate playlist budgets.
         // The original hostname remains in Host and TLS SNI/certificate checks.
         // The connector cannot perform a second, potentially rebound DNS lookup.
         .resolve_to_addrs(url.host_str().ok_or("Invalid proxy host")?, addresses)
@@ -256,19 +260,20 @@ where
 
 async fn limited<T>(
     requests: &Semaphore,
+    timeout: Duration,
     work: impl Future<Output = Result<T, String>>,
 ) -> Result<T, String> {
     // Reject overload immediately instead of creating an unbounded waiter queue.
     let _permit = requests
         .try_acquire()
         .map_err(|_| "Proxy is busy; retry later")?;
-    tokio::time::timeout(TIMEOUT, work)
+    tokio::time::timeout(timeout, work)
         .await
         .map_err(|_| "Proxy request timed out")?
 }
 
 pub(crate) async fn fetch(raw: &str, ua: &str) -> Result<(HeaderMap, Vec<u8>), String> {
-    limited(&REQUESTS, async {
+    limited(&REQUESTS, PLAYLIST_TIMEOUT, async {
         let url = http_url(raw)?;
         let policy =
             Policy::parse(&std::env::var("OTTPLAY_PROXY_LAN_ORIGINS").unwrap_or_default())?;
@@ -344,7 +349,7 @@ pub(crate) async fn get_headers_limit(
     headers: HeaderMap,
     max_bytes: usize,
 ) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
-    limited(&REQUESTS, async {
+    limited(&REQUESTS, TIMEOUT, async {
         let url = http_url(raw)?;
         let policy =
             Policy::parse(&std::env::var("OTTPLAY_PROXY_LAN_ORIGINS").unwrap_or_default())?;
@@ -423,7 +428,7 @@ pub(crate) async fn post_json(
     raw: &str,
     body: &[u8],
 ) -> Result<(reqwest::StatusCode, Vec<u8>), String> {
-    limited(&REQUESTS, async {
+    limited(&REQUESTS, TIMEOUT, async {
         let url = http_url(raw)?;
         let policy =
             Policy::parse(&std::env::var("OTTPLAY_PROXY_LAN_ORIGINS").unwrap_or_default())?;
@@ -851,19 +856,34 @@ mod tests {
         let requests = Semaphore::new(1);
         let held = requests.acquire().await.unwrap();
         let result: Result<(), String> =
-            limited(&requests, async { panic!("busy work must not run") }).await;
+            limited(&requests, TIMEOUT, async { panic!("busy work must not run") }).await;
         assert_eq!(result.unwrap_err(), "Proxy is busy; retry later");
         drop(held);
         let failed: Result<(), String> =
-            limited(&requests, async { Err("upstream failed".into()) }).await;
+            limited(&requests, TIMEOUT, async { Err("upstream failed".into()) }).await;
         assert!(failed.is_err());
         assert_eq!(requests.available_permits(), 1);
         {
-            let pending = limited::<()>(&requests, std::future::pending());
+            let pending = limited::<()>(&requests, TIMEOUT, std::future::pending());
             tokio::pin!(pending);
             tokio::select! { result = &mut pending => panic!("unexpected {result:?}"), _ = tokio::task::yield_now() => {} }
             assert_eq!(requests.available_permits(), 0);
         }
         assert_eq!(requests.available_permits(), 1);
+    }
+
+    #[tokio::test]
+    async fn deadline_cancels_pending_work_and_releases_its_slot() {
+        let requests = Semaphore::new(1);
+        let result = limited::<()>(
+            &requests,
+            Duration::from_millis(10),
+            std::future::pending(),
+        )
+        .await;
+        assert_eq!(result.unwrap_err(), "Proxy request timed out");
+        assert_eq!(requests.available_permits(), 1);
+        let completed = limited(&requests, PLAYLIST_TIMEOUT, async { Ok(7) }).await;
+        assert_eq!(completed.unwrap(), 7);
     }
 }

@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv iestatījumi",
     "Allowlist this Device ID": "Atļaut šo ierīces ID",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP adrese bez porta izmanto HTTP portu 8081. Lai apturētu, notīriet adresi vai izvēlieties Atvienot.",
     "API failed, trying M3U...": "API kļūme, mēģina M3U…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "API servera URL",
     "Applying HTTP remote settings...":
         "Tiek piemēroti HTTP tālvadības iestatījumi...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Apstipriniet %1 kodu, izmantojot komandu ott approve NAME CODE:",
     Archive: "Arhīvs",
     "Archive - begin": "Arhīvs — sākums",
     "Archive hours": "Arhīva stundas",
@@ -111,6 +115,7 @@ var keyStrings = {
     "Call PiP": "Atvērt PiP",
     "Call PiP / PiP exchange": "Atvērt PiP / samainīt PiP",
     Cancel: "Atcelt",
+    "Cancel pairing": "Atcelt pārošanu",
     "Cannot delete the last category": "Pēdējo kategoriju nevar dzēst",
     Category: "Kategorija",
     "Category selection": "Kategorijas izvēle",
@@ -154,6 +159,15 @@ var keyStrings = {
     "Command server": "Komandu serveris",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Komandu servera adrese, ierīces piekļuves kods, lokālā HTTP vadība un attālinātās teksta ievades iestatījumi",
+    "Command server discovery canceled.":
+        "Komandu servera meklēšana ir atcelta.",
+    "Command server discovery has not started.":
+        "Komandu servera meklēšana vēl nav sākta.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Komandu servera meklēšana nav pieejama. Lai mēģinātu vēlreiz, izvēlieties “Atrast komandu serveri”.",
+    "Command server discovery timed out.":
+        "Komandu servera meklēšanas laiks ir beidzies.",
+    "Command server found.": "Komandu serveris ir atrasts.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurējiet All4you.tv sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
@@ -238,6 +252,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Neizdevās savienoties ar serveri.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Neizdevās izveidot pārošanas pieprasījumu. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
+    "Could not save the approved command server settings.":
+        "Neizdevās saglabāt apstiprinātos komandu servera iestatījumus.",
     "Could not update HTTP remote control.":
         "Neizdevās atjaunināt HTTP tālvadības iestatījumus.",
     Country: "Valsts",
@@ -256,6 +274,8 @@ var keyStrings = {
     "Device info:": "Ierīces informācija:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) sarakstiem nepieciešama ierīces MAC adrese",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Ierīces UUID vēl nav gatavs. Lai mēģinātu vēlreiz, izvēlieties “Atrast komandu serveri”.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV iestatījumi",
     Director: "Režisors",
@@ -352,6 +372,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Programma",
     "EPG and archive. Channel: ": "EPG un arhīvs. Kanāls: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Neizdevās palaist EPG. Restartējiet atskaņotāju, lai atkārtoti ielādētu tā failus. Atskaņošana tiks apturēta.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Kļūda!",
     "Error Code!": "Nederīgs kods!",
     Exit: "Iziet",
@@ -380,6 +445,8 @@ var keyStrings = {
         "Šajā ierīcē failu izvēle netiek atbalstīta",
     Filter: "Filtrs",
     Filters: "Filtri",
+    "Find command server": "Atrast komandu serveri",
+    "Finding command servers...": "Notiek komandu serveru meklēšana...",
     "First Run Setup": "Pirmās palaišanas iestatīšana",
     Folders: "Folders",
     "Font type": "Fonta veids",
@@ -489,8 +556,12 @@ var keyStrings = {
     "Next TV program": "Nākamais raidījums",
     No: "Nē",
     "No channel name": "Nav kanāla nosaukuma",
+    "No command server was found on this network.":
+        "Šajā tīklā nav atrasts neviens komandu serveris.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nav atrasti saglabāti iestatījumi",
     "Not found": "Nav atrasts",
     "Not reduce video when showing the list (bugfix)":
@@ -510,6 +581,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE iestatījumi",
@@ -520,6 +593,14 @@ var keyStrings = {
     on: "ieslēgta",
     "on ": "ieslēgts ",
     "or scan": "vai skenējiet",
+    "Pairing approved. Command server configured.":
+        "Pārošana apstiprināta. Komandu serveris ir konfigurēts.",
+    "Pairing expired. Find the server again to retry.":
+        "Pārošanas termiņš ir beidzies. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Pārošanas serveris nav pieejams. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Pārošana tika noraidīta vai saņemts nederīgs apstiprinājums. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
     "Parental control": "Vecāku kontrole",
     Password: "Parole",
     Pause: "Pauze",
@@ -552,6 +633,7 @@ var keyStrings = {
         "Pēc pauzes pāriet 10 sekundes atpakaļ",
     PROST: "PROST",
     "PROST settings": "PROST iestatījumi",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Iepriekšējais",
     "Preview in channel list": "Priekšskatījums kanālu sarakstā",
     Previous: "Iepriekšējais",
@@ -577,7 +659,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pults (bez krāsu pogām)",
     "Remote (number buttons N/A)": "Pults (bez ciparu pogām)",
     "Remote control": "Tālvadība",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Attālinātās sesijas derīgums ir beidzies",
+    "Remote text entry": "Attālināta teksta ievade",
     "Remote text entry denied": "Attālinātā teksta ievade liegta",
     "Remote text entry error": "Attālinātās teksta ievades kļūda",
     "Remote text entry needs a Device ID.":
@@ -594,10 +681,12 @@ var keyStrings = {
     "Rename to": "Pārdēvēt par",
     "Repeat parental code": "Atkārtoti ievadiet vecāku kodu",
     "Request sended!": "Pieprasījums nosūtīts!",
+    "Requesting approval for %1": "Tiek pieprasīts apstiprinājums: %1",
     "Restart player": "Pārstartēt atskaņotāju",
     "Restart stream": "Pārstartēt straumi",
     "Restart stream / Live": "Pārstartēt straumi / tiešraide",
     "Resume from archive?": "Turpināt no arhīva?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Atgriezties iepriekšējā kanālā",
     Rewind: "Pārtīt",
     "Rewind step by buttons %1/%2": "Attīšanas solis ar pogām %1/%2",
@@ -615,9 +704,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Saglabāt iestatījumus un ielādēt kanālu sarakstu",
     "Save settings to storage": "Saglabāt iestatījumus krātuvē",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Scenārijs",
     Search: "Meklēt",
     "Search programme": "Meklēt raidījumu",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Izvēlieties straumes veidu:<br>%1",
     "Select category to add channel":
         "Izvēlieties kategoriju, lai pievienotu kanālu",
@@ -643,12 +740,16 @@ var keyStrings = {
     "Set parental code": "Iestatīt vecāku kodu",
     "Set timer?": "Iestatīt taimeri?",
     Settings: "Iestatījumi",
+    "Settings changed. Discovery was canceled.":
+        "Iestatījumi ir mainīti. Meklēšana tika atcelta.",
     "Settings could not be saved": "Iestatījumus neizdevās saglabāt",
     "Settings loaded from storage": "Iestatījumi ielādēti no krātuves",
     "Settings STB": "STB iestatījumi",
     "Settings saved": "Iestatījumi saglabāti",
     "Settings saved to storage": "Iestatījumi saglabāti krātuvē",
     "Settings sended!": "Iestatījumi nosūtīti!",
+    "Several command servers were found. Select one below.":
+        "Atrasti vairāki komandu serveri. Izvēlieties vienu no tālāk norādītajiem.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) iestatījumi",
     ShockTv: "ShockTv",
@@ -680,6 +781,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Miega taimeris",
     "Sort channels": "Kārtot kanālus",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
     "Stalker portal settings": "Stalker portāla iestatījumi",
     "Stalker portals": "Stalker portāli",
@@ -701,7 +804,15 @@ var keyStrings = {
     system: "sistēmas",
     Tabox: "Tabox",
     "Tabox settings": "Tabox iestatījumi",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Komandu servera meklēšanas URL nav derīgs.",
     "The device ID in the address is invalid.": "Ierīces ID adresē nav derīgs.",
+    "The discovery response is invalid.": "Meklēšanas atbilde nav derīga.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Šī pārlūkprogramma nevar droši veikt automātisku pārošanu. Atjauniniet to vai ievadiet komandu servera iestatījumus manuāli.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Šai pārlūkprogrammai nav meklēšanas profila. Ievadiet servera adresi vai konfigurējiet izvietojuma profilu.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Šis HTTPS atskaņotājs nevar savienoties ar HTTP serveri. Izmantojiet HTTPS serveri vai atveriet atskaņotāju ar HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -743,6 +854,8 @@ var keyStrings = {
         "Ar PA KREISI/PA LABI izvēlieties vadīklu, ar OK aktivizējiet to, ar UZ AUGŠU/UZ LEJU ritiniet.",
     Username: "Lietotājvārds",
     "Username or password is missing.": "Trūkst lietotājvārda vai paroles.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM iestatījumi",
     "Vidok.TV": "Vidok.TV",

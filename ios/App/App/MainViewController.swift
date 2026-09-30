@@ -12,6 +12,10 @@ class MainViewController: CAPBridgeViewController {
     }
 
     override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(AccessMediaPlugin())
+        MobileXmltvEpg.requestHandler = { request, completion in
+            AccessMedia.fetch(request, discoverOnFailure: false, completion: completion)
+        }
         bridge?.registerPluginInstance(MobileCommandQueue())
         bridge?.registerPluginInstance(M3UProxyPlugin())
         bridge?.registerPluginInstance(MobileXmltvEpg())

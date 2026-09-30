@@ -5,6 +5,8 @@ import CryptoKit
 
 @objc(MobileXmltvEpg)
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
+    /// Optional host transport for authenticated sources; install before loading EPG.
+    public static var requestHandler: ((URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> Void)?
     public let identifier = "MobileXmltvEpgPlugin"
     public let jsName = "MobileXmltvEpg"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -30,10 +32,72 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         return try action(policy!)
     }
 
-    private typealias Parsed = (channels: [String: String], programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], icons: [String: String], names: [String: [String]])
+    // Identity belongs to the actual successful parse, including memory fallback.
+    // Readers retain their immutable snapshot while a refresh publishes another.
+    private final class Parsed {
+        let channels: [String: String]
+        let programs: [String: [(start: Int, stop: Int, title: String, desc: String)]]
+        let icons: [String: String]
+        let names: [String: [String]]
+        private let queryLock = NSLock()
+        private var guide: SharedGuide?
+        private var index: JavaScriptCore.JSValue?
+
+        init(_ channels: [String: String], _ programs: [String: [(start: Int, stop: Int, title: String, desc: String)]], _ icons: [String: String], _ names: [String: [String]]) {
+            self.channels = channels; self.programs = programs; self.icons = icons; self.names = names
+        }
+
+        func query<T>(_ action: (SharedGuide, JavaScriptCore.JSValue) throws -> T) throws -> T {
+            queryLock.lock()
+            defer { queryLock.unlock() }
+            if guide == nil {
+                let next = try SharedGuide()
+                let rows = channels.keys.sorted().flatMap { id in
+                    (names[id] ?? [channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
+                }
+                let built = try next.index(rows)
+                // Publish only after both allocations succeed; failures remain retryable.
+                guide = next; index = built
+            }
+            // Guard the whole transaction, including exception state and Swift caches.
+            return try action(guide!, index!)
+        }
+    }
     private let sourceLock = NSLock()
     private var parsedCache: [String: (fetched: TimeInterval, data: Parsed)] = [:]
     private var pendingSources: [String: [(Result<Parsed, Error>) -> Void]] = [:]
+    private let assemblyLock = NSLock()
+    private var assemblyRevision: UInt64 = 0
+    private var assembled: (revision: UInt64, sources: [String], parts: [Parsed?], data: Parsed)?
+
+    private func assemble(_ sources: [String], _ parts: [Parsed?], revision: UInt64) throws -> Parsed {
+        assemblyLock.lock()
+        defer { assemblyLock.unlock() }
+        if let cached = assembled, cached.sources == sources,
+           zip(cached.parts, parts).allSatisfy({ $0.0 === $0.1 }) {
+            assembled = (max(revision, cached.revision), sources, parts, cached.data)
+            return cached.data
+        }
+        var channels: [String: String] = [:], icons: [String: String] = [:], names: [String: [String]] = [:]
+        var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
+        for parsed in parts.compactMap({ $0 }) {
+            let ids = try withPolicy { try $0.unowned(Array(channels.keys), incoming: Array(parsed.channels.keys)) }
+            for id in ids {
+                channels[id] = parsed.channels[id]; programs[id] = parsed.programs[id]
+                icons[id] = parsed.icons[id]; names[id] = parsed.names[id]
+            }
+        }
+        let data = Parsed(channels, programs, icons, names)
+        // An older asynchronous batch may finish after a newer one was assembled.
+        if assembled == nil || revision > assembled!.revision { assembled = (revision, sources, parts, data) }
+        return data
+    }
+    // The host transport must apply the delivered-body limit while receiving.
+    // Expanded XML is kept on disk, never as a full Swift String or Data value.
+    private var inputByteLimit = 64 * 1024 * 1024
+    private var expandedByteLimit = 512 * 1024 * 1024
+    private var metadataByteLimit = 8 * 1024
+    private var xmlTemporaryDirectory = FileManager.default.temporaryDirectory
 
     private func sourceUrls(_ call: CAPPluginCall) throws -> [String] {
         try withPolicy { try $0.sources(call.getArray("xmltv_urls", String.self) ?? [], single: call.getString("xmltv_url") ?? "") }
@@ -62,7 +126,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         }
         pendingSources[source] = [completion]
         sourceLock.unlock()
+        var network: (data: Data, xml: XmltvDocument)?
         func finish(_ result: Result<Parsed, Error>) {
+            network?.xml.remove()
+            network = nil
             sourceLock.lock()
             if case .success(let parsed) = result { parsedCache[source] = (Date().timeIntervalSince1970, parsed) }
             let callbacks = pendingSources.removeValue(forKey: source) ?? []
@@ -71,7 +138,6 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         }
         var disk: Parsed?
         var memory: Parsed?
-        var network: (data: Data, xml: String)?
         var parsedNetwork: Parsed?
         var failure: Error = NSError(domain: "MobileXmltvEpg", code: -4,
             userInfo: [NSLocalizedDescriptionKey: "invalid or empty XMLTV"])
@@ -106,6 +172,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                     catch { failure = error }
                     perform(try next(action, written))
                 case "REPARSE_NETWORK":
+                    // Keep the shared policy's second parse, but release its first
+                    // result before building another complete programme graph.
+                    parsedNetwork = nil
                     do { parsedNetwork = try self.parseXmltv(network!.xml) }
                     catch { parsedNetwork = nil; failure = error }
                     perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
@@ -129,7 +198,11 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // Source order is significant: the first feed defining an ID owns its programs.
     private func loadSources(_ sources: [String], force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
-        var merged: Parsed = ([:], [:], [:], [:])
+        assemblyLock.lock()
+        assemblyRevision &+= 1
+        let revision = assemblyRevision
+        assemblyLock.unlock()
+        var parts = [Parsed?](repeating: nil, count: sources.count)
         var errors: [Int: Error] = [:]
         let batch: JavaScriptCore.JSValue
         do { batch = try withPolicy { try $0.sourceBatch(sources.count) } }
@@ -140,20 +213,14 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 if index < 0 {
                     let failed = try self.withPolicy { try $0.batchFailure(batch) }
                     if failed >= 0 { completion(.failure(errors[failed]!)) }
-                    else { completion(.success(merged)) }
+                    else { completion(.success(try self.assemble(sources, parts, revision: revision))) }
                     return
                 }
                 loadSource(sources[index], force: force) { result in
                     do {
                         switch result {
                         case .success(let parsed):
-                            let ids = try self.withPolicy { try $0.unowned(Array(merged.channels.keys), incoming: Array(parsed.channels.keys)) }
-                            for id in ids {
-                                merged.channels[id] = parsed.channels[id]
-                                merged.programs[id] = parsed.programs[id]
-                                merged.icons[id] = parsed.icons[id]
-                                merged.names[id] = parsed.names[id]
-                            }
+                            parts[index] = parsed
                             try self.withPolicy { try $0.batchAdvance(batch, succeeded: true, channels: parsed.channels.count) }
                         case .failure(let error):
                             errors[index] = error
@@ -207,34 +274,34 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - Cache
 
-    private func readCache(for url: URL, allowStale: Bool = false) throws -> String? {
+    private func readCache(for url: URL, allowStale: Bool = false) throws -> XmltvDocument? {
         cacheLock.lock()
         defer { cacheLock.unlock() }
-        let meta = try String(contentsOf: metaURL, encoding: .utf8)
+        guard let meta = String(data: try readBounded(metaURL, limit: metadataByteLimit), encoding: .utf8) else { return nil }
         let fields = meta.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
         guard fields.count == 2, let fetched = Double(fields[0]),
               try withPolicy({ try $0.disk(source: url.absoluteString, storedSource: String(fields[1]),
                   now: Date().timeIntervalSince1970, fetched: fetched, stale: allowStale) }) else { return nil }
-        let gz = try Data(contentsOf: cacheURL)
-        guard let xml = gunzip(gz) else { return nil }
-        return String(data: xml, encoding: .utf8)
+        return try prepareXmltv(readBounded(cacheURL, limit: inputByteLimit))
     }
 
     private func writeCache(_ data: Data, for url: URL) throws {
         cacheLock.lock()
         defer { cacheLock.unlock() }
+        guard data.count <= inputByteLimit else { throw Self.sizeFailure("delivered body") }
+        let meta = "\(Date().timeIntervalSince1970)\n\(url.absoluteString)"
+        guard meta.utf8.count <= metadataByteLimit else { throw Self.sizeFailure("cache metadata") }
         // Invalidate metadata first so an interrupted write cannot label another source's data.
         if FileManager.default.fileExists(atPath: metaURL.path) {
             try FileManager.default.removeItem(at: metaURL)
         }
         try data.write(to: cacheURL, options: .atomic)
-        let meta = "\(Date().timeIntervalSince1970)\n\(url.absoluteString)"
         try meta.write(to: metaURL, atomically: true, encoding: .utf8)
     }
 
-    private func fetchXmltv(_ url: URL, completion: @escaping (Result<(data: Data, xml: String), Error>) -> Void) {
-        URLSession.shared.dataTask(with: url) { data, response, err in
+    private func fetchXmltv(_ url: URL, completion: @escaping (Result<(data: Data, xml: XmltvDocument), Error>) -> Void) {
+        let completionHandler: (Data?, URLResponse?, Error?) -> Void = { data, response, err in
             if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: response.statusCode))); return
             }
@@ -243,65 +310,127 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])))
                 return
             }
-            guard let xml = self.gunzip(data),
-                  let xmlStr = String(data: xml, encoding: .utf8) else {
-                completion(.failure(NSError(domain: "MobileXmltvEpg", code: -2, userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])))
-                return
-            }
-            completion(.success((data, xmlStr)))
-        }.resume()
+            do { completion(.success((data, try self.prepareXmltv(data)))) }
+            catch { completion(.failure(error)) }
+        }
+        if let handler = Self.requestHandler { handler(URLRequest(url: url), completionHandler) }
+        else { XmltvDownload.start(URLRequest(url: url), limit: inputByteLimit, completion: completionHandler) }
     }
 
-    // MARK: - Gzip
+    fileprivate static func sizeFailure(_ resource: String) -> NSError {
+        NSError(domain: "MobileXmltvEpg", code: -5,
+                userInfo: [NSLocalizedDescriptionKey: "XMLTV \(resource) exceeds size limit"])
+    }
 
-    private func gunzip(_ data: Data) -> Data? {
-        // HTTP may already decompress the response; custom XMLTV is often plain XML.
-        if !data.starts(with: [0x1f, 0x8b]) {
-            guard let text = String(data: data, encoding: .utf8), text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<") else { return nil }
-            return data
+    private func readBounded(_ url: URL, limit: Int) throws -> Data {
+        let file = try FileHandle(forReadingFrom: url)
+        defer { try? file.close() }
+        guard try file.seekToEnd() <= UInt64(limit) else { throw Self.sizeFailure("cache input") }
+        try file.seek(toOffset: 0)
+        var result = Data()
+        while let chunk = try file.read(upToCount: min(64 * 1024, limit - result.count + 1)), !chunk.isEmpty {
+            guard chunk.count <= limit - result.count else { throw Self.sizeFailure("cache input") }
+            result.append(chunk)
+        }
+        return result
+    }
+
+    // MARK: - Bounded XML document
+
+    private final class XmltvDocument {
+        let directory: URL
+        var url: URL { directory.appendingPathComponent("guide.xml") }
+        init(parent: URL) throws {
+            directory = parent.appendingPathComponent("ottplay-xmltv-" + UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                                                    attributes: [.posixPermissions: 0o700])
+        }
+        func remove() { try? FileManager.default.removeItem(at: directory) }
+        deinit { remove() }
+    }
+
+    private func prepareXmltv(_ data: Data) throws -> XmltvDocument {
+        guard data.count <= inputByteLimit else { throw Self.sizeFailure("delivered body") }
+        let invalid = NSError(domain: "MobileXmltvEpg", code: -2,
+                              userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])
+        let document = try XmltvDocument(parent: xmlTemporaryDirectory)
+        guard FileManager.default.createFile(atPath: document.url.path, contents: nil,
+                                            attributes: [.posixPermissions: 0o600]) else { throw invalid }
+        let output = try FileHandle(forWritingTo: document.url)
+        defer { try? output.close() }
+        let gzip = data.starts(with: [0x1f, 0x8b])
+        var written = 0
+        var utf8Tail = Data()
+        var foundXMLPrefix = gzip
+        func write(_ chunk: Data) throws {
+            guard chunk.count <= expandedByteLimit - written else { throw Self.sizeFailure("expanded document") }
+            // Preserve strict UTF-8 decoding without making a whole-document String.
+            // A UTF-8 scalar can straddle two chunks by at most three bytes.
+            utf8Tail.append(chunk)
+            var decoded = false
+            for tail in 0...min(3, utf8Tail.count) {
+                let end = utf8Tail.count - tail
+                if let text = String(data: utf8Tail.prefix(end), encoding: .utf8) {
+                    if !foundXMLPrefix, let first = text.unicodeScalars.first(where: { !CharacterSet.whitespacesAndNewlines.contains($0) }) {
+                        guard first == "<" else { throw invalid }
+                        foundXMLPrefix = true
+                    }
+                    utf8Tail = Data(utf8Tail.suffix(tail))
+                    decoded = true
+                    break
+                }
+            }
+            guard decoded else { throw invalid }
+            try output.write(contentsOf: chunk)
+            written += chunk.count
         }
         let bufferSize = 64 * 1024
-        let dstBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
-        defer { dstBuffer.deallocate() }
-
-        var stream = z_stream()
-        let windowBits: Int32 = 16 + MAX_WBITS
-        guard inflateInit2_(&stream, windowBits, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else {
-            return nil
+        if gzip {
+            let dstBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+            defer { dstBuffer.deallocate() }
+            var stream = z_stream()
+            guard inflateInit2_(&stream, 16 + MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else { throw invalid }
+            defer { inflateEnd(&stream) }
+            try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                guard let inBase = raw.bindMemory(to: Bytef.self).baseAddress,
+                      raw.count <= Int(uInt.max) else { throw invalid }
+                stream.next_in = UnsafeMutablePointer(mutating: inBase)
+                stream.avail_in = uInt(raw.count)
+                var ret: Int32 = Z_OK
+                repeat {
+                    stream.next_out = dstBuffer
+                    stream.avail_out = uInt(bufferSize)
+                    ret = inflate(&stream, Z_NO_FLUSH)
+                    guard ret == Z_OK || ret == Z_STREAM_END else { throw invalid }
+                    let produced = bufferSize - Int(stream.avail_out)
+                    if produced > 0 { try autoreleasepool { try write(Data(bytes: dstBuffer, count: produced)) } }
+                } while ret != Z_STREAM_END
+            }
+        } else {
+            var offset = 0
+            while offset < data.count {
+                let end = min(offset + bufferSize, data.count)
+                try autoreleasepool { try write(data.subdata(in: offset..<end)) }
+                offset = end
+            }
         }
-        defer { inflateEnd(&stream) }
-
-        return data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Data? in
-            guard let inBase = raw.bindMemory(to: Bytef.self).baseAddress else { return nil }
-            stream.next_in = UnsafeMutablePointer(mutating: inBase)
-            stream.avail_in = uInt(raw.count)
-
-            var result = Data()
-            var ret: Int32 = Z_OK
-            repeat {
-                stream.next_out = dstBuffer
-                stream.avail_out = uInt(bufferSize)
-                ret = inflate(&stream, Z_NO_FLUSH)
-                if ret != Z_OK && ret != Z_STREAM_END {
-                    return nil
-                }
-                let produced = bufferSize - Int(stream.avail_out)
-                if produced > 0 {
-                    result.append(dstBuffer, count: produced)
-                }
-            } while ret != Z_STREAM_END
-
-            return result
-        }
+        guard utf8Tail.isEmpty, foundXMLPrefix else { throw invalid }
+        try output.close()
+        return document
     }
 
     // MARK: - XMLTV Parse
 
-    private func parseXmltv(_ xml: String) throws -> Parsed {
-        guard let data = xml.data(using: .utf8) else { return ([:], [:], [:], [:]) }
-        let parser = try XmltvParser(core: ())
-        try parser.parse(data)
-        return (parser.channels, parser.programs, parser.icons, parser.names)
+    private func parseXmltv(_ xml: XmltvDocument) throws -> Parsed {
+        try autoreleasepool {
+            guard let stream = InputStream(url: xml.url) else {
+                throw NSError(domain: "MobileXmltvEpg", code: -6, userInfo: [NSLocalizedDescriptionKey: "Cannot read XMLTV document"])
+            }
+            defer { stream.close() }
+            let parser = try XmltvParser(core: ())
+            try parser.parse(stream)
+            return Parsed(parser.channels, parser.programs, parser.icons, parser.names)
+        }
     }
 
     private class XmltvParser: NSObject, XMLParserDelegate {
@@ -322,8 +451,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         var names: [String: [String]] = [:]
         var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
 
-        func parse(_ data: Data) throws {
-            let parser = XMLParser(data: data)
+        func parse(_ stream: InputStream) throws {
+            let parser = XMLParser(stream: stream)
+            parser.shouldResolveExternalEntities = false
+            parser.externalEntityResolvingPolicy = .never
             parser.delegate = self
             let succeeded = parser.parse()
             if let error = coreError { throw error }
@@ -334,23 +465,26 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
         private func flush() throws {
             guard !tokens.isEmpty else { return }
-            let actions = try guide.xmltvAccept(records, tokens: tokens)
-            tokens.removeAll(keepingCapacity: true)
-            tokenBytes = 0
-            for row in actions {
-                switch row.first {
-                case "channel" where row.count == 3: channels[row[1]] = row[2]
-                case "name" where row.count == 3: names[row[1], default: []].append(row[2])
-                case "icon" where row.count == 3: icons[row[1]] = row[2]
-                case "programme" where row.count == 7:
-                    guard let start = Int(row[2]), let stop = Int(row[3]) else {
+            // Drain bridge temporaries per batch, not after the entire guide.
+            try autoreleasepool {
+                let actions = try guide.xmltvAccept(records, tokens: tokens)
+                tokens.removeAll(keepingCapacity: true)
+                tokenBytes = 0
+                for row in actions {
+                    switch row.first {
+                    case "channel" where row.count == 3: channels[row[1]] = row[2]
+                    case "name" where row.count == 3: names[row[1], default: []].append(row[2])
+                    case "icon" where row.count == 3: icons[row[1]] = row[2]
+                    case "programme" where row.count == 7:
+                        guard let start = Int(row[2]), let stop = Int(row[3]) else {
+                            throw NSError(domain: "SharedGuide", code: 1,
+                                userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV programme"])
+                        }
+                        programs[row[1], default: []].append((start, stop, row[4], row[5]))
+                    default:
                         throw NSError(domain: "SharedGuide", code: 1,
-                            userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV programme"])
+                            userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV action"])
                     }
-                    programs[row[1], default: []].append((start, stop, row[4], row[5]))
-                default:
-                    throw NSError(domain: "SharedGuide", code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "Invalid shared XMLTV action"])
                 }
             }
         }
@@ -385,23 +519,70 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Channel Resolution + EPG Slice
 
     private func buildSlice(_ parsed: Parsed, channelId: String, ch: String?, hash: String, timeShiftHours: Int, archiveHours: Int, tvgName: String? = nil) throws -> [String: Any] {
-        let guide = try SharedGuide()
-        let rows = parsed.channels.keys.sorted().flatMap { id in
-            (parsed.names[id] ?? [parsed.channels[id]!]).map { [id, $0.precomposedStringWithCanonicalMapping] }
-        }
-        let xmltvId = try guide.resolve(rows, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
-        let unsorted = parsed.programs[xmltvId] ?? []
-        let progs = try guide.xmltvOrder(unsorted.map { Double($0.start) }).map { unsorted[$0] }
-        let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
-        let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
-            now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
-        let epgData: [[String: Any]] = selection.map { row in
-            let prog = progs[Int(row[0])]
-            return ["time": Int(row[1]), "time_to": Int(row[2]), "name": prog.title,
-                    "descr": prog.desc, "icon": ""]
-        }
+        try parsed.query { guide, index in
+            let xmltvId = try guide.resolve(index, id: hash, names: [tvgName ?? "", ch ?? ""].map { $0.precomposedStringWithCanonicalMapping }) ?? hash
+            let unsorted = parsed.programs[xmltvId] ?? []
+            let progs = try guide.xmltvOrder(unsorted.map { Double($0.start) }).map { unsorted[$0] }
+            let shift = timeShiftHours != 0 ? timeShiftHours : try guide.shift(ch ?? tvgName ?? "")
+            let selection = try guide.slice(progs.map { [Double($0.start), Double($0.stop)] },
+                now: Date().timeIntervalSince1970, archive: archiveHours, shift: shift)
+            let epgData: [[String: Any]] = selection.map { row in
+                let prog = progs[Int(row[0])]
+                return ["time": Int(row[1]), "time_to": Int(row[2]), "name": prog.title,
+                        "descr": prog.desc, "icon": ""]
+            }
 
-        return ["epg_data": epgData]
+            return ["epg_data": epgData]
+        }
+    }
+}
+
+/// Standalone plugin use has the same delivered-body bound as the host hook.
+/// Checking only after a dataTask completion would allow URLSession to allocate
+/// the entire response before XMLTV gets a chance to reject it.
+private final class XmltvDownload: NSObject, URLSessionDataDelegate {
+    private let limit: Int
+    private var completion: ((Data?, URLResponse?, Error?) -> Void)?
+    private var session: Foundation.URLSession?
+    private var response: URLResponse?
+    private var buffer = Data()
+    private var failure: Error?
+
+    private init(limit: Int, completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
+        self.limit = limit
+        self.completion = completion
+    }
+    static func start(_ request: URLRequest, limit: Int,
+                      configuration: URLSessionConfiguration = .default,
+                      completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
+        let owner = XmltvDownload(limit: limit, completion: completion)
+        let session = Foundation.URLSession(configuration: configuration, delegate: owner, delegateQueue: nil)
+        owner.session = session
+        session.dataTask(with: request).resume()
+    }
+    func urlSession(_ session: Foundation.URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (Foundation.URLSession.ResponseDisposition) -> Void) {
+        self.response = response
+        if response.expectedContentLength > Int64(limit) {
+            failure = MobileXmltvEpg.sizeFailure("delivered body")
+            completionHandler(.cancel)
+        } else { completionHandler(.allow) }
+    }
+    func urlSession(_ session: Foundation.URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard failure == nil else { return }
+        guard data.count <= limit - buffer.count else {
+            failure = MobileXmltvEpg.sizeFailure("delivered body")
+            dataTask.cancel()
+            return
+        }
+        buffer.append(data)
+    }
+    func urlSession(_ session: Foundation.URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        let callback = completion
+        completion = nil
+        self.session = nil
+        session.finishTasksAndInvalidate()
+        callback?(failure == nil && error == nil ? buffer : nil, response, failure ?? error)
     }
 }
 
@@ -519,10 +700,12 @@ private final class SharedGuide {
         return result
     }
     func shift(_ input: String) throws -> Int { Int(try call("nativeGuideShift", [input, "swift"]).toInt32()) }
-    func resolve(_ rows: [[String]], id: String, names: [String]) throws -> String? {
+    func index(_ rows: [[String]]) throws -> JavaScriptCore.JSValue {
         let measure: @convention(block) (String) -> Int = { $0.count }
         let precision: @convention(block) (Double) -> Double = { $0 }
-        let index = try checked { core.forProperty("NativeGuide")?.construct(withArguments: [rows, "swift", measure, precision]) }
+        return try checked { core.forProperty("NativeGuide")?.construct(withArguments: [rows, "swift", measure, precision]) }
+    }
+    func resolve(_ index: JavaScriptCore.JSValue, id: String, names: [String]) throws -> String? {
         let result = try checked { index.invokeMethod("resolve", withArguments: [id, names]) }
         return result.isNull ? nil : result.toString()
     }

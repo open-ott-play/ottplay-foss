@@ -31,10 +31,11 @@ const snippets = {
     ),
 };
 
-function fixture(platform, capacitorPlatform = "ios") {
+function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
     const nativeCalls = [];
     const boundsCalls = [];
     const requests = [];
+    const stopRequests = [];
     const cssPlays = [];
     const displays = [];
     let cssStops = 0;
@@ -60,7 +61,10 @@ function fixture(platform, capacitorPlatform = "ios") {
     }
     function nativeStop() {
         nativeCalls.push(["stop"]);
-        return Promise.resolve();
+        if (!deferStop) return Promise.resolve();
+        return new Promise((resolve, reject) =>
+            stopRequests.push({ reject, resolve })
+        );
     }
     const c = {
         __TAURI__: {},
@@ -112,6 +116,23 @@ function fixture(platform, capacitorPlatform = "ios") {
     };
     c.window = c;
     vm.createContext(c);
+    vm.runInContext(
+        ts
+            .transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../src/plugins/access-media.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.ES2015,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            )
+            .outputText.replace(/^export /gm, ""),
+        c
+    );
     for (const file of ["media-backend", "native-pip"])
         require("./helpers/private-runtime.cjs")(
             c,
@@ -145,7 +166,9 @@ function fixture(platform, capacitorPlatform = "ios") {
         open(request) {
             if (effects.pip) {
                 cssStop();
-                return effects.pip.open(request, () => cssLease(request));
+                return effects.pip.open(request, (url) =>
+                    cssLease(Object.assign({}, request, { url }))
+                );
             }
             return cssLease(request);
         },
@@ -169,6 +192,7 @@ function fixture(platform, capacitorPlatform = "ios") {
         play: (url) => c.stbPlayPip(url),
         requests,
         stop: () => c.stbStopPip(),
+        stopRequests,
         succeed: (request) =>
             request.resolve(
                 platform === "Capacitor" ? { ok: true } : undefined
@@ -203,9 +227,9 @@ for (const platform of ["Capacitor", "Tauri"]) {
     });
 }
 
-// Capacitor bridge operations remain serialized: an OS command cannot cancel a
-// previous in-flight bridge operation. Tauri's Rust controller owns cancellation
-// and waits for actual media playback, so its JS commands must not form a queue.
+// Capacitor Stop cancels a pending native play. Replacement plays wait only for
+// teardown acknowledgement, never for the cancelled player's readiness. Tauri's
+// Rust controller owns cancellation, so its JS commands must not form a queue.
 for (const platform of ["Capacitor"]) {
     const results = ["success", "failure", "unsupported"];
     for (const result of results) {
@@ -218,8 +242,8 @@ for (const platform of ["Capacitor"]) {
             const afterStop = f.displays.length;
             assert.deepEqual(
                 f.nativeCalls,
-                [["play", "A"]],
-                "Native stop must wait for in-flight native play"
+                [["play", "A"], ["stop"]],
+                "Native stop must cancel in-flight play before its acknowledgement"
             );
             if (result === "failure")
                 f.requests[0].reject(new Error("native failure"));
@@ -240,7 +264,7 @@ for (const platform of ["Capacitor"]) {
             assert.deepEqual(
                 f.nativeCalls,
                 [["play", "A"], ["stop"]],
-                "Queued stop executes after native play settles"
+                "Late play settlement must not issue another stop"
             );
         });
     }
@@ -259,8 +283,8 @@ for (const platform of ["Capacitor"]) {
             await settle();
             assert.deepEqual(
                 f.nativeCalls,
-                [["play", "A"]],
-                "B waits for A's native settlement"
+                [["play", "A"], ["stop"], ["play", "B"]],
+                "B starts after teardown without waiting for A's readiness"
             );
             const afterB = f.displays.length;
             if (oldResult === "failure")
@@ -279,6 +303,7 @@ for (const platform of ["Capacitor"]) {
             );
             assert.deepEqual(f.nativeCalls, [
                 ["play", "A"],
+                ["stop"],
                 ["play", "B"],
             ]);
             f.succeed(f.requests[1]);
@@ -308,7 +333,11 @@ for (const platform of ["Capacitor"]) {
         f.stop();
         f.play("B");
         await settle();
-        assert.deepEqual(f.nativeCalls, [["play", "A"]]);
+        assert.deepEqual(f.nativeCalls, [
+            ["play", "A"],
+            ["stop"],
+            ["play", "B"],
+        ]);
         f.succeed(f.requests[0]);
         await settle();
         assert.deepEqual(f.nativeCalls, [
@@ -339,6 +368,56 @@ for (const platform of ["Capacitor"]) {
                 "Stopping fallback must not restart it"
             );
             assert.equal(f.displays.at(-1), "stopped");
+        });
+    }
+}
+
+for (const oldResult of ["success", "failure"]) {
+    for (const stopResult of ["success", "failure"]) {
+        test(`Capacitor: pending teardown owns the queue after late A ${oldResult} and stop ${stopResult}`, async () => {
+            const f = fixture("Capacitor", "ios", true);
+            f.play("A");
+            await settle();
+            f.stop();
+            f.play("B");
+            await settle();
+            assert.deepEqual(f.nativeCalls, [["play", "A"], ["stop"]]);
+            assert.equal(f.stopRequests.length, 1);
+            if (oldResult === "failure")
+                f.requests[0].reject(new Error("retired A failed"));
+            else f.succeed(f.requests[0]);
+            await settle();
+            // A's old queue-tail completion must not clear the newer teardown.
+            // Replace queued B after A settles to exercise that queue ownership.
+            f.play("C");
+            await settle();
+            assert.deepEqual(
+                f.nativeCalls,
+                [["play", "A"], ["stop"]],
+                "No decoder may start before teardown settles"
+            );
+            if (stopResult === "failure")
+                f.stopRequests[0].reject(new Error("native teardown failed"));
+            else f.stopRequests[0].resolve();
+            await settle();
+            assert.deepEqual(f.nativeCalls, [
+                ["play", "A"],
+                ["stop"],
+                ["play", "C"],
+            ]);
+            assert.deepEqual(f.cssPlays, []);
+            f.succeed(f.requests[1]);
+            await settle();
+            assert.equal(f.displays.at(-1), "none");
+            f.stop();
+            f.stopRequests[1].resolve();
+            await settle();
+            f.play("D");
+            await settle();
+            assert.deepEqual(f.nativeCalls.at(-1), ["play", "D"]);
+            f.succeed(f.requests[2]);
+            await settle();
+            assert.deepEqual(f.cssPlays, [], "Settled queue can be reused");
         });
     }
 }
@@ -487,6 +566,145 @@ for (const mode of [1, 2]) {
         assert.equal(f.requests[2].engine, mode);
         assert.equal(f.requests[2].loop, false);
         assert.equal(f.window.playerMode, mode);
+    });
+}
+
+for (const action of ["stop", "replace"]) {
+    test(`Capacitor iOS: ${action} during source login cannot start the retired stream`, async () => {
+        const f = fixture("Capacitor");
+        const pending = [];
+        const cancelled = [];
+        f.window.Capacitor.Plugins = {
+            AccessMedia: {
+                cancelPrepare: ({ requestId }) => {
+                    cancelled.push(requestId);
+                    return Promise.resolve();
+                },
+                prepare: ({ url, requestId }) =>
+                    new Promise((resolve) =>
+                        pending.push({ requestId, resolve, url })
+                    ),
+            },
+        };
+        f.play("https://source.invalid/old.m3u8");
+        await settle();
+        assert.equal(pending.length, 1);
+        assert.equal(f.requests.length, 0);
+        if (action === "stop") f.stop();
+        else f.play("https://source.invalid/new.m3u8");
+        await settle();
+        assert.deepEqual(
+            cancelled,
+            [pending[0].requestId],
+            "retired sign-in reaches native cancellation"
+        );
+        if (action === "stop") {
+            assert.deepEqual(
+                f.nativeCalls,
+                [["stop"]],
+                "Stop must not wait for the sign-in prompt"
+            );
+        } else {
+            assert.equal(
+                pending.length,
+                2,
+                "the new source can prepare before the retired login finishes"
+            );
+        }
+        pending[0].resolve({ url: pending[0].url });
+        await settle();
+        assert.equal(
+            f.requests.length,
+            0,
+            "old auth callback never reaches native playback"
+        );
+        if (action === "replace") {
+            assert.equal(pending.length, 2);
+            pending[1].resolve({ url: pending[1].url });
+            await settle();
+            assert.equal(f.requests.length, 1);
+            assert.equal(f.requests[0].url, "https://source.invalid/new.m3u8");
+        }
+        assert.deepEqual(f.cssPlays, []);
+    });
+}
+
+test("Capacitor iOS: rejected source sign-in never starts CSS fallback", async () => {
+    const f = fixture("Capacitor");
+    f.window.Capacitor.Plugins = {
+        AccessMedia: {
+            prepare: () =>
+                Promise.reject(new Error("Source sign-in cancelled")),
+        },
+    };
+    f.play("https://source.invalid/private.m3u8");
+    await settle();
+    assert.deepEqual(f.nativeCalls, []);
+    assert.deepEqual(f.cssPlays, []);
+});
+
+for (const result of ["success", "failure"]) {
+    test(`Capacitor iOS: playing A stops while replacement B awaits sign-in (${result})`, async () => {
+        const f = fixture("Capacitor");
+        const old = "https://source.invalid/A.m3u8";
+        const next = "https://source.invalid/B.m3u8";
+        f.play(old);
+        await settle();
+        f.succeed(f.requests[0]);
+        await settle();
+        let resolve, reject;
+        f.window.Capacitor.Plugins = {
+            AccessMedia: {
+                prepare: () =>
+                    new Promise((yes, no) => {
+                        resolve = yes;
+                        reject = no;
+                    }),
+            },
+        };
+        f.play(next);
+        await settle();
+        assert.deepEqual(
+            f.nativeCalls,
+            [["play", old], ["stop"]],
+            "The replaced decoder stops without waiting for B's login"
+        );
+        if (result === "failure") reject(new Error("Sign-in cancelled"));
+        else resolve({ url: next });
+        await settle();
+        assert.deepEqual(
+            f.nativeCalls,
+            result === "failure"
+                ? [["play", old], ["stop"]]
+                : [["play", old], ["stop"], ["play", next]]
+        );
+        assert.deepEqual(f.cssPlays, []);
+    });
+}
+
+for (const result of ["failure", "unsupported"]) {
+    test(`Capacitor iOS: prepared source survives native ${result} into CSS fallback`, async () => {
+        const f = fixture("Capacitor");
+        const source = "https://source.invalid/protected.m3u8";
+        const local =
+            "http://127.0.0.1:12345/access/" +
+            "a".repeat(43) +
+            "/fixture/media.m3u8";
+        f.window.Capacitor.Plugins = {
+            AccessMedia: { prepare: () => Promise.resolve({ url: local }) },
+        };
+        f.play(source);
+        await settle();
+        assert.equal(f.requests[0].url, local);
+        if (result === "failure")
+            f.requests[0].reject(new Error("Native decoder failed"));
+        else f.requests[0].resolve({ ok: false });
+        await settle();
+        assert.deepEqual(f.cssPlays, [local]);
+        f.stop();
+        await settle();
+        assert.equal(f.displays.at(-1), "stopped");
+        assert.deepEqual(f.cssPlays, [local]);
     });
 }
 

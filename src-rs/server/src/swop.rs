@@ -13,7 +13,9 @@ use std::{sync::Arc, time::Duration};
 
 const CLIENT_HEADER: &str = "x-swop-client-id";
 const SESSION_HEADER: &str = "x-swop-session-token";
-const MAX_BODY: usize = 16 * 1024;
+// The wire permits 8000 UTF-16 value units; JSON escapes can require 48 KiB.
+// Smaller response caps lose a valid value after the Worker consumes it.
+const MAX_BODY: usize = 64 * 1024;
 
 #[derive(Clone)]
 struct Relay {
@@ -88,7 +90,7 @@ fn error(status: StatusCode, message: &str) -> Response {
         .into_response()
 }
 
-fn client_origin(headers: &HeaderMap, scheme: &str) -> Result<String, Response> {
+pub(crate) fn client_origin(headers: &HeaderMap, scheme: &str) -> Result<String, Response> {
     let deny = || error(StatusCode::FORBIDDEN, "installation origin required");
     let host = headers
         .get(header::HOST)
@@ -292,6 +294,77 @@ mod tests {
         h.insert("x-forwarded-host", "wrong.test".parse().unwrap());
         h.insert("x-forwarded-proto", "https".parse().unwrap());
         assert!(client_origin(&h, "http").is_err());
+    }
+
+    #[tokio::test]
+    async fn maximum_wire_values_survive_consuming_relay_and_next_byte_is_rejected() {
+        // 8000 CJK is accepted by the production Worker today. The control case
+        // also covers the semantic wire maximum after its byte-cap alignment.
+        for value in ["界".repeat(8000), "\u{0001}".repeat(8000)] {
+            let pending = Arc::new(std::sync::Mutex::new(Some(value.clone())));
+            let consume = pending.clone();
+            let draft = "\u{0001}".repeat(4000);
+            let expected_draft = draft.clone();
+            let upstream = Router::new()
+                .route("/session", post(move |Json(body): Json<serde_json::Value>| {
+                    let expected = expected_draft.clone();
+                    async move {
+                        assert_eq!(body["draft"], expected);
+                        Json(json!({"code":"ABCDEF", "sessionToken":"private-token"}))
+                    }
+                }))
+                .route("/val", post(move || {
+                    let value = consume.lock().unwrap().take();
+                    async move { Json(match value {
+                        Some(value) => json!({"status":"ready", "value":value}),
+                        None => json!({"status":"gone"}),
+                    }) }
+                }));
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let task = tokio::spawn(async move { axum::serve(listener, upstream).await.unwrap() });
+            let mut relay = Relay::new("https://worker.test", &"s".repeat(48)).unwrap();
+            relay.upstream = format!("http://{address}").parse().unwrap();
+            let app = routes(relay).layer(Extension(crate::msx::Scheme("http")));
+            let request = |path: &str, body: String| Request::builder().method("POST").uri(path)
+                .header(header::HOST, "192.168.1.20:8443")
+                .header(header::ORIGIN, "http://192.168.1.20:8443")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body)).unwrap();
+            let session = app.clone().oneshot(request("/swop/session", json!({"draft":draft}).to_string())).await.unwrap();
+            assert_eq!(session.status(), StatusCode::OK);
+            let ready = app.clone().oneshot(request("/swop/val", "{}".into())).await.unwrap();
+            assert_eq!(ready.status(), StatusCode::OK);
+            let ready = to_bytes(ready.into_body(), MAX_BODY).await.unwrap();
+            assert!(ready.len() > 16 * 1024 && ready.len() <= MAX_BODY);
+            let ready: serde_json::Value = serde_json::from_slice(&ready).unwrap();
+            assert_eq!(ready["value"], value);
+            assert!(pending.lock().unwrap().is_none());
+            let gone = app.clone().oneshot(request("/swop/val", "{}".into())).await.unwrap();
+            let gone: serde_json::Value = serde_json::from_slice(&to_bytes(gone.into_body(), MAX_BODY).await.unwrap()).unwrap();
+            assert_eq!(gone["status"], "gone");
+            let rejected = app.oneshot(request("/swop/session", "x".repeat(MAX_BODY + 1))).await.unwrap();
+            assert_eq!(rejected.status(), StatusCode::PAYLOAD_TOO_LARGE);
+            task.abort();
+        }
+    }
+
+    #[tokio::test]
+    async fn relay_rejects_upstream_response_one_byte_over_bound() {
+        let upstream = Router::new().route("/val", post(|| async { vec![b'x'; MAX_BODY + 1] }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move { axum::serve(listener, upstream).await.unwrap() });
+        let mut relay = Relay::new("https://worker.test", &"s".repeat(48)).unwrap();
+        relay.upstream = format!("http://{address}").parse().unwrap();
+        let response = routes(relay).layer(Extension(crate::msx::Scheme("http")))
+            .oneshot(Request::builder().method("POST").uri("/swop/val")
+                .header(header::HOST, "192.168.1.20:8443")
+                .header(header::ORIGIN, "http://192.168.1.20:8443")
+                .body(Body::from("{}")).unwrap()).await.unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+        assert!(to_bytes(response.into_body(), MAX_BODY).await.unwrap().len() < 100);
+        task.abort();
     }
 
     #[tokio::test]

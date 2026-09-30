@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv баптаулары",
     "Allowlist this Device ID": "Осы құрылғы ID-іне рұқсат беріңіз",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Портсыз IP үшін HTTP 8081 порты қолданылады. Тоқтату үшін мекенжайды тазалаңыз немесе Ажырату түймесін таңдаңыз.",
     "API failed, trying M3U...": "API қатесі, M3U қолданылуда…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "API серверінің URL мекенжайы",
     "Applying HTTP remote settings...":
         "HTTP қашықтан басқару баптаулары қолданылуда…",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "%1 үшін кодты ott approve NAME CODE пәрменімен растаңыз:",
     Archive: "Мұрағат",
     "Archive - begin": "Мұрағат — басы",
     "Archive hours": "Мұрағат сағаттары",
@@ -111,6 +115,7 @@ var keyStrings = {
     "Call PiP": "PiP ашу",
     "Call PiP / PiP exchange": "PiP ашу / PiP ауыстыру",
     Cancel: "Бас тарту",
+    "Cancel pairing": "Жұптастырудан бас тарту",
     "Cannot delete the last category": "Соңғы санатты жою мүмкін емес",
     Category: "Санат",
     "Category selection": "Санат таңдау",
@@ -154,6 +159,14 @@ var keyStrings = {
     "Command server": "Пәрмен сервері",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Пәрмен серверінің мекенжайы, құрылғының кіру коды, жергілікті HTTP басқару және қашықтан мәтін енгізу баптаулары",
+    "Command server discovery canceled.": "Пәрмен серверін іздеу тоқтатылды.",
+    "Command server discovery has not started.":
+        "Пәрмен серверін іздеу әлі басталған жоқ.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Пәрмен серверін іздеу қолжетімсіз. Қайталау үшін «Пәрмен серверін табу» түймесін таңдаңыз.",
+    "Command server discovery timed out.":
+        "Пәрмен серверін іздеу уақыты аяқталды.",
+    "Command server found.": "Пәрмен сервері табылды.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv қызметін Баптаулар -> Провайдер баптаулары бөлімінде баптаңыз",
@@ -238,6 +251,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Серверге қосылу мүмкін болмады.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Жұптастыру сұрауын жасау мүмкін болмады. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Could not save the approved command server settings.":
+        "Пәрмен серверінің расталған баптауларын сақтау мүмкін болмады.",
     "Could not update HTTP remote control.":
         "HTTP қашықтан басқаруды жаңарту мүмкін болмады.",
     Country: "Ел",
@@ -257,6 +274,8 @@ var keyStrings = {
     "Device info:": "Құрылғы туралы ақпарат:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) ойнату тізімдеріне құрылғының MAC мекенжайы қажет",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Құрылғының UUID-і әлі дайын емес. Қайталау үшін «Пәрмен серверін табу» түймесін таңдаңыз.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV баптаулары",
     Director: "Режиссер",
@@ -352,6 +371,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Бағдарлама кестесі",
     "EPG and archive. Channel: ": "Бағдарлама кестесі және мұрағат. Арна: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG іске қосылмады. Файлдарын қайта жүктеу үшін ойнатқышты қайта іске қосыңыз. Ойнату тоқтайды.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Қате!",
     "Error Code!": "Жарамсыз код!",
     Exit: "Шығу",
@@ -380,6 +444,8 @@ var keyStrings = {
         "Бұл құрылғыда файл таңдау қолдау көрсетілмейді",
     Filter: "Сүзгі",
     Filters: "Сүзгілер",
+    "Find command server": "Пәрмен серверін табу",
+    "Finding command servers...": "Пәрмен серверлері ізделуде…",
     "First Run Setup": "Алғашқы іске қосу баптауы",
     Folders: "Folders",
     "Font type": "Қаріп түрі",
@@ -488,8 +554,12 @@ var keyStrings = {
     "Next TV program": "Келесі бағдарлама",
     No: "Жоқ",
     "No channel name": "Арна атауы жоқ",
+    "No command server was found on this network.":
+        "Бұл желіде пәрмен сервері табылмады.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Сақталған баптаулар табылмады",
     "Not found": "Табылмады",
     "Not reduce video when showing the list (bugfix)":
@@ -509,6 +579,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE баптаулары",
@@ -519,6 +591,14 @@ var keyStrings = {
     on: "қосулы",
     "on ": "мына түймемен ",
     "or scan": "немесе сканерлеңіз",
+    "Pairing approved. Command server configured.":
+        "Жұптастыру расталды. Пәрмен сервері бапталды.",
+    "Pairing expired. Find the server again to retry.":
+        "Жұптастыру уақыты аяқталды. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Жұптастыру сервері қолжетімсіз. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Жұптастыру қабылданбады немесе жарамсыз растау алынды. Қайта әрекет ету үшін серверді қайта іздеңіз.",
     "Parental control": "Ата-ана бақылауы",
     Password: "Құпиясөз",
     Pause: "Кідірту",
@@ -551,6 +631,7 @@ var keyStrings = {
         "Кідіртуден кейін 10 секунд артқа қайту",
     PROST: "PROST",
     "PROST settings": "PROST баптаулары",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Алдыңғы",
     "Preview in channel list": "Арналар тізіміндегі алдын ала қарау",
     Previous: "Алдыңғы арна",
@@ -575,7 +656,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Түрлі түсті түймелері жоқ пульт",
     "Remote (number buttons N/A)": "Сандық түймелері жоқ пульт",
     "Remote control": "Қашықтан басқару",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Қашықтағы сеанстың мерзімі аяқталды",
+    "Remote text entry": "Қашықтан мәтін енгізу",
     "Remote text entry denied": "Қашықтан мәтін енгізуге рұқсат жоқ",
     "Remote text entry error": "Қашықтан мәтін енгізу қатесі",
     "Remote text entry needs a Device ID.":
@@ -591,10 +677,12 @@ var keyStrings = {
     "Rename to": "Жаңа атау",
     "Repeat parental code": "Ата-ана кодын қайталаңыз",
     "Request sended!": "Сұрау жіберілді!",
+    "Requesting approval for %1": "%1 үшін растау сұралуда",
     "Restart player": "Ойнатқышты қайта іске қосу",
     "Restart stream": "Ағынды қайта іске қосу",
     "Restart stream / Live": "Ағынды қайта іске қосу / тікелей эфир",
     "Resume from archive?": "Мұрағаттан жалғастыру керек пе?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Алдыңғы арнаға қайту",
     Rewind: "Айналдыру",
     "Rewind step by buttons %1/%2": "%1/%2 түймелерімен айналдыру қадамы",
@@ -612,9 +700,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Баптауларды сақтау және арналар тізімін жүктеу",
     "Save settings to storage": "Баптауларды жадқа сақтау",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Сценарий",
     Search: "Іздеу",
     "Search programme": "Бағдарламаны іздеу",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Ағын түрін таңдаңыз:<br>%1",
     "Select category to add channel": "Арнаны қосатын санатты таңдаңыз",
     "Select color": "Түсті таңдаңыз",
@@ -639,12 +735,16 @@ var keyStrings = {
     "Set parental code": "Ата-ана кодын орнатыңыз",
     "Set timer?": "Таймер орнатылсын ба?",
     Settings: "Баптаулар",
+    "Settings changed. Discovery was canceled.":
+        "Баптаулар өзгерді. Іздеу тоқтатылды.",
     "Settings could not be saved": "Баптауларды сақтау мүмкін болмады",
     "Settings loaded from storage": "Баптаулар жадтан жүктелді",
     "Settings STB": "Құрылғы баптаулары",
     "Settings saved": "Баптаулар сақталды",
     "Settings saved to storage": "Баптаулар жадқа сақталды",
     "Settings sended!": "Баптаулар жіберілді!",
+    "Several command servers were found. Select one below.":
+        "Бірнеше пәрмен сервері табылды. Төменнен біреуін таңдаңыз.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) баптаулары",
     ShockTv: "ShockTv",
@@ -679,6 +779,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Ұйқы таймері",
     "Sort channels": "Арналарды сұрыптау",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker порталының провайдері",
     "Stalker portal settings": "Stalker порталының баптаулары",
     "Stalker portals": "Stalker порталдары",
@@ -700,8 +802,16 @@ var keyStrings = {
     system: "жүйелік",
     Tabox: "Tabox",
     "Tabox settings": "Tabox баптаулары",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Пәрмен серверін іздеуге арналған URL мекенжайы жарамсыз.",
     "The device ID in the address is invalid.":
         "Мекенжайдағы құрылғы ID-і жарамсыз.",
+    "The discovery response is invalid.": "Іздеу сұрауының жауабы жарамсыз.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Бұл браузер қауіпсіз автоматты жұптастыруды қолдамайды. Оны жаңартыңыз немесе пәрмен серверінің баптауларын қолмен енгізіңіз.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Бұл браузерге іздеу профилі берілмеген. Сервер мекенжайын енгізіңіз немесе орналастыру профилін баптаңыз.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Бұл HTTPS ойнатқышы HTTP серверіне қосыла алмайды. HTTPS серверін қолданыңыз немесе ойнатқышты HTTP арқылы ашыңыз.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -744,6 +854,8 @@ var keyStrings = {
         "Элементті таңдау үшін СОЛ/ОҢ, іске қосу үшін OK, айналдыру үшін ЖОҒАРЫ/ТӨМЕН түймелерін пайдаланыңыз.",
     Username: "Пайдаланушы аты",
     "Username or password is missing.": "Пайдаланушы аты немесе құпиясөз жоқ.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM баптаулары",
     "Vidok.TV": "Vidok.TV",

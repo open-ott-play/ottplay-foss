@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv beállításai",
     "Allowlist this Device ID": "Eszközazonosító engedélyezése",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Port nélküli IP-cím esetén a HTTP-port 8081. A leállításhoz törölje a címet, vagy válassza a Leválasztás lehetőséget.",
     "API failed, trying M3U...": "Az API nem működik, M3U próbálása…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "API-kiszolgáló URL-címe",
     "Applying HTTP remote settings...":
         "A HTTP-távirányítás beállításainak alkalmazása...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "Hagyja jóvá a(z) %1 kódját az ott approve NAME CODE paranccsal:",
     Archive: "Archívum",
     "Archive - begin": "Archívum — kezdete",
     "Archive hours": "Archívum órák",
@@ -111,6 +115,7 @@ var keyStrings = {
     "Call PiP": "PiP megnyitása",
     "Call PiP / PiP exchange": "PiP megnyitása / felcserélése",
     Cancel: "Mégse",
+    "Cancel pairing": "Párosítás megszakítása",
     "Cannot delete the last category": "Az utolsó kategória nem törölhető",
     Category: "Kategória",
     "Category selection": "Kategória kiválasztása",
@@ -154,6 +159,15 @@ var keyStrings = {
     "Command server": "Parancskiszolgáló",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Parancskiszolgáló címe, eszköz-hozzáférési kód, helyi HTTP-vezérlés és távoli szövegbevitel beállításai",
+    "Command server discovery canceled.":
+        "A parancskiszolgáló keresése megszakítva.",
+    "Command server discovery has not started.":
+        "A parancskiszolgáló keresése még nem indult el.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "A parancskiszolgáló keresése nem érhető el. Az újrapróbálkozáshoz válassza a „Parancskiszolgáló keresése” lehetőséget.",
+    "Command server discovery timed out.":
+        "A parancskiszolgáló keresésének időkorlátja lejárt.",
+    "Command server found.": "Parancskiszolgáló megtalálva.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Állítsa be ezt: All4you.tv, a Beállítások -> Szolgáltató beállításai menüben",
@@ -239,6 +253,10 @@ var keyStrings = {
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
         "Nem sikerült csatlakozni a kiszolgálóhoz.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Nem sikerült párosítási kérelmet létrehozni. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Could not save the approved command server settings.":
+        "Nem sikerült menteni a parancskiszolgáló jóváhagyott beállításait.",
     "Could not update HTTP remote control.":
         "Nem sikerült módosítani a HTTP-távirányítás beállításait.",
     Country: "Ország",
@@ -257,6 +275,8 @@ var keyStrings = {
     "Device info:": "Eszközinformációk:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "A KBC (Kinoboom) listákhoz az eszköz MAC-címe szükséges",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Az eszköz UUID-je még nem áll rendelkezésre. Az újrapróbálkozáshoz válassza a „Parancskiszolgáló keresése” lehetőséget.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV beállításai",
     Director: "Rendező",
@@ -352,6 +372,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "Műsorújság",
     "EPG and archive. Channel: ": "Műsorújság és archívum. Csatorna: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "Az EPG nem indult el. Indítsa újra a lejátszót a fájlok újbóli betöltéséhez. A lejátszás leáll.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Hiba!",
     "Error Code!": "Érvénytelen kód!",
     Exit: "Kilépés",
@@ -380,6 +445,8 @@ var keyStrings = {
         "Ez az eszköz nem támogatja a fájlkiválasztást",
     Filter: "Szűrő",
     Filters: "Szűrők",
+    "Find command server": "Parancskiszolgáló keresése",
+    "Finding command servers...": "Parancskiszolgálók keresése...",
     "First Run Setup": "Első indítás beállításai",
     Folders: "Folders",
     "Font type": "Betűtípus",
@@ -489,8 +556,12 @@ var keyStrings = {
     "Next TV program": "Következő műsor",
     No: "Nem",
     "No channel name": "Nincs csatornanév",
+    "No command server was found on this network.":
+        "Ezen a hálózaton nem található parancskiszolgáló.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nem találhatók mentett beállítások",
     "Not found": "Nem található",
     "Not reduce video when showing the list (bugfix)":
@@ -510,6 +581,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE beállításai",
@@ -520,6 +593,14 @@ var keyStrings = {
     on: "bekapcsolva",
     "on ": "be ",
     "or scan": "vagy olvassa be",
+    "Pairing approved. Command server configured.":
+        "A párosítás jóváhagyva. A parancskiszolgáló beállítva.",
+    "Pairing expired. Find the server again to retry.":
+        "A párosítás lejárt. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "A párosítási kiszolgáló nem érhető el. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "A párosítást elutasították, vagy érvénytelen jóváhagyás érkezett. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
     "Parental control": "Szülői felügyelet",
     Password: "Jelszó",
     Pause: "Szünet",
@@ -552,6 +633,7 @@ var keyStrings = {
         "10 másodperc visszaugrás szünet után",
     PROST: "PROST",
     "PROST settings": "PROST beállításai",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Előző",
     "Preview in channel list": "Előnézet a csatornalistában",
     Previous: "Előző",
@@ -577,7 +659,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Távirányító (színes gombok nélkül)",
     "Remote (number buttons N/A)": "Távirányító (számgombok nélkül)",
     "Remote control": "Távirányítás",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "A távoli munkamenet lejárt",
+    "Remote text entry": "Távoli szövegbevitel",
     "Remote text entry denied": "Távoli szövegbevitel megtagadva",
     "Remote text entry error": "Távoli szövegbeviteli hiba",
     "Remote text entry needs a Device ID.":
@@ -594,10 +681,12 @@ var keyStrings = {
     "Rename to": "Új név",
     "Repeat parental code": "Adja meg újra a szülői kódot",
     "Request sended!": "Kérés elküldve!",
+    "Requesting approval for %1": "Jóváhagyás kérése ehhez: %1",
     "Restart player": "Lejátszó újraindítása",
     "Restart stream": "Adatfolyam újraindítása",
     "Restart stream / Live": "Adatfolyam újraindítása / élő",
     "Resume from archive?": "Folytatja az archívumból?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Visszatérés az előző csatornára",
     Rewind: "Tekerés",
     "Rewind step by buttons %1/%2": "Tekerési lépés a(z) %1/%2 gombokkal",
@@ -615,9 +704,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Beállítások mentése és csatornalista betöltése",
     "Save settings to storage": "Beállítások mentése a tárhelyre",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Forgatókönyv",
     Search: "Keresés",
     "Search programme": "Műsor keresése",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Válasszon adatfolyamtípust:<br>%1",
     "Select category to add channel":
         "Válasszon kategóriát a csatorna hozzáadásához",
@@ -643,12 +740,16 @@ var keyStrings = {
     "Set parental code": "Szülői kód beállítása",
     "Set timer?": "Beállítja az időzítőt?",
     Settings: "Beállítások",
+    "Settings changed. Discovery was canceled.":
+        "A beállítások megváltoztak. A keresés megszakadt.",
     "Settings could not be saved": "Nem sikerült menteni a beállításokat",
     "Settings loaded from storage": "Beállítások betöltve a tárhelyről",
     "Settings STB": "STB beállítások",
     "Settings saved": "Beállítások elmentve",
     "Settings saved to storage": "Beállítások mentve a tárhelyre",
     "Settings sended!": "Beállítások elküldve!",
+    "Several command servers were found. Select one below.":
+        "Több parancskiszolgáló található. Válasszon egyet az alábbiak közül.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) beállításai",
     ShockTv: "ShockTv",
@@ -684,6 +785,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Elalvásidőzítő",
     "Sort channels": "Csatornák rendezése",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portálszolgáltató",
     "Stalker portal settings": "Stalker portál beállításai",
     "Stalker portals": "Stalker portálok",
@@ -705,8 +808,17 @@ var keyStrings = {
     system: "rendszer",
     Tabox: "Tabox",
     "Tabox settings": "Tabox beállításai",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "A parancskiszolgáló keresési URL-címe érvénytelen.",
     "The device ID in the address is invalid.":
         "A címben szereplő eszközazonosító érvénytelen.",
+    "The discovery response is invalid.":
+        "A keresésre kapott válasz érvénytelen.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Ez a böngésző nem tud biztonságosan automatikus párosítást végezni. Frissítse, vagy adja meg kézzel a parancskiszolgáló beállításait.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Ehhez a böngészőhöz nincs felderítési profil. Adjon meg egy kiszolgálócímet, vagy állítsa be a telepítési profilt.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Ez a HTTPS-lejátszó nem tud HTTP-kiszolgálóhoz csatlakozni. Használjon HTTPS-kiszolgálót, vagy nyissa meg a lejátszót HTTP-n keresztül.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -750,6 +862,8 @@ var keyStrings = {
     Username: "Felhasználónév",
     "Username or password is missing.":
         "Hiányzik a felhasználónév vagy a jelszó.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM beállításai",
     "Vidok.TV": "Vidok.TV",

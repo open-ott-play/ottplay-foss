@@ -4,7 +4,11 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
-const source = ["src/core/native-hls.ts", "src/core/index.ts"]
+const source = [
+    "src/plugins/access-media.ts",
+    "src/core/native-hls.ts",
+    "src/core/index.ts",
+]
     .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
     .join("\n");
 const core = ts
@@ -225,6 +229,31 @@ test("PiP starts after manifest and ignores callbacks after switch/stop", () => 
     assert.equal(w.videoPip.src, "");
     assert.ok(hidden.includes("#pip_buffering"));
 });
+test("native PiP fallback keeps source identity and uses the prepared transport", () => {
+    const { w } = fixture();
+    const source = "https://source.invalid/protected.m3u8";
+    const local =
+        "http://127.0.0.1:12345/access/" +
+        "a".repeat(43) +
+        "/fixture/media.m3u8";
+    let original;
+    w.playerMode = 0;
+    w.__ottCoreTransport.configure({
+        pip: {
+            open(request, fallback) {
+                original = request;
+                return fallback(local);
+            },
+        },
+    });
+    w.stbPlayPip(source);
+    assert.equal(original.url, source);
+    assert.equal(w.videoPip.src, local);
+    assert.equal(w.videoPip.playCalls, 1);
+    w.stbStopPip();
+    assert.equal(w.videoPip.src, "");
+    assert.equal(w.videoPip.paused, true);
+});
 test("PiP loader stays compact and centered through size, corner and canvas changes", () => {
     const { w, styles } = fixture();
     const presets = [
@@ -378,6 +407,112 @@ test("Shaka late load/rejection cannot resurrect stopped playback", async () => 
     assert.equal(w.video.playCalls, 0);
     assert.equal(errors.length, 1);
 });
+for (const mode of [0, 1, 2]) {
+    for (const deferredSource of [false, true]) {
+        test(
+            "paused restart permits first native Play: engine " +
+                mode +
+                ", deferred source " +
+                deferredSource,
+            async () => {
+                const { w, players, shakas } = fixture();
+                const prepared = [];
+                const state = {
+                    generation: 1,
+                    position: 8,
+                    target: { kind: "vod" },
+                };
+                w.__ottClassicPlayback = {
+                    command(value) {
+                        if (value.type === "position")
+                            state.position = value.position;
+                    },
+                    context: () => ({
+                        isCurrentBackend: () => true,
+                        isCurrentSource: () => true,
+                    }),
+                    snapshot: () => state,
+                };
+                w.playerMode = mode;
+                w.__ottNativeRuntime = true;
+                if (deferredSource)
+                    w.__ottCoreTransport.configure({
+                        prepareSource(_url, ready) {
+                            prepared.push(ready);
+                            return () => {};
+                        },
+                    });
+                async function finishStartup(index) {
+                    if (mode === 2 && index) {
+                        shakas[index - 1].destroyed.resolve();
+                        await tick();
+                    }
+                    if (deferredSource) prepared[index]("prepared.mp4");
+                    if (mode === 1) players[index].events.manifest();
+                    if (mode === 2) {
+                        shakas[index].attached.resolve();
+                        await tick();
+                        shakas[index].loaded.resolve();
+                        await tick();
+                    }
+                }
+                function nativePlay() {
+                    w.video.play();
+                    for (const listener of [...w.video.listeners.playing])
+                        listener();
+                }
+                const backend = w.__ottCoreBackend();
+                backend.open({ url: "movie.mp4" });
+                await finishStartup(0);
+                w.video.readyState = 2;
+                w.video.currentTime = 8;
+                for (const listener of [...w.video.listeners.playing])
+                    listener();
+                backend.current().pause();
+                const plays = w.video.playCalls;
+                w.video.autoplay = true;
+                assert.equal(backend.restart().paused, true);
+                assert.equal(
+                    w.forcePlay,
+                    false,
+                    "pause intent precedes asynchronous startup"
+                );
+                assert.equal(
+                    w.video.autoplay,
+                    false,
+                    "the reflected native autoplay attribute is disabled"
+                );
+                await finishStartup(1);
+                w.video.metadata();
+                w.video.readyState = 2;
+                assert.equal(w.video.paused, true);
+                assert.equal(
+                    w.video.playCalls,
+                    plays,
+                    "neither source preparation nor decoder ready may play"
+                );
+                assert.equal(backend.current().snapshot().phase, "paused");
+                nativePlay();
+                assert.equal(
+                    w.video.paused,
+                    false,
+                    "first native Play is not mistaken for delayed autoplay"
+                );
+                assert.equal(backend.current().snapshot().phase, "playing");
+                backend.current().pause();
+                backend.current().resume();
+                assert.equal(
+                    w.forcePlay,
+                    true,
+                    "explicit backend resume still owns autoplay intent"
+                );
+                assert.equal(w.video.paused, false);
+                backend.dispose();
+                shakas.forEach((player) => player.destroyed.resolve());
+            }
+        );
+    }
+}
 test("native and HLS recovery preserve seek on engines rejecting pre-metadata currentTime", () => {
     const { w, players } = fixture();
     w.video.blockEarlySeek = true;
@@ -406,6 +541,180 @@ test("native and HLS recovery preserve seek on engines rejecting pre-metadata cu
     for (const cb of stale) cb();
     w.video.metadata();
     assert.equal(w.video.currentTime, 12);
+});
+test("iOS source login cannot replace a newer channel or revive stopped playback", async () => {
+    const { w } = fixture();
+    const first = deferred(),
+        second = deferred(),
+        stopped = deferred();
+    const pending = [first, second, stopped];
+    const prepared = [],
+        cancelled = [];
+    w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
+    w.Capacitor = {
+        getPlatform: () => "ios",
+        Plugins: {
+            AccessMedia: {
+                cancelPrepare: ({ requestId }) => {
+                    cancelled.push(requestId);
+                    return Promise.resolve();
+                },
+                prepare: ({ requestId }) => {
+                    prepared.push(requestId);
+                    return pending.shift().promise;
+                },
+            },
+        },
+    };
+    const local =
+        "http://127.0.0.1:12345/access/" +
+        "a".repeat(43) +
+        "/fixture/media.m3u8";
+    w.stbPlay("https://source.invalid/old.m3u8");
+    w.stbPlay("https://source.invalid/new.m3u8", 12);
+    assert.deepEqual(cancelled, [prepared[0]]);
+    assert.notEqual(prepared[0], prepared[1]);
+    first.resolve({ url: local + "old" });
+    await tick();
+    assert.equal(w.video.playCalls, 0);
+    second.resolve({ url: local });
+    await tick();
+    assert.equal(w.video.src, local);
+    assert.equal(w.video.playCalls, 1);
+    w.stbPlay("https://source.invalid/stopped.m3u8");
+    w.stbStop();
+    assert.deepEqual(
+        cancelled,
+        [prepared[0], prepared[2]],
+        "only unfinished preparation is cancelled"
+    );
+    stopped.resolve({ url: local });
+    await tick();
+    assert.equal(w.video.playCalls, 1);
+});
+for (const behavior of [
+    "missing",
+    "nonfunction",
+    "throw",
+    "empty",
+    "reject",
+    "getter",
+]) {
+    test(`iOS source cancellation tolerates ${behavior} optional bridge`, async () => {
+        for (const settled of [false, true]) {
+            const { w } = fixture();
+            const pending = deferred();
+            let calls = 0;
+            let ready = 0;
+            let failed = 0;
+            const plugin = { prepare: () => pending.promise };
+            if (behavior === "getter")
+                Object.defineProperty(plugin, "cancelPrepare", {
+                    get() {
+                        throw new Error("bridge unavailable");
+                    },
+                });
+            else if (behavior === "nonfunction") plugin.cancelPrepare = true;
+            else if (behavior !== "missing")
+                plugin.cancelPrepare = function () {
+                    assert.equal(this, plugin);
+                    calls++;
+                    if (behavior === "throw")
+                        throw new Error("bridge unavailable");
+                    if (behavior === "reject")
+                        return Promise.reject(new Error("unsupported"));
+                };
+            w.Capacitor = {
+                getPlatform: () => "ios",
+                Plugins: { AccessMedia: plugin },
+            };
+            const source = "https://source.invalid/live.m3u8";
+            const cancel = w.prepareAccessMedia(
+                source,
+                () => ready++,
+                () => failed++
+            );
+            assert.equal(typeof cancel, "function");
+            if (settled) {
+                pending.resolve({ url: source });
+                await tick();
+            }
+            assert.doesNotThrow(() => {
+                cancel();
+                cancel();
+            });
+            pending.resolve({ url: source });
+            await tick();
+            assert.equal(ready, settled ? 1 : 0);
+            assert.equal(failed, 0);
+            assert.equal(
+                calls,
+                !settled && ["throw", "empty", "reject"].includes(behavior)
+                    ? 1
+                    : 0
+            );
+        }
+    });
+}
+test("iOS HLS reconnect prepares the original source again, not a stale loopback URL", async () => {
+    const { w, players } = fixture();
+    const prepared = [];
+    const timers = [];
+    const source = "https://source.invalid/live.m3u8";
+    const local =
+        "http://127.0.0.1:12345/access/" +
+        "a".repeat(43) +
+        "/fixture/media.m3u8";
+    w.playerMode = 1;
+    w.setTimeout = (callback) => {
+        timers.push(callback);
+        return timers.length;
+    };
+    w.clearTimeout = () => {};
+    w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
+    w.Capacitor = {
+        getPlatform: () => "ios",
+        Plugins: {
+            AccessMedia: {
+                prepare: ({ url }) => {
+                    prepared.push(url);
+                    return Promise.resolve({ url: local });
+                },
+            },
+        },
+    };
+    w.stbPlay(source);
+    await tick();
+    players[0].events.error(null, {
+        details: "manifestParsingError",
+        fatal: true,
+        type: "network",
+    });
+    assert.equal(timers.length, 1);
+    timers[0]();
+    await tick();
+    assert.deepEqual(prepared, [source, source]);
+    assert.equal(players.length, 2);
+    w.stbStop();
+});
+
+test("iOS source login failure does not fall back to an unprotected URL", async () => {
+    const { w } = fixture();
+    const messages = [];
+    w.showShift = (message) => messages.push(message);
+    w.__ottCoreTransport.configure({ prepareSource: w.prepareAccessMedia });
+    w.Capacitor = {
+        getPlatform: () => "ios",
+        Plugins: {
+            AccessMedia: {
+                prepare: () => Promise.reject(new Error("cancelled")),
+            },
+        },
+    };
+    w.stbPlay("https://source.invalid/blocked.m3u8");
+    await tick();
+    assert.equal(w.video.playCalls, 0);
+    assert.deepEqual(messages, ["Source sign-in required"]);
 });
 test("HLS level zero is never confused with current higher level", () => {
     const { w, players } = fixture();

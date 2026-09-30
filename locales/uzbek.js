@@ -61,6 +61,8 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv sozlamalari",
     "Allowlist this Device ID": "Bu qurilma ID raqamiga ruxsat berish",
+    "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
+        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Portsiz IP manzil HTTP 8081 portidan foydalanadi. Toʻxtatish uchun manzilni tozalang yoki Uzish bandini tanlang.",
     "API failed, trying M3U...": "API ishlamadi, M3U sinab koʻrilmoqda…",
@@ -68,6 +70,8 @@ var keyStrings = {
     "API server URL": "API serveri URL manzili",
     "Applying HTTP remote settings...":
         "HTTP pulti sozlamalari qo‘llanmoqda...",
+    "Approve the code for %1 with ott approve NAME CODE:":
+        "%1 uchun kodni ott approve NAME CODE buyrugʻi bilan tasdiqlang:",
     Archive: "Arxiv",
     "Archive - begin": "Arxiv — boshlanish",
     "Archive hours": "Arxiv soatlari",
@@ -112,6 +116,7 @@ var keyStrings = {
     "Call PiP": "PiP ochish",
     "Call PiP / PiP exchange": "PiP ochish / PiP oynalarini almashtirish",
     Cancel: "Bekor qilish",
+    "Cancel pairing": "Juftlashni bekor qilish",
     "Cannot delete the last category": "Oxirgi turkumni oʻchirib boʻlmaydi",
     Category: "Kategoriya",
     "Category selection": "Turkum tanlash",
@@ -155,6 +160,15 @@ var keyStrings = {
     "Command server": "Buyruqlar serveri",
     "Command server address, device access code, local HTTP control, and remote text entry settings":
         "Buyruqlar serveri manzili, qurilmaning kirish kodi, mahalliy HTTP boshqaruvi va masofaviy matn kiritish sozlamalari",
+    "Command server discovery canceled.":
+        "Buyruqlar serverini qidirish bekor qilindi.",
+    "Command server discovery has not started.":
+        "Buyruqlar serverini qidirish hali boshlanmadi.",
+    "Command server discovery is unavailable. Use Find command server to retry.":
+        "Buyruqlar serverini qidirish mavjud emas. Qayta urinish uchun “Buyruqlar serverini topish”ni tanlang.",
+    "Command server discovery timed out.":
+        "Buyruqlar serverini qidirish vaqti tugadi.",
+    "Command server found.": "Buyruqlar serveri topildi.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
@@ -239,6 +253,10 @@ var keyStrings = {
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
+    "Could not create a pairing request. Find the server again to retry.":
+        "Juftlash soʻrovini yaratib boʻlmadi. Qayta urinish uchun serverni yana toping.",
+    "Could not save the approved command server settings.":
+        "Buyruqlar serverining tasdiqlangan sozlamalarini saqlab boʻlmadi.",
     "Could not update HTTP remote control.":
         "HTTP pulti sozlamalarini yangilab bo‘lmadi.",
     Country: "Mamlakat",
@@ -257,6 +275,8 @@ var keyStrings = {
     "Device info:": "Qurilma haqida:",
     "Device MAC is required for KBC (Kinoboom) playlists":
         "KBC (Kinoboom) pleylistlari uchun qurilmaning MAC manzili kerak",
+    "Device UUID is not ready. Use Find command server to retry.":
+        "Qurilma UUID identifikatori hali tayyor emas. Qayta urinish uchun “Buyruqlar serverini topish”ni tanlang.",
     "Diamond TV": "Diamond TV",
     "Diamond TV settings": "Diamond TV sozlamalari",
     Director: "Rejissyor",
@@ -352,6 +372,51 @@ var keyStrings = {
         "Enter your Plex server address, for example http://192.168.1.25:32400",
     EPG: "TV dasturi",
     "EPG and archive. Channel: ": "EPG va arxiv. Kanal: ",
+    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
+    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
+    "EPG cache updated: %1": "EPG cache updated: %1",
+    "EPG channels: %1": "EPG channels: %1",
+    "EPG could not start. Restart the player to reload its files. Playback will stop.":
+        "EPG ishga tushmadi. Fayllarini qayta yuklash uchun pleyerni qayta ishga tushiring. Ijro to‘xtaydi.",
+    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics could not load. Open it again to retry.":
+        "EPG diagnostics could not load. Open it again to retry.",
+    "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
+        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
+    "EPG download time: %1": "EPG download time: %1",
+    "EPG download timed out. Retry the download.":
+        "EPG download timed out. Retry the download.",
+    "EPG elapsed: %1": "EPG elapsed: %1",
+    "EPG error. Open Information → EPG diagnostics.":
+        "EPG error. Open Information → EPG diagnostics.",
+    "EPG exceeds the device processing limit. Use a smaller source or archive window.":
+        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+    "EPG has not started. Load an M3U playlist.":
+        "EPG has not started. Load an M3U playlist.",
+    "EPG local storage is unavailable or full.":
+        "EPG local storage is unavailable or full.",
+    "EPG processing and storage time: %1":
+        "EPG processing and storage time: %1",
+    "EPG processing stopped. Retry and check browser support.":
+        "EPG processing stopped. Retry and check browser support.",
+    "EPG programmes: %1": "EPG programmes: %1",
+    "EPG progress: %1": "EPG progress: %1",
+    "EPG ready": "EPG ready",
+    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
+    "EPG source: %1": "EPG source: %1",
+    "EPG stopped during: %1": "EPG stopped during: %1",
+    "EPG unavailable on this browser": "EPG unavailable on this browser",
+    "EPG unavailable: %1": "EPG unavailable: %1",
+    "EPG update failed; using saved programme guide":
+        "EPG update failed; using saved programme guide",
+    "EPG: downloading programme guide...":
+        "EPG: downloading programme guide...",
+    "EPG: opening local cache...": "EPG: opening local cache...",
+    "EPG: processing programme guide...": "EPG: processing programme guide...",
+    "EPG: updating saved programme guide...":
+        "EPG: updating saved programme guide...",
+    "EPG: waiting for another player tab...":
+        "EPG: waiting for another player tab...",
     "ERROR!": "Xato!",
     "Error Code!": "Kod notoʻgʻri!",
     Exit: "Chiqish",
@@ -380,6 +445,8 @@ var keyStrings = {
         "Bu qurilmada fayl tanlash qoʻllab-quvvatlanmaydi",
     Filter: "Filtr",
     Filters: "Filtrlar",
+    "Find command server": "Buyruqlar serverini topish",
+    "Finding command servers...": "Buyruqlar serverlari qidirilmoqda...",
     "First Run Setup": "Birinchi ishga tushirish sozlamalari",
     Folders: "Folders",
     "Font type": "Shrift turi",
@@ -489,8 +556,12 @@ var keyStrings = {
     "Next TV program": "Keyingi koʻrsatuv",
     No: "Yoʻq",
     "No channel name": "Kanal nomi yo'q",
+    "No command server was found on this network.":
+        "Bu tarmoqda buyruqlar serveri topilmadi.",
     "No Plex servers are available for this account.":
         "No Plex servers are available for this account.",
+    "No programmes matched the playlist channels and dates. Check the source and device clock.":
+        "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Saqlangan sozlamalar topilmadi",
     "Not found": "Topilmadi",
     "Not reduce video when showing the list (bugfix)":
@@ -510,6 +581,8 @@ var keyStrings = {
     "Open Plex sign-in page": "Open Plex sign-in page",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Open plex.tv/link on your phone or computer and enter this code.",
+    "Or open this complete private link on another device:":
+        "Or open this complete private link on another device:",
     "Original file": "Original file",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sozlamalari",
@@ -520,6 +593,14 @@ var keyStrings = {
     on: "yoqilgan",
     "on ": "yoqilgan ",
     "or scan": "yoki skanerlang",
+    "Pairing approved. Command server configured.":
+        "Juftlash tasdiqlandi. Buyruqlar serveri sozlandi.",
+    "Pairing expired. Find the server again to retry.":
+        "Juftlash muddati tugadi. Qayta urinish uchun serverni yana toping.",
+    "Pairing server is unavailable. Find the server again to retry.":
+        "Juftlash serveri mavjud emas. Qayta urinish uchun serverni yana toping.",
+    "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
+        "Juftlash rad etildi yoki yaroqsiz tasdiq olindi. Qayta urinish uchun serverni yana toping.",
     "Parental control": "Ota-ona nazorati",
     Password: "Parol",
     Pause: "Pauza",
@@ -552,6 +633,7 @@ var keyStrings = {
         "Pauzadan keyin 10 soniya orqaga qaytish",
     PROST: "PROST",
     "PROST settings": "PROST sozlamalari",
+    "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Oldingi",
     "Preview in channel list": "Kanallar roʻyxatida oldindan koʻrish",
     Previous: "Oldingi",
@@ -577,7 +659,12 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pult (rangli tugmalarsiz)",
     "Remote (number buttons N/A)": "Pult (raqamli tugmalarsiz)",
     "Remote control": "Masofadan boshqarish",
+    "Remote input expired. Open a new session to try again.":
+        "Remote input expired. Open a new session to try again.",
+    "Remote input session is unavailable. Open a new session to try again.":
+        "Remote input session is unavailable. Open a new session to try again.",
     "Remote session expired": "Masofaviy seans muddati tugadi",
+    "Remote text entry": "Masofaviy matn kiritish",
     "Remote text entry denied": "Masofaviy matn kiritish rad etildi",
     "Remote text entry error": "Masofaviy matn kiritishda xato",
     "Remote text entry needs a Device ID.":
@@ -593,10 +680,12 @@ var keyStrings = {
     "Rename to": "Yangi nom",
     "Repeat parental code": "Ota-ona kodini qayta kiriting",
     "Request sended!": "Soʻrov yuborildi!",
+    "Requesting approval for %1": "%1 uchun tasdiq soʻralmoqda",
     "Restart player": "Pleyerni qayta ishga tushirish",
     "Restart stream": "Oqimni qayta ishga tushirish",
     "Restart stream / Live": "Oqimni qayta ishga tushirish / jonli efir",
     "Resume from archive?": "Arxivdan davom ettirilsinmi?",
+    "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Oldingi kanalga qaytish",
     Rewind: "Vaqt boʻyicha oʻtkazish",
     "Rewind step by buttons %1/%2":
@@ -615,9 +704,17 @@ var keyStrings = {
     "Save settings and load channel list":
         "Sozlamalarni saqlash va kanallar roʻyxatini yuklash",
     "Save settings to storage": "Sozlamalarni xotiraga saqlash",
+    "Scan this QR code with your phone to enter text.":
+        "Scan this QR code with your phone to enter text.",
     Script: "Ssenariy",
     Search: "Qidirish",
     "Search programme": "Koʻrsatuv qidirish",
+    "Secure remote input could not start. Please try again or use the on-screen keyboard.":
+        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+    "Secure remote input could not start. Please use the on-screen keyboard.":
+        "Secure remote input could not start. Please use the on-screen keyboard.",
+    "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
+        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
     "Select a stream type:<br>%1": "Oqim turini tanlang:<br>%1",
     "Select category to add channel":
         "Kanal qo'shish uchun kategoriyani tanlang",
@@ -643,12 +740,16 @@ var keyStrings = {
     "Set parental code": "Ota-ona kodini belgilash",
     "Set timer?": "Taymer oʻrnatilsinmi?",
     Settings: "Sozlamalar",
+    "Settings changed. Discovery was canceled.":
+        "Sozlamalar oʻzgardi. Qidiruv bekor qilindi.",
     "Settings could not be saved": "Sozlamalarni saqlab boʻlmadi",
     "Settings loaded from storage": "Sozlamalar xotiradan yuklandi",
     "Settings STB": "STB sozlamalari",
     "Settings saved": "Sozlamalar saqlandi",
     "Settings saved to storage": "Sozlamalar xotiraga saqlandi",
     "Settings sended!": "Sozlamalar yuborildi!",
+    "Several command servers were found. Select one below.":
+        "Bir nechta buyruqlar serveri topildi. Quyida ulardan birini tanlang.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
     "Shara.club (ClubTV.pro) settings": "Shara.club (ClubTV.pro) sozlamalari",
     ShockTv: "ShockTv",
@@ -681,6 +782,8 @@ var keyStrings = {
     "Sign in with Plex": "Sign in with Plex",
     "Sleep timer": "Uyqu taymeri",
     "Sort channels": "Kanallarni saralash",
+    "Source access": "Source access",
+    "Source sign-in required": "Source sign-in required",
     "Stalker Portal Provider": "Stalker portali provayderi",
     "Stalker portal settings": "Stalker portali sozlamalari",
     "Stalker portals": "Stalker portallari",
@@ -702,8 +805,16 @@ var keyStrings = {
     system: "tizim",
     Tabox: "Tabox",
     "Tabox settings": "Tabox sozlamalari",
+    "Text is too long for remote input.": "Text is too long for remote input.",
+    "The command server discovery URL is invalid.":
+        "Buyruqlar serverini qidirish URL manzili yaroqsiz.",
     "The device ID in the address is invalid.":
         "Manzildagi qurilma ID raqami notoʻgʻri.",
+    "The discovery response is invalid.": "Qidiruv javobi yaroqsiz.",
+    "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
+        "Bu brauzer xavfsiz avtomatik juftlashni bajara olmaydi. Uni yangilang yoki buyruqlar serveri sozlamalarini qoʻlda kiriting.",
+    "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
+        "Bu brauzerda qidiruv profili yoʻq. Server manzilini kiriting yoki joylashtirish profilini sozlang.",
     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.":
         "Bu HTTPS pleyer HTTP serverga ulana olmaydi. HTTPS serverdan foydalaning yoki pleyerni HTTP orqali oching.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
@@ -747,6 +858,8 @@ var keyStrings = {
     Username: "Foydalanuvchi nomi",
     "Username or password is missing.":
         "Foydalanuvchi nomi yoki parol kiritilmagan.",
+    "Valid for 10 minutes. Back closes this session.":
+        "Valid for 10 minutes. Back closes this session.",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM sozlamalari",
     "Vidok.TV": "Vidok.TV",
