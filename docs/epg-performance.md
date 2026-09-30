@@ -68,6 +68,10 @@ every parsed field and programme order outside the timed regions; it does not
 certify the selected channel IDs, which require the matching tests and HTTP
 schedule comparisons.
 
+These phase totals omit fetch ownership merging and server bootstrap. Use the
+complete server readiness boundary for the final comparison; phase timings only
+locate the remaining work.
+
 Alternate old and candidate binaries on the same host with the same frozen feed.
 Record complete readiness, process CPU, first and warm requests, and complete
 ordered programme responses. Check the selected channel identity explicitly:
