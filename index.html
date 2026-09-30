@@ -273,7 +273,7 @@
         var host = window.location.origin ||
             (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
         if (!Date.now) Date.now = function () { return new Date().getTime(); };
-        var __dev = true; // set false for production
+        var __dev = "__OTTP_VERSION__".charAt(0) === "_"; // Unstamped source keeps development cache keys.
         // Cache-busting labels are not secrets; boot also handles a missing runtime.
         function bootRandomHex(length) {
             var text = "";

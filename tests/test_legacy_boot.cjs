@@ -44,6 +44,7 @@ assert.equal(
 
 function boot(options = {}) {
     const requests = [];
+    const styles = [];
     const storage = options.storage || {};
     const elements = {};
     const stoppedTimers = [];
@@ -69,6 +70,8 @@ function boot(options = {}) {
     };
     document.head = {
         appendChild(tag) {
+            if (tag.tagName === "link" && tag.rel === "stylesheet")
+                styles.push(tag.href);
             if (tag.tagName !== "script") return;
             requests.push(tag.src);
             const requestPath = new URL(tag.src).pathname;
@@ -269,9 +272,15 @@ function boot(options = {}) {
                 tagName: "script",
             });
         } else
-            vm.runInContext(script.text, context, {
-                filename: "index.html boot",
-            });
+            vm.runInContext(
+                options.version
+                    ? script.text.replace(/__OTTP_VERSION__/g, options.version)
+                    : script.text,
+                context,
+                {
+                    filename: "index.html boot",
+                }
+            );
     }
     assert.equal(
         starts,
@@ -284,7 +293,13 @@ function boot(options = {}) {
             : 1,
         "Boot must start once, or present a recoverable runtime/UI load failure"
     );
-    assert.match(context.__cv, /^dev_\d+_[0-9a-f]{8}$/);
+    if (options.version) {
+        assert.equal(context.__cv, options.version);
+        assert.equal(context.__av, options.version);
+    } else {
+        assert.match(context.__cv, /^dev_\d+_[0-9a-f]{8}$/);
+        assert.match(context.__av, /^dev_\d+_[0-9a-f]{8}$/);
+    }
     if (options.modern && !options.storage)
         assert.match(context.deviceUUID, /^dev_[0-9a-f]{32}$/);
     assert.equal(
@@ -299,7 +314,63 @@ function boot(options = {}) {
     )
         assert.equal(storage.ott_device_uuid, context.deviceUUID);
     else assert.equal(storage.ott_device_uuid, undefined);
-    return { context, elements, requests, stoppedTimers, storage };
+    return { context, elements, requests, stoppedTimers, storage, styles };
+}
+
+// Exercise the same version substitution as packaged HTML on an old engine.
+for (const version of ["1.1.52-beta.6", "1.1.52-beta.7", "1.1.52", "1.1.53"]) {
+    const first = boot({ version });
+    const reload = boot({ version });
+    assert.deepEqual(
+        first.requests,
+        reload.requests,
+        "One release reuses script cache keys"
+    );
+    assert.deepEqual(
+        first.styles,
+        reload.styles,
+        "One release reuses stylesheet cache keys"
+    );
+    assert.deepEqual(
+        first.requests.map((url) => new URL(url).pathname),
+        [
+            "/js/runtime-polyfills.js",
+            "/js/ottplay-core.js",
+            "/js/jquery-1.11.1.min.js",
+            "/js/hls.min.js",
+            "/js/shaka-player.compiled.js",
+            "/dist/player.js",
+            "/devices/hisense/device.js",
+        ],
+        "Versioned caching preserves dependency execution order"
+    );
+    for (const pathname of [
+        "/js/ottplay-core.js",
+        "/dist/player.js",
+        "/devices/hisense/device.js",
+    ]) {
+        assert(
+            first.requests.includes(
+                "http://legacy-player.test:8080" + pathname + "?" + version
+            )
+        );
+    }
+    assert(
+        first.styles.includes(
+            "http://legacy-player.test:8080/styles/player.css?" + version
+        )
+    );
+    for (const failure of [
+        { polyfillsFailure: "network" },
+        { libraryFailures: ["ottplay-core.js"] },
+        { libraryFailures: ["jquery-1.11.1.min.js"] },
+    ]) {
+        const failed = boot({ ...failure, version });
+        assert(
+            !failed.requests.some((url) => url.includes("/dist/player.js?")),
+            "A failed dependency never executes the player"
+        );
+    }
 }
 
 // A recognized TV and an unknown old STB both boot with no ES2015 APIs or WebCrypto.
