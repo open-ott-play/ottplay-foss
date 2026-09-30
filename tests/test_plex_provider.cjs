@@ -691,20 +691,40 @@ test("Remote Plex uses real loadChannels for initial setup and partial edits wit
         assert.equal(unrelatedReloads, 0);
     }
 });
-test("Remote Plex refuses to retire a library when its reload entry point is unavailable", () => {
+test("Remote Plex refuses to retire a library when its owned settings, normalization or reload entry point is unavailable", () => {
+    for (const missing of ["saveRemoteSettings", "normalize", "loadChannels"]) {
+        const f = create({ plexcfg: JSON.stringify(config) });
+        const call = remote(f);
+        f.host.getChannelsArray(() => {});
+        f.clients[0].ready();
+        const before = f.saved.get("plexcfg");
+        if (missing === "saveRemoteSettings")
+            delete f.driver.saveRemoteSettings;
+        if (missing === "normalize") delete f.host.__ottPlex.normalize;
+        if (missing === "loadChannels") delete f.host.loadChannels;
+        let unrelatedReloads = 0;
+        f.host.loadPlaylist = () => unrelatedReloads++;
+        assert.equal(call({ token: "new-token" }).status, "rejected");
+        assert.equal(f.saved.get("plexcfg"), before);
+        assert.equal(f.clients[0].disposed, 0);
+        assert.equal(f.driver.libraryReady(), true);
+        assert.equal(unrelatedReloads, 0);
+    }
+});
+test("An old Plex owner's external settings method cannot save or reload after provider replacement", () => {
     const f = create({ plexcfg: JSON.stringify(config) });
-    const call = remote(f);
-    f.host.getChannelsArray(() => {});
-    f.clients[0].ready();
+    const saveRemoteSettings = f.driver.saveRemoteSettings;
+    f.mount("m3u");
     const before = f.saved.get("plexcfg");
-    delete f.host.loadChannels;
-    let unrelatedReloads = 0;
-    f.host.loadPlaylist = () => unrelatedReloads++;
-    assert.equal(call({ token: "new-token" }).status, "rejected");
+    assert.equal(
+        typeof saveRemoteSettings({
+            provider: "plex",
+            settings: { token: "new-token" },
+        }),
+        "string"
+    );
     assert.equal(f.saved.get("plexcfg"), before);
-    assert.equal(f.clients[0].disposed, 0);
-    assert.equal(f.driver.libraryReady(), true);
-    assert.equal(unrelatedReloads, 0);
+    assert.equal(f.reloads, 0);
 });
 
 function pendingAccountSignIn(f) {

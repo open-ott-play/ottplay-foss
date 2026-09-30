@@ -1,13 +1,13 @@
 /** Per-device Plex credentials and the library provider's owned lifecycle. */
 interface PlexProviderDriver extends ProviderDriver {
     cancelConnection(): void;
-    invalidateEditor?(): void;
     libraryReady(): boolean;
     mediaClient(): any;
     saveAccountCredentials(
         value: ProviderCredentials,
         account: any
     ): boolean | void;
+    saveRemoteSettings?(params: any): string | string[];
 }
 
 function createPlexProviderDriver(
@@ -257,12 +257,63 @@ function mountPlexProvider(
         var index = host.popupActions.indexOf(edit);
         if (index >= 0) host.popupArray[index] = label();
     }
-    // External saves retire UI drafts and sign-in callbacks only after persistence succeeds.
-    driver.invalidateEditor = function () {
-        if (!active()) return;
+    // The lazy provider owns wire validation and the external-save lifecycle.
+    // Return only field names or a static error; credentials never reach the ACK.
+    driver.saveRemoteSettings = function (params) {
+        var settings = params && params.settings;
+        var fields = Object.keys(settings || {});
+        if (
+            !params ||
+            params.provider !== "plex" ||
+            Object.keys(params).some(function (key) {
+                return key !== "provider" && key !== "settings";
+            }) ||
+            !settings ||
+            typeof settings !== "object" ||
+            Array.isArray(settings) ||
+            !fields.length ||
+            fields.some(function (key) {
+                return (
+                    (key !== "server" && key !== "token") ||
+                    typeof settings[key] !== "string" ||
+                    settings[key].length > 8192
+                );
+            })
+        )
+            return "Unsupported provider settings fields.";
+        if (
+            fields.indexOf("token") !== -1 &&
+            (settings.token.length > 1024 ||
+                /[\s\u0000-\u001f\u007f]/.test(settings.token))
+        )
+            return "Use a Plex access token without whitespace.";
+        var config = driver.credentials();
+        fields.forEach(function (key) {
+            config[key === "token" ? "password" : key] = settings[key];
+        });
+        var plex = host.__ottPlex;
+        var normalized =
+            plex &&
+            typeof plex.normalize === "function" &&
+            plex.normalize({ address: config.server, token: config.password });
+        if (!normalized)
+            return "Use a valid Plex server URL and access token; first setup requires both.";
+        try {
+            var url = new URL(normalized.address);
+            if (!host.checkProviderUrl(url.href)) throw new Error();
+        } catch (_) {
+            return "Use a valid HTTP(S) provider URL.";
+        }
+        if (!active() || typeof host.loadChannels !== "function")
+            return "Plex settings are unavailable on this player.";
+        if (driver.saveCredentials(config) === false)
+            return "Could not save provider settings.";
+        // Only a persisted external save supersedes pending editor/auth callbacks.
         revision++;
         cancelAuth();
         updateLabel();
+        host.loadChannels();
+        return fields;
     };
     function edit(): boolean {
         if (!active()) return false;

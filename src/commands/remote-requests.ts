@@ -317,10 +317,18 @@ export function executeRemoteRequest(
             reject("Unlock provider settings on the player first.");
             return;
         }
+        if (driver.id === "plex") {
+            var plexSettings =
+                typeof driver.saveRemoteSettings === "function"
+                    ? driver.saveRemoteSettings(params)
+                    : "Plex settings are unavailable on this player.";
+            if (typeof plexSettings === "string") reject(plexSettings);
+            else reply({ fields: plexSettings, provider: "plex", saved: true });
+            return;
+        }
         var schemas: Record<string, string[]> = {
             m3u: ["playlist"],
             ottclub: ["server", "key"],
-            plex: ["server", "token"],
             stalker: ["server", "mac"],
             xtream: ["server", "username", "password"],
         };
@@ -343,44 +351,11 @@ export function executeRemoteRequest(
             reject("Unsupported provider settings fields.");
             return;
         }
-        if (
-            driver.id === "plex" &&
-            (Object.keys(params).some(function (key) {
-                return key !== "provider" && key !== "settings";
-            }) ||
-                (fields.indexOf("token") !== -1 &&
-                    (params.settings.token.length > 1024 ||
-                        /[\s\u0000-\u001f\u007f]/.test(params.settings.token))))
-        ) {
-            reject(
-                "Use only a Plex server URL and an access token without whitespace."
-            );
-            return;
-        }
         var config = driver.credentials();
         fields.forEach(function (key) {
-            config[
-                key === "mac" || key === "key"
-                    ? "username"
-                    : key === "token"
-                      ? "password"
-                      : key
-            ] = params.settings[key];
+            config[key === "mac" || key === "key" ? "username" : key] =
+                params.settings[key];
         });
-        if (
-            driver.id === "plex" &&
-            (!w.__ottPlex ||
-                typeof w.__ottPlex.normalize !== "function" ||
-                !w.__ottPlex.normalize({
-                    address: config.server,
-                    token: config.password,
-                }))
-        ) {
-            reject(
-                "Use a valid Plex server URL and access token; first setup requires both."
-            );
-            return;
-        }
         var endpoint = driver.id === "m3u" ? config.playlist : config.server;
         if (endpoint) {
             try {
@@ -413,22 +388,11 @@ export function executeRemoteRequest(
             reject("Use a MAC address such as 00:1A:79:00:00:01.");
             return;
         }
-        var reloadProvider =
-            driver.id === "plex" ? w.loadChannels : w.loadPlaylist;
-        if (
-            driver.id === "plex" &&
-            (typeof reloadProvider !== "function" ||
-                typeof driver.invalidateEditor !== "function")
-        ) {
-            reject("Plex settings are unavailable on this player.");
-            return;
-        }
         if (driver.saveCredentials(config) === false) {
             reject("Could not save provider settings.");
             return;
         }
-        if (driver.id === "plex") driver.invalidateEditor();
-        if (typeof reloadProvider === "function") reloadProvider.call(w);
+        if (typeof w.loadPlaylist === "function") w.loadPlaylist();
         reply({ fields: fields, provider: driver.id, saved: true });
         return;
     }
