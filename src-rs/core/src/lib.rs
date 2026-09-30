@@ -39,8 +39,11 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
                         .expect("shared core selected an incoming channel");
                     all_channels.insert(id, channel);
                 }
-                for (id, progs) in pr {
-                    all_programs.entry(id).or_default().extend(progs);
+                for (id, mut progs) in pr {
+                    all_programs
+                        .entry(id)
+                        .and_modify(|existing| existing.append(&mut progs))
+                        .or_insert(progs);
                 }
                 refresh.advance(true, true)?;
             }
