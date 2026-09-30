@@ -324,10 +324,15 @@ test("all managed provider kinds settle loader only on a terminal catalog result
     const representatives = new Map(
         profiles.map((profile) => [profile.kind, profile.id])
     );
-    assert.equal(representatives.size, 10);
+    assert.equal(representatives.size, 11);
     for (const [kind, id] of representatives) {
         const f = integrationFixture(id);
         f.host.infoBox = () => {};
+        let settingsOpened = 0;
+        f.host.showPage = () => {
+            assert.equal(f.panels["#launch"].visible, false, kind);
+            settingsOpened++;
+        };
         const driver = f.mount(id);
         let deliver;
         driver.load = (callback) => {
@@ -349,7 +354,14 @@ test("all managed provider kinds settle loader only on a terminal catalog result
         assert.equal(f.completed, 0, kind);
         deliver(undefined, "network");
         assert.equal(f.panels["#launch"].visible, false, kind);
-        assert.equal(f.completed, 1, kind);
+        if (kind === "plex") {
+            assert.equal(driver.libraryReady(), false);
+            assert.equal(f.completed, 0, "failed library must not open TV");
+            assert.equal(settingsOpened, 1, "failed library opens settings");
+            assert.equal(f.errors.length, 1, "failed library reports error");
+        } else {
+            assert.equal(f.completed, 1, kind);
+        }
     }
 });
 

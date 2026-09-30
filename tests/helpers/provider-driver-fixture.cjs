@@ -114,6 +114,9 @@ function fixture(initial = {}) {
     privateRuntime(host, "src/provider/edem-driver.ts");
     privateRuntime(host, "src/provider/m3u-settings.ts");
     privateRuntime(host, "src/provider/m3u-driver.ts");
+    privateRuntime(host, "src/plugins/plex.ts");
+    privateRuntime(host, "src/plugins/plex-auth.ts");
+    privateRuntime(host, "src/provider/plex-driver.ts");
     privateRuntime(host, "src/provider/drivers.ts");
     // The checked-in identity codec is shared with existing channel bookmarks.
     const encoding = fs.readFileSync(
