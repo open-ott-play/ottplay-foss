@@ -1,6 +1,7 @@
 /** Per-device Plex credentials and the library provider's owned lifecycle. */
 interface PlexProviderDriver extends ProviderDriver {
     cancelConnection(): void;
+    invalidateEditor?(): void;
     libraryReady(): boolean;
     mediaClient(): any;
     saveAccountCredentials(
@@ -256,6 +257,13 @@ function mountPlexProvider(
         var index = host.popupActions.indexOf(edit);
         if (index >= 0) host.popupArray[index] = label();
     }
+    // External saves retire UI drafts and sign-in callbacks only after persistence succeeds.
+    driver.invalidateEditor = function () {
+        if (!active()) return;
+        revision++;
+        cancelAuth();
+        updateLabel();
+    };
     function edit(): boolean {
         if (!active()) return false;
         driver.cancelConnection();
