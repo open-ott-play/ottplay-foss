@@ -684,6 +684,7 @@ function createHostedEpgServer(env: any): void {
         }
         configuration = input;
         signature = JSON.stringify([
+            2, // Rematch pre-numeric-brand-policy snapshots once after upgrade.
             input.sourceId,
             input.channels.map(function (row: any) {
                 return [

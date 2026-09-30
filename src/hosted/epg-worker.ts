@@ -372,7 +372,8 @@ function createHostedEpgWorker(env: any): void {
         loading = true;
         progress("cache");
         signature = JSON.stringify([input.sources, input.channels]);
-        databaseName = "ottplay-hosted-epg-v1-" + identity(signature);
+        // The numeric-brand policy changes admitted windows as well as mappings.
+        databaseName = "ottplay-hosted-epg-v2-" + identity(signature);
         if (database && database.name !== databaseName) {
             release();
             database.close();
