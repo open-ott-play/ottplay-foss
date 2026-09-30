@@ -521,15 +521,26 @@ test("Remote partial Plex edits preserve mode and the other credential, clear ro
                 ? "https://manual.example:65535/base"
                 : "replacement-token";
         const result = call({ [field]: value });
+        // Only the fixed metadata projection may leave the player.
         assert.deepEqual(result, {
             data: { fields: [field], provider: "plex", saved: true },
             status: "ok",
         });
-        assert.deepEqual(JSON.parse(f.saved.get("plexcfg")), {
+        const stored = JSON.parse(f.saved.get("plexcfg"));
+        assert.deepEqual(stored, {
             address: field === "server" ? value : initial.address,
             playback: "compatible",
             token: field === "token" ? value : initial.token,
         });
+        if (field === "server") {
+            const endpoint = new URL(stored.address);
+            assert.equal(endpoint.origin, "https://manual.example:65535");
+            assert.equal(endpoint.pathname, "/base");
+            assert.equal(endpoint.username, "");
+            assert.equal(endpoint.password, "");
+            assert.equal(endpoint.search, "");
+            assert.equal(endpoint.hash, "");
+        }
         assert.equal(oldClient.disposed, 1);
         assert.equal(f.driver.libraryReady(), false);
         assert.equal(f.host.providerMediaClient, null);
@@ -540,7 +551,6 @@ test("Remote partial Plex edits preserve mode and the other credential, clear ro
             "retired connection cannot restore the library"
         );
         assert.equal(f.reloads, 1);
-        assert.equal(JSON.stringify(result).includes(value), false);
     }
 });
 test("Remote Plex rejects malformed fields, unsafe URLs and raw token whitespace before save or reload", () => {
