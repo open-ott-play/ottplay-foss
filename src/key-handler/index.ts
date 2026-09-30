@@ -97,6 +97,7 @@ export var keys: Record<string, number> = {
  * @analysis Falls through modes in order; once a mode handles the key, later modes are skipped. Dialog box always takes priority.
  */
 export function keyHandler(event: KeyboardEvent): void {
+    cancelNativeListInertia();
     // If an input, textarea, or contenteditable is focused, let the browser handle
     // printable typing. But when #listEdit is open (native playlist-name editor),
     // still route accept/cancel so TV Back also reaches handleEditKey → editKey2.
@@ -542,7 +543,11 @@ var nativeListTouch: {
     axis: "" | "vertical" | "horizontal";
     moved: boolean;
     cancelled: boolean;
+    samples: number[][];
+    velocity: number;
 } | null = null;
+var nativeListInertia: { release: () => void } | null = null;
+var nativeListFrame = 0;
 
 // Native list gestures use row distances; other shells retain remote gestures.
 function capacitorOnly(): boolean {
@@ -943,6 +948,73 @@ function resetNativeListTouch(): void {
     nativeListTouch = null;
 }
 
+function cancelNativeListInertia(): void {
+    var coast = nativeListInertia;
+    if (!coast) return;
+    nativeListInertia = null;
+    if (nativeListFrame) cancelAnimationFrame(nativeListFrame);
+    nativeListFrame = 0;
+    if (coast) coast.release();
+}
+
+function startNativeListInertia(): void {
+    var gesture = nativeListTouch;
+    if (!gesture || gesture.cancelled || gesture.axis !== "vertical") return;
+    var start = performance.now();
+    if (
+        start - gesture.samples[gesture.samples.length - 1][1] > 120 ||
+        Math.abs(gesture.velocity) < 0.01
+    )
+        return;
+    cancelNativeListInertia();
+    var w = window as any;
+    var limit = (w.listPageSize || 25) / 80;
+    var velocity = Math.max(-limit, Math.min(limit, gesture.velocity));
+    var initial = w.selIndex;
+    var expected = initial;
+    var previous = start;
+    var coast = { release: function () {} };
+    nativeListInertia = coast;
+    coast.release = gesture.owner.own(function () {
+        if (nativeListInertia === coast) cancelNativeListInertia();
+    });
+    function frame(): void {
+        if (nativeListInertia !== coast) return;
+        var now = performance.now();
+        var rows = w.listDataArray?.length ? w.listDataArray : w.listArray;
+        if (
+            !gesture!.owner.foreground() ||
+            !w.isListVisible ||
+            document.hidden ||
+            rows !== gesture!.rows ||
+            w.selIndex !== expected ||
+            now < previous ||
+            now - previous > 160
+        ) {
+            cancelNativeListInertia();
+            return;
+        }
+        previous = now;
+        var elapsed = now - start;
+        var decay = Math.exp(-elapsed / 500);
+        var distance = velocity * 500 * (1 - decay);
+        var steps = distance < 0 ? Math.ceil(distance) : Math.floor(distance);
+        var next = Math.max(0, Math.min(rows.length - 1, initial + steps));
+        // Skip straight to the destination page: never render each crossed row.
+        if (next !== expected) w.changeSelect(next - expected);
+        if (nativeListInertia !== coast) return;
+        expected = next;
+        if (
+            elapsed >= 1400 ||
+            Math.abs(velocity * decay) < 0.002 ||
+            (velocity < 0 ? next === 0 : next === rows.length - 1)
+        )
+            cancelNativeListInertia();
+        else nativeListFrame = requestAnimationFrame(frame);
+    }
+    nativeListFrame = requestAnimationFrame(frame);
+}
+
 function forwardNativeListTouch(e: TouchEvent): void {
     // Paging replaces the starting row. Its remaining touch events still target
     // that detached node, so a body listener alone loses the rest of the gesture.
@@ -979,9 +1051,11 @@ function startNativeListTouch(e: any): void {
         referenceY: touch.clientY,
         rowHeight: height,
         rows: rows,
+        samples: [[touch.clientY, performance.now()]],
         startX: touch.clientX,
         startY: touch.clientY,
         target: target,
+        velocity: 0,
     };
     target.addEventListener("touchmove", forwardNativeListTouch, {
         passive: false,
@@ -1009,6 +1083,10 @@ function moveNativeListTouch(touch: any): boolean {
         return true;
     }
     if (!touch) return true;
+    if (!isFinite(touch.clientX) || !isFinite(touch.clientY)) {
+        gesture.cancelled = gesture.moved = true;
+        return true;
+    }
     var dx = touch.clientX - gesture.startX;
     var dy = touch.clientY - gesture.startY;
     if (!gesture.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= 8) {
@@ -1017,6 +1095,27 @@ function moveNativeListTouch(touch: any): boolean {
     }
     if (gesture.axis === "horizontal") return false;
     if (gesture.axis !== "vertical") return true;
+    var now = performance.now();
+    var samples = gesture.samples;
+    var last = samples[samples.length - 1];
+    var movement = last[0] - touch.clientY;
+    if (now < last[1] || now - last[1] > 120) {
+        gesture.samples = [[touch.clientY, now]];
+        gesture.velocity = 0;
+    } else if (movement && now > last[1]) {
+        // Only recent motion contributes; reversal must discard old momentum.
+        if (gesture.velocity * movement < 0) samples = gesture.samples = [last];
+        samples.push([touch.clientY, now]);
+        while (
+            samples.length > 2 &&
+            (now - samples[1][1] > 100 || samples.length > 16)
+        )
+            samples.shift();
+        gesture.velocity =
+            (samples[0][0] - touch.clientY) /
+            (now - samples[0][1]) /
+            gesture.rowHeight;
+    }
     var distance = (gesture.referenceY - touch.clientY) / gesture.rowHeight;
     var steps = distance < 0 ? Math.ceil(distance) : Math.floor(distance);
     if (!steps) return true;
@@ -1042,6 +1141,7 @@ function updateTouchPosition(touch: any): void {
 }
 
 function handleTouchCancel(): void {
+    cancelNativeListInertia();
     resetNativeListTouch();
     xDown = yDown = xUp = yUp = xMove1 = yMove1 = null;
     tCount = undefined;
@@ -1248,6 +1348,7 @@ function body_handleTouchEnd(e: any): void {
                 e.target.dispatchEvent(clickEvent);
             }
         }
+        if (tCount === 1) startNativeListInertia();
         xDown = null;
         yDown = null;
         tCount = undefined;

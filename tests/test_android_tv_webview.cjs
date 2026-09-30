@@ -609,6 +609,7 @@ try {
             keys: keyMap,
             listKeyHandlerFn: undefined,
             listPageSize: 10,
+            nativeListInertia: null,
             restoreCPD: () => {
                 restored++;
             },
@@ -621,6 +622,7 @@ try {
         vm.runInContext(
             playerFunctions("src/core/index.ts", ["stbEventToKeyCode"]) +
                 playerFunctions("src/key-handler/index.ts", [
+                    "cancelNativeListInertia",
                     "dispatchKey",
                     "keyHandler",
                 ]) +

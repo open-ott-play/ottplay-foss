@@ -940,23 +940,8 @@ export function showPage(): void {
         if (typeof applyChannelStyles === "function")
             applyChannelStyles(listInElement);
     }
-    // OTT: after rows are in the DOM, paint #pn* for channels that already
-    // have current programme data (playing / previously warmed). Cold rows
-    // fill via deferred processCurrentProgramQueue → updateChannelListRow (single-flight).
-    try {
-        var upd = (window as any).updateChannelListRow;
-        var cmap = (window as any).channels || null;
-        var nowWarm = Date.now() / 1000;
-        if (typeof upd === "function" && cmap) {
-            for (var wi = pageStart; wi < pageEnd; wi++) {
-                var wid = dataArr[wi];
-                if (wid == null) continue;
-                var wch = cmap[wid];
-                if (wch && wch.time_to && wch.time_to >= nowWarm && wch.name)
-                    upd(wid);
-            }
-        }
-    } catch (_warm) {}
+    // The formatter and channel style pass already paint warm programme rows.
+    // Cold rows update through their guide callbacks; detail rendering is debounced below.
     // Force exact integer row boxes after layout (WKWebView may expand flex
     // rows 1px+ each → pageSize 25 collapses to ~21 visible).
     try {

@@ -16,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION_PLAN = ROOT / "scripts" / "version_plan.py"
+sys.path.insert(0, str(VERSION_PLAN.parent))
 
 
 def load_version_plan():
@@ -154,6 +155,7 @@ class FossTauriVersionTests(unittest.TestCase):
         }
         fixture_files = {
             ".gitattributes",
+            "scripts/release_control.py",
             "scripts/version_plan.py",
             "scripts/version_receipt.py",
             *rust_inputs,

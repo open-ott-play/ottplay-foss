@@ -10,8 +10,11 @@ Capacitor single taps use the same target and coordinates as browser clicks.
 In native lists, one stationary tap focuses and activates the touched row.
 Native text inputs keep their trusted touch defaults so the WebView can focus
 them and open its keyboard. The touchscreen lock and four-finger unlock still
-take priority. Vertical swipes over native lists move through rows and pages;
-other swipes retain remote-key gestures. A moved gesture cannot activate its
+take priority. Vertical swipes over native lists move through rows and pages.
+Fast flicks coast with gradually decreasing speed, while slow drags retain row
+precision. A new touch or key stops the coast, as do list replacement, overlays,
+backgrounding and external selection changes. Other swipes retain remote-key
+gestures. A moved gesture cannot activate its
 initial target on release, even if it returns to its starting point.
 
 Native media Next/Previous resolve the active device keymap at event time.
