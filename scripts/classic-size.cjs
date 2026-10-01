@@ -56,7 +56,9 @@ const { gzipSync } = require("node:zlib");
 // EPG changes, web measures 627267 / 190842 and native 627225 / 190902. Allocate
 // this reviewed lifecycle cost while retaining release-version headroom.
 // NAS discovery and per-client Plex add bounded library boot and playback routing.
-const BUDGET = Object.freeze({ bytes: 635950, gzipBytes: 193850 });
+// One-time VPortal queue shuffling adds 185 raw bytes over beta.15. Allow
+// this measured feature cost and version suffixes; retain the gzip limit.
+const BUDGET = Object.freeze({ bytes: 636150, gzipBytes: 193850 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
