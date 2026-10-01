@@ -1412,6 +1412,283 @@ test("Remote VPortal queue loops every result in order with fresh URLs and no re
     }
 });
 
+function isolateQueueRandom(c, random) {
+    const playQueue = c.__ottMedia.playQueue;
+    c.Math = Object.create(Math);
+    c.__ottMedia.playQueue = function (...args) {
+        // The shared core also draws object identity hashes. Count only the
+        // remote queue construction, before handing records to the runtime.
+        c.Math.random = Math.random;
+        return playQueue(...args);
+    };
+    const arm = () => {
+        c.Math.random = random;
+    };
+    arm();
+    return arm;
+}
+
+test("Random remote VPortal queues shuffle a copy once and repeat the same complete permutation", () => {
+    const c = remoteQueueFixture();
+    c.deferResolve = true;
+    const draws = [0, 0, 0, 0.99, 0.99, 0.99];
+    let randomCalls = 0;
+    const armShuffle = isolateQueueRandom(c, () => {
+        assert(
+            randomCalls < draws.length,
+            "No extra shuffle on next or repeat"
+        );
+        return draws[randomCalls++];
+    });
+    const records = Object.freeze(
+        [1, 2, 3, 4].map((id) =>
+            Object.freeze({ id, request: { id }, title: "Три кота " + id })
+        )
+    );
+    const original = plain(records);
+    const playQueue = c.__ottMedia.playQueue;
+    const queues = [];
+    c.__ottMedia.playQueue = function (...args) {
+        queues.push(args[0]);
+        return playQueue(...args);
+    };
+    c.requestQueue("vportal_random", "  ТРИ КОТА  ");
+    assert.equal(c.searchQuery, "ТРИ КОТА");
+    assert.equal(randomCalls, 0, "Wait for the complete collection");
+    c.completeSearch(records);
+    assert.equal(randomCalls, records.length - 1);
+    assert.equal(queues.length, 1);
+    assert.notEqual(queues[0], records);
+    assert.deepEqual(plain(queues[0].map((item) => item.id)), [2, 3, 4, 1]);
+    assert.deepEqual(plain(records), original);
+    assert.equal(c.replies.length, 0, "No acknowledgement before dispatch");
+    c.completeResolve();
+    const order = [2, 3, 4, 1];
+    assert.deepEqual(c.replies, [
+        {
+            data: {
+                dispatched: true,
+                items: order.map((id, index) => ({
+                    number: index + 1,
+                    title: "Три кота " + id,
+                })),
+                loop: true,
+                shuffled: true,
+                total: 4,
+            },
+            status: "ok",
+        },
+    ]);
+    c.deferResolve = false;
+    for (let n = 0; n < order.length * 2; n++) c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [...order, ...order, order[0]]
+    );
+    assert.equal(randomCalls, records.length - 1);
+    assert.equal(queues.length, 1, "Repeat uses the existing queue");
+    assert.equal(
+        new Set(c.calls.filter((row) => row[0] === "play").map((row) => row[1]))
+            .size,
+        9,
+        "Each visit resolves a fresh URL"
+    );
+    assert(!JSON.stringify(c.replies).includes(".mp4"));
+    c.requestQueue("vportal_random");
+    armShuffle();
+    c.completeSearch(records);
+    assert.equal(randomCalls, 6, "A new request shuffles again");
+    assert.equal(queues.length, 2);
+    assert.deepEqual(
+        c.replies[1].data.items.map((item) => item.title),
+        original.map((item) => item.title)
+    );
+    assert.deepEqual(plain(records), original);
+});
+
+test("A 477-result random VPortal queue acknowledges every item in playback order and wraps once", () => {
+    const c = remoteQueueFixture();
+    let randomCalls = 0;
+    isolateQueueRandom(c, () => {
+        randomCalls++;
+        return 0;
+    });
+    const records = Object.freeze(
+        Array.from({ length: 477 }, (_, index) =>
+            Object.freeze({
+                id: index + 1,
+                request: { id: index + 1 },
+                title: "Film " + (index + 1),
+            })
+        )
+    );
+    const original = plain(records);
+    const queues = [];
+    const playQueue = c.__ottMedia.playQueue;
+    c.__ottMedia.playQueue = function (...args) {
+        assert.equal(
+            randomCalls,
+            476,
+            "Exactly one Fisher-Yates pass before dispatch"
+        );
+        queues.push(args[0]);
+        return playQueue(...args);
+    };
+    c.requestQueue("vportal_random");
+    c.completeSearch(records);
+    const order = [...Array.from({ length: 476 }, (_, index) => index + 2), 1];
+    assert.equal(queues.length, 1);
+    assert.notEqual(queues[0], records);
+    assert.deepEqual(plain(queues[0].map((item) => item.id)), order);
+    assert.equal(new Set(queues[0].map((item) => item.id)).size, 477);
+    assert.deepEqual(c.replies, [
+        {
+            data: {
+                dispatched: true,
+                items: order.map((id, index) => ({
+                    number: index + 1,
+                    title: "Film " + id,
+                })),
+                loop: true,
+                shuffled: true,
+                total: 477,
+            },
+            status: "ok",
+        },
+    ]);
+    for (let index = 0; index < records.length; index++) c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [...order, order[0]]
+    );
+    assert.equal(
+        queues.length,
+        1,
+        "Natural completion reuses the existing permutation"
+    );
+    assert.equal(
+        randomCalls,
+        476,
+        "Advancement never constructs another shuffle"
+    );
+    assert.deepEqual(plain(records), original);
+});
+
+test("Ordinary VPortal playback and listing never shuffle provider order", () => {
+    for (const action of ["vportal", "vportal_search"]) {
+        const c = remoteQueueFixture();
+        isolateQueueRandom(c, () => {
+            assert.fail("Ordered requests must not shuffle");
+        });
+        c.requestQueue(action);
+        c.completeSearch(
+            [3, 1, 2].map((id) => ({
+                id,
+                request: { id },
+                title: "Film " + id,
+            }))
+        );
+        assert.deepEqual(
+            c.replies[0].data.items.map((item) => item.title),
+            ["Film 3", "Film 1", "Film 2"]
+        );
+        assert.equal(c.replies[0].data.shuffled, undefined);
+        assert.equal(c.resolutions.length, action === "vportal" ? 1 : 0);
+    }
+});
+
+test("Random VPortal empty and single-result queues need no random draws", () => {
+    for (const count of [0, 1]) {
+        const c = remoteQueueFixture();
+        isolateQueueRandom(c, () => assert.fail("No random draw needed"));
+        c.requestQueue("vportal_random");
+        c.completeSearch(
+            count ? [{ id: 7, request: { id: 7 }, title: "Film" }] : []
+        );
+        if (!count) {
+            assert.equal(c.replies[0].status, "rejected");
+            assert.equal(c.resolutions.length, 0);
+        } else {
+            assert.equal(c.replies[0].data.shuffled, true);
+            assert.equal(c.replies[0].data.loop, true);
+            assert.equal(c.replies[0].data.total, 1);
+            c.finishItem();
+            assert.deepEqual(
+                c.resolutions.map((row) => row.item.id),
+                [7, 7]
+            );
+        }
+    }
+});
+
+test("Random VPortal keeps complete-result, metadata, query and parental guards", () => {
+    for (const params of [
+        {},
+        { query: "" },
+        { query: "   " },
+        { query: "я".repeat(513) },
+        { query: "\ud800" },
+        { extra: true, query: "film" },
+    ]) {
+        const c = remoteQueueFixture();
+        c.executeRemoteRequest({ action: "vportal_random", params }, (reply) =>
+            c.replies.push(plain(reply))
+        );
+        assert.equal(c.replies[0].status, "rejected");
+        assert.equal(c.searchQuery, undefined);
+    }
+    for (const result of ["partial", "oversized", "parental", "timeout"]) {
+        const c = remoteQueueFixture();
+        c.requestQueue("vportal_random");
+        if (result === "timeout") c.timers.at(-1)();
+        c.completeSearch(
+            [
+                {
+                    adult: result === "parental" ? 1 : 0,
+                    id: 1,
+                    request: { id: 1 },
+                    title: result === "oversized" ? "x".repeat(500000) : "Film",
+                },
+            ],
+            result === "partial" ? "PRIVATE provider error" : undefined
+        );
+        assert.equal(c.replies[0].status, "rejected", result);
+        assert.equal(c.resolutions.length, 0, result);
+        assert(!JSON.stringify(c.replies).includes("PRIVATE"));
+    }
+    const missing = remoteQueueFixture();
+    delete missing.providerMediaClient.search;
+    missing.requestQueue("vportal_random");
+    assert.equal(missing.replies[0].status, "unsupported");
+});
+
+test("Random VPortal cancellation, Stop and source changes reject late search or stream results", () => {
+    for (const at of ["search", "resolve"]) {
+        for (const action of ["cancel", "stop", "source"]) {
+            const c = remoteQueueFixture();
+            c.deferResolve = true;
+            const records = [1, 2].map((id) => ({
+                id,
+                request: { id },
+                title: "Film " + id,
+            }));
+            const cancel = c.requestQueue("vportal_random");
+            if (at === "resolve") c.completeSearch(records);
+            if (action === "cancel") cancel();
+            if (action === "stop") {
+                c.__ottMedia.cancelAuto();
+                c.__ottClassicPlayback.command({ type: "stop" });
+            }
+            if (action === "source") c.providerMediaClient = {};
+            if (at === "search") c.completeSearch(records);
+            else c.completeResolve();
+            assert.equal(c.resolutions.length, at === "resolve" ? 1 : 0);
+            assert.equal(c.replies.length, 0);
+            assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+        }
+    }
+});
+
 test("Remote VPortal list-only and empty or failed searches never start a queue", () => {
     const listing = remoteQueueFixture();
     listing.requestQueue("vportal_search");

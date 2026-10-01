@@ -138,7 +138,12 @@ export function executeRemoteRequest(
         reply({ providers: providers() });
         return;
     }
-    if (request.action === "vportal" || request.action === "vportal_search") {
+    if (
+        request.action === "vportal" ||
+        request.action === "vportal_search" ||
+        request.action === "vportal_random"
+    ) {
+        var randomQueue = request.action === "vportal_random";
         var queryText =
             typeof params.query === "string" ? params.query.trim() : "";
         try {
@@ -223,6 +228,23 @@ export function executeRemoteRequest(
                     return;
                 }
                 var records = result.items;
+                if (randomQueue) {
+                    // Shuffle once; the queue repeats this complete permutation.
+                    // Provider-owned results keep their original catalogue order.
+                    records = records.slice();
+                    for (
+                        var shuffleIndex = records.length - 1;
+                        shuffleIndex > 0;
+                        shuffleIndex--
+                    ) {
+                        var selectedIndex = Math.floor(
+                            Math.random() * (shuffleIndex + 1)
+                        );
+                        var shuffledRecord = records[shuffleIndex];
+                        records[shuffleIndex] = records[selectedIndex];
+                        records[selectedIndex] = shuffledRecord;
+                    }
+                }
                 var data: any = {
                     items: records.map(function (item: any, index: number) {
                         return {
@@ -272,6 +294,7 @@ export function executeRemoteRequest(
                     function () {
                         data.dispatched = true;
                         data.loop = true;
+                        if (randomQueue) data.shuffled = true;
                         finishMedia(data);
                     }
                 );
