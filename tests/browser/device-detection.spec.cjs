@@ -427,66 +427,77 @@ async function bootForWebosRemote(
     page,
     context,
     baseURL,
-    observeNativeExit = true
+    observeNativeExit = true,
+    device = "lg/webos",
+    pendingGuide = false
 ) {
     const errors = await bootForMagicRemote(
         page,
         context,
         baseURL,
-        "lg/webos",
+        device,
         false
     );
-    await page.evaluate((observeExit) => {
-        // Keep the shipped loader, key router, menus and confirmation dialog.
-        // Only observe playback/native effects; no LG firmware is emulated.
-        window.__remoteEffects = {
-            exits: 0,
-            played: [],
-            playing: true,
-            volume: [],
-        };
-        if (observeExit) window.close = () => window.__remoteEffects.exits++;
-        window.stbIsPlaying = () => window.__remoteEffects.playing;
-        window.stbPause = () => {
-            window.__remoteEffects.playing = false;
-        };
-        window.stbContinue = () => {
-            window.__remoteEffects.playing = true;
-        };
-        window.stbSetVolume = (volume) =>
-            window.__remoteEffects.volume.push(volume);
-        const stored = new Map();
-        window.providerGetItem = (key) => stored.get(key) ?? null;
-        window.providerSetItem = (key, value) => stored.set(key, value);
-        window.catsArray = ["Remote fixture"];
-        window.cats = { "Remote fixture": [101, 102, 103] };
-        window.channels = window.chanels = {};
-        for (const id of window.cats["Remote fixture"]) {
-            window.channels[id] = { channel_name: "Channel " + id, rec: 0 };
-        }
-        window.fetchChannelGuide = (id, complete) => {
-            const now = Math.floor(Date.now() / 1000);
-            complete(id, [
-                {
-                    descr: "Remote guide fixture",
-                    name: "Programme " + id,
-                    time: now - 600,
-                    time_to: now + 600,
-                },
-            ]);
-        };
-        window.catIndex = window.primaryIndex = window.playType = 0;
-        window.curList = window.cats["Remote fixture"];
-        window.playChannel = (category, index) => {
-            window.catIndex = category;
-            window.curList = window.cats[window.catsArray[category]];
-            window.primaryIndex = index;
-            window.__remoteEffects.played.push(window.curList[index]);
-            window.__remoteEffects.playing = true;
-        };
-        window.closeList();
-        window.infoBarHide();
-    }, observeNativeExit);
+    await page.evaluate(
+        ({ observeExit, pending }) => {
+            // Keep the shipped loader, key router, menus and confirmation dialog.
+            // Only observe playback/native effects; no LG firmware is emulated.
+            window.__remoteEffects = {
+                exits: 0,
+                played: [],
+                playing: true,
+                volume: [],
+            };
+            if (observeExit)
+                window.close = () => window.__remoteEffects.exits++;
+            window.stbIsPlaying = () => window.__remoteEffects.playing;
+            window.stbPause = () => {
+                window.__remoteEffects.playing = false;
+            };
+            window.stbContinue = () => {
+                window.__remoteEffects.playing = true;
+            };
+            window.stbSetVolume = (volume) =>
+                window.__remoteEffects.volume.push(volume);
+            const stored = new Map();
+            window.providerGetItem = (key) => stored.get(key) ?? null;
+            window.providerSetItem = (key, value) => stored.set(key, value);
+            window.catsArray = ["Remote fixture"];
+            window.cats = { "Remote fixture": [101, 102, 103] };
+            window.channels = window.chanels = {};
+            for (const id of window.cats["Remote fixture"]) {
+                window.channels[id] = { channel_name: "Channel " + id, rec: 0 };
+            }
+            window.fetchChannelGuide = (id, complete) => {
+                if (pending) {
+                    window.__deliverGuide = (programmes) =>
+                        complete(id, programmes);
+                    return;
+                }
+                const now = Math.floor(Date.now() / 1000);
+                complete(id, [
+                    {
+                        descr: "Remote guide fixture",
+                        name: "Programme " + id,
+                        time: now - 600,
+                        time_to: now + 600,
+                    },
+                ]);
+            };
+            window.catIndex = window.primaryIndex = window.playType = 0;
+            window.curList = window.cats["Remote fixture"];
+            window.playChannel = (category, index) => {
+                window.catIndex = category;
+                window.curList = window.cats[window.catsArray[category]];
+                window.primaryIndex = index;
+                window.__remoteEffects.played.push(window.curList[index]);
+                window.__remoteEffects.playing = true;
+            };
+            window.closeList();
+            window.infoBarHide();
+        },
+        { observeExit: observeNativeExit, pending: pendingGuide }
+    );
     return errors;
 }
 
@@ -785,7 +796,22 @@ test.describe("webOS fullscreen remote navigation", () => {
             .toEqual([25]);
         expect(await page.evaluate(() => window.playType)).toBe(archiveStart);
         await expect(page.locator("#list")).toBeHidden();
+        await page.evaluate(() => {
+            window.sInfoSlide = 0;
+            window.infoBarHide();
+        });
         await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#info1")).toBeVisible();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#descr")).toBeHidden();
+        // LG has no dedicated guide key; open EPG through the real Menu entry.
+        await page.keyboard.press("ArrowLeft");
+        await expect(page.locator("#listCaption")).toHaveText("Menu");
+        await remoteKey(
+            page,
+            await page.evaluate(() => window.keys.RED),
+            "ColorF0Red"
+        );
         await expect(page.locator("#listCaption")).toHaveText(
             "EPG and archive. Channel: Channel 101"
         );
@@ -804,11 +830,180 @@ test.describe("webOS fullscreen remote navigation", () => {
         expect(errors).toEqual([]);
     });
 
-    test("default Right opens the guide without adjusting volume", async ({
+    for (const device of ["lg/webos", "lg/netcast"]) {
+        for (const slide of [0, 1]) {
+            test(`${device} Right shows the footer then programme details (animation ${slide})`, async ({
+                page,
+                context,
+                baseURL,
+            }) => {
+                const errors = await bootForWebosRemote(
+                    page,
+                    context,
+                    baseURL,
+                    true,
+                    device
+                );
+                await page.evaluate((animation) => {
+                    window.sInfoChange = 0;
+                    window.sInfoSlide = animation;
+                    window.updateChannelInfo(101);
+                    window.infoBarHide();
+                }, slide);
+                await expect(page.locator("#programm_name")).toHaveText(
+                    "Programme 101"
+                );
+                await expect(page.locator("#info1")).toBeHidden();
+                await page.keyboard.press("ArrowRight");
+                await expect(page.locator("#info1")).toBeVisible();
+                await expect(page.locator("#channel_name")).toHaveText(
+                    "Channel 101"
+                );
+                await expect(page.locator("#descr")).toBeHidden();
+                await page.keyboard.press("ArrowRight");
+                await expect(page.locator("#descr")).toBeVisible();
+                await expect(page.locator("#programm_name2")).toHaveText(
+                    "Programme 101"
+                );
+                await expect(page.locator("#programm_descr")).toContainText(
+                    "Remote guide fixture"
+                );
+                await expect(page.locator("#list")).toBeHidden();
+                await page.keyboard.press("ArrowRight");
+                await expect(page.locator("#info1")).toBeHidden();
+                expect(
+                    await page.evaluate(() => window.__remoteEffects)
+                ).toEqual({ exits: 0, played: [], playing: true, volume: [] });
+                expect(errors).toEqual([]);
+            });
+        }
+    }
+
+    test("Right keeps the footer timed without EPG and expands when EPG arrives", async ({
         page,
         context,
         baseURL,
     }) => {
+        const errors = await bootForWebosRemote(
+            page,
+            context,
+            baseURL,
+            true,
+            "lg/webos",
+            true
+        );
+        await page.evaluate(() => {
+            window.sInfoChange = window.sInfoSlide = 0;
+            window.sInfoTimeout = 1;
+            window.channels[101].rec = 24;
+            window.updateChannelInfo(101);
+            window.infoBarHide();
+        });
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#info1")).toBeVisible();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#info1")).toBeVisible();
+        await expect(page.locator("#descr")).toBeHidden();
+        await expect(page.locator("#info1")).toBeHidden();
+        await page.evaluate(() => {
+            const now = Math.floor(Date.now() / 1000);
+            window.__deliverGuide([
+                { name: "Late programme", time: now - 60, time_to: now + 600 },
+            ]);
+            window.sInfoTimeout = 5;
+        });
+        await expect(page.locator("#programm_name")).toHaveText(
+            "Late programme"
+        );
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#info1")).toBeVisible();
+        await expect(page.locator("#descr")).toBeHidden();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#descr")).toBeVisible();
+        await expect(page.locator("#programm_name2")).toHaveText(
+            "Late programme"
+        );
+        expect(await page.evaluate(() => window.__remoteEffects)).toEqual({
+            exits: 0,
+            played: [],
+            playing: true,
+            volume: [],
+        });
+        expect(errors).toEqual([]);
+    });
+
+    test("Right expands an EPG entry containing only a thumbnail and time", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForWebosRemote(
+            page,
+            context,
+            baseURL,
+            true,
+            "lg/webos",
+            true
+        );
+        await page.evaluate(() => {
+            window.sInfoChange = window.sInfoSlide = 0;
+            window.sThumbnail = 1;
+            window.updateChannelInfo(101);
+            const now = Math.floor(Date.now() / 1000);
+            window.__deliverGuide([
+                {
+                    icon: "/icons/ott-play.png",
+                    time: now - 60,
+                    time_to: now + 600,
+                },
+            ]);
+            window.infoBarHide();
+        });
+        await expect(page.locator("#programm_descr .img")).toHaveCount(1);
+        await expect(page.locator("#programm_name2")).toHaveText("");
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#descr")).toBeHidden();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#descr")).toBeVisible();
+        await expect(page.locator("#programm_descr .img")).toBeVisible();
+        expect(errors).toEqual([]);
+    });
+
+    test("Right still expands media descriptions containing only a poster", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await bootForWebosRemote(page, context, baseURL);
+        await page.evaluate(() => {
+            window.sInfoSlide = window.sInfoSwitch = window.sStopPlay = 0;
+            window.stbPlay = () => {};
+            window.playMedia({
+                description: '<img src="/icons/ott-play.png">',
+                id: 8,
+                stream_url: location.origin + "/movie-fixture.mp4",
+                title: "Poster-only movie",
+            });
+            window.infoBarHide();
+        });
+        await expect(page.locator("#channel_name")).toHaveText(
+            "Poster-only movie"
+        );
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#info1")).toBeVisible();
+        await expect(page.locator("#descr")).toBeHidden();
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator("#descr")).toBeVisible();
+        await expect(page.locator("#programm_descr img")).toHaveCount(1);
+        expect(errors).toEqual([]);
+    });
+
+    test("saved Right guide action is preserved without adjusting volume", async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        await context.addInitScript(() => localStorage.setItem("sARfun", "10"));
         const errors = await bootForWebosRemote(page, context, baseURL);
         await page.keyboard.press("ArrowRight");
         await expect(page.locator("#list")).toBeVisible();
