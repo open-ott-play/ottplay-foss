@@ -209,7 +209,7 @@ export function defaultSettings(): PlayerSettings {
     return {
         adFun: 16,
         alFun: webos || device === "lg/netcast" ? 1 : 14,
-        arFun: webos ? 10 : 13,
+        arFun: webos || device === "lg/netcast" ? 4 : 13,
         arrowFun: 0,
         auFun: 15,
         autorun: 0,

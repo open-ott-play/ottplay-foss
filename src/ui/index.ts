@@ -746,6 +746,14 @@ export function showChannelInfo(timeoutSec: number): void {
             );
         }
     } else if (!$("#descr").is(":visible")) {
+        // Keep the footer timed when no programme or media details are available.
+        if (
+            !$("#programm_name2, #programm_descr").text().trim() &&
+            !$("#programm_descr").find("img,.img").length
+        ) {
+            showChannelInfo(1);
+            return;
+        }
         if (w.sInfoSlide) {
             $("#descr").slideDown(400, function () {
                 if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();

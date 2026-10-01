@@ -168,13 +168,21 @@ record `navigator.userAgent`, `ott_device`, `keys.RETURN`, console errors and th
 loaded adapter request. Expect `lg/webos`, Back code 461 and
 `/devices/lg/webos/device.js`. On a fresh profile, select a language and use the SDK's
 RCU Down, Back and OK buttons to check the first-run screen and language chooser.
-During playback, LG profiles default Left to action 1 (Menu). webOS defaults
-Right to action 10 (current-channel guide) and Back to action 1 (confirm
-exit). NetCast and other profiles retain Right action 13 (volume up) and
-Back action 0. Saved assignments always take precedence, including old
+During playback, LG profiles default Left to action 1 (Menu) and Right to
+action 4 (Info). Press Right once for the channel footer, then again for the
+current programme details when EPG is available. A third press hides the
+information. Without programme details, repeated Right keeps the footer on
+its normal timeout instead of opening an empty panel. Check both animation
+settings and a guide that arrives after playback starts. Media descriptions
+containing only an image must still expand.
+webOS defaults Back to action 1 (confirm exit); NetCast and other profiles
+retain Back action 0. Other profiles retain Right action 13 (volume up).
+Saved assignments always take precedence, including old
 volume or no-action assignments; detecting the correct profile does not reset
 these preferences. Other profiles retain Left action 14 (volume down).
-Assignments can be changed in **Settings > Button settings**.
+Assignments can be changed in **Settings > Button settings**. If an existing
+LG profile still opens the guide or changes volume on Right, select **Info**
+for that button. The guide remains available from Menu.
 
 Exercise both Back delivery paths: a numeric 461 key event and actual browser
 history traversal. The adapter retains one same-page history entry, so Back

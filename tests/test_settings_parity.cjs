@@ -518,8 +518,8 @@ for (const device of [
             );
             assert.equal(
                 w.defaultSettings().arFun,
-                device === "lg/webos" ? 10 : 13,
-                "webOS Right opens the guide; other defaults stay unchanged"
+                device?.startsWith("lg/") ? 4 : 13,
+                "LG Right opens channel information; other defaults stay unchanged"
             );
             vm.runInContext("loadSettings();", w);
             assert.equal(typed().alFun, expected, "Absent stored Left mapping");
@@ -631,12 +631,16 @@ console.log(
 
 for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
     for (const [field, legacy, webosDefault, otherDefault, explicit] of [
-        ["arFun", "sARfun", 10, 13, [0, 1, 10, 13, 19]],
+        ["arFun", "sARfun", 4, 13, [0, 1, 4, 10, 13, 19]],
         ["eFun", "sEfun", 1, 0, [0, 1, 2, 3, 4]],
     ]) {
         const { w, typed, stored } = fixture();
         w.ott_device = device;
-        const fallback = device === "lg/webos" ? webosDefault : otherDefault;
+        const platformDefault =
+            field === "arFun"
+                ? device?.startsWith("lg/")
+                : device === "lg/webos";
+        const fallback = platformDefault ? webosDefault : otherDefault;
         vm.runInContext("loadSettings();", w);
         assert.equal(
             typed()[field],
@@ -649,6 +653,16 @@ for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
             false,
             field + ": defaults are not persisted"
         );
+        for (const invalid of ["", "NaN", "invalid", "-1", "65"]) {
+            stored.set(legacy, invalid);
+            vm.runInContext("loadSettings();", w);
+            assert.equal(
+                typed()[field],
+                fallback,
+                field + ": invalid fallback"
+            );
+            assert.equal(stored.get(legacy), invalid, "No preference rewrite");
+        }
         for (const value of explicit) {
             stored.set(legacy, String(value));
             vm.runInContext(
@@ -680,7 +694,9 @@ for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
         );
     }
 }
-console.log("OK: webOS guide/exit defaults preserve explicit remote mappings");
+console.log(
+    "OK: LG information/exit defaults preserve explicit remote mappings"
+);
 
 // webOS hides engine details in both menus and ignores an old manual preference
 // at runtime, while preserving it in storage for another platform.
