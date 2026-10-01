@@ -21,6 +21,35 @@ Local sign-out removes the app's credentials, cancels pending sign-in and stops
 its media listener; delayed browser/network completions cannot restore it. It
 does not log the user out of Safari or revoke the identity provider's session.
 
+## Trusted networks
+
+When discovery names a separate mobile origin, the app first requests the
+original source without cookies, authorization headers or stored credentials.
+This also applies when an Access session is already saved. The source server
+decides whether the current public IPv4 or IPv6 address is allowed; the app does
+not infer trust from a Wi-Fi name or from the public discovery endpoint.
+
+An access denial or Cloudflare challenge switches that request to the mobile
+origin and reuses or obtains the Access session. Ordinary missing content,
+server errors and network failures do not open sign-in. Successful HTML replies
+are rejected rather than forwarded as a playlist or video. Explicit **Source
+access → Sign in** still opens the interactive login when requested.
+
+Playback preparation checks the actual source GET response headers, cancelling
+the body immediately, before starting a decoder that may have a short startup
+timeout. Recent successful source downloads avoid this extra check for 20
+seconds. A denied route is remembered for at most 30 seconds to avoid a rejected
+request for every media segment. Network changes and foregrounding clear these
+routing hints; an expired saved session also causes a fresh source attempt before
+interactive renewal. Late responses from a previous network cannot change the
+current routing preference.
+
+Both routes retain the loopback listener, so later HLS playlists, segments and
+keys can fall back after leaving a trusted network. Every source request is
+still checked by the server. A switch requiring sign-in may interrupt playback
+until the app is foregrounded and login completes. No Cloudflare Access Bypass
+policy or change to the origin's JWT validation is required.
+
 ## Server contract, version 1
 
 The public discovery JSON contains:
@@ -124,12 +153,18 @@ rewrites, chunk boundaries, binary streaming, Range, HEAD and unauthorized
 loopback requests. Native parity CI runs it. Playback tests cover asynchronous
 login completion after channel changes, stop and cancellation. Existing proxy,
 EPG and native bridge suites still apply.
+It also covers credential-free source playback, source-to-mobile fallback,
+bounded renewal, signed queries and ranges across routes, rejected HTML, and
+headers-only probes that cancel large or unfinished upstream responses.
 
 After deployment, verify a real device over cellular: load a protected playlist,
 complete passkey login, play/switch/seek channels, exercise native PiP, restart
 the app, sign out, cancel a login, and test the configured recovery path. Unit
 fixtures and an unsigned build do not establish successful biometric login
 or provider playback on an iPhone.
+Also verify a trusted network without a saved login, then switch between Wi-Fi
+and cellular during playback. Include IPv6 in the server's trusted list when
+that is the address family the phone actually uses.
 
 `python3 tests/test_ios_access_auth.py` exercises the actual authentication code
 with deterministic OS/network fixtures: concurrent discovery/login/renewal,

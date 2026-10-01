@@ -33,10 +33,10 @@ struct AccessMediaConfig: Codable, Equatable {
         return self
     }
 
-    func map(_ url: URL) -> URL? {
+    func map(_ url: URL, toSource: Bool = false) -> URL? {
         guard let origin = AccessMediaPolicy.origin(url),
               origin == source_origin || origin == media_origin,
-              let media = URLComponents(string: media_origin),
+              let media = URLComponents(string: toSource ? source_origin : media_origin),
               var target = URLComponents(url: url, resolvingAgainstBaseURL: false),
               target.user == nil, target.password == nil else { return nil }
         target.scheme = media.scheme; target.host = media.host; target.port = media.port
@@ -56,6 +56,27 @@ struct AccessMediaSession: Codable {
 }
 
 enum AccessMediaPolicy {
+    static func requiresAccess(_ response: HTTPURLResponse) -> Bool {
+        [301, 302, 303, 307, 308, 401, 403].contains(response.statusCode) ||
+            response.value(forHTTPHeaderField: "cf-mitigated")?.lowercased() == "challenge"
+    }
+
+    static func isHTML(_ response: HTTPURLResponse) -> Bool {
+        ["text/html", "application/xhtml+xml"].contains(response.mimeType?.lowercased() ?? "")
+    }
+
+    static func withoutCredentials(_ request: URLRequest) -> URLRequest {
+        var result = request
+        for name in result.allHTTPHeaderFields?.keys.map({ $0 }) ?? [] {
+            let key = name.lowercased()
+            if ["cookie", "cookie2", "authorization", "proxy-authorization", "host"].contains(key) || key.hasPrefix("cf-") {
+                result.setValue(nil, forHTTPHeaderField: name)
+            }
+        }
+        result.httpShouldHandleCookies = false
+        return result
+    }
+
     static func origin(_ url: URL) -> String? {
         guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased(), !host.isEmpty,
               url.user == nil, url.password == nil else { return nil }
@@ -164,12 +185,14 @@ final class AccessMediaHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendab
     private var response: HTTPURLResponse?
     private let request: URLRequest
     private let limit: Int
+    private let headersOnly: Bool
+    private var stoppedAtHeaders = false
     private let sessionConfiguration: () -> URLSessionConfiguration
     private var completion: ((Data?, URLResponse?, Error?) -> Void)?
     private var failure: Error?
 
-    private init(_ request: URLRequest, limit: Int, sessionConfiguration: @escaping () -> URLSessionConfiguration) {
-        self.request = request; self.limit = limit; self.sessionConfiguration = sessionConfiguration
+    private init(_ request: URLRequest, limit: Int, headersOnly: Bool, sessionConfiguration: @escaping () -> URLSessionConfiguration) {
+        self.request = request; self.limit = limit; self.headersOnly = headersOnly; self.sessionConfiguration = sessionConfiguration
     }
     private func start(completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
         let config = sessionConfiguration()
@@ -192,9 +215,10 @@ final class AccessMediaHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendab
         task?.cancel()
     }
     static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024,
+                      headersOnly: Bool = false,
                       sessionConfiguration: @escaping () -> URLSessionConfiguration = { .ephemeral }) async throws -> (Data, HTTPURLResponse) {
         guard let url = request.url, AccessMediaPolicy.origin(url) != nil else { throw AccessMediaFailure.invalid }
-        let operation = AccessMediaHTTP(request, limit: limit, sessionConfiguration: sessionConfiguration)
+        let operation = AccessMediaHTTP(request, limit: limit, headersOnly: headersOnly, sessionConfiguration: sessionConfiguration)
         return try await withTaskCancellationHandler(operation: {
             try Task.checkCancellation()
             let result: (Data, HTTPURLResponse) = try await withCheckedThrowingContinuation { continuation in
@@ -226,10 +250,14 @@ final class AccessMediaHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendab
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         self.response = response as? HTTPURLResponse
-        if response.expectedContentLength > Int64(limit) { failure = AccessMediaFailure.unavailable; completionHandler(.cancel) }
+        // Probe the real GET policy without downloading a manifest twice or
+        // buffering an unbounded live stream. Caller cancellation still wins.
+        if headersOnly { stoppedAtHeaders = true; completionHandler(.cancel) }
+        else if response.expectedContentLength > Int64(limit) { failure = AccessMediaFailure.unavailable; completionHandler(.cancel) }
         else { completionHandler(.allow) }
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard !headersOnly else { return }
         guard buffer.count + data.count <= limit else { failure = AccessMediaFailure.unavailable; dataTask.cancel(); return }
         buffer.append(data)
     }
@@ -240,7 +268,7 @@ final class AccessMediaHTTP: NSObject, URLSessionDataDelegate, @unchecked Sendab
         self.completion = nil; self.session = nil; self.task = nil
         lock.unlock()
         session.invalidateAndCancel()
-        completion?(buffer, response, cancelled ? CancellationError() : failure ?? error)
+        completion?(buffer, response, cancelled ? CancellationError() : failure ?? (stoppedAtHeaders ? nil : error))
     }
 }
 

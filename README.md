@@ -328,6 +328,13 @@ playback and PiP are separate device checks.
   Complete biometric/passkey or email-code prompts on the physical device when
   required. The source must support the [iOS Access integration](docs/ios-source-access.md);
   installing the app does not bypass an IP allowlist.
+- **Passkey is requested while connected to trusted Wi-Fi:** for sources with
+  the iOS Access integration, the app first tries the original source without
+  login and uses the authenticated mobile entry only after an access denial.
+  Check the public IP actually seen by the source, including IPv6: a permitted
+  home IPv4 does not cover a different IPv6, VPN or cellular address. Network
+  changes and reopening the app clear its temporary route preference. A generic
+  network/server error should not trigger sign-in.
 - **Sign-in no longer appears, but the channel list is empty:** a valid saved
   session is reused without another prompt. After an earlier failed load or a
   server-side fix, reload the playlist or fully close and reopen the app once.

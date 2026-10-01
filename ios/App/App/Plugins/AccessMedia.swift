@@ -1,6 +1,7 @@
 import AuthenticationServices
 import Capacitor
 import Foundation
+import Network
 import Security
 import UIKit
 
@@ -102,16 +103,37 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
     private var authentication: AccessMediaAuthentication?
     private var proxy: AccessMediaProxy?
     private var generation = 0
+    private var networkEpoch = 0
+    private var directDeniedUntil: [String: Date] = [:]
+    private var directAllowedUntil: [String: Date] = [:]
+    private let routeEpochKey = "play.ott.source-route-epoch"
+    #if os(iOS)
+    private let networkMonitor = NWPathMonitor()
+    private var foregroundObserver: NSObjectProtocol?
+    #endif
     private let keychainService = "play.ott.foss.source-access.v1"
     private let fetch: (URLRequest, Int) async throws -> (Data, HTTPURLResponse)
+    private let probe: (URLRequest) async throws -> HTTPURLResponse
     private let now: () -> Date
 
     init(now: @escaping () -> Date = Date.init,
          fetch: @escaping (URLRequest, Int) async throws -> (Data, HTTPURLResponse) = {
         try await AccessMediaHTTP.fetch($0, limit: $1)
+    }, probe: @escaping (URLRequest) async throws -> HTTPURLResponse = {
+        try await AccessMediaHTTP.fetch($0, headersOnly: true).1
     }) {
-        self.fetch = fetch; self.now = now
+        self.fetch = fetch; self.probe = probe; self.now = now
         super.init()
+        #if os(iOS)
+        networkMonitor.pathUpdateHandler = { [weak self] _ in
+            Task { @MainActor in self?.networkChanged() }
+        }
+        networkMonitor.start(queue: DispatchQueue(label: "play.ott.access-network"))
+        foregroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+            object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.networkChanged() }
+            }
+        #endif
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService, kSecAttrAccount as String: "sources",
             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
@@ -125,6 +147,74 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
                 }
             }
         }
+    }
+
+    deinit {
+        #if os(iOS)
+        networkMonitor.cancel()
+        if let foregroundObserver { NotificationCenter.default.removeObserver(foregroundObserver) }
+        #endif
+    }
+
+    // This is a routing hint, never an authorization grant. Every direct request
+    // still passes the source server's IP policy. TTL also covers changes to the
+    // public IP that do not change the interface reported by NWPathMonitor.
+    func networkChanged() {
+        networkEpoch += 1
+        directDeniedUntil.removeAll()
+        directAllowedUntil.removeAll()
+    }
+
+    private func taggedRoute(_ request: URLRequest) -> URLRequest {
+        let tagged = (request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
+        URLProtocol.setProperty(networkEpoch, forKey: routeEpochKey, in: tagged)
+        return tagged as URLRequest
+    }
+
+    private func currentRoute(_ request: URLRequest) -> Bool {
+        (URLProtocol.property(forKey: routeEpochKey, in: request) as? Int) == networkEpoch
+    }
+
+    private func rememberDirect(_ request: URLRequest, config: AccessMediaConfig) {
+        if currentRoute(request), request.url.flatMap(AccessMediaPolicy.origin) == config.source_origin,
+           request.value(forHTTPHeaderField: "Cookie") == nil {
+            directAllowedUntil[config.source_origin] = now().addingTimeInterval(20)
+        }
+    }
+
+    func routed(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedRequest: URLRequest? = nil,
+                generation expectedGeneration: Int? = nil) async throws -> URLRequest {
+        if let expectedGeneration, generation != expectedGeneration { throw AccessMediaFailure.cancelled }
+        try Task.checkCancellation()
+        guard let url = request.url, let source = config.map(url, toSource: true) else { throw AccessMediaFailure.invalid }
+        if rejectedRequest == nil, let session = entries[config.source_origin]?.session,
+           !session.valid(for: config), logins[config.source_origin] == nil {
+            // Returning to a trusted network should not renew an expired login
+            // just because the last source denial was less than 30 seconds ago.
+            directDeniedUntil[config.source_origin] = nil
+        }
+        var rejectedCookie: String?
+        if let rejectedRequest {
+            let epoch = URLProtocol.property(forKey: routeEpochKey, in: rejectedRequest) as? Int
+            if epoch == networkEpoch || epoch == nil {
+                if rejectedRequest.url.flatMap(AccessMediaPolicy.origin) == config.source_origin &&
+                    config.source_origin != config.media_origin {
+                    directDeniedUntil[config.source_origin] = now().addingTimeInterval(30)
+                    directAllowedUntil[config.source_origin] = nil
+                } else { rejectedCookie = rejectedRequest.value(forHTTPHeaderField: "Cookie") }
+            }
+        }
+        var result: URLRequest
+        if config.source_origin != config.media_origin &&
+            (directDeniedUntil[config.source_origin] ?? .distantPast) <= now() {
+            result = AccessMediaPolicy.withoutCredentials(request)
+            result.url = source
+        } else {
+            result = try await authorized(request, config: config, replacing: rejectedCookie,
+                generation: expectedGeneration)
+        }
+        try Task.checkCancellation()
+        return taggedRoute(result)
     }
 
     private func save() throws {
@@ -340,14 +430,8 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         if let rejectedCookie, let current = entries[config.source_origin]?.session,
            rejectedCookie == "CF_Authorization=\(current.token)" { entries[config.source_origin]?.session = nil }
         let session = try await authenticate(config)
-        var result = request
+        var result = AccessMediaPolicy.withoutCredentials(request)
         result.url = target
-        for name in result.allHTTPHeaderFields?.keys.map({ $0 }) ?? [] {
-            if name.lowercased() == "cookie" || name.lowercased().hasPrefix("cf-") || name.lowercased() == "host" {
-                result.setValue(nil, forHTTPHeaderField: name)
-            }
-        }
-        result.httpShouldHandleCookies = false
         result.setValue("CF_Authorization=\(session.token)", forHTTPHeaderField: "Cookie")
         return result
     }
@@ -357,7 +441,32 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         let generation = self.generation
         guard let config = try await configuration(for: url, discover: true) else { return url }
         guard self.generation == generation else { throw AccessMediaFailure.cancelled }
-        _ = try await authenticate(config)
+        try Task.checkCancellation()
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        for attempt in 0...2 {
+            let route = try await routed(request, config: config, generation: generation)
+            if route.value(forHTTPHeaderField: "Cookie") != nil { break }
+            if (directAllowedUntil[config.source_origin] ?? .distantPast) > now() { break }
+            let (_, response) = try await fetchProtected(route, generation: generation, headersOnly: true)
+            guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+            try Task.checkCancellation()
+            if !currentRoute(route) {
+                if attempt < 2 { continue }
+                throw AccessMediaFailure.unavailable
+            }
+            if AccessMediaPolicy.requiresAccess(response) {
+                _ = try await routed(request, config: config, replacing: route, generation: generation)
+            } else {
+                guard (200..<300).contains(response.statusCode), !AccessMediaPolicy.isHTML(response) else {
+                    throw AccessMediaFailure.unavailable
+                }
+                rememberDirect(route, config: config)
+            }
+            break
+        }
+        guard self.generation == generation else { throw AccessMediaFailure.cancelled }
+        try Task.checkCancellation()
         if proxy == nil { proxy = try AccessMediaProxy() }
         let local = try await proxy!.url(for: url, config: config)
         guard self.generation == generation else { throw AccessMediaFailure.cancelled }
@@ -366,6 +475,7 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
 
     func signOut() throws {
         generation += 1
+        networkChanged()
         let pending = Array(logins.values)
         logins.removeAll()
         for login in pending {
@@ -381,11 +491,14 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         try save()
     }
 
-    private func fetchProtected(_ request: URLRequest, generation: Int) async throws -> (Data, HTTPURLResponse) {
+    private func fetchProtected(_ request: URLRequest, generation: Int, headersOnly: Bool = false) async throws -> (Data, HTTPURLResponse) {
         guard self.generation == generation else { throw AccessMediaFailure.cancelled }
         try Task.checkCancellation()
         let id = UUID()
-        let pending = Task { try await self.fetch(request, 64 * 1024 * 1024) }
+        let pending = Task {
+            if headersOnly { return (Data(), try await self.probe(request)) }
+            return try await self.fetch(request, 64 * 1024 * 1024)
+        }
         transfers[id] = pending
         defer { transfers[id] = nil }
         return try await withTaskCancellationHandler(operation: {
@@ -408,26 +521,40 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
                     guard let url = request.url else { throw AccessMediaFailure.invalid }
                     let generation = await shared.generation
                     var config = try await shared.configuration(for: url, discover: false)
+                    var rejectedRequest: URLRequest?
                     if config == nil {
-                        let (data, response) = try await AccessMediaPublicHTTP.fetch(request)
+                        let publicRequest = await shared.taggedRoute(request)
+                        let (data, response) = try await AccessMediaPublicHTTP.fetch(publicRequest)
                         let http = response as? HTTPURLResponse
-                        let challenge = [401, 403].contains(http?.statusCode ?? 0) ||
+                        let challenge = http.map(AccessMediaPolicy.requiresAccess) == true ||
                             response.url?.host?.hasSuffix(".cloudflareaccess.com") == true
                         if discoverOnFailure && request.httpMethod == "GET" && challenge {
                             config = try await shared.configuration(for: url, discover: true)
+                            if AccessMediaPolicy.origin(url) == config?.source_origin {
+                                rejectedRequest = publicRequest
+                            }
                         }
                         if config == nil { try Task.checkCancellation(); operation.finish(data, response); return }
                     }
                     guard let config else { throw AccessMediaFailure.invalid }
-                    var rejectedCookie: String?
-                    for attempt in 0...1 {
+                    var authenticationFailures = 0
+                    // One source denial, then one rejected Access token renewal.
+                    // Every response is checked; network changes cannot create a retry loop.
+                    for attempt in 0...2 {
                         guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
-                        let authorized = try await shared.authorized(request, config: config, replacing: rejectedCookie, generation: generation)
+                        let authorized = try await shared.routed(request, config: config, replacing: rejectedRequest, generation: generation)
                         let (data, response) = try await shared.fetchProtected(authorized, generation: generation)
                         guard await shared.generation == generation else { throw AccessMediaFailure.cancelled }
-                        if [301, 302, 303, 307, 308, 401, 403].contains(response.statusCode) {
-                            if attempt == 0 { rejectedCookie = authorized.value(forHTTPHeaderField: "Cookie"); continue }
+                        if AccessMediaPolicy.requiresAccess(response) {
+                            if authorized.value(forHTTPHeaderField: "Cookie") != nil { authenticationFailures += 1 }
+                            if attempt < 2 && authenticationFailures < 2 { rejectedRequest = authorized; continue }
                             throw AccessMediaFailure.login
+                        }
+                        guard !(200..<300).contains(response.statusCode) || !AccessMediaPolicy.isHTML(response) else {
+                            throw AccessMediaFailure.unavailable
+                        }
+                        if (200..<300).contains(response.statusCode) {
+                            await shared.rememberDirect(authorized, config: config)
                         }
                         // Access credentials must never cross the Capacitor bridge as response headers.
                         var fields: [String: String] = [:]
