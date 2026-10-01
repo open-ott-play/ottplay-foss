@@ -97,6 +97,7 @@ var keyStrings = {
         "Černá obrazovka při přepínání kanálů",
     Blue: "Modrá",
     "Bookmark age: %1 days": "Stáří záložky: %1 dní",
+    "Browse folders": "Procházet složky",
     "Buffer Size, s": "Velikost vyrovnávací paměti, s",
     "Built-in playlist:": "Vestavěný playlist:",
     "Built-in playlists": "Vestavěné playlisty",
@@ -558,6 +559,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Nezmenšovat video při zobrazení seznamu (oprava)",
     Nothing: "Nic",
+    "Nothing to play": "Žádné video k přehrání",
     "Number of next TV programs in channel list":
         "Počet následujících pořadů v seznamu kanálů",
     "Number of rows in lists": "Počet řádků v seznamech",
@@ -669,6 +671,9 @@ var keyStrings = {
     "Rename category": "Přejmenovat kategorii",
     "Rename to": "Přejmenovat na",
     "Repeat parental code": "Zopakujte rodičovský kód",
+    "Repeat: All": "Opakování: vše",
+    "Repeat: Off": "Opakování: vypnuto",
+    "Repeat: One": "Opakování: jeden",
     "Request sended!": "Požadavek odeslán!",
     "Requesting approval for %1": "Žádost o schválení pro %1",
     "Restart player": "Restartovat přehrávač",
@@ -765,6 +770,7 @@ var keyStrings = {
     "Show when changing program": "Zobrazit při změně pořadu",
     "Show when rewind": "Zobrazit při přetáčení",
     "Show when switching": "Zobrazit při přepínání kanálů",
+    "Shuffle and play": "Zamíchat a přehrát",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -835,6 +841,9 @@ var keyStrings = {
     transparent: "průhledný",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Nastavení ULTIFL1X",
+    "Unable to load playlist": "Seznam přehrávání se nepodařilo načíst",
+    Untitled: "Bez názvu",
+    "Untitled folder": "Složka bez názvu",
     "Update installed. Please restart OttPlay FOSS.":
         "Aktualizace je nainstalována. Restartujte OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

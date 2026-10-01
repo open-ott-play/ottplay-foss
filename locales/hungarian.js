@@ -100,6 +100,7 @@ var keyStrings = {
         "Fekete képernyő csatornaváltáskor",
     Blue: "Kék",
     "Bookmark age: %1 days": "Könyvjelző kora: %1 nap",
+    "Browse folders": "Böngészés mappák szerint",
     "Buffer Size, s": "Puffer mérete, s",
     "Built-in playlist:": "Beépített lejátszási lista:",
     "Built-in playlists": "Beépített lejátszási listák",
@@ -567,6 +568,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Ne zsugorítsa a videót a lista megjelenítésekor (hibajavítás)",
     Nothing: "Semmi",
+    "Nothing to play": "Nincs lejátszható videó",
     "Number of next TV programs in channel list":
         "Következő műsorok száma a csatornalistában",
     "Number of rows in lists": "Listák sorainak száma",
@@ -680,6 +682,9 @@ var keyStrings = {
     "Rename category": "Kategória átnevezése",
     "Rename to": "Új név",
     "Repeat parental code": "Adja meg újra a szülői kódot",
+    "Repeat: All": "Ismétlés: összes",
+    "Repeat: Off": "Ismétlés: kikapcsolva",
+    "Repeat: One": "Ismétlés: egy",
     "Request sended!": "Kérés elküldve!",
     "Requesting approval for %1": "Jóváhagyás kérése ehhez: %1",
     "Restart player": "Lejátszó újraindítása",
@@ -780,6 +785,7 @@ var keyStrings = {
     "Show when changing program": "Megjelenítés műsorváltáskor",
     "Show when rewind": "Megjelenítés visszatekeréskor",
     "Show when switching": "Megjelenítés csatornaváltáskor",
+    "Shuffle and play": "Keverés és lejátszás",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -851,6 +857,9 @@ var keyStrings = {
     transparent: "átlátszó",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X beállításai",
+    "Unable to load playlist": "Nem sikerült betölteni a lejátszási listát",
+    Untitled: "Névtelen",
+    "Untitled folder": "Névtelen mappa",
     "Update installed. Please restart OttPlay FOSS.":
         "A frissítés települt. Indítsa újra az OttPlay FOSS alkalmazást.",
     "Use an HTTP or HTTPS server address.":

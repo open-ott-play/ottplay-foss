@@ -100,6 +100,7 @@ var keyStrings = {
         "Kanal değiştirirken siyah ekran",
     Blue: "Mavi",
     "Bookmark age: %1 days": "Yer işareti yaşı: %1 gün",
+    "Browse folders": "Klasörlere göz at",
     "Buffer Size, s": "Arabellek boyutu, s",
     "Built-in playlist:": "Yerleşik oynatma listesi:",
     "Built-in playlists": "Yerleşik oynatma listeleri",
@@ -562,6 +563,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Liste gösterilirken videoyu küçültme (hata düzeltmesi)",
     Nothing: "Hiçbir şey",
+    "Nothing to play": "Oynatılacak video yok",
     "Number of next TV programs in channel list":
         "Kanal listesindeki sonraki program sayısı",
     "Number of rows in lists": "Listelerdeki satır sayısı",
@@ -674,6 +676,9 @@ var keyStrings = {
     "Rename category": "Kategoriyi yeniden adlandır",
     "Rename to": "Yeni ad",
     "Repeat parental code": "Ebeveyn kodunu yeniden girin",
+    "Repeat: All": "Tekrar: tümü",
+    "Repeat: Off": "Tekrar: kapalı",
+    "Repeat: One": "Tekrar: bir",
     "Request sended!": "İstek gönderildi!",
     "Requesting approval for %1": "%1 için onay isteniyor",
     "Restart player": "Oynatıcıyı yeniden başlat",
@@ -770,6 +775,7 @@ var keyStrings = {
     "Show when changing program": "Program değiştiğinde göster",
     "Show when rewind": "Geri sararken göster",
     "Show when switching": "Kanal değiştirirken göster",
+    "Shuffle and play": "Karıştır ve oynat",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -838,6 +844,9 @@ var keyStrings = {
     transparent: "saydam",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ayarları",
+    "Unable to load playlist": "Oynatma listesi yüklenemedi",
+    Untitled: "Başlıksız",
+    "Untitled folder": "Adsız klasör",
     "Update installed. Please restart OttPlay FOSS.":
         "Güncelleme yüklendi. Lütfen OttPlay FOSS'u yeniden başlatın.",
     "Use an HTTP or HTTPS server address.":

@@ -1569,5 +1569,831 @@ test("A remote queue's direct-URL identity retains its provider page when reload
     );
 });
 
+function folderQueueFixture(ids = [1, 2, 3], collect = true) {
+    const c = fixture();
+    c.Math = Object.create(Math);
+    c.Math.random = () => 0;
+    c.catalogs[""] = ids.map((id) => ({
+        id,
+        request: { id },
+        title: "Movie " + id,
+    }));
+    c.resolutions = [];
+    c.collectionCancels = 0;
+    c.providerMediaClient = {
+        cancel() {},
+        cancelAutomatic() {},
+        resolve(item, done, automatic) {
+            c.resolutions.push({ automatic, item: plain(item) });
+            const resolved = {
+                ...item,
+                stream_url: item.id + "-" + c.resolutions.length + ".mp4",
+            };
+            c.completeResolve = () => done(resolved);
+            if (!c.deferResolve) c.completeResolve();
+        },
+    };
+    if (collect)
+        c.providerMediaClient.collect = (target, done, guard) => {
+            c.collectedTarget = target;
+            c.collectionGuard = guard;
+            c.completeCollection = (items = c.catalogs[""], error) =>
+                done({ error, items });
+            return () => c.collectionCancels++;
+        };
+    c.closeList = () => c.__ottMedia.cancel();
+    c.stbStop = () => {
+        c.__ottMedia.cancelAuto();
+        c.__ottClassicPlayback.command({ type: "stop" });
+    };
+    c.finishItem = () => {
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    };
+    c.mediaList(null);
+    return c;
+}
+
+test("Folder shuffle waits for all collected pages, filters and deduplicates playable items", () => {
+    const c = folderQueueFixture();
+    applyTitleFilter(c, "movie");
+    assert.equal(c.__ottMedia.snapshot().canShuffle, true);
+    c.__ottMedia.shufflePlay();
+    assert.equal(c.resolutions.length, 0);
+    const rows = [
+        ...c.catalogs[""],
+        { id: 4, request: { id: 4 }, title: "Movie 4 from page 2" },
+        { id: 5, request: { id: 5 }, title: "Unrelated" },
+        c.catalogs[""][0],
+        { playlist_url: "folder", title: "Movie Folder" },
+        { playlist_url: "next", title: "Next" },
+    ];
+    c.completeCollection(rows);
+    assert.equal(
+        c.calls.filter((row) => row[0] === "play").length,
+        1,
+        JSON.stringify({
+            calls: c.calls,
+            current: c.__ottMedia.current(),
+            state: c.__ottClassicPlayback.snapshot(),
+        })
+    );
+    rows[1].title = "Changed after queue admission";
+    for (let n = 0; n < 4; n++) c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [2, 3, 4, 1, 2]
+    );
+    assert.equal(c.resolutions[0].item.title, "Movie 2");
+    assert(c.resolutions.every((row) => row.automatic));
+    assert(!c.calls.some((row) => row[0] === "confirm"));
+    assert.equal(c.__ottMedia.snapshot().repeat, "all");
+});
+
+test("Folder queue Repeat One refreshes current URLs and Repeat Off stops after the last item", () => {
+    const c = folderQueueFixture();
+    c.__ottMedia.shufflePlay();
+    c.completeCollection();
+    c.__ottMedia.cycleRepeat();
+    assert.equal(c.__ottMedia.snapshot().repeat, "one");
+    c.finishItem();
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [2, 2, 2]
+    );
+    assert.equal(
+        new Set(c.calls.filter((row) => row[0] === "play").map((row) => row[1]))
+            .size,
+        3
+    );
+    c.__ottMedia.cycleRepeat();
+    assert.equal(c.__ottMedia.snapshot().repeat, "off");
+    c.finishItem();
+    c.finishItem();
+    c.finishItem();
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [2, 2, 2, 3, 1]
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+    assert.equal(
+        c.documentState().history.find((row) => row.itemId === "provider:1")
+            .position,
+        0
+    );
+});
+
+test("Local single-item shuffle supports repeat off without requiring a provider collector", () => {
+    const c = folderQueueFixture([7], false);
+    c.__ottMedia.cycleRepeat();
+    c.__ottMedia.cycleRepeat();
+    c.__ottMedia.shufflePlay();
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [7]
+    );
+    c.mediaList(-1);
+    assert.equal(c.__ottMedia.snapshot().canShuffle, false);
+});
+
+test("Explicit Repeat One applies to a current ordinary movie and later manual selection", () => {
+    const c = folderQueueFixture([1, 2], false);
+    c.selectMedia(0);
+    assert.equal(c.__ottMedia.current().sequence, null);
+    c.__ottMedia.cycleRepeat();
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [1, 1]
+    );
+    c.__ottMedia.select(1);
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [1, 1, 2, 2]
+    );
+});
+
+test("Folder collection cancellation rejects late replies after Stop, Back, filter, selection or source change", () => {
+    for (const action of [
+        "stop",
+        "back",
+        "filter",
+        "select",
+        "select-pin",
+        "source",
+    ]) {
+        const c = folderQueueFixture();
+        if (action === "select-pin") {
+            c.catalogs[""][1].adult = 1;
+            c.mediaList("");
+        }
+        c.__ottMedia.shufflePlay();
+        const late = c.completeCollection;
+        if (action === "stop") c.stbStop();
+        if (action === "back") c.__ottMedia.back();
+        if (action === "filter") applyTitleFilter(c, "2");
+        if (action === "select") c.__ottMedia.select(0);
+        if (action === "select-pin") c.__ottMedia.select(1);
+        if (action === "source") {
+            c.p_pref = "new-account";
+            c.mediaList(null);
+        }
+        const count = c.resolutions.length;
+        assert(c.collectionCancels > 0, action);
+        late();
+        assert.equal(c.resolutions.length, count, action);
+    }
+});
+
+test("New folder collection retires old EOS and superseded collectors cannot start a queue", () => {
+    const c = folderQueueFixture();
+    c.__ottMedia.shufflePlay();
+    c.completeCollection();
+    c.__ottMedia.shufflePlay();
+    const old = c.completeCollection;
+    c.__ottMedia.shufflePlay();
+    old();
+    assert.equal(c.resolutions.length, 1);
+    c.finishItem();
+    c.completeCollection();
+    assert.equal(
+        c.resolutions.length,
+        1,
+        "Old playback EOS cannot advance or revive collection"
+    );
+});
+
+test("First shuffled adult item waits for PIN and cancellation revokes that intent", () => {
+    for (const action of ["allow", "stop", "back", "repeat"]) {
+        const c = folderQueueFixture();
+        c.catalogs[""][1].adult = 1;
+        c.__ottMedia.shufflePlay();
+        c.completeCollection();
+        assert.equal(c.resolutions.length, 0);
+        assert.equal(typeof c.unlock, "function");
+        if (action === "stop") c.stbStop();
+        if (action === "back") c.__ottMedia.back();
+        if (action === "repeat") c.__ottMedia.cycleRepeat();
+        c.parentAccess = true;
+        c.unlock();
+        assert.equal(c.resolutions.length, action === "allow" ? 1 : 0, action);
+    }
+});
+
+test("Repeat change reschedules owned EOS and rejects its old resolver or PIN callback", () => {
+    for (const phase of ["pin", "resolve"]) {
+        const c = folderQueueFixture();
+        if (phase === "pin") c.catalogs[""][2].adult = 1;
+        c.__ottMedia.shufflePlay();
+        c.completeCollection();
+        if (phase === "resolve") c.deferResolve = true;
+        c.finishItem();
+        const generation = c.__ottClassicPlayback.snapshot().generation;
+        const late = phase === "pin" ? c.unlock : c.completeResolve;
+        assert.equal(typeof late, "function");
+        c.__ottMedia.cycleRepeat();
+        const resolutions = c.resolutions.length;
+        c.__ottMedia.ended(generation);
+        assert.equal(
+            c.resolutions.length,
+            resolutions,
+            "Duplicate EOS cannot add another request"
+        );
+        c.parentAccess = true;
+        late();
+        if (phase === "resolve") {
+            assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+            c.completeResolve();
+        }
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 2);
+        assert.equal(
+            c.resolutions.at(-1).item.id,
+            2,
+            "New Repeat One replays current item"
+        );
+        c.__ottMedia.ended(generation);
+        assert.equal(c.resolutions.length, resolutions);
+    }
+});
+
+test("Repeat Off reschedules pending EOS to next in the middle and stops at the end", () => {
+    for (const ids of [[1, 2, 3], [7]]) {
+        const c = folderQueueFixture(ids);
+        c.__ottMedia.shufflePlay();
+        c.completeCollection();
+        c.__ottMedia.cycleRepeat();
+        c.deferResolve = true;
+        c.finishItem();
+        const late = c.completeResolve;
+        c.__ottMedia.cycleRepeat();
+        late();
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+        if (ids.length > 1) {
+            assert.deepEqual(
+                c.resolutions.map((row) => row.item.id),
+                [2, 2, 3]
+            );
+            c.completeResolve();
+            c.deferResolve = false;
+            c.finishItem();
+            c.finishItem();
+            assert.deepEqual(
+                c.resolutions.map((row) => row.item.id),
+                [2, 2, 3, 1]
+            );
+        } else
+            assert.deepEqual(
+                c.resolutions.map((row) => row.item.id),
+                [7, 7]
+            );
+        assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+    }
+});
+
+test("Repeat cannot revive a pending completion cancelled by Stop, Back or source replacement", () => {
+    for (const action of ["stop", "back", "source"]) {
+        const c = folderQueueFixture();
+        c.__ottMedia.shufflePlay();
+        c.completeCollection();
+        c.deferResolve = true;
+        c.finishItem();
+        const late = c.completeResolve;
+        if (action === "stop") c.stbStop();
+        if (action === "back") c.__ottMedia.back();
+        if (action === "source") {
+            c.p_pref = "replacement";
+            c.mediaList(null);
+        }
+        const count = c.resolutions.length;
+        c.__ottMedia.cycleRepeat();
+        late();
+        assert.equal(c.resolutions.length, count, action);
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            1,
+            action
+        );
+    }
+});
+
+test("Initial Repeat One keeps full episode membership for a later switch to All", () => {
+    const c = folderQueueFixture([1, 2, 3], false);
+    c.catalogs[""].forEach((row) => (row.__ottMediaSequence = true));
+    c.mediaList("");
+    c.__ottMedia.cycleRepeat();
+    c.selectMedia(0);
+    assert.equal(c.__ottMedia.current().sequence.items.length, 3);
+    c.__ottMedia.cycleRepeat();
+    c.__ottMedia.cycleRepeat();
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [1, 2]
+    );
+});
+
+test("Collection capability hides and rejects shuffle while keeping single-item repeat", () => {
+    const c = folderQueueFixture();
+    c.providerMediaClient.canCollect = () => false;
+    const view = c.__ottMedia.snapshot();
+    assert.equal(view.canShuffle, false);
+    assert.equal(view.canRepeat, true);
+    c.__ottMedia.shufflePlay();
+    assert.equal(c.completeCollection, undefined);
+    c.__ottMedia.cycleRepeat();
+    c.selectMedia(0);
+    c.finishItem();
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.id),
+        [1, 1]
+    );
+});
+
+test("Shuffle revokes an earlier manual resolver and manual PIN before collection", () => {
+    for (const phase of ["resolve", "pin"]) {
+        const c = folderQueueFixture();
+        if (phase === "pin") {
+            c.catalogs[""][0].adult = 1;
+            c.mediaList("");
+        } else c.deferResolve = true;
+        c.selectMedia(0);
+        const late = phase === "pin" ? c.unlock : c.completeResolve;
+        c.__ottMedia.shufflePlay();
+        c.parentAccess = true;
+        late();
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+        assert.equal(
+            c.collectionCancels,
+            0,
+            "Late manual work cannot cancel new collection"
+        );
+        c.deferResolve = false;
+        c.completeCollection();
+        assert.equal(c.__ottMedia.current().payload.id, 2);
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+    }
+});
+
+test("Reentrant navigation during manual resolver abort prevents shuffle in the replacement frame", () => {
+    const c = folderQueueFixture();
+    c.deferResolve = true;
+    c.selectMedia(0);
+    c.catalogs.child = [{ id: 9, request: { id: 9 }, title: "Child" }];
+    let navigate = true;
+    c.providerMediaClient.cancel = () => {
+        if (!navigate) return;
+        navigate = false;
+        c.__ottMedia.open("child");
+    };
+    c.__ottMedia.shufflePlay();
+    assert.equal(c.__ottMedia.snapshot().frame.route.target, "child");
+    assert.equal(c.completeCollection, undefined);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+});
+
+test("Reentrant Stop while saving Repeat cannot re-admit its captured natural completion", () => {
+    const c = folderQueueFixture();
+    c.__ottMedia.shufflePlay();
+    c.completeCollection();
+    c.deferResolve = true;
+    c.finishItem();
+    const late = c.completeResolve;
+    Object.defineProperty(
+        c.stored,
+        "mediaRepeat.v1:" + c.__ottMedia.sourceId(),
+        {
+            configurable: true,
+            get: () => "all",
+            set: () => c.stbStop(),
+        }
+    );
+    c.__ottMedia.cycleRepeat();
+    late();
+    assert.equal(
+        c.resolutions.length,
+        2,
+        "Only the cancelled old next-item request exists"
+    );
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+});
+
+test("Actual screen owner close revokes shuffle collection, first PIN and pending resolve", () => {
+    for (const phase of ["collect", "pin", "resolve"]) {
+        const c = folderQueueFixture();
+        c.showPage = () => c.__ottClassicScreenPort.commitList();
+        c.closeList = () => c.__ottClassicScreenPort.closeList();
+        if (phase === "pin") c.catalogs[""][1].adult = 1;
+        if (phase === "resolve") c.deferResolve = true;
+        c.mediaList("");
+        c.__ottMedia.shufflePlay();
+        if (phase !== "collect") c.completeCollection();
+        const late =
+            phase === "collect"
+                ? c.completeCollection
+                : phase === "pin"
+                  ? c.unlock
+                  : c.completeResolve;
+        const owner = c.__ottClassicScreenPort.listOwner();
+        assert(owner.active());
+        c.closeList();
+        assert.equal(owner.active(), false);
+        if (phase === "collect")
+            assert.equal(
+                c.collectionCancels,
+                1,
+                "Closing the real owner aborts collection"
+            );
+        c.parentAccess = true;
+        late();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            0,
+            phase
+        );
+    }
+});
+
+test("Shuffle refreshes UI highlight ownership after revoking manual work", () => {
+    const c = folderQueueFixture();
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.mediaList("");
+    const oldHighlight = c.detailListActionFn;
+    c.__ottMedia.shufflePlay();
+    c.selIndex = 1;
+    oldHighlight();
+    assert.equal(
+        c.__ottMedia.snapshot().frame.selected,
+        0,
+        "Old render callback remains stale"
+    );
+    c.selIndex = 2;
+    c.detailListActionFn();
+    assert.equal(
+        c.__ottMedia.snapshot().frame.selected,
+        2,
+        "New render callback captures current revision"
+    );
+});
+
+test("Navigation during shuffle projection refresh prevents collecting the replaced catalog", () => {
+    const c = folderQueueFixture();
+    const render = c.__ottRenderMedia;
+    c.catalogs.child = [{ id: 9, request: { id: 9 }, title: "Child" }];
+    let replace = true;
+    c.__ottRenderMedia = (view) => {
+        render(view);
+        if (!replace) return;
+        replace = false;
+        c.__ottMedia.open("child");
+    };
+    c.__ottMedia.shufflePlay();
+    assert.equal(c.__ottMedia.snapshot().frame.route.target, "child");
+    assert.equal(c.completeCollection, undefined);
+});
+
+test("Reentrant Stop during shuffle projection refresh rejects the new intent", () => {
+    const c = folderQueueFixture();
+    const render = c.__ottRenderMedia;
+    c.__ottRenderMedia = (view) => {
+        render(view);
+        c.stbStop();
+    };
+    c.__ottMedia.shufflePlay();
+    assert.equal(c.completeCollection, undefined);
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+});
+
+test("Empty or failed collection never starts a partial queue or displays provider errors", () => {
+    for (const error of [undefined, "private URL/token"]) {
+        const c = folderQueueFixture();
+        c.__ottMedia.shufflePlay();
+        c.completeCollection(error ? c.catalogs[""] : [], error);
+        assert.equal(c.resolutions.length, 0);
+        assert(!JSON.stringify(c.calls).includes("private URL/token"));
+    }
+});
+
+test("Repeat preference is source-scoped and survives reopening its runtime", () => {
+    const c = folderQueueFixture();
+    const originalProvider = c.p_pref;
+    const source = c.__ottMedia.sourceId();
+    c.__ottMedia.cycleRepeat();
+    assert.equal(c.stored["mediaRepeat.v1:" + source], "one");
+    c.p_pref = "new-account";
+    c.mediaList(null);
+    assert.equal(c.__ottMedia.snapshot().repeat, "all");
+    c.p_pref = originalProvider;
+    c.mediaList(null);
+    assert.equal(c.__ottMedia.snapshot().repeat, "one");
+    const repeatKeys = Object.keys(c.stored).filter((key) =>
+        key.startsWith("mediaRepeat.v1:")
+    );
+    assert.deepEqual(repeatKeys, ["mediaRepeat.v1:" + source]);
+});
+
+function coldResumeFixture(position = 123.4) {
+    function configure(c) {
+        c.p_pref = "plex";
+        c.__ottActiveProviderDriver = {
+            credentials: () => ({
+                password: "account-fixture",
+                server: "https://plex.invalid",
+            }),
+            id: "plex",
+        };
+        c.resolutions = [];
+        c.providerMediaClient = {
+            cancel() {},
+            cancelAutomatic() {},
+            persist(payload) {
+                delete payload.stream_url;
+                return payload;
+            },
+            resolve(payload, done) {
+                c.resolutions.push(plain(payload));
+                c.finishResume = (result = {}) =>
+                    done(
+                        result === null
+                            ? null
+                            : {
+                                  ...payload,
+                                  stream_url: "fresh-access.mp4",
+                                  ...result,
+                              }
+                    );
+                if (!c.deferResume) c.finishResume();
+            },
+            stableRequests: true,
+        };
+        c.stbPlay = (url, at) => {
+            c.calls.push(["play", url, at]);
+            c.__ottClassicPlayback.command({ type: "playing" });
+        };
+    }
+    const original = fixture();
+    configure(original);
+    original._playMedia({
+        id: 42,
+        request: { path: "/library/metadata/42" },
+        stream_url: "expired-access.mp4?X-Plex-Token=expired-fixture",
+        title: "Saved item",
+    });
+    original.__ottMedia.checkpoint(
+        original.__ottMedia.current().ref,
+        position,
+        true
+    );
+    // A new VM has no playback, pending request or library instances from the
+    // closed player; only the persisted source-scoped document crosses boot.
+    const c = fixture();
+    configure(c);
+    Object.assign(c.stored, original.stored);
+    c.journalKey = "mediaJournal.v1:" + c.__ottMedia.sourceId();
+    c.changeSaved = (change) => {
+        const document = JSON.parse(c.stored[c.journalKey]);
+        change(document);
+        c.stored[c.journalKey] = JSON.stringify(document);
+    };
+    return c;
+}
+
+test("Cold Plex resume resolves a fresh stable item at its exact saved position", () => {
+    for (const position of [10.25, 123.4]) {
+        const c = coldResumeFixture(position);
+        assert.equal(c.__ottMedia.current(), null);
+        assert.equal(c.__ottMedia.restoreLast(), true);
+        assert.deepEqual(
+            c.calls.filter((call) => call[0] === "play"),
+            [["play", "fresh-access.mp4", position]]
+        );
+        assert.equal(c.resolutions.length, 1);
+        assert.equal(c.resolutions[0].request.path, "/library/metadata/42");
+        assert.equal(c.resolutions[0].stream_url, undefined);
+        assert.equal(c.__ottClassicPlayback.snapshot().position, position);
+        assert.equal(c.documentState().history[0].position, position);
+        assert(!c.stored[c.journalKey].includes("expired-fixture"));
+        assert(!c.stored[c.journalKey].includes("stream_url"));
+        assert(!c.calls.some((call) => /^(confirm|fetch)$/.test(call[0])));
+        assert.equal(c.__ottMedia.restoreLast(), false);
+        assert.equal(
+            c.resolutions.length,
+            1,
+            "One startup attempt per runtime"
+        );
+    }
+});
+
+test("Cold resume retains its checkpoint while the new decoder is loading", () => {
+    const c = coldResumeFixture(123.4);
+    c.stbPlay = (url, position) => {
+        assert.equal(position, 123.4);
+        assert.equal(c.__ottClassicPlayback.snapshot().phase, "loading");
+        assert.equal(c.documentState().history[0].position, 123.4);
+        c.__ottClassicPlayback.checkpoint(
+            c.__ottClassicPlayback.snapshot(),
+            true
+        );
+    };
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    assert.equal(c.documentState().history[0].position, 123.4);
+});
+
+test("Cold resume skips disabled, malformed, foreign and completed histories", () => {
+    const cases = [
+        (c) => (c.sFavorites = -1),
+        (c) => (c.sMedCount = 0),
+        (c) => (c.stored[c.journalKey] = "{invalid"),
+        (c) => c.changeSaved((doc) => (doc.version = 99)),
+        (c) => c.changeSaved((doc) => (doc.sourceId = "other-account")),
+        (c) => c.changeSaved((doc) => (doc.history[0].sourceId = "other")),
+        (c) => c.changeSaved((doc) => (doc.history[0].position = -1)),
+        (c) => c.changeSaved((doc) => (doc.history[0].position = "123")),
+        (c) => c.changeSaved((doc) => (doc.history[0].position = null)),
+        (c) => c.changeSaved((doc) => (doc.history[0].position = 0)),
+        (c) => c.changeSaved((doc) => (doc.history = [])),
+        (c) => c.changeSaved((doc) => delete doc.history[0].payload.request),
+        (c) => (c.providerMediaClient.stableRequests = false),
+    ];
+    cases.forEach((change) => {
+        const c = coldResumeFixture();
+        change(c);
+        assert.equal(c.__ottMedia.restoreLast(), false);
+        assert.equal(c.resolutions.length, 0);
+    });
+    const c = coldResumeFixture();
+    c.changeSaved((doc) => {
+        doc.history.unshift({
+            ...doc.history[0],
+            itemId: "completed",
+            position: 0,
+        });
+    });
+    assert.equal(
+        c.__ottMedia.restoreLast(),
+        false,
+        "Never resume an older film"
+    );
+});
+
+test("Unavailable cold item falls back once without deleting its saved position", () => {
+    for (const throwing of [false, true]) {
+        const c = coldResumeFixture();
+        c.deferResume = true;
+        if (throwing)
+            c.providerMediaClient.resolve = () => {
+                throw new Error("private provider detail");
+            };
+        let failures = 0;
+        assert.equal(
+            c.__ottMedia.restoreLast(() => failures++),
+            true
+        );
+        if (!throwing) {
+            c.finishResume(null);
+            c.finishResume(null);
+        }
+        assert.equal(failures, 1);
+        assert.equal(c.documentState().history[0].position, 123.4);
+        assert(!c.calls.some((call) => call[0] === "play"));
+        assert(!JSON.stringify(c.calls).includes("private provider detail"));
+    }
+});
+
+test("Stop, Back, navigation and source changes cancel pending cold playback and fallback", () => {
+    const cancel = [
+        (c) => c.__ottMedia.cancelAuto(),
+        (c) => c.__ottMedia.cancel(),
+        (c) => c.__ottMedia.back(),
+        (c) => c.mediaList("catalog.xml"),
+        (c) => (c.p_pref = "another-source"),
+        (c) => (c.providerMediaClient = { ...c.providerMediaClient }),
+        (c) => c.__ottClassicPlayback.command({ type: "stop" }),
+    ];
+    for (const stop of cancel) {
+        for (const result of [{}, null]) {
+            const c = coldResumeFixture();
+            c.deferResume = true;
+            let failures = 0;
+            c.__ottMedia.restoreLast(() => failures++);
+            const finish = c.finishResume;
+            stop(c);
+            finish(result);
+            assert.equal(failures, 0);
+            assert(!c.calls.some((call) => call[0] === "play"));
+        }
+    }
+});
+
+test("Cold resume preserves parental authorization and rejects cancelled PIN callbacks", () => {
+    for (const cancel of [false, true]) {
+        const c = coldResumeFixture();
+        c.changeSaved((doc) => (doc.history[0].payload.adult = 1));
+        c.parentPIN = "1234";
+        c.parentAccess = false;
+        let unlock;
+        c.enterPinAndSetAccess = (done) => (unlock = done);
+        assert.equal(c.__ottMedia.restoreLast(), true);
+        assert.equal(c.resolutions.length, 0);
+        if (cancel) c.__ottMedia.cancelAuto();
+        unlock();
+        assert.equal(c.resolutions.length, cancel ? 0 : 1);
+        assert.equal(
+            c.calls.filter((call) => call[0] === "play").length,
+            cancel ? 0 : 1
+        );
+    }
+});
+
+test("A manual selection supersedes a pending cold restore", () => {
+    const c = coldResumeFixture();
+    c.deferResume = true;
+    c.__ottMedia.restoreLast();
+    const late = c.finishResume;
+    c.catalogs[""] = [
+        { id: 84, request: { path: "/library/metadata/84" }, title: "Chosen" },
+    ];
+    c.mediaList("");
+    c.selectMedia(0);
+    const selected = c.finishResume;
+    late();
+    assert(!c.calls.some((call) => call[0] === "play"));
+    selected();
+    assert.equal(c.__ottMedia.current().ref.itemId, "provider:84");
+    assert.equal(c.calls.filter((call) => call[0] === "play").length, 1);
+});
+
+test("A resumed standalone film completes once and is not restored after the next cold boot", () => {
+    const c = coldResumeFixture(123.4);
+    c.__ottMedia.restoreLast();
+    const playback = c.__ottMedia.current();
+    assert.equal(playback.sequence, null);
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 600,
+        type: "position",
+    });
+    // The owned backend translates natural EOS to stop, then passes that
+    // generation to Media; manual Stop does not call the completion hook.
+    c.__ottClassicPlayback.command({ type: "stop" });
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    c.__ottMedia.ended(generation);
+    assert.equal(playback.ended, true);
+    assert.equal(c.documentState().history[0].position, 0);
+    const completed = c.stored[c.journalKey];
+    c.__ottMedia.ended(generation);
+    c.__ottMedia.checkpoint(playback.ref, 600, true);
+    assert.equal(c.stored[c.journalKey], completed);
+    assert.equal(c.calls.filter((call) => call[0] === "play").length, 1);
+    const reopened = coldResumeFixture();
+    Object.assign(reopened.stored, c.stored);
+    assert.equal(reopened.__ottMedia.restoreLast(), false);
+    assert.equal(reopened.resolutions.length, 0);
+});
+
+test("Natural completion clears ordinary standalone films without creating a queue", () => {
+    const c = fixture();
+    c.mediaList("");
+    c.selectMedia(0);
+    const playback = c.__ottMedia.current();
+    assert.equal(playback.sequence, null);
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 600,
+        type: "position",
+    });
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(c.documentState().history[0].position, 0);
+    assert.equal(c.calls.filter((call) => call[0] === "play").length, 1);
+});
+
+test("Standalone completion retains source, generation and natural-EOS ownership", () => {
+    const idle = fixture();
+    idle.__ottMedia.ended(0);
+    for (const action of ["playing", "manual-stop", "source", "generation"]) {
+        const c = coldResumeFixture(123.4);
+        c.__ottMedia.restoreLast();
+        const playback = c.__ottMedia.current();
+        const generation = c.__ottClassicPlayback.snapshot().generation;
+        if (action !== "playing")
+            c.__ottClassicPlayback.command({ type: "stop" });
+        if (action === "source") c.p_pref = "different-account";
+        if (action !== "manual-stop")
+            c.__ottMedia.ended(
+                action === "source" ? generation + 1 : generation
+            );
+        assert(!playback.ended, action);
+        assert.equal(
+            JSON.parse(c.stored[c.journalKey]).history[0].position,
+            123.4,
+            action
+        );
+    }
+});
+
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
 require("./test_media_filter_ownership.cjs");

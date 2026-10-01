@@ -100,6 +100,34 @@ With 1,000 records on each of six pages, opening Filter falls from 54,072 copied
 objects to 18, and Next/Back from 308,395 to 47,133. These are fixture allocation
 counts, not television latency measurements.
 
+Folder playback controls reuse the adapter's owned playback sequence. Shuffle
+copies eligible items, applies the title filter and runs Fisher–Yates once;
+folders and navigation controls never enter the queue. A client may implement
+`canCollect(target)` and `collect(target, done, guard) -> cancel` to fetch the
+complete current folder, reporting `{items}` or `{items: [], error}`. Plex uses
+an independent request owner so collecting pages never replaces the visible
+catalog or cancels playback URL resolution. Search hubs do not promise complete
+flat pagination, so they expose Repeat without Shuffle.
+
+Repeat defaults to All, preserving existing episode playback, and is stored in
+`mediaRepeat.v1:<sourceId>`. One keeps the original queue and repeats its current
+item; Off advances normally but stops at the last item. URLs are resolved afresh
+and automatic playback starts at zero. A pending natural completion can be
+reissued after changing Repeat only while its playback and generation still
+belong to that completion. Stop, Back, source changes and stale PIN/transport
+callbacks cannot re-admit it. A new Shuffle also revokes an older manual resolve
+or PIN intent before collecting its replacement queue.
+
+Plex library-only boot may invoke `restoreLast(onUnavailable)` once on a fresh
+runtime. It reads a valid positive checkpoint from this source's history, resolves
+its stable request and carries an explicit startup position through prepare,
+the playback command and backend open. This bypasses the manual minute-rounded
+confirmation without changing manual resume or zero-offset queue transitions.
+The new visit retains the saved position while loading. Completion clears the
+checkpoint even for a single item without a queue, preventing startup at EOF.
+Source/client, navigation, PIN and playback-generation guards also own the
+unavailable callback; an old failure cannot reopen the library over a newer task.
+
 Request revision and published-view revision have separate lifetimes: refiltering
 and incremental replacement retire old highlight callbacks without invalidating a
 current provider page stream. Selection captures also retain the selected item's

@@ -98,6 +98,11 @@ function classicMediaRuntime(): any {
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
+    var collectionRequest: any = null;
+    var completionRequest: any = null;
+    var restored = false;
+    var repeat = "all";
+    var repeatKey = "mediaRepeat.v1:" + source;
     var screenOwner: any = null;
     var screenRevision = -1;
     function bindScreen() {
@@ -261,6 +266,7 @@ function classicMediaRuntime(): any {
     function project(view: MediaLibraryView, render = true) {
         if (!current()) return;
         (view as any).filter = filterText;
+        decorate(view);
         var frame = view.frame;
         // Provider codecs may append incremental rows to this full-page projection.
         w.mediaRecords = library
@@ -352,6 +358,42 @@ function classicMediaRuntime(): any {
             .replace(/\s+/g, " ")
             .trim();
     }
+    function playable(item: MediaLibraryItem) {
+        var payload = item.payload;
+        return (
+            !payload.__ottMediaFilter &&
+            !payload.__ottMediaRoute &&
+            !payload.playlist_url &&
+            !!(payload.stream_url || payload.request)
+        );
+    }
+    function authorize(item: MediaLibraryItem, proceed: () => void) {
+        if (
+            Number(item.payload.adult) === 1 &&
+            w.sPSchannels &&
+            w.parentPIN !== "*" &&
+            !w.parentAccess
+        )
+            w.enterPinAndSetAccess(proceed);
+        else proceed();
+    }
+    function decorate(view: any) {
+        view.repeat = repeat;
+        view.canRepeat = !!(
+            !view.loading &&
+            view.frame &&
+            view.frame.route.kind === "catalog" &&
+            view.frame.items.some(playable)
+        );
+        view.canShuffle = view.canRepeat && canCollect(view.frame.route.target);
+    }
+    function canCollect(target: any) {
+        return (
+            !mediaClient ||
+            typeof mediaClient.canCollect !== "function" ||
+            mediaClient.canCollect(target)
+        );
+    }
     var libraryPorts = {
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
@@ -423,9 +465,13 @@ function classicMediaRuntime(): any {
         if (cancelNavigationAuto()) library.open(route, reset);
     }
     function sequenceFor(item: MediaLibraryItem) {
-        if (!item.payload.__ottMediaSequence) return null;
-        var frame = library.snapshot("current").frame;
-        if (!frame || frame.route.kind !== "catalog") return null;
+        var frame = item.payload.__ottMediaSequence
+            ? library.snapshot("current").frame
+            : null;
+        if (!frame || frame.route.kind !== "catalog")
+            return repeat === "one" && playable(item)
+                ? { index: 0, items: [item], repeat: repeat }
+                : null;
         var items = frame.items.filter(function (row: MediaLibraryItem) {
             return (
                 row.payload.__ottMediaSequence &&
@@ -437,14 +483,17 @@ function classicMediaRuntime(): any {
         items.forEach(function (row: MediaLibraryItem, position: number) {
             if (row.ref.itemId === item.ref.itemId) index = position;
         });
-        return index < 0 ? null : { index: index, items: items };
+        return index < 0
+            ? null
+            : { index: index, items: items, repeat: repeat };
     }
     function resolve(
         item: MediaLibraryItem,
         sequence: any = null,
         automatic = false,
         guard: () => boolean = current,
-        dispatched?: () => void
+        dispatched?: () => void,
+        startup?: { position: number; unavailable(): void }
     ) {
         if (!automatic && !cancelNavigationAuto()) return;
         var request = {};
@@ -508,14 +557,19 @@ function classicMediaRuntime(): any {
                 };
             },
             function (payload: any) {
-                if (!valid() || !payload) return;
+                if (!valid()) return;
                 if (automatic) automaticRequest = null;
+                if (!payload) {
+                    if (startup) startup.unavailable();
+                    return;
+                }
                 if (!automatic && typeof w.closeList === "function")
                     w.closeList();
                 var start = {
                     automatic: automatic,
                     ref: item.ref,
                     sequence: sequence,
+                    startup: startup,
                     valid: guard,
                 };
                 var previousPlayback = mediaClassicPlayback;
@@ -558,9 +612,13 @@ function classicMediaRuntime(): any {
         },
         cancelAuto: function () {
             automaticGeneration++;
-            if (!automaticRequest) return;
+            completionRequest = null;
+            var collecting = collectionRequest;
+            collectionRequest = null;
+            var resolving = automaticRequest;
             automaticRequest = null;
-            automaticLibrary.cancel();
+            if (resolving) automaticLibrary.cancel();
+            if (collecting && collecting.cancel) collecting.cancel();
         },
         capture: function () {
             var valid = library.capture();
@@ -611,6 +669,55 @@ function classicMediaRuntime(): any {
                 collections();
             }
         },
+        cycleRepeat: function () {
+            var admitted = library.capture();
+            var completion = completionRequest;
+            var reschedule =
+                completion && automaticRequest && completion.valid();
+            api.cancelAuto();
+            var revision = automaticGeneration;
+            if (!current() || !admitted()) return;
+            repeat =
+                repeat === "all" ? "one" : repeat === "one" ? "off" : "all";
+            if (mediaClassicPlayback && mediaClassicPlayback.runtime === api) {
+                var playback = mediaClassicPlayback;
+                if (!playback.sequence) {
+                    var payload = copy(playback.payload);
+                    payload.__ottMediaRefresh = true;
+                    playback.sequence = {
+                        index: 0,
+                        items: [
+                            {
+                                payload: payload,
+                                ref: copy(playback.ref),
+                                title: String(playback.payload.title || ""),
+                            },
+                        ],
+                    };
+                }
+                playback.sequence.repeat = repeat;
+            }
+            try {
+                if (typeof set === "function") set.call(w, repeatKey, repeat);
+            } catch (_) {
+                // Playback controls remain usable when optional persistence fails.
+            }
+            if (current() && admitted()) library.show();
+            if (
+                reschedule &&
+                current() &&
+                admitted() &&
+                automaticGeneration === revision &&
+                mediaClassicPlayback === completion.playback &&
+                w.__ottClassicPlayback.snapshot().generation ===
+                    completion.generation
+            ) {
+                // Only the pending natural completion is re-admitted. Old
+                // resolver/PIN callbacks retain their cancelled generation.
+                completion.playback.ended = false;
+                api.ended(completion.generation);
+            }
+        },
         ended: function (generation: number) {
             var playback = mediaClassicPlayback;
             var sequence = playback && playback.sequence;
@@ -629,32 +736,53 @@ function classicMediaRuntime(): any {
                     state.target.channelId === playback.ref.itemId
                 );
             }
-            if (!sequence || playback.ended || !valid()) return;
+            if (!playback || playback.ended || !valid()) return;
             playback.ended = true;
-            api.cancelAuto();
+            // A completed standalone item also loses its resume checkpoint.
+            // It must not cancel a new shuffle being collected in parallel.
+            if (sequence) api.cancelAuto();
             revision = automaticGeneration;
-            automaticRequest = {};
             var admitted = library.capture();
             api.checkpoint(playback.ref, 0, true);
-            var index = (sequence.index + 1) % sequence.items.length;
+            if (!sequence || !admitted() || !valid()) return;
+            var mode = sequence.repeat || "all";
+            if (
+                !sequence.items.length ||
+                (mode === "off" && sequence.index + 1 >= sequence.items.length)
+            )
+                return;
+            automaticRequest = {};
+            var completion = {
+                generation: generation,
+                playback: playback,
+                valid: function () {
+                    return admitted() && valid();
+                },
+            };
+            completionRequest = completion;
+            var index =
+                mode === "one"
+                    ? sequence.index
+                    : (sequence.index + 1) % sequence.items.length;
             var item = sequence.items[index];
             function proceed() {
                 if (admitted() && valid())
                     resolve(
                         item,
-                        { index: index, items: sequence.items },
+                        {
+                            index: index,
+                            items: sequence.items,
+                            repeat: mode,
+                        },
                         true,
-                        valid
+                        valid,
+                        function () {
+                            if (completionRequest === completion)
+                                completionRequest = null;
+                        }
                     );
             }
-            if (
-                Number(item.payload.adult) === 1 &&
-                w.sPSchannels &&
-                w.parentPIN !== "*" &&
-                !w.parentAccess
-            )
-                w.enterPinAndSetAccess(proceed);
-            else proceed();
+            authorize(item, proceed);
         },
         favorite: function (payload: any) {
             if (payload.__ottMediaFilter) return;
@@ -837,7 +965,10 @@ function classicMediaRuntime(): any {
             })[0];
             if (!admitted()) return null;
             item.payload.stream_url = url;
-            journal.change("visit", entry(item));
+            journal.change(
+                "visit",
+                entry(item, start && start.startup ? start.startup.position : 0)
+            );
             if (!admitted()) return null;
             collections();
             if (!admitted()) return null;
@@ -864,12 +995,15 @@ function classicMediaRuntime(): any {
                 item: item.payload,
                 ref: item.ref,
                 resume:
-                    start && start.automatic
-                        ? 0
-                        : w.OttPlayCore.mediaResumePosition(
-                              previous ? previous.position : 0,
-                              60
-                          ),
+                    start && start.startup
+                        ? start.startup.position
+                        : start && start.automatic
+                          ? 0
+                          : w.OttPlayCore.mediaResumePosition(
+                                previous ? previous.position : 0,
+                                60
+                            ),
+                resumeStartup: !!(start && start.startup),
                 valid: function () {
                     return (
                         current() &&
@@ -879,6 +1013,71 @@ function classicMediaRuntime(): any {
                 },
             };
         },
+        restoreLast: function (onUnavailable?: () => void) {
+            if (!current() || restored) return false;
+            restored = true;
+            if (
+                w.sFavorites === -1 ||
+                !limit() ||
+                !mediaClient ||
+                !mediaClient.stableRequests ||
+                typeof mediaClient.resolve !== "function" ||
+                (mediaClassicPlayback && mediaClassicPlayback.runtime === api)
+            )
+                return false;
+            var saved = journal.read();
+            var row = saved.document.history[0];
+            if (
+                !current() ||
+                !saved.writable ||
+                !row ||
+                row.sourceId !== source ||
+                !isFinite(row.position) ||
+                row.position <= 0 ||
+                !row.payload.request
+            )
+                return false;
+            var payload = copy(row.payload);
+            payload.__ottMediaRef = { itemId: row.itemId, sourceId: source };
+            payload.__ottMediaRefresh = true;
+            var item = describe([payload], { kind: "history", title: "" })[0];
+            if (!playable(item)) return false;
+            var admitted = library.capture();
+            var revision = automaticGeneration + 1;
+            api.cancelAuto();
+            if (!current() || !admitted() || revision !== automaticGeneration)
+                return true;
+            if (typeof w.__ottClassicPlayback.reconcile === "function")
+                w.__ottClassicPlayback.reconcile();
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            function valid() {
+                return (
+                    current() &&
+                    mediaClient === classicMediaClient() &&
+                    admitted() &&
+                    revision === automaticGeneration &&
+                    w.__ottClassicPlayback.snapshot().generation === generation
+                );
+            }
+            function unavailable() {
+                if (valid() && onUnavailable) onUnavailable();
+            }
+            authorize(item, function () {
+                if (!valid()) return;
+                try {
+                    resolve(item, sequenceFor(item), true, valid, undefined, {
+                        position: row.position,
+                        unavailable: unavailable,
+                    });
+                } catch (_) {
+                    if (valid()) {
+                        automaticRequest = null;
+                        unavailable();
+                    }
+                }
+            });
+            return true;
+        },
         restoreProjection: function () {
             collections();
             project(library.snapshot("none"), false);
@@ -887,6 +1086,8 @@ function classicMediaRuntime(): any {
             var item = library.select(index);
             if (!item) return;
             var admitted = api.capture();
+            api.cancelAuto();
+            if (!admitted()) return;
             function proceed() {
                 if (!admitted()) return;
                 var payload = item.payload;
@@ -912,24 +1113,173 @@ function classicMediaRuntime(): any {
                     resolve(item, sequenceFor(item));
                 else if (w.infoMedia) w.infoMedia();
             }
-            if (
-                Number(item.payload.adult) === 1 &&
-                w.sPSchannels &&
-                w.parentPIN !== "*" &&
-                !w.parentAccess
-            )
-                w.enterPinAndSetAccess(proceed);
-            else proceed();
+            authorize(item, proceed);
         },
         show: library.show,
+        shufflePlay: function () {
+            var view = library.snapshot("none");
+            var frame = view.frame;
+            if (
+                !current() ||
+                view.loading ||
+                !frame ||
+                frame.route.kind !== "catalog"
+            )
+                return;
+            if (!canCollect(frame.route.target)) return;
+            var admitted = library.capture();
+            var revision = automaticGeneration + 1;
+            api.cancelAuto();
+            if (!current() || !admitted() || automaticGeneration !== revision)
+                return;
+            var cancelledView = library.revision();
+            library.cancel();
+            // Revoke manual resolver/PIN ownership too, without changing the
+            // frame. An abort callback may navigate elsewhere synchronously.
+            if (
+                !current() ||
+                library.revision() !== cancelledView + 1 ||
+                automaticGeneration !== revision
+            )
+                return;
+            // cancel() changes the revision captured by screen disposal and UI
+            // highlight callbacks. Rebind both before admitting async work.
+            library.show();
+            if (
+                !current() ||
+                library.revision() !== cancelledView + 1 ||
+                automaticGeneration !== revision
+            )
+                return;
+            admitted = library.capture();
+            // This explicit new queue replaces the old queue's future EOS action,
+            // while its currently playing video continues during collection.
+            if (mediaClassicPlayback && mediaClassicPlayback.runtime === api)
+                mediaClassicPlayback.sequence = null;
+            var viewRevision = library.revision();
+            if (typeof w.__ottClassicPlayback.reconcile === "function")
+                w.__ottClassicPlayback.reconcile();
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            var ticket: any = { cancel: null };
+            collectionRequest = ticket;
+            var received = false;
+            var query = normalizedFilter(filterText);
+            function valid() {
+                return (
+                    current() &&
+                    admitted() &&
+                    automaticGeneration === revision &&
+                    library.revision() === viewRevision &&
+                    w.__ottClassicPlayback.snapshot().generation === generation
+                );
+            }
+            function accept(result: any) {
+                if (received || collectionRequest !== ticket || !valid())
+                    return;
+                received = true;
+                collectionRequest = null;
+                var items: MediaLibraryItem[] = [];
+                if (result && !result.error && Array.isArray(result.items)) {
+                    var seen: { [key: string]: boolean } = Object.create(null);
+                    items = describe(result.items, frame!.route).filter(
+                        function (item) {
+                            if (
+                                !playable(item) ||
+                                (query &&
+                                    normalizedFilter(item.title).indexOf(
+                                        query
+                                    ) === -1) ||
+                                seen[item.ref.itemId]
+                            )
+                                return false;
+                            seen[item.ref.itemId] = true;
+                            return true;
+                        }
+                    );
+                }
+                if (!items.length) {
+                    if (typeof w.infoBox === "function")
+                        w.infoBox(
+                            w._(
+                                result && !result.error
+                                    ? "Nothing to play"
+                                    : "Unable to load playlist"
+                            )
+                        );
+                    return;
+                }
+                for (var index = items.length - 1; index > 0; index--) {
+                    var selected = Math.floor(Math.random() * (index + 1));
+                    var item = items[index];
+                    items[index] = items[selected];
+                    items[selected] = item;
+                }
+                function proceed() {
+                    if (!valid()) return;
+                    resolve(
+                        items[0],
+                        {
+                            index: 0,
+                            items: items,
+                            repeat: repeat,
+                            replace: true,
+                        },
+                        true,
+                        valid,
+                        function () {
+                            if (typeof w.closeList === "function")
+                                w.closeList();
+                        }
+                    );
+                }
+                authorize(items[0], proceed);
+            }
+            var client = classicMediaClient();
+            if (client && typeof client.collect === "function") {
+                try {
+                    var cancel = client.collect(
+                        frame.route.target,
+                        accept,
+                        valid
+                    );
+                    if (typeof cancel === "function") {
+                        if (
+                            !received &&
+                            collectionRequest === ticket &&
+                            valid()
+                        )
+                            ticket.cancel = cancel;
+                        else if (!received) cancel();
+                    }
+                } catch (_) {
+                    accept({ error: true });
+                }
+            } else
+                accept({
+                    items: library.catalog().map(function (
+                        item: MediaLibraryItem
+                    ) {
+                        return item.payload;
+                    }),
+                });
+        },
         snapshot: function () {
             var view = library.snapshot();
             view.filter = filterText;
+            decorate(view);
             return view;
         },
         sourceId: source,
     };
     mediaClassicInstance = api;
+    try {
+        var savedRepeat =
+            typeof get === "function" ? get.call(w, repeatKey) : null;
+        if (current() && /^(all|one|off)$/.test(savedRepeat || ""))
+            repeat = savedRepeat;
+    } catch (_) {
+        // Missing storage or old settings retain the legacy repeat-all default.
+    }
     collections();
     return api;
 }
@@ -975,6 +1325,9 @@ function classicMediaRuntime(): any {
                 mediaClassicPlayback.ref.sourceId === classicMediaSourceId())
             ? mediaClassicPlayback
             : null;
+    },
+    cycleRepeat: function () {
+        classicMediaRuntime().cycleRepeat();
     },
     ended: function (generation: number) {
         if (mediaClassicInstance) mediaClassicInstance.ended(generation);
@@ -1023,11 +1376,17 @@ function classicMediaRuntime(): any {
     prepare: function (item: any, url: string) {
         return classicMediaRuntime().prepare(item, url);
     },
+    restoreLast: function (onUnavailable?: () => void) {
+        return classicMediaRuntime().restoreLast(onUnavailable);
+    },
     select: function (index: number) {
         classicMediaRuntime().select(index);
     },
     show: function () {
         classicMediaRuntime().show();
+    },
+    shufflePlay: function () {
+        classicMediaRuntime().shufflePlay();
     },
     snapshot: function () {
         return classicMediaRuntime().snapshot();

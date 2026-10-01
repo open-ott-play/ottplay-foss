@@ -100,6 +100,7 @@ var keyStrings = {
         "Skrin hitam semasa menukar saluran",
     Blue: "Biru",
     "Bookmark age: %1 days": "Usia penanda: %1 hari",
+    "Browse folders": "Semak imbas folder",
     "Buffer Size, s": "Saiz penimbal, s",
     "Built-in playlist:": "Senarai main terbina dalam:",
     "Built-in playlists": "Senarai main terbina dalam",
@@ -559,6 +560,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Jangan kecilkan video apabila memaparkan senarai (pembaikan pepijat)",
     Nothing: "Tiada",
+    "Nothing to play": "Tiada video untuk dimainkan",
     "Number of next TV programs in channel list":
         "Bilangan rancangan seterusnya dalam senarai saluran",
     "Number of rows in lists": "Bilangan baris dalam senarai",
@@ -671,6 +673,9 @@ var keyStrings = {
     "Rename category": "Namakan semula kategori",
     "Rename to": "Namakan semula kepada",
     "Repeat parental code": "Masukkan semula kod ibu bapa",
+    "Repeat: All": "Ulang: semua",
+    "Repeat: Off": "Ulang: dimatikan",
+    "Repeat: One": "Ulang: satu",
     "Request sended!": "Permintaan dihantar!",
     "Requesting approval for %1": "Meminta kelulusan untuk %1",
     "Restart player": "Mulakan semula pemain",
@@ -767,6 +772,7 @@ var keyStrings = {
     "Show when changing program": "Tunjukkan apabila rancangan berubah",
     "Show when rewind": "Tunjukkan semasa mengundur",
     "Show when switching": "Tunjukkan apabila menukar saluran",
+    "Shuffle and play": "Mainkan secara rawak",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -837,6 +843,9 @@ var keyStrings = {
     transparent: "lutsinar",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Tetapan ULTIFL1X",
+    "Unable to load playlist": "Tidak dapat memuatkan senarai main",
+    Untitled: "Tanpa tajuk",
+    "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":
         "Kemas kini dipasang. Sila mulakan semula OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

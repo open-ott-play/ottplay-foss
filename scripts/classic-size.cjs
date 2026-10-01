@@ -56,7 +56,13 @@ const { gzipSync } = require("node:zlib");
 // EPG changes, web measures 627267 / 190842 and native 627225 / 190902. Allocate
 // this reviewed lifecycle cost while retaining release-version headroom.
 // NAS discovery and per-client Plex add bounded library boot and playback routing.
-const BUDGET = Object.freeze({ bytes: 635950, gzipBytes: 193850 });
+// Folder shuffle and explicit repeat add owned collection/EOS transitions,
+// parental checks and source-scoped preference storage. Keep those guards;
+// Plex pagination stays in its optional provider asset. Account for this
+// reviewed feature cost: Node 26.8.2 web 640894 / 194762 gzip, native
+// 640852 / 194822; retain native, Node 22 and release suffix headroom.
+// This includes exact Plex cold resume, its guarded startup intent and exit flush.
+const BUDGET = Object.freeze({ bytes: 641300, gzipBytes: 195600 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -84,7 +90,10 @@ const BUDGET = Object.freeze({ bytes: 635950, gzipBytes: 193850 });
 // and 692709 / 215730 for native on Node 22.23.2. Provider assets are unchanged;
 // retain the complete-payload guard and release-version headroom.
 // Include direct Plex catalogs, PIN sign-in, roaming connections and session cleanup.
-const TOTAL_BUDGET = Object.freeze({ bytes: 728450, gzipBytes: 228200 });
+// Include bounded, independently cancellable Plex folder collection and title
+// fallbacks in the complete payload: web 733963 / 229802 gzip, native
+// 733921 / 229862, retaining comparable complete-payload headroom.
+const TOTAL_BUDGET = Object.freeze({ bytes: 736500, gzipBytes: 231000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

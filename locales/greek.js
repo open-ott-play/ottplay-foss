@@ -100,6 +100,7 @@ var keyStrings = {
         "Μαύρη οθόνη κατά την αλλαγή καναλιών",
     Blue: "Μπλε",
     "Bookmark age: %1 days": "Ηλικία σελιδοδείκτη: %1 ημέρες",
+    "Browse folders": "Περιήγηση σε φακέλους",
     "Buffer Size, s": "Μέγεθος buffer, s",
     "Built-in playlist:": "Ενσωματωμένη λίστα αναπαραγωγής:",
     "Built-in playlists": "Ενσωματωμένες λίστες αναπαραγωγής",
@@ -573,6 +574,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Να μη μικραίνει το βίντεο κατά την εμφάνιση της λίστας (διόρθωση σφάλματος)",
     Nothing: "Τίποτα",
+    "Nothing to play": "Δεν υπάρχουν βίντεο για αναπαραγωγή",
     "Number of next TV programs in channel list":
         "Αριθμός επόμενων εκπομπών στη λίστα καναλιών",
     "Number of rows in lists": "Αριθμός γραμμών στις λίστες",
@@ -688,6 +690,9 @@ var keyStrings = {
     "Rename category": "Μετονομασία κατηγορίας",
     "Rename to": "Μετονομασία σε",
     "Repeat parental code": "Εισαγάγετε ξανά τον γονικό κωδικό",
+    "Repeat: All": "Επανάληψη: όλα",
+    "Repeat: Off": "Επανάληψη: ανενεργή",
+    "Repeat: One": "Επανάληψη: ένα",
     "Request sended!": "Το αίτημα στάλθηκε!",
     "Requesting approval for %1": "Αίτημα έγκρισης για %1",
     "Restart player": "Επανεκκίνηση προγράμματος αναπαραγωγής",
@@ -787,6 +792,7 @@ var keyStrings = {
     "Show when changing program": "Εμφάνιση κατά την αλλαγή εκπομπής",
     "Show when rewind": "Εμφάνιση κατά τη μετακίνηση πίσω",
     "Show when switching": "Εμφάνιση κατά την αλλαγή καναλιών",
+    "Shuffle and play": "Ανακάτεμα και αναπαραγωγή",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -858,6 +864,10 @@ var keyStrings = {
     transparent: "διαφανές",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ρυθμίσεις ULTIFL1X",
+    "Unable to load playlist":
+        "Δεν ήταν δυνατή η φόρτωση της λίστας αναπαραγωγής",
+    Untitled: "Χωρίς τίτλο",
+    "Untitled folder": "Φάκελος χωρίς όνομα",
     "Update installed. Please restart OttPlay FOSS.":
         "Η ενημέρωση εγκαταστάθηκε. Επανεκκινήστε το OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

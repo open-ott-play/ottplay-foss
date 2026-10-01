@@ -52,8 +52,10 @@ function fixture(config = {}, capabilities = {}) {
         events = new Map(),
         keepalive = [],
         messages = [],
-        intervals = new Map();
+        intervals = new Map(),
+        timers = new Map();
     let next = 0,
+        clock = Date.now(),
         active = true;
     const host = {
         $: {
@@ -85,6 +87,9 @@ function fixture(config = {}, capabilities = {}) {
         clearInterval(id) {
             intervals.delete(id);
         },
+        clearTimeout(id) {
+            timers.delete(id);
+        },
         DOMParser: xmlParser,
         document: {
             createElement: () => ({
@@ -113,13 +118,22 @@ function fixture(config = {}, capabilities = {}) {
             intervals.set(++next, { delay, run });
             return next;
         },
+        setTimeout(run) {
+            timers.set(++next, run);
+            return next;
+        },
     };
     const helpers = vm.createContext({});
     vm.runInContext(
         sourceFunctions("src/utils/helpers.ts", ["metadataText"]),
         helpers
     );
-    const context = { exports: {}, require: () => helpers, window: host };
+    const context = {
+        Date: { now: () => clock },
+        exports: {},
+        require: () => helpers,
+        window: host,
+    };
     vm.runInNewContext(compiled, context);
     const api = {
         createPlexClient: host.__ottPlex.create,
@@ -130,6 +144,9 @@ function fixture(config = {}, capabilities = {}) {
         { isCurrent: () => active, sourceId: source }
     );
     return {
+        advance(milliseconds) {
+            clock += milliseconds;
+        },
         api,
         client,
         events,
@@ -141,6 +158,12 @@ function fixture(config = {}, capabilities = {}) {
         retire() {
             active = false;
         },
+        tick() {
+            const pending = [...timers.values()];
+            timers.clear();
+            pending.forEach((run) => run());
+        },
+        timers,
     };
 }
 let passed = 0;
@@ -246,6 +269,7 @@ test("JSON and XML folders recurse through Plex keys and shows/seasons retain st
         f.host.mediaRecords[0].playlist_url.path,
         "/library/sections/1/folder"
     );
+    assert.equal(f.host.mediaRecords[0].title, "Browse folders");
     assert.equal(
         f.host.mediaRecords[1].playlist_url.path,
         "/library/metadata/10/children"
@@ -270,6 +294,423 @@ test("JSON and XML folders recurse through Plex keys and shows/seasons retain st
     assert.equal(f.host.mediaRecords[0].request.path, "/library/metadata/42");
     assert.equal(f.host.mediaRecords[0].__ottMediaSequence, true);
     assert(!f.host.mediaRecords[0].description.includes("<script>"));
+});
+
+test("catalog labels stay nonblank without exposing filesystem parents or changing paging", () => {
+    const f = fixture();
+    f.client.load(
+        { path: "/library/sections/1/all", plexSource: source },
+        () => {}
+    );
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                {
+                    name: " Name\t label ",
+                    ratingKey: "1",
+                    title: " \n ",
+                    type: "movie",
+                },
+                {
+                    originalTitle: " Original ",
+                    ratingKey: "2",
+                    titleSort: "Sort",
+                    type: "movie",
+                },
+                { ratingKey: "3", titleSort: " Sort ", type: "movie" },
+                {
+                    Media: [{ Part: [{ file: "/private/parents/File.mp4" }] }],
+                    ratingKey: "4",
+                    type: "movie",
+                },
+                {
+                    Media: [
+                        { Part: [{ file: "C:\\private\\parents\\Other.mkv" }] },
+                    ],
+                    ratingKey: "5",
+                    type: "movie",
+                },
+                {
+                    Media: [
+                        {
+                            Part: [
+                                { file: "https://host.invalid/private/token" },
+                            ],
+                        },
+                    ],
+                    ratingKey: "6",
+                    type: "movie",
+                },
+                { key: "/library/sections/1/folder?parent=2", title: "\t" },
+                { ratingKey: "7", title: "", type: "episode" },
+            ],
+            size: 8,
+            totalSize: 9,
+        },
+    });
+    assert.deepEqual(
+        Array.from(f.host.mediaRecords, (row) => row.title),
+        [
+            "Browse folders",
+            "Name label",
+            "Original",
+            "Sort",
+            "File.mp4",
+            "Other.mkv",
+            "Untitled",
+            "Untitled folder",
+            "Untitled",
+            "Next",
+        ]
+    );
+    assert.equal(f.host.mediaRecords.at(-1).playlist_url.offset, 8);
+    assert.equal(
+        f.host.mediaRecords[7].playlist_url.path,
+        "/library/sections/1/folder?parent=2"
+    );
+    assert(!JSON.stringify(f.host.mediaRecords).includes("private"));
+    f.client.load("", () => {});
+    last(f).reply({
+        MediaContainer: {
+            Directory: [{ key: "1", title: "  ", type: "movie" }],
+        },
+    });
+    assert.equal(
+        f.host.mediaRecords[0].title,
+        "Untitled folder",
+        "an unnamed movie library is a directory, not a playable movie"
+    );
+});
+
+test("collection capability uses the same flat route contract as collection", () => {
+    const f = fixture();
+    for (const target of [
+        "",
+        null,
+        undefined,
+        { path: "/library/sections", plexSource: source },
+        { offset: 200, path: "/library/sections/1/all", plexSource: source },
+        { path: "/library/sections/1/folder?parent=17", plexSource: source },
+        { path: "/library/metadata/42/children", plexSource: source },
+    ]) {
+        assert.equal(f.client.canCollect(target), true);
+        const count = f.requests.length;
+        let result;
+        f.client.collect(target, (value) => (result = value));
+        assert.equal(f.requests.length, count + 1);
+        last(f).reply({ MediaContainer: { size: 0, totalSize: 0 } });
+        assert.equal(result.error, undefined);
+    }
+    for (const target of [
+        "plexsearch?search=film",
+        { path: "/hubs/search", plexSource: source, query: "film" },
+        { path: "/library/metadata/42", plexSource: source },
+        { path: "/library/parts/1/file.mp4", plexSource: source },
+        { path: "/library/sections/1/all", plexSource: "other" },
+        {
+            path: "/library/sections/1/all?X-Plex-Token=other",
+            plexSource: source,
+        },
+    ]) {
+        const count = f.requests.length;
+        assert.equal(f.client.canCollect(target), false);
+        let result;
+        f.client.collect(target, (value) => (result = value));
+        assert.equal(result.error, "Unable to load playlist");
+        assert.equal(f.requests.length, count);
+    }
+});
+
+test("collection starts at zero, deduplicates flat playable pages and does not disturb a visible load", () => {
+    const f = fixture();
+    f.client.load("", () => {});
+    const navigation = last(f);
+    const projection = f.host.mediaRecords;
+    let result;
+    f.client.collect(
+        {
+            offset: 400,
+            path: "/library/sections/1/folder?parent=17",
+            plexSource: source,
+        },
+        (value) => (result = value)
+    );
+    assert.equal(last(f).options.headers["X-Plex-Container-Start"], "0");
+    assert.equal(parsed(f).searchParams.get("parent"), "17");
+    assert.equal(navigation.aborted, false);
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                { ratingKey: "42", title: "Film", type: "movie" },
+                { key: "/library/sections/1/folder?parent=18", title: "Child" },
+                { ratingKey: "43", title: "Episode", type: "episode" },
+            ],
+            offset: 0,
+            size: 3,
+            totalSize: 5,
+        },
+    });
+    assert.equal(result, undefined);
+    assert.equal(f.host.mediaRecords, projection);
+    f.tick();
+    assert.equal(last(f).options.headers["X-Plex-Container-Start"], "3");
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                { ratingKey: "43", title: "Duplicate", type: "episode" },
+                { ratingKey: "44", title: "Track", type: "track" },
+            ],
+            offset: 3,
+            size: 2,
+            totalSize: 5,
+        },
+    });
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+        Array.from(result.items, (row) => row.request.path),
+        ["/library/metadata/42", "/library/metadata/43", "/library/metadata/44"]
+    );
+    assert(
+        result.items.every(
+            (row) => row.stream_url === "plex:request" && !row.playlist_url
+        )
+    );
+    assert.equal(
+        f.requests.length,
+        3,
+        "does not recurse into the child directory"
+    );
+    navigation.reply({
+        MediaContainer: {
+            Directory: [{ key: "1", title: "Library", type: "movie" }],
+        },
+    });
+    assert.equal(
+        f.host.mediaRecords[0].title,
+        "Library",
+        "collection did not invalidate the navigation revision"
+    );
+});
+
+test("unknown totals require an empty terminal page and incomplete collections never return partial items", () => {
+    const target = { path: "/library/sections/1/all", plexSource: source };
+    const row = { ratingKey: "42", title: "Film", type: "movie" };
+    const f = fixture();
+    let result;
+    f.client.collect(target, (value) => (result = value));
+    last(f).reply({ MediaContainer: { Metadata: [row], size: 1 } });
+    assert.equal(
+        result,
+        undefined,
+        "short pages without a total do not prove completeness"
+    );
+    f.tick();
+    assert.equal(last(f).options.headers["X-Plex-Container-Start"], "1");
+    last(f).reply({ MediaContainer: { Metadata: [], size: 0 } });
+    assert.equal(result.items.length, 1);
+    for (const broken of [
+        { Metadata: [row], offset: 0, size: 1, totalSize: 2 }, // repeated page/ignored offset
+        { Metadata: [], offset: 1, size: 0, totalSize: 2 }, // promised data missing
+        {
+            Metadata: [{ ...row, ratingKey: "43" }],
+            offset: 1,
+            size: 1,
+            totalSize: 3,
+        }, // snapshot changes
+        { Metadata: [row], offset: 1, size: 2, totalSize: 2 }, // inconsistent size
+    ]) {
+        const g = fixture();
+        let failed;
+        g.client.collect(target, (value) => (failed = value));
+        last(g).reply({
+            MediaContainer: {
+                Metadata: [row],
+                offset: 0,
+                size: 1,
+                totalSize: 2,
+            },
+        });
+        g.tick();
+        last(g).reply({ MediaContainer: broken });
+        assert.equal(failed.error, "Unable to load playlist");
+        assert.equal(failed.items.length, 0);
+        assert.equal(g.timers.size, 0);
+    }
+    const g = fixture();
+    let failed;
+    g.client.collect(target, (value) => (failed = value));
+    last(g).reply({
+        MediaContainer: { Metadata: [row], size: 1, totalSize: 100001 },
+    });
+    assert.equal(failed.items.length, 0);
+    assert.equal(failed.error, "Unable to load playlist");
+});
+
+test("collection cancellation, profile retirement and overlapping requests suppress late results", () => {
+    const target = {
+        path: "/library/metadata/10/children",
+        plexSource: source,
+    };
+    const page = {
+        MediaContainer: {
+            Metadata: [{ ratingKey: "42", title: "Episode", type: "episode" }],
+            size: 1,
+            totalSize: 2,
+        },
+    };
+    for (const method of [
+        "returned",
+        "dispose",
+        "pagehide",
+        "guard",
+        "supersede",
+    ]) {
+        const f = fixture();
+        let callbacks = 0,
+            allowed = true;
+        const cancel = f.client.collect(
+            target,
+            () => callbacks++,
+            () => allowed
+        );
+        const request = last(f);
+        if (method === "returned") cancel();
+        if (method === "dispose") f.client.dispose();
+        if (method === "pagehide") f.events.get("pagehide")();
+        if (method === "guard") allowed = false;
+        if (method === "supersede") f.client.collect(target, () => {});
+        request.reply(page);
+        f.tick();
+        assert.equal(callbacks, 0, method);
+        assert.equal(request.aborted, true, method);
+    }
+    const f = fixture();
+    let callbacks = 0;
+    const cancel = f.client.collect(target, () => callbacks++);
+    last(f).reply(page);
+    assert.equal(f.timers.size, 1);
+    cancel();
+    f.tick();
+    assert.equal(f.requests.length, 1);
+    assert.equal(callbacks, 0);
+    assert.equal(f.host.mediaName, "untouched");
+});
+
+test("collection transport errors and unsupported targets fail safely without partial queues", () => {
+    const f = fixture();
+    let result;
+    f.client.collect(
+        { path: "/library/sections/1/all", plexSource: source },
+        (value) => (result = value)
+    );
+    last(f).fail();
+    assert.equal(result.error, "Unable to load playlist");
+    assert.equal(result.items.length, 0);
+    assert(!JSON.stringify(result).includes(token));
+    for (const target of [
+        "plexsearch?search=film",
+        { path: "/hubs/search", plexSource: source, query: "film" },
+        { path: "/library/parts/1/file", plexSource: source },
+        { path: "/library/sections/1/all", plexSource: "other" },
+    ]) {
+        const count = f.requests.length;
+        f.client.collect(target, (value) => (result = value));
+        assert.equal(result.error, "Unable to load playlist");
+        assert.equal(f.requests.length, count);
+    }
+});
+
+test("collection time, page and retained data budgets fail closed", () => {
+    const target = { path: "/library/sections/1/all", plexSource: source };
+    const timed = fixture();
+    let expired;
+    timed.client.collect(target, (value) => (expired = value));
+    assert.equal(last(timed).options.timeout, 30000);
+    timed.advance(120001);
+    last(timed).reply({ MediaContainer: { size: 0, totalSize: 0 } });
+    assert.equal(expired.error, "Unable to load playlist");
+    assert.equal(expired.items.length, 0);
+
+    const paged = fixture();
+    let limited;
+    paged.client.collect(target, (value) => (limited = value));
+    for (let index = 0; index < 1000; index++) {
+        last(paged).reply({
+            MediaContainer: {
+                Directory: [
+                    { key: "/library/metadata/" + index, title: "Folder" },
+                ],
+                offset: index,
+                size: 1,
+                totalSize: 1001,
+            },
+        });
+        paged.tick();
+    }
+    assert.equal(limited.error, "Unable to load playlist");
+    assert.equal(limited.items.length, 0);
+    assert.equal(paged.requests.length, 1000);
+
+    const large = fixture();
+    let overflow;
+    large.client.collect(target, (value) => (overflow = value));
+    for (let index = 0; index < 2; index++) {
+        last(large).reply({
+            MediaContainer: {
+                Metadata: [
+                    {
+                        ratingKey: String(index + 1),
+                        summary: "x".repeat(5 * 1024 * 1024),
+                        title: "Film",
+                        type: "movie",
+                    },
+                ],
+                offset: index,
+                size: 1,
+                totalSize: 2,
+            },
+        });
+        large.tick();
+    }
+    assert.equal(overflow.error, "Unable to load playlist");
+    assert.equal(overflow.items.length, 0);
+});
+
+test("synchronous collection responses yield between pages and navigation cancellation stays separate", () => {
+    const f = fixture();
+    const pages = [];
+    f.host.$.ajax = (options) => {
+        const offset = Number(options.headers["X-Plex-Container-Start"]);
+        pages.push(offset);
+        options.success({
+            MediaContainer: {
+                Metadata: [
+                    {
+                        ratingKey: String(offset + 1),
+                        title: "Film",
+                        type: "movie",
+                    },
+                ],
+                offset,
+                size: 1,
+                totalSize: 2,
+            },
+        });
+        return {
+            abort: () => assert.fail("completed request must not be aborted"),
+        };
+    };
+    let result;
+    f.client.collect(
+        { path: "/library/sections/1/all", plexSource: source },
+        (value) => (result = value)
+    );
+    assert.deepEqual(pages, [0]);
+    f.client.cancel();
+    f.tick();
+    assert.deepEqual(pages, [0, 1]);
+    assert.equal(result.items.length, 2);
+    assert.equal(f.host.mediaName, "untouched");
 });
 
 test("search pages flattened hub media locally and metadata uses PMS pagination headers", () => {
@@ -406,6 +847,103 @@ test("unknown native codec falls back to negotiated HLS and cancellation owns th
     assert.equal(played, false);
     assert.equal(f.intervals.size, 0);
     assert.equal(parsed(f).pathname, "/video/:/transcode/universal/stop");
+});
+
+test("resolution failures return null once so cold restore can fall back to its catalog", () => {
+    const cases = [
+        { item: null },
+        { item: { ...film, plexSource: "another-account" } },
+        { item: { ...film, request: { path: "/library/metadata/../admin" } } },
+        { reply: { MediaContainer: {} } },
+        { reply: metadata({ Part: [] }) },
+        {
+            reply: metadata({
+                Part: [{ key: "https://foreign.invalid/file" }],
+            }),
+        },
+        { reply: "<!DOCTYPE MediaContainer><MediaContainer/>" },
+        { fail: true },
+        { decision: { MediaContainer: { transcodeDecisionCode: 2001 } } },
+        { decision: "<broken" },
+        { decisionFail: true },
+    ];
+    for (const scenario of cases) {
+        const f = fixture();
+        const resolved = [];
+        f.client.resolve(
+            Object.hasOwn(scenario, "item") ? scenario.item : film,
+            (value) => resolved.push(value)
+        );
+        if (Object.hasOwn(scenario, "item")) {
+            assert.equal(f.requests.length, 0);
+        } else {
+            const metadataRequest = last(f);
+            if (scenario.fail) metadataRequest.fail();
+            else if (scenario.decision || scenario.decisionFail) {
+                metadataRequest.reply(metadata());
+                const decision = last(f);
+                if (scenario.decisionFail) decision.fail();
+                else decision.reply(scenario.decision);
+                assert.equal(
+                    parsed(f).pathname,
+                    "/video/:/transcode/universal/stop"
+                );
+                decision.fail();
+                decision.reply({
+                    MediaContainer: { transcodeDecisionCode: 1001 },
+                });
+            } else metadataRequest.reply(scenario.reply);
+            metadataRequest.fail();
+            metadataRequest.reply(metadata());
+        }
+        assert.deepEqual(resolved, [null]);
+        assert.deepEqual(f.messages, ["Plex connection failed"]);
+        assert.equal(f.intervals.size, 0);
+        assert(!JSON.stringify(f.messages).includes(token));
+        assert.equal(f.host.mediaName, "untouched");
+        assert.deepEqual(f.host.mediaRecords, ["untouched"]);
+    }
+});
+
+test("resolution fallback cannot run after cancellation, replacement, retirement or reentrant navigation", () => {
+    for (const decisionStage of [false, true]) {
+        for (const action of [
+            "cancel",
+            "replace",
+            "retire",
+            "dispose",
+            "pagehide",
+        ]) {
+            const f = fixture();
+            let callbacks = 0;
+            f.client.resolve(film, () => callbacks++);
+            if (decisionStage) last(f).reply(metadata());
+            const pending = last(f);
+            if (action === "replace") f.client.load("", () => {});
+            else if (action === "retire") f.retire();
+            else if (action === "pagehide") f.events.get("pagehide")();
+            else f.client[action]();
+            pending.fail();
+            pending.reply(
+                decisionStage
+                    ? { MediaContainer: { transcodeDecisionCode: 2001 } }
+                    : { MediaContainer: {} }
+            );
+            assert.equal(callbacks, 0, action);
+            assert.equal(f.messages.length, 0, action);
+            assert.equal(f.intervals.size, 0, action);
+        }
+    }
+    const f = fixture();
+    let callbacks = 0;
+    f.host.infoBox = () => f.retire();
+    f.client.resolve(film, () => callbacks++);
+    last(f).fail();
+    assert.equal(
+        callbacks,
+        0,
+        "the visible failure retired the source before fallback"
+    );
 });
 
 test("HEVC HLS preserves source resolution only when the actual MSE codec is supported", () => {

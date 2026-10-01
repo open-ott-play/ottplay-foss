@@ -100,6 +100,7 @@ var keyStrings = {
         "Черен екран при смяна на канала",
     Blue: "Син",
     "Bookmark age: %1 days": "Възраст на отметката: %1 дни",
+    "Browse folders": "Преглед по папки",
     "Buffer Size, s": "Размер на буфера, с",
     "Built-in playlist:": "Вграден плейлист:",
     "Built-in playlists": "Вградени плейлисти",
@@ -566,6 +567,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Без намаляване на видеото при показване на списъка (корекция)",
     Nothing: "Нищо",
+    "Nothing to play": "Няма видео за възпроизвеждане",
     "Number of next TV programs in channel list":
         "Брой следващи предавания в списъка с канали",
     "Number of rows in lists": "Брой редове в списъците",
@@ -677,6 +679,9 @@ var keyStrings = {
     "Rename category": "Преименуване на категорията",
     "Rename to": "Преименуване на",
     "Repeat parental code": "Повторете родителския код",
+    "Repeat: All": "Повторение: всички",
+    "Repeat: Off": "Повторение: изключено",
+    "Repeat: One": "Повторение: един",
     "Request sended!": "Заявката е изпратена!",
     "Requesting approval for %1": "Заявка за одобрение за %1",
     "Restart player": "Рестартиране на плейъра",
@@ -775,6 +780,7 @@ var keyStrings = {
     "Show when changing program": "Показване при смяна на предаването",
     "Show when rewind": "Показване при превъртане",
     "Show when switching": "Показване при смяна на канала",
+    "Shuffle and play": "Разбъркване и възпроизвеждане",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -847,6 +853,10 @@ var keyStrings = {
     transparent: "прозрачен",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Настройки за ULTIFL1X",
+    "Unable to load playlist":
+        "Неуспешно зареждане на списъка за възпроизвеждане",
+    Untitled: "Без заглавие",
+    "Untitled folder": "Папка без име",
     "Update installed. Please restart OttPlay FOSS.":
         "Обновяването е инсталирано. Рестартирайте OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

@@ -100,6 +100,7 @@ var keyStrings = {
     "Black screen while switching the channel": "Zwart scherm bij zenderwissel",
     Blue: "Blauw",
     "Bookmark age: %1 days": "Leeftijd van bladwijzer: %1 dagen",
+    "Browse folders": "Bladeren op map",
     "Buffer Size, s": "Buffergrootte, s",
     "Built-in playlist:": "Ingebouwde afspeellijst:",
     "Built-in playlists": "Ingebouwde afspeellijsten",
@@ -568,6 +569,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Video niet verkleinen bij tonen van de lijst (foutoplossing)",
     Nothing: "Niets",
+    "Nothing to play": "Geen video's om af te spelen",
     "Number of next TV programs in channel list":
         "Aantal volgende programma's in zenderlijst",
     "Number of rows in lists": "Aantal rijen in lijsten",
@@ -681,6 +683,9 @@ var keyStrings = {
     "Rename category": "Categorie hernoemen",
     "Rename to": "Hernoemen naar",
     "Repeat parental code": "Ouderlijke code opnieuw invoeren",
+    "Repeat: All": "Herhalen: alles",
+    "Repeat: Off": "Herhalen: uit",
+    "Repeat: One": "Herhalen: één",
     "Request sended!": "Verzoek verzonden!",
     "Requesting approval for %1": "Goedkeuring aanvragen voor %1",
     "Restart player": "Speler herstarten",
@@ -779,6 +784,7 @@ var keyStrings = {
     "Show when changing program": "Tonen bij programmawisseling",
     "Show when rewind": "Tonen bij spoelen",
     "Show when switching": "Tonen bij zenderwisseling",
+    "Shuffle and play": "Schudden en afspelen",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -849,6 +855,9 @@ var keyStrings = {
     transparent: "transparant",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Instellingen voor ULTIFL1X",
+    "Unable to load playlist": "Kan afspeellijst niet laden",
+    Untitled: "Zonder titel",
+    "Untitled folder": "Naamloze map",
     "Update installed. Please restart OttPlay FOSS.":
         "Update geïnstalleerd. Herstart OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
