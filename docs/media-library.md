@@ -109,6 +109,16 @@ an independent request owner so collecting pages never replaces the visible
 catalog or cancels playback URL resolution. Search hubs do not promise complete
 flat pagination, so they expose Repeat without Shuffle.
 
+Plex and VPortal mark continuation rows with `__ottMediaNext` and expose
+`page(target, done) -> cancel`, returning `{items}` or `{items: [], error}`.
+This independent transport never changes provider globals or cancels playback.
+The library prefetches within three rows of the cursor and appends into its
+current frame, retaining the route, selected item and parent navigation. A
+selected loading row becomes the first visible new item; errors retain a manual
+retry row. Closing, navigating, editing the filter or selecting playback cancels
+the request. View rendering and stale responses retain source/frame ownership.
+Continuation IDs and a 1,000-page/100,000-row bound prevent unbounded traversal.
+
 Repeat defaults to All, preserving existing episode playback, and is stored in
 `mediaRepeat.v1:<sourceId>`. One keeps the original queue and repeats its current
 item; Off advances normally but stops at the last item. URLs are resolved afresh

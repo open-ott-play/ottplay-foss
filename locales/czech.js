@@ -252,6 +252,8 @@ var keyStrings = {
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nepodařilo se vytvořit žádost o párování. Pro další pokus znovu vyhledejte server.",
+    "Could not load. Select to retry.":
+        "Načítání se nezdařilo. Vyberte pro opakování.",
     "Could not save the approved command server settings.":
         "Nepodařilo se uložit schválená nastavení příkazového serveru.",
     "Could not update HTTP remote control.":

@@ -256,6 +256,8 @@ var keyStrings = {
     "Could not connect to the server.": "Неуспешно свързване със сървъра.",
     "Could not create a pairing request. Find the server again to retry.":
         "Неуспешно създаване на заявка за сдвояване. Потърсете сървъра отново, за да опитате пак.",
+    "Could not load. Select to retry.":
+        "Зареждането е неуспешно. Изберете за нов опит.",
     "Could not save the approved command server settings.":
         "Неуспешно запазване на одобрените настройки на сървъра за команди.",
     "Could not update HTTP remote control.":

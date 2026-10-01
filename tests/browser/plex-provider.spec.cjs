@@ -518,3 +518,245 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     ).toBe(completedResolves);
     expect(errors).toEqual([]);
 });
+
+test("Plex appends folder pages without changing selection or Back ownership and retries a failed cursor", async ({
+    page,
+    context,
+    baseURL,
+}, testInfo) => {
+    const local = new URL(baseURL).origin;
+    const errors = [];
+    const requests = [];
+    const pending = [];
+    const rows = Array.from({ length: 20 }, (_, index) => ({
+        ratingKey: String(100 + index),
+        title: "Film " + String(index + 1).padStart(2, "0"),
+        type: "movie",
+    }));
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin === local) return route.continue();
+        if (url.origin !== plex) return route.abort();
+        const headers = { "access-control-allow-origin": "*" };
+        const json = (body) =>
+            route.fulfill({ headers, json: { MediaContainer: body } });
+        if (url.pathname === "/library/sections")
+            return json({
+                Directory: [{ key: "7", title: "My library", type: "movie" }],
+            });
+        if (url.pathname === "/library/sections/7/all")
+            return json({ Metadata: [], title2: "Folder" });
+        if (url.pathname === "/library/sections/7/folder") {
+            if (!url.searchParams.has("parent"))
+                return json({
+                    Metadata: [
+                        {
+                            key: "/library/sections/7/folder?parent=17",
+                            title: "Turtles",
+                        },
+                    ],
+                    title2: "Folder",
+                });
+            expect(url.searchParams.get("parent")).toBe("17");
+            const offset = Number(
+                request.headers()["x-plex-container-start"] || 0
+            );
+            expect(
+                Number(url.searchParams.get("X-Plex-Container-Start") || 0)
+            ).toBe(offset);
+            requests.push(offset);
+            const response = {
+                Metadata: rows.slice(offset, offset + (offset ? 4 : 8)),
+                offset,
+                size: offset ? 4 : 8,
+                title2: "Folder",
+                totalSize: rows.length,
+            };
+            if (!offset) return json(response);
+            const status = await new Promise((release) =>
+                pending.push({ offset, release })
+            );
+            try {
+                if (status === 503)
+                    return await route.fulfill({
+                        body: "Fixture unavailable",
+                        headers,
+                        status,
+                    });
+                return await json(response);
+            } catch (error) {
+                if (!request.failure()) throw error;
+            }
+        }
+        return route.fulfill({
+            body: "Unexpected fixture request",
+            headers,
+            status: 404,
+        });
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(
+        ({ plex, token }) => {
+            localStorage.setItem("ottplaylang", "_eng");
+            localStorage.setItem("ottplayprov", "plex");
+            localStorage.setItem(
+                "plexcfg",
+                JSON.stringify({ address: plex, token })
+            );
+        },
+        { plex, token }
+    );
+
+    async function view() {
+        return page.evaluate(() => {
+            const state = window.__ottMedia.snapshot();
+            const frame = state.frame;
+            const cursor = frame.items.findIndex(
+                (item) => item.payload.__ottMediaNext
+            );
+            return {
+                cursor,
+                cursorState:
+                    cursor < 0
+                        ? null
+                        : frame.items[cursor].payload.__ottMediaPageState ||
+                          null,
+                depth: state.frames.length,
+                ids: frame.items
+                    .filter((item) => item.payload.request)
+                    .map((item) => item.payload.request.path),
+                route: frame.route,
+                selected: frame.selected,
+                selectedTitle: frame.items[frame.selected]?.title,
+                uiSelected: window.selIndex,
+                uiTitle: window.listArray[window.selIndex]?.title,
+            };
+        });
+    }
+    async function highlightCursor(distance = 0) {
+        await page.evaluate((distance) => {
+            const state = window.__ottMedia.snapshot();
+            const cursor = state.frame.items.findIndex(
+                (item) => item.payload.__ottMediaNext
+            );
+            if (cursor < 0) throw new Error("Missing owned pagination cursor");
+            window.setSelect(cursor - distance);
+        }, distance);
+    }
+    async function release(offset, status = 200) {
+        await expect
+            .poll(() => pending.some((row) => row.offset === offset))
+            .toBe(true);
+        const index = pending.findIndex((row) => row.offset === offset);
+        pending.splice(index, 1)[0].release(status);
+    }
+
+    await page.goto("/f/pc/");
+    await select(page, "My library");
+    await select(page, "Browse folders");
+    await select(page, "Turtles");
+    await expect(page.locator("#listCaption")).toContainText("Turtles");
+    const initial = await view();
+    expect(initial.route.title).toBe("Turtles");
+    expect(initial.ids).toHaveLength(8);
+    expect(initial.cursor).toBe(8);
+    expect(requests).toEqual([0]);
+
+    // Highlighting a real row near the end prefetches without pressing Enter.
+    await highlightCursor(2);
+    await expect.poll(() => requests).toEqual([0, 8]);
+    const highlighted = await view();
+    expect(highlighted.selectedTitle).toBe("Film 07");
+    const loading = await page.evaluate(() => window._("Loading..."));
+    expect(highlighted.cursorState).toBe("loading");
+    await expect(page.locator("#list")).toContainText(loading);
+    await testInfo.attach("plex-folder-loading", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+    });
+    await release(8);
+    await expect.poll(async () => (await view()).ids.length).toBe(12);
+    const appended = await view();
+    expect(appended.route).toEqual(initial.route);
+    expect(appended.depth).toBe(initial.depth);
+    expect(appended.ids.slice(0, 8)).toEqual(initial.ids);
+    expect(appended.selected).toBe(highlighted.selected);
+    expect(appended.selectedTitle).toBe(highlighted.selectedTitle);
+    expect(appended.uiTitle).toBe(highlighted.selectedTitle);
+
+    // A selected cursor becomes the first inserted row at that exact index.
+    await highlightCursor();
+    await expect.poll(() => requests).toEqual([0, 8, 12]);
+    const cursor = (await view()).selected;
+    await release(12);
+    await expect.poll(async () => (await view()).ids.length).toBe(16);
+    const inserted = await view();
+    expect(inserted.selected).toBe(cursor);
+    expect(inserted.uiSelected).toBe(cursor);
+    expect(inserted.selectedTitle).toBe("Film 13");
+    expect(inserted.uiTitle).toBe("Film 13");
+    expect(inserted.depth).toBe(initial.depth);
+    await testInfo.attach("plex-folder-appended", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+    });
+
+    // Fail closed with all prior rows intact, then retry the same cursor.
+    await highlightCursor();
+    await expect.poll(() => requests).toEqual([0, 8, 12, 16]);
+    await release(16, 503);
+    const retry = await page.evaluate(() =>
+        window._("Could not load. Select to retry.")
+    );
+    await expect.poll(async () => (await view()).cursorState).toBe("error");
+    expect((await view()).ids).toEqual(inserted.ids);
+    await expect(page.locator("#list")).toContainText(retry);
+    await page.evaluate(() => window.listKeyHandler(window.keys.ENTER));
+    await expect.poll(() => requests).toEqual([0, 8, 12, 16, 16]);
+    await release(16);
+    await expect.poll(async () => (await view()).ids.length).toBe(20);
+    const complete = await view();
+    expect(complete.cursor).toBe(-1);
+    expect(complete.ids).toEqual(
+        rows.map((row) => "/library/metadata/" + row.ratingKey)
+    );
+    expect(complete.selectedTitle).toBe("Film 17");
+    expect(complete.route).toEqual(initial.route);
+    expect(complete.depth).toBe(initial.depth);
+    await page.evaluate(() => window.__ottMedia.back());
+    expect((await view()).depth).toBe(initial.depth - 1);
+    expect((await view()).route.target.path).toBe("/library/sections/7/folder");
+    await expect(page.locator("#list")).toContainText("Turtles");
+
+    // Leave a new pending visit; even its late response cannot reopen it.
+    await select(page, "Turtles");
+    await expect.poll(async () => (await view()).ids.length).toBe(8);
+    await highlightCursor(2);
+    await expect.poll(() => pending.some((row) => row.offset === 8)).toBe(true);
+    const aborted = page.waitForEvent("requestfailed", {
+        predicate: (request) => {
+            const url = new URL(request.url());
+            return (
+                url.origin === plex &&
+                url.pathname === "/library/sections/7/folder" &&
+                url.searchParams.get("X-Plex-Container-Start") === "8"
+            );
+        },
+    });
+    await page.evaluate(() => window.__ottMedia.back());
+    await aborted;
+    const parent = await view();
+    await release(8);
+    await page.evaluate(
+        () =>
+            new Promise((done) =>
+                requestAnimationFrame(() => requestAnimationFrame(done))
+            )
+    );
+    expect(await view()).toEqual(parent);
+    await expect(page.locator("#list")).toContainText("Turtles");
+    await expect(page.locator("#list")).not.toContainText("Film 09");
+    expect(errors).toEqual([]);
+});

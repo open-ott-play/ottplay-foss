@@ -252,6 +252,7 @@ var keyStrings = {
     "Could not connect to the server.": "Could not connect to the server.",
     "Could not create a pairing request. Find the server again to retry.":
         "Could not create a pairing request. Find the server again to retry.",
+    "Could not load. Select to retry.": "Could not load. Select to retry.",
     "Could not save the approved command server settings.":
         "Could not save the approved command server settings.",
     "Could not update HTTP remote control.":

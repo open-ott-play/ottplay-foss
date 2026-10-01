@@ -257,6 +257,8 @@ var keyStrings = {
     "Could not connect to the server.": "Nie udało się połączyć z serwerem.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nie udało się utworzyć żądania parowania. Wyszukaj serwer ponownie, aby spróbować jeszcze raz.",
+    "Could not load. Select to retry.":
+        "Nie udało się wczytać. Wybierz, aby ponowić.",
     "Could not save the approved command server settings.":
         "Nie udało się zapisać zatwierdzonych ustawień serwera poleceń.",
     "Could not update HTTP remote control.":

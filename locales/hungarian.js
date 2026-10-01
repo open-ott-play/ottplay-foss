@@ -256,6 +256,8 @@ var keyStrings = {
         "Nem sikerült csatlakozni a kiszolgálóhoz.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nem sikerült párosítási kérelmet létrehozni. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
+    "Could not load. Select to retry.":
+        "Nem sikerült betölteni. Válassza az újrapróbálkozáshoz.",
     "Could not save the approved command server settings.":
         "Nem sikerült menteni a parancskiszolgáló jóváhagyott beállításait.",
     "Could not update HTTP remote control.":

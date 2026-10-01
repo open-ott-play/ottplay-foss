@@ -41,6 +41,19 @@ vm.runInNewContext(
     }).outputText,
     helpers
 );
+const caseless = { exports: {} };
+vm.runInNewContext(
+    ts.transpileModule(
+        fs.readFileSync(path.join(root, "src/utils/caseless.ts"), "utf8"),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText,
+    caseless
+);
 const link = "portal::[key:fixture-private-key]http://portal.example/api/v1/";
 
 function fixture(overrides = {}, options = {}, hooks = {}) {
@@ -127,7 +140,12 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
         requests.push(request);
         return request;
     };
-    const context = { exports: {}, require: () => helpers.exports, window: w };
+    const context = {
+        exports: {},
+        require: (name) =>
+            name.includes("caseless") ? caseless.exports : helpers.exports,
+        window: w,
+    };
     vm.runInNewContext(compiled, context);
     client = context.exports.createVPortalClient(link, {
         isCurrent: () => active,
@@ -1066,6 +1084,160 @@ for (const trigger of ["#dialogbox", "#numprog"]) {
         "http://portal.example/api/v1/"
     );
     assert.equal(JSON.parse(native.requests[0].options.data).params, undefined);
+}
+
+// Incremental pages own a quiet transport lane, including while complete
+// search collection and automatic playback are active.
+{
+    const f = fixture({ clearTimeout() {}, setTimeout: () => 1 });
+    const target = {
+        mediaName: "Current folder",
+        request: { cmd: "browse", id: 3, offset: 300 },
+    };
+    let paged, resolved, collected;
+    f.client.page(target, (result) => (paged = result));
+    const page = f.requests.at(-1);
+    f.client.resolve(
+        { request: { cmd: "play", id: 8 } },
+        (item) => (resolved = item),
+        true
+    );
+    const playback = f.requests.at(-1);
+    f.client.search("Found", (result) => (collected = result));
+    const search = f.requests.at(-1);
+    const before = JSON.stringify([
+        f.w.mediaRecords,
+        f.w.mediaName,
+        f.w.dialogBoxKeyHandler,
+    ]);
+    page.receive({
+        items: [
+            {
+                request: { cmd: "browse", id: 90 },
+                title: "Next",
+                type: "category",
+            },
+            {
+                request: { cmd: "play", id: 10 },
+                title: "Following",
+                type: "stream",
+            },
+            { request: { offset: 600 }, type: "next" },
+        ],
+        type: "category",
+    });
+    playback.receive({ url: "https://cdn.example/fresh.mp4" });
+    search.receive({
+        items: [
+            {
+                request: { cmd: "play", id: 99 },
+                title: "Found",
+                type: "stream",
+            },
+        ],
+        type: "category",
+    });
+    assert.equal(paged.items.length, 3);
+    assert.equal(paged.items[0].__ottMediaNext, undefined);
+    assert.equal(paged.items[2].__ottMediaNext, true);
+    assert.equal(paged.items[2].playlist_url.request.offset, 600);
+    assert.equal(paged.items[2].playlist_url.mediaName, "Current folder");
+    assert.equal(resolved.stream_url, "https://cdn.example/fresh.mp4");
+    assert.equal(collected.items.length, 1);
+    assert(!page.aborted && !playback.aborted && !search.aborted);
+    assert.equal(
+        JSON.stringify([
+            f.w.mediaRecords,
+            f.w.mediaName,
+            f.w.dialogBoxKeyHandler,
+        ]),
+        before
+    );
+    assert.deepEqual(f.alerts, []);
+    assert.deepEqual(f.dom, {});
+}
+
+for (const action of ["cancel", "replace", "dispose", "pagehide", "retire"]) {
+    const events = new Map();
+    const f = fixture(
+        {
+            addEventListener: (name, callback) => events.set(name, callback),
+            removeEventListener: (name) => events.delete(name),
+        },
+        { sourceId: "owned" }
+    );
+    const target = { request: { offset: 300 }, vportalSource: "owned" };
+    let callbacks = 0;
+    const cancel = f.client.page(target, () => callbacks++);
+    const pending = f.requests[0];
+    if (action === "cancel") cancel();
+    if (action === "replace") f.client.page(target, () => {});
+    if (action === "dispose") f.client.dispose();
+    if (action === "pagehide") events.get("pagehide")();
+    if (action === "retire") f.setActive(false);
+    pending.receive({ items: [], type: "category" });
+    pending.fail();
+    assert.equal(callbacks, 0, action);
+    if (action !== "retire") assert(pending.aborted, action);
+    assert.deepEqual(f.alerts, []);
+    assert(!f.dom["#dialogbox"]?.visible);
+}
+
+for (const response of [
+    null,
+    { error: "fixture-private-key", type: "error" },
+    { items: "invalid", type: "category" },
+]) {
+    const f = fixture();
+    const values = [];
+    f.client.page({ request: { offset: 300 } }, (value) => values.push(value));
+    if (response) f.requests[0].receive(response);
+    else f.requests[0].fail();
+    f.requests[0].receive({ items: [], type: "category" });
+    assert.equal(values.length, 1);
+    assert.equal(values[0].items.length, 0);
+    assert(values[0].error);
+    assert(!JSON.stringify(values).includes("fixture-private-key"));
+    assert.deepEqual(f.alerts, []);
+    assert.deepEqual(f.dom, {});
+}
+
+{
+    const f = fixture({}, { sourceId: "owned" });
+    let failed;
+    f.client.page(
+        { request: { offset: 1 }, vportalSource: "other" },
+        (value) => (failed = value)
+    );
+    assert(failed.error);
+    assert.equal(f.requests.length, 0);
+    f.client.dispose();
+    f.client.page({ request: {}, vportalSource: "owned" }, () =>
+        assert.fail("disposed callback")
+    );
+    assert.equal(f.requests.length, 0);
+}
+
+{
+    const f = fixture();
+    f.client.page({ request: { offset: 300 } }, () => assert.fail("old page"));
+    const old = f.requests[0];
+    const abort = old.abort.bind(old);
+    let latest;
+    old.abort = () => {
+        abort();
+        f.client.page(
+            { request: { offset: 900 } },
+            (value) => (latest = value)
+        );
+    };
+    f.client.page({ request: { offset: 600 } }, () =>
+        assert.fail("interrupted page")
+    );
+    assert.equal(f.requests.length, 2);
+    assert.equal(JSON.parse(f.requests[1].options.data).params.offset, 900);
+    f.requests[1].receive({ items: [], type: "category" });
+    assert.equal(latest.items.length, 0);
 }
 
 console.log(

@@ -246,6 +246,7 @@ var keyStrings = {
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
     "Could not create a pairing request. Find the server again to retry.":
         "לא ניתן ליצור בקשת צימוד. יש לחפש שוב את השרת כדי לנסות שוב.",
+    "Could not load. Select to retry.": "הטעינה נכשלה. בחרו כדי לנסות שוב.",
     "Could not save the approved command server settings.":
         "לא ניתן לשמור את הגדרות שרת הפקודות שאושרו.",
     "Could not update HTTP remote control.":

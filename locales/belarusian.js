@@ -251,6 +251,8 @@ var keyStrings = {
     "Could not connect to the server.": "Не ўдалося падключыцца да сервера.",
     "Could not create a pairing request. Find the server again to retry.":
         "Не ўдалося стварыць запыт на спалучэнне. Паўтарыце пошук сервера, каб паспрабаваць зноў.",
+    "Could not load. Select to retry.":
+        "Не ўдалося загрузіць. Націсніце для паўтору.",
     "Could not save the approved command server settings.":
         "Не ўдалося захаваць пацверджаныя налады сервера каманд.",
     "Could not update HTTP remote control.":

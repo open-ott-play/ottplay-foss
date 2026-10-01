@@ -255,6 +255,8 @@ var keyStrings = {
     "Could not connect to the server.": "Sunucuya bağlanılamadı.",
     "Could not create a pairing request. Find the server again to retry.":
         "Eşleştirme isteği oluşturulamadı. Yeniden denemek için sunucuyu tekrar bulun.",
+    "Could not load. Select to retry.":
+        "Yüklenemedi. Yeniden denemek için seçin.",
     "Could not save the approved command server settings.":
         "Onaylanan komut sunucusu ayarları kaydedilemedi.",
     "Could not update HTTP remote control.":

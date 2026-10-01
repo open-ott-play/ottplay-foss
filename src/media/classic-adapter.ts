@@ -105,6 +105,7 @@ function classicMediaRuntime(): any {
     var repeatKey = "mediaRepeat.v1:" + source;
     var screenOwner: any = null;
     var screenRevision = -1;
+    var pageScheduled = -1;
     function bindScreen() {
         var screen = w.__ottClassicScreenPort;
         var owner = screen && screen.listOwner();
@@ -182,6 +183,8 @@ function classicMediaRuntime(): any {
                     id = "provider:" + String(explicit);
                 else if (row.request)
                     id = "request:" + serializeMediaIdentity(row.request);
+                else if (row.playlist_url && !row.submenu)
+                    id = "route:" + serializeMediaIdentity(row.playlist_url);
                 else {
                     var origin = row.__ottMediaOrigin || route;
                     var location = origin.target || "";
@@ -451,6 +454,34 @@ function classicMediaRuntime(): any {
                 : collectionItems(route.kind);
         },
         load: load,
+        page:
+            mediaClient && typeof mediaClient.page === "function"
+                ? function (route: MediaRoute, done: any) {
+                      return mediaClient.page(
+                          route.target,
+                          function (result: any) {
+                              if (!current() || !done.isCurrent()) return;
+                              // Replacing the list would dismiss an editor or
+                              // dialog opened while the quiet request ran.
+                              if (screenOwner && !screenOwner.foreground()) {
+                                  library.cancelPage();
+                                  return;
+                              }
+                              var records = copy(result.items || []);
+                              if (mediaClient.stableRequests) {
+                                  var frame = library.snapshot("none").frame;
+                                  if (frame)
+                                      records.forEach(function (row: any) {
+                                          row.__ottMediaOrigin = copy(
+                                              frame.route
+                                          );
+                                      });
+                              }
+                              done(records, result.error);
+                          }
+                      );
+                  }
+                : undefined,
         render: project,
     };
     library = w.__ottMediaLibrary.create(libraryPorts);
@@ -932,7 +963,7 @@ function classicMediaRuntime(): any {
             authorize(item, proceed);
         },
         favorite: function (payload: any) {
-            if (payload.__ottMediaFilter) return;
+            if (payload.__ottMediaFilter || payload.__ottMediaNext) return;
             var admitted = api.capture();
             var frame = library.snapshot("none").frame;
             var item = describe(
@@ -958,9 +989,11 @@ function classicMediaRuntime(): any {
                 w.showShift(item.title + w._(" added to favorites"));
         },
         filter: function () {
+            var admitted = api.capture();
+            library.cancelPage();
+            if (!admitted()) return;
             var frame = library.snapshot("none").frame;
             if (!frame || frame.route.kind === "variants") return;
-            var admitted = library.capture();
             w.editCaption = w._("Filter");
             w.editvar = filterText;
             w.setEdit = function () {
@@ -975,8 +1008,24 @@ function classicMediaRuntime(): any {
             if (typeof w.showEditKey === "function") w.showEditKey();
         },
         highlight: function (index: number, revision: number) {
-            if (current() && library.revision() === revision)
-                library.highlight(index);
+            if (!current() || library.revision() !== revision) return;
+            library.highlight(index);
+            if (pageScheduled === revision || !library.nearEnd(index)) return;
+            pageScheduled = revision;
+            // Highlight runs inside detail painting. Defer cached responses so
+            // the old detail cannot overwrite the newly appended page.
+            w.setTimeout(function () {
+                if (pageScheduled !== revision) return;
+                pageScheduled = -1;
+                if (
+                    current() &&
+                    library.revision() === revision &&
+                    (!screenOwner || screenOwner.foreground()) &&
+                    !collectionRequest &&
+                    !automaticRequest
+                )
+                    library.more();
+            }, 0);
         },
         open: function (target: any, title?: string) {
             var view = library.snapshot("none");
@@ -1254,7 +1303,13 @@ function classicMediaRuntime(): any {
         select: function (index: number) {
             var item = library.select(index);
             if (!item) return;
+            if (item.payload.__ottMediaNext) {
+                library.more(true);
+                return;
+            }
             var admitted = api.capture();
+            library.cancelPage();
+            if (!admitted()) return;
             api.cancelAuto();
             if (!admitted()) return;
             function proceed() {

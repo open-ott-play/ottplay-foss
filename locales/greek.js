@@ -257,6 +257,8 @@ var keyStrings = {
     "Could not connect to the server.": "Αδυναμία σύνδεσης στον διακομιστή.",
     "Could not create a pairing request. Find the server again to retry.":
         "Δεν ήταν δυνατή η δημιουργία αιτήματος σύζευξης. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
+    "Could not load. Select to retry.":
+        "Αποτυχία φόρτωσης. Επιλέξτε για νέα προσπάθεια.",
     "Could not save the approved command server settings.":
         "Δεν ήταν δυνατή η αποθήκευση των εγκεκριμένων ρυθμίσεων του διακομιστή εντολών.",
     "Could not update HTTP remote control.":

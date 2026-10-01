@@ -254,6 +254,8 @@ var keyStrings = {
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
     "Could not create a pairing request. Find the server again to retry.":
         "Չհաջողվեց ստեղծել զուգակցման հարցում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
+    "Could not load. Select to retry.":
+        "Չհաջողվեց բեռնել։ Ընտրեք՝ կրկին փորձելու համար։",
     "Could not save the approved command server settings.":
         "Չհաջողվեց պահպանել հրամանների սերվերի հաստատված կարգավորումները։",
     "Could not update HTTP remote control.":

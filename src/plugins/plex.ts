@@ -134,6 +134,8 @@ function createPlexClient(
     var unloading = false;
     var pending: any = null;
     var cancelCollection: (() => void) | null = null;
+    var cancelPage: (() => void) | null = null;
+    var pageRevision = 0;
     var sections: any = null;
     var sectionsAt = 0;
     var search: any = null;
@@ -353,7 +355,8 @@ function createPlexClient(
         container: any,
         path: string,
         params: any,
-        navigation = true
+        navigation = true,
+        title?: string
     ): any[] {
         var root = path === "/library/sections";
         var result: any[] = [];
@@ -406,13 +409,15 @@ function createPlexClient(
             Number(container.totalSize) > offset + count
         )
             result.push({
+                __ottMediaNext: true,
                 playlist_url: {
                     offset: offset + count,
                     path: path,
                     plexSource: source,
                     query: params.query,
                     title: String(
-                        container.title2 ||
+                        title ||
+                            container.title2 ||
                             container.title1 ||
                             options.title ||
                             "Plex"
@@ -427,6 +432,173 @@ function createPlexClient(
                 title: translate("Search"),
             });
         return result;
+    }
+    function catalogTitle(value: any, data: any): string {
+        var selected =
+            value && typeof value.title === "string" && value.title.trim();
+        return String(
+            selected ||
+                (data && (data.title2 || data.title1)) ||
+                options.title ||
+                "Plex"
+        );
+    }
+    /** One cursor request owns neither visible navigation nor playback resolution. */
+    function page(
+        value: any,
+        done: (result: { items: any[]; error?: string }) => void
+    ): () => void {
+        var token = ++pageRevision;
+        if (cancelPage) cancelPage();
+        if (token !== pageRevision) return function () {};
+        var ended = false;
+        var settled = false;
+        var pendingPage: any = null;
+        function cancelOwned(): void {
+            ended = true;
+            if (cancelPage === cancelOwned) cancelPage = null;
+            var xhr = pendingPage;
+            pendingPage = null;
+            if (xhr && typeof xhr.abort === "function") xhr.abort();
+        }
+        function active(): boolean {
+            return (
+                !ended &&
+                !disposed &&
+                token === pageRevision &&
+                (!options.isCurrent || options.isCurrent())
+            );
+        }
+        function finish(data: any, failed = false): void {
+            if (!active()) return;
+            var rows: any[] = [];
+            try {
+                if (!failed) {
+                    if (path === "/hubs/search") {
+                        var found = items(data);
+                        data = {
+                            Metadata: found.slice(offset, offset + 200),
+                            offset: offset,
+                            size: Math.min(
+                                200,
+                                Math.max(0, found.length - offset)
+                            ),
+                            totalSize: found.length,
+                        };
+                    } else if (
+                        (data.offset !== undefined &&
+                            Number(data.offset) !== offset) ||
+                        items(data).length > 200
+                    )
+                        throw new Error();
+                    rows = records(
+                        data,
+                        path,
+                        params,
+                        true,
+                        catalogTitle(value, data)
+                    );
+                }
+            } catch (_) {
+                failed = true;
+            }
+            ended = true;
+            settled = true;
+            pendingPage = null;
+            if (cancelPage === cancelOwned) cancelPage = null;
+            done(
+                failed
+                    ? { error: translate("Unable to load playlist"), items: [] }
+                    : { items: rows }
+            );
+        }
+        cancelPage = cancelOwned;
+        if (!active()) {
+            cancelOwned();
+            return cancelOwned;
+        }
+        var path =
+            value && value.plexSource === source ? plexPath(value.path) : "";
+        var offset = value && Number(value.offset);
+        var params: any = {
+            "X-Plex-Container-Size": 200,
+            "X-Plex-Container-Start": offset,
+        };
+        if (value && typeof value.query === "string")
+            params.query = value.query;
+        if (
+            !/^\/(?:library\/(?:sections(?:\/\d+\/(?:all|folder))?|metadata\/\d+\/children)(?:\?|$)|hubs\/search(?:\?|$))/.test(
+                path
+            ) ||
+            !isFinite(offset) ||
+            offset < 0 ||
+            Math.floor(offset) !== offset
+        ) {
+            finish(null, true);
+            return cancelOwned;
+        }
+        if (
+            path === "/hubs/search" &&
+            search &&
+            search.query === params.query &&
+            Date.now() - search.at < 15000
+        ) {
+            finish(search.data);
+            return cancelOwned;
+        }
+        var query =
+            path === "/hubs/search"
+                ? {
+                      limit: 200,
+                      query: params.query,
+                      "X-Plex-Container-Size": 1000,
+                      "X-Plex-Container-Start": 0,
+                  }
+                : params;
+        try {
+            var xhr = jq.ajax({
+                complete: function () {},
+                dataType: "text",
+                error: function () {
+                    finish(null, true);
+                },
+                headers: {
+                    Accept: "application/json",
+                    "X-Plex-Container-Size": String(
+                        query["X-Plex-Container-Size"]
+                    ),
+                    "X-Plex-Container-Start": String(
+                        query["X-Plex-Container-Start"]
+                    ),
+                },
+                success: function (raw: any) {
+                    if (!active()) return;
+                    var data: any;
+                    try {
+                        data = plexContainer(raw, w);
+                    } catch (_) {
+                        finish(null, true);
+                        return;
+                    }
+                    if (path === "/hubs/search")
+                        search = {
+                            at: Date.now(),
+                            data: data,
+                            query: params.query,
+                        };
+                    finish(data);
+                },
+                timeout: 30000,
+                type: "GET",
+                url: url(path, query),
+            });
+            if (active()) pendingPage = xhr;
+            else if (!settled && xhr && typeof xhr.abort === "function")
+                xhr.abort();
+        } catch (_) {
+            finish(null, true);
+        }
+        return cancelOwned;
     }
     function collectionPath(value: any): string {
         var path =
@@ -708,13 +880,11 @@ function createPlexClient(
                     totalSize: found.length,
                 };
             }
-            w.mediaRecords = data ? records(data, path, params) : [];
-            w.mediaName = String(
-                (data && (data.title2 || data.title1)) ||
-                    (value && value.title) ||
-                    options.title ||
-                    "Plex"
-            );
+            var title = catalogTitle(value, data);
+            w.mediaRecords = data
+                ? records(data, path, params, true, title)
+                : [];
+            w.mediaName = title;
             callback();
         }
         if (!path) {
@@ -981,6 +1151,7 @@ function createPlexClient(
     }
     function pagehide(): void {
         unloading = true;
+        if (cancelPage) cancelPage();
         if (cancelCollection) cancelCollection();
         cancel();
         release();
@@ -1012,6 +1183,7 @@ function createPlexClient(
             if (typeof w.removeEventListener === "function")
                 w.removeEventListener("pagehide", pagehide);
             disposed = true;
+            if (cancelPage) cancelPage();
             if (cancelCollection) cancelCollection();
             cancel();
             release();
@@ -1019,6 +1191,7 @@ function createPlexClient(
             search = null;
         },
         load: load,
+        page: page,
         persist: persist,
         play: function (item: any) {
             resolve(item, function (playable) {

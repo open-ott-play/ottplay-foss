@@ -254,6 +254,8 @@ var keyStrings = {
     "Could not connect to the server.": "Серверге қосылу мүмкін болмады.",
     "Could not create a pairing request. Find the server again to retry.":
         "Жұптастыру сұрауын жасау мүмкін болмады. Қайта әрекет ету үшін серверді қайта іздеңіз.",
+    "Could not load. Select to retry.":
+        "Жүктеу мүмкін болмады. Қайталау үшін таңдаңыз.",
     "Could not save the approved command server settings.":
         "Пәрмен серверінің расталған баптауларын сақтау мүмкін болмады.",
     "Could not update HTTP remote control.":

@@ -255,6 +255,8 @@ var keyStrings = {
     "Could not connect to the server.": "Neizdevās savienoties ar serveri.",
     "Could not create a pairing request. Find the server again to retry.":
         "Neizdevās izveidot pārošanas pieprasījumu. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
+    "Could not load. Select to retry.":
+        "Neizdevās ielādēt. Atlasiet, lai mēģinātu vēlreiz.",
     "Could not save the approved command server settings.":
         "Neizdevās saglabāt apstiprinātos komandu servera iestatījumus.",
     "Could not update HTTP remote control.":

@@ -253,6 +253,8 @@ var keyStrings = {
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nepavyko sukurti susiejimo užklausos. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
+    "Could not load. Select to retry.":
+        "Įkelti nepavyko. Pasirinkite ir bandykite dar kartą.",
     "Could not save the approved command server settings.":
         "Nepavyko išsaugoti patvirtintų komandų serverio nustatymų.",
     "Could not update HTTP remote control.":
