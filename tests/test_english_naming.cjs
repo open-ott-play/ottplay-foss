@@ -123,7 +123,7 @@ async function testRenamedHelpers() {
     write(
         "renamed-helpers.js",
         compile(
-            "var optionsArr=[], listArray=[], infoTimeout=null, detailTimer=null, _fbBuffer=[], _fbTimer=null;\n" +
+            "var optionsArr=[], listArray=[], infoTimeout=null, detailTimer=null, detailScrollTimer=null, _fbBuffer=[], _fbTimer=null;\n" +
                 sourceDefinitions("src/channels/index.ts", [
                     "pauseLivePlayback",
                     "replayFromLiveOffset",

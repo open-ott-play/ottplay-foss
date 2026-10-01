@@ -62,6 +62,7 @@ function fixture() {
         },
         curColor: "#fff",
         curColorB: "#000",
+        detailScrollTimer: null,
         detailTimer: null,
         keys: {
             BLUE: 406,
@@ -149,6 +150,7 @@ function fixture() {
             "editKey2",
             "renderButtonHint",
             "scheduleListDetailUpdate",
+            "scrollUp",
             "popupList",
             "hsvToRgb",
             "bindColorDialogInput",
@@ -1254,6 +1256,32 @@ test("source replacement retires dialogs, editor and scheduled list detail", ({
     old(13);
     jobs.forEach((j) => j.callback());
     assert.equal(calls, 0);
+});
+test("playback description scrolling cannot cancel pending list controls", ({
+    w,
+    jobs,
+}) => {
+    let rendered = 0;
+    w.detailListActionFn = () => rendered++;
+    w.__ottClassicScreenPort.commitList();
+    w.scheduleListDetailUpdate();
+    const detail = jobs.at(-1);
+    // A previous playback-description animation completes after opening search.
+    w.scrollUp("programm_descr", 20, 10000);
+    const animation = jobs.at(-1);
+    assert.equal(
+        detail.active,
+        true,
+        "The list still owns its scheduled render"
+    );
+    detail.callback();
+    assert.equal(rendered, 1);
+    w.scheduleListDetailUpdate();
+    assert.equal(
+        animation.active,
+        false,
+        "New selection retires old scrolling"
+    );
 });
 test("rapid list selection owns only the pending detail timer", ({
     w,
