@@ -421,7 +421,7 @@ test("collection capability uses the same flat route contract as collection", ()
     }
 });
 
-test("all playable folder and section rows can form a sequence, while search and root cannot", () => {
+test("movies and clips retain title filtering while episode and track sequence markers remain unchanged", () => {
     const rows = ["movie", "clip", "episode", "track"].map((type, index) => ({
         ratingKey: String(index + 1),
         title: type,
@@ -437,7 +437,10 @@ test("all playable folder and section rows can form a sequence, while search and
         last(f).reply({ MediaContainer: { Metadata: rows } });
         const playable = f.host.mediaRecords.filter((record) => record.request);
         assert.equal(playable.length, 4);
-        assert(playable.every((record) => record.__ottMediaSequence === true));
+        assert.deepEqual(
+            Array.from(playable, (record) => record.__ottMediaSequence),
+            [false, false, true, true]
+        );
     }
     for (const target of ["", "plexsearch?search=film"]) {
         const f = fixture();
@@ -445,7 +448,10 @@ test("all playable folder and section rows can form a sequence, while search and
         last(f).reply({ MediaContainer: { Metadata: rows } });
         const playable = f.host.mediaRecords.filter((record) => record.request);
         assert.equal(playable.length, 4);
-        assert(playable.every((record) => record.__ottMediaSequence === false));
+        assert.deepEqual(
+            Array.from(playable, (record) => record.__ottMediaSequence),
+            [false, false, true, true]
+        );
     }
 });
 
@@ -507,7 +513,10 @@ test("collection starts at zero, deduplicates flat playable pages and does not d
         Array.from(result.records, (row) => row.title),
         ["Film", "Child", "Episode", "Track"]
     );
-    assert(result.items.every((row) => row.__ottMediaSequence === true));
+    assert.deepEqual(
+        Array.from(result.items, (row) => row.__ottMediaSequence),
+        [false, true, true]
+    );
     assert.equal(
         result.records[1].playlist_url.path,
         "/library/sections/1/folder?parent=18"

@@ -357,7 +357,6 @@ function createPlexClient(
     ): any[] {
         var root = path === "/library/sections";
         var result: any[] = [];
-        var sequence = !root && !!collectionPath(target(path, ""));
         var section = /^\/library\/sections\/(\d+)\/all(?:\?|$)/.exec(path);
         if (navigation && section && !Number(params["X-Plex-Container-Start"]))
             result.push({
@@ -379,7 +378,8 @@ function createPlexClient(
             var title = itemTitle(item, playable && /^\d+$/.test(id));
             if (playable && /^\d+$/.test(id)) {
                 result.push({
-                    __ottMediaSequence: sequence,
+                    __ottMediaSequence:
+                        item.type === "episode" || item.type === "track",
                     description: escaped(item.summary),
                     plexSource: source,
                     request: { path: "/library/metadata/" + id },
