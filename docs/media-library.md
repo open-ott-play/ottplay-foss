@@ -159,6 +159,16 @@ returns the same numbered titles without changing playback. This supports the
 M3U VPortal setting and Edem's media portal. Matching is case-insensitive and uses
 the shared title normalization. TV channel numbers and EPG searches are unchanged.
 
+Use `ott PLAYER vpr TITLE_FILTER` to shuffle all matching videos once before
+playback. Every result appears once in the queue; natural completion repeats the
+same shuffled order after the last video. A new `vpr` request makes a fresh shuffle.
+For example, `ott l vpr "wedding"` starts a shuffled repeating selection on `l`.
+The `vportal_random` request takes only `{query: TITLE_FILTER}` and returns the
+numbered titles in queue order, with `loop: true`, `shuffled: true` and
+`dispatched: true` after playback start is dispatched. The acknowledgement does
+not prove that a frame was rendered. Ordinary `vp` and `vp --list` preserve
+provider order. This command requires updated CLI, control server and player versions.
+
 The collector follows every advertised search page and expands matching series
 and their seasons in provider order. It ignores unrelated category navigation,
 deduplicates playable entries and completes the whole search before dispatching

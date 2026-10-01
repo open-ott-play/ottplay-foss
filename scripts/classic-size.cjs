@@ -62,6 +62,7 @@ const { gzipSync } = require("node:zlib");
 // reviewed feature cost: Node 26.8.2 web 640894 / 194762 gzip, native
 // 640852 / 194822; retain native, Node 22 and release suffix headroom.
 // This includes exact Plex cold resume, its guarded startup intent and exit flush.
+// One-time VPortal queue shuffling also fits within these entry limits.
 const BUDGET = Object.freeze({ bytes: 641300, gzipBytes: 195600 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
