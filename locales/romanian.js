@@ -257,6 +257,8 @@ var keyStrings = {
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nu s-a putut crea o cerere de asociere. Căutați din nou serverul pentru a reîncerca.",
+    "Could not load. Select to retry.":
+        "Încărcarea a eșuat. Selectați pentru a reîncerca.",
     "Could not save the approved command server settings.":
         "Nu s-au putut salva setările aprobate ale serverului de comenzi.",
     "Could not update HTTP remote control.":

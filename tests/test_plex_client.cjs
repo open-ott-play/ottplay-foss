@@ -1224,4 +1224,212 @@ test("pagehide releases only its owned session with a credential-free keepalive 
     f.client.dispose();
     assert.equal(f.events.has("pagehide"), false);
 });
+test("cursor rows are explicit and selected folder titles override generic server labels", () => {
+    const f = fixture();
+    f.client.load(
+        {
+            path: "/library/sections/1/folder?parent=9",
+            plexSource: source,
+            title: "Actual folder",
+        },
+        () => {}
+    );
+    last(f).reply({
+        MediaContainer: {
+            Directory: [
+                { key: "/library/sections/1/folder?parent=10", title: "Next" },
+            ],
+            size: 1,
+            title1: "Folder",
+            title2: "Folder",
+            totalSize: 2,
+        },
+    });
+    assert.equal(f.host.mediaName, "Actual folder");
+    assert.equal(f.host.mediaRecords[0].__ottMediaNext, undefined);
+    const next = f.host.mediaRecords[1];
+    assert.equal(next.__ottMediaNext, true);
+    assert.equal(next.playlist_url.title, "Actual folder");
+    let following;
+    f.client.page(next.playlist_url, (value) => (following = value));
+    last(f).reply({
+        MediaContainer: {
+            Directory: [
+                {
+                    key: "/library/sections/1/folder?parent=11",
+                    title: "Same name",
+                },
+                {
+                    key: "/library/sections/1/folder?parent=12",
+                    title: "Same name",
+                },
+            ],
+            offset: 1,
+            size: 2,
+            totalSize: 3,
+        },
+    });
+    assert.equal(following.items.length, 2);
+    assert.notEqual(
+        following.items[0].playlist_url.path,
+        following.items[1].playlist_url.path
+    );
+    assert(!following.items.some((row) => row.__ottMediaNext));
+    f.client.collect(
+        { path: "/library/sections/1/all", plexSource: source },
+        (value) => {
+            assert(!value.records.some((row) => row.__ottMediaNext));
+        }
+    );
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [{ ratingKey: "1", title: "Film", type: "movie" }],
+            size: 1,
+            totalSize: 1,
+        },
+    });
+});
+
+test("quiet pages do not mutate navigation or cancel resolve and full collection", () => {
+    const f = fixture({ playback: "original" });
+    const target = {
+        offset: 200,
+        path: "/library/sections/1/all",
+        plexSource: source,
+        title: "Chosen folder",
+    };
+    let paged, played, collected;
+    f.client.page(target, (value) => (paged = value));
+    const page = last(f);
+    assert.equal(page.options.headers["X-Plex-Container-Start"], "200");
+    assert.equal(page.options.headers["X-Plex-Container-Size"], "200");
+    f.client.resolve(film, (value) => (played = value));
+    const resolve = last(f);
+    f.client.collect({ ...target, offset: 0 }, (value) => (collected = value));
+    const collect = last(f);
+    page.reply({
+        MediaContainer: {
+            Metadata: [{ ratingKey: "43", title: "Following", type: "movie" }],
+            offset: 200,
+            size: 1,
+            title2: "Folder",
+            totalSize: 202,
+        },
+    });
+    resolve.reply(metadata());
+    collect.reply({ MediaContainer: { Metadata: [], size: 0, totalSize: 0 } });
+    assert.equal(paged.items[0].request.path, "/library/metadata/43");
+    assert.equal(paged.items[1].__ottMediaNext, true);
+    assert.equal(paged.items[1].playlist_url.title, "Chosen folder");
+    assert(played.stream_url);
+    assert.equal(collected.items.length, 0);
+    assert(!page.aborted && !resolve.aborted && !collect.aborted);
+    assert.deepEqual(f.host.mediaRecords, ["untouched"]);
+    assert.equal(f.host.mediaName, "untouched");
+    assert.deepEqual(f.messages, []);
+});
+
+test("page errors are terminal and sanitized while cancellation or source retirement suppress late callbacks", () => {
+    const target = {
+        offset: 200,
+        path: "/library/sections/1/all",
+        plexSource: source,
+    };
+    for (const action of [
+        "cancel",
+        "supersede",
+        "dispose",
+        "pagehide",
+        "retire",
+    ]) {
+        const f = fixture();
+        let callbacks = 0;
+        const cancel = f.client.page(target, () => callbacks++);
+        const pending = last(f);
+        if (action === "cancel") cancel();
+        if (action === "supersede") f.client.page(target, () => {});
+        if (action === "dispose") f.client.dispose();
+        if (action === "pagehide") f.events.get("pagehide")();
+        if (action === "retire") f.retire();
+        pending.reply({ MediaContainer: {} });
+        pending.fail();
+        assert.equal(callbacks, 0, action);
+        if (action !== "retire") assert(pending.aborted, action);
+        assert.deepEqual(f.messages, []);
+    }
+    for (const reply of [
+        null,
+        "invalid " + token,
+        { MediaContainer: { Metadata: [], offset: 0 } },
+    ]) {
+        const f = fixture();
+        const values = [];
+        f.client.page(target, (value) => values.push(value));
+        if (reply === null) last(f).fail();
+        else last(f).reply(reply);
+        last(f).fail();
+        assert.equal(values.length, 1);
+        assert.equal(values[0].items.length, 0);
+        assert(values[0].error);
+        assert(!JSON.stringify(values).includes(token));
+        assert.deepEqual(f.messages, []);
+    }
+    const retired = fixture();
+    retired.client.dispose();
+    retired.client.page(target, () => assert.fail("disposed page callback"));
+    assert.equal(retired.requests.length, 0);
+});
+
+test("independent search paging reuses the flattened snapshot without publishing globals", () => {
+    const f = fixture();
+    f.client.load("plexsearch?search=Find", () => {});
+    last(f).reply({
+        MediaContainer: {
+            Hub: [
+                {
+                    Metadata: Array.from({ length: 205 }, (_, i) => ({
+                        ratingKey: String(i),
+                        title: "Found " + i,
+                        type: "movie",
+                    })),
+                },
+            ],
+        },
+    });
+    const before = JSON.stringify(f.host.mediaRecords);
+    const cursor = f.host.mediaRecords.find(
+        (row) => row.__ottMediaNext
+    ).playlist_url;
+    let result;
+    f.client.page(cursor, (value) => (result = value));
+    assert.equal(result.items.length, 5);
+    assert(!result.items.some((row) => row.__ottMediaNext));
+    assert.equal(f.requests.length, 1);
+    assert.equal(JSON.stringify(f.host.mediaRecords), before);
+});
+
+test("page abort reentry preserves the newer page and never dispatches the interrupted request", () => {
+    const f = fixture();
+    const target = {
+        offset: 200,
+        path: "/library/sections/1/all",
+        plexSource: source,
+    };
+    f.client.page(target, () => assert.fail("old page"));
+    const old = last(f);
+    const abort = old.abort.bind(old);
+    let latest;
+    old.abort = () => {
+        abort();
+        f.client.page({ ...target, offset: 600 }, (value) => (latest = value));
+    };
+    f.client.page({ ...target, offset: 400 }, () =>
+        assert.fail("interrupted page")
+    );
+    assert.equal(f.requests.length, 2);
+    assert.equal(parsed(f).searchParams.get("X-Plex-Container-Start"), "600");
+    last(f).reply({ MediaContainer: { offset: 600, size: 0, totalSize: 600 } });
+    assert.equal(latest.items.length, 0);
+});
+
 console.log(`PASS Plex client (${passed} scenarios)`);

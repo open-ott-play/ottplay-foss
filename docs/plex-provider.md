@@ -8,6 +8,11 @@ Plex is a library provider: it opens library sections, search, folders and media
 
 **Browse folders** opens the server's filesystem hierarchy. Items without a title
 use alternate Plex metadata or a filename, with **Untitled** as a final fallback.
+The heading keeps the selected folder's name instead of Plex's generic `Folder`
+label. Approaching the last three rows automatically loads the next page into
+the same list. **Loading…** is replaced by the next items without moving the
+selection or adding another breadcrumb. A failed request keeps the existing
+items and offers a selectable retry row; **Back** still opens the parent folder.
 Selecting a video starts an ordered queue of that folder’s files. Natural completion
 plays the next file in the same folder, including files on later catalog pages.
 Subfolders are excluded. **Shuffle and play** starts its videos in a random order. The

@@ -256,6 +256,8 @@ var keyStrings = {
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
     "Could not create a pairing request. Find the server again to retry.":
         "Juftlash soʻrovini yaratib boʻlmadi. Qayta urinish uchun serverni yana toping.",
+    "Could not load. Select to retry.":
+        "Yuklab bo‘lmadi. Qayta urinish uchun tanlang.",
     "Could not save the approved command server settings.":
         "Buyruqlar serverining tasdiqlangan sozlamalarini saqlab boʻlmadi.",
     "Could not update HTTP remote control.":

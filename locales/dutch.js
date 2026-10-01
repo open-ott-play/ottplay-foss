@@ -257,6 +257,8 @@ var keyStrings = {
         "Kan geen verbinding maken met de server.",
     "Could not create a pairing request. Find the server again to retry.":
         "Kan geen koppelingsverzoek aanmaken. Zoek de server opnieuw om het nogmaals te proberen.",
+    "Could not load. Select to retry.":
+        "Laden mislukt. Selecteer om opnieuw te proberen.",
     "Could not save the approved command server settings.":
         "Kan de goedgekeurde opdrachtserverinstellingen niet opslaan.",
     "Could not update HTTP remote control.":

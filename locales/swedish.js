@@ -254,6 +254,8 @@ var keyStrings = {
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
     "Could not create a pairing request. Find the server again to retry.":
         "Kunde inte skapa en parkopplingsbegäran. Sök efter servern igen för att försöka på nytt.",
+    "Could not load. Select to retry.":
+        "Kunde inte ladda. Välj för att försöka igen.",
     "Could not save the approved command server settings.":
         "Kunde inte spara de godkända inställningarna för kommandoservern.",
     "Could not update HTTP remote control.":

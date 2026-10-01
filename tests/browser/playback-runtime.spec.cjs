@@ -639,11 +639,12 @@ test("manual Stop cancels the pending automatic episode resolution", async ({
     expect(fixture.errors).toEqual([]);
 });
 
-async function titleFilterFixture(page, context, baseURL) {
+async function titleFilterFixture(page, context, baseURL, holdPages = false) {
     const origin = new URL(baseURL).origin;
     const errors = [];
     const requests = [];
     const swopRequests = [];
+    const pendingPages = [];
     const query = "  ТРИ   КОТ  ";
     const movie = (title, id) => ({
         request: { cmd: "play", id },
@@ -672,16 +673,33 @@ async function titleFilterFixture(page, context, baseURL) {
                     ? [
                           series("Три кота. Новые истории", 21),
                           movie("Зимняя сказка", 22),
-                          { ...category, title: "Архив" },
+                          {
+                              ...category,
+                              request: { cmd: "category", id: 3 },
+                              title: "Архив",
+                          },
                       ]
                     : [
                           series("Три кота", 11),
                           movie("ТРИ    КОТА: кино", 12),
                           movie("Ежик в тумане", 13),
                           series("Смешарики", 14),
-                          { ...category, title: "Все сезоны" },
-                          { request: { offset: 20 }, type: "next" },
+                          ...(params.id === 1
+                              ? [
+                                    {
+                                        ...category,
+                                        request: { cmd: "category", id: 2 },
+                                        title: "Все сезоны",
+                                    },
+                                    {
+                                        request: { offset: 20 },
+                                        type: "next",
+                                    },
+                                ]
+                              : []),
                       ];
+            if (holdPages && params.offset)
+                await new Promise((release) => pendingPages.push(release));
             return route.fulfill({
                 json: {
                     controls: { search: true },
@@ -758,7 +776,15 @@ async function titleFilterFixture(page, context, baseURL) {
     await expect(
         page.getByRole("button", { exact: true, name: "Три кота" })
     ).toBeVisible();
-    return { errors, requests, swopRequests };
+    return {
+        errors,
+        releasePage: async () => {
+            await expect.poll(() => pendingPages.length).toBe(1);
+            pendingPages.shift()();
+        },
+        requests,
+        swopRequests,
+    };
 }
 
 async function confirmTitleFilter(page, query) {
@@ -776,8 +802,15 @@ test("media title filter uses TV and SWOP confirmation and survives paging and B
     context,
     baseURL,
 }) => {
-    const fixture = await titleFilterFixture(page, context, baseURL);
+    const fixture = await titleFilterFixture(page, context, baseURL, true);
     const title = (name) => page.getByRole("button", { exact: true, name });
+    const loading = await page.evaluate(() => window._("Loading..."));
+    const frame = () =>
+        page.evaluate(() => {
+            const state = window.__ottMedia.snapshot();
+            return { depth: state.frames.length, route: state.frame.route };
+        });
+    const initialFrame = await frame();
     const initialRequests = fixture.requests.length;
     await page.evaluate(() => window._doKey(window.keys.BLUE));
     await expect(page.locator("#listEdit .osk-key").first()).toBeVisible();
@@ -792,32 +825,49 @@ test("media title filter uses TV and SWOP confirmation and survives paging and B
     await expect(title("ТРИ    КОТА: кино")).toBeVisible();
     await expect(title("Смешарики")).toHaveCount(0);
     await expect(title("Ежик в тумане")).toHaveCount(0);
-    for (const name of ["Все сезоны", "Next page", "Search"])
+    for (const name of ["Все сезоны", loading, "Search"])
         await expect(title(name)).toBeVisible();
     await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
-    expect(fixture.requests).toHaveLength(initialRequests);
+    // Filtering brings the cursor within prefetch range; only the next page
+    // is requested. Keep it pending to observe the real loading row.
+    await expect.poll(() => fixture.requests.length).toBe(initialRequests + 1);
+    expect(fixture.requests.at(-1)).toMatchObject({
+        cmd: "category",
+        id: 1,
+        offset: 20,
+    });
     expect(fixture.swopRequests.map((request) => request.path)).toEqual([
         "/swop/session",
         "/swop/val",
     ]);
+
+    await fixture.releasePage();
+    await expect(title("Три кота. Новые истории")).toBeVisible();
+    await expect(title("Зимняя сказка")).toHaveCount(0);
+    await expect(title("Архив")).toBeVisible();
+    await expect(title(loading)).toHaveCount(0);
+    await expect(title("Три кота")).toBeVisible();
+    await expect(title("Search")).toHaveCount(1);
+    await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    expect(await frame()).toEqual(initialFrame);
 
     await title("Все сезоны").click();
     await expect(page.locator("#listCaption")).toContainText("Все сезоны");
     await expect(title("Три кота")).toBeVisible();
     await expect(title("Смешарики")).toHaveCount(0);
     await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
+    expect((await frame()).depth).toBe(initialFrame.depth + 1);
+    expect(fixture.requests.at(-1)).toMatchObject({ cmd: "category", id: 2 });
+    const requestsBeforeBack = fixture.requests.length;
     await page.evaluate(() => window._doKey(window.keys.RETURN));
-    await expect(title("Next page")).toBeVisible();
-
-    await title("Next page").click();
     await expect(title("Три кота. Новые истории")).toBeVisible();
     await expect(title("Зимняя сказка")).toHaveCount(0);
     await expect(title("Архив")).toBeVisible();
     await expect(page.locator("#listCaption")).toContainText(/три\s+кот/i);
-    expect(fixture.requests.at(-1).offset).toBe(20);
-    await page.evaluate(() => window._doKey(window.keys.RETURN));
     await expect(title("Три кота")).toBeVisible();
     await expect(title("Смешарики")).toHaveCount(0);
+    expect(await frame()).toEqual(initialFrame);
+    expect(fixture.requests).toHaveLength(requestsBeforeBack);
 
     await confirmTitleFilter(page, "нет совпадений");
     for (const name of [
@@ -825,15 +875,35 @@ test("media title filter uses TV and SWOP confirmation and survives paging and B
         "ТРИ    КОТА: кино",
         "Смешарики",
         "Ежик в тумане",
+        "Три кота. Новые истории",
+        "Зимняя сказка",
     ])
         await expect(title(name)).toHaveCount(0);
-    for (const name of ["Все сезоны", "Next page", "Search"])
+    for (const name of ["Все сезоны", "Архив", "Search"])
         await expect(title(name)).toBeVisible();
-    await title("Next page").click();
+    expect(fixture.requests).toHaveLength(requestsBeforeBack);
+
+    // Appended pages share the category frame: Back returns directly to its
+    // parent. Reopening with no matches must still append navigation rows.
+    await page.evaluate(() => window._doKey(window.keys.RETURN));
+    await expect(title("Мультфильмы")).toBeVisible();
+    expect((await frame()).depth).toBe(initialFrame.depth - 1);
+    await title("Мультфильмы").click();
+    await expect(title(loading)).toBeVisible();
+    await expect(title("Три кота")).toHaveCount(0);
+    await expect(title("Все сезоны")).toBeVisible();
+    await expect(title("Search")).toBeVisible();
+    await fixture.releasePage();
     await expect(title("Архив")).toBeVisible();
     await expect(title("Три кота. Новые истории")).toHaveCount(0);
-    await page.evaluate(() => window._doKey(window.keys.RETURN));
-    await expect(title("Next page")).toBeVisible();
+    await expect(title("Зимняя сказка")).toHaveCount(0);
+    await expect(title(loading)).toHaveCount(0);
+    await expect(title("Search")).toHaveCount(1);
+    await expect(page.locator("#listCaption")).toContainText("нет совпадений");
+    expect(await frame()).toEqual(initialFrame);
+    expect(
+        fixture.requests.filter((request) => request.offset === 20)
+    ).toHaveLength(2);
 
     await confirmTitleFilter(page, "ЁЖ");
     await expect(title("Ежик в тумане")).toBeVisible();
@@ -853,6 +923,8 @@ test("media title filter uses TV and SWOP confirmation and survives paging and B
         "ТРИ    КОТА: кино",
         "Смешарики",
         "Ежик в тумане",
+        "Три кота. Новые истории",
+        "Зимняя сказка",
     ])
         await expect(title(name)).toBeVisible();
     await expect(page.locator("#listCaption")).not.toContainText("ЁЖ");

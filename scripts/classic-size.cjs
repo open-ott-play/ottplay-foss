@@ -66,7 +66,10 @@ const { gzipSync } = require("node:zlib");
 // Plex folder restoration retains bounded route metadata and rebuilds sibling
 // queues with cancellation guards. Node 26.8.2 measures 644120 raw / 195549
 // gzip for web, 644078 / 195613 native; retain Node 22 and release suffix room.
-const BUDGET = Object.freeze({ bytes: 644500, gzipBytes: 196300 });
+// Continuous catalog browsing adds owned page append/cancellation and a retry
+// row without copying catalogs on each highlight. Node 26.8.2 measures
+// 647536 raw / 196635 gzip for web; include native, Node 22 and suffix room.
+const BUDGET = Object.freeze({ bytes: 647900, gzipBytes: 197350 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -99,7 +102,9 @@ const BUDGET = Object.freeze({ bytes: 644500, gzipBytes: 196300 });
 // 733921 / 229862, retaining comparable complete-payload headroom.
 // Include complete Plex folder records: 737347 / 230655 web
 // and 737305 / 230719 native, with the same bounded release headroom.
-const TOTAL_BUDGET = Object.freeze({ bytes: 738000, gzipBytes: 231700 });
+// Include independent Plex/VPortal page transports and stable cursor IDs:
+// the complete web payload is 742619 raw / 232209 gzip on Node 26.8.2.
+const TOTAL_BUDGET = Object.freeze({ bytes: 743300, gzipBytes: 233200 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

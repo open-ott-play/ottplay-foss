@@ -21,6 +21,7 @@ interface MediaLibraryFrame {
 interface MediaOwnedFrame extends MediaLibraryFrame {
     catalog: MediaLibraryItem[];
     deferred?: boolean;
+    pages?: { [key: string]: boolean };
 }
 interface MediaLibraryView {
     frame: MediaLibraryFrame | null;
@@ -33,6 +34,7 @@ interface MediaLibraryPorts {
     filter?(items: MediaLibraryItem[], route: MediaRoute): MediaLibraryItem[];
     items(route: MediaRoute): MediaLibraryItem[];
     load(route: MediaRoute, done: any): (() => void) | void;
+    page?(route: MediaRoute, done: any): (() => void) | void;
     render(view: MediaLibraryView): void;
 }
 
@@ -61,6 +63,14 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
     var loading = false;
     var resolving = false;
     var cleanup: (() => void) | null = null;
+    var paging: any = null;
+    function cancelPage() {
+        var previous = paging;
+        paging = null;
+        if (!previous) return;
+        delete previous.item.payload.__ottMediaPageState;
+        if (previous.abort) previous.abort();
+    }
     function cancel() {
         var token = ++revision;
         viewRevision++;
@@ -68,6 +78,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         cleanup = null;
         loading = false;
         resolving = false;
+        cancelPage();
         if (previous) previous();
         return token;
     }
@@ -126,6 +137,105 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         if (!frame || !frame.items[index]) return null;
         frame.selected = index;
         return frame.items[index];
+    }
+    function nextPage(index: number, distance = 3): MediaLibraryItem | null {
+        var frame = frames[frames.length - 1];
+        if (!frame || frame.route.kind !== "catalog" || !ports.page)
+            return null;
+        for (
+            var i = index;
+            i <= index + distance && i < frame.items.length;
+            i++
+        )
+            if (frame.items[i] && frame.items[i].payload.__ottMediaNext)
+                return frame.items[i];
+        return null;
+    }
+    function more(force = false) {
+        var frame = frames[frames.length - 1];
+        if (!frame || loading || resolving || paging) return;
+        var candidate = nextPage(frame.selected, force ? 0 : 3);
+        if (
+            !candidate ||
+            (!force && candidate.payload.__ottMediaPageState === "error")
+        )
+            return;
+        var item: MediaLibraryItem = candidate;
+        var token = revision;
+        var request: any = { item: item };
+        paging = request;
+        item.payload.__ottMediaPageState = "loading";
+        viewRevision++;
+        render();
+        var route: MediaRoute = {
+            kind: "catalog",
+            target: mediaLibraryCopy(item.payload.playlist_url),
+            title: frame.route.title,
+        };
+        function active() {
+            return (
+                paging === request &&
+                token === revision &&
+                frames[frames.length - 1] === frame
+            );
+        }
+        var done: any = function (records: any[], error?: string) {
+            if (!active()) return;
+            paging = null;
+            var seen = frame.pages || (frame.pages = Object.create(null));
+            if (
+                error ||
+                seen[item.ref.itemId] ||
+                Object.keys(seen).length >= 1000 ||
+                frame.catalog.length + records.length > 100000
+            ) {
+                item.payload.__ottMediaPageState = "error";
+                viewRevision++;
+                render();
+                return;
+            }
+            seen[item.ref.itemId] = true;
+            var selected = frame.items[frame.selected];
+            var selectedIndex = frame.selected;
+            var existing: { [key: string]: boolean } = Object.create(null);
+            frame.catalog.forEach(function (row) {
+                existing[row.ref.itemId] = true;
+            });
+            var incoming = ports
+                .describe(records, route)
+                .filter(function (row) {
+                    var id = row.ref.itemId;
+                    if (
+                        existing[id] ||
+                        (row.payload.__ottMediaNext && seen[id])
+                    )
+                        return false;
+                    existing[id] = true;
+                    return true;
+                });
+            var position = frame.catalog.indexOf(item);
+            var merged = frame.catalog
+                .slice(0, position)
+                .concat(incoming, frame.catalog.slice(position + 1));
+            setItems(frame, merged, selected);
+            // The loading row is replaced in place. Moving away during the
+            // request keeps that newer selection, including filtered catalogs.
+            if (selected === item)
+                frame.selected = Math.max(
+                    0,
+                    Math.min(selectedIndex, frame.items.length - 1)
+                );
+            render();
+        };
+        done.isCurrent = active;
+        if (!active()) return;
+        try {
+            var abort = ports.page!(route, done);
+            if (active()) request.abort = abort;
+            else if (typeof abort === "function") abort();
+        } catch (_) {
+            done([], "page");
+        }
     }
     function open(route: MediaRoute, reset = false, selected = 0) {
         var token = cancel();
@@ -202,6 +312,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             return true;
         },
         cancel: cancel,
+        cancelPage: cancelPage,
         capture: function () {
             var token = revision;
             var filtered = filterRevision;
@@ -249,8 +360,13 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
                 return true;
             });
         },
+        more: more,
+        nearEnd: function (index: number) {
+            return !!nextPage(index);
+        },
         open: open,
         refilter: function (commit?: () => void) {
+            cancelPage();
             if (resolving && cancel() !== revision) return;
             if (commit) commit();
             filterRevision++;

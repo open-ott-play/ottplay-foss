@@ -253,6 +253,8 @@ var keyStrings = {
     "Could not connect to the server.": "Tidak dapat menyambung ke pelayan.",
     "Could not create a pairing request. Find the server again to retry.":
         "Tidak dapat membuat permintaan pemasangan. Cari pelayan sekali lagi untuk mencuba semula.",
+    "Could not load. Select to retry.":
+        "Gagal dimuatkan. Pilih untuk mencuba semula.",
     "Could not save the approved command server settings.":
         "Tidak dapat menyimpan tetapan pelayan arahan yang diluluskan.",
     "Could not update HTTP remote control.":

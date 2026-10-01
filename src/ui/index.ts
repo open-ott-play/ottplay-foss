@@ -3522,7 +3522,15 @@ function showMediaList1(view?: any): void {
                   6 * getViewportWidthScale() +
                   'px;"></div>&nbsp;'
                 : "&nbsp;&nbsp;") +
-            metadataText(item.title || item.name || w._("Untitled"))
+            metadataText(
+                (item as any).__ottMediaNext
+                    ? w._(
+                          (item as any).__ottMediaPageState === "error"
+                              ? "Could not load. Select to retry."
+                              : "Loading..."
+                      )
+                    : item.title || item.name || w._("Untitled")
+            )
         );
     };
     w.detailListActionFn = function () {
@@ -3534,7 +3542,7 @@ function showMediaList1(view?: any): void {
             detailEl.innerHTML = "";
             return;
         }
-        var descr = getMediaDescr(item);
+        var descr = (item as any).__ottMediaNext ? "" : getMediaDescr(item);
         var thumbnail =
             item.logo_30x30 && descr.indexOf("<img") === -1
                 ? getThumbnail(item.logo_30x30)

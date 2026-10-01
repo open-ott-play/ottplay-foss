@@ -254,6 +254,7 @@ var keyStrings = {
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
     "Could not create a pairing request. Find the server again to retry.":
         "Không thể tạo yêu cầu ghép nối. Hãy tìm lại máy chủ để thử lại.",
+    "Could not load. Select to retry.": "Không tải được. Chọn để thử lại.",
     "Could not save the approved command server settings.":
         "Không thể lưu cài đặt máy chủ lệnh đã được phê duyệt.",
     "Could not update HTTP remote control.":

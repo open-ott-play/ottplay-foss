@@ -2962,5 +2962,286 @@ test("Standalone completion retains source, generation and natural-EOS ownership
     }
 });
 
+function pagingFixture() {
+    const c = fixture();
+    const pending = [];
+    const row = (id, title = "Movie " + id) => ({
+        itemId: String(id),
+        stream_url: id + ".mp4",
+        title,
+    });
+    const next = (page) => ({
+        __ottMediaNext: true,
+        itemId: "page:" + page,
+        playlist_url: "page:" + page,
+        title: "Next Page",
+    });
+    c.catalogs[""] = [{ playlist_url: "catalog.xml", title: "Movies" }];
+    c.catalogs["catalog.xml"] = Array.from({ length: 8 }, (_, i) =>
+        row(i)
+    ).concat(next(1));
+    c.providerMediaClient = {
+        cancel() {},
+        page(target, done) {
+            const request = { aborted: false, done, target };
+            pending.push(request);
+            return () => {
+                request.aborted = true;
+            };
+        },
+    };
+    c.mediaList(null);
+    c.selectMedia(0);
+    const highlight = (index) => {
+        c.__ottMedia.highlight(index, c.__ottMedia.snapshot().revision);
+        while (c.timers.length) c.timers.shift()();
+    };
+    return { c, highlight, next, pending, row };
+}
+
+test("Near-end paging appends once without a navigation frame or selection jump", () => {
+    const { c, highlight, next, pending, row } = pagingFixture();
+    const before = c.__ottMedia.snapshot();
+    highlight(4);
+    assert.equal(pending.length, 0);
+    highlight(5);
+    assert.equal(pending.length, 1);
+    assert.equal(
+        c.__ottMedia.snapshot().loading,
+        false,
+        "paging is not a new folder load"
+    );
+    assert.match(c.getListItemFn(c.listArray[8], 8), /Loading/);
+    highlight(8);
+    c.selectMedia(8);
+    assert.equal(
+        pending.length,
+        1,
+        "Enter while loading does not duplicate the request"
+    );
+    pending[0].done({ items: [row(7), row(8), row(9), next(2)] });
+    const after = c.__ottMedia.snapshot();
+    assert.equal(after.frames.length, before.frames.length);
+    assert.deepEqual(plain(after.frame.route), plain(before.frame.route));
+    assert.equal(after.frame.selected, 8);
+    assert.equal(c.listArray[8].title, "Movie 8");
+    assert.equal(c.listArray.filter((x) => x.itemId === "7").length, 1);
+    assert.equal(c.listArray.filter((x) => x.__ottMediaFilter).length, 1);
+    c.__ottMedia.back();
+    assert.equal(c.__ottMedia.snapshot().frames.length, 1);
+    assert.equal(c.listArray[0].title, "Movies");
+});
+
+test("Paging preserves a newer highlight and retains retry state on errors", () => {
+    const { c, highlight, pending, row } = pagingFixture();
+    highlight(5);
+    highlight(2);
+    pending[0].done({ error: "unavailable", items: [] });
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 2);
+    assert.equal(c.listArray[0].title, "Movie 0");
+    assert.match(c.getListItemFn(c.listArray[8], 8), /Select to retry/);
+    highlight(8);
+    assert.equal(pending.length, 1, "failed pages never auto-retry in a loop");
+    c.selectMedia(8);
+    assert.equal(pending.length, 2);
+    highlight(1);
+    pending[1].done({ items: [row(8)] });
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 1);
+    assert.equal(c.listArray[1].title, "Movie 1");
+});
+
+test("Back, close, filter and playback cancel page ownership and reject late replies", () => {
+    for (const action of ["back", "close", "filter", "play", "source"]) {
+        const { c, highlight, pending, row } = pagingFixture();
+        highlight(8);
+        if (action === "back") c.__ottMedia.back();
+        if (action === "close") c.__ottMedia.cancel();
+        if (action === "filter") c.__ottMedia.filter();
+        if (action === "play") c.selectMedia(0);
+        if (action === "source") {
+            c.p_pref = "replacement";
+            c.mediaList("");
+        }
+        assert.equal(pending[0].aborted, true, action);
+        const before = JSON.stringify(c.__ottMedia.snapshot());
+        pending[0].done({ items: [row(999, "Stale response")] });
+        assert.equal(JSON.stringify(c.__ottMedia.snapshot()), before, action);
+        if (action === "close")
+            assert.equal(
+                c.__ottMedia.snapshot().frames.length,
+                2,
+                "closing a loading cursor retains the current directory"
+            );
+    }
+});
+
+test("Filtered cursor replacement focuses first visible insertion and empty pages remove the cursor", () => {
+    const { c, highlight, pending, row } = pagingFixture();
+    c.__ottMedia.filter();
+    c.editvar = "Movie 7";
+    c.setEdit();
+    const cursor = c.listArray.findIndex((x) => x.__ottMediaNext);
+    highlight(cursor);
+    pending[0].done({ items: [row(8, "Hidden"), row(9, "Movie 7 sequel")] });
+    assert.equal(c.listArray[c.selIndex].title, "Movie 7 sequel");
+    assert(!c.listArray.some((x) => x.__ottMediaNext));
+    const empty = pagingFixture();
+    empty.highlight(8);
+    empty.pending[0].done({ items: [] });
+    assert(!empty.c.listArray.some((x) => x.__ottMediaNext));
+    assert.equal(empty.c.__ottMedia.snapshot().frames.length, 2);
+});
+
+test("Cached filtered pages keep scheduling after an immediate append", () => {
+    const { c, next, row } = pagingFixture();
+    const before = c.__ottMedia.snapshot();
+    const requested = [];
+    // Real list painting highlights the selected row, including loading rows.
+    c.showPage = () => c.detailListActionFn();
+    c.providerMediaClient.page = (target, done) => {
+        requested.push(target);
+        done({
+            items:
+                target === "page:1"
+                    ? [row(8, "Hidden"), next(2)]
+                    : [row(9, "Needle result")],
+        });
+        return () => {};
+    };
+    c.__ottMedia.filter();
+    c.editvar = "needle";
+    c.setEdit();
+    let ticks = 0;
+    while (c.timers.length && ticks++ < 20) c.timers.shift()();
+    assert.deepEqual(requested, ["page:1", "page:2"]);
+    assert.equal(c.timers.length, 0, "cached responses cannot loop timers");
+    const after = c.__ottMedia.snapshot();
+    assert.deepEqual(plain(after.frame.route), plain(before.frame.route));
+    assert.equal(after.frames.length, before.frames.length);
+    assert.equal(c.listArray[c.selIndex].title, "Needle result");
+    assert(!c.listArray.some((item) => item.__ottMediaNext));
+    assert.equal(c.calls.filter((call) => call[0] === "play").length, 0);
+});
+
+test("Reentrant page cancellation rejects the old selected file and filter action", () => {
+    for (const action of ["play", "filter"]) {
+        const { c, highlight, row } = pagingFixture();
+        let armed = true;
+        let late;
+        c.catalogs.replacement = [row(999, "Replacement")];
+        c.providerMediaClient.page = (_, done) => {
+            late = done;
+            return () => {
+                if (!armed) return;
+                armed = false;
+                c.mediaList("replacement");
+            };
+        };
+        highlight(5);
+        const editor = c.setEdit;
+        if (action === "play") c.selectMedia(0);
+        else c.__ottMedia.filter();
+        assert.equal(armed, false, action);
+        assert.equal(c.__ottMedia.snapshot().frame.route.target, "replacement");
+        assert.equal(c.listArray[0].title, "Replacement");
+        assert.equal(c.calls.filter((call) => call[0] === "play").length, 0);
+        assert.equal(c.calls.filter((call) => call[0] === "edit").length, 0);
+        assert.equal(
+            c.setEdit,
+            editor,
+            "the old action cannot install an editor"
+        );
+        const after = JSON.stringify(c.__ottMedia.snapshot());
+        late({ items: [row(1000, "Stale response")] });
+        assert.equal(JSON.stringify(c.__ottMedia.snapshot()), after, action);
+    }
+});
+
+test("Stable appended media retains the folder origin and saved breadcrumb", () => {
+    const { c, highlight, pending, row } = pagingFixture();
+    c.providerMediaClient.stableRequests = true;
+    const before = plain(
+        c.__ottMedia.snapshot().frames.map((frame) => frame.route)
+    );
+    highlight(8);
+    pending[0].done({ items: [row(8)] });
+    const appended = c.listArray[8];
+    assert.deepEqual(plain(appended.__ottMediaOrigin), before.at(-1));
+    c.selectMedia(8);
+    const saved = c.documentState().history[0];
+    assert.equal(saved.itemId, "provider:8");
+    assert.deepEqual(plain(saved.payload.__ottMediaOrigin), before.at(-1));
+    assert.deepEqual(
+        plain(saved.payload.__ottMediaTrail.map((frame) => frame.route)),
+        before
+    );
+    assert.equal(saved.payload.__ottMediaTrail.at(-1).selected, 8);
+});
+
+test("Appended same-title folders retain route identity and repeated cursors stop", () => {
+    const { c, highlight, next, pending } = pagingFixture();
+    c.providerMediaClient.stableRequests = true;
+    const folder = (path) => ({
+        playlist_url: path,
+        title: "Same folder name",
+    });
+    const before = c.__ottMedia.snapshot();
+    highlight(8);
+    pending[0].done({ items: [folder("folder:a"), next(2)] });
+    highlight(c.listArray.findIndex((item) => item.__ottMediaNext));
+    pending[1].done({
+        items: [folder("folder:b"), folder("folder:a"), next(1)],
+    });
+    const folders = c.listArray.filter(
+        (item) => item.title === "Same folder name"
+    );
+    assert.deepEqual(plain(folders.map((item) => item.playlist_url)), [
+        "folder:a",
+        "folder:b",
+    ]);
+    assert.notEqual(
+        folders[0].__ottMediaRef.itemId,
+        folders[1].__ottMediaRef.itemId
+    );
+    assert(!c.listArray.some((item) => item.__ottMediaNext));
+    highlight(c.selIndex);
+    assert.equal(
+        pending.length,
+        2,
+        "a repeated cursor cannot create a fetch cycle"
+    );
+    const after = c.__ottMedia.snapshot();
+    assert.equal(after.frames.length, before.frames.length);
+    assert.deepEqual(plain(after.frame.route), plain(before.frame.route));
+});
+
+test("A page reply preserves foreground overlays and retries after they close", () => {
+    for (const kind of ["dialog", "editor", "picker"]) {
+        const { c, highlight, pending, row } = pagingFixture();
+        const port = c.__ottClassicScreenPort;
+        c.showPage = () => port.commitList();
+        c.mediaList(null);
+        highlight(5);
+        const owner = port.listOwner();
+        const overlay = port.openOverlay(kind, () => {});
+        const projection = JSON.stringify(c.listArray);
+        assert(overlay.foreground(), kind);
+        pending[0].done({ items: [row(8)] });
+        assert.equal(pending[0].aborted, true, kind);
+        assert(overlay.active() && overlay.foreground(), kind);
+        assert.equal(port.listOwner(), owner, kind);
+        assert(owner.active(), kind);
+        assert.equal(JSON.stringify(c.listArray), projection, kind);
+        port.close(kind);
+        assert(owner.foreground(), kind);
+        highlight(5);
+        assert.equal(pending.length, 2, kind);
+        pending[0].done({ items: [row(999, "Stale response")] });
+        pending[1].done({ items: [row(8)] });
+        assert.equal(c.listArray[8].title, "Movie 8", kind);
+        assert(!c.listArray.some((item) => item.itemId === "999"), kind);
+    }
+});
+
 console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
 require("./test_media_filter_ownership.cjs");
