@@ -642,6 +642,7 @@ var keyStrings = {
     "Preview in channel list": "Előnézet a csatornalistában",
     Previous: "Előző",
     "Privacy policy": "Adatvédelmi szabályzat",
+    "Profile name": "Profil neve",
     "Protect Adult Channels": "Felnőttcsatornák védelme",
     "Protect Change Provider": "Szolgáltatóváltás védelme",
     "Protect Settings": "Beállítások védelme",
@@ -731,6 +732,7 @@ var keyStrings = {
     "Select playlist file": "Válassza ki a playlist fájlt",
     "Select playlist template source for EPG and logos":
         "Válasszon lejátszásilista-sablonforrást a műsorújsághoz és a logókhoz",
+    "Select Stalker portal": "Stalker-portál kiválasztása",
     "Send request": "Kérés küldése",
     "Send settings": "Beállítások küldése",
     "Send this code from your proxy in the Authorization: Bearer header.":

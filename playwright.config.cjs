@@ -22,6 +22,7 @@ module.exports = defineConfig({
         "playback-runtime.spec.cjs",
         "nas-library.spec.cjs",
         "plex-provider.spec.cjs",
+        "stalker-profiles.spec.cjs",
         "pc2-playback.spec.cjs",
         "window-controls.spec.cjs",
     ],

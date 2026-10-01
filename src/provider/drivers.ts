@@ -115,6 +115,7 @@ interface ProviderDriver {
         url: string,
         callback: (url: string | null) => void
     ): () => void;
+    saveConfiguration?(value: any): boolean;
     saveCredentials(value: ProviderCredentials): boolean | void;
     storageKey?(key: string): string;
     stream(id: string | number): string;

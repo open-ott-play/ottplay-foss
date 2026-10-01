@@ -632,6 +632,7 @@ var keyStrings = {
     "Preview in channel list": "Náhled v seznamu kanálů",
     Previous: "Předchozí kanál",
     "Privacy policy": "Zásady ochrany osobních údajů",
+    "Profile name": "Název profilu",
     "Protect Adult Channels": "Chránit kanály pro dospělé",
     "Protect Change Provider": "Chránit změnu poskytovatele",
     "Protect Settings": "Chránit nastavení",
@@ -719,6 +720,7 @@ var keyStrings = {
     "Select playlist file": "Vyberte soubor playlistu",
     "Select playlist template source for EPG and logos":
         "Vyberte šablonu playlistu pro EPG a loga",
+    "Select Stalker portal": "Vybrat portál Stalker",
     "Send request": "Odeslat požadavek",
     "Send settings": "Odeslat nastavení",
     "Send this code from your proxy in the Authorization: Bearer header.":

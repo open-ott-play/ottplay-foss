@@ -645,6 +645,7 @@ var keyStrings = {
     "Preview in channel list": "Previzualizare în lista de canale",
     Previous: "Anterior",
     "Privacy policy": "Politica de confidențialitate",
+    "Profile name": "Numele profilului",
     "Protect Adult Channels": "Protejează canalele pentru adulți",
     "Protect Change Provider": "Protejează schimbarea furnizorului",
     "Protect Settings": "Protejează setările",
@@ -735,6 +736,7 @@ var keyStrings = {
     "Select playlist file": "Selectați fișierul playlistului",
     "Select playlist template source for EPG and logos":
         "Alegeți sursa șablonului listei de redare pentru EPG și sigle",
+    "Select Stalker portal": "Selectează portalul Stalker",
     "Send request": "Trimite cererea",
     "Send settings": "Trimite setările",
     "Send this code from your proxy in the Authorization: Bearer header.":

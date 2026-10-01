@@ -104,7 +104,11 @@ const BUDGET = Object.freeze({ bytes: 647900, gzipBytes: 197350 });
 // and 737305 / 230719 native, with the same bounded release headroom.
 // Include independent Plex/VPortal page transports and stable cursor IDs:
 // the complete web payload is 742619 raw / 232209 gzip on Node 26.8.2.
-const TOTAL_BUDGET = Object.freeze({ bytes: 743300, gzipBytes: 233200 });
+// Fifteen Stalker profiles, legacy migration and owned switching live in the
+// optional provider asset. Node 22.23.2 measures 744840 / 233573 for web and
+// 744798 / 233636 for native. Keep the entry budget unchanged and allow release
+// suffix headroom in the complete payload.
+const TOTAL_BUDGET = Object.freeze({ bytes: 745400, gzipBytes: 233950 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

@@ -639,6 +639,7 @@ var keyStrings = {
     "Preview in channel list": "Förhandsvisning i kanallistan",
     Previous: "Föregående kanal",
     "Privacy policy": "Integritetspolicy",
+    "Profile name": "Profilnamn",
     "Protect Adult Channels": "Skydda vuxenkanaler",
     "Protect Change Provider": "Skydda leverantörsbyte",
     "Protect Settings": "Skydda inställningar",
@@ -727,6 +728,7 @@ var keyStrings = {
     "Select playlist file": "Välj spellistefil",
     "Select playlist template source for EPG and logos":
         "Välj spellistemall för programguide och logotyper",
+    "Select Stalker portal": "Välj Stalker-portal",
     "Send request": "Skicka begäran",
     "Send settings": "Skicka inställningar",
     "Send this code from your proxy in the Authorization: Bearer header.":

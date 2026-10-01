@@ -645,6 +645,7 @@ var keyStrings = {
     "Preview in channel list": "Vista previa en la lista de canales",
     Previous: "Anterior",
     "Privacy policy": "Política de privacidad",
+    "Profile name": "Nombre del perfil",
     "Protect Adult Channels": "Proteger canales para adultos",
     "Protect Change Provider": "Proteger cambio de proveedor",
     "Protect Settings": "Proteger ajustes",
@@ -733,6 +734,7 @@ var keyStrings = {
     "Select playlist file": "Seleccionar archivo de lista",
     "Select playlist template source for EPG and logos":
         "Seleccionar origen de plantilla de lista para EPG y logotipos",
+    "Select Stalker portal": "Seleccionar portal Stalker",
     "Send request": "Enviar solicitud",
     "Send settings": "Enviar ajustes",
     "Send this code from your proxy in the Authorization: Bearer header.":

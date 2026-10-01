@@ -642,6 +642,7 @@ var keyStrings = {
     "Preview in channel list": "Priekšskatījums kanālu sarakstā",
     Previous: "Iepriekšējais",
     "Privacy policy": "Privātuma politika",
+    "Profile name": "Profila nosaukums",
     "Protect Adult Channels": "Aizsargāt pieaugušo kanālus",
     "Protect Change Provider": "Aizsargāt pakalpojuma sniedzēja maiņu",
     "Protect Settings": "Aizsargāt iestatījumus",
@@ -731,6 +732,7 @@ var keyStrings = {
     "Select playlist file": "Izvēlieties atskaņošanas saraksta failu",
     "Select playlist template source for EPG and logos":
         "Izvēlieties atskaņošanas saraksta veidnes avotu EPG un logotipiem",
+    "Select Stalker portal": "Izvēlēties Stalker portālu",
     "Send request": "Nosūtīt pieprasījumu",
     "Send settings": "Nosūtīt iestatījumus",
     "Send this code from your proxy in the Authorization: Bearer header.":

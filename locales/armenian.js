@@ -638,6 +638,7 @@ var keyStrings = {
     "Preview in channel list": "Նախադիտում ալիքների ցուցակում",
     Previous: "Նախորդ",
     "Privacy policy": "Գաղտնիության քաղաքականություն",
+    "Profile name": "Պրոֆիլի անունը",
     "Protect Adult Channels": "Պաշտպանել մեծահասակների ալիքները",
     "Protect Change Provider": "Պաշտպանել մատակարարի փոփոխությունը",
     "Protect Settings": "Պաշտպանել կարգավորումները",
@@ -729,6 +730,7 @@ var keyStrings = {
     "Select playlist file": "Ընտրեք նվագարկման ցուցակի ֆայլը",
     "Select playlist template source for EPG and logos":
         "Ընտրեք նվագարկման ցուցակի ձևանմուշի աղբյուրը՝ հեռուստածրագրի և պատկերանշանների համար",
+    "Select Stalker portal": "Ընտրել Stalker պորտալը",
     "Send request": "Ուղարկել հարցումը",
     "Send settings": "Ուղարկել կարգավորումները",
     "Send this code from your proxy in the Authorization: Bearer header.":

@@ -622,6 +622,7 @@ var keyStrings = {
     "Preview in channel list": "תצוגה מקדימה ברשימת הערוצים",
     Previous: "הקודם",
     "Privacy policy": "מדיניות פרטיות",
+    "Profile name": "שם הפרופיל",
     "Protect Adult Channels": "הגן על ערוצי מבוגרים",
     "Protect Change Provider": "הגן על החלפת ספק",
     "Protect Settings": "הגן על ההגדרות",
@@ -706,6 +707,7 @@ var keyStrings = {
     "Select playlist file": "בחר קובץ פלייליסט",
     "Select playlist template source for EPG and logos":
         "בחר מקור תבנית פלייליסט ללוח שידורים ולסמלים",
+    "Select Stalker portal": "בחירת פורטל Stalker",
     "Send request": "שלח בקשה",
     "Send settings": "שלח הגדרות",
     "Send this code from your proxy in the Authorization: Bearer header.":
