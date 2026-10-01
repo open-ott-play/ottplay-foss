@@ -349,11 +349,16 @@ function createPlexClient(
         }
         return translate(playable ? "Untitled" : "Untitled folder");
     }
-    function records(container: any, path: string, params: any): any[] {
+    function records(
+        container: any,
+        path: string,
+        params: any,
+        navigation = true
+    ): any[] {
         var root = path === "/library/sections";
         var result: any[] = [];
         var section = /^\/library\/sections\/(\d+)\/all(?:\?|$)/.exec(path);
-        if (section && !Number(params["X-Plex-Container-Start"]))
+        if (navigation && section && !Number(params["X-Plex-Container-Start"]))
             result.push({
                 playlist_url: target(
                     "/library/sections/" + section[1] + "/folder",
@@ -395,7 +400,11 @@ function createPlexClient(
             Number(params["X-Plex-Container-Start"]) ||
             0;
         var count = Number(container.size) || items(container).length;
-        if (count > 0 && Number(container.totalSize) > offset + count)
+        if (
+            navigation &&
+            count > 0 &&
+            Number(container.totalSize) > offset + count
+        )
             result.push({
                 playlist_url: {
                     offset: offset + count,
@@ -411,7 +420,7 @@ function createPlexClient(
                 },
                 title: translate("Next"),
             });
-        if (root)
+        if (navigation && root)
             result.push({
                 playlist_url: "plexsearch",
                 search_on: 1,
@@ -439,7 +448,11 @@ function createPlexClient(
     /** Collect a flat catalog independently from the visible navigation request. */
     function collect(
         value: any,
-        done: (result: { items: any[]; error?: string }) => void,
+        done: (result: {
+            items: any[];
+            records: any[];
+            error?: string;
+        }) => void,
         guard?: () => boolean
     ): () => void {
         if (cancelCollection) cancelCollection();
@@ -452,6 +465,7 @@ function createPlexClient(
         var total: number | null = null;
         var characters = 0;
         var collected: any[] = [];
+        var catalog: any[] = [];
         var seen: any = Object.create(null);
         var seenPages: any = Object.create(null);
         var path = collectionPath(value);
@@ -464,6 +478,7 @@ function createPlexClient(
             var previous = pendingPage;
             pendingPage = null;
             collected = [];
+            catalog = [];
             seen = seenPages = null;
             if (previous && previous.xhr) previous.xhr.abort();
         }
@@ -482,8 +497,12 @@ function createPlexClient(
         function finish(error = false): void {
             if (!active()) return;
             var result = error
-                ? { error: translate("Unable to load playlist"), items: [] }
-                : { items: collected };
+                ? {
+                      error: translate("Unable to load playlist"),
+                      items: [],
+                      records: [],
+                  }
+                : { items: collected, records: catalog };
             cancelOwned();
             done(result);
         }
@@ -507,9 +526,12 @@ function createPlexClient(
             var page: any[];
             try {
                 rows = items(data);
-                page = records(data, path, {
-                    "X-Plex-Container-Start": offset,
-                });
+                page = records(
+                    data,
+                    path,
+                    { "X-Plex-Container-Start": offset },
+                    false
+                );
             } catch (_) {
                 finish(true);
                 return;
@@ -547,17 +569,19 @@ function createPlexClient(
             }
             if (count) seenPages[signature] = true;
             page.forEach(function (record) {
-                if (
-                    !record.request ||
-                    !record.stream_url ||
-                    record.playlist_url
-                )
-                    return;
-                var id = record.request.path;
+                var playable =
+                    record.request && record.stream_url && !record.playlist_url;
+                var id = playable
+                    ? "item:" + record.request.path
+                    : record.playlist_url && record.playlist_url.path
+                      ? "folder:" + record.playlist_url.path
+                      : "";
+                if (!id) return;
                 if (seen[id]) return;
                 seen[id] = true;
                 characters += JSON.stringify(record).length;
-                collected.push(record);
+                catalog.push(record);
+                if (playable) collected.push(record);
             });
             if (characters > 8 * 1024 * 1024) {
                 finish(true);

@@ -421,6 +421,40 @@ test("collection capability uses the same flat route contract as collection", ()
     }
 });
 
+test("movies and clips retain title filtering while episode and track sequence markers remain unchanged", () => {
+    const rows = ["movie", "clip", "episode", "track"].map((type, index) => ({
+        ratingKey: String(index + 1),
+        title: type,
+        type,
+    }));
+    for (const path of [
+        "/library/sections/1/all",
+        "/library/sections/1/folder?parent=17",
+        "/library/metadata/42/children",
+    ]) {
+        const f = fixture();
+        f.client.load({ path, plexSource: source }, () => {});
+        last(f).reply({ MediaContainer: { Metadata: rows } });
+        const playable = f.host.mediaRecords.filter((record) => record.request);
+        assert.equal(playable.length, 4);
+        assert.deepEqual(
+            Array.from(playable, (record) => record.__ottMediaSequence),
+            [false, false, true, true]
+        );
+    }
+    for (const target of ["", "plexsearch?search=film"]) {
+        const f = fixture();
+        f.client.load(target, () => {});
+        last(f).reply({ MediaContainer: { Metadata: rows } });
+        const playable = f.host.mediaRecords.filter((record) => record.request);
+        assert.equal(playable.length, 4);
+        assert.deepEqual(
+            Array.from(playable, (record) => record.__ottMediaSequence),
+            [false, false, true, true]
+        );
+    }
+});
+
 test("collection starts at zero, deduplicates flat playable pages and does not disturb a visible load", () => {
     const f = fixture();
     f.client.load("", () => {});
@@ -475,6 +509,18 @@ test("collection starts at zero, deduplicates flat playable pages and does not d
             (row) => row.stream_url === "plex:request" && !row.playlist_url
         )
     );
+    assert.deepEqual(
+        Array.from(result.records, (row) => row.title),
+        ["Film", "Child", "Episode", "Track"]
+    );
+    assert.deepEqual(
+        Array.from(result.items, (row) => row.__ottMediaSequence),
+        [false, true, true]
+    );
+    assert.equal(
+        result.records[1].playlist_url.path,
+        "/library/sections/1/folder?parent=18"
+    );
     assert.equal(
         f.requests.length,
         3,
@@ -489,6 +535,87 @@ test("collection starts at zero, deduplicates flat playable pages and does not d
         f.host.mediaRecords[0].title,
         "Library",
         "collection did not invalidate the navigation revision"
+    );
+});
+
+test("complete catalog records retain deduplicated subfolders and omit synthetic navigation", () => {
+    const f = fixture();
+    const child = { key: "/library/metadata/10", title: "Child", type: "show" };
+    let result;
+    f.client.collect(
+        { path: "/library/sections/1/all", plexSource: source },
+        (value) => (result = value)
+    );
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                { ratingKey: "42", title: "First", type: "movie" },
+                child,
+                { key: "/library/metadata/11", title: "Browse folders" },
+            ],
+            offset: 0,
+            size: 3,
+            totalSize: 6,
+        },
+    });
+    assert.equal(result, undefined, "Never expose a partial folder");
+    f.tick();
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                { ...child, title: "Duplicate child" },
+                { ratingKey: "43", title: "Second", type: "clip" },
+                { key: "/library/metadata/12", title: "Next" },
+            ],
+            offset: 3,
+            size: 3,
+            totalSize: 6,
+        },
+    });
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+        Array.from(result.records, (record) => record.title),
+        ["First", "Child", "Browse folders", "Second", "Next"],
+        "Real folders with navigation-like titles must remain visible"
+    );
+    assert.deepEqual(
+        Array.from(result.items, (record) => record.request.path),
+        ["/library/metadata/42", "/library/metadata/43"]
+    );
+    const folders = result.records.filter((record) => record.playlist_url);
+    assert.deepEqual(
+        Array.from(folders, (record) => record.playlist_url.path),
+        [
+            "/library/metadata/10/children",
+            "/library/metadata/11/children",
+            "/library/metadata/12/children",
+        ]
+    );
+    assert(folders.every((record) => record.playlist_url.offset === undefined));
+    assert.equal(f.requests.length, 2, "Collection never visits child folders");
+    assert(!JSON.stringify(result).includes(token));
+
+    const root = fixture();
+    root.client.collect("", (value) => (result = value));
+    last(root).reply({
+        MediaContainer: {
+            Directory: [
+                { key: "1", title: "Movies", type: "movie" },
+                { key: "2", title: "Shows", type: "show" },
+            ],
+            size: 2,
+            totalSize: 2,
+        },
+    });
+    assert.equal(result.items.length, 0);
+    assert.deepEqual(
+        Array.from(result.records, (record) => record.title),
+        ["Movies", "Shows"]
+    );
+    assert(
+        result.records.every(
+            (record) => typeof record.playlist_url === "object"
+        )
     );
 });
 
@@ -534,6 +661,7 @@ test("unknown totals require an empty terminal page and incomplete collections n
         last(g).reply({ MediaContainer: broken });
         assert.equal(failed.error, "Unable to load playlist");
         assert.equal(failed.items.length, 0);
+        assert.equal(failed.records.length, 0);
         assert.equal(g.timers.size, 0);
     }
     const g = fixture();
@@ -674,6 +802,38 @@ test("collection time, page and retained data budgets fail closed", () => {
     }
     assert.equal(overflow.error, "Unable to load playlist");
     assert.equal(overflow.items.length, 0);
+    assert.equal(overflow.records.length, 0);
+});
+
+test("retained folder metadata shares the collection byte budget and never escapes as a partial catalog", () => {
+    const f = fixture();
+    let result;
+    f.client.collect(
+        { path: "/library/sections/1/folder?parent=17", plexSource: source },
+        (value) => (result = value)
+    );
+    for (let index = 0; index < 2; index++) {
+        last(f).reply({
+            MediaContainer: {
+                Directory: [
+                    {
+                        key:
+                            "/library/sections/1/folder?parent=" + (index + 18),
+                        summary: "x".repeat(5 * 1024 * 1024),
+                        title: "Child " + index,
+                    },
+                ],
+                offset: index,
+                size: 1,
+                totalSize: 2,
+            },
+        });
+        f.tick();
+    }
+    assert.equal(result.error, "Unable to load playlist");
+    assert.equal(result.records.length, 0);
+    assert.equal(result.items.length, 0);
+    assert.equal(f.timers.size, 0);
 });
 
 test("synchronous collection responses yield between pages and navigation cancellation stays separate", () => {

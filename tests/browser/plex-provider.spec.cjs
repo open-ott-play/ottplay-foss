@@ -145,6 +145,9 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     const local = new URL(baseURL).origin;
     const requests = [];
     const errors = [];
+    let expandedFolder = false;
+    const folderOffsets = [];
+    const folderParents = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
@@ -176,6 +179,27 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
             });
         if (url.pathname === "/library/sections/7/folder") {
             const level = Number(url.searchParams.get("parent") || 0);
+            folderParents.push(level);
+            if (level === 3 && expandedFolder) {
+                const offset = Number(
+                    url.searchParams.get("X-Plex-Container-Start") || 0
+                );
+                folderOffsets.push(offset);
+                const rows = [
+                    {
+                        key: "/library/sections/7/folder?parent=4",
+                        title: "Child folder",
+                    },
+                    { ratingKey: "42", title: "Test film", type: "movie" },
+                    { ratingKey: "43", title: "Following film", type: "movie" },
+                ];
+                return json({
+                    Metadata: rows.slice(offset, offset + 2),
+                    offset,
+                    size: Math.min(2, rows.length - offset),
+                    totalSize: rows.length,
+                });
+            }
             return json(
                 level < 3
                     ? {
@@ -203,7 +227,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
                       }
             );
         }
-        if (url.pathname === "/library/metadata/42")
+        if (/^\/library\/metadata\/(42|43)$/.test(url.pathname))
             return json({
                 Metadata: [
                     {
@@ -215,7 +239,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
                                 videoCodec: "mpeg4",
                             },
                         ],
-                        ratingKey: "42",
+                        ratingKey: url.pathname.split("/").pop(),
                         type: "movie",
                     },
                 ],
@@ -287,6 +311,9 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     expect(depth).toBeGreaterThanOrEqual(5);
     await page.evaluate(() => window.__ottMedia.back());
     await select(page, "Folder 3");
+    const folderTrail = await page.evaluate(() =>
+        window.__ottMedia.snapshot().frames.map((frame) => frame.route.title)
+    );
     await page.evaluate(() => {
         window.sFavorites = 1;
         document.querySelector("video").muted = true;
@@ -363,6 +390,9 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     const resolvesBeforeReload = requests.filter(
         (path) => path === "/library/metadata/42"
     ).length;
+    // A fresh folder listing can grow between sessions; resume must collect
+    // later pages without descending into its child folders.
+    expandedFolder = true;
     await page.reload();
     await page.waitForFunction(() => {
         const video = document.querySelector("video");
@@ -381,6 +411,55 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     expect(
         await page.evaluate(() => document.querySelector("video").currentTime)
     ).toBeLessThan(15);
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#listCaption")).toContainText("Folder 3");
+    await expect(page.locator("#list")).toContainText("Following film");
+    const restoredFolder = await page.evaluate(() => {
+        const view = window.__ottMedia.snapshot();
+        return {
+            selected: view.frame.items[view.frame.selected].ref.itemId,
+            titles: view.frame.items.map((item) => item.title),
+            trail: view.frames.map((frame) => frame.route.title),
+        };
+    });
+    expect(restoredFolder.trail).toEqual(folderTrail);
+    expect(restoredFolder.selected).toBe(bookmark.itemId);
+    expect(restoredFolder.titles).toEqual(
+        expect.arrayContaining(["Child folder", "Test film", "Following film"])
+    );
+    expect(folderOffsets).toContain(2);
+    const resolvesBeforeEnd = requests.filter(
+        (path) => path === "/library/metadata/43"
+    ).length;
+    await page.waitForFunction(() => {
+        const video = document.querySelector("video");
+        return (
+            video.readyState >= 2 &&
+            Number.isFinite(video.duration) &&
+            !video.seeking
+        );
+    });
+    await page.evaluate(() => {
+        const video = document.querySelector("video");
+        video.currentTime = video.duration - 1;
+    });
+    await page.waitForFunction(() => {
+        const current = window.__ottMedia.current();
+        const video = document.querySelector("video");
+        return (
+            current?.payload.request.path === "/library/metadata/43" &&
+            video.currentTime > 0.2 &&
+            video.currentTime < 5 &&
+            !video.error
+        );
+    });
+    expect(
+        requests.filter((path) => path === "/library/metadata/43").length
+    ).toBe(resolvesBeforeEnd + 1);
+    expect(folderOffsets.every((offset) => offset === 0 || offset === 2)).toBe(
+        true
+    );
+    expect(folderParents).not.toContain(4);
     const stopsBefore = requests.filter((path) =>
         path.endsWith("/stop")
     ).length;

@@ -718,6 +718,7 @@ export function infoBarHide(): void {
 export function showChannelInfo(timeoutSec: number): void {
     var w = window as any;
     clearTimeout(detailTimer);
+    clearTimeout(detailScrollTimer);
     clearTimeout(infoTimeout);
     if (timeoutSec === undefined) timeoutSec = 0;
     // If called with timeoutSec=1 and bar is already visible with descr hidden, just reset timeout
@@ -1861,6 +1862,7 @@ export function renderButtonHint(
 }
 
 var detailTimer: any = null;
+var detailScrollTimer: any = null;
 
 /**
  * Debounced trigger for the detail-list action callback.
@@ -1872,6 +1874,7 @@ var detailTimer: any = null;
  */
 function scheduleListDetailUpdate(): void {
     clearTimeout(detailTimer);
+    clearTimeout(detailScrollTimer);
     if (listDetailElement) listDetailElement.innerHTML = "";
     var owner = (window as any).__ottClassicScreenPort.listOwner();
     if (!owner) return;
@@ -1990,13 +1993,15 @@ export function scrollUpDescr(): void {
  * @param px - The number of pixels to scroll up.
  * @param delay - Delay in ms before starting the animation.
  * @returns void
- * @sideeffect Clears `detailTimer` and sets a new timeout. Uses jQuery `animate()` on the element.
+ * @sideeffect Replaces the description animation timer. Uses jQuery `animate()` on the element.
  * @analysis The animation duration is `px * 80` milliseconds (linear). Only animates if `px > 0`.
  */
 export function scrollUp(el: string, px: number, delay: number): void {
-    clearTimeout(detailTimer);
+    // Playback descriptions may finish animating while a newly opened list is
+    // waiting to render its details. Scrolling must not cancel that render.
+    clearTimeout(detailScrollTimer);
     if (px > 0) {
-        detailTimer = setTimeout(function () {
+        detailScrollTimer = setTimeout(function () {
             $("#" + el).animate({ "margin-top": "-=" + px }, px * 80);
         }, delay);
     }

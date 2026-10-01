@@ -2438,6 +2438,296 @@ function coldResumeFixture(position = 123.4) {
     return c;
 }
 
+function coldFolderResumeFixture() {
+    const folder = "/library/sections/7/folder?parent=FFFF";
+    function configure(c) {
+        c.p_pref = "plex";
+        c.__ottActiveProviderDriver = {
+            credentials: () => ({
+                password: "folder-fixture-account",
+                server: "https://plex.invalid",
+            }),
+            id: "plex",
+        };
+        const target = (path, title) => ({ path, title });
+        const movie = (id, title) => ({
+            request: { path: "/library/metadata/" + id },
+            title,
+        });
+        c.folderRows = [
+            {
+                playlist_url: target(folder + "-child", "Child folder"),
+                title: "Child folder",
+            },
+            movie(41, "Previous film"),
+            movie(42, "Saved film"),
+            movie(43, "Next film"),
+        ];
+        const catalogs = {
+            "": [
+                {
+                    playlist_url: target("library", "Library"),
+                    title: "Library",
+                },
+            ],
+            library: [{ playlist_url: target(folder, "FFFF"), title: "FFFF" }],
+            [folder]: c.folderRows,
+        };
+        c.getMediaArray = (value, done) => {
+            const path = typeof value === "string" ? value : value.path;
+            c.calls.push(["fetch", path]);
+            c.mediaRecords = plain(catalogs[path] || []);
+            c.mediaName = value.title || "Media Library";
+            done();
+        };
+        c.collections = [];
+        c.collectionCancels = 0;
+        c.resolutions = [];
+        c.providerMediaClient = {
+            canCollect: (value) => value && value.path === folder,
+            cancel() {},
+            cancelAutomatic() {},
+            collect(value, done, guard) {
+                c.collections.push(plain(value));
+                c.completeFolder = (late = false) => {
+                    if (late || !guard || guard())
+                        done({
+                            items: plain(
+                                c.folderRows.filter((row) => row.request)
+                            ),
+                            records: plain(c.folderRows),
+                        });
+                };
+                if (!c.deferFolder) c.completeFolder();
+                return () => c.collectionCancels++;
+            },
+            persist(payload) {
+                delete payload.stream_url;
+                return payload;
+            },
+            resolve(payload, done, automatic) {
+                c.resolutions.push({ automatic, item: plain(payload) });
+                done({ ...payload, stream_url: payload.request.path + ".mp4" });
+            },
+            stableRequests: true,
+        };
+        c.stbPlay = (url, position) => {
+            c.calls.push(["play", url, position]);
+            c.__ottClassicPlayback.command({ type: "playing" });
+        };
+        c.chooseTitle = (title) => {
+            const index = c.listArray.findIndex((row) => row.title === title);
+            assert(index >= 0, "Catalog contains " + title);
+            c.selectMedia(index);
+        };
+    }
+    const first = fixture();
+    configure(first);
+    first.mediaList(null);
+    first.chooseTitle("Library");
+    first.chooseTitle("FFFF");
+    first.chooseTitle("Saved film");
+    first.__ottMedia.checkpoint(first.__ottMedia.current().ref, 123.4, true);
+    const c = fixture();
+    configure(c);
+    Object.assign(c.stored, first.stored);
+    c.savedTrail = plain(
+        first.__ottMedia.snapshot().frames.map((row) => row.route)
+    );
+    c.savedRef = plain(first.__ottMedia.current().ref);
+    c.folderTarget = folder;
+    c.journalKey = "mediaJournal.v1:" + c.__ottMedia.sourceId();
+    return c;
+}
+
+test("Cold Plex folder resume restores breadcrumbs, selected file and the next movie sibling", () => {
+    const c = coldFolderResumeFixture();
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    assert.deepEqual(
+        c.calls.filter((row) => row[0] === "play"),
+        [["play", "/library/metadata/42.mp4", 123.4]]
+    );
+    c.mediaList(null);
+    const view = c.__ottMedia.snapshot();
+    assert.deepEqual(plain(view.frames.map((row) => row.route)), c.savedTrail);
+    assert.equal(view.frame.route.title, "FFFF");
+    assert.deepEqual(
+        plain(view.frame.items[view.frame.selected].ref),
+        c.savedRef
+    );
+    assert.deepEqual(
+        plain(
+            view.frame.items
+                .filter((row) => !row.payload.__ottMediaFilter)
+                .map((row) => row.title)
+        ),
+        ["Child folder", "Previous film", "Saved film", "Next film"]
+    );
+    assert.deepEqual(plain(c.mediaNames), ["Media Library", "Library", "FFFF"]);
+    assert.equal(
+        c.collections.length,
+        1,
+        "Only the saved flat folder is collected"
+    );
+    assert.equal(c.collections[0].path, c.folderTarget);
+    assert(
+        !c.calls.some((row) => row[0] === "fetch"),
+        "Cold resume does not walk ancestors eagerly"
+    );
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 600,
+        type: "position",
+    });
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.deepEqual(
+        c.calls.filter((row) => row[0] === "play"),
+        [
+            ["play", "/library/metadata/42.mp4", 123.4],
+            ["play", "/library/metadata/43.mp4", undefined],
+        ]
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().position, 0);
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.request.path),
+        ["/library/metadata/42", "/library/metadata/43"]
+    );
+    assert.equal(
+        c.collections.length,
+        1,
+        "EOF reuses the admitted sibling order"
+    );
+    assert(!c.calls.some((row) => row[0] === "confirm"));
+});
+
+test("Cold Plex folder breadcrumbs lazily reload their parent and preserve its selection", () => {
+    const c = coldFolderResumeFixture();
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    c.mediaList(null);
+    c.__ottMedia.back();
+    const parent = c.__ottMedia.snapshot().frame;
+    assert.equal(parent.route.title, "Library");
+    assert.equal(parent.items[parent.selected].title, "FFFF");
+    assert.deepEqual(
+        c.calls.filter((row) => row[0] === "fetch"),
+        [["fetch", "library"]]
+    );
+    c.chooseTitle("FFFF");
+    assert.equal(c.__ottMedia.snapshot().frame.route.title, "FFFF");
+    assert(c.listArray.some((row) => row.title === "Saved film"));
+});
+
+test("Legacy Plex folder bookmarks without a saved trail retain folder and next-sibling recovery", () => {
+    const c = coldFolderResumeFixture();
+    const saved = JSON.parse(c.stored[c.journalKey]);
+    delete saved.history[0].payload.__ottMediaTrail;
+    c.stored[c.journalKey] = JSON.stringify(saved);
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    c.mediaList(null);
+    const view = c.__ottMedia.snapshot();
+    assert.equal(view.frame.route.target.path, c.folderTarget);
+    assert.equal(view.frame.items[view.frame.selected].title, "Saved film");
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(
+        c.resolutions.at(-1).item.request.path,
+        "/library/metadata/43"
+    );
+});
+
+test("Cold Plex folder resume honors Repeat Off after the final sibling", () => {
+    const c = coldFolderResumeFixture();
+    c.stored["mediaRepeat.v1:" + c.__ottMedia.sourceId()] = "off";
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    for (let index = 0; index < 2; index++) {
+        c.__ottClassicPlayback.command({
+            duration: 600,
+            position: 600,
+            type: "position",
+        });
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    }
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.request.path),
+        ["/library/metadata/42", "/library/metadata/43"]
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+    assert.equal(c.documentState().history[0].position, 0);
+});
+
+test("Cancelled cold folder collection cannot restore navigation or start late playback", () => {
+    const cancel = [
+        (c) => c.__ottMedia.cancelAuto(),
+        (c) => c.__ottMedia.back(),
+        (c) => c.mediaList("library"),
+        (c) => c.__ottClassicPlayback.command({ type: "stop" }),
+    ];
+    for (const stop of cancel) {
+        const c = coldFolderResumeFixture();
+        c.deferFolder = true;
+        assert.equal(c.__ottMedia.restoreLast(), true);
+        assert.equal(c.collections.length, 1);
+        assert.equal(c.resolutions.length, 0);
+        const finish = c.completeFolder;
+        stop(c);
+        const view = plain(c.__ottMedia.snapshot());
+        // Model a late transport callback even if its cancellation was ignored.
+        finish(true);
+        assert.deepEqual(plain(c.__ottMedia.snapshot()), view);
+        assert.equal(c.resolutions.length, 0);
+        assert(!c.calls.some((row) => row[0] === "play"));
+        assert.equal(c.documentState().history[0].position, 123.4);
+    }
+});
+
+test("Reentrant Stop while restoring a replacement folder prevents both pending manual selections", () => {
+    const c = coldFolderResumeFixture();
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    c.mediaList(null);
+    const pending = [];
+    c.providerMediaClient.resolve = (payload, done) =>
+        pending.push({ done, payload });
+    c.chooseTitle("Previous film");
+    assert.equal(pending.length, 1);
+    let cancellations = 0;
+    c.providerMediaClient.cancel = () => {
+        cancellations++;
+        c.__ottMedia.cancelAuto();
+        c.__ottClassicPlayback.command({ type: "stop" });
+    };
+    const plays = c.calls.filter((row) => row[0] === "play").length;
+    c.chooseTitle("Next film");
+    assert.equal(cancellations, 1);
+    assert.equal(pending.length, 1, "Stop prevents the replacement resolver");
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+    pending[0].done({ ...pending[0].payload, stream_url: "late-film.mp4" });
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, plays);
+});
+
+test("Failed full-folder collection never falls back to a visible partial provider sequence", () => {
+    const c = coldFolderResumeFixture();
+    c.folderRows.splice(3);
+    c.folderRows.forEach((row) => {
+        if (row.request) row.__ottMediaSequence = true;
+    });
+    c.providerMediaClient.collect = (_target, done) =>
+        done({ error: "Unavailable", items: [] });
+    c.mediaList(null);
+    c.chooseTitle("Library");
+    c.chooseTitle("FFFF");
+    c.chooseTitle("Previous film");
+    assert.equal(c.__ottMedia.current().sequence, null);
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.deepEqual(
+        c.resolutions.map((row) => row.item.request.path),
+        ["/library/metadata/41"]
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+});
+
 test("Cold Plex resume resolves a fresh stable item at its exact saved position", () => {
     for (const position of [10.25, 123.4]) {
         const c = coldResumeFixture(position);

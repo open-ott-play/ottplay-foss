@@ -20,6 +20,7 @@ interface MediaLibraryFrame {
 }
 interface MediaOwnedFrame extends MediaLibraryFrame {
     catalog: MediaLibraryItem[];
+    deferred?: boolean;
 }
 interface MediaLibraryView {
     frame: MediaLibraryFrame | null;
@@ -126,7 +127,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         frame.selected = index;
         return frame.items[index];
     }
-    function open(route: MediaRoute, reset = false) {
+    function open(route: MediaRoute, reset = false, selected = 0) {
         var token = cancel();
         if (token !== revision) return;
         if (reset) frames = [];
@@ -149,7 +150,8 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             settled = true;
             loading = false;
             cleanup = null;
-            setItems(frame, ports.describe(records || [], frame.route));
+            var items = ports.describe(records || [], frame.route);
+            setItems(frame, items, items[selected]);
             if (typeof title === "string" && title) frame.route.title = title;
             if (token === revision) render();
         };
@@ -190,6 +192,12 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             if (token !== revision) return false;
             if (frames.length <= 1) return false;
             frames.pop();
+            var parent = frames[frames.length - 1];
+            if (parent.deferred) {
+                frames.pop();
+                open(parent.route, false, parent.selected);
+                return true;
+            }
             render();
             return true;
         },
@@ -227,6 +235,19 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         // Highlight changes owned selection without publishing item data.
         highlight: function (index: number) {
             selectItem(index);
+        },
+        highlightRef: function (ref: MediaRef) {
+            var frame = frames[frames.length - 1];
+            if (!frame || frame.route.kind !== "catalog") return;
+            frame.items.some(function (item, index) {
+                if (
+                    item.ref.itemId !== ref.itemId ||
+                    item.ref.sourceId !== ref.sourceId
+                )
+                    return false;
+                frame.selected = index;
+                return true;
+            });
         },
         open: open,
         refilter: function (commit?: () => void) {
@@ -267,6 +288,36 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
                 if (token !== revision && !settled) abort();
                 else if (!settled) cleanup = abort;
             }
+        },
+        // Startup restores only the current catalog. Ancestors are fetched on
+        // Back, keeping checkpoints small and avoiding a request per breadcrumb.
+        restore: function (
+            trail: { route: MediaRoute; selected: number }[],
+            items: MediaLibraryItem[],
+            selected: MediaRef
+        ) {
+            var token = cancel();
+            if (token !== revision || !trail.length) return false;
+            frames = trail.map(function (saved) {
+                return {
+                    catalog: [],
+                    deferred: true,
+                    items: [],
+                    route: mediaLibraryCopy(saved.route),
+                    selected: saved.selected,
+                };
+            });
+            var frame = frames[frames.length - 1];
+            frame.deferred = false;
+            var rows = mediaLibraryCopy(items);
+            setItems(
+                frame,
+                rows,
+                rows.filter(function (item: MediaLibraryItem) {
+                    return item.ref.itemId === selected.itemId;
+                })[0]
+            );
+            return true;
         },
         revision: function () {
             return viewRevision;
