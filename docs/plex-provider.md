@@ -6,6 +6,25 @@ For a manual connection, enter the Plex server address (for example `http://192.
 
 Plex is a library provider: it opens library sections, search, folders and media. It does not flatten the collection into TV channels. Switching to Plex preserves other providers' saved connections, playlists and favorites.
 
+**Browse folders** opens the server's filesystem hierarchy. Items without a title
+use alternate Plex metadata or a filename, with **Untitled** as a final fallback.
+Inside a folder, **Shuffle and play** starts its videos in a random order. The
+queue includes every page of that folder and applies the current title filter;
+it does not descend into subfolders. A failed page cancels the new queue.
+
+The playback buttons appear beside the description. **Repeat** cycles through
+**All**, **One**, and **Off**: repeat the queue, repeat the current video, or finish
+after its last video. Remote shortcuts are **5** (or **Play**) for shuffle and
+**9** for repeat. The repeat preference is saved per media source. Back, Stop,
+changing the filter or choosing another item cancels a pending queue launch.
+
+On reopening the player, Plex continues the last unfinished video at its saved
+position, including seconds within the first minute. It resolves the Plex item
+again instead of retaining an expiring stream URL. Tauri saves the current
+position before its explicit Exit action. If the file is unavailable, the
+library opens for another selection. Disabled watch history and finished videos
+do not trigger automatic playback; the parental PIN still applies.
+
 The **Playback** setting offers:
 
 - **Automatic** — original files when the current device reports support; compatible HLS when conversion is needed.

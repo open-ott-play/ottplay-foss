@@ -1822,6 +1822,84 @@ test("English interface credits are readable offline and return to the list", as
     }
 });
 
+for (const profile of ["tauri", "capacitor"]) {
+    test(`${profile} media controls dispatch without inline handlers`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, profile);
+        const page = fixture.page;
+        try {
+            await page.evaluate(() => {
+                const saved = {};
+                window.__fixtureViolations = [];
+                window.__fixtureShuffles = 0;
+                window.__ottMedia.useSource({
+                    client: {
+                        cancel() {},
+                        load(_target, done) {
+                            window.mediaRecords = [
+                                {
+                                    id: 1,
+                                    stream_url: "fixture.mp4",
+                                    title: "Film",
+                                },
+                            ];
+                            window.mediaName = "Library";
+                            done();
+                        },
+                    },
+                    read: (key) => saved[key] || null,
+                    sourceId: "fixture-media-controls",
+                    title: "Library",
+                    write: (key, value) => {
+                        saved[key] = value;
+                    },
+                });
+                window.__ottMedia.open(null);
+                window.__ottMedia.shufflePlay = () =>
+                    window.__fixtureShuffles++;
+            });
+            const controls = page.locator("#mediaPlaybackControls");
+            await controls.getByRole("button", { name: "Repeat: All" }).click();
+            await controls
+                .getByRole("button", { name: "Repeat: One" })
+                .press("Space");
+            await expect(
+                controls.getByRole("button", { name: "Repeat: Off" })
+            ).toBeVisible();
+            await page.evaluate(() => {
+                const forged = document.createElement("div");
+                forged.id = "mediaPlaybackControls";
+                forged.innerHTML =
+                    '<span role="button" data-ott-key="' +
+                    window.keys.N5 +
+                    '">Metadata action</span>';
+                forged.addEventListener("click", (event) =>
+                    event.stopPropagation()
+                );
+                document.getElementById("_prd").appendChild(forged);
+            });
+            await page.getByRole("button", { name: "Metadata action" }).click();
+            expect(await page.evaluate(() => window.__fixtureShuffles)).toBe(0);
+            await controls
+                .getByRole("button", { name: "Shuffle and play" })
+                .click();
+            expect(await page.evaluate(() => window.__fixtureShuffles)).toBe(1);
+            expect(
+                await page.evaluate(() =>
+                    window.__fixtureViolations.filter((directive) =>
+                        directive.startsWith("script-src")
+                    )
+                )
+            ).toEqual([]);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
 test("active Tauri CSP reproduces the former inline-style failure", async ({
     browser,
 }) => {

@@ -101,6 +101,7 @@ var keyStrings = {
     "Black screen while switching the channel": "Màn hình đen khi chuyển kênh",
     Blue: "Xanh dương",
     "Bookmark age: %1 days": "Tuổi dấu trang: %1 ngày",
+    "Browse folders": "Duyệt thư mục",
     "Buffer Size, s": "Dung lượng bộ đệm, giây",
     "Built-in playlist:": "Danh sách phát tích hợp:",
     "Built-in playlists": "Danh sách phát tích hợp",
@@ -560,6 +561,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Không thu nhỏ video khi hiển thị danh sách (sửa lỗi)",
     Nothing: "Không có",
+    "Nothing to play": "Không có video để phát",
     "Number of next TV programs in channel list":
         "Số chương trình tiếp theo trong danh sách kênh",
     "Number of rows in lists": "Số hàng trong danh sách",
@@ -671,6 +673,9 @@ var keyStrings = {
     "Rename category": "Đổi tên danh mục",
     "Rename to": "Đổi tên thành",
     "Repeat parental code": "Nhập lại mã phụ huynh",
+    "Repeat: All": "Lặp lại: tất cả",
+    "Repeat: Off": "Lặp lại: tắt",
+    "Repeat: One": "Lặp lại: một",
     "Request sended!": "Đã gửi yêu cầu!",
     "Requesting approval for %1": "Đang yêu cầu phê duyệt cho %1",
     "Restart player": "Khởi động lại trình phát",
@@ -766,6 +771,7 @@ var keyStrings = {
     "Show when changing program": "Hiển thị khi đổi chương trình",
     "Show when rewind": "Hiển thị khi tua lại",
     "Show when switching": "Hiển thị khi chuyển kênh",
+    "Shuffle and play": "Xáo trộn và phát",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -834,6 +840,9 @@ var keyStrings = {
     transparent: "trong suốt",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Cài đặt ULTIFL1X",
+    "Unable to load playlist": "Không thể tải danh sách phát",
+    Untitled: "Không có tiêu đề",
+    "Untitled folder": "Thư mục chưa đặt tên",
     "Update installed. Please restart OttPlay FOSS.":
         "Đã cài đặt bản cập nhật. Hãy khởi động lại OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

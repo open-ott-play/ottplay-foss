@@ -100,6 +100,7 @@ var keyStrings = {
         "Kanal dəyişdirilərkən qara ekran",
     Blue: "Mavi",
     "Bookmark age: %1 days": "Əlfəcinin yaşı: %1 gün",
+    "Browse folders": "Qovluqlar üzrə baxış",
     "Buffer Size, s": "Bufer ölçüsü, san",
     "Built-in playlist:": "Daxili pleylist:",
     "Built-in playlists": "Daxili pleylistlər",
@@ -563,6 +564,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Siyahı göstərilərkən videonu kiçiltmə (xəta düzəlişi)",
     Nothing: "Heç nə",
+    "Nothing to play": "Oynatmaq üçün video yoxdur",
     "Number of next TV programs in channel list":
         "Kanal siyahısında növbəti verilişlərin sayı",
     "Number of rows in lists": "Siyahılarda sətirlərin sayı",
@@ -674,6 +676,9 @@ var keyStrings = {
     "Rename category": "Kateqoriyanın adını dəyiş",
     "Rename to": "Adını buna dəyiş",
     "Repeat parental code": "Valideyn kodunu təkrar daxil edin",
+    "Repeat: All": "Təkrar: hamısı",
+    "Repeat: Off": "Təkrar: söndürülüb",
+    "Repeat: One": "Təkrar: biri",
     "Request sended!": "Sorğu göndərildi!",
     "Requesting approval for %1": "%1 üçün təsdiq tələb olunur",
     "Restart player": "Pleyeri yenidən başlat",
@@ -771,6 +776,7 @@ var keyStrings = {
     "Show when changing program": "Veriliş dəyişəndə göstər",
     "Show when rewind": "Sarıma zamanı göstər",
     "Show when switching": "Kanal dəyişəndə göstər",
+    "Shuffle and play": "Qarışdır və oynat",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -841,6 +847,9 @@ var keyStrings = {
     transparent: "şəffaf",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ayarları",
+    "Unable to load playlist": "Oynatma siyahısını yükləmək mümkün olmadı",
+    Untitled: "Adsız",
+    "Untitled folder": "Adsız qovluq",
     "Update installed. Please restart OttPlay FOSS.":
         "Yeniləmə quraşdırıldı. OttPlay FOSS-u yenidən başladın.",
     "Use an HTTP or HTTPS server address.":

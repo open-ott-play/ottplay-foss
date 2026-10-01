@@ -101,6 +101,7 @@ var keyStrings = {
         "Schwarzes Bild beim Senderwechsel",
     Blue: "Blau",
     "Bookmark age: %1 days": "Alter des Lesezeichens: %1 Tage",
+    "Browse folders": "Ordner durchsuchen",
     "Buffer Size, s": "Puffergröße, s",
     "Built-in playlist:": "Integrierte Wiedergabeliste:",
     "Built-in playlists": "Integrierte Wiedergabelisten",
@@ -572,6 +573,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Video beim Anzeigen der Liste nicht verkleinern (Fehlerbehebung)",
     Nothing: "Nichts",
+    "Nothing to play": "Keine Videos zum Abspielen",
     "Number of next TV programs in channel list":
         "Anzahl kommender Sendungen in der Senderliste",
     "Number of rows in lists": "Zeilenanzahl in Listen",
@@ -684,6 +686,9 @@ var keyStrings = {
     "Rename category": "Kategorie umbenennen",
     "Rename to": "Umbenennen in",
     "Repeat parental code": "Jugendschutzcode erneut eingeben",
+    "Repeat: All": "Wiederholen: alle",
+    "Repeat: Off": "Wiederholen: aus",
+    "Repeat: One": "Wiederholen: einen",
     "Request sended!": "Anfrage gesendet!",
     "Requesting approval for %1": "Genehmigung für %1 wird angefordert",
     "Restart player": "Player neu starten",
@@ -783,6 +788,7 @@ var keyStrings = {
     "Show when changing program": "Bei Sendungswechsel anzeigen",
     "Show when rewind": "Beim Spulen anzeigen",
     "Show when switching": "Bei Senderwechsel anzeigen",
+    "Shuffle and play": "Mischen und abspielen",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -853,6 +859,9 @@ var keyStrings = {
     transparent: "transparent",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Einstellungen für ULTIFL1X",
+    "Unable to load playlist": "Wiedergabeliste konnte nicht geladen werden",
+    Untitled: "Ohne Titel",
+    "Untitled folder": "Unbenannter Ordner",
     "Update installed. Please restart OttPlay FOSS.":
         "Update installiert. Bitte starten Sie OttPlay FOSS neu.",
     "Use an HTTP or HTTPS server address.":

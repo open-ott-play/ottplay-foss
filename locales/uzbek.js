@@ -100,6 +100,7 @@ var keyStrings = {
         "Kanal almashtirilganda qora ekran",
     Blue: "Koʻk",
     "Bookmark age: %1 days": "Xatchoʻp yoshi: %1 kun",
+    "Browse folders": "Jildlar boʻyicha koʻrish",
     "Buffer Size, s": "Bufer hajmi, s",
     "Built-in playlist:": "Ichki pleylist:",
     "Built-in playlists": "Ichki pleylistlar",
@@ -567,6 +568,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Roʻyxat koʻrsatilganda videoni kichraytirmaslik (xatoni tuzatish)",
     Nothing: "Hech narsa",
+    "Nothing to play": "Ijro etish uchun video yoʻq",
     "Number of next TV programs in channel list":
         "Kanallar roʻyxatidagi keyingi koʻrsatuvlar soni",
     "Number of rows in lists": "Roʻyxatlardagi satrlar soni",
@@ -679,6 +681,9 @@ var keyStrings = {
     "Rename category": "Turkum nomini oʻzgartirish",
     "Rename to": "Yangi nom",
     "Repeat parental code": "Ota-ona kodini qayta kiriting",
+    "Repeat: All": "Takrorlash: barchasi",
+    "Repeat: Off": "Takrorlash: oʻchirilgan",
+    "Repeat: One": "Takrorlash: bittasi",
     "Request sended!": "Soʻrov yuborildi!",
     "Requesting approval for %1": "%1 uchun tasdiq soʻralmoqda",
     "Restart player": "Pleyerni qayta ishga tushirish",
@@ -777,6 +782,7 @@ var keyStrings = {
     "Show when changing program": "Koʻrsatuv oʻzgarganda koʻrsatish",
     "Show when rewind": "Orqaga oʻtkazishda koʻrsatish",
     "Show when switching": "Kanal almashtirilganda koʻrsatish",
+    "Shuffle and play": "Aralashtirish va ijro etish",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -847,6 +853,9 @@ var keyStrings = {
     transparent: "shaffof",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X sozlamalari",
+    "Unable to load playlist": "Ijro roʻyxatini yuklab boʻlmadi",
+    Untitled: "Nomsiz",
+    "Untitled folder": "Nomsiz jild",
     "Update installed. Please restart OttPlay FOSS.":
         "Yangilanish oʻrnatildi. OttPlay FOSSʼni qayta ishga tushiring.",
     "Use an HTTP or HTTPS server address.":

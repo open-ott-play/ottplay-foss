@@ -96,6 +96,7 @@ var keyStrings = {
     "Black screen while switching the channel": "מסך שחור בעת החלפת ערוצים",
     Blue: "כחול",
     "Bookmark age: %1 days": "גיל הסימנייה: %1 ימים",
+    "Browse folders": "עיון בתיקיות",
     "Buffer Size, s": "גודל חוצץ, שנ",
     "Built-in playlist:": "פלייליסט מובנה:",
     "Built-in playlists": "פלייליסטים מובנים",
@@ -549,6 +550,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "אל תקטין את הווידאו בעת הצגת הרשימה (תיקון תקלה)",
     Nothing: "כלום",
+    "Nothing to play": "אין סרטונים להפעלה",
     "Number of next TV programs in channel list":
         "מספר התוכניות הבאות ברשימת הערוצים",
     "Number of rows in lists": "מספר השורות ברשימות",
@@ -658,6 +660,9 @@ var keyStrings = {
     "Rename category": "שנה שם קטגוריה",
     "Rename to": "שנה שם ל-",
     "Repeat parental code": "הזן שוב קוד הורים",
+    "Repeat: All": "חזרה: הכול",
+    "Repeat: Off": "חזרה: כבויה",
+    "Repeat: One": "חזרה: אחד",
     "Request sended!": "הבקשה נשלחה!",
     "Requesting approval for %1": "בקשת אישור עבור %1",
     "Restart player": "הפעל מחדש את הנגן",
@@ -751,6 +756,7 @@ var keyStrings = {
     "Show when changing program": "הצג בעת שינוי תוכנית",
     "Show when rewind": "הצג בעת הרצה לאחור",
     "Show when switching": "הצג בעת החלפת ערוצים",
+    "Shuffle and play": "ערבוב והפעלה",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -818,6 +824,9 @@ var keyStrings = {
     transparent: "שקוף",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "הגדרות ULTIFL1X",
+    "Unable to load playlist": "לא ניתן לטעון את רשימת ההשמעה",
+    Untitled: "ללא כותרת",
+    "Untitled folder": "תיקייה ללא שם",
     "Update installed. Please restart OttPlay FOSS.":
         "העדכון הותקן. הפעל מחדש את OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.": "השתמש בכתובת שרת HTTP או HTTPS.",

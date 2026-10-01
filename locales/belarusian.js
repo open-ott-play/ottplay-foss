@@ -97,6 +97,7 @@ var keyStrings = {
         "Чорны экран пры пераключэнні каналаў",
     Blue: "Сіні",
     "Bookmark age: %1 days": "Даўнасць закладкі: %1 дзён",
+    "Browse folders": "Прагляд па папках",
     "Buffer Size, s": "Памер буфера, с",
     "Built-in playlist:": "Убудаваны плэйліст:",
     "Built-in playlists": "Убудаваныя плэйлісты",
@@ -560,6 +561,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Не памяншаць відэа пры паказе спіса (выпраўленне)",
     Nothing: "Нічога",
+    "Nothing to play": "Няма відэа для прайгравання",
     "Number of next TV programs in channel list":
         "Колькасць наступных перадач у спісе каналаў",
     "Number of rows in lists": "Колькасць радкоў у спісах",
@@ -671,6 +673,9 @@ var keyStrings = {
     "Rename category": "Перайменаваць катэгорыю",
     "Rename to": "Перайменаваць у",
     "Repeat parental code": "Паўтарыце бацькоўскі код",
+    "Repeat: All": "Паўтор: усе",
+    "Repeat: Off": "Паўтор: выключаны",
+    "Repeat: One": "Паўтор: адзін",
     "Request sended!": "Запыт адпраўлены!",
     "Requesting approval for %1": "Запыт пацвярджэння для %1",
     "Restart player": "Перазапусціць прайгравальнік",
@@ -766,6 +771,7 @@ var keyStrings = {
     "Show when changing program": "Паказваць пры змене перадачы",
     "Show when rewind": "Паказваць пры перамотцы",
     "Show when switching": "Паказваць пры пераключэнні каналаў",
+    "Shuffle and play": "Перамяшаць і запусціць",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -836,6 +842,9 @@ var keyStrings = {
     transparent: "празрысты",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Налады ULTIFL1X",
+    "Unable to load playlist": "Не ўдалося загрузіць спіс прайгравання",
+    Untitled: "Без назвы",
+    "Untitled folder": "Папка без назвы",
     "Update installed. Please restart OttPlay FOSS.":
         "Абнаўленне ўсталявана. Перазапусціце OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

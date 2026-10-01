@@ -2441,6 +2441,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     if (!media) return;
     item = media.item;
     var resumePos = media.resume;
+    var startupPosition = media.resumeStartup ? resumePos : undefined;
     $("#picon").css(
         "background-image",
         'url("' + metadataCssUrl(item.logo_30x30) + '")'
@@ -2469,11 +2470,12 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
         (window as any).__ottClassicPlayback.command({
             channelId: media.ref.itemId,
             item: item,
+            position: startupPosition,
             sourceId: media.ref.sourceId,
             type: "vod",
         });
-    stbPlay(streamUrl);
-    if (resumePos)
+    stbPlay(streamUrl, startupPosition);
+    if (resumePos && !media.resumeStartup)
         confirmBox(
             _("Continue watching?") + "<br><br>" + formatSeekOffset(resumePos),
             function () {
@@ -5014,6 +5016,11 @@ window.stbExit = stbExit;
 // Tauri Mode B: real app exit (window.close() does not quit Tauri).
 if (typeof window.__TAURI__ !== "undefined") {
     window.stbExit = function (): void {
+        try {
+            body_onUnload();
+        } catch (_) {
+            // Optional persistence must not prevent an explicit app exit.
+        }
         tauriInvoke<any>("exit_app", {}).catch((e: any) =>
             console.warn("[Tauri] exit_app failed:", e)
         );

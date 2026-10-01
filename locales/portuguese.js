@@ -99,6 +99,7 @@ var keyStrings = {
     "Black screen while switching the channel": "Ecrã preto ao mudar de canal",
     Blue: "Azul",
     "Bookmark age: %1 days": "Idade do marcador: %1 dias",
+    "Browse folders": "Navegar por pastas",
     "Buffer Size, s": "Tamanho do buffer, s",
     "Built-in playlist:": "Lista integrada:",
     "Built-in playlists": "Listas integradas",
@@ -569,6 +570,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Não reduzir o vídeo ao mostrar a lista (correção)",
     Nothing: "Nada",
+    "Nothing to play": "Não há vídeos para reproduzir",
     "Number of next TV programs in channel list":
         "Número de programas seguintes na lista de canais",
     "Number of rows in lists": "Número de linhas nas listas",
@@ -681,6 +683,9 @@ var keyStrings = {
     "Rename category": "Mudar nome da categoria",
     "Rename to": "Mudar nome para",
     "Repeat parental code": "Repetir código parental",
+    "Repeat: All": "Repetição: todos",
+    "Repeat: Off": "Repetição: desativada",
+    "Repeat: One": "Repetição: um",
     "Request sended!": "Pedido enviado!",
     "Requesting approval for %1": "A solicitar aprovação para %1",
     "Restart player": "Reiniciar leitor",
@@ -779,6 +784,7 @@ var keyStrings = {
     "Show when changing program": "Mostrar ao mudar de programa",
     "Show when rewind": "Mostrar ao recuar",
     "Show when switching": "Mostrar ao mudar de canal",
+    "Shuffle and play": "Embaralhar e reproduzir",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -847,6 +853,10 @@ var keyStrings = {
     transparent: "transparente",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Configurações de ULTIFL1X",
+    "Unable to load playlist":
+        "Não foi possível carregar a lista de reprodução",
+    Untitled: "Sem título",
+    "Untitled folder": "Pasta sem nome",
     "Update installed. Please restart OttPlay FOSS.":
         "Atualização instalada. Reinicie o OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

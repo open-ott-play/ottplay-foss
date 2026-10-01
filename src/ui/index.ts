@@ -305,16 +305,24 @@ export function uiInit(): void {
                 top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
     });
-    ["dialogbox", "listPopUp"].forEach(function (id) {
+    ["dialogbox", "listPopUp", "listDetail"].forEach(function (id) {
         var root = document.getElementById(id);
         if (!root || (root as any).__ottButtonsBound) return;
         (root as any).__ottButtonsBound = true;
-        var popup = id === "listPopUp";
+        var listButtons = id !== "dialogbox";
         var dispatchButton = function (event: Event): void {
             var target = event.target as Node | null;
             if (target && target.nodeType !== 1) target = target.parentNode;
             var button = target && $(target).closest("span[data-ott-key]")[0];
-            if (!button || !root!.contains(button)) return;
+            if (
+                !button ||
+                !root!.contains(button) ||
+                (id === "listDetail" &&
+                    (button.parentNode !== root!.firstChild ||
+                        (button.parentNode as HTMLElement).id !==
+                            "mediaPlaybackControls"))
+            )
+                return;
             // Consume before ownership checks so obsolete controls cannot
             // activate inline fallbacks or the video surface underneath.
             event.preventDefault();
@@ -322,12 +330,12 @@ export function uiInit(): void {
             event.stopImmediatePropagation();
             var w = window as any;
             var port = w.__ottClassicScreenPort;
-            var owner = popup ? port.listOwner() : port.owner("dialog");
+            var owner = listButtons ? port.listOwner() : port.owner("dialog");
             var key = Number(button.getAttribute("data-ott-key"));
             if (
                 owner &&
                 owner.foreground() &&
-                (!popup || $(root!).is(":visible")) &&
+                (!listButtons || $(root!).is(":visible")) &&
                 key &&
                 isFinite(key)
             )
@@ -3508,7 +3516,8 @@ function showMediaList1(view?: any): void {
                   "px;margin-left:" +
                   6 * getViewportWidthScale() +
                   'px;"></div>&nbsp;'
-                : "&nbsp;&nbsp;") + metadataText(item.title || item.name || "")
+                : "&nbsp;&nbsp;") +
+            metadataText(item.title || item.name || w._("Untitled"))
         );
     };
     w.detailListActionFn = function () {
@@ -3525,8 +3534,32 @@ function showMediaList1(view?: any): void {
             item.logo_30x30 && descr.indexOf("<img") === -1
                 ? getThumbnail(item.logo_30x30)
                 : "";
+        var repeatLabels: any = {
+            all: "Repeat: All",
+            off: "Repeat: Off",
+            one: "Repeat: One",
+        };
+        var controls = view.canRepeat
+            ? '<div id="mediaPlaybackControls">' +
+              (view.canShuffle
+                  ? w.renderButtonHint(
+                        w.keys.N5,
+                        "&#8646;",
+                        "Shuffle and play",
+                        "5"
+                    )
+                  : "") +
+              w.renderButtonHint(
+                  w.keys.N9,
+                  "&#8635;",
+                  repeatLabels[view.repeat] || "Repeat: All",
+                  "9"
+              ) +
+              "</div>"
+            : "";
         detailEl.innerHTML =
-            '<div id="_prd" style="font-size:smaller;">' +
+            controls.replace(/<\/span>&nbsp;&nbsp;/g, "</span>") +
+            '<div id="_prd">' +
             thumbnail +
             descr +
             "</div>";
@@ -3534,7 +3567,12 @@ function showMediaList1(view?: any): void {
         if (typeof w.scrollUp === "function")
             w.scrollUp(
                 "_prd",
-                $("#_prd").height() + 10 - $(detailEl).height(),
+                $("#_prd").height() +
+                    10 +
+                    (controls
+                        ? $("#mediaPlaybackControls").outerHeight(true)
+                        : 0) -
+                    $(detailEl).height(),
                 5000
             );
     };

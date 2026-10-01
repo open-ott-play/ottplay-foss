@@ -99,6 +99,7 @@ var keyStrings = {
         "Layar hitam saat berpindah saluran",
     Blue: "Biru",
     "Bookmark age: %1 days": "Usia penanda: %1 hari",
+    "Browse folders": "Jelajahi folder",
     "Buffer Size, s": "Ukuran buffer, dtk",
     "Built-in playlist:": "Daftar putar bawaan:",
     "Built-in playlists": "Daftar putar bawaan",
@@ -562,6 +563,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Jangan perkecil video saat menampilkan daftar (perbaikan bug)",
     Nothing: "Tidak ada",
+    "Nothing to play": "Tidak ada video untuk diputar",
     "Number of next TV programs in channel list":
         "Jumlah program berikutnya dalam daftar saluran",
     "Number of rows in lists": "Jumlah baris dalam daftar",
@@ -674,6 +676,9 @@ var keyStrings = {
     "Rename category": "Ubah nama kategori",
     "Rename to": "Ubah nama menjadi",
     "Repeat parental code": "Masukkan ulang kode orang tua",
+    "Repeat: All": "Ulangi: semua",
+    "Repeat: Off": "Ulangi: nonaktif",
+    "Repeat: One": "Ulangi: satu",
     "Request sended!": "Permintaan terkirim!",
     "Requesting approval for %1": "Meminta persetujuan untuk %1",
     "Restart player": "Mulai ulang pemutar",
@@ -771,6 +776,7 @@ var keyStrings = {
     "Show when changing program": "Tampilkan saat program berubah",
     "Show when rewind": "Tampilkan saat mundur",
     "Show when switching": "Tampilkan saat berpindah saluran",
+    "Shuffle and play": "Acak dan putar",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -841,6 +847,9 @@ var keyStrings = {
     transparent: "transparan",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Pengaturan ULTIFL1X",
+    "Unable to load playlist": "Gagal memuat daftar putar",
+    Untitled: "Tanpa judul",
+    "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":
         "Pembaruan terpasang. Mulai ulang OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

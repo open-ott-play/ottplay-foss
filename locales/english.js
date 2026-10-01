@@ -97,6 +97,7 @@ var keyStrings = {
         "Black screen when switching channels",
     Blue: "Blue",
     "Bookmark age: %1 days": "Bookmark age: %1 days",
+    "Browse folders": "Browse folders",
     "Buffer Size, s": "Buffer size, s",
     "Built-in playlist:": "Built-in playlist:",
     "Built-in playlists": "Built-in playlists",
@@ -559,6 +560,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Do not shrink video when showing the list (bug fix)",
     Nothing: "Nothing",
+    "Nothing to play": "No videos to play",
     "Number of next TV programs in channel list":
         "Number of next programs in channel list",
     "Number of rows in lists": "Number of rows in lists",
@@ -671,6 +673,9 @@ var keyStrings = {
     "Rename category": "Rename category",
     "Rename to": "Rename to",
     "Repeat parental code": "Re-enter parental code",
+    "Repeat: All": "Repeat: All",
+    "Repeat: Off": "Repeat: Off",
+    "Repeat: One": "Repeat: One",
     "Request sended!": "Request sent!",
     "Requesting approval for %1": "Requesting approval for %1",
     "Restart player": "Restart player",
@@ -766,6 +771,7 @@ var keyStrings = {
     "Show when changing program": "Show when the program changes",
     "Show when rewind": "Show when rewinding",
     "Show when switching": "Show when switching channels",
+    "Shuffle and play": "Shuffle and play",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -834,6 +840,9 @@ var keyStrings = {
     transparent: "transparent",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X settings",
+    "Unable to load playlist": "Unable to load playlist",
+    Untitled: "Untitled",
+    "Untitled folder": "Untitled folder",
     "Update installed. Please restart OttPlay FOSS.":
         "Update installed. Please restart OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

@@ -101,6 +101,7 @@ var keyStrings = {
         "Czarny ekran podczas zmiany kanału",
     Blue: "Niebieski",
     "Bookmark age: %1 days": "Wiek zakładki: %1 dni",
+    "Browse folders": "Przeglądaj foldery",
     "Buffer Size, s": "Rozmiar bufora, s",
     "Built-in playlist:": "Wbudowana playlista:",
     "Built-in playlists": "Wbudowane playlisty",
@@ -564,6 +565,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Nie zmniejszaj obrazu podczas wyświetlania listy (poprawka)",
     Nothing: "Nic",
+    "Nothing to play": "Brak filmów do odtworzenia",
     "Number of next TV programs in channel list":
         "Liczba kolejnych programów na liście kanałów",
     "Number of rows in lists": "Liczba wierszy na listach",
@@ -675,6 +677,9 @@ var keyStrings = {
     "Rename category": "Zmień nazwę kategorii",
     "Rename to": "Zmień nazwę na",
     "Repeat parental code": "Powtórz kod rodzicielski",
+    "Repeat: All": "Powtarzanie: wszystkie",
+    "Repeat: Off": "Powtarzanie: wyłączone",
+    "Repeat: One": "Powtarzanie: jeden",
     "Request sended!": "Żądanie wysłane!",
     "Requesting approval for %1": "Żądanie zatwierdzenia dla %1",
     "Restart player": "Uruchom ponownie odtwarzacz",
@@ -771,6 +776,7 @@ var keyStrings = {
     "Show when changing program": "Pokazuj przy zmianie programu",
     "Show when rewind": "Pokazuj podczas przewijania",
     "Show when switching": "Pokazuj przy zmianie kanału",
+    "Shuffle and play": "Wymieszaj i odtwórz",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -842,6 +848,9 @@ var keyStrings = {
     transparent: "przezroczysty",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ustawienia ULTIFL1X",
+    "Unable to load playlist": "Nie udało się wczytać listy odtwarzania",
+    Untitled: "Bez tytułu",
+    "Untitled folder": "Folder bez nazwy",
     "Update installed. Please restart OttPlay FOSS.":
         "Aktualizacja zainstalowana. Uruchom ponownie OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

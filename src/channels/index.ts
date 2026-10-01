@@ -1437,13 +1437,40 @@ export function onChannelsLoaded(): void {
             }
             if (libraryOnly) {
                 window.playType = 0;
-                (window as any).popMedia();
+                var host = window as any;
+                var media = host.__ottMedia;
+                var libraryClient = host.providerMediaClient;
+                var libraryLoad = host.__ottCommandChannelLoad;
+                if (media && media.useSource) media.useSource(null);
+                var librarySource = media && media.sourceId();
+                var currentLibrary = function (): boolean {
+                    return (
+                        driver === host.__ottActiveProviderDriver &&
+                        libraryClient === host.providerMediaClient &&
+                        libraryLoad === host.__ottCommandChannelLoad &&
+                        driver.libraryReady() &&
+                        (!media || librarySource === media.sourceId())
+                    );
+                };
+                var openLibrary = function (): void {
+                    if (currentLibrary()) host.popMedia();
+                };
+                // Resolve the saved media ID immediately. A delayed startup
+                // timer could otherwise override the user's first selection.
+                if (
+                    currentLibrary() &&
+                    (driver.id !== "plex" ||
+                        !media ||
+                        typeof media.restoreLast !== "function" ||
+                        !media.restoreLast(openLibrary))
+                )
+                    openLibrary();
             } else {
                 loadFavoritesLists();
                 (window as any).__ottChannels.mount(window);
                 (window as any).__ottClassicPlayback.hydrate();
                 // Start playback: restore continue-watching bookmark if available.
-                // If no archive/vod bookmark is offered, fall back to the normal
+                // If no archive bookmark is offered, fall back to the normal
                 // live playChannel path (live bookmarks are already encoded in
                 // catIndex/primaryIndex persisted by setCurrent).
                 var el = document.getElementById("launch");
@@ -2180,6 +2207,13 @@ export function mediaKeyHandler(keyCode: number): boolean {
             return true;
         case keys.BLUE:
             w.__ottMedia.filter();
+            return true;
+        case keys.N5:
+        case keys.PLAY:
+            w.__ottMedia.shufflePlay();
+            return true;
+        case keys.N9:
+            w.__ottMedia.cycleRepeat();
             return true;
         case keys.N2:
         case keys.INFO:

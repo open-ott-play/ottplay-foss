@@ -98,6 +98,7 @@ var keyStrings = {
         "Juodas ekranas perjungiant kanalus",
     Blue: "Mėlyna",
     "Bookmark age: %1 days": "Žymelės amžius: %1 dien.",
+    "Browse folders": "Naršyti aplankus",
     "Buffer Size, s": "Buferio dydis, s",
     "Built-in playlist:": "Įtaisytasis grojaraštis:",
     "Built-in playlists": "Įtaisytieji grojaraščiai",
@@ -564,6 +565,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Nemažinti vaizdo rodant sąrašą (klaidos pataisa)",
     Nothing: "Nieko",
+    "Nothing to play": "Nėra vaizdo įrašų, kuriuos būtų galima leisti",
     "Number of next TV programs in channel list":
         "Kitų laidų skaičius kanalų sąraše",
     "Number of rows in lists": "Eilučių skaičius sąrašuose",
@@ -675,6 +677,9 @@ var keyStrings = {
     "Rename category": "Pervadinti kategoriją",
     "Rename to": "Pervadinti į",
     "Repeat parental code": "Dar kartą įveskite tėvų kontrolės kodą",
+    "Repeat: All": "Kartojimas: visi",
+    "Repeat: Off": "Kartojimas: išjungtas",
+    "Repeat: One": "Kartojimas: vienas",
     "Request sended!": "Užklausa išsiųsta!",
     "Requesting approval for %1": "Prašoma patvirtinimo: %1",
     "Restart player": "Paleisti grotuvą iš naujo",
@@ -770,6 +775,7 @@ var keyStrings = {
     "Show when changing program": "Rodyti pasikeitus laidai",
     "Show when rewind": "Rodyti atsukant",
     "Show when switching": "Rodyti perjungiant kanalus",
+    "Shuffle and play": "Maišyti ir leisti",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -839,6 +845,9 @@ var keyStrings = {
     transparent: "permatomas",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X nustatymai",
+    "Unable to load playlist": "Nepavyko įkelti grojaraščio",
+    Untitled: "Be pavadinimo",
+    "Untitled folder": "Aplankas be pavadinimo",
     "Update installed. Please restart OttPlay FOSS.":
         "Atnaujinimas įdiegtas. Paleiskite OttPlay FOSS iš naujo.",
     "Use an HTTP or HTTPS server address.":
