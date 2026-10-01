@@ -38,11 +38,25 @@ public class CAPPluginCall: NSObject {
     func reject(_ error: String, _ code: String? = nil) { self.error = error; errorCode = code; settlements += 1 }
 }
 final class AccessMediaHTTP {
-    static var requests = 0
+    static var requests = 0, exchangeRequests = 0, probes = 0
+    static var probeHandler: (@MainActor (URLRequest) async throws -> HTTPURLResponse)?
     static var handler: (@MainActor (URLRequest, Int) async throws -> (Data, HTTPURLResponse))?
-    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024) async throws -> (Data, HTTPURLResponse) {
+    static func fetch(_ request: URLRequest, limit: Int = 64 * 1024 * 1024,
+                      headersOnly: Bool = false) async throws -> (Data, HTTPURLResponse) {
+        if headersOnly {
+            probes += 1
+            assert(request.httpMethod == "GET", "The access probe must use the same method as playback")
+            if let probeHandler { return (Data(), try await probeHandler(request)) }
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 403,
+                httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
         requests += 1
+        if request.url?.path == "/_ottplay/public/exchange" { exchangeRequests += 1 }
         if let handler { return try await handler(request, limit) }
+        if request.url?.host == "source.fixture.invalid" {
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 403,
+                httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
         throw AccessMediaFailure.unavailable
     }
 }
@@ -161,6 +175,10 @@ final class AccessMediaProxy {
     var time = Date()
     var discoveries = 0, exchanges = 0
     var discoveryStatus = 200
+    var probeStatus = 200, probes = 0
+    var probeHeaders: [String: String] = [:]
+    var holdProbe = false
+    var probeGate: CheckedContinuation<Void, Never>?
     var holdDiscovery = false, holdExchange = false
     var discoveryGate: CheckedContinuation<Void, Never>?
     var exchangeGate: CheckedContinuation<Void, Never>?
@@ -169,6 +187,13 @@ final class AccessMediaProxy {
     func makeAccess() -> AccessMedia {
         let access = AccessMedia(now: { self.time }, fetch: { request, limit in
             try await self.fetch(request, limit: limit)
+        }, probe: { request in
+            self.probes += 1
+            assert(request.url?.host == "source.fixture.invalid" && request.httpMethod == "GET")
+            assert(request.value(forHTTPHeaderField: "Cookie") == nil && !request.httpShouldHandleCookies)
+            if self.holdProbe { await withCheckedContinuation { self.probeGate = $0 } }
+            return HTTPURLResponse(url: request.url!, statusCode: self.probeStatus,
+                httpVersion: "HTTP/1.1", headerFields: self.probeHeaders)!
         })
         access.presenter = presenter
         return access
@@ -209,6 +234,13 @@ final class AccessMediaProxy {
     do { _ = try await task.value; fatalError("Expected failure") }
     catch { if let expected { assert(error as? AccessMediaFailure == expected, "Unexpected failure: \(error)") } }
 }
+@MainActor func fetchResult(_ request: URLRequest) async -> (Data?, HTTPURLResponse?, Error?) {
+    await withCheckedContinuation { continuation in
+        AccessMedia.fetch(request) { data, response, error in
+            continuation.resume(returning: (data, response as? HTTPURLResponse, error))
+        }
+    }
+}
 var finished = false
 Task { @MainActor in
     do {
@@ -242,6 +274,40 @@ Task { @MainActor in
         _ = try await restored.authorized(request, config: fixture.config)
         assert(fixture.discoveries == 1 && fixture.exchanges == 1 && ASWebAuthenticationSession.opened.count == 1,
             "Cold launch with a valid saved session must avoid discovery/login/exchange")
+
+        var signedAlias = request
+        signedAlias.url = URL(string: fixture.config.media_origin + "/list.m3u8?signature=a%2Fb%2B%3D&&=preserved")!
+        signedAlias.httpMethod = "HEAD"
+        let direct = try await restored.routed(signedAlias, config: fixture.config)
+        assert(direct.url?.absoluteString == fixture.config.source_origin + "/list.m3u8?signature=a%2Fb%2B%3D&&=preserved" &&
+            direct.httpMethod == "HEAD" && direct.value(forHTTPHeaderField: "Range") == "bytes=1-2")
+        assert(direct.value(forHTTPHeaderField: "Cookie") == nil &&
+            direct.value(forHTTPHeaderField: "CF-Access-Jwt-Assertion") == nil &&
+            direct.value(forHTTPHeaderField: "Host") == nil && !direct.httpShouldHandleCookies,
+            "A saved mobile session must never leak credentials into the direct trusted-source request")
+        assert(fixture.exchanges == 1 && ASWebAuthenticationSession.opened.count == 1)
+        assert(URLProtocol.property(forKey: "play.ott.source-route-epoch", in: direct) is Int,
+            "The routing epoch survives NSMutableURLRequest-to-URLRequest bridging")
+        let fallback = try await restored.routed(signedAlias, config: fixture.config, replacing: direct)
+        assert(fallback.url?.host == "media.fixture.invalid" &&
+            fallback.value(forHTTPHeaderField: "Cookie") == "CF_Authorization=fixture.session1.signature")
+        let cachedFallback = try await restored.routed(request, config: fixture.config)
+        assert(cachedFallback.url?.host == "media.fixture.invalid", "A denied source is briefly remembered")
+        fixture.time.addTimeInterval(29)
+        let beforeExpiry = try await restored.routed(request, config: fixture.config)
+        assert(beforeExpiry.url?.host == "media.fixture.invalid")
+        fixture.time.addTimeInterval(2)
+        let afterExpiry = try await restored.routed(request, config: fixture.config)
+        assert(afterExpiry.url?.host == "source.fixture.invalid", "Direct access is retried after the 30-second denial TTL")
+        _ = try await restored.routed(request, config: fixture.config, replacing: afterExpiry)
+        restored.networkChanged()
+        let afterNetwork = try await restored.routed(request, config: fixture.config)
+        assert(afterNetwork.url?.host == "source.fixture.invalid", "A network change retries the trusted source immediately")
+        let staleDenial = try await restored.routed(request, config: fixture.config, replacing: afterExpiry)
+        assert(staleDenial.url?.host == "source.fixture.invalid",
+            "A denial from the previous network cannot poison the current trusted-source decision")
+        assert(fixture.exchanges == 1 && ASWebAuthenticationSession.opened.count == 1,
+            "Route changes preserve and reuse the saved mobile session")
 
         let renewals = (0..<20).map { _ in Task {
             try await access.authorized(request, config: fixture.config,
@@ -454,6 +520,68 @@ Task { @MainActor in
             "A discovery finishing after logout must not reopen the browser")
 
         reset()
+        let probeFixture = Fixture(), probeAccess = probeFixture.makeAccess()
+        let preparedDirect = try await probeAccess.preparedURL(probeFixture.source)
+        assert(preparedDirect == probeFixture.source && probeFixture.probes == 1 &&
+            probeFixture.exchanges == 0 && ASWebAuthenticationSession.opened.isEmpty,
+            "A GET headers-only success prepares playback without browser or exchange")
+        _ = try await probeAccess.preparedURL(URL(string: probeFixture.config.source_origin + "/other.m3u8")!)
+        assert(probeFixture.probes == 1, "Recent direct success skips redundant preparation probes")
+        probeFixture.time.addTimeInterval(21)
+        _ = try await probeAccess.preparedURL(probeFixture.source)
+        assert(probeFixture.probes == 2, "The direct-success preparation hint expires after 20 seconds")
+        probeAccess.networkChanged()
+        probeFixture.probeStatus = 403
+        let deniedPreparation = Task { try await probeAccess.preparedURL(probeFixture.source) }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        assert(probeFixture.probes == 3, "A network change probes again before preparing a native player")
+        deniedPreparation.cancel()
+        await failure(deniedPreparation, .cancelled)
+        assert(ASWebAuthenticationSession.opened.last!.cancelled && probeFixture.exchanges == 0,
+            "Stopping preparation cancels its pending browser before native playback starts")
+
+        for logout in [false, true] {
+            reset()
+            let pendingProbeFixture = Fixture(), pendingProbeAccess = pendingProbeFixture.makeAccess()
+            pendingProbeFixture.holdProbe = true; pendingProbeFixture.probeStatus = 403
+            let pendingProbe = Task { try await pendingProbeAccess.preparedURL(pendingProbeFixture.source) }
+            await until { pendingProbeFixture.probeGate != nil }
+            if logout { try pendingProbeAccess.signOut() } else { pendingProbe.cancel() }
+            pendingProbeFixture.probeGate!.resume()
+            do { _ = try await pendingProbe.value; fatalError("Stopped probe completed") }
+            catch {
+                assert(error is CancellationError || error as? AccessMediaFailure == .cancelled,
+                    "Stopped preparation must preserve cancellation, not become an origin error")
+            }
+            assert(ASWebAuthenticationSession.opened.isEmpty && pendingProbeFixture.exchanges == 0,
+                "A cancelled or logged-out GET probe cannot open authentication after its late denial")
+        }
+        reset()
+        let invalidProbeFixture = Fixture(), invalidProbeAccess = invalidProbeFixture.makeAccess()
+        invalidProbeFixture.probeHeaders = ["Content-Type": "text/html"]
+        await failure(Task { try await invalidProbeAccess.preparedURL(invalidProbeFixture.source) }, .unavailable)
+        assert(ASWebAuthenticationSession.opened.isEmpty, "Generic HTML at preparation cannot become native media or open login")
+
+        reset()
+        let expiredFixture = Fixture()
+        let expiredConfig = try JSONSerialization.jsonObject(with: JSONEncoder().encode(expiredFixture.config))
+        let expiredSession: [String: Any] = ["token": "fixture.expired.signature", "expires_at": Date().timeIntervalSince1970 - 1,
+            "media_origin": expiredFixture.config.media_origin]
+        Keychain.data = try JSONSerialization.data(withJSONObject: [expiredFixture.config.source_origin:
+            ["config": expiredConfig, "session": expiredSession]])
+        let expiredAccess = expiredFixture.makeAccess()
+        let expiredDirect = try await expiredAccess.routed(URLRequest(url: expiredFixture.source), config: expiredFixture.config)
+        let expiredFallback = Task {
+            try await expiredAccess.routed(URLRequest(url: expiredFixture.source), config: expiredFixture.config, replacing: expiredDirect)
+        }
+        await until { ASWebAuthenticationSession.opened.count == 1 }
+        expiredFallback.cancel()
+        await failure(expiredFallback, .cancelled)
+        let retryExpired = try await expiredAccess.routed(URLRequest(url: expiredFixture.source), config: expiredFixture.config)
+        assert(retryExpired.url?.host == "source.fixture.invalid" && ASWebAuthenticationSession.opened.count == 1,
+            "An expired saved token retries the source instead of opening login during a cached denial")
+
+        reset()
         let bridgeFixture = Fixture()
         let configObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(bridgeFixture.config))
         Keychain.data = try JSONSerialization.data(withJSONObject: [bridgeFixture.config.source_origin: ["config": configObject]])
@@ -507,7 +635,7 @@ Task { @MainActor in
         await until { reuseNew.error != nil }
         assert(cancelNew.result?["cancelled"] as? Bool == true,
             "An old task's completion must not erase a reused request ID")
-        assert(AccessMediaHTTP.requests == 0, "Cancelled bridge work must never reach the exchange network")
+        assert(AccessMediaHTTP.exchangeRequests == 0, "Cancelled bridge work must never reach the exchange network")
 
         let badID = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "../bad"])
         plugin.prepare(badID)
@@ -545,7 +673,7 @@ Task { @MainActor in
         await until { proxySecond.settlements == 1 && proxyBrowser.cancelled }
         proxyBrowser.succeed()
         for _ in 0..<20 { await Task.yield() }
-        assert(proxyFirst.settlements == 1 && proxySecond.settlements == 1 && AccessMediaHTTP.requests == 0)
+        assert(proxyFirst.settlements == 1 && proxySecond.settlements == 1 && AccessMediaHTTP.exchangeRequests == 0)
 
         let immediateProxy = CAPPluginCall(["url": bridgeFixture.source.absoluteString, "requestId": "proxy-immediate"])
         let cancelImmediateProxy = CAPPluginCall(["requestId": "proxy-immediate"])
@@ -716,7 +844,7 @@ Task { @MainActor in
             return (Data("fixture".utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])!)
         }
         let downloadLoginCount = ASWebAuthenticationSession.opened.count
-        let prepareDownload = Task { try await AccessMedia.shared.preparedURL(bridgeFixture.source) }
+        let prepareDownload = Task { try await AccessMedia.shared.authorized(URLRequest(url: bridgeFixture.source), config: bridgeFixture.config) }
         await until { ASWebAuthenticationSession.opened.count == downloadLoginCount + 1 }
         ASWebAuthenticationSession.opened.last!.succeed()
         _ = try await prepareDownload.value
@@ -756,7 +884,7 @@ Task { @MainActor in
         await until { publicCount == 1 }
 
         let timedDownloadLoginCount = ASWebAuthenticationSession.opened.count
-        let prepareTimedDownload = Task { try await AccessMedia.shared.preparedURL(bridgeFixture.source) }
+        let prepareTimedDownload = Task { try await AccessMedia.shared.authorized(URLRequest(url: bridgeFixture.source), config: bridgeFixture.config) }
         await until { ASWebAuthenticationSession.opened.count == timedDownloadLoginCount + 1 }
         ASWebAuthenticationSession.opened.last!.succeed()
         _ = try await prepareTimedDownload.value
@@ -777,6 +905,199 @@ Task { @MainActor in
         httpPlugin.cancelHttpRequest(callbackAfterCompletion)
         await until { callbackAfterCompletion.result != nil }
         assert(callbackAfterCompletion.result?["cancelled"] as? Bool == false)
+        // Exercise the complete callback bridge with a known protected mapping.
+        // No probe request is needed: the actual source response selects the route.
+        try AccessMedia.shared.signOut()
+        AccessMedia.shared.networkChanged()
+        var networkRequests: [URLRequest] = []
+        let beforeTrusted = ASWebAuthenticationSession.opened.count
+        AccessMediaHTTP.handler = { request, _ in
+            networkRequests.append(request)
+            assert(request.url?.host == "source.fixture.invalid")
+            assert(request.value(forHTTPHeaderField: "Cookie") == nil &&
+                request.value(forHTTPHeaderField: "CF-Access-Jwt-Assertion") == nil &&
+                request.value(forHTTPHeaderField: "Host") == nil && !request.httpShouldHandleCookies)
+            return (Data("#EXTM3U\ntrusted\n".utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
+                httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/vnd.apple.mpegurl",
+                    "Set-Cookie": "CF_Authorization=DO_NOT_EXPOSE", "Cf-Access-Jwt-Assertion": "DO_NOT_EXPOSE"])!)
+        }
+        var trustedRequest = URLRequest(url: bridgeFixture.source)
+        trustedRequest.setValue("foreign=secret", forHTTPHeaderField: "Cookie")
+        trustedRequest.setValue("forged", forHTTPHeaderField: "CF-Access-Jwt-Assertion")
+        trustedRequest.setValue("evil.invalid", forHTTPHeaderField: "Host")
+        let trustedResponse = await fetchResult(trustedRequest)
+        assert(trustedResponse.0 == Data("#EXTM3U\ntrusted\n".utf8) && trustedResponse.1?.statusCode == 200 && trustedResponse.2 == nil)
+        assert(trustedResponse.1?.value(forHTTPHeaderField: "Set-Cookie") == nil &&
+            trustedResponse.1?.value(forHTTPHeaderField: "Cf-Access-Jwt-Assertion") == nil)
+        assert(networkRequests.count == 1 && ASWebAuthenticationSession.opened.count == beforeTrusted,
+            "Cached configuration on a trusted network loads without a probe, exchange, or browser")
+
+        for status in [404, 500, 503] {
+            networkRequests = []
+            AccessMedia.shared.networkChanged()
+            AccessMediaHTTP.handler = { request, _ in
+                networkRequests.append(request)
+                return (Data("unavailable".utf8), HTTPURLResponse(url: request.url!, statusCode: status,
+                    httpVersion: "HTTP/1.1", headerFields: [:])!)
+            }
+            let result = await fetchResult(URLRequest(url: bridgeFixture.source))
+            assert(result.1?.statusCode == status && result.2 == nil && networkRequests.count == 1)
+            assert(ASWebAuthenticationSession.opened.count == beforeTrusted,
+                "Missing media or an origin outage must not ask the user to sign in")
+        }
+        AccessMediaHTTP.handler = { request, _ in
+            (Data("<!doctype html><title>Origin error</title>".utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
+                httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/html"])!)
+        }
+        let html = await fetchResult(URLRequest(url: bridgeFixture.source))
+        assert(html.0 == nil && html.2 as? AccessMediaFailure == .unavailable &&
+            ASWebAuthenticationSession.opened.count == beforeTrusted,
+            "Generic HTML success must not become an empty playlist or a spurious sign-in")
+        AccessMediaHTTP.handler = { _, _ in throw URLError(.timedOut) }
+        let offline = await fetchResult(URLRequest(url: bridgeFixture.source))
+        assert((offline.2 as? URLError)?.code == .timedOut &&
+            ASWebAuthenticationSession.opened.count == beforeTrusted,
+            "A transport timeout retains its error and never opens authentication")
+
+        for (status, headers) in [(401, [:]), (403, [:]),
+            (302, ["Location": "https://login.cloudflareaccess.com/cdn-cgi/access/login"]),
+            (200, ["Content-Type": "text/html", "cf-mitigated": "challenge"])] {
+            try AccessMedia.shared.signOut()
+            AccessMedia.shared.networkChanged()
+            networkRequests = []
+            let beforeFallback = ASWebAuthenticationSession.opened.count
+            AccessMediaHTTP.handler = { request, limit in
+                if request.url?.path == bridgeFixture.config.exchange_path {
+                    return try await bridgeFixture.fetch(request, limit: limit)
+                }
+                networkRequests.append(request)
+                if request.url?.host == "source.fixture.invalid" {
+                    assert(request.value(forHTTPHeaderField: "Cookie") == nil)
+                    return (Data("denied".utf8), HTTPURLResponse(url: request.url!, statusCode: status,
+                        httpVersion: "HTTP/1.1", headerFields: headers)!)
+                }
+                assert(request.url?.host == "media.fixture.invalid" && request.value(forHTTPHeaderField: "Cookie") != nil)
+                return (Data("#EXTM3U\nauthenticated\n".utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/vnd.apple.mpegurl"])!)
+            }
+            let fallbackResult = Task { await fetchResult(URLRequest(url: bridgeFixture.source)) }
+            await until { ASWebAuthenticationSession.opened.count == beforeFallback + 1 }
+            assert(networkRequests.count == 1 && networkRequests[0].url?.host == "source.fixture.invalid")
+            ASWebAuthenticationSession.opened.last!.succeed()
+            let result = await fallbackResult.value
+            assert(result.0 == Data("#EXTM3U\nauthenticated\n".utf8) && result.2 == nil && networkRequests.count == 2)
+            assert(ASWebAuthenticationSession.opened.count == beforeFallback + 1,
+                "A denied source falls back through exactly one authenticated login")
+        }
+
+        // A saved token must not force the mobile route after returning home.
+        AccessMedia.shared.networkChanged()
+        networkRequests = []
+        let beforeHome = ASWebAuthenticationSession.opened.count
+        AccessMediaHTTP.handler = { request, _ in
+            networkRequests.append(request)
+            assert(request.url?.host == "source.fixture.invalid" && request.value(forHTTPHeaderField: "Cookie") == nil)
+            return (Data("home".utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
+                httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
+        let home = await fetchResult(URLRequest(url: URL(string: bridgeFixture.config.media_origin + "/list.m3u8")!))
+        assert(home.0 == Data("home".utf8) && home.2 == nil && networkRequests.count == 1 &&
+            ASWebAuthenticationSession.opened.count == beforeHome)
+
+        // Direct denial, rejected saved token, and rejected replacement are bounded.
+        networkRequests = []
+        AccessMediaHTTP.handler = { request, limit in
+            if request.url?.path == bridgeFixture.config.exchange_path {
+                return try await bridgeFixture.fetch(request, limit: limit)
+            }
+            networkRequests.append(request)
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 403,
+                httpVersion: "HTTP/1.1", headerFields: [:])!)
+        }
+        let rejected = Task { await fetchResult(URLRequest(url: bridgeFixture.source)) }
+        await until { ASWebAuthenticationSession.opened.count == beforeHome + 1 }
+        ASWebAuthenticationSession.opened.last!.succeed()
+        let rejectedResult = await rejected.value
+        assert(rejectedResult.2 as? AccessMediaFailure == .login && networkRequests.count == 3 &&
+            networkRequests.map { $0.url!.host! } == ["source.fixture.invalid", "media.fixture.invalid", "media.fixture.invalid"],
+            "A failed authenticated fallback renews only once and cannot loop")
+
+        // Cancellation/logout win even when direct HTTP returns a late denial.
+        for logout in [false, true] {
+            try AccessMedia.shared.signOut()
+            AccessMedia.shared.networkChanged()
+            let beforePending = ASWebAuthenticationSession.opened.count
+            var directGate: CheckedContinuation<Void, Never>?
+            var directCancelled = false
+            AccessMediaHTTP.handler = { request, _ in
+                assert(request.url?.host == "source.fixture.invalid")
+                await withTaskCancellationHandler(operation: {
+                    await withCheckedContinuation { directGate = $0 }
+                }, onCancel: { Task { @MainActor in directCancelled = true } })
+                return (Data(), HTTPURLResponse(url: request.url!, statusCode: 403,
+                    httpVersion: "HTTP/1.1", headerFields: [:])!)
+            }
+            var pendingCount = 0
+            var pendingError: Error?
+            let pending = AccessMedia.fetch(URLRequest(url: bridgeFixture.source)) { _, _, error in
+                Task { @MainActor in pendingCount += 1; pendingError = error }
+            }
+            await until { directGate != nil }
+            if logout { try AccessMedia.shared.signOut() } else { pending.cancel() }
+            await until { directCancelled }
+            directGate!.resume()
+            await pending.value
+            await until { pendingCount == 1 }
+            assert(pendingError as? AccessMediaFailure == .cancelled &&
+                ASWebAuthenticationSession.opened.count == beforePending,
+                "A late direct rejection after cancellation or logout cannot reopen authentication")
+        }
+        // The first public denial may cross a Wi-Fi/cellular transition before
+        // discovery completes. It must not poison the newly trusted network.
+        for stage in ["public", "discovery"] {
+            let transitionConfig = AccessMediaConfig(version: 1,
+                source_origin: "https://transition-\(stage).fixture.invalid",
+                media_origin: "https://authenticated-\(stage).fixture.invalid", authorize_path: "/_ottplay/authorize",
+                exchange_path: "/_ottplay/public/exchange", callback: "ottplay-access://callback")
+            let transitionURL = URL(string: transitionConfig.source_origin + "/list.m3u8")!
+            var transitionGate: CheckedContinuation<Void, Never>?
+            var transitionRequests: [URLRequest] = []
+            let beforeTransition = ASWebAuthenticationSession.opened.count
+            AccessMediaPublicHTTP.handler = { request in
+                assert(request.url == transitionURL)
+                if stage == "public" { await withCheckedContinuation { transitionGate = $0 } }
+                return (Data(), HTTPURLResponse(url: request.url!, statusCode: 403,
+                    httpVersion: "HTTP/1.1", headerFields: [:])!)
+            }
+            AccessMediaHTTP.handler = { request, _ in
+                transitionRequests.append(request)
+                if request.url!.path == "/_ottplay/public/config" {
+                    if stage == "discovery" { await withCheckedContinuation { transitionGate = $0 } }
+                    return (try JSONEncoder().encode(transitionConfig), HTTPURLResponse(url: request.url!, statusCode: 200,
+                        httpVersion: "HTTP/1.1", headerFields: [:])!)
+                }
+                assert(request.url == transitionURL && request.value(forHTTPHeaderField: "Cookie") == nil)
+                return (Data("trusted-after-transition".utf8), HTTPURLResponse(url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: [:])!)
+            }
+            var transitionFinished = false
+            let transition = Task {
+                let result = await fetchResult(URLRequest(url: transitionURL))
+                transitionFinished = true
+                return result
+            }
+            await until { transitionGate != nil }
+            AccessMedia.shared.networkChanged()
+            transitionGate!.resume()
+            await until { transitionFinished || ASWebAuthenticationSession.opened.count > beforeTransition }
+            assert(ASWebAuthenticationSession.opened.count == beforeTransition,
+                "A stale initial public denial cannot open login on a newly trusted network")
+            let result = await transition.value
+            assert(result.0 == Data("trusted-after-transition".utf8) && result.2 == nil && transitionRequests.count == 2,
+                "After a network transition, discovery is followed by exactly one current source request")
+        }
+        AccessMediaPublicHTTP.handler = nil
+        AccessMediaHTTP.handler = nil
         reset()
         let generationFixture = Fixture(), generationAccess = generationFixture.makeAccess()
         try generationAccess.signOut()
@@ -784,9 +1105,14 @@ Task { @MainActor in
             try await generationAccess.authorized(URLRequest(url: generationFixture.source), config: generationFixture.config, generation: 0)
         }
         await failure(staleHttp, .cancelled)
+        let staleRoute = Task {
+            try await generationAccess.routed(URLRequest(url: generationFixture.source), config: generationFixture.config,
+                replacing: URLRequest(url: generationFixture.source), generation: 0)
+        }
+        await failure(staleRoute, .cancelled)
         assert(ASWebAuthenticationSession.opened.isEmpty,
             "A request queued before logout cannot start login after logout while crossing the actor")
-        print("PASS: native auth/bridge cancellation, protected HTTP logout/deadlines, public HTTP isolation, request ID ownership, generation guards and uppercase HTTPS")
+        print("PASS: trusted-network routing/probes, preparation ownership, stale-network discovery, bounded authenticated fallback, native auth/bridge cancellation, protected HTTP logout/deadlines, public HTTP isolation, request ID ownership, generation guards and uppercase HTTPS")
         finished = true
     } catch { fatalError("Auth fixture failed: \(error)") }
 }

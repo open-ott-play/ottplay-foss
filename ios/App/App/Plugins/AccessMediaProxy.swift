@@ -171,7 +171,8 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
     private var sentHeaders = false
     private var finishing = false
     private var closed = false
-    private var retry = false
+    private var retries = 0
+    private var authenticationFailures = 0
     private var retrying = false
     private var suspended = false
     private var pendingBytes = 0
@@ -209,12 +210,12 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
     private func begin(_ request: URLRequest, config: AccessMediaConfig, renew: Bool) {
         // User interaction can take longer than a segment download.
         armDeadline(180)
-        let rejectedCookie = renew ? authorized?.value(forHTTPHeaderField: "Cookie") : nil
+        let rejectedRequest = renew ? authorized : nil
         authorizationTask = Task {
             do {
                 try Task.checkCancellation()
-                let authorized = try await AccessMedia.shared.authorized(request, config: config,
-                    replacing: rejectedCookie)
+                let authorized = try await AccessMedia.shared.routed(request, config: config,
+                    replacing: rejectedRequest)
                 try Task.checkCancellation()
                 proxy.queue.async {
                     self.authorizationTask = nil
@@ -249,9 +250,10 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         guard !closed, !finishing, self.task === dataTask, let http = response as? HTTPURLResponse else { completionHandler(.cancel); return }
-        if [301, 302, 303, 307, 308, 401, 403].contains(http.statusCode) {
-            if !retry, let original, let config {
-                retry = true; retrying = true
+        if AccessMediaPolicy.requiresAccess(http) {
+            if authorized?.value(forHTTPHeaderField: "Cookie") != nil { authenticationFailures += 1 }
+            if retries < 2, authenticationFailures < 2, let original, let config {
+                retries += 1; retrying = true
                 completionHandler(.cancel)
                 dataTask.cancel()
                 begin(original, config: config, renew: true)
@@ -259,6 +261,7 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
             return
         }
         guard (200..<300).contains(http.statusCode) else { completionHandler(.cancel); fail(http.statusCode, response: http); return }
+        guard !AccessMediaPolicy.isHTML(http) else { completionHandler(.cancel); fail(502); return }
         self.response = http
         let mime = (http.mimeType ?? "").lowercased()
         isManifest = mime.contains("mpegurl") || http.url?.pathExtension.lowercased() == "m3u8"

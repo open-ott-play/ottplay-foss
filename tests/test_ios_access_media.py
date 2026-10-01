@@ -14,7 +14,29 @@ import Darwin
     static let shared = AccessMedia()
     var authorizationStarted = Set<String>()
     var authorizationCancelled = Set<String>()
+    var authorizedPaths: [String] = []
+    var renewedPaths: [String] = []
+    func routed(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedRequest: URLRequest? = nil) async throws -> URLRequest {
+        if request.url!.path.hasPrefix("/trusted-"), rejectedRequest == nil {
+            var result = request
+            var url = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+            let source = URLComponents(string: config.source_origin)!
+            url.scheme = source.scheme; url.host = source.host; url.port = source.port
+            result.url = url.url!
+            result.httpShouldHandleCookies = false
+            for name in result.allHTTPHeaderFields?.keys.map({ $0 }) ?? [] {
+                if ["cookie", "authorization", "proxy-authorization", "host"].contains(name.lowercased()) || name.lowercased().hasPrefix("cf-") {
+                    result.setValue(nil, forHTTPHeaderField: name)
+                }
+            }
+            return result
+        }
+        return try await authorized(request, config: config,
+            replacing: rejectedRequest?.value(forHTTPHeaderField: "Cookie"))
+    }
     func authorized(_ request: URLRequest, config: AccessMediaConfig, replacing rejectedCookie: String? = nil) async throws -> URLRequest {
+        authorizedPaths.append(request.url!.path)
+        if rejectedCookie != nil { renewedPaths.append(request.url!.path) }
         if request.url!.path.hasPrefix("/authorize-pending") {
             let path = request.url!.path
             authorizationStarted.insert(path)
@@ -34,6 +56,8 @@ final class Fixture: URLProtocol {
     static var stopped: [String] = []
     static var pending: [String: Fixture] = [:]
     static var sessionCount = 0
+    static var denyTrustedSource = false
+    static func denySource(_ deny: Bool) { lock.lock(); denyTrustedSource = deny; lock.unlock() }
     static func snapshot() -> [URLRequest] { lock.lock(); defer { lock.unlock() }; return seen }
     static func wasStopped(_ path: String) -> Bool { lock.lock(); defer { lock.unlock() }; return stopped.contains(path) }
     static func configurationsCreated() -> Int { lock.lock(); defer { lock.unlock() }; return sessionCount }
@@ -47,12 +71,53 @@ final class Fixture: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         Self.lock.lock(); Self.seen.append(request); Self.lock.unlock()
-        assert(request.value(forHTTPHeaderField: "Cookie") == "CF_Authorization=TEST_ONLY_" + request.url!.host!)
         let path = request.url!.path
+        let direct = request.url!.host == "source.fixture.invalid"
+        if direct {
+            assert(path.hasPrefix("/trusted-"))
+            assert(request.value(forHTTPHeaderField: "Cookie") == nil, "Direct source must not receive Access or ambient cookies")
+            assert(request.value(forHTTPHeaderField: "Authorization") == nil)
+            assert(request.value(forHTTPHeaderField: "Cf-Access-Jwt-Assertion") == nil)
+        } else {
+            assert(request.value(forHTTPHeaderField: "Cookie") == "CF_Authorization=TEST_ONLY_" + request.url!.host!)
+        }
         var status = 200
         var headers = ["Content-Type": "application/octet-stream", "Set-Cookie": "CF_Authorization=DO_NOT_EXPOSE"]
         var data = Data([1, 2, 3, 4])
-        if path == "/master.m3u8" {
+        if path.hasPrefix("/trusted-") {
+            Self.lock.lock()
+            let deny = Self.denyTrustedSource
+            let mediaAttempts = Self.seen.filter { $0.url!.host == "media.fixture.invalid" && $0.url!.path == path }.count
+            Self.lock.unlock()
+            if path == "/trusted-master.m3u8" {
+                headers["Content-Type"] = "application/vnd.apple.mpegurl"
+                data = Data("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\ntrusted-level.m3u8\n".utf8)
+            } else if path == "/trusted-level.m3u8" {
+                data = Data("#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"trusted-key\"\n#EXTINF:2,\ntrusted-segment.ts?signature=a%2Fb%2B%3D&&=preserved\n#EXT-X-ENDLIST\n".utf8)
+            } else if path == "/trusted-404.ts" { status = 404
+            } else if path == "/trusted-500.ts" { status = 500
+            } else if path == "/trusted-html.ts" {
+                headers["Content-Type"] = "text/html"
+                data = Data("<!doctype html><html>Sign in instead of playing this response</html>".utf8)
+            } else if direct && path == "/trusted-challenge.ts" {
+                headers["Content-Type"] = "text/html"
+                headers["cf-mitigated"] = "challenge"
+                data = Data("<html>Cloudflare challenge</html>".utf8)
+            } else if direct && ["/trusted-redirect.ts", "/trusted-redirect-same.ts"].contains(path) {
+                let next = path == "/trusted-redirect-same.ts" ? "https://source.fixture.invalid/trusted-segment.ts" : "https://other.fixture.invalid/stolen"
+                let response = HTTPURLResponse(url: request.url!, statusCode: 302, httpVersion: "HTTP/1.1", headerFields: ["Location": next])!
+                client?.urlProtocol(self, wasRedirectedTo: URLRequest(url: URL(string: next)!), redirectResponse: response)
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                client?.urlProtocolDidFinishLoading(self)
+                return
+            } else if path == "/trusted-rejected.ts" ||
+                      (direct && (deny || ["/trusted-deny401.ts", "/trusted-renew.ts"].contains(path))) {
+                status = path == "/trusted-deny401.ts" ? 401 : 403
+            } else if path == "/trusted-renew.ts" && mediaAttempts == 1 { status = 401
+            } else if request.value(forHTTPHeaderField: "Range") == "bytes=1-2" {
+                status = 206; data = Data([2, 3]); headers["Content-Range"] = "bytes 1-2/4"
+            }
+        } else if path == "/master.m3u8" {
             headers["Content-Type"] = "application/vnd.apple.mpegurl"
             data = Data("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\nlevel/list.m3u8\n".utf8)
         } else if path == "/level/list.m3u8" {
@@ -83,7 +148,19 @@ final class Fixture: URLProtocol {
             status = 404
         } else if path == "/chunked-large" {
             data = Data(repeating: 37, count: 4096)
-        } else if ["/pending", "/cancel-upstream", "/half-close"].contains(path) {
+        } else if ["/headers-only-huge", "/headers-only-infinite", "/headers-only-denied"].contains(path) {
+            // A live endpoint can keep its body open indefinitely. Header-only
+            // preparation must cancel it without waiting for bytes or EOF, and
+            // must not apply the buffered-download size limit to these headers.
+            var fields = ["Content-Type": "video/mp2t"]
+            if path == "/headers-only-huge" { fields["Content-Length"] = "1099511627776" }
+            if path == "/headers-only-denied" { fields["cf-mitigated"] = "challenge" }
+            Self.lock.lock(); Self.pending[path] = self; Self.lock.unlock()
+            let response = HTTPURLResponse(url: request.url!, statusCode: path == "/headers-only-denied" ? 403 : 200,
+                httpVersion: "HTTP/1.1", headerFields: fields)!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            return
+        } else if ["/pending", "/cancel-upstream", "/half-close", "/headers-only-cancel"].contains(path) {
             Self.lock.lock(); Self.pending[path] = self; Self.lock.unlock()
             return
         } else if path.hasPrefix("/redirect-") {
@@ -326,6 +403,103 @@ Task { @MainActor in
         let seen = Fixture.snapshot()
         assert(seen.count >= 13 && seen.allSatisfy { ["media.fixture.invalid", "media2.fixture.invalid"].contains($0.url!.host!) })
 
+        // The same loopback capability must serve credential-free home access
+        // and authenticated mobile fallback, including later segment requests.
+        let trustedStart = Fixture.snapshot().count
+        let authorizationStart = AccessMedia.shared.authorizedPaths.count
+        let trustedMaster = try await proxy.url(for: URL(string: config.media_origin + "/trusted-master.m3u8")!, config: config)
+        let (trustedMasterData, trustedMasterResponse) = try await URLSession.shared.data(from: trustedMaster)
+        assert((trustedMasterResponse as! HTTPURLResponse).statusCode == 200)
+        assert((trustedMasterResponse as! HTTPURLResponse).value(forHTTPHeaderField: "Set-Cookie") == nil)
+        let trustedLevel = URL(string: String(data: trustedMasterData, encoding: .utf8)!.split(separator: "\n").last!.description)!
+        assert(trustedLevel.host == "127.0.0.1", "A direct manifest must retain network-switch handling for its children")
+        let (trustedLevelData, _) = try await URLSession.shared.data(from: trustedLevel)
+        let trustedPlaylist = String(data: trustedLevelData, encoding: .utf8)!
+        assert(trustedPlaylist.contains("#EXT-X-KEY:METHOD=AES-128,URI=\"http://127.0.0.1:"))
+        let trustedSegment = URL(string: trustedPlaylist.split(separator: "\n").first(where: { !$0.hasPrefix("#") })!.description)!
+        var trustedRange = URLRequest(url: trustedSegment)
+        trustedRange.setValue("bytes=1-2", forHTTPHeaderField: "Range")
+        trustedRange.setValue("fixture-etag", forHTTPHeaderField: "If-Range")
+        trustedRange.setValue("CF_Authorization=DO_NOT_FORWARD", forHTTPHeaderField: "Cookie")
+        trustedRange.setValue("Bearer DO_NOT_FORWARD", forHTTPHeaderField: "Authorization")
+        trustedRange.setValue("DO_NOT_FORWARD", forHTTPHeaderField: "Cf-Access-Jwt-Assertion")
+        let (trustedBytes, trustedRangeResponse) = try await URLSession.shared.data(for: trustedRange)
+        assert(trustedBytes == Data([2, 3]) && (trustedRangeResponse as! HTTPURLResponse).statusCode == 206)
+        assert((trustedRangeResponse as! HTTPURLResponse).value(forHTTPHeaderField: "Content-Range") == "bytes 1-2/4")
+        let directRequests = Array(Fixture.snapshot().dropFirst(trustedStart))
+        assert(directRequests.count == 3 && directRequests.allSatisfy { $0.url!.host == "source.fixture.invalid" })
+        assert(AccessMedia.shared.authorizedPaths.count == authorizationStart, "Trusted media must not start authorization")
+        assert(directRequests.last!.value(forHTTPHeaderField: "Range") == "bytes=1-2")
+        assert(directRequests.last!.value(forHTTPHeaderField: "If-Range") == "fixture-etag")
+        assert(directRequests.last!.url!.query == "signature=a%2Fb%2B%3D&&=preserved")
+        let directRedirectStart = Fixture.snapshot().count
+        let directRedirect = try await proxy.url(for: URL(string: config.source_origin + "/trusted-redirect-same.ts")!, config: config)
+        let (directRedirectData, directRedirectResponse) = try await URLSession.shared.data(from: directRedirect)
+        assert((directRedirectResponse as! HTTPURLResponse).statusCode == 200 && directRedirectData == Data([1, 2, 3, 4]))
+        let directRedirectRequests = Array(Fixture.snapshot().dropFirst(directRedirectStart))
+        assert(directRedirectRequests.count == 2 && directRedirectRequests.allSatisfy {
+            $0.url!.host == "source.fixture.invalid" && $0.value(forHTTPHeaderField: "Cookie") == nil
+        }, "Same-origin source redirects must remain credential-free")
+        assert(AccessMedia.shared.authorizedPaths.count == authorizationStart)
+
+        let directSigned = URL(string: config.source_origin + "/trusted-master.m3u8?signature=a%2Fb%2B%3D&&=preserved&_HLS_msn=1")!
+        var directReload = URLComponents(url: try await proxy.url(for: directSigned, config: config), resolvingAgainstBaseURL: false)!
+        directReload.percentEncodedQuery = "_HLS_msn=12&_HLS_part=3&_HLS_skip=v2"
+        _ = try await URLSession.shared.data(from: directReload.url!)
+        assert(Fixture.snapshot().last!.url!.host == "source.fixture.invalid")
+        assert(Fixture.snapshot().last!.url!.query == "signature=a%2Fb%2B%3D&&=preserved&_HLS_msn=12&_HLS_part=3&_HLS_skip=v2")
+
+        Fixture.denySource(true)
+        let switchedStart = Fixture.snapshot().count
+        let (switchedBytes, switchedResponse) = try await URLSession.shared.data(for: trustedRange)
+        assert(switchedBytes == Data([2, 3]) && (switchedResponse as! HTTPURLResponse).statusCode == 206)
+        let switchedRequests = Array(Fixture.snapshot().dropFirst(switchedStart))
+        assert(switchedRequests.map { $0.url!.host! } == ["source.fixture.invalid", "media.fixture.invalid"],
+            "The existing segment URL must recover after leaving the trusted network")
+        assert(switchedRequests.allSatisfy { $0.value(forHTTPHeaderField: "Range") == "bytes=1-2" &&
+            $0.value(forHTTPHeaderField: "If-Range") == "fixture-etag" &&
+            $0.url!.query == "signature=a%2Fb%2B%3D&&=preserved" })
+        Fixture.denySource(false)
+        let returnedStart = Fixture.snapshot().count
+        let returnedAuthorizations = AccessMedia.shared.authorizedPaths.count
+        _ = try await URLSession.shared.data(for: trustedRange)
+        assert(Fixture.snapshot().count == returnedStart + 1 && Fixture.snapshot().last!.url!.host == "source.fixture.invalid")
+        assert(AccessMedia.shared.authorizedPaths.count == returnedAuthorizations)
+
+        for path in ["/trusted-deny401.ts", "/trusted-challenge.ts", "/trusted-redirect.ts"] {
+            let start = Fixture.snapshot().count
+            let endpoint = try await proxy.url(for: URL(string: config.source_origin + path)!, config: config)
+            let (bytes, response) = try await URLSession.shared.data(from: endpoint)
+            assert((response as! HTTPURLResponse).statusCode == 200 && bytes == Data([1, 2, 3, 4]))
+            let requests = Array(Fixture.snapshot().dropFirst(start))
+            assert(requests.map { $0.url!.host! } == ["source.fixture.invalid", "media.fixture.invalid"],
+                "Access denial must retry through the authenticated media origin exactly once: \(path)")
+        }
+        for (path, expected) in [("/trusted-404.ts", 404), ("/trusted-500.ts", 500), ("/trusted-html.ts", 502)] {
+            let start = Fixture.snapshot().count
+            let authorizations = AccessMedia.shared.authorizedPaths.count
+            let endpoint = try await proxy.url(for: URL(string: config.source_origin + path)!, config: config)
+            let (bytes, response) = try await URLSession.shared.data(from: endpoint)
+            assert((response as! HTTPURLResponse).statusCode == expected && bytes.isEmpty,
+                "Ordinary source errors and HTML must not be forwarded as media: \(path)")
+            assert(Fixture.snapshot().count == start + 1 && AccessMedia.shared.authorizedPaths.count == authorizations,
+                "A source failure without an access challenge must not open authentication")
+        }
+        for (path, expected) in [("/trusted-renew.ts", 200), ("/trusted-rejected.ts", 401)] {
+            let start = Fixture.snapshot().count
+            let renewed = AccessMedia.shared.renewedPaths.count
+            let endpoint = try await proxy.url(for: URL(string: config.source_origin + path)!, config: config)
+            let (bytes, response) = try await URLSession.shared.data(from: endpoint)
+            assert((response as! HTTPURLResponse).statusCode == expected)
+            assert(expected == 200 ? bytes == Data([1, 2, 3, 4]) : bytes.isEmpty)
+            let requests = Array(Fixture.snapshot().dropFirst(start))
+            assert(requests.map { $0.url!.host! } == ["source.fixture.invalid", "media.fixture.invalid", "media.fixture.invalid"],
+                "Allow source denial plus one rejected Access session renewal, then stop: \(path)")
+            assert(AccessMedia.shared.renewedPaths.count == renewed + 1)
+        }
+        assert(!Fixture.snapshot().contains { $0.url!.host == "other.fixture.invalid" }, "A redirect must never forward cookies to an external origin")
+        assert(Fixture.configurationsCreated() == 1, "Both routes must reuse the isolated upstream connection pool")
+
         let pendingURL = try await proxy.url(for: URL(string: config.source_origin + "/cancel-upstream")!, config: config)
         let disconnected = openSocket(pendingURL)
         try await waitFor { Fixture.snapshot().contains { $0.url?.path == "/cancel-upstream" } }
@@ -365,6 +539,23 @@ Task { @MainActor in
         let (_, httpRefused) = try await AccessMediaHTTP.fetch(fixtureRequest("/redirect-other"), sessionConfiguration: Fixture.configuration)
         assert(httpRefused.statusCode == 302)
         assert(!Fixture.snapshot().contains { $0.url?.host == "other.fixture.invalid" })
+        for (path, status) in [("/headers-only-huge", 200), ("/headers-only-infinite", 200), ("/headers-only-denied", 403)] {
+            let (data, response) = try await AccessMediaHTTP.fetch(fixtureRequest(path), limit: 16,
+                headersOnly: true, sessionConfiguration: Fixture.configuration)
+            assert(data.isEmpty && response.statusCode == status,
+                "A headers-only GET must settle without reading or waiting for the live body: \(path)")
+            if status == 403 { assert(AccessMediaPolicy.requiresAccess(response)) }
+            try await waitFor { Fixture.wasStopped(path) }
+        }
+        let headerCancellation = Task {
+            try await AccessMediaHTTP.fetch(fixtureRequest("/headers-only-cancel"), headersOnly: true,
+                sessionConfiguration: Fixture.configuration)
+        }
+        try await waitFor { Fixture.snapshot().contains { $0.url?.path == "/headers-only-cancel" } }
+        headerCancellation.cancel()
+        do { _ = try await headerCancellation.value; fatalError("A cancelled headers-only probe completed successfully") }
+        catch is CancellationError {} catch { fatalError("Wrong headers-only cancellation error") }
+        try await waitFor { Fixture.wasStopped("/headers-only-cancel") }
         do {
             _ = try await AccessMediaHTTP.fetch(fixtureRequest("/large.ts"), limit: 1024, sessionConfiguration: Fixture.configuration)
             fatalError("Oversized native fetch was accepted")
@@ -387,7 +578,7 @@ Task { @MainActor in
         cancelled.cancel()
         do { _ = try await cancelled.value; fatalError("Cancelled-before-start fetch completed") } catch is CancellationError {} catch { fatalError("Wrong early cancellation error") }
         assert(Fixture.snapshot().count == seenCount)
-        print("PASS: PKCE, origin isolation, HLS/LL-HLS rewriting, \(seen.count) media requests through one session, redirects, streaming, Range, HEAD, reset/half-close, authorization cancellation and bounds")
+        print("PASS: PKCE, origin isolation, HLS/LL-HLS rewriting, trusted direct playback, network-switch fallback, bounded renewal, challenge/HTML handling, headers-only live probes, redirects, streaming, Range, HEAD, reset/half-close, authorization cancellation and bounds")
         finished = true
     } catch { fatalError("Access media fixture failed: \(error)") }
 }
