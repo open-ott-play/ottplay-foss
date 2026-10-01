@@ -102,6 +102,7 @@ var keyStrings = {
         "Schermo nero durante il cambio canale",
     Blue: "Blu",
     "Bookmark age: %1 days": "Età del segnalibro: %1 giorni",
+    "Browse folders": "Sfoglia cartelle",
     "Buffer Size, s": "Dimensione buffer, s",
     "Built-in playlist:": "Playlist integrata:",
     "Built-in playlists": "Playlist integrate",
@@ -571,6 +572,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Non ridurre il video quando viene mostrato l'elenco (correzione)",
     Nothing: "Niente",
+    "Nothing to play": "Nessun video da riprodurre",
     "Number of next TV programs in channel list":
         "Numero di programmi successivi nell'elenco canali",
     "Number of rows in lists": "Numero di righe negli elenchi",
@@ -684,6 +686,9 @@ var keyStrings = {
     "Rename category": "Rinomina categoria",
     "Rename to": "Rinomina in",
     "Repeat parental code": "Ripeti codice parentale",
+    "Repeat: All": "Ripetizione: tutti",
+    "Repeat: Off": "Ripetizione: disattivata",
+    "Repeat: One": "Ripetizione: uno",
     "Request sended!": "Richiesta inviata!",
     "Requesting approval for %1": "Richiesta di approvazione per %1",
     "Restart player": "Riavvia lettore",
@@ -783,6 +788,7 @@ var keyStrings = {
     "Show when changing program": "Mostra al cambio programma",
     "Show when rewind": "Mostra durante il riavvolgimento",
     "Show when switching": "Mostra al cambio canale",
+    "Shuffle and play": "Mescola e riproduci",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -853,6 +859,9 @@ var keyStrings = {
     transparent: "trasparente",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Impostazioni di ULTIFL1X",
+    "Unable to load playlist": "Impossibile caricare la playlist",
+    Untitled: "Senza titolo",
+    "Untitled folder": "Cartella senza nome",
     "Update installed. Please restart OttPlay FOSS.":
         "Aggiornamento installato. Riavvia OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

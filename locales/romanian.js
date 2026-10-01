@@ -101,6 +101,7 @@ var keyStrings = {
         "Ecran negru la schimbarea canalelor",
     Blue: "Albastru",
     "Bookmark age: %1 days": "Vechimea marcajului: %1 zile",
+    "Browse folders": "Răsfoiește folderele",
     "Buffer Size, s": "Dimensiune buffer, s",
     "Built-in playlist:": "Listă de redare încorporată:",
     "Built-in playlists": "Liste de redare încorporate",
@@ -571,6 +572,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Nu micșora imaginea video când este afișată lista (remediere)",
     Nothing: "Nimic",
+    "Nothing to play": "Nu există videoclipuri de redat",
     "Number of next TV programs in channel list":
         "Numărul emisiunilor următoare în lista de canale",
     "Number of rows in lists": "Numărul de rânduri din liste",
@@ -684,6 +686,9 @@ var keyStrings = {
     "Rename category": "Redenumește categoria",
     "Rename to": "Redenumește în",
     "Repeat parental code": "Introduceți din nou codul parental",
+    "Repeat: All": "Repetare: toate",
+    "Repeat: Off": "Repetare: oprită",
+    "Repeat: One": "Repetare: unul",
     "Request sended!": "Cerere trimisă!",
     "Requesting approval for %1": "Se solicită aprobarea pentru %1",
     "Restart player": "Repornește playerul",
@@ -782,6 +787,7 @@ var keyStrings = {
     "Show when changing program": "Afișează la schimbarea emisiunii",
     "Show when rewind": "Afișează la derularea înapoi",
     "Show when switching": "Afișează la schimbarea canalelor",
+    "Shuffle and play": "Amestecă și redă",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -852,6 +858,9 @@ var keyStrings = {
     transparent: "transparent",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Setări ULTIFL1X",
+    "Unable to load playlist": "Nu s-a putut încărca lista de redare",
+    Untitled: "Fără titlu",
+    "Untitled folder": "Folder fără nume",
     "Update installed. Please restart OttPlay FOSS.":
         "Actualizarea a fost instalată. Reporniți OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

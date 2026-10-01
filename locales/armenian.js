@@ -99,6 +99,7 @@ var keyStrings = {
     "Black screen while switching the channel": "Սև էկրան՝ ալիքները փոխելիս",
     Blue: "Կապույտ",
     "Bookmark age: %1 days": "Էջանիշի տարիք՝ %1 օր",
+    "Browse folders": "Դիտել ըստ պանակների",
     "Buffer Size, s": "Բուֆերի չափ, վ",
     "Built-in playlist:": "Ներկառուցված նվագարկման ցուցակ՝",
     "Built-in playlists": "Ներկառուցված նվագարկման ցուցակներ",
@@ -563,6 +564,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Չփոքրացնել տեսանյութը ցուցակը ցուցադրելիս (սխալի շտկում)",
     Nothing: "Ոչինչ",
+    "Nothing to play": "Նվագարկելու տեսանյութ չկա",
     "Number of next TV programs in channel list":
         "Ալիքների ցուցակում հաջորդ հաղորդումների քանակ",
     "Number of rows in lists": "Ցուցակների տողերի քանակ",
@@ -678,6 +680,9 @@ var keyStrings = {
     "Rename category": "Վերանվանել կատեգորիան",
     "Rename to": "Վերանվանել որպես",
     "Repeat parental code": "Կրկին մուտքագրեք ծնողական կոդը",
+    "Repeat: All": "Կրկնություն՝ բոլորը",
+    "Repeat: Off": "Կրկնություն՝ անջատված",
+    "Repeat: One": "Կրկնություն՝ մեկը",
     "Request sended!": "Հարցումն ուղարկված է։",
     "Requesting approval for %1": "Հաստատում է պահանջվում %1-ի համար",
     "Restart player": "Վերագործարկել նվագարկիչը",
@@ -777,6 +782,7 @@ var keyStrings = {
     "Show when changing program": "Ցուցադրել հաղորդումը փոխվելիս",
     "Show when rewind": "Ցուցադրել հետ պտտելիս",
     "Show when switching": "Ցուցադրել ալիքները փոխելիս",
+    "Shuffle and play": "Խառնել և նվագարկել",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -847,6 +853,9 @@ var keyStrings = {
     transparent: "թափանցիկ",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X կարգավորումներ",
+    "Unable to load playlist": "Չհաջողվեց բեռնել նվագացանկը",
+    Untitled: "Անվերնագիր",
+    "Untitled folder": "Անանուն պանակ",
     "Update installed. Please restart OttPlay FOSS.":
         "Թարմացումը տեղադրված է։ Վերագործարկեք OttPlay FOSS-ը։",
     "Use an HTTP or HTTPS server address.":

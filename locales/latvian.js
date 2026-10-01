@@ -100,6 +100,7 @@ var keyStrings = {
         "Melns ekrāns, pārslēdzot kanālus",
     Blue: "Zils",
     "Bookmark age: %1 days": "Grāmatzīmes vecums: %1 dienas",
+    "Browse folders": "Pārlūkot mapes",
     "Buffer Size, s": "Bufera lielums, s",
     "Built-in playlist:": "Iebūvētais atskaņošanas saraksts:",
     "Built-in playlists": "Iebūvētie atskaņošanas saraksti",
@@ -567,6 +568,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Nesamazināt video, rādot sarakstu (kļūdas labojums)",
     Nothing: "Nekas",
+    "Nothing to play": "Nav atskaņojamu video",
     "Number of next TV programs in channel list":
         "Nākamo raidījumu skaits kanālu sarakstā",
     "Number of rows in lists": "Rindu skaits sarakstos",
@@ -680,6 +682,9 @@ var keyStrings = {
     "Rename category": "Pārdēvēt kategoriju",
     "Rename to": "Pārdēvēt par",
     "Repeat parental code": "Atkārtoti ievadiet vecāku kodu",
+    "Repeat: All": "Atkārtošana: visi",
+    "Repeat: Off": "Atkārtošana: izslēgta",
+    "Repeat: One": "Atkārtošana: viens",
     "Request sended!": "Pieprasījums nosūtīts!",
     "Requesting approval for %1": "Tiek pieprasīts apstiprinājums: %1",
     "Restart player": "Pārstartēt atskaņotāju",
@@ -776,6 +781,7 @@ var keyStrings = {
     "Show when changing program": "Rādīt, mainoties raidījumam",
     "Show when rewind": "Rādīt attīšanas laikā",
     "Show when switching": "Rādīt, pārslēdzot kanālus",
+    "Shuffle and play": "Sajaukt un atskaņot",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -844,6 +850,9 @@ var keyStrings = {
     transparent: "caurspīdīgs",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X iestatījumi",
+    "Unable to load playlist": "Neizdevās ielādēt atskaņošanas sarakstu",
+    Untitled: "Bez nosaukuma",
+    "Untitled folder": "Mape bez nosaukuma",
     "Update installed. Please restart OttPlay FOSS.":
         "Atjauninājums instalēts. Pārstartējiet OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

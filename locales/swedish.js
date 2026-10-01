@@ -99,6 +99,7 @@ var keyStrings = {
     "Black screen while switching the channel": "Svart skärm vid kanalbyte",
     Blue: "Blå",
     "Bookmark age: %1 days": "Bokmärkets ålder: %1 dagar",
+    "Browse folders": "Bläddra bland mappar",
     "Buffer Size, s": "Buffertstorlek, s",
     "Built-in playlist:": "Inbyggd spellista:",
     "Built-in playlists": "Inbyggda spellistor",
@@ -564,6 +565,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Förminska inte videon när listan visas (felkorrigering)",
     Nothing: "Ingenting",
+    "Nothing to play": "Inga videor att spela upp",
     "Number of next TV programs in channel list":
         "Antal kommande program i kanallistan",
     "Number of rows in lists": "Antal rader i listor",
@@ -677,6 +679,9 @@ var keyStrings = {
     "Rename category": "Byt namn på kategori",
     "Rename to": "Byt namn till",
     "Repeat parental code": "Ange föräldrakoden igen",
+    "Repeat: All": "Upprepning: alla",
+    "Repeat: Off": "Upprepning: av",
+    "Repeat: One": "Upprepning: en",
     "Request sended!": "Begäran skickad!",
     "Requesting approval for %1": "Begär godkännande för %1",
     "Restart player": "Starta om spelaren",
@@ -772,6 +777,7 @@ var keyStrings = {
     "Show when changing program": "Visa vid programbyte",
     "Show when rewind": "Visa vid spolning",
     "Show when switching": "Visa vid kanalbyte",
+    "Shuffle and play": "Blanda och spela",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -842,6 +848,9 @@ var keyStrings = {
     transparent: "genomskinlig",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-inställningar",
+    "Unable to load playlist": "Det gick inte att läsa in spellistan",
+    Untitled: "Utan titel",
+    "Untitled folder": "Namnlös mapp",
     "Update installed. Please restart OttPlay FOSS.":
         "Uppdateringen är installerad. Starta om OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

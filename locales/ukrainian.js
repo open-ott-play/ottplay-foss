@@ -99,6 +99,7 @@ var keyStrings = {
         "Чорний екран під час перемикання каналів",
     Blue: "Синій",
     "Bookmark age: %1 days": "Вік закладки: %1 дн.",
+    "Browse folders": "Перегляд за папками",
     "Buffer Size, s": "Розмір буфера, с",
     "Built-in playlist:": "Вбудований список відтворення:",
     "Built-in playlists": "Вбудовані списки відтворення",
@@ -562,6 +563,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Не зменшувати відео під час показу списку (виправлення)",
     Nothing: "Нічого",
+    "Nothing to play": "Немає відео для відтворення",
     "Number of next TV programs in channel list":
         "Кількість наступних передач у списку каналів",
     "Number of rows in lists": "Кількість рядків у списках",
@@ -674,6 +676,9 @@ var keyStrings = {
     "Rename category": "Перейменувати категорію",
     "Rename to": "Перейменувати на",
     "Repeat parental code": "Повторіть батьківський код",
+    "Repeat: All": "Повтор: усі",
+    "Repeat: Off": "Повтор: вимкнено",
+    "Repeat: One": "Повтор: один",
     "Request sended!": "Запит надіслано!",
     "Requesting approval for %1": "Запит підтвердження для %1",
     "Restart player": "Перезапустити програвач",
@@ -769,6 +774,7 @@ var keyStrings = {
     "Show when changing program": "Показувати під час зміни передачі",
     "Show when rewind": "Показувати під час перемотування",
     "Show when switching": "Показувати під час перемикання каналів",
+    "Shuffle and play": "Перемішати й запустити",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -839,6 +845,9 @@ var keyStrings = {
     transparent: "прозорий",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Налаштування ULTIFL1X",
+    "Unable to load playlist": "Не вдалося завантажити список відтворення",
+    Untitled: "Без назви",
+    "Untitled folder": "Папка без назви",
     "Update installed. Please restart OttPlay FOSS.":
         "Оновлення встановлено. Перезапустіть OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":

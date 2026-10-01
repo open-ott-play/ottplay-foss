@@ -133,14 +133,22 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 606,000 UTF-8 bytes and 184,000
-bytes compressed with gzip level 9. The entry plus all five provider families
-must also fit within 671,000 bytes and 209,000 gzip bytes, summed per file.
+Each final classic entry bundle is limited to 641,300 UTF-8 bytes and 195,600
+bytes compressed with gzip level 9. The entry plus all six provider families
+must also fit within 736,500 bytes and 231,000 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `player.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
+
+Folder shuffle, Repeat and exact Plex startup resume measure 640,894 raw /
+194,762 gzip bytes for web and 640,852 / 194,822 for Tauri and Capacitor on
+Node 26.8.2. Including all providers measures 733,963 / 229,802 for web and
+733,921 / 229,862 for native.
+The increase retains collection bounds, independent request cancellation, PIN
+ownership and guarded natural completion; Plex pagination remains optional.
+Budgets include release suffix and Node 22 compression variation.
 
 The iOS protected-source integration retains its authentication and cancellation
 checks after sharing native transport helpers. Its combined beta candidate on

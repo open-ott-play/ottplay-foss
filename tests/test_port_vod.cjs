@@ -136,8 +136,11 @@ function fixture() {
             LEFT: 37,
             N0: 48,
             N2: 50,
+            N5: 53,
             N8: 56,
+            N9: 57,
             NEXT: 35,
+            PLAY: 415,
             PRECH: 191,
             PREV: 36,
             RED: 403,
@@ -314,6 +317,106 @@ function fixture() {
 module.exports = { fixture, sourceFunctions };
 
 if (require.main === module) {
+    // Startup resumes begin at the exact saved position, without the manual
+    // minute rounding or confirmation, even while the decoder is loading.
+    {
+        const c = fixture();
+        const prepare = c.__ottMedia.prepare;
+        c.__ottMedia.prepare = (item, url) => ({
+            ...prepare(item, url),
+            resume: 12.375,
+            resumeStartup: true,
+        });
+        c.stbPlay = (url, position) => {
+            assert.equal(url, "startup.mp4");
+            assert.equal(position, 12.375);
+            assert.equal(c.__ottClassicPlayback.snapshot().position, 12.375);
+            assert.equal(c.documentState().history[0].position, 12.375);
+            assert.equal(c.__ottClassicPlayback.snapshot().phase, "loading");
+        };
+        c._playMedia(
+            { id: 73, stream_url: "startup.mp4", title: "Saved" },
+            true
+        );
+        assert(!c.calls.some((call) => call[0] === "confirm"));
+        vm.runInContext(sourceFunctions("src/index.ts", ["body_onUnload"]), c);
+        c.body_onUnload();
+        assert.equal(
+            c.documentState().history[0].position,
+            12.375,
+            "Closing during decoder startup retains the resume position"
+        );
+    }
+    // Tauri's explicit Exit command checkpoints synchronously before Rust
+    // terminates the process, which need not dispatch browser unload events.
+    {
+        const c = fixture();
+        c._playMedia({ id: 74, stream_url: "exit.mp4", title: "Closing" });
+        c.stbGetPosTime = () => 184.875;
+        vm.runInContext(sourceFunctions("src/index.ts", ["body_onUnload"]), c);
+        const source = fs.readFileSync(path.join(root, "src/index.ts"), "utf8");
+        const ast = ts.createSourceFile(
+            "index.ts",
+            source,
+            ts.ScriptTarget.Latest,
+            true
+        );
+        const block = ast.statements.find(
+            (node) =>
+                ts.isIfStatement(node) &&
+                node.getText(ast).includes("window.stbExit = function") &&
+                node.getText(ast).includes('"exit_app"')
+        );
+        assert(block);
+        let exits = 0;
+        c.__TAURI__ = {};
+        c.tauriInvoke = (command) => {
+            assert.equal(command, "exit_app");
+            assert.equal(c.documentState().history[0].position, 184.875);
+            exits++;
+            return { catch() {} };
+        };
+        vm.runInContext(
+            ts.transpileModule(block.getText(ast), {
+                compilerOptions: { target: ts.ScriptTarget.ES5 },
+            }).outputText,
+            c
+        );
+        c.stbExit();
+        assert.equal(exits, 1);
+    }
+    // Playback controls remain separate from selectable metadata rows.
+    {
+        const c = fixture();
+        c.mediaList(null);
+        let shuffled = 0;
+        let repeated = 0;
+        c.__ottMedia.shufflePlay = () => shuffled++;
+        c.__ottMedia.cycleRepeat = () => repeated++;
+        assert.equal(c.mediaKeyHandler(c.keys.N5), true);
+        assert.equal(c.mediaKeyHandler(c.keys.PLAY), true);
+        assert.equal(c.mediaKeyHandler(c.keys.N9), true);
+        assert.equal(shuffled, 2);
+        assert.equal(repeated, 1);
+        const view = c.__ottMedia.snapshot();
+        view.canShuffle = true;
+        view.canRepeat = true;
+        view.repeat = "one";
+        c.showMediaList1(view);
+        c.detailListActionFn();
+        assert(
+            c.elements["#listDetail"].innerHTML.includes("Shuffle and play")
+        );
+        assert(c.elements["#listDetail"].innerHTML.includes("Repeat: One"));
+        assert(c.getListItemFn({ title: "" }, 0).includes("Untitled"));
+        view.canShuffle = false;
+        c.showMediaList1(view);
+        c.detailListActionFn();
+        assert(
+            !c.elements["#listDetail"].innerHTML.includes("Shuffle and play")
+        );
+        assert(c.elements["#listDetail"].innerHTML.includes("Repeat: One"));
+    }
     // The filter is reachable by remote shortcut and its active query stays visible.
     {
         const c = fixture();

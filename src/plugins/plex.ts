@@ -133,6 +133,7 @@ function createPlexClient(
     var disposed = false;
     var unloading = false;
     var pending: any = null;
+    var cancelCollection: (() => void) | null = null;
     var sections: any = null;
     var sectionsAt = 0;
     var search: any = null;
@@ -313,6 +314,41 @@ function createPlexClient(
         });
         return rows;
     }
+    function itemTitle(item: any, playable: boolean): string {
+        function text(value: any): string {
+            return typeof value === "string" || typeof value === "number"
+                ? String(value)
+                      .replace(/[\u0000-\u001f\u007f]/g, " ")
+                      .replace(/\s+/g, " ")
+                      .trim()
+                : "";
+        }
+        var names = [item.title, item.name, item.originalTitle, item.titleSort];
+        for (var i = 0; i < names.length; i++) {
+            var title = text(names[i]);
+            if (title) return title;
+        }
+        var media = plexRows(item.Media);
+        for (var m = 0; m < media.length; m++) {
+            if (!media[m] || typeof media[m] !== "object") continue;
+            var parts = plexRows(media[m].Part);
+            for (var p = 0; p < parts.length; p++) {
+                if (!parts[p] || typeof parts[p] !== "object") continue;
+                var file = parts[p].file;
+                // Part.file is a filesystem path, never a playback URL. Only
+                // its final component belongs in the visible catalog label.
+                if (
+                    typeof file !== "string" ||
+                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
+                )
+                    continue;
+                var filename = text(file.split(/[\\/]/).pop());
+                if (filename && filename !== "." && filename !== "..")
+                    return filename;
+            }
+        }
+        return translate(playable ? "Untitled" : "Untitled folder");
+    }
     function records(container: any, path: string, params: any): any[] {
         var root = path === "/library/sections";
         var result: any[] = [];
@@ -321,12 +357,12 @@ function createPlexClient(
             result.push({
                 playlist_url: target(
                     "/library/sections/" + section[1] + "/folder",
-                    translate("Folders")
+                    translate("Browse folders")
                 ),
-                title: translate("Folders"),
+                title: translate("Browse folders"),
             });
         items(container).forEach(function (item) {
-            var title = String(item.title || item.name || "");
+            if (!item || typeof item !== "object") return;
             var key = plexPath(item.key);
             if (root && /^\d+$/.test(String(item.key)))
                 key = "/library/sections/" + item.key + "/all";
@@ -334,6 +370,7 @@ function createPlexClient(
                 /^(?:movie|episode|clip|track)$/.test(item.type) ||
                 plexRows(item.Media).length > 0;
             var id = String(item.ratingKey || "");
+            var title = itemTitle(item, playable && /^\d+$/.test(id));
             if (playable && /^\d+$/.test(id)) {
                 result.push({
                     __ottMediaSequence:
@@ -381,6 +418,224 @@ function createPlexClient(
                 title: translate("Search"),
             });
         return result;
+    }
+    function collectionPath(value: any): string {
+        var path =
+            value === "" || value === null || value === undefined
+                ? "/library/sections"
+                : value &&
+                    typeof value === "object" &&
+                    value.plexSource === source
+                  ? plexPath(value.path)
+                  : "";
+        // Hub search uses per-hub limits instead of flat offset pagination;
+        // never present its possibly truncated snapshot as a complete queue.
+        return /^\/library\/(?:sections(?:\/\d+\/(?:all|folder))?|metadata\/\d+\/children)(?:\?|$)/.test(
+            path
+        )
+            ? path
+            : "";
+    }
+    /** Collect a flat catalog independently from the visible navigation request. */
+    function collect(
+        value: any,
+        done: (result: { items: any[]; error?: string }) => void,
+        guard?: () => boolean
+    ): () => void {
+        if (cancelCollection) cancelCollection();
+        var ended = false;
+        var pendingPage: any = null;
+        var timer: any = null;
+        var started = Date.now();
+        var offset = 0;
+        var pages = 0;
+        var total: number | null = null;
+        var characters = 0;
+        var collected: any[] = [];
+        var seen: any = Object.create(null);
+        var seenPages: any = Object.create(null);
+        var path = collectionPath(value);
+        function cancelOwned(): void {
+            if (ended) return;
+            ended = true;
+            if (cancelCollection === cancelOwned) cancelCollection = null;
+            if (timer !== null) w.clearTimeout(timer);
+            timer = null;
+            var previous = pendingPage;
+            pendingPage = null;
+            collected = [];
+            seen = seenPages = null;
+            if (previous && previous.xhr) previous.xhr.abort();
+        }
+        function active(): boolean {
+            if (ended) return false;
+            var valid =
+                !disposed && (!options.isCurrent || options.isCurrent());
+            try {
+                if (guard && !guard()) valid = false;
+            } catch (_) {
+                valid = false;
+            }
+            if (!valid) cancelOwned();
+            return valid;
+        }
+        function finish(error = false): void {
+            if (!active()) return;
+            var result = error
+                ? { error: translate("Unable to load playlist"), items: [] }
+                : { items: collected };
+            cancelOwned();
+            done(result);
+        }
+        function integer(value: any): number | null {
+            var number = Number(value);
+            return value !== null &&
+                value !== "" &&
+                isFinite(number) &&
+                number >= 0 &&
+                Math.floor(number) === number
+                ? number
+                : null;
+        }
+        function accept(data: any): void {
+            if (!active()) return;
+            if (Date.now() - started >= 120000) {
+                finish(true);
+                return;
+            }
+            var rows: any[];
+            var page: any[];
+            try {
+                rows = items(data);
+                page = records(data, path, {
+                    "X-Plex-Container-Start": offset,
+                });
+            } catch (_) {
+                finish(true);
+                return;
+            }
+            var count =
+                data.size === undefined ? rows.length : integer(data.size);
+            var start =
+                data.offset === undefined ? offset : integer(data.offset);
+            var reported =
+                data.totalSize === undefined ? null : integer(data.totalSize);
+            if (
+                count === null ||
+                count !== rows.length ||
+                count > 200 ||
+                start !== offset ||
+                (data.totalSize !== undefined && reported === null) ||
+                (reported !== null &&
+                    (reported > 100000 ||
+                        reported < offset + count ||
+                        (total !== null && total !== reported))) ||
+                offset + count > 100000
+            ) {
+                finish(true);
+                return;
+            }
+            if (reported !== null) total = reported;
+            var signature = JSON.stringify(
+                rows.map(function (row) {
+                    return row && [row.ratingKey, row.key, row.type];
+                })
+            );
+            if (count && seenPages[signature]) {
+                finish(true);
+                return;
+            }
+            if (count) seenPages[signature] = true;
+            page.forEach(function (record) {
+                if (
+                    !record.request ||
+                    !record.stream_url ||
+                    record.playlist_url
+                )
+                    return;
+                var id = record.request.path;
+                if (seen[id]) return;
+                seen[id] = true;
+                characters += JSON.stringify(record).length;
+                collected.push(record);
+            });
+            if (characters > 8 * 1024 * 1024) {
+                finish(true);
+                return;
+            }
+            offset += count;
+            if (
+                (total !== null && offset === total) ||
+                (total === null && count === 0)
+            ) {
+                finish();
+            } else if (!count || pages >= 1000 || offset >= 100000) {
+                finish(true);
+            } else {
+                // Yield between pages, including transports with synchronous
+                // callbacks. Collection never walks into child directories.
+                timer = w.setTimeout(function () {
+                    timer = null;
+                    next();
+                }, 0);
+            }
+        }
+        function next(): void {
+            if (!active()) return;
+            if (Date.now() - started >= 120000) {
+                finish(true);
+                return;
+            }
+            pages++;
+            var owner: any = { xhr: null };
+            pendingPage = owner;
+            var params = {
+                "X-Plex-Container-Size": 200,
+                "X-Plex-Container-Start": offset,
+            };
+            function complete(data: any, error = false): void {
+                if (!active() || pendingPage !== owner) return;
+                pendingPage = null;
+                if (error) finish(true);
+                else accept(data);
+            }
+            try {
+                var xhr = jq.ajax({
+                    dataType: "text",
+                    error: function () {
+                        complete(null, true);
+                    },
+                    headers: {
+                        Accept: "application/json",
+                        "X-Plex-Container-Size": "200",
+                        "X-Plex-Container-Start": String(offset),
+                    },
+                    success: function (raw: any) {
+                        var data: any;
+                        try {
+                            data = plexContainer(raw, w);
+                        } catch (_) {
+                            complete(null, true);
+                            return;
+                        }
+                        complete(data);
+                    },
+                    timeout: Math.min(
+                        30000,
+                        Math.max(1, 120000 - (Date.now() - started))
+                    ),
+                    type: "GET",
+                    url: url(path, params),
+                });
+                if (pendingPage === owner) owner.xhr = xhr;
+            } catch (_) {
+                complete(null, true);
+            }
+        }
+        cancelCollection = cancelOwned;
+        if (!path) finish(true);
+        else next();
+        return cancelOwned;
     }
     function load(value: any, callback: any): void {
         cancel();
@@ -549,21 +804,30 @@ function createPlexClient(
     function resolve(item: any, done: (item: any) => void): void {
         cancel();
         var token = revision;
+        var finished = false;
+        function finish(playable: any): void {
+            if (finished || !current(token)) return;
+            finished = true;
+            if (!playable) failure();
+            // A visible error may itself retire this source or navigate away.
+            if (current(token)) done(playable);
+        }
         if (
             !item ||
             item.plexSource !== source ||
             !item.request ||
             !/^\/library\/metadata\/\d+$/.test(item.request.path)
         ) {
-            failure();
+            finish(null);
             return;
         }
         release();
         function run(): void {
             if (!current(token)) return;
             request(item.request.path, {}, token, function (data, error) {
+                if (finished || !current(token)) return;
                 if (error || !data) {
-                    failure();
+                    finish(null);
                     return;
                 }
                 var entry = items(data)[0];
@@ -571,7 +835,7 @@ function createPlexClient(
                 var part = media && plexRows(media.Part)[0];
                 var path = part && plexPath(part.key);
                 if (!path) {
-                    failure();
+                    finish(null);
                     return;
                 }
                 var playable = persist(item);
@@ -587,7 +851,7 @@ function createPlexClient(
                         mime: originalMime(media),
                         type: "file",
                     };
-                    done(playable);
+                    finish(playable);
                     return;
                 }
                 var active: any = {
@@ -641,7 +905,8 @@ function createPlexClient(
                     params,
                     token,
                     function (decision, decisionError) {
-                        if (!current(token) || session !== active) return;
+                        if (finished || !current(token) || session !== active)
+                            return;
                         if (
                             decisionError ||
                             !decision ||
@@ -649,7 +914,7 @@ function createPlexClient(
                                 2000
                         ) {
                             release();
-                            failure();
+                            finish(null);
                             return;
                         }
                         playable.stream_url = active.url = url(
@@ -663,7 +928,7 @@ function createPlexClient(
                         if (mse) playable.__ottPlexPlayback.engine = "mse";
                         active.started = true;
                         try {
-                            done(playable);
+                            finish(playable);
                         } catch (error) {
                             if (session === active) release();
                             throw error;
@@ -692,6 +957,7 @@ function createPlexClient(
     }
     function pagehide(): void {
         unloading = true;
+        if (cancelCollection) cancelCollection();
         cancel();
         release();
         unloading = false;
@@ -699,7 +965,11 @@ function createPlexClient(
     if (typeof w.addEventListener === "function")
         w.addEventListener("pagehide", pagehide);
     return {
+        canCollect: function (value: any): boolean {
+            return !!collectionPath(value);
+        },
         cancel: cancel,
+        collect: collect,
         connect: function (done: (error?: string) => void) {
             cancel();
             var token = revision;
@@ -718,6 +988,7 @@ function createPlexClient(
             if (typeof w.removeEventListener === "function")
                 w.removeEventListener("pagehide", pagehide);
             disposed = true;
+            if (cancelCollection) cancelCollection();
             cancel();
             release();
             sections = null;

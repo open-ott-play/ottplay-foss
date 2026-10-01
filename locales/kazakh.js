@@ -100,6 +100,7 @@ var keyStrings = {
         "Арнаны ауыстырғанда қара экран",
     Blue: "Көк",
     "Bookmark age: %1 days": "Бетбелгі жасы: %1 күн",
+    "Browse folders": "Қалталар бойынша шолу",
     "Buffer Size, s": "Буфер өлшемі, с",
     "Built-in playlist:": "Кірістірілген ойнату тізімі:",
     "Built-in playlists": "Кірістірілген ойнату тізімдері",
@@ -565,6 +566,7 @@ var keyStrings = {
     "Not reduce video when showing the list (bugfix)":
         "Тізімді көрсеткенде бейнені кішірейтпеу (қатені түзету)",
     Nothing: "Ештеңе",
+    "Nothing to play": "Ойнатылатын бейне жоқ",
     "Number of next TV programs in channel list":
         "Арналар тізіміндегі келесі бағдарламалар саны",
     "Number of rows in lists": "Тізімдердегі жолдар саны",
@@ -676,6 +678,9 @@ var keyStrings = {
     "Rename category": "Санат атауын өзгерту",
     "Rename to": "Жаңа атау",
     "Repeat parental code": "Ата-ана кодын қайталаңыз",
+    "Repeat: All": "Қайталау: барлығы",
+    "Repeat: Off": "Қайталау: өшірулі",
+    "Repeat: One": "Қайталау: біреу",
     "Request sended!": "Сұрау жіберілді!",
     "Requesting approval for %1": "%1 үшін растау сұралуда",
     "Restart player": "Ойнатқышты қайта іске қосу",
@@ -774,6 +779,7 @@ var keyStrings = {
     "Show when changing program": "Бағдарлама ауысқанда көрсету",
     "Show when rewind": "Айналдыру кезінде көрсету",
     "Show when switching": "Арна ауысқанда көрсету",
+    "Shuffle and play": "Араластырып ойнату",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
@@ -844,6 +850,9 @@ var keyStrings = {
     transparent: "мөлдір",
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X баптаулары",
+    "Unable to load playlist": "Ойнату тізімін жүктеу мүмкін болмады",
+    Untitled: "Атаусыз",
+    "Untitled folder": "Атаусыз қалта",
     "Update installed. Please restart OttPlay FOSS.":
         "Жаңарту орнатылды. OttPlay FOSS қолданбасын қайта іске қосыңыз.",
     "Use an HTTP or HTTPS server address.":
