@@ -8,7 +8,9 @@ Plex is a library provider: it opens library sections, search, folders and media
 
 **Browse folders** opens the server's filesystem hierarchy. Items without a title
 use alternate Plex metadata or a filename, with **Untitled** as a final fallback.
-Inside a folder, **Shuffle and play** starts its videos in a random order. The
+Selecting a video starts an ordered queue of that folder’s files. Natural completion
+plays the next file in the same folder, including files on later catalog pages.
+Subfolders are excluded. **Shuffle and play** starts its videos in a random order. The
 queue includes every page of that folder and applies the current title filter;
 it does not descend into subfolders. A failed page cancels the new queue.
 
@@ -20,7 +22,12 @@ changing the filter or choosing another item cancels a pending queue launch.
 
 On reopening the player, Plex continues the last unfinished video at its saved
 position, including seconds within the first minute. It resolves the Plex item
-again instead of retaining an expiring stream URL. Tauri saves the current
+again instead of retaining an expiring stream URL. **Enter/OK** reopens the saved
+folder with the playing file selected; **Back** returns through its saved
+breadcrumbs. The folder queue is rebuilt from the current server catalog and
+continues from that file, respecting the saved repeat setting. Older checkpoints
+restore the saved folder directly even when they do not contain its full
+breadcrumb trail. Tauri saves the current
 position before its explicit Exit action. If the file is unavailable, the
 library opens for another selection. Disabled watch history and finished videos
 do not trigger automatic playback; the parental PIN still applies.
