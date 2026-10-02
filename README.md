@@ -1071,8 +1071,8 @@ English history and source links, also available from the player's information m
 Use the local [video-use workflow](docs/demo-video.md) to prepare and edit
 demonstration recordings. The helper keeps all generated media outside Git.
 
-## Synology media library
+## Plex media library
 
-Each player can also connect to its own Plex account or server using the **Plex** provider. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
+Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
 
-An optional native NAS library uses an existing Plex server for catalogs and compatible playback, with a separate Synology entry and M3U export. See [configuration and client access](docs/synology-library.md).
+An optional OTT server integration also exposes an existing Plex server's catalog and compatible playback through a separate NAS library entry and M3U export. See [server-side library configuration and client access](docs/synology-library.md).
