@@ -2209,6 +2209,8 @@ export function mediaKeyHandler(keyCode: number): boolean {
             w.__ottMedia.filter();
             return true;
         case keys.N5:
+            w.__ottMedia.toggleShuffle();
+            return true;
         case keys.PLAY:
             w.__ottMedia.shufflePlay();
             return true;
@@ -3698,11 +3700,15 @@ export function setParentAccess(granted: boolean, callback: () => void): void {
  * Prompt the user to enter their parental PIN, then grant or deny access.
  *
  * @param callback - Called on successful PIN entry.
+ * @param onRejected - Optional completion for cancellation or denied access.
  *
  * Side effects: Shows PIN dialog; calls `setParentAccess`.
  */
-export function enterPinAndSetAccess(callback: () => void): void {
-    (window as any).__ottParental.request(callback);
+export function enterPinAndSetAccess(
+    callback: () => void,
+    onRejected?: () => void
+): void {
+    (window as any).__ottParental.request(callback, onRejected);
 }
 
 /* ---------------------------------------------------------------------------

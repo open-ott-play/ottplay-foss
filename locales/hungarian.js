@@ -788,6 +788,9 @@ var keyStrings = {
     "Show when rewind": "Megjelenítés visszatekeréskor",
     "Show when switching": "Megjelenítés csatornaváltáskor",
     "Shuffle and play": "Keverés és lejátszás",
+    "Shuffle: Loading...": "Keverés: betöltés…",
+    "Shuffle: Off": "Keverés: kikapcsolva",
+    "Shuffle: On": "Keverés: bekapcsolva",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

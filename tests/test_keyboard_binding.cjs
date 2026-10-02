@@ -207,6 +207,132 @@ for (const testCase of cases) {
         }
     }
 }
+for (const testCase of cases) {
+    for (const device of ["pc", "android", "samsung/maple", "lg/webos"]) {
+        const dom = new JSDOM("<!doctype html><body><input></body>", {
+            runScripts: "outside-only",
+        });
+        const w = dom.window;
+        const delivered = [];
+        try {
+            require("./helpers/screen-runtime.cjs")(w);
+            Object.assign(w, {
+                $: () => ({ is: () => false }),
+                isListVisible: true,
+                listKeyHandlerFn: (code) => {
+                    delivered.push(code);
+                    return true;
+                },
+                nativeListInertia: null,
+                settings: { volumeStep: 5 },
+                stbInit() {},
+                version: "test",
+            });
+            w.eval(testCase.handlers);
+            w.eval(read("devices/" + device + "/device.js"));
+            w.eval(
+                declarations(
+                    testCase.core,
+                    ["stbBindKeyHandler"],
+                    testCase.name
+                )
+            );
+            w.stbBindKeyHandler();
+            function send(fields, target = w.document.body) {
+                const before = delivered.length;
+                target.dispatchEvent(
+                    new w.KeyboardEvent("keydown", {
+                        bubbles: true,
+                        cancelable: true,
+                        ...fields,
+                    })
+                );
+                return delivered.slice(before);
+            }
+            for (let digit = 0; digit <= 9; digit++) {
+                for (const event of [
+                    { key: String(digit), keyCode: 0 },
+                    { code: "Digit" + digit, key: "Unidentified", keyCode: 0 },
+                    { code: "Numpad" + digit, key: String(digit), keyCode: 0 },
+                    {
+                        code: "Numpad" + digit,
+                        key: String(digit),
+                        keyCode: [45, 35, 40, 34, 37, 12, 39, 36, 38, 33][
+                            digit
+                        ],
+                        shiftKey: true,
+                    },
+                    {
+                        code: "Numpad" + digit,
+                        key: String(digit),
+                        keyCode: 96 + digit,
+                        location: 3,
+                    },
+                    { location: 3, which: 96 + digit },
+                    { keyCode: w.keys["N" + digit] },
+                ])
+                    assert.deepEqual(
+                        send(event),
+                        [w.keys["N" + digit]],
+                        testCase.name + "/" + device + " digit " + digit
+                    );
+            }
+            assert.deepEqual(
+                send(
+                    { code: "Numpad5", key: "5", keyCode: 101, location: 3 },
+                    w.document.querySelector("input")
+                ),
+                [],
+                "Numeric shortcuts never consume input typing"
+            );
+            assert.equal(
+                w.stbEventToKeyCode({
+                    code: "Numpad5",
+                    key: "Clear",
+                    keyCode: 0,
+                }),
+                0,
+                "NumLock-off Clear is not digit 5"
+            );
+            for (const [key, code, keyCode] of [
+                ["End", "Numpad1", 35],
+                ["ArrowDown", "Numpad2", 40],
+                ["ArrowLeft", "Numpad4", 37],
+                ["Home", "Numpad7", 36],
+            ])
+                for (const legacy of [0, keyCode])
+                    assert.equal(
+                        w.stbEventToKeyCode({ code, key, keyCode: legacy }),
+                        keyCode,
+                        "NumLock-off " + key + " retains navigation"
+                    );
+            if (device === "pc") {
+                assert.deepEqual(send({ keyCode: 101 }), [w.keys.N5]);
+                assert.deepEqual(send({ which: 105 }), [w.keys.N9]);
+            }
+            if (device === "samsung/maple")
+                assert.deepEqual(
+                    send({ keyCode: 99 }),
+                    [w.keys.INFO],
+                    "Maple INFO is not an unidentified Numpad3"
+                );
+            assert.equal(
+                w.stbEventToKeyCode({
+                    code: "Digit9",
+                    key: "9",
+                    keyCode: w.keys.INFO,
+                }),
+                w.keys.INFO,
+                "A declared nonzero remote code retains priority"
+            );
+        } finally {
+            w.close();
+        }
+    }
+}
+console.log(
+    "Numeric DOM shortcuts preserve device codes, NumLock navigation and text inputs"
+);
 console.log(
     "Keyboard binding survives host focus changes, repeated init and handler replacement (" +
         cases.map((item) => item.name).join(", ") +

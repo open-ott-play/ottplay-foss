@@ -151,6 +151,13 @@ function fixture() {
         },
         dom,
         events,
+        flushDeferred() {
+            for (const [id, job] of [...jobs]) {
+                if (job.delay !== 0) continue;
+                jobs.delete(id);
+                job.fn();
+            }
+        },
         jobs,
         notices,
         now(value) {
@@ -258,6 +265,94 @@ ui(
         f.w.parentPIN = "*";
         for (const scope of ["channels", "settings", "providers", "control"])
             assert.equal(f.w.__ottParental.needs(scope), false);
+    }
+);
+for (const outcome of ["accepted", "cancelled", "denied"])
+    ui("optional PIN rejection settles only " + outcome + " once", (f) => {
+        f.w.enterPinAndSetAccess(
+            () => f.events.push("accepted"),
+            () => f.events.push("rejected")
+        );
+        const stale = f.w.dialogBoxKeyHandler;
+        if (outcome === "cancelled") f.w._doKey(f.w.keys.RETURN);
+        else f.answer(outcome === "accepted" ? "2468" : "0000");
+        for (const digit of "2468") stale(f.w.keys["N" + digit]);
+        f.flushDeferred();
+        assert.deepEqual(f.events, [
+            outcome === "accepted" ? outcome : "rejected",
+        ]);
+        assert.equal(f.w.parentAccess, outcome === "accepted");
+        assert.equal(f.notices.length, outcome === "denied" ? 1 : 0);
+    });
+ui(
+    "a replaced PIN rejects only after the replacement owns the foreground",
+    (f) => {
+        const port = f.w.__ottClassicScreenPort;
+        let replacement;
+        f.w.enterPinAndSetAccess(
+            () => f.events.push("accepted"),
+            () => {
+                assert.equal(port.screens.current(), replacement.owner);
+                assert.equal(replacement.owner.foreground(), true);
+                f.events.push("rejected");
+            }
+        );
+        const old = f.w.dialogBoxKeyHandler;
+        replacement = port.setOwnedCallback("dialog", () =>
+            f.events.push("new")
+        );
+        assert.deepEqual(
+            f.events,
+            [],
+            "old cleanup cannot reenter a replacement"
+        );
+        f.flushDeferred();
+        for (const digit of "2468") old(f.w.keys["N" + digit]);
+        assert.deepEqual(f.events, ["rejected"]);
+        replacement(f.w.keys.ENTER);
+        assert.deepEqual(f.events, ["rejected", "new"]);
+        assert.equal(f.w.parentAccess, false);
+    }
+);
+for (const change of ["source", "pin", "policy", "storage"])
+    ui(
+        "optional rejection cannot grant a stale " + change + " challenge",
+        (f) => {
+            f.w.enterPinAndSetAccess(
+                () => f.events.push("accepted"),
+                () => f.events.push("rejected")
+            );
+            const old = f.w.dialogBoxKeyHandler;
+            f.answer("24");
+            if (change === "source") f.w.p_pref = "source-b";
+            if (change === "pin") f.w.parentPIN = "9999";
+            if (change === "policy") f.w.sPSoptions = 0;
+            if (change === "storage") f.w.providerGetItem = () => null;
+            f.answer("68");
+            f.flushDeferred();
+            old(f.w.keys.N8);
+            assert.deepEqual(f.events, ["rejected"]);
+            assert.equal(f.w.parentAccess, false);
+        }
+    );
+ui(
+    "replacement during PIN completion rejects the old grant and preserves the new challenge",
+    (f) => {
+        const port = f.w.__ottClassicScreenPort;
+        f.w.enterPinAndSetAccess(
+            () => f.events.push("old accepted"),
+            () => f.events.push("old rejected")
+        );
+        port.screens.current().own(() => {
+            f.w.enterPinAndSetAccess(() => f.events.push("new accepted"));
+        });
+        f.answer();
+        f.flushDeferred();
+        assert.deepEqual(f.events, ["old rejected"]);
+        assert.equal(f.w.parentAccess, false);
+        f.answer();
+        assert.deepEqual(f.events, ["old rejected", "new accepted"]);
+        assert.equal(f.w.parentAccess, true);
     }
 );
 for (const change of ["source", "pin", "policy", "storage"])

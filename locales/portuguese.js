@@ -787,6 +787,9 @@ var keyStrings = {
     "Show when rewind": "Mostrar ao recuar",
     "Show when switching": "Mostrar ao mudar de canal",
     "Shuffle and play": "Embaralhar e reproduzir",
+    "Shuffle: Loading...": "Aleatório: a carregar…",
+    "Shuffle: Off": "Aleatório: desativado",
+    "Shuffle: On": "Aleatório: ativado",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

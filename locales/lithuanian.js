@@ -778,6 +778,9 @@ var keyStrings = {
     "Show when rewind": "Rodyti atsukant",
     "Show when switching": "Rodyti perjungiant kanalus",
     "Shuffle and play": "Maišyti ir leisti",
+    "Shuffle: Loading...": "Maišymas: įkeliama…",
+    "Shuffle: Off": "Maišymas: išjungtas",
+    "Shuffle: On": "Maišymas: įjungtas",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

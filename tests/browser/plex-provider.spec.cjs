@@ -146,6 +146,8 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     const requests = [];
     const errors = [];
     let expandedFolder = false;
+    let holdCollection = false;
+    let releaseCollection;
     const folderOffsets = [];
     const folderParents = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -180,6 +182,10 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         if (url.pathname === "/library/sections/7/folder") {
             const level = Number(url.searchParams.get("parent") || 0);
             folderParents.push(level);
+            if (level === 3 && holdCollection)
+                await new Promise((release) => {
+                    releaseCollection = release;
+                });
             if (level === 3 && expandedFolder) {
                 const offset = Number(
                     url.searchParams.get("X-Plex-Container-Start") || 0
@@ -319,20 +325,42 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         document.querySelector("video").muted = true;
     });
     const controls = page.locator("#mediaPlaybackControls");
-    await expect(
-        controls.getByRole("button", { name: "Shuffle and play" })
-    ).toBeVisible();
+    const loadingShuffle = await page.evaluate(() =>
+        window._("Shuffle: Loading...")
+    );
+    const shuffle = (state) =>
+        controls.getByRole("button", {
+            exact: true,
+            name: state === "Loading..." ? loadingShuffle : "Shuffle: " + state,
+        });
+    await expect(shuffle("Off")).toBeVisible();
+    await expect(shuffle("Off")).toHaveAttribute("data-state", "off");
+    await expect(shuffle("Off")).toHaveAttribute("aria-pressed", "false");
     await expect(
         controls.getByRole("button", { name: "Repeat: All" })
     ).toBeVisible();
-    await controls.getByRole("button", { name: "Repeat: All" }).click();
+    await page.keyboard.press("9");
     await expect(
         controls.getByRole("button", { name: "Repeat: One" })
-    ).toBeVisible();
-    await controls.getByRole("button", { name: "Repeat: One" }).click();
+    ).toHaveAttribute("data-state", "one");
+    // Playwright models NumLock off: Shift selects the numeric keypad value.
+    await page.keyboard.press("Shift+Numpad9");
     await expect(
         controls.getByRole("button", { name: "Repeat: Off" })
-    ).toBeVisible();
+    ).toHaveAttribute("data-state", "off");
+    // Pointer activation follows the same state cycle as physical digits.
+    for (const [before, after] of [
+        ["Off", "All"],
+        ["All", "One"],
+        ["One", "Off"],
+    ]) {
+        await controls
+            .getByRole("button", { name: "Repeat: " + before })
+            .click();
+        await expect(
+            controls.getByRole("button", { name: "Repeat: " + after })
+        ).toBeVisible();
+    }
     const panel = await page.locator("#listDetail").boundingBox();
     const toolbar = await controls.boundingBox();
     expect(toolbar.x).toBeGreaterThanOrEqual(panel.x);
@@ -346,12 +374,65 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         path: test.info().outputPath("plex-controls.png"),
     });
     expect(await page.locator("#list").innerText()).toContain("Test film");
-    await controls.getByRole("button", { name: "Shuffle and play" }).click();
+    holdCollection = true;
+    await page.keyboard.press("5");
+    await expect.poll(() => typeof releaseCollection).toBe("function");
+    await expect(shuffle("Loading...")).toBeVisible();
+    await expect(shuffle("Loading...")).toHaveAttribute(
+        "data-state",
+        "loading"
+    );
+    await expect(shuffle("Loading...")).toHaveAttribute("aria-busy", "true");
+    expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
+    await page.screenshot({
+        path: test.info().outputPath("plex-controls-loading.png"),
+    });
+    holdCollection = false;
+    releaseCollection();
     await page.waitForFunction(() =>
         Array.from(document.querySelectorAll("video")).some(
             (video) => video.currentTime > 0.2 && !video.error
         )
     );
+    const shuffledGeneration = await page.evaluate(
+        () => window.__ottClassicPlayback.snapshot().generation
+    );
+    await page.keyboard.press("Enter");
+    await expect(shuffle("On")).toBeVisible();
+    await expect(shuffle("On")).toHaveAttribute("data-state", "on");
+    await expect(shuffle("On")).toHaveAttribute("aria-pressed", "true");
+    await page.screenshot({
+        path: test.info().outputPath("plex-controls-active.png"),
+    });
+    const playing = await page.evaluate(() => ({
+        id: window.__ottMedia.current().ref.itemId,
+        position: document.querySelector("video").currentTime,
+    }));
+    // Turning shuffle off changes the queue, not the current media attempt.
+    await page.keyboard.press("Shift+Numpad5");
+    await expect(shuffle("Off")).toBeVisible();
+    await expect(shuffle("Off")).toHaveAttribute("aria-pressed", "false");
+    const ordered = await page.evaluate(() => ({
+        generation: window.__ottClassicPlayback.snapshot().generation,
+        id: window.__ottMedia.current().ref.itemId,
+        position: document.querySelector("video").currentTime,
+    }));
+    expect(ordered.generation).toBe(shuffledGeneration);
+    expect(ordered.id).toBe(playing.id);
+    expect(ordered.position).toBeGreaterThanOrEqual(playing.position);
+    await page.keyboard.press("5");
+    await page.waitForFunction((previousGeneration) => {
+        const playback = window.__ottClassicPlayback.snapshot();
+        const video = document.querySelector("video");
+        return (
+            playback.generation > previousGeneration &&
+            playback.phase === "playing" &&
+            video.readyState >= 2 &&
+            video.currentTime > 0.2 &&
+            !video.seeking &&
+            !video.error
+        );
+    }, shuffledGeneration);
     const state = await page.evaluate(() => ({
         current: window.__ottMedia.current()?.payload.__ottPlexPlayback.type,
         journals: Object.keys(localStorage)
@@ -472,7 +553,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         controls.getByRole("button", { name: "Repeat: Off" })
     ).toBeVisible();
     await expect(
-        controls.getByRole("button", { name: "Shuffle and play" })
+        controls.getByRole("button", { name: /^Shuffle:/ })
     ).toHaveCount(0);
     const stoppedGeneration = await page.evaluate(
         () => window.__ottClassicPlayback.snapshot().generation

@@ -783,6 +783,9 @@ var keyStrings = {
     "Show when rewind": "Показване при превъртане",
     "Show when switching": "Показване при смяна на канала",
     "Shuffle and play": "Разбъркване и възпроизвеждане",
+    "Shuffle: Loading...": "Разбъркване: зареждане…",
+    "Shuffle: Off": "Разбъркване: изключено",
+    "Shuffle: On": "Разбъркване: включено",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

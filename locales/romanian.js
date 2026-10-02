@@ -790,6 +790,9 @@ var keyStrings = {
     "Show when rewind": "Afișează la derularea înapoi",
     "Show when switching": "Afișează la schimbarea canalelor",
     "Shuffle and play": "Amestecă și redă",
+    "Shuffle: Loading...": "Redare aleatorie: se încarcă…",
+    "Shuffle: Off": "Redare aleatorie: oprită",
+    "Shuffle: On": "Redare aleatorie: pornită",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
