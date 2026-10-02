@@ -525,15 +525,15 @@ if (require.main === module) {
         const c = fixture();
         c.sFavorites = 0;
         const filterRow = { __ottMediaFilter: true, title: "Filter" };
-        const movie = { title: "Movie", stream_url: "m.mp4" };
+        const movie = { stream_url: "m.mp4", title: "Movie" };
         const view = {
             filter: "nomatch",
-            frames: [{}, {}],
             frame: {
-                selected: 0,
-                route: { kind: "catalog", target: "", title: "" },
                 items: [{ payload: filterRow }],
+                route: { kind: "catalog", target: "", title: "" },
+                selected: 0,
             },
+            frames: [{}, {}],
             revision: 1,
         };
         c.showMediaList1(view);

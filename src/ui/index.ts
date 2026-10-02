@@ -3699,7 +3699,11 @@ function showMediaList1(view?: any): void {
                 ? w.renderButtonHint(w.keys.BLUE, "", "Filter")
                 : "") +
             (data.some(function (row) {
-                return row && typeof row === "object" && !row.__ottMediaFilter;
+                return (
+                    row &&
+                    typeof row === "object" &&
+                    !("__ottMediaFilter" in row && row.__ottMediaFilter)
+                );
             }) &&
             w.sFavorites !== -1 &&
             depth > 1
