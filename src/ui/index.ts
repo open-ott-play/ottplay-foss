@@ -3698,7 +3698,11 @@ function showMediaList1(view?: any): void {
             (frame && frame.route.kind !== "variants"
                 ? w.renderButtonHint(w.keys.BLUE, "", "Filter")
                 : "") +
-            (data.length && w.sFavorites !== -1 && depth > 1
+            (data.some(function (row) {
+                return row && typeof row === "object" && !row.__ottMediaFilter;
+            }) &&
+            w.sFavorites !== -1 &&
+            depth > 1
                 ? w.renderButtonHint(
                       w.keys.GREEN,
                       "",
