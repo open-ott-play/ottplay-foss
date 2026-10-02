@@ -779,6 +779,9 @@ var keyStrings = {
     "Show when rewind": "Показувати під час перемотування",
     "Show when switching": "Показувати під час перемикання каналів",
     "Shuffle and play": "Перемішати й запустити",
+    "Shuffle: Loading...": "Перемішування: завантаження…",
+    "Shuffle: Off": "Перемішування: вимкнено",
+    "Shuffle: On": "Перемішування: увімкнено",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

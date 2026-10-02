@@ -775,6 +775,9 @@ var keyStrings = {
     "Show when rewind": "Hiển thị khi tua lại",
     "Show when switching": "Hiển thị khi chuyển kênh",
     "Shuffle and play": "Xáo trộn và phát",
+    "Shuffle: Loading...": "Xáo trộn: đang tải…",
+    "Shuffle: Off": "Xáo trộn: tắt",
+    "Shuffle: On": "Xáo trộn: bật",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

@@ -786,6 +786,9 @@ var keyStrings = {
     "Show when rewind": "Rādīt attīšanas laikā",
     "Show when switching": "Rādīt, pārslēdzot kanālus",
     "Shuffle and play": "Sajaukt un atskaņot",
+    "Shuffle: Loading...": "Nejaušā secība: ielādē…",
+    "Shuffle: Off": "Nejaušā secība: izslēgta",
+    "Shuffle: On": "Nejaušā secība: ieslēgta",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

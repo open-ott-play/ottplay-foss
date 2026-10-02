@@ -1962,6 +1962,238 @@ test("Folder queue Repeat One refreshes current URLs and Repeat Off stops after 
     );
 });
 
+test("Shuffle reports pending and active modes, then restores provider order without restarting", () => {
+    const c = folderQueueFixture();
+    assert.equal(c.__ottMedia.snapshot().shuffle, "off");
+    c.__ottMedia.toggleShuffle();
+    assert.equal(c.__ottMedia.snapshot().shuffle, "loading");
+    c.completeCollection();
+    assert.equal(c.__ottMedia.snapshot().shuffle, "on");
+    assert.equal(c.__ottMedia.current().payload.id, 2);
+    c.finishItem();
+    assert.equal(c.__ottMedia.snapshot().shuffle, "on", "EOF retains the mode");
+    assert.equal(c.__ottMedia.current().payload.id, 3);
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    c.__ottMedia.toggleShuffle();
+    assert.equal(c.__ottMedia.snapshot().shuffle, "off");
+    assert.equal(c.__ottClassicPlayback.snapshot().generation, generation);
+    assert.deepEqual(
+        plain(
+            c.__ottMedia.current().sequence.items.map((item) => item.payload.id)
+        ),
+        [1, 2, 3]
+    );
+    assert.equal(c.__ottMedia.current().sequence.index, 2);
+    c.finishItem();
+    assert.equal(
+        c.__ottMedia.current().payload.id,
+        1,
+        "Repeat All uses provider order"
+    );
+});
+
+test("Toggling pending shuffle off cancels collection, PIN and resolution", () => {
+    for (const phase of ["collect", "pin", "resolve"]) {
+        const c = folderQueueFixture();
+        if (phase === "pin") c.catalogs[""][1].adult = 1;
+        if (phase === "resolve") c.deferResolve = true;
+        c.__ottMedia.toggleShuffle();
+        if (phase !== "collect") c.completeCollection();
+        assert.equal(c.__ottMedia.snapshot().shuffle, "loading");
+        const late =
+            phase === "collect"
+                ? c.completeCollection
+                : phase === "pin"
+                  ? c.unlock
+                  : c.completeResolve;
+        c.__ottMedia.toggleShuffle();
+        assert.equal(c.__ottMedia.snapshot().shuffle, "off");
+        c.parentAccess = true;
+        late();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            0,
+            phase
+        );
+    }
+});
+
+test("Moving the highlight preserves a folder shuffle during collection, PIN and resolution", () => {
+    for (const phase of ["collect", "pin", "resolve"]) {
+        const c = folderQueueFixture();
+        c.showPage = () => c.__ottClassicScreenPort.commitList();
+        c.closeList = () => c.__ottClassicScreenPort.closeList();
+        if (phase === "pin") c.catalogs[""][1].adult = 1;
+        if (phase === "resolve") c.deferResolve = true;
+        c.mediaList("");
+        c.__ottMedia.toggleShuffle();
+        if (phase !== "collect") c.completeCollection();
+        const complete =
+            phase === "collect"
+                ? c.completeCollection
+                : phase === "pin"
+                  ? c.unlock
+                  : c.completeResolve;
+        c.selIndex = 2;
+        c.detailListActionFn();
+        assert.equal(c.__ottMedia.snapshot().frame.selected, 2, phase);
+        assert.equal(c.collectionGuard(), true, phase);
+        assert.equal(c.__ottMedia.snapshot().shuffle, "loading", phase);
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+        c.parentAccess = true;
+        complete();
+        assert.equal(c.__ottMedia.current().payload.id, 2, phase);
+        assert.equal(c.__ottMedia.snapshot().shuffle, "on", phase);
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+        complete();
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            1,
+            phase + ": a late duplicate cannot replay the first item"
+        );
+    }
+});
+
+test("External overlays retire pending shuffle work without closing or repainting the overlay", () => {
+    for (const phase of ["collect", "resolve"])
+        for (const kind of ["editor", "dialog", "picker"]) {
+            const c = folderQueueFixture();
+            const port = c.__ottClassicScreenPort;
+            c.showPage = () => port.commitList();
+            c.closeList = () => port.closeList();
+            c.mediaList("");
+            c.__ottMedia.toggleShuffle();
+            if (phase === "resolve") {
+                c.deferResolve = true;
+                c.completeCollection();
+            }
+            const late =
+                phase === "collect" ? c.completeCollection : c.completeResolve;
+            const listOwner = port.listOwner();
+            const overlay = port.openOverlay(kind, () => {});
+            const projection = JSON.stringify(c.listArray);
+            late();
+            assert.equal(c.__ottMedia.snapshot().shuffle, "off", phase + kind);
+            assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+            assert.equal(overlay.active() && overlay.foreground(), true);
+            assert.equal(port.listOwner(), listOwner);
+            assert.equal(JSON.stringify(c.listArray), projection);
+            port.close(kind);
+            late();
+            assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+        }
+});
+
+test("Actual PIN cancellation, denial and replacement clear shuffle while only a current grant may play", () => {
+    for (const outcome of ["cancelled", "denied", "replaced", "accepted"]) {
+        const c = folderQueueFixture();
+        const port = c.__ottClassicScreenPort;
+        c.showPage = () => port.commitList();
+        c.closeList = () => port.closeList();
+        c.parentPIN = "2468";
+        for (let digit = 0; digit < 10; digit++)
+            c.keys["N" + digit] = 48 + digit;
+        const jquery = c.$;
+        c.$ = (selector) => Object.assign(jquery(selector), { length: 1 });
+        require("./helpers/access-runtime.cjs")(c);
+        vm.runInContext(
+            sourceFunctions("src/channels/index.ts", ["enterPinAndSetAccess"]),
+            c
+        );
+        c.catalogs[""][1].adult = 1;
+        c.mediaList("");
+        c.__ottMedia.toggleShuffle();
+        c.completeCollection();
+        const old = c.dialogBoxKeyHandler;
+        assert.equal(c.__ottMedia.snapshot().shuffle, "loading", outcome);
+        let replacement;
+        if (outcome === "cancelled") old(c.keys.RETURN);
+        else if (outcome === "replaced") {
+            replacement = port.setOwnedCallback("dialog", () => {});
+            while (c.timers.length) c.timers.shift()();
+        } else
+            for (const digit of outcome === "accepted" ? "2468" : "0000")
+                old(c.keys["N" + digit]);
+        assert.equal(
+            c.__ottMedia.snapshot().shuffle,
+            outcome === "accepted" ? "on" : "off",
+            outcome
+        );
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            outcome === "accepted" ? 1 : 0,
+            outcome
+        );
+        if (replacement) assert.equal(replacement.owner.foreground(), true);
+        for (const digit of "2468") old(c.keys["N" + digit]);
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            outcome === "accepted" ? 1 : 0,
+            outcome + ": retired PIN cannot authorize a late start"
+        );
+    }
+});
+
+test("Empty, failed and unresolvable shuffled queues clear the loading indicator", () => {
+    for (const failure of ["empty", "error", "resolve"]) {
+        const c = folderQueueFixture();
+        if (failure === "resolve")
+            c.providerMediaClient.resolve = (_item, done) => done(null);
+        c.__ottMedia.toggleShuffle();
+        if (failure === "resolve") c.completeCollection();
+        else c.completeCollection([], failure === "error");
+        assert.equal(c.__ottMedia.snapshot().shuffle, "off", failure);
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+    }
+});
+
+test("Disabling shuffle during EOF resolution cancels the old next item and resumes in order", () => {
+    const c = folderQueueFixture();
+    c.__ottMedia.toggleShuffle();
+    c.completeCollection();
+    c.deferResolve = true;
+    c.finishItem();
+    const stale = c.completeResolve;
+    c.__ottMedia.toggleShuffle();
+    stale();
+    assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+    c.completeResolve();
+    assert.equal(c.__ottMedia.current().payload.id, 3);
+    assert.equal(c.__ottMedia.snapshot().shuffle, "off");
+    c.deferResolve = false;
+    c.finishItem();
+    assert.equal(c.__ottMedia.current().payload.id, 1);
+});
+
+test("Reentrant Stop while cancelling an EOF resolver defeats shuffle and repeat changes", () => {
+    for (const action of ["toggleShuffle", "cycleRepeat"]) {
+        const c = folderQueueFixture();
+        c.__ottMedia.toggleShuffle();
+        c.completeCollection();
+        c.deferResolve = true;
+        c.finishItem();
+        const late = c.completeResolve;
+        const generation = c.__ottClassicPlayback.snapshot().generation;
+        let stops = 0;
+        c.providerMediaClient.cancelAutomatic = () => {
+            stops++;
+            c.stbStop();
+        };
+        c.__ottMedia[action]();
+        late();
+        c.__ottMedia.ended(generation);
+        assert.equal(stops, 1, action);
+        assert.deepEqual(
+            c.resolutions.map((row) => row.item.id),
+            [2, 3],
+            action + ": Stop must prevent a replacement EOF resolver"
+        );
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 1);
+        assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+        assert.equal(c.__ottMedia.snapshot().repeat, "all", action);
+    }
+});
+
 test("Local single-item shuffle supports repeat off without requiring a provider collector", () => {
     const c = folderQueueFixture([7], false);
     c.__ottMedia.cycleRepeat();
@@ -2998,6 +3230,43 @@ function pagingFixture() {
     };
     return { c, highlight, next, pending, row };
 }
+
+test("Near-end paging waits for pending shuffle collection, PIN and resolution", () => {
+    for (const phase of ["collect", "pin", "resolve"]) {
+        const { c, highlight, pending } = pagingFixture();
+        c.Math = Object.create(Math);
+        c.Math.random = () => 0;
+        if (phase === "pin") c.catalogs["catalog.xml"][1].adult = 1;
+        let collect;
+        let resolved;
+        c.providerMediaClient.collect = (_target, done) => {
+            collect = () => done({ items: c.catalogs["catalog.xml"] });
+            return () => {};
+        };
+        c.providerMediaClient.resolve = (item, done) => {
+            resolved = () => done(item);
+        };
+        c.__ottMedia.toggleShuffle();
+        if (phase !== "collect") collect();
+        assert.equal(c.__ottMedia.snapshot().shuffle, "loading", phase);
+        highlight(5);
+        assert.equal(pending.length, 0, phase);
+        assert.equal(c.__ottMedia.snapshot().frame.selected, 5, phase);
+        c.__ottMedia.toggleShuffle();
+        assert.equal(c.__ottMedia.snapshot().shuffle, "off", phase);
+        highlight(5);
+        assert.equal(
+            pending.length,
+            1,
+            phase + ": paging resumes after cancel"
+        );
+        c.parentAccess = true;
+        if (phase === "collect") collect();
+        else if (phase === "pin") c.unlock();
+        else resolved();
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+    }
+});
 
 test("Near-end paging appends once without a navigation frame or selection jump", () => {
     const { c, highlight, next, pending, row } = pagingFixture();

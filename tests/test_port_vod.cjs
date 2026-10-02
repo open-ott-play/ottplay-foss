@@ -260,6 +260,8 @@ function fixture() {
             ]) +
             sourceFunctions("src/core/index.ts", ["updateCoreVideoInfo"]) +
             sourceFunctions("src/ui/index.ts", [
+                "mediaPlaybackControls",
+                "updateMediaPlaybackControls",
                 "showMediaList1",
                 "mediaList",
                 "showSelectBox",
@@ -273,6 +275,7 @@ function fixture() {
         context
     );
     c.__ottRenderMedia = c.showMediaList1;
+    c.__ottUpdateMediaControls = c.updateMediaPlaybackControls;
     c.playMedia = c._playMedia;
     const catalogs = {
         "": [
@@ -390,13 +393,16 @@ if (require.main === module) {
         const c = fixture();
         c.mediaList(null);
         let shuffled = 0;
+        let toggled = 0;
         let repeated = 0;
         c.__ottMedia.shufflePlay = () => shuffled++;
+        c.__ottMedia.toggleShuffle = () => toggled++;
         c.__ottMedia.cycleRepeat = () => repeated++;
         assert.equal(c.mediaKeyHandler(c.keys.N5), true);
         assert.equal(c.mediaKeyHandler(c.keys.PLAY), true);
         assert.equal(c.mediaKeyHandler(c.keys.N9), true);
-        assert.equal(shuffled, 2);
+        assert.equal(shuffled, 1);
+        assert.equal(toggled, 1);
         assert.equal(repeated, 1);
         const view = c.__ottMedia.snapshot();
         view.canShuffle = true;
@@ -404,18 +410,82 @@ if (require.main === module) {
         view.repeat = "one";
         c.showMediaList1(view);
         c.detailListActionFn();
-        assert(
-            c.elements["#listDetail"].innerHTML.includes("Shuffle and play")
-        );
+        assert(c.elements["#listDetail"].innerHTML.includes("Shuffle: Off"));
         assert(c.elements["#listDetail"].innerHTML.includes("Repeat: One"));
         assert(c.getListItemFn({ title: "" }, 0).includes("Untitled"));
         view.canShuffle = false;
         c.showMediaList1(view);
         c.detailListActionFn();
-        assert(
-            !c.elements["#listDetail"].innerHTML.includes("Shuffle and play")
-        );
+        assert(!c.elements["#listDetail"].innerHTML.includes("Shuffle: Off"));
         assert(c.elements["#listDetail"].innerHTML.includes("Repeat: One"));
+    }
+    // Detail debounce must retain toolbar focus and never restore obsolete modes.
+    {
+        const c = fixture();
+        const dom = new JSDOM(
+            '<div id="listDetail"></div><div id="listCaption"></div><div id="listPodval"></div>'
+        );
+        c.document = dom.window.document;
+        vm.runInContext(
+            sourceFunctions("src/ui/index.ts", ["renderButtonHint"]),
+            c
+        );
+        const port = c.__ottClassicScreenPort;
+        let renders = 0;
+        c.showPage = () => {
+            renders++;
+            port.commitList();
+        };
+        c.mediaList(null);
+        const detail = c.document.getElementById("listDetail");
+        const controls = detail.firstChild;
+        const repeat = c.document.getElementById("mediaRepeatControl");
+        repeat.focus();
+        c.detailListActionFn();
+        assert.equal(c.document.activeElement, repeat);
+        assert.equal(detail.firstChild, controls);
+        const owner = port.listOwner();
+        const before = renders;
+        c.__ottMedia.cycleRepeat();
+        assert.equal(
+            renders,
+            before,
+            "A mode change does not replace the list"
+        );
+        assert.equal(port.listOwner(), owner);
+        assert.equal(c.document.activeElement.id, "mediaRepeatControl");
+        assert.equal(
+            c.document.activeElement.getAttribute("data-state"),
+            "one"
+        );
+        const view = c.__ottMedia.snapshot();
+        view.shuffle = "loading";
+        c.showMediaList1(view);
+        const lateDetail = c.detailListActionFn;
+        const overlay = port.openOverlay("editor", () => {});
+        const projection = c.listArray;
+        const editorRenders = renders;
+        c.updateMediaPlaybackControls({ repeat: "one", shuffle: "off" });
+        lateDetail();
+        assert.equal(renders, editorRenders);
+        assert.equal(c.listArray, projection);
+        assert(overlay.active() && overlay.foreground());
+        assert.equal(
+            c.document
+                .getElementById("mediaShuffleControl")
+                .getAttribute("data-state"),
+            "off",
+            "An old details closure cannot restore Loading"
+        );
+        port.close("editor");
+        assert.equal(
+            c.document
+                .getElementById("mediaShuffleControl")
+                .getAttribute("aria-busy"),
+            "false",
+            "Returning from the editor exposes the settled mode immediately"
+        );
+        dom.window.close();
     }
     // The filter is reachable by remote shortcut and its active query stays visible.
     {

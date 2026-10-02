@@ -313,7 +313,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         },
         cancel: cancel,
         cancelPage: cancelPage,
-        capture: function () {
+        capture: function (scope?: "frame") {
             var token = revision;
             var filtered = filterRevision;
             var frame = frames[frames.length - 1];
@@ -325,12 +325,13 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
                     token === revision &&
                     filtered === filterRevision &&
                     frame === frames[frames.length - 1] &&
-                    (!frame || selected === frame.selected) &&
-                    (item
-                        ? current &&
-                          current.ref.itemId === item.ref.itemId &&
-                          current.ref.sourceId === item.ref.sourceId
-                        : !current)
+                    (scope === "frame" ||
+                        ((!frame || selected === frame.selected) &&
+                            (item
+                                ? current &&
+                                  current.ref.itemId === item.ref.itemId &&
+                                  current.ref.sourceId === item.ref.sourceId
+                                : !current)))
                 );
             };
         },

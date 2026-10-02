@@ -787,6 +787,9 @@ var keyStrings = {
     "Show when rewind": "Ցուցադրել հետ պտտելիս",
     "Show when switching": "Ցուցադրել ալիքները փոխելիս",
     "Shuffle and play": "Խառնել և նվագարկել",
+    "Shuffle: Loading...": "Խառը նվագարկում՝ բեռնում…",
+    "Shuffle: Off": "Խառը նվագարկում՝ անջատված",
+    "Shuffle: On": "Խառը նվագարկում՝ միացված",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

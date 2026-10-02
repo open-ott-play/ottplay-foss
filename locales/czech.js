@@ -775,6 +775,9 @@ var keyStrings = {
     "Show when rewind": "Zobrazit při přetáčení",
     "Show when switching": "Zobrazit při přepínání kanálů",
     "Shuffle and play": "Zamíchat a přehrát",
+    "Shuffle: Loading...": "Náhodné přehrávání: načítání…",
+    "Shuffle: Off": "Náhodné přehrávání: vypnuto",
+    "Shuffle: On": "Náhodné přehrávání: zapnuto",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

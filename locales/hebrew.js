@@ -760,6 +760,9 @@ var keyStrings = {
     "Show when rewind": "הצג בעת הרצה לאחור",
     "Show when switching": "הצג בעת החלפת ערוצים",
     "Shuffle and play": "ערבוב והפעלה",
+    "Shuffle: Loading...": "ערבוב: טוען…",
+    "Shuffle: Off": "ערבוב: כבוי",
+    "Shuffle: On": "ערבוב: פעיל",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

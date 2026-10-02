@@ -782,6 +782,9 @@ var keyStrings = {
     "Show when rewind": "Visa vid spolning",
     "Show when switching": "Visa vid kanalbyte",
     "Shuffle and play": "Blanda och spela",
+    "Shuffle: Loading...": "Blanda: läser in…",
+    "Shuffle: Off": "Blanda: av",
+    "Shuffle: On": "Blanda: på",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

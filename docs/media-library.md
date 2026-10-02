@@ -12,6 +12,8 @@ selection unchanged. `select(index)` still returns a detached selected item, and
 `snapshot()` still detaches the complete view for consumers. Use `capture()` when
 work must also be invalidated by a selection change: highlighting another row
 does not increment the operation generation.
+`capture("frame")` retains navigation and filter ownership while allowing a
+different highlighted row; explicit folder shuffling uses this scope.
 
 `src/media/classic-adapter.ts` translates existing provider and UI ports. The
 `mediaRecords`, `mediaUrls`, `mediaNames`, `mediaSelects`, `medHistory` and
@@ -108,6 +110,13 @@ complete current folder, reporting `{items}` or `{items: [], error}`. Plex uses
 an independent request owner so collecting pages never replaces the visible
 catalog or cancels playback URL resolution. Search hubs do not promise complete
 flat pagination, so they expose Repeat without Shuffle.
+
+The controls always show their current mode. Shuffle displays Off, Loading or On;
+5 enables a new shuffled queue, cancels pending collection, or restores the
+original provider order without restarting the current video. The ordered copy
+is retained across automatic transitions, including Repeat One. Play explicitly
+starts a fresh shuffle. Keyboard digits, numpad digits and pointer activation use
+the same media-list handler; editors and TV hardware key mappings keep ownership.
 
 Plex and VPortal mark continuation rows with `__ottMediaNext` and expose
 `page(target, done) -> cancel`, returning `{items}` or `{items: [], error}`.

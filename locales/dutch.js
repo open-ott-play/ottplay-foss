@@ -789,6 +789,9 @@ var keyStrings = {
     "Show when rewind": "Tonen bij spoelen",
     "Show when switching": "Tonen bij zenderwisseling",
     "Shuffle and play": "Schudden en afspelen",
+    "Shuffle: Loading...": "Willekeurig afspelen: laden…",
+    "Shuffle: Off": "Willekeurig afspelen: uit",
+    "Shuffle: On": "Willekeurig afspelen: aan",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

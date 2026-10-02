@@ -73,15 +73,31 @@ function createClassicAccess(host: any) {
         if (session.grant(granted)) callback();
         else if (!granted) notify();
     }
-    function pin(prompt: string, callback: (value: string) => void): void {
+    function pin(
+        prompt: string,
+        callback: (value: string) => void,
+        onRejected?: () => void
+    ): void {
         var port = host.__ottClassicScreenPort;
         var element = host.$("#dialogbox");
-        if (!element.length) return;
+        if (!element.length) {
+            if (onRejected) onRejected();
+            return;
+        }
         var ticket = session.begin();
         var model = host.__ottAccessSession.createPin();
         var completing = false;
+        var rejected = false;
         var highlighted = 1;
         var owner: any = null;
+        function abandon(): void {
+            ticket.cancel();
+            if (rejected || !onRejected) return;
+            rejected = true;
+            // A replacement overlay is installed after the old owner's cleanup.
+            // Settle later so rejection cannot repaint over that replacement.
+            host.setTimeout(onRejected, 0);
+        }
         function render(): void {
             if (!owner.active() || !ticket.active()) return;
             var state = model.snapshot();
@@ -133,11 +149,15 @@ function createClassicAccess(host: any) {
             completing = true;
             port.close("dialog");
             if (ticket.complete()) callback(result);
+            else abandon();
         });
         owner = handler.owner;
-        if (!owner || !owner.active() || !ticket.active()) return;
+        if (!owner || !owner.active() || !ticket.active()) {
+            abandon();
+            return;
+        }
         owner.own(function () {
-            if (!completing) ticket.cancel();
+            if (!completing) abandon();
         });
         var buttons = "";
         for (var position = 1; position <= 10; position++) {
@@ -154,7 +174,10 @@ function createClassicAccess(host: any) {
                 '<br/><br/><span id="pin" style="font-size: 200%;">&nbsp;</span><br><br>' +
                 buttons
         );
-        if (!owner.active() || !ticket.active()) return;
+        if (!owner.active() || !ticket.active()) {
+            abandon();
+            return;
+        }
         function click(digit: number): () => void {
             return function () {
                 if (owner.foreground()) handler(host.keys["N" + digit]);
@@ -170,13 +193,31 @@ function createClassicAccess(host: any) {
     function needs(kind: string): boolean {
         return !!policy(kind) && host.parentPIN !== "*" && !session.allowed();
     }
-    function request(callback: () => void): void {
+    function request(callback: () => void, onRejected?: () => void): void {
         var expected = scope();
         var secret = String(host.parentPIN);
-        pin(host._("Enter parental code"), function (value) {
-            if (!value || scope() !== expected) return;
-            setAccess(value === secret, callback);
-        });
+        var settled = false;
+        function reject(): void {
+            if (settled) return;
+            settled = true;
+            if (onRejected) onRejected();
+        }
+        pin(
+            host._("Enter parental code"),
+            function (value) {
+                if (settled) return;
+                if (!value || scope() !== expected) {
+                    reject();
+                    return;
+                }
+                setAccess(value === secret, function () {
+                    settled = true;
+                    callback();
+                });
+                if (!settled) reject();
+            },
+            onRejected ? reject : undefined
+        );
     }
     function guard(channelId: number, callback: () => void): () => void {
         var expected = scope();

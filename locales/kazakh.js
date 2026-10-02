@@ -784,6 +784,9 @@ var keyStrings = {
     "Show when rewind": "Айналдыру кезінде көрсету",
     "Show when switching": "Арна ауысқанда көрсету",
     "Shuffle and play": "Араластырып ойнату",
+    "Shuffle: Loading...": "Араластыру: жүктелуде…",
+    "Shuffle: Off": "Араластыру: өшірулі",
+    "Shuffle: On": "Араластыру: қосулы",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

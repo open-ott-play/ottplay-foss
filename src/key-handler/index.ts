@@ -124,9 +124,16 @@ export function keyHandler(event: KeyboardEvent): void {
         // Fall through: preventDefault below once keyCode is known.
     }
     var device = (window as any).__ottDevice;
-    var keyCode = device
-        ? device.eventToKeyCode(event)
-        : stbEventToKeyCode(event);
+    // A physical keypad with NumLock/Shift can carry a PageUp/Clear legacy
+    // code. Honor its explicit digit before a TV adapter remaps that code.
+    var keypadDigit =
+        /^[0-9]$/.test(event.key) &&
+        (/^Numpad[0-9]$/.test(event.code) || event.location === 3);
+    var keyCode = keypadDigit
+        ? keys["N" + event.key]
+        : device
+          ? device.eventToKeyCode(event)
+          : stbEventToKeyCode(event);
     if (!keyCode) return;
     // Smart remotes have a combined transport key. Route it through the same
     // PLAY action as separate Play/Pause keys, including page-specific lists.

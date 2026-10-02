@@ -777,6 +777,9 @@ var keyStrings = {
     "Show when rewind": "Tunjukkan semasa mengundur",
     "Show when switching": "Tunjukkan apabila menukar saluran",
     "Shuffle and play": "Mainkan secara rawak",
+    "Shuffle: Loading...": "Rawak: memuatkan…",
+    "Shuffle: Off": "Rawak: dimatikan",
+    "Shuffle: On": "Rawak: dihidupkan",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

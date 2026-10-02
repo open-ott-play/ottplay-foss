@@ -1875,7 +1875,19 @@ var detailScrollTimer: any = null;
 function scheduleListDetailUpdate(): void {
     clearTimeout(detailTimer);
     clearTimeout(detailScrollTimer);
-    if (listDetailElement) listDetailElement.innerHTML = "";
+    if (listDetailElement) {
+        var mediaControls = listDetailElement.firstChild as HTMLElement | null;
+        if (
+            mediaControls &&
+            mediaControls.id === "mediaPlaybackControls" &&
+            listKeyHandlerFn === mediaKeyHandler
+        ) {
+            // Keep the mode indicators visible while a row's details debounce.
+            var description = listDetailElement.lastChild as HTMLElement | null;
+            if (description && description.id === "_prd")
+                description.innerHTML = "";
+        } else listDetailElement.innerHTML = "";
+    }
     var owner = (window as any).__ottClassicScreenPort.listOwner();
     if (!owner) return;
     if (owner.model.detailCleanup) owner.model.detailCleanup();
@@ -3482,6 +3494,88 @@ declare function showMediaList(): void;
 declare function getMediaDescr(item: any): string;
 declare function mediaKeyHandler(keyCode: number): boolean;
 
+function mediaPlaybackControls(view: any): string {
+    var w = window as any;
+    var repeatLabels: any = {
+        all: "Repeat: All",
+        off: "Repeat: Off",
+        one: "Repeat: One",
+    };
+    var shuffleLabels: any = {
+        loading: "Shuffle: Loading...",
+        off: "Shuffle: Off",
+        on: "Shuffle: On",
+    };
+    var controls = view.canRepeat
+        ? '<div id="mediaPlaybackControls" aria-live="polite">' +
+          (view.canShuffle
+              ? w
+                    .renderButtonHint(
+                        w.keys.N5,
+                        "&#8646;",
+                        shuffleLabels[view.shuffle] || "Shuffle: Off",
+                        "5"
+                    )
+                    .replace(
+                        "<span role=",
+                        '<span id="mediaShuffleControl" data-state="' +
+                            view.shuffle +
+                            '" aria-pressed="' +
+                            (view.shuffle === "on") +
+                            '" aria-busy="' +
+                            (view.shuffle === "loading") +
+                            '" role='
+                    )
+              : "") +
+          w
+              .renderButtonHint(
+                  w.keys.N9,
+                  "&#8635;",
+                  repeatLabels[view.repeat] || "Repeat: All",
+                  "9"
+              )
+              .replace(
+                  "<span role=",
+                  '<span id="mediaRepeatControl" data-state="' +
+                      view.repeat +
+                      '" role='
+              ) +
+          "</div>"
+        : "";
+    controls = controls.replace(/<\/span>&nbsp;&nbsp;/g, "</span>");
+    return controls;
+}
+
+/** Update mode badges without replacing the list or an overlay it owns. */
+function updateMediaPlaybackControls(view: any): void {
+    var detail = document.getElementById("listDetail");
+    var controls = detail && (detail.firstChild as HTMLElement | null);
+    if (!controls || controls.id !== "mediaPlaybackControls") return;
+    var shuffle = document.getElementById("mediaShuffleControl");
+    var repeat = document.getElementById("mediaRepeatControl");
+    if (shuffle && shuffle.parentNode !== controls) shuffle = null;
+    if (!repeat || repeat.parentNode !== controls) return;
+    if (
+        repeat.getAttribute("data-state") === view.repeat &&
+        (!shuffle || shuffle.getAttribute("data-state") === view.shuffle)
+    )
+        return;
+    var focused = document.activeElement as HTMLElement | null;
+    var focusId = focused && focused.parentNode === controls ? focused.id : "";
+    var holder = document.createElement("div");
+    holder.innerHTML = mediaPlaybackControls({
+        canRepeat: true,
+        canShuffle: !!shuffle,
+        repeat: view.repeat,
+        shuffle: view.shuffle,
+    });
+    controls.innerHTML = (holder.firstChild as HTMLElement).innerHTML;
+    if (focusId) {
+        var button = document.getElementById(focusId);
+        if (button && button.parentNode === controls) button.focus();
+    }
+}
+
 /**
  * Render the media library list from the already-loaded `window.mediaRecords`
  * (no provider refetch). Used by `mediaList()` for folder (submenu) navigation
@@ -3533,6 +3627,7 @@ function showMediaList1(view?: any): void {
             )
         );
     };
+    var controls = mediaPlaybackControls(view);
     w.detailListActionFn = function () {
         w.__ottMedia.highlight(w.selIndex, view.revision);
         var detailEl = document.getElementById("listDetail");
@@ -3547,35 +3642,12 @@ function showMediaList1(view?: any): void {
             item.logo_30x30 && descr.indexOf("<img") === -1
                 ? getThumbnail(item.logo_30x30)
                 : "";
-        var repeatLabels: any = {
-            all: "Repeat: All",
-            off: "Repeat: Off",
-            one: "Repeat: One",
-        };
-        var controls = view.canRepeat
-            ? '<div id="mediaPlaybackControls">' +
-              (view.canShuffle
-                  ? w.renderButtonHint(
-                        w.keys.N5,
-                        "&#8646;",
-                        "Shuffle and play",
-                        "5"
-                    )
-                  : "") +
-              w.renderButtonHint(
-                  w.keys.N9,
-                  "&#8635;",
-                  repeatLabels[view.repeat] || "Repeat: All",
-                  "9"
-              ) +
-              "</div>"
-            : "";
-        detailEl.innerHTML =
-            controls.replace(/<\/span>&nbsp;&nbsp;/g, "</span>") +
-            '<div id="_prd">' +
-            thumbnail +
-            descr +
-            "</div>";
+        var description = detailEl.lastChild as HTMLElement | null;
+        if (description && description.id === "_prd")
+            description.innerHTML = thumbnail + descr;
+        else
+            detailEl.innerHTML =
+                controls + '<div id="_prd">' + thumbnail + descr + "</div>";
         if (!w.sNoSmall) $("img", $(detailEl)).not("#detal").remove();
         if (typeof w.scrollUp === "function")
             w.scrollUp(
@@ -3640,10 +3712,14 @@ function showMediaList1(view?: any): void {
     }
     $("#listPopUp").html("").hide();
     if (typeof w.showPage === "function") w.showPage();
+    // Mode changes are immediate; only metadata waits for the detail debounce.
+    if (detailEl) detailEl.innerHTML = controls + '<div id="_prd"></div>';
 }
 
-if (typeof window !== "undefined")
+if (typeof window !== "undefined") {
     (window as any).__ottRenderMedia = showMediaList1;
+    (window as any).__ottUpdateMediaControls = updateMediaPlaybackControls;
+}
 
 /** Navigate legacy provider VOD URLs, fXML submenus and local history/favorites. */
 export function mediaList(target: MediaTarget | null): void {
