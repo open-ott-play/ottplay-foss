@@ -1856,7 +1856,7 @@ for (const profile of ["tauri", "capacitor"]) {
                     },
                 });
                 window.__ottMedia.open(null);
-                window.__ottMedia.shufflePlay = () =>
+                window.__ottMedia.toggleShuffle = () =>
                     window.__fixtureShuffles++;
             });
             const controls = page.locator("#mediaPlaybackControls");
@@ -1867,6 +1867,9 @@ for (const profile of ["tauri", "capacitor"]) {
             await expect(
                 controls.getByRole("button", { name: "Repeat: Off" })
             ).toBeVisible();
+            await expect(
+                controls.getByRole("button", { name: "Repeat: Off" })
+            ).toBeFocused();
             await page.evaluate(() => {
                 const forged = document.createElement("div");
                 forged.id = "mediaPlaybackControls";
@@ -1882,7 +1885,7 @@ for (const profile of ["tauri", "capacitor"]) {
             await page.getByRole("button", { name: "Metadata action" }).click();
             expect(await page.evaluate(() => window.__fixtureShuffles)).toBe(0);
             await controls
-                .getByRole("button", { name: "Shuffle and play" })
+                .getByRole("button", { name: "Shuffle: Off" })
                 .click();
             expect(await page.evaluate(() => window.__fixtureShuffles)).toBe(1);
             expect(

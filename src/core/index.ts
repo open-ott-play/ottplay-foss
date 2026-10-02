@@ -828,12 +828,40 @@ export function stbEventToKeyCode(event: any): number {
             : typeof event.which === "number" && event.which
               ? event.which
               : 0;
+    var key = event.key || "";
+    var code = event.code || "";
+    var digit = /^[0-9]$/.test(key) ? Number(key) : -1;
+    var deviceKeys = (window as any).keys || {};
+    // NumLock/Shift can report a navigation legacy code with a numeric DOM key.
+    if (digit >= 0 && (/^Numpad[0-9]$/.test(code) || event.location === 3))
+        keyCode = deviceKeys["N" + digit] || 48 + digit;
+    if (
+        keyCode >= 96 &&
+        keyCode <= 105 &&
+        (!key || key === "Unidentified" || digit >= 0)
+    ) {
+        // Bare TV codes can overlap DOM numpad codes (Maple INFO is 99).
+        // Explicit keyboard identity wins; otherwise retain declared hardware keys.
+        var hardware =
+            !/^Numpad[0-9]$/.test(code) &&
+            event.location !== 3 &&
+            Object.keys(deviceKeys).some(function (name) {
+                return deviceKeys[name] === keyCode;
+            });
+        if (!hardware) {
+            var number = keyCode - 96;
+            keyCode = deviceKeys["N" + number] || 48 + number;
+        }
+    }
 
     if (!keyCode) {
-        var key = event.key || "";
-        var code = event.code || "";
+        var physicalDigit = /^Digit([0-9])$/.exec(code);
+        if (!physicalDigit && (!key || key === "Unidentified" || digit >= 0))
+            physicalDigit = /^Numpad([0-9])$/.exec(code);
+        if (digit < 0 && physicalDigit) digit = Number(physicalDigit[1]);
         // Map common keys when keyCode/which is missing (sync; no Tauri invoke).
-        if (key === "ArrowLeft" || code === "ArrowLeft") keyCode = 37;
+        if (digit >= 0) keyCode = deviceKeys["N" + digit] || 48 + digit;
+        else if (key === "ArrowLeft" || code === "ArrowLeft") keyCode = 37;
         else if (key === "ArrowUp" || code === "ArrowUp") keyCode = 38;
         else if (key === "ArrowRight" || code === "ArrowRight") keyCode = 39;
         else if (key === "ArrowDown" || code === "ArrowDown") keyCode = 40;

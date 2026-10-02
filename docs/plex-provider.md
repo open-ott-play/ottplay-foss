@@ -15,14 +15,18 @@ selection or adding another breadcrumb. A failed request keeps the existing
 items and offers a selectable retry row; **Back** still opens the parent folder.
 Selecting a video starts an ordered queue of that folder’s files. Natural completion
 plays the next file in the same folder, including files on later catalog pages.
-Subfolders are excluded. **Shuffle and play** starts its videos in a random order. The
+Subfolders are excluded. **Shuffle: Off** starts its videos in a random order. The
 queue includes every page of that folder and applies the current title filter;
 it does not descend into subfolders. A failed page cancels the new queue.
 
 The playback buttons appear beside the description. **Repeat** cycles through
 **All**, **One**, and **Off**: repeat the queue, repeat the current video, or finish
 after its last video. Remote shortcuts are **5** (or **Play**) for shuffle and
-**9** for repeat. The repeat preference is saved per media source. Back, Stop,
+**9** for repeat. Shuffle visibly changes from **Off** through **Loading** to **On**.
+Press **5** again to cancel loading or switch the current queue back to folder
+order without restarting the video; **Play** explicitly starts a fresh shuffle.
+Both the keyboard number row and numeric keypad work. The repeat preference is
+saved per media source. Back, Stop,
 changing the filter or choosing another item cancels a pending queue launch.
 
 On reopening the player, Plex continues the last unfinished video at its saved

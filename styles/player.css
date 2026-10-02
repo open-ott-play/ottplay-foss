@@ -254,9 +254,29 @@ body {
     font-size: smaller;
 }
 #mediaPlaybackControls > span {
+    box-sizing: border-box;
     display: block;
     max-width: 100%;
+    padding: 2px 8px;
+    margin-bottom: 4px;
     cursor: pointer;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 6px;
+}
+#mediaPlaybackControls > span[data-state="on"],
+#mediaPlaybackControls > span[data-state="all"],
+#mediaPlaybackControls > span[data-state="one"] {
+    background: rgba(50, 150, 110, 0.32);
+    border-color: #72d7ae;
+}
+#mediaPlaybackControls > span[data-state="loading"] {
+    background: rgba(150, 110, 40, 0.32);
+    border-color: #f1cb75;
+}
+#mediaPlaybackControls > span:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
 }
 #listDetail #_descr {
     /* Scroll only inside this band — never over title/time/next (OTT). */

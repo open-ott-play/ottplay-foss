@@ -795,6 +795,9 @@ var keyStrings = {
     "Show when rewind": "Εμφάνιση κατά τη μετακίνηση πίσω",
     "Show when switching": "Εμφάνιση κατά την αλλαγή καναλιών",
     "Shuffle and play": "Ανακάτεμα και αναπαραγωγή",
+    "Shuffle: Loading...": "Τυχαία αναπαραγωγή: φόρτωση…",
+    "Shuffle: Off": "Τυχαία αναπαραγωγή: ανενεργή",
+    "Shuffle: On": "Τυχαία αναπαραγωγή: ενεργή",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",

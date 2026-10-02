@@ -778,6 +778,9 @@ var keyStrings = {
     "Show when rewind": "Geri sararken göster",
     "Show when switching": "Kanal değiştirirken göster",
     "Shuffle and play": "Karıştır ve oynat",
+    "Shuffle: Loading...": "Karıştır: yükleniyor…",
+    "Shuffle: Off": "Karıştır: kapalı",
+    "Shuffle: On": "Karıştır: açık",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
