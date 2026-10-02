@@ -109,7 +109,11 @@ const BUDGET = Object.freeze({ bytes: 651200, gzipBytes: 198400 });
 // the complete web payload is 742619 raw / 232209 gzip on Node 26.8.2.
 // The same control-state change adds 3281 raw / 1012 gzip bytes; provider payloads
 // remain unchanged and count toward this complete-output bound.
-const TOTAL_BUDGET = Object.freeze({ bytes: 746600, gzipBytes: 234250 });
+// Fifteen Stalker profiles, legacy migration and owned switching live in the
+// optional provider asset. Combined with the control-state change, Node 22.23.2
+// measures 748121 / 234576 for web and 748079 / 234635 for native. Keep the
+// entry budget unchanged and allow release suffix room for both feature costs.
+const TOTAL_BUDGET = Object.freeze({ bytes: 748700, gzipBytes: 235000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
