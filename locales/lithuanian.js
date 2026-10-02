@@ -638,6 +638,7 @@ var keyStrings = {
     "Preview in channel list": "Peržiūra kanalų sąraše",
     Previous: "Ankstesnis",
     "Privacy policy": "Privatumo politika",
+    "Profile name": "Profilio pavadinimas",
     "Protect Adult Channels": "Apsaugoti suaugusiųjų kanalus",
     "Protect Change Provider": "Apsaugoti teikėjo keitimą",
     "Protect Settings": "Apsaugoti nustatymus",
@@ -725,6 +726,7 @@ var keyStrings = {
     "Select playlist file": "Pasirinkite grojaraščio failą",
     "Select playlist template source for EPG and logos":
         "Pasirinkite EPG ir logotipų grojaraščio šablono šaltinį",
+    "Select Stalker portal": "Pasirinkti Stalker portalą",
     "Send request": "Siųsti užklausą",
     "Send settings": "Siųsti nustatymus",
     "Send this code from your proxy in the Authorization: Bearer header.":

@@ -5,6 +5,11 @@ function sourceNamespace(host: any): string {
         host.p_pref || (driver && driver.id) || host.providerId || "classic"
     );
     var slot = Number(host.m3uArr && host.m3uArr.active);
+    if (provider === "stalker" && driver && driver.configuration) {
+        var active = driver.configuration().active;
+        // Preserve the original singleton namespace for its migrated first slot.
+        return active ? provider + ":" + active : provider;
+    }
     return provider === "m3u"
         ? provider +
               ":" +

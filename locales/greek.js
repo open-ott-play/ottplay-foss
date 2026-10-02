@@ -649,6 +649,7 @@ var keyStrings = {
     "Preview in channel list": "Προεπισκόπηση στη λίστα καναλιών",
     Previous: "Προηγούμενο",
     "Privacy policy": "Πολιτική απορρήτου",
+    "Profile name": "Όνομα προφίλ",
     "Protect Adult Channels": "Προστασία καναλιών ενηλίκων",
     "Protect Change Provider": "Προστασία αλλαγής παρόχου",
     "Protect Settings": "Προστασία ρυθμίσεων",
@@ -739,6 +740,7 @@ var keyStrings = {
     "Select playlist file": "Επιλέξτε αρχείο λίστας αναπαραγωγής",
     "Select playlist template source for EPG and logos":
         "Επιλέξτε πηγή προτύπου λίστας αναπαραγωγής για EPG και λογότυπα",
+    "Select Stalker portal": "Επιλογή πύλης Stalker",
     "Send request": "Αποστολή αιτήματος",
     "Send settings": "Αποστολή ρυθμίσεων",
     "Send this code from your proxy in the Authorization: Bearer header.":
