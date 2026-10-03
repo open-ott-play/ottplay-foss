@@ -523,42 +523,142 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
         w.close();
     }
 });
-test("startup exception names and messages remain text and preserve the launch panel", () => {
-    const w = fixture();
-    try {
-        const launch = w.document.createElement("div");
-        launch.id = "launch";
-        const previous = w.document.createElement("button");
-        previous.textContent = "Boot progress";
-        launch.appendChild(previous);
-        w.document.body.appendChild(launch);
-        const failure = new Error(hostile + ' & "message"');
-        failure.name = hostile + ' & "name"';
-        w.loadSettings = () => {
-            throw failure;
-        };
-        let logged;
-        w.console.error = (error) => (logged = error);
-        w.eval(func("src/index.ts", "onStbReady"));
-        w.onStbReady();
-        assert.equal(logged, failure);
-        assert.equal(launch.firstChild, previous);
-        assert.equal(
-            launch.querySelector("b").textContent,
-            "Exception.StbReady:"
-        );
-        assert.equal(launch.querySelectorAll("br").length, 2);
-        assert(
-            launch.textContent.includes(
-                "name " + failure.name + ", message " + failure.message
-            )
-        );
-        assert.equal(launch.querySelectorAll("img,script,[onerror]").length, 0);
-        assert.equal(w.__executed, undefined);
-    } finally {
-        w.close();
+const startupFailure = new Error(hostile + ' & "message"');
+startupFailure.name = hostile + ' & "name"';
+const startupCases = [
+    ["Error", startupFailure, startupFailure.name, startupFailure.message],
+    ["empty Error", new Error(""), "Error", ""],
+    ["empty error shape", { message: "", name: "" }, "", ""],
+    ["null", null, "Error", "null"],
+    ["undefined", undefined, "Error", "undefined"],
+    ["hostile string", hostile, "Error", hostile],
+];
+for (const entrypoint of ["startPlayer", "onStbReady"]) {
+    for (const hasLaunch of [true, false]) {
+        for (const [kind, failure, name, message] of startupCases) {
+            test(
+                entrypoint +
+                    " handles thrown " +
+                    kind +
+                    (hasLaunch ? " as launch text" : " without a launch panel"),
+                () => {
+                    const w = fixture();
+                    try {
+                        const launch = w.document.createElement("div");
+                        launch.id = "launch";
+                        const button = w.document.createElement("button");
+                        button.textContent = "Boot progress";
+                        launch.appendChild(button);
+                        if (hasLaunch) w.document.body.appendChild(launch);
+                        let previous, existingBreaks;
+                        let reachedFailure = false;
+                        const fail = () => {
+                            reachedFailure = true;
+                            previous = launch.firstChild;
+                            existingBreaks =
+                                launch.querySelectorAll("br").length;
+                            throw failure;
+                        };
+                        Object.assign(w, {
+                            hostUrl: "https://localhost",
+                            isPlayDistribution: () => true,
+                            loadSettings: fail,
+                            onPlayerStart() {},
+                            PLAYER_VERSION: "fixture",
+                            storage: { reset: fail },
+                        });
+                        const logged = [];
+                        w.console.error = (error) => logged.push(error);
+                        w.eval(
+                            func("src/index.ts", "startupError") +
+                                func("src/index.ts", entrypoint)
+                        );
+                        assert.doesNotThrow(() => w[entrypoint]());
+                        assert.equal(reachedFailure, true);
+                        assert.equal(logged.length, 1);
+                        assert.equal(logged[0], failure);
+                        assert.equal(launch.firstChild, previous);
+                        if (hasLaunch) {
+                            assert.equal(
+                                launch.querySelector("b").textContent,
+                                entrypoint === "startPlayer"
+                                    ? "Exception:"
+                                    : "Exception.StbReady:"
+                            );
+                            assert.equal(
+                                launch.querySelectorAll("br").length,
+                                existingBreaks + 2
+                            );
+                            assert.equal(
+                                launch.lastChild.textContent,
+                                " name " + name + ", message " + message
+                            );
+                        } else {
+                            assert.equal(
+                                w.document.getElementById("launch"),
+                                null
+                            );
+                            assert.equal(launch.childNodes.length, 1);
+                        }
+                        assert.equal(
+                            launch.querySelectorAll("img,script,[onerror]")
+                                .length,
+                            0
+                        );
+                        assert.equal(w.__executed, undefined);
+                    } finally {
+                        w.close();
+                    }
+                }
+            );
+        }
     }
-});
+}
+for (const phase of ["request", "poll"]) {
+    test(
+        "remote provider " +
+            phase +
+            " errors display response text without HTML",
+        () => {
+            const w = fixture();
+            try {
+                const requests = [],
+                    timers = [];
+                Object.assign(w, {
+                    __test: "",
+                    host_ott: "localhost",
+                    host_ott_proto: "https://",
+                    isPlayDistribution: () => false,
+                    listFooter: w.document.getElementById("listPodval"),
+                    setTimeout: (callback, delay) =>
+                        timers.push({ callback, delay }),
+                });
+                w.$.ajax = (request) => requests.push(request);
+                w.eval(func("src/provider/index.ts", "edit_dealer_remote"));
+                w.edit_dealer_remote();
+                assert.equal(requests[0].data.c, "get_var");
+                if (phase === "poll") {
+                    requests[0].success({ code: "fixture-code" });
+                    timers.find((timer) => timer.delay === 1e4).callback();
+                    assert.equal(requests[1].data.c, "get_val");
+                }
+                const responseText = hostile + ' & "response"';
+                requests[requests.length - 1].error({ responseText });
+                const panel = w.document.getElementById("listEdit");
+                assert.equal(panel.textContent, "ERROR:" + responseText);
+                assert.equal(panel.firstChild.style.color, "red");
+                assert.equal(panel.querySelectorAll("br").length, 3);
+                assert.equal(
+                    panel.querySelectorAll("img,script,[onerror]").length,
+                    0
+                );
+                assert.equal(w.__executed, undefined);
+            } finally {
+                w.close();
+            }
+        }
+    );
+}
 test("legacy editor treats captions and field values as text and round-trips saved input", () => {
     const w = fixture();
     try {

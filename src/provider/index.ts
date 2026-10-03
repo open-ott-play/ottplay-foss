@@ -1818,7 +1818,7 @@ export function edit_dealer_remote(): void {
             error: function (jqXHR: any) {
                 $("#listEdit").html(
                     '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                        jqXHR.responseText +
+                        metadataText(jqXHR.responseText) +
                         "</div>"
                 );
             },
@@ -1873,7 +1873,7 @@ export function edit_dealer_remote(): void {
         error: function (jqXHR: any) {
             $("#listEdit").html(
                 '<div style="text-align:center;font-size:larger;color:red"><br/><br/>ERROR:<br/>' +
-                    jqXHR.responseText +
+                    metadataText(jqXHR.responseText) +
                     "</div>"
             );
         },
