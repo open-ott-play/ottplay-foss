@@ -1004,20 +1004,33 @@ function checkRemoteEpgCatalog() {
         assert.equal(f.run("epg_catalog").status, "rejected");
     }
     const huge = fixture();
-    huge.h.cList = Array.from({ length: 1565 }, (_, i) => String(i));
+    huge.h.cList = Array.from({ length: 2981 }, (_, i) => String(i));
     huge.h.channels = Object.fromEntries(
         huge.h.cList.map((id) => [id, { channel_name: "Channel " + id }])
     );
     assert.equal(
         huge.run("epg_catalog").data.channels.length,
-        1565,
+        2981,
         "a full player catalogue is read without any guide request"
     );
-    huge.h.cList = Array.from({ length: 2049 }, (_, i) => String(i));
+    huge.h.cList = Array.from({ length: 10001 }, (_, i) => String(i));
     huge.h.channels = Object.fromEntries(
         huge.h.cList.map((id) => [id, { channel_name: id }])
     );
     assert.equal(huge.run("epg_catalog").status, "rejected");
+    const multibyte = fixture();
+    multibyte.h.cList = Array.from({ length: 700 }, (_, i) => String(i));
+    multibyte.h.channels = Object.fromEntries(
+        multibyte.h.cList.map((id) => [id, { channel_name: "界".repeat(512) }])
+    );
+    assert.equal(multibyte.run("epg_catalog").data.channels.length, 700);
+    for (const channel of Object.values(multibyte.h.channels))
+        channel.tn = "界".repeat(512);
+    assert.equal(
+        multibyte.run("epg_catalog").status,
+        "rejected",
+        "the bound counts UTF-8 wire bytes, not JavaScript characters"
+    );
     const longName = fixture();
     longName.h.channels[7].channel_name = "я".repeat(513);
     assert.equal(longName.run("epg_catalog").status, "rejected");

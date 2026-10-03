@@ -436,15 +436,22 @@ export function createCommandServer(
                                         '","status":"' +
                                         resultStatus +
                                         '"}';
+                                    // Count actual UTF-8 bytes, including the envelope and
+                                    // JSON escaping, so large ASCII catalogues can use the
+                                    // same response budget as multibyte catalogues.
+                                    if (
+                                        encodeURIComponent(serialized).replace(
+                                            /%[A-F\d]{2}/g,
+                                            "x"
+                                        ).length >
+                                        2 * 1024 * 1024
+                                    ) {
+                                        error =
+                                            "Result is too large. Narrow the search.";
+                                        throw new Error();
+                                    }
                                 } catch (_error) {
                                     serialized = "";
-                                }
-                                // Conservative UTF-8 bound, including JSON escaping. Limit
-                                // cached results independently of the number of request IDs.
-                                if (serialized.length * 3 > 2 * 1024 * 1024) {
-                                    serialized = "";
-                                    error =
-                                        "Result is too large. Narrow the search.";
                                 }
                                 if (!serialized) {
                                     resultStatus = "rejected";
