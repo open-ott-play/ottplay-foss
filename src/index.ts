@@ -1873,9 +1873,8 @@ function onStbReady(): void {
         if (launchEl2) {
             launchEl2.appendChild(document.createElement("br"));
             launchEl2.appendChild(document.createElement("br"));
-            var errorLabel = document.createElement("b");
-            errorLabel.textContent = "Exception.StbReady:";
-            launchEl2.appendChild(errorLabel);
+            launchEl2.appendChild(document.createElement("b")).textContent =
+                "Exception.StbReady:";
             launchEl2.appendChild(
                 document.createTextNode(
                     " name " + e.name + ", message " + e.message
