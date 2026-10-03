@@ -176,6 +176,289 @@ for (const [urls, expected] of [
     send({ type: "close" });
 }
 
+// Exercise deadline adaptation without waiting for real timeout/backoff clocks.
+// XHR status 504 is the only signal that permits splitting a match request.
+{
+    function fixture(count, transform = (row) => row) {
+        const messages = [];
+        const requests = [];
+        const timers = [];
+        const env = {
+            clearTimeout(timer) {
+                if (timer) timer.cleared = true;
+            },
+            postMessage(value) {
+                messages.push(value);
+            },
+            setTimeout(callback, delay) {
+                const timer = { callback, delay };
+                timers.push(timer);
+                return timer;
+            },
+            XMLHttpRequest: function () {
+                this.open = (method, url) => {
+                    this.method = method;
+                    this.url = url;
+                };
+                this.setRequestHeader = () => {};
+                this.send = (body) => {
+                    this.body = body && JSON.parse(body);
+                    requests.push(this);
+                };
+                this.abort = () => {
+                    this.aborted = true;
+                    if (this.onabort) this.onabort();
+                };
+            },
+        };
+        vm.runInNewContext(generated["epg-server.js"].toString(), {
+            self: env,
+        });
+        const send = (value) => env.onmessage({ data: value });
+        const envelope = (generation = "split-generation") => ({
+            fetchedAt: Date.now(),
+            generation,
+            source: "epg-one",
+            version: 1,
+        });
+        function respond(xhr, status = 200, generation, overrides) {
+            xhr.status = status;
+            xhr.responseText = JSON.stringify({
+                ...envelope(generation),
+                mappings: Object.fromEntries(
+                    (xhr.body?.channels || []).map((row) => [
+                        row.id,
+                        { channelId: row.id, logo: "", shift: 0 },
+                    ])
+                ),
+                refreshMs: 7200000,
+                stale: false,
+                ...overrides,
+            });
+            if (xhr.onload) xhr.onload();
+        }
+        send({
+            apiBase: "/epg/v1",
+            channels: Array.from({ length: count }, (_, index) =>
+                transform({
+                    archiveHours: 48,
+                    id: String(index),
+                    name: "Channel " + index,
+                    tvgId: "",
+                    tvgName: "",
+                })
+            ),
+            sourceId: "epg-one",
+            type: "load",
+        });
+        return { envelope, messages, requests, respond, send, timers };
+    }
+    const ready = (f) => f.messages.filter((row) => row.type === "ready");
+    const errors = (f) => f.messages.filter((row) => row.type === "error");
+    function refresh(f) {
+        const timer = f.timers.findLast((row) => !row.cleared);
+        assert(timer && timer.delay >= 5000);
+        timer.callback();
+    }
+
+    const large = fixture(3608);
+    let completed = 0;
+    while (completed < large.requests.length) {
+        const xhr = large.requests[completed++];
+        assert.equal(
+            ready(large).length,
+            0,
+            "no partial catalogue is published"
+        );
+        large.respond(xhr, xhr.body.channels.length > 64 ? 504 : 200);
+        assert(completed <= 59, "two reductions plus 57 successful batches");
+    }
+    assert.equal(completed, 59);
+    assert.deepEqual(
+        large.requests.slice(0, 3).map((xhr) => xhr.body.channels.length),
+        [256, 128, 64]
+    );
+    assert.equal(ready(large).length, 1);
+    assert.equal(Object.keys(ready(large)[0].mappings).length, 3608);
+    assert.equal(errors(large).length, 0);
+    refresh(large);
+    while (completed < large.requests.length) {
+        const xhr = large.requests[completed++];
+        assert(
+            xhr.body.channels.length <= 64,
+            "refresh retains the learned cap"
+        );
+        large.respond(xhr);
+    }
+    assert.equal(ready(large).length, 2);
+
+    const tail = fixture(320);
+    tail.respond(tail.requests[0]);
+    assert.equal(ready(tail).length, 0);
+    tail.respond(tail.requests[1], 504);
+    tail.respond(tail.requests[2]);
+    tail.respond(tail.requests[3]);
+    assert.deepEqual(
+        tail.requests.map((xhr) => xhr.body.channels.length),
+        [256, 64, 32, 32],
+        "split the actual short final batch, retaining successful candidate mappings"
+    );
+    assert.equal(ready(tail).length, 1);
+    assert.equal(Object.keys(ready(tail)[0].mappings).length, 320);
+
+    const shortTail = fixture(260);
+    shortTail.respond(shortTail.requests[0]);
+    shortTail.respond(shortTail.requests[1], 504);
+    assert.deepEqual(
+        shortTail.requests.map((xhr) => xhr.body.channels.length),
+        [256, 4],
+        "a short tail below the floor fails without creating tiny retries"
+    );
+    assert.equal(ready(shortTail).length, 0);
+    assert.equal(errors(shortTail)[0].code, "EPG_TIMEOUT");
+
+    const escaped = fixture(100, (row) => ({
+        ...row,
+        id: row.id.padEnd(512, "\u0001"),
+        name: "\u0001".repeat(512),
+        tvgId: "\u0001".repeat(512),
+        tvgName: "\u0001".repeat(512),
+    }));
+    assert.equal(escaped.requests[0].body.channels.length, 41);
+    escaped.respond(escaped.requests[0], 504);
+    for (let index = 1; index < escaped.requests.length; index++) {
+        assert(
+            Buffer.byteLength(JSON.stringify(escaped.requests[index].body)) <=
+                500 * 1024
+        );
+        escaped.respond(escaped.requests[index]);
+    }
+    assert.deepEqual(
+        escaped.requests.slice(1).map((xhr) => xhr.body.channels.length),
+        [32, 32, 32, 4],
+        "repack escaped metadata across former byte-limited boundaries"
+    );
+    assert.equal(Object.keys(ready(escaped)[0].mappings).length, 100);
+
+    const maximum = fixture(16384);
+    let successful = 0;
+    for (let index = 0; index < maximum.requests.length; index++) {
+        const xhr = maximum.requests[index];
+        if (xhr.body.channels.length > 32) maximum.respond(xhr, 504);
+        else maximum.respond(xhr, 200, ++successful < 512 ? "before" : "after");
+        assert(
+            index < 1027,
+            "maximum catalogue permits at most two passes and three reductions"
+        );
+    }
+    assert.equal(successful, 1024);
+    assert.equal(maximum.requests.length, 1027);
+    assert.equal(ready(maximum).length, 1);
+    assert.equal(Object.keys(ready(maximum)[0].mappings).length, 16384);
+
+    const drift = fixture(600);
+    let success = 0;
+    for (let index = 0; index < drift.requests.length; index++) {
+        const xhr = drift.requests[index];
+        if (xhr.body.channels.length > 64) drift.respond(xhr, 504);
+        else {
+            assert.equal(ready(drift).length, 0);
+            drift.respond(xhr, 200, ++success === 1 ? "before" : "after");
+        }
+        assert(
+            index < 20,
+            "splitting cannot reset the generation restart budget"
+        );
+    }
+    assert.equal(ready(drift).length, 1);
+    assert.equal(ready(drift)[0].generation, "after");
+    assert.equal(Object.keys(ready(drift)[0].mappings).length, 600);
+    assert.equal(success, 12, "two initial chunks, then one complete restart");
+
+    const unstable = fixture(600);
+    let generation = 0;
+    for (let index = 0; index < unstable.requests.length; index++) {
+        const xhr = unstable.requests[index];
+        if (xhr.body.channels.length > 64) unstable.respond(xhr, 504);
+        else unstable.respond(xhr, 200, "changed-" + ++generation);
+        assert(
+            index < 6,
+            "deadline adaptation cannot reset the generation retry budget"
+        );
+    }
+    assert.equal(generation, 4);
+    assert.equal(ready(unstable).length, 0);
+    assert.equal(errors(unstable)[0].code, "EPG_GENERATION");
+
+    const floor = fixture(256);
+    for (let index = 0; index < floor.requests.length; index++) {
+        floor.respond(floor.requests[index], 504);
+        assert(index < 4, "halving terminates at the minimum batch size");
+    }
+    assert.deepEqual(
+        floor.requests.map((xhr) => xhr.body.channels.length),
+        [256, 128, 64, 32]
+    );
+    assert.equal(ready(floor).length, 0);
+    assert.equal(errors(floor).length, 1);
+    assert.equal(errors(floor)[0].code, "EPG_TIMEOUT");
+
+    const saved = fixture(1);
+    saved.respond(saved.requests[0]);
+    const now = Math.floor(Date.now() / 1000);
+    const rows = [
+        {
+            descr: "",
+            icon: "",
+            name: "Last good",
+            time: now,
+            time_to: now + 3600,
+        },
+    ];
+    saved.send({ id: "0", query: "warm", type: "guide" });
+    saved.respond(saved.requests[1], 200, undefined, { rows });
+    refresh(saved);
+    saved.respond(saved.requests[2], 504);
+    saved.send({ id: "0", query: "outage", type: "guide" });
+    assert.equal(
+        saved.requests.length,
+        3,
+        "last-good guide remains usable after terminal match timeout"
+    );
+    assert.equal(
+        saved.messages.find((row) => row.query === "outage").rows[0].name,
+        "Last good"
+    );
+
+    for (const failure of [429, 503, "network", "timeout", "malformed"]) {
+        const f = fixture(3608);
+        const xhr = f.requests[0];
+        if (failure === "network") xhr.onerror();
+        else if (failure === "timeout") xhr.ontimeout();
+        else if (failure === "malformed")
+            f.respond(xhr, 200, undefined, { version: 99 });
+        else f.respond(xhr, failure);
+        assert.equal(f.requests.length, 1, String(failure) + " does not split");
+        assert.equal(errors(f).length, 1);
+    }
+
+    const closed = fixture(3608);
+    closed.respond(closed.requests[0], 504);
+    assert.equal(closed.requests.length, 2);
+    closed.send({ type: "close" });
+    assert.equal(closed.requests[1].aborted, true);
+    closed.respond(closed.requests[1]);
+    closed.timers.forEach((timer) => {
+        if (!timer.cleared) timer.callback();
+    });
+    assert.equal(
+        closed.requests.length,
+        2,
+        "close prevents the remaining split requests"
+    );
+    assert.equal(ready(closed).length, 0);
+}
+
 async function main() {
     let browser;
     let state;
@@ -201,6 +484,7 @@ async function main() {
             matchDelay: false,
             matchError: false,
             matchGenerations: [],
+            matchSizeLimit: 0,
             peak: 0,
             running: 0,
             stale: false,
@@ -246,11 +530,17 @@ async function main() {
             });
             if (state.matchDelay)
                 await new Promise((resolve) => pendingMatches.push(resolve));
-            if (state.matchError) {
-                json(state.matchError === 504 ? 504 : 503, {
+            const matchError =
+                state.matchError ||
+                (state.matchSizeLimit &&
+                value.channels.length > state.matchSizeLimit
+                    ? 504
+                    : 0);
+            if (matchError) {
+                json(matchError, {
                     error: {
                         code:
-                            state.matchError === 504
+                            matchError === 504
                                 ? "EPG_TIMEOUT"
                                 : "EPG_NOT_READY",
                     },
@@ -602,7 +892,7 @@ async function main() {
         await open(catalogue(3000, "catalogue-"));
         assert.deepEqual(
             matchRequests().map((row) => row.body.channels.length),
-            [2048, 952]
+            [...Array(11).fill(256), 184]
         );
         assert.equal(await page.evaluate(() => window.notifications.length), 1);
         assert.equal(
@@ -612,6 +902,27 @@ async function main() {
             3000
         );
         assert.equal((await get("catalogue-2999")).length, 1);
+        await close();
+
+        reset();
+        state.matchSizeLimit = 64;
+        await open(catalogue(3608, "adaptive-"));
+        assert.equal(matchRequests().length, 59);
+        assert.deepEqual(
+            matchRequests()
+                .slice(0, 3)
+                .map((row) => row.body.channels.length),
+            [256, 128, 64]
+        );
+        assert.equal(await page.evaluate(() => window.notifications.length), 1);
+        assert.equal(
+            await page.evaluate(
+                () => Object.keys(window.notifications[0]).length
+            ),
+            3608,
+            "real worker publishes the complete catalogue after bounded deadline adaptation"
+        );
+        assert.equal((await get("adaptive-3607")).length, 1);
         await close();
 
         reset();
@@ -636,7 +947,7 @@ async function main() {
         assert(
             matchRequests().every(
                 (row) =>
-                    row.bytes <= 500 * 1024 && row.body.channels.length <= 2048
+                    row.bytes <= 500 * 1024 && row.body.channels.length <= 256
             )
         );
         assert.equal(
@@ -657,7 +968,7 @@ async function main() {
         await open(catalogue(3000, "restart-"));
         assert.equal(
             matchRequests().length,
-            4,
+            14,
             "one complete restart on generation drift between batches"
         );
         assert.equal(

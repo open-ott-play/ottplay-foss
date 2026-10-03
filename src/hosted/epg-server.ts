@@ -15,6 +15,10 @@ function createHostedEpgServer(env: any): void {
     var matchWaiters: Array<(ok: boolean) => void> = [];
     var memory: any = Object.create(null);
     var matchFailures = 0;
+    // The API maximum is not a safe CPU budget for a catalogue with many misses.
+    // Keep a learned, bounded request size for subsequent matches in this worker.
+    var matchBatchSize = 256;
+    var MIN_MATCH_BATCH_SIZE = 32;
     var guideFailed = false;
     var cachedRows = false;
     var GUIDE_BYTES = 8 * 1024 * 1024;
@@ -306,28 +310,49 @@ function createHostedEpgServer(env: any): void {
         progress("download");
         // Deliberately project only four metadata strings. XMLTV, playlist,
         // media URLs and provider credentials never enter this request.
-        var batches: any[][] = [[]];
-        var batchBytes = 100;
-        configuration.channels.forEach(function (row: any) {
-            var metadata = {
-                id: row.id,
-                name: row.name,
-                tvgId: row.tvgId || "",
-                tvgName: row.tvgName || "",
-            };
-            var bytes = utf8Bytes(JSON.stringify(metadata)) + 1;
-            var batch = batches[batches.length - 1];
-            if (batch.length >= 2048 || batchBytes + bytes > 500 * 1024) {
-                batch = [];
-                batches.push(batch);
-                batchBytes = 100;
-            }
-            batch.push(metadata);
-            batchBytes += bytes;
-        });
+        function partition(entries: any[]): any[][] {
+            var result: any[][] = [[]];
+            var batchBytes = 100;
+            entries.forEach(function (metadata) {
+                var bytes = utf8Bytes(JSON.stringify(metadata)) + 1;
+                var batch = result[result.length - 1];
+                if (
+                    batch.length >= matchBatchSize ||
+                    batchBytes + bytes > 500 * 1024
+                ) {
+                    batch = [];
+                    result.push(batch);
+                    batchBytes = 100;
+                }
+                batch.push(metadata);
+                batchBytes += bytes;
+            });
+            return result;
+        }
+        var batches = partition(
+            configuration.channels.map(function (row: any) {
+                return {
+                    id: row.id,
+                    name: row.name,
+                    tvgId: row.tvgId || "",
+                    tvgName: row.tvgName || "",
+                };
+            })
+        );
         var batchIndex = 0;
         var restarted = false;
         var candidate: any = null;
+        function splitPending(): void {
+            var remaining: any[] = [];
+            batches.slice(batchIndex).forEach(function (batch) {
+                batch.forEach(function (metadata: any) {
+                    remaining.push(metadata);
+                });
+            });
+            // Repack across old byte-limit boundaries, so a reduction does not
+            // multiply tiny tail batches and consume the public request quota.
+            batches = batches.slice(0, batchIndex).concat(partition(remaining));
+        }
         function complete(error?: string | null, httpStatus?: number): void {
             matching = false;
             if (error) {
@@ -356,6 +381,25 @@ function createHostedEpgServer(env: any): void {
                 { channels: batch, source: "epg-one", version: 1 },
                 function (error, value, httpStatus) {
                     if (
+                        error === "EPG_TIMEOUT" &&
+                        httpStatus === 504 &&
+                        batch.length > MIN_MATCH_BATCH_SIZE
+                    ) {
+                        // A server deadline can be exceeded by valid but expensive
+                        // metadata. Halving is finite (at most three reductions),
+                        // and never exposes a partially matched catalogue.
+                        matchBatchSize = Math.min(
+                            matchBatchSize,
+                            Math.max(
+                                MIN_MATCH_BATCH_SIZE,
+                                Math.floor(batch.length / 2)
+                            )
+                        );
+                        splitPending();
+                        next();
+                        return;
+                    }
+                    if (
                         !error &&
                         (!mappings(value) ||
                             !Object.keys(value.mappings).every(function (id) {
@@ -372,6 +416,7 @@ function createHostedEpgServer(env: any): void {
                             restarted = true;
                             batchIndex = 0;
                             candidate = null;
+                            splitPending();
                             next();
                             return;
                         }
