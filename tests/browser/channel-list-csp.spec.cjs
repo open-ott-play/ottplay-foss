@@ -1310,6 +1310,67 @@ for (const profile of ["server", "tauri"]) {
 
 for (const profile of ["server", "tauri", "capacitor"]) {
     test(
+        profile + " native editor hint buttons save and cancel settings",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    uiInit();
+                    uiInit();
+                    saveSettings({
+                        swopBaseUrl: "https://example.invalid/old",
+                    });
+                    settingsCommands();
+                    window.__editorHintKeys = [];
+                    const dispatch = window._doKey;
+                    window._doKey = (key, event) => {
+                        window.__editorHintKeys.push(key);
+                        dispatch(key, event);
+                    };
+                });
+                const saved = "https://example.invalid/swop?text=Привет&x=1";
+                for (const save of [true, false]) {
+                    await page.evaluate(() => aboutKeyHandler(keys.N2));
+                    await page
+                        .locator("#editvar")
+                        .fill(save ? saved : "discard");
+                    await page
+                        .locator("#listEdit [data-ott-key]")
+                        .filter({
+                            hasText: save ? "- save" : "- return without save",
+                        })
+                        .click();
+                    await expect(page.locator("#listEdit")).toBeHidden();
+                    await expect(page.locator("#listAbout")).toContainText(
+                        saved
+                    );
+                    expect(
+                        await page.evaluate(() => ({
+                            current: settings.swopBaseUrl,
+                            facade: window.sSwopBaseUrl,
+                            persisted: stbGetItem("sSwopBaseUrl"),
+                        }))
+                    ).toEqual({
+                        current: saved,
+                        facade: saved,
+                        persisted: saved,
+                    });
+                }
+                expect(
+                    await page.evaluate(() => ({
+                        actual: window.__editorHintKeys,
+                        expected: [keys.ENTER, keys.EXIT],
+                    }))
+                ).toEqual({ actual: [13, 27], expected: [13, 27] });
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+    test(
         profile + " Actions popup stays above programme details in every theme",
         async ({ browser }) => {
             const fixture = await fixturePage(browser, profile);
