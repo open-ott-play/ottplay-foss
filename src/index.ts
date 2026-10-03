@@ -1647,11 +1647,6 @@ export function startPlayer(): void {
     if (launchEl) {
         launchEl.innerHTML += "<br/>VER: " + PLAYER_VERSION;
     }
-    if (launchEl) {
-        var iid = (window as any).__iid as string | undefined;
-        launchEl.innerHTML +=
-            "<br/>IID: " + (iid ? "..." + iid.substr(-7) : "-");
-    }
 
     onPlayerStart();
 
@@ -5325,7 +5320,7 @@ window.exitPortal = exitPortal;
  * --------------------------------------------------------------------------- */
 /**
  * Display the "About" / plugin info screen.
- * Shows player version, install ID, HTTPS support status, OTT host, and
+ * Shows player version, HTTPS support status, OTT host, and
  * device info (via stbInfo).
  *
  * Side effects: Saves CPD; writes to #listAbout; calls stbInfo() if
@@ -5334,15 +5329,11 @@ window.exitPortal = exitPortal;
 function pluginInfo(): void {
     var v = (window as any).version || "<br/>Version: " + PLAYER_VERSION;
     var host = (window as any).host || "-";
-    var __iid = (window as any).__iid || "-";
     var canHttps = (window as any).client_can_https ? "Yes" : "No";
     var html =
         _("Player info:") +
         "<br/>" +
         v +
-        "<br/>" +
-        "<br/>Install ID: " +
-        __iid +
         "<br/>" +
         "HTTPS support: " +
         canHttps +
