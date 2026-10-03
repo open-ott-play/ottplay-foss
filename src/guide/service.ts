@@ -72,6 +72,19 @@ function createGuideService(ports: GuideServicePorts) {
     function clone<T>(value: T): T {
         return JSON.parse(JSON.stringify(value));
     }
+    function removeGuideEntry<T>(items: T[], value: T): void {
+        var at = items.indexOf(value);
+        if (at >= 0) items.splice(at, 1);
+    }
+    function isActiveConsumer(consumer: Consumer): boolean {
+        return consumer.active;
+    }
+    function ownsState(
+        state: Current | undefined,
+        reference: GuideReference
+    ): state is Current {
+        return !!state && state.reference.token === reference.token;
+    }
     function key(reference: GuideReference): string {
         return (
             reference.sourceId.length +
@@ -130,8 +143,7 @@ function createGuideService(ports: GuideServicePorts) {
             : 0;
     }
     function touch(id: string): void {
-        var at = order.indexOf(id);
-        if (at >= 0) order.splice(at, 1);
+        removeGuideEntry(order, id);
         order.push(id);
     }
     function read(reference: GuideReference): GuideProgramme[] | null {
@@ -151,8 +163,7 @@ function createGuideService(ports: GuideServicePorts) {
             })
         ) {
             delete cache[id];
-            var at = order.indexOf(id);
-            if (at >= 0) order.splice(at, 1);
+            removeGuideEntry(order, id);
             return null;
         }
         touch(id);
@@ -176,10 +187,7 @@ function createGuideService(ports: GuideServicePorts) {
             now = ports.now();
         var selection = clone(ports.select(rows, now, ports.nextCount()));
         var state: Current = {
-            listeners:
-                previous && previous.reference.token === reference.token
-                    ? previous.listeners
-                    : [],
+            listeners: ownsState(previous, reference) ? previous.listeners : [],
             projection: selection,
             reference: reference,
             selectedAt: now,
@@ -201,8 +209,7 @@ function createGuideService(ports: GuideServicePorts) {
         if (aligning || !active(reference)) return false;
         var id = key(reference),
             state = states[id];
-        if (!state || state.reference.token !== reference.token || pending[id])
-            return false;
+        if (!ownsState(state, reference) || pending[id]) return false;
         var now = ports.now();
         if (now >= state.selectedAt && now < state.projection.retryAt)
             return false;
@@ -263,9 +270,7 @@ function createGuideService(ports: GuideServicePorts) {
             if (
                 pending[next.key] !== next ||
                 !active(next.reference) ||
-                !next.consumers.some(function (entry) {
-                    return entry.active;
-                })
+                !next.consumers.some(isActiveConsumer)
             ) {
                 if (pending[next.key] === next) delete pending[next.key];
                 continue;
@@ -400,9 +405,7 @@ function createGuideService(ports: GuideServicePorts) {
             if (
                 owned &&
                 owned.consumers.indexOf(consumer) >= 0 &&
-                !owned.consumers.some(function (entry) {
-                    return entry.active;
-                })
+                !owned.consumers.some(isActiveConsumer)
             ) {
                 delete pending[id];
                 if (running === owned) running = null;
@@ -427,11 +430,7 @@ function createGuideService(ports: GuideServicePorts) {
         current.consumers.forEach(function (consumer) {
             if (consumer.subscription) consumer.active = false;
         });
-        if (
-            !current.consumers.some(function (consumer) {
-                return consumer.active;
-            })
-        ) {
+        if (!current.consumers.some(isActiveConsumer)) {
             delete pending[id];
             if (running === current) running = null;
             cancelRequest(current);
@@ -462,11 +461,7 @@ function createGuideService(ports: GuideServicePorts) {
         field: function (reference: GuideReference, field: string): any {
             synchronize();
             var state = states[key(reference)];
-            if (
-                !state ||
-                !active(reference) ||
-                state.reference.token !== reference.token
-            )
+            if (!state || !active(reference) || !ownsState(state, reference))
                 return undefined;
             if (field === "following") return clone(state.projection.following);
             if (field === "retryAt")
@@ -479,11 +474,8 @@ function createGuideService(ports: GuideServicePorts) {
         invalidate: function (refetch: boolean) {
             var waiting = Object.keys(pending).map(function (id) {
                     return {
-                        consumers: pending[id].consumers.filter(
-                            function (entry) {
-                                return entry.active;
-                            }
-                        ),
+                        consumers:
+                            pending[id].consumers.filter(isActiveConsumer),
                         reference: pending[id].reference,
                     };
                 }),
@@ -524,8 +516,7 @@ function createGuideService(ports: GuideServicePorts) {
             else if (states[id]) states[id].projection.retryAt = 0;
             delete pending[id];
             if (running === previous) running = null;
-            var at = order.indexOf(id);
-            if (at >= 0) order.splice(at, 1);
+            removeGuideEntry(order, id);
             if (previous) cancelRequest(previous);
             scheduleDrain();
             scheduleClock();
@@ -550,9 +541,7 @@ function createGuideService(ports: GuideServicePorts) {
             synchronize();
             alignProjection(reference);
             var state = states[key(reference)];
-            return state &&
-                active(reference) &&
-                state.reference.token === reference.token
+            return state && active(reference) && ownsState(state, reference)
                 ? clone(state.projection)
                 : null;
         },
@@ -564,7 +553,7 @@ function createGuideService(ports: GuideServicePorts) {
             var id = key(reference),
                 state = states[id];
             if (!active(reference)) return function () {};
-            var initial = !state || state.reference.token !== reference.token;
+            var initial = !ownsState(state, reference);
             if (initial) {
                 project(reference, []);
                 state = states[id];
@@ -578,10 +567,8 @@ function createGuideService(ports: GuideServicePorts) {
             return function () {
                 cancel();
                 var current = states[id];
-                if (!current || current.reference.token !== reference.token)
-                    return;
-                var at = current.listeners.indexOf(notify);
-                if (at >= 0) current.listeners.splice(at, 1);
+                if (!ownsState(current, reference)) return;
+                removeGuideEntry(current.listeners, notify);
                 if (!current.listeners.length) retireObservers(reference);
                 scheduleClock();
             };
