@@ -1,17 +1,5 @@
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: daily
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-
-      codeql:
-        patterns:
-          - github/codeql-action/*
   - package-ecosystem: npm
     # The classic browser/STB compiler must keep ES5 emit and its JavaScript API.
     # TypeScript 6 deprecates ES5; TypeScript 7 removes it.
@@ -38,3 +26,12 @@ updates:
     directory: /
     schedule:
       interval: daily
+  # Renovate owns CI updates. The ignore rule also prevents separate
+  # Dependabot security-update PRs; vulnerability alerts remain enabled.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: '*'
