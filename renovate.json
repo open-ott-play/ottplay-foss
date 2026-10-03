@@ -1,6 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "local>victron-venus/venus-os-ci-toolkit:renovate-ci"
-  ]
+  "extends": ["local>victron-venus/venus-os-ci-toolkit:renovate-ci"]
 }
