@@ -1,9 +1,12 @@
 const assert = require("node:assert/strict");
 const vm = require("node:vm");
 const runtime = require("./helpers/private-runtime.cjs");
-function fixture(capacity = 8) {
+function fixture(capacity = 8, options = {}) {
+    const independent = options.independentClock === true;
     let source = "one",
         now = 100,
+        epoch = 100,
+        elapsed = 0,
         nextTimer = 0;
     const tokens = { 1: {}, 2: {} };
     const timers = new Map(),
@@ -30,12 +33,18 @@ function fixture(capacity = 8) {
             };
         },
         nextCount: () => 2,
-        now: () => now,
+        now: () => (independent ? epoch : now),
         select: (rows, time, count) =>
             host.OttPlayCore.guideScheduleSelection(rows, time, count),
         timer(fn, delay) {
             const id = ++nextTimer;
-            timers.set(id, { at: now + delay / 1000, fn });
+            const wait = Math.max(0, Number(delay) || 0);
+            timers.set(
+                id,
+                independent
+                    ? { delay: wait, due: elapsed + wait, fn }
+                    : { at: now + wait / 1000, fn }
+            );
             return id;
         },
     });
@@ -43,6 +52,29 @@ function fixture(capacity = 8) {
         advance(value) {
             now = value;
         },
+        advanceElapsed(ms) {
+            if (!independent) throw Error("independent clock required");
+            const target = elapsed + ms;
+            const started = elapsed;
+            const startedEpoch = epoch;
+            for (let limit = 0; limit < 100; limit++) {
+                const due = [...timers]
+                    .filter(([, timer]) => timer.due <= target)
+                    .sort((a, b) => a[1].due - b[1].due || a[0] - b[0])[0];
+                if (!due) {
+                    elapsed = target;
+                    epoch = startedEpoch + ms / 1000;
+                    return;
+                }
+                elapsed = due[1].due;
+                epoch = startedEpoch + (elapsed - started) / 1000;
+                timers.delete(due[0]);
+                due[1].fn();
+            }
+            throw Error("unbounded guide timer loop");
+        },
+        elapsed: () => elapsed,
+        epoch: () => epoch,
         flush() {
             for (let limit = 0; limit < 100; limit++) {
                 const due = [...timers]
@@ -62,6 +94,10 @@ function fixture(capacity = 8) {
         }),
         requests,
         service,
+        setEpoch(value) {
+            if (!independent) throw Error("independent clock required");
+            epoch = value;
+        },
         source(value) {
             source = value;
         },
@@ -404,6 +440,135 @@ check(
         assert.equal(f.requests.length, 2);
         cancel();
         assert.equal(f.requests[1].canceled, 1);
+    }
+);
+
+const T = 1700000000;
+const clockRows = [
+    programme("Programme A", T, T + 60),
+    programme("Programme B", T + 60, T + 120),
+    programme("Programme C", T + 120, T + 180),
+];
+function establishClock() {
+    const f = fixture(8, { independentClock: true });
+    f.setEpoch(T + 90);
+    f.service.subscribe(f.ref(), () => {});
+    f.advanceElapsed(0);
+    assert.equal(f.requests.length, 1);
+    f.requests[0].done(clockRows.map((row) => ({ ...row })));
+    assert.equal(f.service.snapshot(f.ref()).current.title, "Programme B");
+    assert.equal(f.requests.length, 1);
+    return f;
+}
+check(
+    "backward epoch reselects the retained current programme without another request",
+    () => {
+        const f = establishClock();
+        f.setEpoch(T);
+        f.advanceElapsed(30000);
+        assert.equal(f.epoch(), T + 30);
+        assert.equal(f.elapsed(), 30000);
+        const snapshot = f.service.snapshot(f.ref());
+        assert.equal(snapshot.current.title, "Programme A");
+        assert.equal(snapshot.current.start, T);
+        assert.equal(snapshot.current.end, T + 60);
+        assert.equal(snapshot.following[0].title, "Programme B");
+        assert.equal(snapshot.following[0].start, T + 60);
+        assert.equal(f.requests.length, 1);
+        snapshot.current.title = "mutated";
+        assert.equal(f.service.snapshot(f.ref()).current.title, "Programme A");
+    }
+);
+check(
+    "forward elapsed clock keeps the half-open current programme and one request",
+    () => {
+        const f = establishClock();
+        f.advanceElapsed(30000);
+        assert.equal(f.epoch(), T + 120);
+        const snapshot = f.service.snapshot(f.ref());
+        assert.equal(snapshot.current.title, "Programme C");
+        assert.equal(snapshot.current.start, T + 120);
+        assert.equal(f.requests.length, 1);
+    }
+);
+check("a retired service timer cannot request after source replacement", () => {
+    const f = establishClock();
+    const retired = [...f.timers.values()];
+    assert.equal(
+        retired.some((timer) => timer.delay === 30000),
+        true
+    );
+    f.source("two");
+    f.service.invalidate(false);
+    for (const timer of retired) timer.fn();
+    f.advanceElapsed(0);
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.service.snapshot(f.ref()), null);
+});
+
+function timerIds(f) {
+    return [...f.timers.keys()].sort((a, b) => a - b);
+}
+check(
+    "distant future rows keep forward snapshots from moving retry or listeners",
+    () => {
+        const f = fixture(8, { independentClock: true });
+        const origin = T + 90.004;
+        f.setEpoch(origin);
+        let notifications = 0;
+        f.service.subscribe(f.ref(), () => {
+            notifications++;
+        });
+        f.advanceElapsed(0);
+        f.requests[0].done([programme("Later", T + 10000, T + 10100)]);
+        const settled = notifications;
+        const first = f.service.snapshot(f.ref());
+        assert.equal(first.current, null);
+        assert.equal(first.following[0].title, "Later");
+        assert.equal(first.following[0].start, T + 10000);
+        assert.ok(Math.abs(first.retryAt - (origin + 3600)) < 0.01);
+        const ids = timerIds(f);
+        for (let step = 1; step <= 10; step++) {
+            f.setEpoch(origin + step / 1000);
+            const next = f.service.snapshot(f.ref());
+            assert.equal(next.current, null);
+            assert.equal(next.retryAt, first.retryAt);
+        }
+        assert.equal(notifications, settled);
+        assert.deepEqual(timerIds(f), ids);
+        assert.equal(f.requests.length, 1);
+    }
+);
+check(
+    "a nearer future row keeps its fixed retry deadline across forward reads",
+    () => {
+        const f = fixture(8, { independentClock: true });
+        const origin = T + 90.004;
+        f.setEpoch(origin);
+        let notifications = 0;
+        f.service.subscribe(f.ref(), () => {
+            notifications++;
+        });
+        f.advanceElapsed(0);
+        f.requests[0].done([programme("Soon", T + 1000, T + 1100)]);
+        const settled = notifications;
+        const first = f.service.snapshot(f.ref());
+        assert.equal(first.current, null);
+        assert.equal(first.retryAt, T + 1000);
+        const ids = timerIds(f);
+        for (let step = 1; step <= 10; step++) {
+            f.setEpoch(origin + step / 1000);
+            assert.equal(f.service.snapshot(f.ref()).retryAt, T + 1000);
+        }
+        assert.equal(notifications, settled);
+        assert.deepEqual(timerIds(f), ids);
+        assert.equal(f.requests.length, 1);
+        f.advanceElapsed((T + 1000 - f.epoch()) * 1000);
+        const current = f.service.snapshot(f.ref());
+        assert.equal(f.epoch(), T + 1000);
+        assert.equal(current.current.title, "Soon");
+        assert.equal(current.current.start, T + 1000);
+        assert.equal(f.requests.length, 1);
     }
 );
 
