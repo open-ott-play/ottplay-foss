@@ -1,17 +1,5 @@
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: daily
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-
-      codeql:
-        patterns:
-          - github/codeql-action/*
   - package-ecosystem: npm
     # The classic browser/STB compiler must keep ES5 emit and its JavaScript API.
     # TypeScript 6 deprecates ES5; TypeScript 7 removes it.
