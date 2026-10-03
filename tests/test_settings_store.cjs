@@ -3,8 +3,6 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const path = require("node:path");
 const ts = require("typescript");
-const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
-const { compatibilitySource } = require("./helpers/english-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 const domain = { exports: {} };
 const domainCode = ts.transpileModule(
@@ -434,6 +432,65 @@ check("storage reentry cannot commit into a replacement source", () => {
     assert.equal(f.store.get("logo"), 1);
 });
 check(
+    "additional conflicts win before pending storage callbacks or encoding",
+    () => {
+        const calls = [];
+        const store = create(
+            [
+                {
+                    defaultValue: "old",
+                    effects: ["changed"],
+                    encode() {
+                        calls.push("encode");
+                        throw new Error("distinctive encode failure");
+                    },
+                    id: "value",
+                    key: "value",
+                    scope: "application",
+                    validate: (value) => typeof value === "string",
+                },
+            ],
+            {
+                context: () => "one",
+                effect: () => calls.push("effect"),
+                storage() {
+                    calls.push("storage");
+                    return {
+                        read() {
+                            calls.push("pending.read");
+                            return "old";
+                        },
+                        remove: () => calls.push("pending.remove"),
+                        write: () => calls.push("pending.write"),
+                    };
+                },
+            }
+        );
+        const draft = store.begin();
+        assert.equal(draft.set("value", "new"), true);
+        assert.equal(
+            draft.commit([
+                {
+                    after: "replacement",
+                    before: "expected",
+                    storage: {
+                        read() {
+                            calls.push("additional.read");
+                            return "external";
+                        },
+                        remove: () => calls.push("additional.remove"),
+                        write: () => calls.push("additional.write"),
+                    },
+                },
+            ]),
+            false
+        );
+        assert.equal(draft.error(), "Error: Backup state changed");
+        assert.deepEqual(calls, ["additional.read"]);
+        assert.equal(store.get("value"), "old");
+    }
+);
+check(
     "draft raw deletions join the same rollback and publication boundary",
     () => {
         const f = fixture();
@@ -477,6 +534,15 @@ check(
         assert.equal(f.store.get("logo"), 1);
     }
 );
+if (process.argv.includes("--domain-only")) {
+    console.log(
+        "OK: " + passed + " settings domain scenarios; integration skipped"
+    );
+    process.exit(0);
+}
+const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
+const { compatibilitySource } = require("./helpers/english-source-fixture.cjs");
+
 function actual() {
     const data = new Map(),
         events = [];
