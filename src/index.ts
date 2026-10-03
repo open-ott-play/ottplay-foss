@@ -1613,6 +1613,24 @@ function selectLang(): void {
     showPage();
 }
 
+function startupError(
+    launch: HTMLElement | null,
+    label: string,
+    error: any
+): void {
+    if (launch) {
+        launch.appendChild(document.createElement("br"));
+        launch.appendChild(document.createElement("br"));
+        launch.appendChild(document.createElement("b")).textContent = label;
+        launch.appendChild(
+            document.createTextNode(
+                " name " + error.name + ", message " + error.message
+            )
+        );
+    }
+    console.error(error);
+}
+
 // Main entry point
 
 /**
@@ -1734,14 +1752,7 @@ export function startPlayer(): void {
             onStbReady();
         }
     } catch (e) {
-        if (launchEl) {
-            launchEl.innerHTML +=
-                "<br/><br/><b>Exception:</b> name " +
-                e.name +
-                ", message " +
-                e.message;
-        }
-        console.error(e);
+        startupError(launchEl, "Exception:", e);
     }
 }
 
@@ -1869,19 +1880,11 @@ function onStbReady(): void {
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
     } catch (e) {
-        var launchEl2 = document.getElementById("launch");
-        if (launchEl2) {
-            launchEl2.appendChild(document.createElement("br"));
-            launchEl2.appendChild(document.createElement("br"));
-            launchEl2.appendChild(document.createElement("b")).textContent =
-                "Exception.StbReady:";
-            launchEl2.appendChild(
-                document.createTextNode(
-                    " name " + e.name + ", message " + e.message
-                )
-            );
-        }
-        console.error(e);
+        startupError(
+            document.getElementById("launch"),
+            "Exception.StbReady:",
+            e
+        );
     }
 }
 
