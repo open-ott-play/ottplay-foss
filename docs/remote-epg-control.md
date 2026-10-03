@@ -56,8 +56,10 @@ Both controller and player need the archive RPC extension. Shared FOSS code
 covers browser, Tauri desktop, Capacitor/iOS and packaged TV installations;
 installed applications still need their updated builds.
 
-Snapshots are limited to 2,048 channels and 512 UTF-16 code units per metadata
-field. Explicit shifts must be integer seconds in -86,400..86,400. The CLI and
+Snapshots are limited to 10,000 channels, 1,800,000 UTF-8 bytes of metadata and
+512 UTF-16 code units per field. The CLI splits large catalogues into bounded
+EPG requests and requires one guide generation across the complete result.
+Explicit shifts must be integer seconds in -86,400..86,400. The CLI and
 server also enforce request/response size limits. A configured server failure must
 not silently fall back to the expensive player-wide EPG scan. Deploy the matching
 controller, player and EPG API before enabling the CLI's server EPG configuration.
@@ -66,6 +68,6 @@ The public service supports the fixed `epg-one` source. Configuring that service
 explicitly selects its programme data for remote queries; it does not upload or
 replace custom/private guide sources configured on a player.
 
-Source tests verify a 1,565-channel metadata snapshot makes zero guide requests,
+Source tests verify a 2,981-channel metadata snapshot makes zero guide requests,
 preserves channel IDs/time shifts, and rejects stale playback receipts. This is a
 deterministic work/transport contract, not a physical LG latency measurement.

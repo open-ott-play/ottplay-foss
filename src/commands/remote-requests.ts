@@ -458,8 +458,9 @@ export function executeRemoteRequest(
         // Provider-internal IDs can collide with unrelated public XMLTV IDs.
         var xmltvMetadata = activeProvider() === "m3u";
         var metadata: any[];
+        var catalogSignature: string;
         try {
-            if (rows.length > 2048) throw new Error();
+            if (rows.length > 10000) throw new Error();
             metadata = rows.map(function (row: any) {
                 var channel = w.channels[row.id];
                 var shift = Number(channel.ts) || 0;
@@ -489,12 +490,16 @@ export function executeRemoteRequest(
                     throw new Error();
                 return entry;
             });
+            catalogSignature = JSON.stringify(metadata);
+            // Leave room for the response envelope under the controller's 2 MiB limit.
+            if (
+                encodeURIComponent(catalogSignature).replace(
+                    /%[A-F\d]{2}/g,
+                    "x"
+                ).length > 1800000
+            )
+                throw new Error();
         } catch (_) {
-            reject("Channel metadata exceeds the server EPG limits.");
-            return;
-        }
-        var catalogSignature = JSON.stringify(metadata);
-        if (catalogSignature.length > 500000) {
             reject("Channel metadata exceeds the server EPG limits.");
             return;
         }
