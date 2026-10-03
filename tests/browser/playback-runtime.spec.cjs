@@ -6,6 +6,144 @@ const { test, expect } = require("@playwright/test");
 
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 
+test("remote archive receipt resolves without playback and starts the selected past programme", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    const results = [];
+    const media = [];
+    const errors = [];
+    const pending = [{ action: "epg_catalog", params: {} }];
+    const start = Math.floor(Date.now() / 1000) - 600;
+    let selection;
+    let sequence = 0;
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (
+            url.origin === origin &&
+            url.pathname.startsWith("/fixture-control/")
+        ) {
+            if (request.method() === "POST") {
+                const result = request.postDataJSON();
+                results.push(result);
+                if (results.length === 1 && result.status === "ok") {
+                    selection = {
+                        catalog: result.data.catalog,
+                        end: start + 300,
+                        id: result.data.channels[1].id,
+                        start,
+                        title: "Selected archive fixture",
+                    };
+                    pending.push({
+                        action: "resolve_archive",
+                        params: selection,
+                    });
+                } else if (results.length === 2 && result.status === "ok") {
+                    expect(media).toEqual([]);
+                    pending.push({
+                        action: "play_archive_catalog",
+                        params: selection,
+                    });
+                }
+                return route.fulfill({ json: { status: "ok" } });
+            }
+            const now = Date.now() / 1000;
+            const next = pending.shift();
+            return route.fulfill({
+                json: {
+                    commands: [],
+                    requests: next
+                        ? [
+                              {
+                                  ...next,
+                                  expires_at: now + 40,
+                                  id: String(++sequence).padStart(32, "0"),
+                              },
+                          ]
+                        : [],
+                    server_time: now,
+                },
+            });
+        }
+        if (
+            url.pathname.startsWith("/fixture-media/") ||
+            url.pathname.startsWith("/demo/")
+        ) {
+            const segment = url.pathname.endsWith(".ts");
+            if (url.pathname.startsWith("/fixture-media/"))
+                media.push(url.pathname + url.search);
+            return route.fulfill({
+                body: fs.readFileSync(
+                    path.join(
+                        mediaRoot,
+                        segment ? "segment00.ts" : "index.m3u8"
+                    )
+                ),
+                contentType: segment
+                    ? "video/mp2t"
+                    : "application/vnd.apple.mpegurl",
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    await page.keyboard.press("Shift");
+    await page.evaluate(() => {
+        window.stbStop();
+        window.setPlayerMode(1);
+        window.parentPIN = "";
+        window.parentalArray = [];
+        for (const id of window.cList) window.channels[id].rec = 144;
+        window.getArchiveUrl = (_id, epoch) =>
+            location.origin + "/fixture-media/index.m3u8?utc=" + epoch;
+        window.epgArray = [
+            { name: "Previous channel guide", time: 1, time_to: 2 },
+        ];
+        window.__ottCommandServer.configure({
+            address: location.origin + "/fixture-control",
+            enabled: true,
+            token: "SYNTHETIC_COMMAND_TOKEN_0123456789abcdef",
+        });
+    });
+    await expect.poll(() => results.length).toBe(3);
+    expect(results.map((result) => result.status)).toEqual(["ok", "ok", "ok"]);
+    expect(results[1].data.url).toContain("utc=" + start);
+    expect(results[2].data).toMatchObject({
+        channel: { id: selection.id },
+        dispatched: true,
+        end: start + 300,
+        start,
+    });
+    expect(results[2].data.url).toBeUndefined();
+    await page.waitForFunction((epoch) => {
+        const state = window.__ottClassicPlayback.snapshot();
+        const video = document.querySelector("video");
+        if (
+            state.phase !== "playing" ||
+            state.target?.kind !== "archive" ||
+            state.target.archiveStart !== epoch ||
+            video.currentTime <= 0
+        )
+            return false;
+        window.stbPause();
+        return true;
+    }, start);
+    expect(media[0]).toBe("/fixture-media/index.m3u8?utc=" + start);
+    expect(errors).toEqual([]);
+});
+
 test.beforeEach(async ({ context }) => {
     await context.addInitScript(() => {
         // The fixture has silent AAC. Without an OS audio output, headless

@@ -122,6 +122,13 @@ between batches, keeps at most four guide requests pending, and rejects results
 if the source or channel-load generation changes during collection.
 The previous command-only API remains compatible with older servers and players.
 
+Updated clients additionally support `resolve_archive` and `play_archive_catalog`
+for the CLI's channel → current programme → available archive search. Archive
+resolution is a separate authenticated operation that returns a private media
+URL only for a local availability probe; ordinary catalogue and guide replies
+remain metadata-only. Playback uses the existing archive controller and validates
+the current catalogue receipt, channel access and a maximum 144-hour retention.
+
 ### M3U profiles and restarts
 
 Select M3U with `ott NAME provider m3u` before using profile commands.

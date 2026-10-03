@@ -137,6 +137,7 @@ function remote(f) {
                 "./index",
                 "./remote-profiles",
                 "./remote-restart",
+                "./remote-archive",
             ].includes(name)
         );
         return {};

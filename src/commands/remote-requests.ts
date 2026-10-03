@@ -7,6 +7,7 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
+import { handleRemoteArchive } from "./remote-archive";
 import { handleRemoteProfiles } from "./remote-profiles";
 import { executeRemoteRestart } from "./remote-restart";
 
@@ -438,7 +439,12 @@ export function executeRemoteRequest(
         return;
     }
     var rows = channels();
-    if (request.action === "epg_catalog" || request.action === "play_catalog") {
+    if (
+        request.action === "epg_catalog" ||
+        request.action === "play_catalog" ||
+        request.action === "resolve_archive" ||
+        request.action === "play_archive_catalog"
+    ) {
         var identity = w.__ottSourceIdentity;
         if (!identity || typeof identity.current !== "function") {
             done({
@@ -458,6 +464,10 @@ export function executeRemoteRequest(
                 var channel = w.channels[row.id];
                 var shift = Number(channel.ts) || 0;
                 var entry = {
+                    archiveHours: Math.min(
+                        144,
+                        Math.max(0, Math.floor(Number(channel.rec) || 0))
+                    ),
                     id: String(row.id),
                     name: row.name,
                     number: row.number,
@@ -510,10 +520,20 @@ export function executeRemoteRequest(
                 reject("Channels or provider changed. Retry the EPG query.");
                 return;
             }
-            if (!receiptCurrent())
+            if (!receiptCurrent()) {
+                var revision =
+                    remoteEpgCatalog &&
+                    remoteEpgCatalog.source === catalogSource &&
+                    remoteEpgCatalog.load === catalogLoad &&
+                    remoteEpgCatalog.signature === catalogSignature
+                        ? remoteEpgCatalog.revision
+                        : Date.now().toString(36) +
+                          "-" +
+                          Math.random().toString(36).slice(2);
                 remoteEpgCatalog = {
                     expires: Date.now() + 120000,
                     load: catalogLoad,
+                    revision: revision,
                     signature: catalogSignature,
                     source: catalogSource,
                     token:
@@ -521,11 +541,17 @@ export function executeRemoteRequest(
                         "-" +
                         Math.random().toString(36).slice(2),
                 };
-            reply({ catalog: remoteEpgCatalog.token, channels: metadata });
+            }
+            reply({
+                archive: { revision: remoteEpgCatalog.revision, version: 1 },
+                catalog: remoteEpgCatalog.token,
+                channels: metadata,
+            });
             return;
         }
         if (
-            Object.keys(params).length !== 2 ||
+            Object.keys(params).length !==
+                (request.action === "play_catalog" ? 2 : 5) ||
             typeof params.catalog !== "string" ||
             typeof params.id !== "string" ||
             !receiptCurrent() ||
@@ -544,6 +570,17 @@ export function executeRemoteRequest(
             return;
         }
         selected[0].id = params.id;
+        if (request.action !== "play_catalog") {
+            handleRemoteArchive(
+                w,
+                request,
+                selected[0],
+                receiptCurrent,
+                reply,
+                reject
+            );
+            return;
+        }
         // Reuse channel admission/category handling, after binding the request to
         // the exact ordered catalogue that the remote EPG result described.
         request = {
