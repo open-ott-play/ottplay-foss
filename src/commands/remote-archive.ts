@@ -11,7 +11,10 @@ export function handleRemoteArchive(
 ): void {
     var params = request.params;
     var row = (host.channels || {})[channel.id];
-    var hours = Math.min(144, Math.max(0, Number(row && row.rec) || 0));
+    var hours = Math.min(
+        144,
+        Math.max(0, Math.floor(Number(row && row.rec) || 0))
+    );
     var now = Math.floor(Date.now() / 1000);
     if (
         !current() ||

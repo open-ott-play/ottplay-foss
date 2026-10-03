@@ -925,6 +925,18 @@ function checkRemoteEpgCatalog() {
     );
     assert.notEqual(renewed.data.catalog, archiveSnapshot.data.catalog);
 
+    a.h.channels[7].rec = 0.5;
+    const fractional = a.run("epg_catalog");
+    assert.equal(fractional.data.channels[0].archiveHours, 0);
+    assert.equal(
+        a.run("resolve_archive", {
+            ...params,
+            catalog: fractional.data.catalog,
+        }).status,
+        "rejected",
+        "archive admission must enforce the advertised whole-hour retention"
+    );
+
     for (const provider of ["edem", "xtream", "stalker"]) {
         const named = fixture(provider);
         const row = named.run("epg_catalog").data.channels[0];
