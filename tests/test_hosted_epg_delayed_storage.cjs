@@ -24,19 +24,16 @@ function createDatabase() {
     const data = { cache: new Map(), usage: new Map() };
     const transactions = [];
     const db = {
-        closed: false,
         close() {
             this.closed = true;
         },
+        closed: false,
         createObjectStore(name) {
             if (!data[name]) data[name] = new Map();
         },
         transaction() {
             const operations = [];
             const tx = {
-                onabort: null,
-                oncomplete: null,
-                onerror: null,
                 objectStore(name) {
                     const bucket = data[name];
                     return {
@@ -73,6 +70,9 @@ function createDatabase() {
                         },
                     };
                 },
+                onabort: null,
+                oncomplete: null,
+                onerror: null,
             };
             tx.deliver = (kind) => {
                 if (kind === "success") {
@@ -278,7 +278,17 @@ assert.equal(
     "late open success does not replay match"
 );
 assert.equal(blocked.openings[0].created.db.closed, false);
+assert.equal(
+    blocked.openings[0].created.transactions.length,
+    0,
+    "late open must not replay the initial cache read"
+);
 respond(blocked.requests[0], 200, "blocked-generation");
+assert.equal(
+    blocked.openings[0].created.transactions.length,
+    1,
+    "late open must only host the final active write"
+);
 blocked.openings[0].created.transactions[0].deliver("success");
 assert.equal(types(blocked.messages, "ready").length, 1);
 

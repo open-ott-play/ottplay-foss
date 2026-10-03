@@ -372,18 +372,18 @@ module.exports = function guideFixture(options = {}) {
         };
     }
     return {
+        advanceElapsed,
         calls,
         complete,
+        elapsed: () => elapsedMs,
         elements,
+        epoch: () => epochMs / 1000,
         host,
         now: () => seconds,
         prompts,
         requests,
         row,
         saved,
-        advanceElapsed,
-        elapsed: () => elapsedMs,
-        epoch: () => epochMs / 1000,
         setEpoch(value) {
             if (!independent) throw Error("independent clock required");
             epochMs = value * 1000;

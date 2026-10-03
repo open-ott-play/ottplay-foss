@@ -196,8 +196,8 @@ function createGuideService(ports: GuideServicePorts) {
         scheduleClock();
     }
     // Forward reads inside [selectedAt, retryAt) stay read-only. A backward
-    // epoch or an elapsed retry deadline reselects retained rows and does
-    // projects retained rows without starting a fetch.
+    // epoch or an elapsed retry deadline reselects retained rows without
+    // starting a fetch.
     function alignProjection(reference: GuideReference): boolean {
         if (aligning || !active(reference)) return false;
         var id = key(reference),

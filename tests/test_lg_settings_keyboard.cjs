@@ -87,7 +87,6 @@ function fixture() {
         listFooterElement: w.document.getElementById("listPodval"),
         nativeListInertia: null,
         ott_device: "lg-webos",
-        sNoColorKeys: true,
         setInterval() {
             return ++timer;
         },
@@ -97,6 +96,7 @@ function fixture() {
         showShift(value) {
             shifts.push(String(value));
         },
+        sNoColorKeys: true,
         stbEventToKeyCode(event) {
             return (event && (event.keyCode || event.which)) || 0;
         },
