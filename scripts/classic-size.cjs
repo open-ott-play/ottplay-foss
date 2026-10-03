@@ -72,7 +72,10 @@ const { gzipSync } = require("node:zlib");
 // Visible shuffle/repeat modes, ordered-queue restoration and DOM digit fallback
 // measure 650817 raw / 197647 gzip on Node 26.8.2. Preserve the established
 // native, Node 22 and candidate-suffix allowance for this control-state feature.
-const BUDGET = Object.freeze({ bytes: 651200, gzipBytes: 198400 });
+// Catalogue-bound remote archive resolution/playback adds 2553 raw / 735 gzip
+// bytes: Node 26.8.2 web measures 653370 / 198382. Retain the existing native,
+// Node 22 and candidate-suffix allowance for these admission checks.
+const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 199200 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -113,7 +116,9 @@ const BUDGET = Object.freeze({ bytes: 651200, gzipBytes: 198400 });
 // optional provider asset. Combined with the control-state change, Node 22.23.2
 // measures 748121 / 234576 for web and 748079 / 234635 for native. Keep the
 // entry budget unchanged and allow release suffix room for both feature costs.
-const TOTAL_BUDGET = Object.freeze({ bytes: 748700, gzipBytes: 235000 });
+// The same archive RPCs leave provider assets unchanged: the complete web
+// payload measures 750586 raw / 234697 gzip on Node 26.8.2.
+const TOTAL_BUDGET = Object.freeze({ bytes: 751300, gzipBytes: 236000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

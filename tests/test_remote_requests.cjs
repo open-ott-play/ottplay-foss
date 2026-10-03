@@ -100,11 +100,13 @@ const ctx = {
               ? loadRemoteHelper("remote-profiles")
               : name === "../plugins/vportal"
                 ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
-                : name === "./remote-restart"
-                  ? loadRemoteHelper("remote-restart")
-                  : name === "../utils/caseless"
-                    ? casingContext.exports
-                    : { handleCommand: () => "accepted" },
+                : name === "./remote-archive"
+                  ? loadRemoteHelper("remote-archive")
+                  : name === "./remote-restart"
+                    ? loadRemoteHelper("remote-restart")
+                    : name === "../utils/caseless"
+                      ? casingContext.exports
+                      : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };
@@ -769,9 +771,11 @@ function checkRemoteEpgCatalog() {
         let source = "private-source-identity";
         let clock = Date.now();
         const plays = [];
+        const archives = [];
         const h = {
             ...host,
             __ottActiveProviderDriver: { id: provider },
+            __ottClassicArchive: { open: (start) => archives.push(start) },
             __ottClassicGuide: {
                 peek() {
                     throw new Error("EPG must not be read on the player");
@@ -788,6 +792,7 @@ function checkRemoteEpgCatalog() {
                 7: {
                     channel_name: "РЕН ТВ +2",
                     epg: "ren",
+                    rec: 144,
                     stream_url: "secret-stream",
                     tn: "РЕН ТВ",
                     ts: 900,
@@ -795,7 +800,12 @@ function checkRemoteEpgCatalog() {
                 second: { channel_name: "Другой", password: "secret-password" },
             },
             cList: [7, "second"],
+            getArchiveUrl: (_id, start) =>
+                "https://archive.example/channel?secret=private&utc=" + start,
+            ifParentalAccessChId: () => false,
+            parentalArray: [],
             playChannel: (...args) => plays.push(args),
+            setCurrent: (...args) => plays.push(args),
         };
         const context = vm.createContext({
             ...ctx,
@@ -805,6 +815,7 @@ function checkRemoteEpgCatalog() {
         });
         vm.runInContext(code, context);
         return {
+            archives,
             expire: () => {
                 clock += 120001;
             },
@@ -834,6 +845,7 @@ function checkRemoteEpgCatalog() {
     assert.equal(snapshot.status, "ok");
     assert.deepEqual(snapshot.data.channels, [
         {
+            archiveHours: 144,
             id: "7",
             name: "РЕН ТВ +2",
             number: 1,
@@ -842,6 +854,7 @@ function checkRemoteEpgCatalog() {
             tvgName: "РЕН ТВ",
         },
         {
+            archiveHours: 0,
             id: "second",
             name: "Другой",
             number: 2,
@@ -867,6 +880,50 @@ function checkRemoteEpgCatalog() {
         dispatched: true,
     });
     assert.deepEqual(f.plays, [[0, 0]]);
+    const a = fixture();
+    const archiveSnapshot = a.run("epg_catalog");
+    const params = {
+        catalog: archiveSnapshot.data.catalog,
+        end: now - 300,
+        id: "7",
+        start: now - 600,
+        title: "Archive programme",
+    };
+    assert.equal(a.run("resolve_archive", params).data.resolved, true);
+    assert.deepEqual(a.archives, [], "a probe must not start playback");
+    const archive = a.run("play_archive_catalog", params);
+    assert.equal(archive.status, "ok");
+    assert.equal(archive.data.start, params.start);
+    assert.deepEqual(a.archives, [params.start]);
+    assert.deepEqual(a.plays[0], [0, 0, true]);
+    assert.equal(a.h.epgArray[0].name, params.title);
+    assert(!JSON.stringify(archive).includes("secret"));
+    for (const changed of [
+        { start: now - 144 * 3600 - 1 },
+        { end: now + 1 },
+        { start: true },
+        { start: params.end },
+        { id: "second" },
+        { url: "https://other.example" },
+    ]) {
+        assert.equal(
+            a.run("play_archive_catalog", { ...params, ...changed }).status,
+            "rejected"
+        );
+    }
+    a.h.parentalArray = [7];
+    a.h.__ottParental = { needs: () => true };
+    assert.equal(a.run("resolve_archive", params).status, "rejected");
+    assert.equal(a.run("play_archive_catalog", params).status, "rejected");
+    a.h.parentalArray = [];
+    a.expire();
+    const renewed = a.run("epg_catalog");
+    assert.equal(
+        renewed.data.archive.revision,
+        archiveSnapshot.data.archive.revision,
+        "receipt expiry must not invalidate the archive availability cache"
+    );
+    assert.notEqual(renewed.data.catalog, archiveSnapshot.data.catalog);
 
     for (const provider of ["edem", "xtream", "stalker"]) {
         const named = fixture(provider);
