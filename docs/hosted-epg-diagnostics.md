@@ -20,6 +20,15 @@ full public XMLTV download on the TV. Explicit custom or mixed-source profiles
 retain the XMLTV worker and its existing source precedence; their URLs are not
 submitted to the public EPG service.
 
+Channel matching uses sequential batches of at most 256 channels. If the service
+returns HTTP 504, the client reduces the batch size and retries the remaining
+channels, down to 32 channels per batch. It keeps the smaller size for later
+refreshes in that player session. All batches must finish against one generation
+before new mappings become visible; a terminal failure preserves the previous
+accepted guide. Network failures and other HTTP errors use the normal retry
+policy instead of splitting requests. The minimum batch size prevents repeated
+timeouts from turning a large catalogue into thousands of individual requests.
+
 ## XMLTV processing on the device
 
 The decompressed-input limit is 512 MiB of UTF-8 XML. Count bytes in the
