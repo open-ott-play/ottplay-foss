@@ -520,6 +520,34 @@ if (require.main === module) {
         c.mediaKeyHandler(c.keys.YELLOW);
         assert.equal(tmdb, 1);
     }
+    // Favorites hint must hide when the filtered list is only the Filter control.
+    {
+        const c = fixture();
+        c.sFavorites = 0;
+        const filterRow = { __ottMediaFilter: true, title: "Filter" };
+        const movie = { stream_url: "m.mp4", title: "Movie" };
+        const view = {
+            filter: "nomatch",
+            frame: {
+                items: [{ payload: filterRow }],
+                route: { kind: "catalog", target: "", title: "" },
+                selected: 0,
+            },
+            frames: [{}, {}],
+            revision: 1,
+        };
+        c.showMediaList1(view);
+        assert(
+            !c.elements["#listPodval"].innerHTML.includes("Add to favorites"),
+            "Favorites hint hidden when only the Filter control remains"
+        );
+        view.frame.items = [{ payload: filterRow }, { payload: movie }];
+        c.showMediaList1(view);
+        assert(
+            c.elements["#listPodval"].innerHTML.includes("Add to favorites"),
+            "Favorites hint remains when a favoriteable media row is present"
+        );
+    }
     // An outstanding TV guide callback must not overwrite the playing movie's OSD.
     {
         const c = fixture();
