@@ -305,11 +305,11 @@ export function uiInit(): void {
                 top: (720 * getViewportHeightScale() - $(this).height()) / 2,
             });
     });
-    ["dialogbox", "listPopUp", "listDetail"].forEach(function (id) {
+    ["dialogbox", "listPopUp", "listDetail", "listEdit"].forEach(function (id) {
         var root = document.getElementById(id);
         if (!root || (root as any).__ottButtonsBound) return;
         (root as any).__ottButtonsBound = true;
-        var listButtons = id !== "dialogbox";
+        var listButtons = id !== "dialogbox" && id !== "listEdit";
         var dispatchButton = function (event: Event): void {
             var target = event.target as Node | null;
             if (target && target.nodeType !== 1) target = target.parentNode;
@@ -330,12 +330,15 @@ export function uiInit(): void {
             event.stopImmediatePropagation();
             var w = window as any;
             var port = w.__ottClassicScreenPort;
-            var owner = listButtons ? port.listOwner() : port.owner("dialog");
+            var owner = listButtons
+                ? port.listOwner()
+                : port.owner(id === "listEdit" ? "editor" : "dialog");
             var key = Number(button.getAttribute("data-ott-key"));
             if (
                 owner &&
                 owner.foreground() &&
-                (!listButtons || $(root!).is(":visible")) &&
+                ((!listButtons && id !== "listEdit") ||
+                    $(root!).is(":visible")) &&
                 key &&
                 isFinite(key)
             )
