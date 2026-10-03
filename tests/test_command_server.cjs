@@ -1242,7 +1242,7 @@ for (const mode of [
                 mode === "invalid"
                     ? undefined
                     : mode === "oversize"
-                      ? "x".repeat(800000)
+                      ? "x".repeat(2 * 1024 * 1024)
                       : {},
             status: mode === "rejected" ? "rejected" : "ok",
         });
