@@ -1032,6 +1032,17 @@ function startCoreEngine(
     window.playTime = window.playTime ?? 0;
 }
 
+/**
+ * Start main-video playback using hls.js, Shaka, or native HTML5.
+ * Configure transport, resume seeking, and session-scoped Auto HLS fallback.
+ *
+ * @param url - Prepared media URL to load.
+ * @param position - Optional playback start offset in seconds.
+ * @param session - Playback session identifier used to ignore stale callbacks.
+ * @param originalUrl - Original stream URL retained for recovery.
+ * @param nativeFile - Use native playback for a prepared local file.
+ * @param forceMse - Prefer hls.js when Media Source Extensions are supported.
+ */
 function startCorePlayback(
     url: string,
     position: number | undefined,
