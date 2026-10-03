@@ -13,12 +13,14 @@ name: Auto Merge PRs
       - converted_to_draft
 permissions:
   contents: read
-  pull-requests: write
 concurrency:
   group: automerge-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   auto-merge:
+    permissions:
+      contents: read
+      pull-requests: write
     if: contains(fromJSON('["4alvit","californiantiramisu","dependabot[bot]","renovate[bot]"]'), github.event.pull_request.user.login)
     uses: victron-venus/venus-os-ci-toolkit/.github/workflows/auto-merge.yml@bce4aac88f50366ff6e140bdc0b179c12f23c0f5 # main
     with:

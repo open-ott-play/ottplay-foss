@@ -1852,7 +1852,7 @@ export function renderButtonHint(
     if (!a) description = '<div class="btn">' + description + "</div>";
     return (
         '<span role="button" tabindex="0" aria-label="' +
-        metadataText(description.replace(/<[^>]*>/g, " ")) +
+        metadataText(description.replace(/<[^<>]*>/g, " ")) +
         '" data-ott-key="' +
         keyLabel +
         '" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();event.stopPropagation();this.click();}" onclick="event.stopPropagation();_doKey(' +

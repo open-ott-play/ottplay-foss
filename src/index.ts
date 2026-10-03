@@ -1866,11 +1866,15 @@ function onStbReady(): void {
     } catch (e) {
         var launchEl2 = document.getElementById("launch");
         if (launchEl2) {
-            launchEl2.innerHTML +=
-                "<br/><br/><b>Exception.StbReady:</b> name " +
-                e.name +
-                ", message " +
-                e.message;
+            launchEl2.appendChild(document.createElement("br"));
+            launchEl2.appendChild(document.createElement("br"));
+            launchEl2.appendChild(document.createElement("b")).textContent =
+                "Exception.StbReady:";
+            launchEl2.appendChild(
+                document.createTextNode(
+                    " name " + e.name + ", message " + e.message
+                )
+            );
         }
         console.error(e);
     }

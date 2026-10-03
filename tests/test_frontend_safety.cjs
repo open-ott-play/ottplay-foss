@@ -2,6 +2,7 @@ const { cloudSource } = require("./helpers/cloud-source-fixture.cjs");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
+const vm = require("node:vm");
 const acorn = require("acorn");
 const {
     attachSourceAliases,
@@ -521,6 +522,110 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
     } finally {
         w.close();
     }
+});
+test("startup exception names and messages remain text and preserve the launch panel", () => {
+    const w = fixture();
+    try {
+        const launch = w.document.createElement("div");
+        launch.id = "launch";
+        const previous = w.document.createElement("button");
+        previous.textContent = "Boot progress";
+        launch.appendChild(previous);
+        w.document.body.appendChild(launch);
+        const failure = new Error(hostile + ' & "message"');
+        failure.name = hostile + ' & "name"';
+        w.loadSettings = () => {
+            throw failure;
+        };
+        let logged;
+        w.console.error = (error) => (logged = error);
+        w.eval(func("src/index.ts", "onStbReady"));
+        w.onStbReady();
+        assert.equal(logged, failure);
+        assert.equal(launch.firstChild, previous);
+        assert.equal(
+            launch.querySelector("b").textContent,
+            "Exception.StbReady:"
+        );
+        assert.equal(launch.querySelectorAll("br").length, 2);
+        assert(
+            launch.textContent.includes(
+                "name " + failure.name + ", message " + failure.message
+            )
+        );
+        assert.equal(launch.querySelectorAll("img,script,[onerror]").length, 0);
+        assert.equal(w.__executed, undefined);
+    } finally {
+        w.close();
+    }
+});
+test("legacy editor treats captions and field values as text and round-trips saved input", () => {
+    const w = fixture();
+    try {
+        w.eval(
+            func("devices/legacy-core.js", "showEditKey2") +
+                func("devices/legacy-core.js", "editKey2")
+        );
+        w.listCaption = w.document.getElementById("listCaption");
+        w.saveCPD = () => {};
+        w.restoreCPD = () => {};
+        w.btnDiv = w.renderButtonHint;
+        w.editCaption = hostile + ' & "caption"';
+        w.editvar =
+            '\"><img src="missing" onerror="window.__executed=true">&quot;&amp;';
+        w.showEditKey2();
+        const panel = w.document.getElementById("listEdit");
+        const input = panel.querySelector("input");
+        assert.equal(w.listCaption.textContent, w.editCaption);
+        assert(panel.textContent.startsWith(w.editCaption + ":"));
+        assert.equal(input.value, w.editvar);
+        assert.equal(input.style.color, "gold");
+        assert.equal(w.document.activeElement, input);
+        assert.equal(
+            w.document.querySelectorAll("img,script,[onerror]").length,
+            0
+        );
+        const updated = 'https://example.invalid/?a="<&b=&quot;';
+        input.value = updated;
+        let saved;
+        w.setEdit = () => (saved = w.editvar);
+        w.editKey2(w.keys.ENTER);
+        assert.equal(saved, updated);
+        assert.equal(panel.style.display, "none");
+        // CSS values must not escape into attributes or markup either.
+        w.curColor = 'red;\" onfocus="window.__executed=true';
+        w.showEditKey2();
+        assert.equal(panel.querySelectorAll("[onfocus],img,script").length, 0);
+        assert.equal(w.__executed, undefined);
+    } finally {
+        w.close();
+    }
+});
+test("button hint label stripping is bounded on long unmatched tag starts", () => {
+    // Isolate the label stage from the HTML sanitizer: a future sanitizer must
+    // not make malformed markup trigger quadratic backtracking in this stage.
+    const context = vm.createContext({
+        _: (value) => value,
+        keys: {},
+        metadataHtml: (value) => value,
+        translate: (value) => value,
+        window: {},
+    });
+    vm.runInContext(
+        func("src/utils/helpers.ts", "metadataText") +
+            func("src/ui/index.ts", "renderButtonHint"),
+        context
+    );
+    const call =
+        (bundleAst ? classicName("renderButtonHint") : "renderButtonHint") +
+        '(13, "Enter", description)';
+    context.description = "<".repeat(150000);
+    const rendered = vm.runInContext(call, context, { timeout: 2000 });
+    assert(rendered.includes('aria-label="' + "&lt;".repeat(150000) + '"'));
+    context.description = "<b>Play</b><br> / pause";
+    assert(
+        vm.runInContext(call, context).includes('aria-label=" Play   / pause"')
+    );
 });
 test("real password action selects a secret editor; normal input restores text and controls are keyboard accessible", () => {
     const w = fixture();

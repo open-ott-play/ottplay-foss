@@ -287,23 +287,21 @@ function editKey2(code) {
 }
 function showEditKey2() {
     saveCPD();
-    listCaption.innerHTML = editCaption;
-    $("#listEdit")
+    listCaption.textContent = editCaption;
+    var panel = $("#listEdit")
         .show()
         .html(
-            editCaption +
-                ":<br/><br/>" +
-                '<br/><input type="text" id="editvar" value="' +
-                editvar +
-                '" style="background-color: black; color:' +
-                curColor +
-                '; font-size:150%; width: 95%;" autofocus><br/><br/>' +
+            '<br/><br/><br/><input type="text" id="editvar" style="background-color: black; font-size:150%; width: 95%;" autofocus><br/><br/>' +
                 "<br/>" +
                 btnDiv(keys.EXIT, strEXIT, "- return without save") +
                 "<br/>" +
                 btnDiv(keys.ENTER, strENTER, "- save")
         );
-    document.getElementById("editvar").focus();
+    panel.prepend(document.createTextNode(editCaption + ":"));
+    var input = document.getElementById("editvar");
+    input.value = editvar;
+    input.style.color = curColor;
+    input.focus();
 }
 var hlsp = null;
 function stbPlayPip(url) {
