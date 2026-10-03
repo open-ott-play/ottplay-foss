@@ -195,30 +195,9 @@ function createGuideService(ports: GuideServicePorts) {
         });
         scheduleClock();
     }
-    function programmeKey(row: GuideProgramme | null): string {
-        return row
-            ? row.id + "\0" + row.start + "\0" + row.end + "\0" + row.title
-            : "";
-    }
-    function sameProgrammes(
-        left: GuideProjection,
-        right: GuideProjection
-    ): boolean {
-        if (programmeKey(left.current) !== programmeKey(right.current))
-            return false;
-        if (left.following.length !== right.following.length) return false;
-        for (var index = 0; index < left.following.length; index++) {
-            if (
-                programmeKey(left.following[index]) !==
-                programmeKey(right.following[index])
-            )
-                return false;
-        }
-        return true;
-    }
     // Forward reads inside [selectedAt, retryAt) stay read-only. A backward
     // epoch or an elapsed retry deadline reselects retained rows and does
-    // not start a fetch when the selected programmes change.
+    // projects retained rows without starting a fetch.
     function alignProjection(reference: GuideReference): boolean {
         if (aligning || !active(reference)) return false;
         var id = key(reference),
@@ -230,14 +209,6 @@ function createGuideService(ports: GuideServicePorts) {
             return false;
         var rows = read(reference);
         if (!rows) return false;
-        var selection = ports.select(rows, now, ports.nextCount());
-        if (sameProgrammes(state.projection, selection)) {
-            // Same programmes after a rollback still open a stable window.
-            // An elapsed horizon keeps the stored retryAt so the caller can
-            // fetch instead of sliding that deadline forward.
-            if (now < state.selectedAt) state.selectedAt = now;
-            return false;
-        }
         aligning = true;
         try {
             project(reference, rows);
