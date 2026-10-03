@@ -34,8 +34,15 @@ function fixture(capacity = 8, options = {}) {
         },
         nextCount: () => 2,
         now: () => (independent ? epoch : now),
-        select: (rows, time, count) =>
-            host.OttPlayCore.guideScheduleSelection(rows, time, count),
+        select(rows, time, count) {
+            const selected = host.OttPlayCore.guideScheduleSelection(
+                rows,
+                time,
+                count
+            );
+            if (options.afterSelect) options.afterSelect();
+            return selected;
+        },
         timer(fn, delay) {
             const id = ++nextTimer;
             const wait = Math.max(0, Number(delay) || 0);
@@ -571,6 +578,30 @@ check(
         assert.equal(f.requests.length, 1);
     }
 );
+
+check("projection records the same epoch used to select its programme", () => {
+    let rollback = true;
+    const f = fixture(8, {
+        afterSelect() {
+            if (rollback) {
+                rollback = false;
+                f.setEpoch(T + 30);
+            }
+        },
+        independentClock: true,
+    });
+    f.setEpoch(T + 90);
+    f.service.seed(
+        f.ref(),
+        clockRows.map((row) => ({ ...row }))
+    );
+    assert.equal(f.epoch(), T + 30);
+    const snapshot = f.service.snapshot(f.ref());
+    assert.equal(snapshot.current.title, "Programme A");
+    assert.equal(snapshot.current.start, T);
+    assert.equal(snapshot.following[0].title, "Programme B");
+    assert.equal(f.requests.length, 0);
+});
 
 console.log(
     "PASS " + passed + " GuideService scenarios with compiled shared core"

@@ -1496,4 +1496,32 @@ check(
     }
 );
 
+for (const delay of [0, -10]) {
+    check(`nonpositive interval ${delay} advances and can be cancelled`, () => {
+        const f = fixture({ independentClock: true, now: CLOCK_BASE });
+        let intervals = 0;
+        let timeouts = 0;
+        f.host.setTimeout(() => {
+            timeouts++;
+        }, 0);
+        const id = f.host.setInterval(() => {
+            intervals++;
+        }, delay);
+        f.advanceElapsed(0);
+        assert.equal(timeouts, 1, "zero-delay timeout remains immediate");
+        assert.equal(
+            intervals,
+            0,
+            "interval advances before its first callback"
+        );
+        f.advanceElapsed(3);
+        assert.equal(intervals, 3);
+        assert.equal(f.elapsed(), 3);
+        f.host.clearInterval(id);
+        f.advanceElapsed(3);
+        assert.equal(intervals, 3, "cancelled interval stays retired");
+        assert.equal(f.timers.has(id), false);
+    });
+}
+
 console.log("PASS " + count + " guide integration scenarios");

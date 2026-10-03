@@ -172,10 +172,9 @@ function createGuideService(ports: GuideServicePorts) {
     }
     function project(reference: GuideReference, rows: GuideProgramme[]): void {
         var id = key(reference),
-            previous = states[id];
-        var selection = clone(
-            ports.select(rows, ports.now(), ports.nextCount())
-        );
+            previous = states[id],
+            now = ports.now();
+        var selection = clone(ports.select(rows, now, ports.nextCount()));
         var state: Current = {
             listeners:
                 previous && previous.reference.token === reference.token
@@ -183,7 +182,7 @@ function createGuideService(ports: GuideServicePorts) {
                     : [],
             projection: selection,
             reference: reference,
-            selectedAt: ports.now(),
+            selectedAt: now,
         };
         states[id] = state;
         state.listeners.slice().forEach(function (notify) {
@@ -495,15 +494,12 @@ function createGuideService(ports: GuideServicePorts) {
             Object.keys(oldStates).forEach(function (id) {
                 var state = oldStates[id];
                 if (active(state.reference) && state.listeners.length) {
+                    var now = ports.now();
                     states[id] = {
                         listeners: state.listeners.slice(),
-                        projection: ports.select(
-                            [],
-                            ports.now(),
-                            ports.nextCount()
-                        ),
+                        projection: ports.select([], now, ports.nextCount()),
                         reference: state.reference,
-                        selectedAt: ports.now(),
+                        selectedAt: now,
                     };
                     observe(state.reference);
                 }

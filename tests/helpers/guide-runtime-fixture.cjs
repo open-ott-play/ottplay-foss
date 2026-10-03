@@ -272,7 +272,7 @@ module.exports = function guideFixture(options = {}) {
     if (independent) {
         host.setInterval = function (fn, ms) {
             const id = ++timerId;
-            const delay = Math.max(0, Number(ms) || 0);
+            const delay = Math.max(1, Number(ms) || 0);
             timers.set(id, {
                 delay,
                 due: elapsedMs + delay,
