@@ -1089,7 +1089,24 @@ console.log(
         rpc.next();
         return rpc.requests.at(-1).request.body;
     };
-    for (const text of ["я".repeat(800000), "\\".repeat(400000)]) {
+    for (const text of [
+        "x".repeat(1800000),
+        "я".repeat(800000),
+        "\\".repeat(400000),
+        "😀".repeat(400000),
+    ]) {
+        payload = text;
+        const body = ask(executions + 1);
+        assert.ok(Buffer.byteLength(body) < 2 * 1024 * 1024);
+        assert.equal(JSON.parse(body).status, "ok");
+        assert.equal(JSON.parse(body).data.payload, payload);
+    }
+    for (const text of [
+        "я".repeat(1050000),
+        "\\".repeat(1050000),
+        "😀".repeat(530000),
+        "界".repeat(700000),
+    ]) {
         payload = text;
         const body = ask(executions + 1);
         assert.ok(Buffer.byteLength(body) < 2 * 1024 * 1024);
