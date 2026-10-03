@@ -6,12 +6,16 @@ detached view. Back, replacement and close revoke pending completions before
 calling transport cleanup. Incremental page updates have the same frame lifetime.
 
 Navigation reads have different copying contracts. `revision()` reads the current
-operation generation without traversing frames. `highlight(index)` changes owned
+published-view revision without traversing frames. `highlight(index)` changes owned
 selection without returning an item or copying its metadata; missing rows leave
 selection unchanged. `select(index)` still returns a detached selected item, and
 `snapshot()` still detaches the complete view for consumers. Use `capture()` when
 work must also be invalidated by a selection change: highlighting another row
-does not increment the operation generation.
+does not increment the navigation or published-view revision. Ordinary captures
+retire permanently when the effective selected index, presence, item ID or source
+changes, even if the original selection later returns. A refresh that preserves
+that complete selection retains its capture. Selection checks read scalar state
+without copying payloads.
 `capture("frame")` retains navigation and filter ownership while allowing a
 different highlighted row; explicit folder shuffling uses this scope.
 
@@ -150,8 +154,11 @@ unavailable callback; an old failure cannot reopen the library over a newer task
 Request revision and published-view revision have separate lifetimes: refiltering
 and incremental replacement retire old highlight callbacks without invalidating a
 current provider page stream. Selection captures also retain the selected item's
-source and ID, so replacing a row at the same index cannot authorize an older PIN
-intent. Filter text commits only after cancellation succeeds without a newer
+source and ID and its selection generation, so replacing a row at the same index
+and restoring it cannot authorize an older PIN or editor callback. Paging compares
+the final effective selection after cursor replacement; temporary selection
+reset during filtering does not retire an unchanged selection. Filter text
+commits only after cancellation succeeds without a newer
 navigation taking ownership. Favorite removal similarly rechecks its navigation
 owner after journal callbacks before updating the visible list.
 

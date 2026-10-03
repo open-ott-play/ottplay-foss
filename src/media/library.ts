@@ -58,6 +58,7 @@ function mediaLibraryCopy(value: any, seen?: any[]): any {
 function createMediaLibrary(ports: MediaLibraryPorts) {
     var frames: MediaOwnedFrame[] = [];
     var filterRevision = 0;
+    var selectionRevision = 0;
     var revision = 0;
     var viewRevision = 0;
     var loading = false;
@@ -123,11 +124,29 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
     function setItems(
         frame: MediaOwnedFrame,
         items: MediaLibraryItem[],
-        selected?: MediaLibraryItem
+        selected?: MediaLibraryItem,
+        cursorIndex?: number
     ) {
+        var index = frame.selected,
+            previous = frame.items[index],
+            itemId = previous && previous.ref.itemId,
+            sourceId = previous && previous.ref.sourceId;
         viewRevision++;
         frame.catalog = items;
         applyFilter(frame, selected);
+        if (cursorIndex !== undefined)
+            frame.selected = Math.max(
+                0,
+                Math.min(cursorIndex, frame.items.length - 1)
+            );
+        var current = frame.items[frame.selected];
+        if (
+            frames[frames.length - 1] === frame &&
+            (index !== frame.selected ||
+                itemId !== (current && current.ref.itemId) ||
+                sourceId !== (current && current.ref.sourceId))
+        )
+            selectionRevision++;
     }
     function render() {
         ports.render(snapshot("current"));
@@ -135,6 +154,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
     function selectItem(index: number): MediaLibraryItem | null {
         var frame = frames[frames.length - 1];
         if (!frame || !frame.items[index]) return null;
+        if (frame.selected !== index) selectionRevision++;
         frame.selected = index;
         return frame.items[index];
     }
@@ -217,14 +237,14 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
             var merged = frame.catalog
                 .slice(0, position)
                 .concat(incoming, frame.catalog.slice(position + 1));
-            setItems(frame, merged, selected);
             // The loading row is replaced in place. Moving away during the
             // request keeps that newer selection, including filtered catalogs.
-            if (selected === item)
-                frame.selected = Math.max(
-                    0,
-                    Math.min(selectedIndex, frame.items.length - 1)
-                );
+            setItems(
+                frame,
+                merged,
+                selected,
+                selected === item ? selectedIndex : undefined
+            );
             render();
         };
         done.isCurrent = active;
@@ -316,6 +336,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
         capture: function (scope?: "frame") {
             var token = revision;
             var filtered = filterRevision;
+            var selection = selectionRevision;
             var frame = frames[frames.length - 1];
             var selected = frame && frame.selected;
             var item = frame && frame.items[selected];
@@ -326,7 +347,8 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
                     filtered === filterRevision &&
                     frame === frames[frames.length - 1] &&
                     (scope === "frame" ||
-                        ((!frame || selected === frame.selected) &&
+                        (selection === selectionRevision &&
+                            (!frame || selected === frame.selected) &&
                             (item
                                 ? current &&
                                   current.ref.itemId === item.ref.itemId &&
@@ -357,7 +379,7 @@ function createMediaLibrary(ports: MediaLibraryPorts) {
                     item.ref.sourceId !== ref.sourceId
                 )
                     return false;
-                frame.selected = index;
+                selectItem(index);
                 return true;
             });
         },
