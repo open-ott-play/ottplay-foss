@@ -203,7 +203,16 @@ contract; it is separate from the MAC-based Stalker driver.
 
 `stalker-driver.ts` owns MAC/portal authentication, catalog and guide requests
 through the shared-core Stalker session. It preserves the JSON POST protocol,
-MAC editor and archive URLs without replacing global AJAX behavior.
+MAC editor and archive URLs without replacing global AJAX behavior. Its 15 portal
+profiles are stored together in `stalker_data` as `{ active, portals }`. Reading a
+legacy `{ portal, mac }` record projects it into the first profile; the next save
+persists the new format without retaining session tokens. The first profile keeps
+the original storage keys and source namespace. Other profiles isolate channel
+preferences, favorites and playback history, even when they use the same account.
+Selecting a profile retires the previous catalog, guide and temporary stream-link
+requests before loading channels. Names and inactive profile edits keep the current
+session. In settings, Enter loads a saved profile or edits the active/empty one;
+the yellow button edits any profile, and Back discards an unsaved draft.
 `catalog-drivers.ts` supplies ITV, OTTCLUB and Shura instances. Their full/current
 guide requests, JSONP phases, catalog EPG seeds and credential changes have
 explicit lifetimes. The settings codec retains ITV subscription information,

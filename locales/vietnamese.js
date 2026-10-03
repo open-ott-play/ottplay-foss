@@ -634,6 +634,7 @@ var keyStrings = {
     "Preview in channel list": "Xem trước trong danh sách kênh",
     Previous: "Trước",
     "Privacy policy": "Chính sách quyền riêng tư",
+    "Profile name": "Tên hồ sơ",
     "Protect Adult Channels": "Bảo vệ kênh người lớn",
     "Protect Change Provider": "Bảo vệ thay đổi nhà cung cấp",
     "Protect Settings": "Bảo vệ cài đặt",
@@ -719,6 +720,7 @@ var keyStrings = {
     "Select playlist file": "Chọn tệp danh sách phát",
     "Select playlist template source for EPG and logos":
         "Chọn nguồn mẫu danh sách phát cho EPG và biểu trưng",
+    "Select Stalker portal": "Chọn cổng Stalker",
     "Send request": "Gửi yêu cầu",
     "Send settings": "Gửi cài đặt",
     "Send this code from your proxy in the Authorization: Bearer header.":

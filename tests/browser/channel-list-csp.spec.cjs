@@ -1839,6 +1839,7 @@ for (const profile of ["tauri", "capacitor"]) {
                         load(_target, done) {
                             window.mediaRecords = [
                                 {
+                                    description: "Fixture media description",
                                     id: 1,
                                     stream_url: "fixture.mp4",
                                     title: "Film",
@@ -1870,6 +1871,11 @@ for (const profile of ["tauri", "capacitor"]) {
             await expect(
                 controls.getByRole("button", { name: "Repeat: Off" })
             ).toBeFocused();
+            // The debounced detail renderer replaces this container's contents.
+            // Wait for its real output before inserting the forged control.
+            await expect(page.locator("#listDetail > #_prd")).toHaveText(
+                "Fixture media description"
+            );
             await page.evaluate(() => {
                 const forged = document.createElement("div");
                 forged.id = "mediaPlaybackControls";

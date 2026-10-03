@@ -636,6 +636,7 @@ var keyStrings = {
     "Preview in channel list": "Pratinjau dalam daftar saluran",
     Previous: "Sebelumnya",
     "Privacy policy": "Kebijakan privasi",
+    "Profile name": "Nama profil",
     "Protect Adult Channels": "Lindungi saluran dewasa",
     "Protect Change Provider": "Lindungi pergantian penyedia",
     "Protect Settings": "Lindungi pengaturan",
@@ -725,6 +726,7 @@ var keyStrings = {
     "Select playlist file": "Pilih file daftar putar",
     "Select playlist template source for EPG and logos":
         "Pilih sumber templat daftar putar untuk EPG dan logo",
+    "Select Stalker portal": "Pilih portal Stalker",
     "Send request": "Kirim permintaan",
     "Send settings": "Kirim pengaturan",
     "Send this code from your proxy in the Authorization: Bearer header.":

@@ -179,12 +179,14 @@ test("provider disposal and credentials changes retire requests and URLs", () =>
         assert.equal(f.driver.logo(42), "");
         assert.equal(f.driver.archive(42, 1, 2), "");
         if (mode === "save")
-            assert.deepEqual(JSON.parse(f.saved.get("stalker_data")), {
-                data: null,
-                mac: "other-mac",
-                portal: "https://other.test",
-                token: "",
-            });
+            assert.deepEqual(
+                JSON.parse(f.saved.get("stalker_data")).portals[0],
+                {
+                    mac: "other-mac",
+                    name: "",
+                    portal: "https://other.test",
+                }
+            );
     }
 });
 
@@ -296,7 +298,7 @@ function settingsFixture() {
     let reloads = 0;
     Object.assign(host, {
         $: () => ({ hide() {} }),
-        keys: { ENTER: 13, RETURN: 27 },
+        keys: { ENTER: 13, RETURN: 27, YELLOW: 405 },
         listCaption: {},
         listDetail: {},
         listFooter: {},
@@ -325,15 +327,16 @@ function settingsFixture() {
 test("portal/MAC editor preserves UI, normalization and canonical persistence", () => {
     const f = settingsFixture(),
         w = f.host;
-    assert.equal(
-        w.popupArray[0],
-        "Stalker portal settings: portal.test (00:1a:79:01:02:03)"
-    );
+    assert.equal(w.popupArray[0], "Stalker portal settings: 1 - portal.test");
     w.popupActions[0]();
+    assert.equal(w.listCaption.innerHTML, "Select Stalker portal");
+    assert.equal(w.listArray.length, 15);
+    w.listKeyHandler(w.keys.ENTER);
     assert.equal(w.listCaption.innerHTML, "Stalker Portal Provider");
     assert.deepEqual(clone(w.listArray), [
         "Portal URL: https://portal.test/",
         "MAC address: 00:1a:79:01:02:03",
+        "Profile name: ",
         "",
         "Save and load channels",
     ]);
@@ -345,21 +348,17 @@ test("portal/MAC editor preserves UI, normalization and canonical persistence", 
     w.editvar = " 00:1a:2b:3c:4d:5e ";
     w.setEdit();
     assert.equal(f.driver.credentials().server, "https://portal.test/");
-    w.selIndex = 3;
+    w.selIndex = 4;
     const save = w.listKeyHandler;
     save(w.keys.ENTER);
     save(w.keys.ENTER);
     assert.equal(f.reloads, 1);
-    assert.deepEqual(JSON.parse(f.saved.get("stalker_data")), {
-        data: null,
+    assert.deepEqual(JSON.parse(f.saved.get("stalker_data")).portals[0], {
         mac: "00:1A:2B:3C:4D:5E",
+        name: "",
         portal: "https://other.test/path",
-        token: "",
     });
-    assert.equal(
-        w.popupArray[0],
-        "Stalker portal settings: other.test (00:1A:2B:3C:4D:5E)"
-    );
+    assert.equal(w.popupArray[0], "Stalker portal settings: 1 - other.test");
 });
 
 test("editor cancellation, replacement and duplicate callbacks cannot write", () => {
@@ -369,6 +368,7 @@ test("editor cancellation, replacement and duplicate callbacks cannot write", ()
         const original = f.saved.get("stalker_data");
         f.ui.edit();
         w.listKeyHandler(w.keys.ENTER);
+        w.listKeyHandler(w.keys.ENTER);
         const complete = w.setEdit;
         const oldKeys = w.listKeyHandler;
         if (mode === "cancel") w.listKeyHandler(w.keys.RETURN);
@@ -377,7 +377,7 @@ test("editor cancellation, replacement and duplicate callbacks cannot write", ()
         const display = clone(w.listArray);
         w.editvar = "https://stale.test";
         complete();
-        w.selIndex = 3;
+        w.selIndex = 4;
         oldKeys(w.keys.ENTER);
         assert.equal(f.saved.get("stalker_data"), original);
         assert.deepEqual(clone(w.listArray), display);
@@ -386,6 +386,7 @@ test("editor cancellation, replacement and duplicate callbacks cannot write", ()
     const f = settingsFixture(),
         w = f.host;
     f.ui.edit();
+    w.listKeyHandler(w.keys.ENTER);
     w.listKeyHandler(w.keys.ENTER);
     const first = w.setEdit;
     w.editvar = "https://first.test";
@@ -397,6 +398,205 @@ test("editor cancellation, replacement and duplicate callbacks cannot write", ()
     w.listKeyHandler(w.keys.ENTER);
     first();
     assert.equal(w.listArray[0], "Portal URL: https://first.test");
+});
+
+test("fifteen profiles migrate the singleton and survive restart without credentials loss", () => {
+    const f = fixture();
+    const original = f.saved.get("stalker_data");
+    const config = f.driver.configuration();
+    assert.equal(config.active, 0);
+    assert.equal(config.portals.length, 15);
+    assert.equal(
+        f.saved.get("stalker_data"),
+        original,
+        "reading does not rewrite legacy settings"
+    );
+    for (let index = 1; index < 15; index++)
+        config.portals[index] = {
+            mac: "02:00:00:00:00:" + String(index).padStart(2, "0"),
+            name: "Portal " + (index + 1),
+            portal: "https://portal" + index + ".test/c/",
+        };
+    config.active = 14;
+    assert.equal(f.driver.saveConfiguration(config), true);
+    const restarted = fixture({
+        config: JSON.parse(f.saved.get("stalker_data")),
+    });
+    assert.equal(restarted.driver.configuration().active, 14);
+    assert.equal(
+        restarted.driver.credentials().server,
+        "https://portal14.test/c/"
+    );
+    restarted.driver.saveCredentials({
+        password: "",
+        server: "https://updated.test/c/",
+        username: "02:00:00:00:01:14",
+    });
+    const saved = restarted.driver.configuration();
+    assert.deepEqual(clone(saved.portals[0]), {
+        mac: "00:1a:79:01:02:03",
+        name: "",
+        portal: "https://portal.test/",
+    });
+    assert.equal(saved.portals[14].name, "Portal 15");
+    assert.equal(saved.portals[13].portal, "https://portal13.test/c/");
+    saved.active = 0;
+    restarted.driver.saveConfiguration(saved);
+    assert.equal(restarted.driver.credentials().server, "https://portal.test/");
+    saved.portals[0].portal = "https://uncommitted.test";
+    assert.equal(
+        restarted.driver.credentials().server,
+        "https://portal.test/",
+        "snapshots are isolated"
+    );
+});
+
+test("malformed profile arrays stay bounded and credentials remain strings", () => {
+    for (const active of [-1, 15, 1.5, "bad"]) {
+        const f = fixture({
+            config: {
+                active,
+                portals: [null, "wrong", { mac: 12, name: [], portal: {} }],
+            },
+        });
+        const config = f.driver.configuration();
+        assert.equal(config.active, 0);
+        assert.equal(config.portals.length, 15);
+        assert(
+            config.portals.every((slot) =>
+                Object.values(slot).every((value) => value === "")
+            )
+        );
+    }
+});
+
+test("switching duplicate accounts still retires the old profile's catalog and guide", () => {
+    const f = loaded();
+    const config = f.driver.configuration();
+    config.portals[1] = clone(config.portals[0]);
+    assert(f.driver.saveConfiguration(config));
+    let guides = 0;
+    f.driver.guide(42, () => guides++);
+    const request = f.requests.at(-1);
+    config.active = 1;
+    assert(f.driver.saveConfiguration(config));
+    assert.equal(request.aborts, 1);
+    request.done({ result: [] });
+    assert.equal(guides, 0);
+    assert.equal(f.driver.stream(42), "");
+    assert.equal(f.driver.logo(42), "");
+    assert.equal(f.driver.archive(42, 1, 2), "");
+    let catalogs = 0;
+    f.driver.load(() => catalogs++);
+    f.requests.at(-1).done({ result: {} });
+    f.requests.at(-1).done(catalog(7));
+    assert.equal(catalogs, 1);
+    assert.equal(f.driver.stream(7), "https://live.test/7");
+});
+
+test("inactive profile and name edits preserve the active session; abort reentry wins", () => {
+    const f = loaded();
+    const config = f.driver.configuration();
+    config.portals[0].name = "News";
+    config.portals[1] = {
+        mac: "02:00:00:00:00:02",
+        name: "Other",
+        portal: "https://other.test/",
+    };
+    let guides = 0;
+    f.driver.guide(42, () => guides++);
+    const pending = f.requests.at(-1);
+    assert(f.driver.saveConfiguration(config));
+    assert.equal(pending.aborts, 0);
+    assert.equal(f.driver.stream(42), "https://live.test/42");
+    pending.done({ result: [] });
+    assert.equal(guides, 1);
+    f.driver.guide(42, () => guides++);
+    f.requests.at(-1).onAbort = () =>
+        f.driver.saveCredentials({
+            password: "",
+            server: "https://newest.test/",
+            username: "02:00:00:00:00:03",
+        });
+    config.active = 1;
+    assert.equal(f.driver.saveConfiguration(config), false);
+    assert.equal(f.driver.credentials().server, "https://newest.test/");
+    assert.equal(f.driver.configuration().active, 0);
+});
+
+test("a credentials draft from another profile cannot overwrite the selected one", () => {
+    const f = fixture();
+    const draft = f.driver.credentials();
+    const config = f.driver.configuration();
+    config.active = 1;
+    config.portals[1] = {
+        mac: "02:00:00:00:00:02",
+        name: "Second",
+        portal: "https://second.test/",
+    };
+    f.driver.saveConfiguration(config);
+    draft.server = "https://stale.test/";
+    assert.equal(f.driver.saveCredentials(draft), false);
+    assert.equal(f.driver.credentials().server, "https://second.test/");
+});
+
+test("profile UI configures an empty slot, switches saved slots and rejects stale editors", () => {
+    const f = settingsFixture(),
+        w = f.host;
+    f.ui.edit();
+    w.selIndex = 1;
+    w.listKeyHandler(w.keys.ENTER);
+    for (const [index, value] of [
+        [0, " https://second.test/c/// "],
+        [1, " 02:ab:00:00:00:02 "],
+        [2, "<b>Second & portal</b>"],
+    ]) {
+        w.selIndex = index;
+        w.listKeyHandler(w.keys.ENTER);
+        w.editvar = value;
+        w.setEdit();
+    }
+    assert.equal(
+        f.driver.configuration().active,
+        0,
+        "draft does not switch playback"
+    );
+    assert.equal(
+        w.listArray[2],
+        "Profile name: &lt;b&gt;Second &amp; portal&lt;/b&gt;"
+    );
+    w.selIndex = 4;
+    w.listKeyHandler(w.keys.ENTER);
+    assert.equal(f.reloads, 1);
+    assert.equal(f.driver.configuration().active, 1);
+    assert.equal(f.driver.credentials().username, "02:AB:00:00:00:02");
+    f.ui.edit();
+    assert.equal(w.selIndex, 1);
+    assert.match(w.getListItem(w.listArray[1], 1), /2: ✓ &lt;b&gt;/);
+    w.selIndex = 0;
+    w.listKeyHandler(w.keys.ENTER);
+    assert.equal(f.reloads, 2);
+    assert.equal(f.driver.configuration().active, 0);
+    f.ui.edit();
+    w.selIndex = 1;
+    w.listKeyHandler(w.keys.YELLOW);
+    assert.equal(w.listCaption.innerHTML, "Stalker Portal Provider");
+    assert.equal(f.driver.configuration().active, 0);
+    w.listKeyHandler(w.keys.ENTER);
+    const complete = w.setEdit,
+        oldKeys = w.listKeyHandler;
+    const external = f.driver.configuration();
+    external.portals[2].name = "External change";
+    f.driver.saveConfiguration(external);
+    w.editvar = "https://stale.test/";
+    complete();
+    w.selIndex = 4;
+    assert.equal(oldKeys(w.keys.ENTER), false);
+    assert.equal(
+        f.driver.configuration().portals[1].portal,
+        "https://second.test/c"
+    );
+    assert.equal(f.reloads, 2);
 });
 
 test("injected hash reentry cannot publish the displaced catalog", () => {
@@ -475,9 +675,57 @@ test("actual startup reports protocol failures and opens the preserved editor fo
     f.host.loadProv();
     assert.equal(f.requests.length, 0);
     assert.equal(f.completed, 0);
-    assert.equal(f.host.listCaption.innerHTML, "Stalker Portal Provider");
-    assert.equal(f.host.listArray.length, 4);
+    assert.equal(f.host.listCaption.innerHTML, "Select Stalker portal");
+    assert.equal(f.host.listArray.length, 15);
+    f.host.listKeyHandler(f.host.keys.ENTER);
+    assert.equal(f.host.listArray.length, 5);
     assert.equal(f.host.listArray[0], "Portal URL: ");
+});
+
+test("host startup restores the selected profile and keeps legacy settings scoped", () => {
+    const initial = fixture().driver.configuration();
+    initial.active = 14;
+    initial.portals[14] = {
+        mac: "02:00:00:00:00:14",
+        name: "Last",
+        portal: "https://last.test/",
+    };
+    const f = startup({
+        stalkerfavoritesArray: "original",
+        stalkerstalker_data: JSON.stringify(initial),
+    });
+    f.host.providerScopedStorageKeys = [
+        "favoritesArray",
+        "prevArr",
+        "continueWatch",
+    ];
+    require("./helpers/private-runtime.cjs")(
+        f.host,
+        "src/provider/source-identity.ts"
+    );
+    f.host.loadProv();
+    const driver = f.host.__ottActiveProviderDriver;
+    assert.match(f.requests[0].settings.url, /last\.test/);
+    assert.equal(f.host.providerGetItem("favoritesArray"), null);
+    f.host.providerSetItem("favoritesArray", "last-favorites");
+    f.host.providerSetItem("continueWatch", "last-bookmark");
+    assert.equal(f.saved.get("stalkerfavoritesArray14"), "last-favorites");
+    assert.equal(f.saved.get("stalkercontinueWatch14"), "last-bookmark");
+    assert.equal(driver.storageKey("stalker_data"), "stalkerstalker_data");
+    const identity = f.host.__ottSourceIdentity.current(f.host);
+    assert.match(identity, /^stalker:14@/);
+    const next = driver.configuration();
+    next.active = 0;
+    driver.saveConfiguration(next);
+    f.host.loadChannels();
+    assert.equal(f.host.providerGetItem("favoritesArray"), "original");
+    assert.equal(f.host.providerGetItem("continueWatch"), null);
+    assert.match(f.host.__ottSourceIdentity.current(f.host), /^stalker@/);
+    next.active = 14;
+    driver.saveConfiguration(next);
+    f.host.loadChannels();
+    assert.equal(f.host.providerGetItem("favoritesArray"), "last-favorites");
+    assert.equal(f.host.__ottSourceIdentity.current(f.host), identity);
 });
 
 test("actual host reload and replacement reject every displaced Stalker stage", () => {
@@ -736,6 +984,37 @@ test("classic direct links skip create_link, cancelled and replaced sessions can
     old.done({ js: { cmd: "https://media.test/stale" } });
     assert.equal(old.aborts, 1);
     assert.equal(result, undefined);
+});
+
+test("classic profile switch cancels links and handshakes even for identical accounts", () => {
+    for (const stage of ["handshake", "link"]) {
+        const f = classicFixture();
+        let links = 0;
+        if (stage === "link") {
+            f.authorize();
+            f.finish();
+            f.driver.resolveStream(f.driver.stream(42), () => links++);
+        }
+        const pending = f.requests.at(-1);
+        const config = f.driver.configuration();
+        config.portals[1] = clone(config.portals[0]);
+        config.active = 1;
+        assert(f.driver.saveConfiguration(config));
+        assert.equal(pending.aborts, 1);
+        const count = f.requests.length;
+        pending.done({
+            js:
+                stage === "link"
+                    ? { cmd: "https://media.test/stale" }
+                    : { token: "stale" },
+        });
+        assert.equal(f.requests.length, count);
+        assert.equal(links, 0);
+        assert.equal(f.driver.stream(42), "");
+        f.driver.load(() => {});
+        assert.equal(f.action(), "handshake");
+        assert.equal(f.request().headers.Authorization, undefined);
+    }
 });
 
 test("classic startup recovers one empty handshake, preserving saved settings and channel loading", () => {

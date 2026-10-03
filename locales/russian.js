@@ -635,6 +635,7 @@ var keyStrings = {
     "Preview in channel list": "Предпросмотр в списке каналов",
     Previous: "Предыдущий канал",
     "Privacy policy": "Политика конфиденциальности",
+    "Profile name": "Название профиля",
     "Protect Adult Channels": "Защитить каналы для взрослых",
     "Protect Change Provider": "Защитить смену провайдера",
     "Protect Settings": "Защитить настройки",
@@ -721,6 +722,7 @@ var keyStrings = {
     "Select playlist file": "Выбор файла плейлиста",
     "Select playlist template source for EPG and logos":
         "Выберите источник шаблона плейлиста, EPG и логотипов",
+    "Select Stalker portal": "Выбор портала Stalker",
     "Send request": "Отправить запрос",
     "Send settings": "Отправить настройки",
     "Send this code from your proxy in the Authorization: Bearer header.":

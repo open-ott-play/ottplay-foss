@@ -642,6 +642,7 @@ var keyStrings = {
     "Preview in channel list": "Kanallar roʻyxatida oldindan koʻrish",
     Previous: "Oldingi",
     "Privacy policy": "Maxfiylik siyosati",
+    "Profile name": "Profil nomi",
     "Protect Adult Channels": "Kattalar kanallarini himoyalash",
     "Protect Change Provider": "Provayder almashtirishni himoyalash",
     "Protect Settings": "Sozlamalarni himoyalash",
@@ -731,6 +732,7 @@ var keyStrings = {
     "Select playlist file": "Playlist faylini tanlang",
     "Select playlist template source for EPG and logos":
         "EPG va logotiplar uchun pleylist andozasi manbasini tanlang",
+    "Select Stalker portal": "Stalker portalini tanlash",
     "Send request": "Soʻrov yuborish",
     "Send settings": "Sozlamalarni yuborish",
     "Send this code from your proxy in the Authorization: Bearer header.":

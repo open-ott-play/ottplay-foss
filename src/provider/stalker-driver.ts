@@ -1,3 +1,31 @@
+interface StalkerConfiguration {
+    active: number;
+    portals: Array<{ name: string; portal: string; mac: string }>;
+}
+
+/** The old singleton becomes slot zero without changing its account or storage keys. */
+function normalizeStalkerConfiguration(value: any): StalkerConfiguration {
+    var input = value && typeof value === "object" ? value : {};
+    var slots = Array.isArray(input.portals) ? input.portals : [input];
+    var active = Number(input.active);
+    var result: StalkerConfiguration = {
+        active:
+            active >= 0 && active < 15 && Math.floor(active) === active
+                ? active
+                : 0,
+        portals: [],
+    };
+    for (var index = 0; index < 15; index++) {
+        var row = slots[index] || {};
+        result.portals.push({
+            mac: typeof row.mac === "string" ? row.mac : "",
+            name: typeof row.name === "string" ? row.name : "",
+            portal: typeof row.portal === "string" ? row.portal : "",
+        });
+    }
+    return result;
+}
+
 /** Instance lifecycles for classic MAG and the retained MAC JSON-RPC dialect. */
 function classicStalkerUrl(url: string): string {
     var clean = url.split(/[?#]/)[0].replace(/\/+$/, "");
@@ -16,7 +44,8 @@ function createClassicStalkerDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime,
     helpers: StalkerDriverHelpers,
-    credentials: ProviderCredentials
+    credentials: ProviderCredentials,
+    current: () => boolean
 ): ProviderDriver {
     var alive = true;
     var lifetime = ports.createLifetime();
@@ -41,17 +70,7 @@ function createClassicStalkerDriver(
         config[key] = location[key];
     });
     function active() {
-        if (!alive || !owner.active() || !scope.active()) return false;
-        try {
-            var saved = JSON.parse(ports.storage.get("stalker_data") || "null");
-            return (
-                saved &&
-                saved.portal === credentials.server &&
-                saved.mac === credentials.username
-            );
-        } catch (_) {
-            return false;
-        }
+        return alive && owner.active() && scope.active() && current();
     }
     var transport = helpers.transport(ports, owner, active);
     function absolute(value: string): string {
@@ -389,21 +408,28 @@ function createStalkerProviderDriver(
         return !disposed && owner.active();
     }
     var transport = helpers.transport(ports, owner, active);
-    function credentials(): ProviderCredentials {
+    function configuration(): StalkerConfiguration {
         var value: any;
         try {
             value = JSON.parse(ports.storage.get("stalker_data") || "null");
         } catch (_) {}
+        return normalizeStalkerConfiguration(value);
+    }
+    function credentials(): ProviderCredentials {
+        var config = configuration();
+        var value = config.portals[config.active];
         return {
+            mode: config.active,
             password: "",
-            server: value && value.portal ? String(value.portal) : "",
-            username: value && value.portal ? String(value.mac || "") : "",
+            server: value.portal,
+            username: value.mac,
         };
     }
     function matches(config: ProviderCredentials): boolean {
         var current = credentials();
         return (
             active() &&
+            current.mode === config.mode &&
             current.server === config.server &&
             current.username === config.username
         );
@@ -467,6 +493,7 @@ function createStalkerProviderDriver(
             media: false,
             settings: true,
         },
+        configuration: configuration,
         credentials: credentials,
         dispose: function () {
             if (disposed) return;
@@ -524,7 +551,10 @@ function createStalkerProviderDriver(
                     ports,
                     scope,
                     helpers,
-                    config
+                    config,
+                    function () {
+                        return matches(config);
+                    }
                 );
                 classic.load(callback);
                 return;
@@ -580,22 +610,45 @@ function createStalkerProviderDriver(
             callback(url.indexOf("ottplay-stalker:") === 0 ? null : url);
             return function () {};
         },
-        saveCredentials: function (value) {
-            retireClassic();
-            if (!active()) return;
+        saveConfiguration: function (value) {
+            if (!active()) return false;
+            var next = normalizeStalkerConfiguration(value);
+            var before = configuration();
             var operation = ++revision;
-            catalogs.dispose();
-            if (!active() || operation !== revision) return;
-            loaded = null;
-            catalog = helpers.emptyCatalog();
-            ports.storage.set(
-                "stalker_data",
-                JSON.stringify({
-                    data: null,
-                    mac: value.username,
-                    portal: value.server,
-                    token: "",
-                })
+            var previous = before.portals[before.active];
+            var selected = next.portals[next.active];
+            if (
+                next.active !== before.active ||
+                selected.portal !== previous.portal ||
+                selected.mac !== previous.mac
+            ) {
+                retireClassic();
+                if (!active() || operation !== revision) return false;
+                catalogs.dispose();
+                if (!active() || operation !== revision) return false;
+                loaded = null;
+                catalog = helpers.emptyCatalog();
+            }
+            ports.storage.set("stalker_data", JSON.stringify(next));
+            return active() && operation === revision;
+        },
+        saveCredentials: function (value) {
+            var config = configuration();
+            if (value.mode !== undefined && value.mode !== config.active)
+                return false;
+            var slot = config.portals[config.active];
+            slot.portal = value.server;
+            slot.mac = value.username;
+            return driver.saveConfiguration!(config);
+        },
+        storageKey: function (key) {
+            var slot = configuration().active;
+            return (
+                "stalker" +
+                key +
+                (slot && ports.m3u && ports.m3u.scopedKeys().indexOf(key) !== -1
+                    ? String(slot)
+                    : "")
             );
         },
         stream: function (id) {
@@ -615,44 +668,176 @@ function mountStalkerProviderSettings(
     owner: DriverLifetime
 ) {
     var revision = 0;
+    function text(value: string): string {
+        return value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+    function profileLabel(
+        slot: StalkerConfiguration["portals"][number]
+    ): string {
+        return text(
+            slot.name ||
+                slot.portal.replace(/^https?:\/\//, "").split("/")[0] ||
+                "—"
+        );
+    }
+    function openList(title: string): void {
+        host.listDetail.innerHTML = "";
+        host.listCaption.innerHTML = title;
+        host.listFooter.innerHTML = host.renderButtonHint(
+            host.keys.RETURN,
+            host.strRETURN,
+            "Close"
+        );
+        host.$("#listPopUp").hide();
+        host.showPage();
+    }
+    function load(config: StalkerConfiguration): void {
+        revision++;
+        if (!driver.saveConfiguration!(config) || !owner.active()) return;
+        updateLabel();
+        host.loadChannels();
+    }
     function updateLabel(): void {
         if (!owner.active()) return;
         var index = host.popupActions.indexOf(edit);
         if (index < 0) return;
-        var config = driver.credentials();
+        var config: StalkerConfiguration = driver.configuration!();
         host.popupArray[index] =
             host._("Stalker portal settings") +
-            (config.server
-                ? ": " +
-                  config.server.replace(/^https?:\/\//, "").split("/")[0] +
-                  " (" +
-                  config.username +
-                  ")"
-                : "");
+            ": " +
+            (config.active + 1) +
+            " - " +
+            profileLabel(config.portals[config.active]);
     }
-    function edit(): boolean {
+    function edit(selected?: number): boolean {
         if (!owner.active()) return false;
         var editor = ++revision;
+        var config: StalkerConfiguration = driver.configuration!();
+        var before = JSON.stringify(config);
+        function current(): boolean {
+            return (
+                owner.active() &&
+                revision === editor &&
+                JSON.stringify(driver.configuration!()) === before
+            );
+        }
+        host.selIndex = typeof selected === "number" ? selected : config.active;
+        host.listArray = config.portals;
+        host.listDataArray = host.listArray;
+        host.getListItem = function (
+            slot: StalkerConfiguration["portals"][number],
+            index: number
+        ) {
+            return (
+                "&nbsp;&nbsp;" +
+                (index + 1) +
+                ": " +
+                (index === config.active ? "✓ " : "") +
+                profileLabel(slot)
+            );
+        };
+        host.detailListAction = function () {
+            if (!current()) return;
+            var slot = config.portals[host.selIndex];
+            if (!slot) return;
+            host.listDetail.innerHTML =
+                host._("Portal URL") +
+                ": " +
+                text(slot.portal) +
+                "<br/>" +
+                host._("MAC address") +
+                ": " +
+                text(slot.mac);
+            host.listFooter.innerHTML =
+                host.renderButtonHint(
+                    host.keys.RETURN,
+                    host.strRETURN,
+                    "Close"
+                ) +
+                host.renderButtonHint(
+                    host.keys.ENTER,
+                    host.strENTER,
+                    host.selIndex === config.active || !slot.portal || !slot.mac
+                        ? "Edit"
+                        : "Load"
+                ) +
+                host.renderButtonHint(host.keys.YELLOW, "", "Edit");
+        };
+        host.listKeyHandler = function (key: number) {
+            if (!current()) return false;
+            if (key === host.keys.RETURN) {
+                revision++;
+                host.popupList(
+                    host.popupActions.indexOf(
+                        host.toggleProviderSettingsVisibility
+                    ) + 1
+                );
+                return true;
+            }
+            if (key >= 49 && key <= 54) host.selIndex = key - 49;
+            else if (key !== host.keys.ENTER && key !== host.keys.YELLOW)
+                return false;
+            var index = host.selIndex;
+            var slot = config.portals[index];
+            if (!slot) return true;
+            if (
+                key === host.keys.YELLOW ||
+                config.active === index ||
+                !slot.portal ||
+                !slot.mac
+            )
+                showDetails(index);
+            else {
+                config.active = index;
+                load(config);
+            }
+            return true;
+        };
+        openList(host._("Select Stalker portal"));
+        return true;
+    }
+    function showDetails(slotIndex: number): void {
+        var editor = ++revision;
         var fieldRevision = 0;
-        var draft = driver.credentials();
-        var titles = ["Portal URL", "MAC address"];
-        var prompts = ["Enter Stalker portal URL", "Enter MAC address"];
+        var config: StalkerConfiguration = driver.configuration!();
+        var before = JSON.stringify(config);
+        var draft = config.portals[slotIndex];
+        var fields = ["portal", "mac", "name"];
+        var titles = ["Portal URL", "MAC address", "Profile name"];
+        var prompts = [
+            "Enter Stalker portal URL",
+            "Enter MAC address",
+            "Profile name",
+        ];
         var details = [
             "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)",
             "Enter MAC address (e.g. 00:1A:2B:3C:4D:5E)",
+            "Profile name",
             "",
             "Save settings and load channel list",
         ];
         function current(): boolean {
-            return owner.active() && revision === editor;
+            return (
+                owner.active() &&
+                revision === editor &&
+                JSON.stringify(driver.configuration!()) === before
+            );
         }
         function render(): void {
-            host.listArray = [
-                host._(titles[0]) + ": " + draft.server,
-                host._(titles[1]) + ": " + draft.username,
-                "",
-                host._("Save and load channels"),
-            ];
+            host.listArray = fields
+                .map(function (field, index) {
+                    return (
+                        host._(titles[index]) +
+                        ": " +
+                        text((draft as any)[field])
+                    );
+                })
+                .concat(["", host._("Save and load channels")]);
             host.listDataArray = host.listArray;
         }
         host.selIndex = 0;
@@ -669,49 +854,36 @@ function mountStalkerProviderSettings(
         host.listKeyHandler = function (key: number) {
             if (!current()) return false;
             if (key === host.keys.RETURN) {
-                revision++;
-                host.popupList(
-                    host.popupActions.indexOf(
-                        host.toggleProviderSettingsVisibility
-                    ) + 1
-                );
+                edit(slotIndex);
                 return true;
             }
             if (key !== host.keys.ENTER) return false;
             var index = host.selIndex;
-            if (index === 0 || index === 1) {
+            if (index >= 0 && index < fields.length) {
                 var field = ++fieldRevision;
                 host.editCaption = host._(prompts[index]);
-                host.editvar = index ? draft.username : draft.server;
+                host.editvar = (draft as any)[fields[index]];
                 host.setEdit = function () {
                     if (!current() || field !== fieldRevision) return;
                     fieldRevision++;
                     var value = String(host.editvar).trim();
-                    if (index) draft.username = value.toUpperCase();
-                    else draft.server = value.replace(/\/+$/, "");
+                    (draft as any)[fields[index]] =
+                        index === 0
+                            ? value.replace(/\/+$/, "")
+                            : index === 1
+                              ? value.toUpperCase()
+                              : value;
                     render();
                     host.showPage();
                 };
                 host.showEditKey(host.keys.ENTER);
-            } else if (index === 3) {
-                revision++;
-                driver.saveCredentials(draft);
-                if (!owner.active()) return true;
-                updateLabel();
-                host.loadChannels();
+            } else if (index === 4) {
+                config.active = slotIndex;
+                load(config);
             }
             return true;
         };
-        host.listDetail.innerHTML = "";
-        host.listCaption.innerHTML = host._("Stalker Portal Provider");
-        host.listFooter.innerHTML = host.renderButtonHint(
-            host.keys.RETURN,
-            host.strRETURN,
-            "Close"
-        );
-        host.$("#listPopUp").hide();
-        host.showPage();
-        return true;
+        openList(host._("Stalker Portal Provider"));
     }
     return {
         edit: edit,

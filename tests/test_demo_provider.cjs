@@ -282,6 +282,9 @@ test("reselecting Stalker opens its current settings without a reload or bypassi
         w.selectProvaider();
         w.selIndex = w.arrayProvaiders.indexOf("stalker");
         w.listKeyHandlerFn(key);
+        assert.equal(w.listCaption.innerHTML, "Select Stalker portal");
+        assert.equal(w.listArray.length, 15);
+        w.listKeyHandlerFn(w.keys.ENTER);
         assert.equal(w.listCaption.innerHTML, "Stalker Portal Provider");
         assert.equal(w.listArray[0], "Portal URL: https://portal.test/c/");
         assert.equal(w.listArray[1], "MAC address: 02:00:00:00:00:01");

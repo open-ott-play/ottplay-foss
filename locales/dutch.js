@@ -643,6 +643,7 @@ var keyStrings = {
     "Preview in channel list": "Voorbeeld in zenderlijst",
     Previous: "Vorige",
     "Privacy policy": "Privacybeleid",
+    "Profile name": "Profielnaam",
     "Protect Adult Channels": "Volwassenenzenders beveiligen",
     "Protect Change Provider": "Providerwijziging beveiligen",
     "Protect Settings": "Instellingen beveiligen",
@@ -732,6 +733,7 @@ var keyStrings = {
     "Select playlist file": "Afspeellijstbestand kiezen",
     "Select playlist template source for EPG and logos":
         "Sjabloonbron voor EPG en logo's van afspeellijst kiezen",
+    "Select Stalker portal": "Stalker-portaal kiezen",
     "Send request": "Verzoek verzenden",
     "Send settings": "Instellingen verzenden",
     "Send this code from your proxy in the Authorization: Bearer header.":
