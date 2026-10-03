@@ -110,7 +110,11 @@ const ctx = {
     URL,
     window: host,
 };
-function loadRemoteHelper(name, file = "src/commands/" + name + ".ts") {
+function loadRemoteHelper(
+    name,
+    file = "src/commands/" + name + ".ts",
+    environment = ctx
+) {
     const helper = ts.transpileModule(fs.readFileSync(file, "utf8"), {
         compilerOptions: {
             module: ts.ModuleKind.CommonJS,
@@ -118,7 +122,7 @@ function loadRemoteHelper(name, file = "src/commands/" + name + ".ts") {
         },
     }).outputText;
     acorn.parse(helper, { ecmaVersion: 5 });
-    const context = vm.createContext({ ...ctx, exports: {} });
+    const context = vm.createContext({ ...environment, exports: {} });
     vm.runInContext(helper, context);
     return context.exports;
 }
@@ -769,7 +773,7 @@ async function checkStatusDiagnostics() {
 function checkRemoteEpgCatalog() {
     function fixture(provider = "m3u") {
         let source = "private-source-identity";
-        let clock = Date.now();
+        let clock = now * 1000;
         const plays = [];
         const archives = [];
         const h = {
@@ -813,6 +817,14 @@ function checkRemoteEpgCatalog() {
             exports: {},
             window: h,
         });
+        context.require = (name) =>
+            name === "./remote-archive"
+                ? loadRemoteHelper(
+                      "remote-archive",
+                      "src/commands/remote-archive.ts",
+                      context
+                  )
+                : ctx.require(name);
         vm.runInContext(code, context);
         return {
             archives,
