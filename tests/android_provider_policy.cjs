@@ -1190,7 +1190,7 @@ for (const flavor of ["full", "play"]) {
                 visit(ast);
                 assert.equal(getCalls, flavor === "full" ? 1 : 0);
                 assert.equal(
-                    literals.includes("http://api.ipify.org"),
+                    literals.some((value) => value === "http://api.ipify.org"),
                     flavor === "full"
                 );
                 assert.equal(
