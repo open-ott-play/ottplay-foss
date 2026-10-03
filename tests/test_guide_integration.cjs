@@ -558,6 +558,44 @@ check(
 );
 
 check(
+    "category actions can be dismissed without changing the selected category or stored data",
+    () => {
+        for (const key of ["RETURN", "EXIT", "N0", "YELLOW", "TOOLS"]) {
+            const f = fixture(),
+                h = f.host;
+            Object.assign(h.keys, { N0: 48, TOOLS: 84, YELLOW: 405 });
+            h.catIndex = h.selIndex = 1;
+            h.listArray = h.catsArray;
+            const state = () =>
+                JSON.stringify({
+                    catIndex: h.catIndex,
+                    cats: h.cats,
+                    catsArray: h.catsArray,
+                    listArray: h.listArray,
+                    primaryIndex: h.primaryIndex,
+                    selIndex: h.selIndex,
+                });
+            const before = state(),
+                saved = [...f.saved];
+            h.$("#listPopUp").show();
+
+            assert.equal(h.bucketsKeyHandler(h.keys[key]), true, key);
+            assert.equal(h.$("#listPopUp").is(":visible"), false, key);
+            assert.equal(state(), before, key);
+            assert.deepEqual([...f.saved], saved, key);
+            assert.deepEqual(f.calls, [], key);
+            assert.deepEqual(f.prompts, [], key);
+
+            // Dismissing the actions leaves the category list open; Back can
+            // then close the list and return to the existing playback.
+            assert.equal(h.bucketsKeyHandler(h.keys.RETURN), true);
+            assert.deepEqual(f.calls, [["close"]]);
+            assert.equal(state(), before, key);
+        }
+    }
+);
+
+check(
     "category record shortcuts use the selected category and EPG, never VOD IDs",
     () => {
         for (const key of ["RED", "PLAY", "PAUSE", "PRECH"]) {

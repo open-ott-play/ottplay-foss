@@ -2776,6 +2776,13 @@ export function bucketsKeyHandler(keyCode: number): boolean {
     // Popup actions for category management
     if ($("#listPopUp").is(":visible")) {
         switch (keyCode) {
+            case keys.RETURN:
+            case keys.EXIT:
+            case keys.N0:
+            case keys.YELLOW:
+            case keys.TOOLS:
+                $("#listPopUp").hide();
+                return true;
             case keys.N1:
                 moveSelectedChannelOrCategory(-1);
                 return true;
