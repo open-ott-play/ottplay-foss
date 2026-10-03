@@ -207,7 +207,7 @@ export function createSettingsStore(
                     message = "Settings changed while editing";
                     return false;
                 }
-                var writes: SettingsWrite[] = [];
+                var writes: SettingsWrite[];
                 try {
                     additional.forEach(function (write) {
                         if (write.storage.read() !== write.before)
