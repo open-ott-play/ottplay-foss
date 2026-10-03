@@ -930,6 +930,63 @@ test("native decode/unsupported errors fall back once; network errors and absent
     assert.equal(f.w.video.pauseCalls, 0);
 });
 
+test("Auto retries query-selected Stalker HLS once without rewriting signed links", () => {
+    for (const url of [
+        "http://portal.test/play/live.php?extension=m3u8",
+        "https://portal.test/play/live.php?stream=42&extension=m3u8&play_token=a%2Bb%2f&x=1&x=2",
+        "https://portal.test/play/live.php?extension=M3U8#player",
+    ]) {
+        for (const pip of [false, true]) {
+            const f = fixture();
+            const media = pip ? f.w.videoPip : f.w.video;
+            if (pip) f.w.stbPlayPip(url);
+            else f.w.stbPlay(url);
+            assert.equal(media.src, url);
+            media.error = { code: 4 };
+            media.emit("error");
+            media.emit("error");
+            f.advance(0);
+            assert.equal(f.players.length, 1);
+            assert.equal(f.players[0].url, url);
+            assert.equal(f.players[0].media, media);
+            assert.equal(f.w.playerMode, 3);
+        }
+    }
+});
+
+test("query-selected HLS keeps working native playback and cancels stale fallbacks", () => {
+    const url =
+        "http://portal.test/play/live.php?extension=m3u8&play_token=opaque";
+    const f = fixture();
+    f.w.stbPlay(url);
+    ready(f.w.video, true);
+    f.advance(10000);
+    assert.equal(f.players.length, 0);
+    f.w.video.error = { code: 4 };
+    f.w.video.emit("error");
+    f.w.stbPlay("next.mp4");
+    f.advance(0);
+    assert.equal(f.players.length, 0);
+    assert.equal(f.w.video.src, "next.mp4");
+});
+
+test("unrelated query values and fragments do not trigger HLS error fallback", () => {
+    for (const tail of [
+        "?extension=ts",
+        "?extension=m3u8evil",
+        "?other_extension=m3u8",
+        "#?extension=m3u8",
+        "?next=?extension=m3u8",
+    ]) {
+        const f = fixture();
+        f.w.stbPlay("http://portal.test/play/live.php" + tail);
+        f.w.video.error = { code: 4 };
+        f.w.video.emit("error");
+        f.advance(0);
+        assert.equal(f.players.length, 0);
+    }
+});
+
 test("late dimensions or a user pause cancel speculative audio-only detection", () => {
     for (const action of ["video", "pause"]) {
         const f = fixture();

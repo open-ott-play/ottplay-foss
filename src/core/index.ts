@@ -29,7 +29,7 @@ import {
 } from "../storage/index";
 import { listPreviewRect } from "../utils/helpers";
 import { watchAutoNativePlayback } from "./auto-playback";
-import { createNativeHlsTransport } from "./native-hls";
+import { createNativeHlsTransport, isNativeHlsUrl } from "./native-hls";
 
 /** Reference to the primary <video> DOM element. */
 export var video: HTMLVideoElement | null = null;
@@ -1425,7 +1425,7 @@ function startCorePlayback(
             if (
                 auto &&
                 !_coreAutoHlsUsed &&
-                /\.m3u8(?:[?#]|$)/i.test(url) &&
+                (/\.m3u8(?:[?#]|$)/i.test(url) || isNativeHlsUrl(url)) &&
                 typeof Hls !== "undefined" &&
                 Hls.isSupported()
             ) {
@@ -1895,7 +1895,11 @@ function startCorePipEngine(url: string): void {
         startHls();
     } else {
         videoPip!.src = url;
-        if (auto && /\.m3u8(?:[?#]|$)/i.test(url) && canHls) {
+        if (
+            auto &&
+            (/\.m3u8(?:[?#]|$)/i.test(url) || isNativeHlsUrl(url)) &&
+            canHls
+        ) {
             var media = videoPip!;
             _corePipAutoCancel = watchAutoNativePlayback(media, url, Hls, {
                 active: function () {
