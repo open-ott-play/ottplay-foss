@@ -987,7 +987,6 @@ function startupFixture(
     const calls = [];
     const errors = [];
     Object.assign(w, {
-        __iid: "private-install-1234567",
         console: { error: (error) => errors.push(error), log() {}, warn() {} },
         host: "https://localhost",
         hostUrl: "",
@@ -1024,7 +1023,7 @@ for (const flavor of ["full", "play"]) {
             try {
                 const launch = f.w.document.getElementById("launch");
                 assert(launch.textContent.includes("VER: 42.7.fixture"));
-                assert(launch.textContent.includes("IID: ...1234567"));
+                assert.equal(launch.textContent.includes("IID:"), false);
                 assert.equal(f.w.hostUrl, "https://localhost");
                 assert.equal(f.w.listPodval, f.w.listPodvalElement);
                 assert.deepEqual(f.calls, [
@@ -1139,6 +1138,7 @@ for (const flavor of ["full", "play"]) {
                 attachSourceAliases(w);
                 w.pluginInfo();
                 const panel = w.document.getElementById("listAbout");
+                assert.equal(panel.textContent.includes("Install ID:"), false);
                 assert(
                     panel.textContent.includes(
                         "userAgent: Fixture Android Agent"
