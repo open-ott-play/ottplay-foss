@@ -1624,7 +1624,14 @@ function startupError(
         launch.appendChild(document.createElement("b")).textContent = label;
         launch.appendChild(
             document.createTextNode(
-                " name " + error.name + ", message " + error.message
+                " name " +
+                    (error != null && error.name != null
+                        ? error.name
+                        : "Error") +
+                    ", message " +
+                    (error != null && error.message != null
+                        ? error.message
+                        : String(error))
             )
         );
     }

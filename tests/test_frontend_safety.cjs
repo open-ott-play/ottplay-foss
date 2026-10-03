@@ -523,69 +523,96 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
         w.close();
     }
 });
+const startupFailure = new Error(hostile + ' & "message"');
+startupFailure.name = hostile + ' & "name"';
+const startupCases = [
+    ["Error", startupFailure, startupFailure.name, startupFailure.message],
+    ["empty Error", new Error(""), "Error", ""],
+    ["empty error shape", { message: "", name: "" }, "", ""],
+    ["null", null, "Error", "null"],
+    ["undefined", undefined, "Error", "undefined"],
+    ["hostile string", hostile, "Error", hostile],
+];
 for (const entrypoint of ["startPlayer", "onStbReady"]) {
-    test(
-        entrypoint +
-            " exception text preserves the launch panel without creating HTML",
-        () => {
-            const w = fixture();
-            try {
-                const launch = w.document.createElement("div");
-                launch.id = "launch";
-                const button = w.document.createElement("button");
-                button.textContent = "Boot progress";
-                launch.appendChild(button);
-                w.document.body.appendChild(launch);
-                const failure = new Error(hostile + ' & "message"');
-                failure.name = hostile + ' & "name"';
-                let previous, existingBreaks;
-                const fail = () => {
-                    previous = launch.firstChild;
-                    existingBreaks = launch.querySelectorAll("br").length;
-                    throw failure;
-                };
-                Object.assign(w, {
-                    hostUrl: "https://localhost",
-                    isPlayDistribution: () => true,
-                    loadSettings: fail,
-                    onPlayerStart() {},
-                    PLAYER_VERSION: "fixture",
-                    storage: { reset: fail },
-                });
-                let logged;
-                w.console.error = (error) => (logged = error);
-                w.eval(
-                    func("src/index.ts", "startupError") +
-                        func("src/index.ts", entrypoint)
-                );
-                w[entrypoint]();
-                assert.equal(logged, failure);
-                assert.equal(launch.firstChild, previous);
-                assert.equal(
-                    launch.querySelector("b").textContent,
-                    entrypoint === "startPlayer"
-                        ? "Exception:"
-                        : "Exception.StbReady:"
-                );
-                assert.equal(
-                    launch.querySelectorAll("br").length,
-                    existingBreaks + 2
-                );
-                assert(
-                    launch.textContent.includes(
-                        "name " + failure.name + ", message " + failure.message
-                    )
-                );
-                assert.equal(
-                    launch.querySelectorAll("img,script,[onerror]").length,
-                    0
-                );
-                assert.equal(w.__executed, undefined);
-            } finally {
-                w.close();
-            }
+    for (const hasLaunch of [true, false]) {
+        for (const [kind, failure, name, message] of startupCases) {
+            test(
+                entrypoint +
+                    " handles thrown " +
+                    kind +
+                    (hasLaunch ? " as launch text" : " without a launch panel"),
+                () => {
+                    const w = fixture();
+                    try {
+                        const launch = w.document.createElement("div");
+                        launch.id = "launch";
+                        const button = w.document.createElement("button");
+                        button.textContent = "Boot progress";
+                        launch.appendChild(button);
+                        if (hasLaunch) w.document.body.appendChild(launch);
+                        let previous, existingBreaks;
+                        let reachedFailure = false;
+                        const fail = () => {
+                            reachedFailure = true;
+                            previous = launch.firstChild;
+                            existingBreaks =
+                                launch.querySelectorAll("br").length;
+                            throw failure;
+                        };
+                        Object.assign(w, {
+                            hostUrl: "https://localhost",
+                            isPlayDistribution: () => true,
+                            loadSettings: fail,
+                            onPlayerStart() {},
+                            PLAYER_VERSION: "fixture",
+                            storage: { reset: fail },
+                        });
+                        const logged = [];
+                        w.console.error = (error) => logged.push(error);
+                        w.eval(
+                            func("src/index.ts", "startupError") +
+                                func("src/index.ts", entrypoint)
+                        );
+                        assert.doesNotThrow(() => w[entrypoint]());
+                        assert.equal(reachedFailure, true);
+                        assert.equal(logged.length, 1);
+                        assert.equal(logged[0], failure);
+                        assert.equal(launch.firstChild, previous);
+                        if (hasLaunch) {
+                            assert.equal(
+                                launch.querySelector("b").textContent,
+                                entrypoint === "startPlayer"
+                                    ? "Exception:"
+                                    : "Exception.StbReady:"
+                            );
+                            assert.equal(
+                                launch.querySelectorAll("br").length,
+                                existingBreaks + 2
+                            );
+                            assert.equal(
+                                launch.lastChild.textContent,
+                                " name " + name + ", message " + message
+                            );
+                        } else {
+                            assert.equal(
+                                w.document.getElementById("launch"),
+                                null
+                            );
+                            assert.equal(launch.childNodes.length, 1);
+                        }
+                        assert.equal(
+                            launch.querySelectorAll("img,script,[onerror]")
+                                .length,
+                            0
+                        );
+                        assert.equal(w.__executed, undefined);
+                    } finally {
+                        w.close();
+                    }
+                }
+            );
         }
-    );
+    }
 }
 for (const phase of ["request", "poll"]) {
     test(
