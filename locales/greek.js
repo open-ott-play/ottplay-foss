@@ -724,7 +724,7 @@ var keyStrings = {
     "Restart stream": "Επανεκκίνηση ροής",
     "Restart stream / Live": "Επανεκκίνηση ροής / ζωντανά",
     "Resume from archive?": "Συνέχεια από το αρχείο;",
-    Retry: "Retry",
+    Retry: "Επανάληψη",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Επιστροφή στο προηγούμενο κανάλι",
     Rewind: "Μετακίνηση",

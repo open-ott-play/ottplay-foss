@@ -718,7 +718,7 @@ var keyStrings = {
     "Restart stream": "Reiniciar flujo",
     "Restart stream / Live": "Reiniciar flujo / directo",
     "Resume from archive?": "¿Reanudar desde el archivo?",
-    Retry: "Retry",
+    Retry: "Reintentar",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Volver al canal anterior",
     Rewind: "Desplazar reproducción",

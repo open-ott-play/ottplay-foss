@@ -712,7 +712,7 @@ var keyStrings = {
     "Restart stream": "Ағынды қайта іске қосу",
     "Restart stream / Live": "Ағынды қайта іске қосу / тікелей эфир",
     "Resume from archive?": "Мұрағаттан жалғастыру керек пе?",
-    Retry: "Retry",
+    Retry: "Қайталау",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Алдыңғы арнаға қайту",
     Rewind: "Айналдыру",

@@ -713,7 +713,7 @@ var keyStrings = {
     "Restart stream": "Starta om strömmen",
     "Restart stream / Live": "Starta om strömmen / direktsändning",
     "Resume from archive?": "Fortsätta från arkivet?",
-    Retry: "Retry",
+    Retry: "Försök igen",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Återgå till föregående kanal",
     Rewind: "Spola",

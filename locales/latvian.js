@@ -716,7 +716,7 @@ var keyStrings = {
     "Restart stream": "Pārstartēt straumi",
     "Restart stream / Live": "Pārstartēt straumi / tiešraide",
     "Resume from archive?": "Turpināt no arhīva?",
-    Retry: "Retry",
+    Retry: "Mēģināt vēlreiz",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Atgriezties iepriekšējā kanālā",
     Rewind: "Pārtīt",

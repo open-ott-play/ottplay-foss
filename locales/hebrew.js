@@ -693,7 +693,7 @@ var keyStrings = {
     "Restart stream": "הפעל מחדש את השידור",
     "Restart stream / Live": "הפעל שידור מחדש / שידור חי",
     "Resume from archive?": "להמשיך מהארכיון?",
-    Retry: "Retry",
+    Retry: "נסה שוב",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "חזור לערוץ הקודם",
     Rewind: "דלג בזמן",

@@ -711,7 +711,7 @@ var keyStrings = {
     "Restart stream": "Paleisti srautą iš naujo",
     "Restart stream / Live": "Paleisti srautą iš naujo / tiesiogiai",
     "Resume from archive?": "Tęsti iš archyvo?",
-    Retry: "Retry",
+    Retry: "Bandyti dar kartą",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Grįžti į ankstesnį kanalą",
     Rewind: "Persukti",

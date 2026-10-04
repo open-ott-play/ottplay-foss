@@ -713,7 +713,7 @@ var keyStrings = {
     "Restart stream": "Рестартиране на потока",
     "Restart stream / Live": "Рестартиране на потока / на живо",
     "Resume from archive?": "Да се продължи ли от архива?",
-    Retry: "Retry",
+    Retry: "Повторен опит",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Връщане към предишния канал",
     Rewind: "Превъртане",

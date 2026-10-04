@@ -716,7 +716,7 @@ var keyStrings = {
     "Restart stream": "Adatfolyam újraindítása",
     "Restart stream / Live": "Adatfolyam újraindítása / élő",
     "Resume from archive?": "Folytatja az archívumból?",
-    Retry: "Retry",
+    Retry: "Újrapróbálkozás",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Visszatérés az előző csatornára",
     Rewind: "Tekerés",
