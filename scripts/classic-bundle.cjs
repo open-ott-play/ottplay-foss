@@ -95,6 +95,8 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-diagnostics.js",
     "build/plugins/diagnostics-permission.js",
     "build/plugins/diagnostics-controller.js",
+
+    "build/plugins/kiosk.js",
     "build/plugins/control-discovery.js",
     "build/plugins/mobile-native-media.js",
     "build/plugins/dash-exo-player.js",

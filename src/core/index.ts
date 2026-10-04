@@ -2819,6 +2819,8 @@ function openCoreEngineLease(
 }
 
 export function stbPlayPip(url: string): void {
+    if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
+        return;
     getCoreMediaBackend().open({ lane: "pip", url: url });
 }
 export function stbStopPip(): void {

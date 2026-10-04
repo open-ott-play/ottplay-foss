@@ -20,13 +20,20 @@ var sleepTimer: any = null;
 export function setSleepTimeout(): void {
     if (sleepTimer) clearTimeout(sleepTimer);
     sleepTimer = null;
+    if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
+        return;
     const durations = [0, 30, 60, 120, 180];
     const minutes = durations[settings.sleepTimeout] || 0;
     if (minutes > 0 && !stbIsStandby()) {
         sleepTimer = setTimeout(
             function () {
                 // A cancelled timeout may already be queued; never wake a sleeping player.
-                if (stbIsStandby()) return;
+                if (
+                    stbIsStandby() ||
+                    ((window as any).__ottKiosk &&
+                        (window as any).__ottKiosk.enabled())
+                )
+                    return;
                 if (typeof window.stbToggleStandby === "function")
                     window.stbToggleStandby();
                 else stbToggleStandby();
