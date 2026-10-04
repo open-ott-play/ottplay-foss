@@ -184,6 +184,58 @@ function rig(storage = {}) {
 }
 {
     const r = rig();
+    r.w.channels.a.channel_name = "Новости HD";
+    r.w.channels.b.channel_name = "Новости";
+    assert.equal(
+        r.request({ mode: "on", query: "НОВОСТИ" }).data.channel.id,
+        "a",
+        "the first substring match wins over a later exact name"
+    );
+    assert.equal(
+        r.request({ mode: "set", query: "2" }).data.channel.id,
+        "b",
+        "catalogue numbers still select the requested row"
+    );
+    assert.equal(
+        r.request({ mode: "set", query: "ВоСт" }).data.channel.id,
+        "a",
+        "remote replacement uses the first case-insensitive substring match too"
+    );
+    r.w.channels.b.channel_name = "Новости HD";
+    assert.equal(
+        r.request({ mode: "set", query: "Новости HD" }).data.channel.id,
+        "a",
+        "duplicate full names select the first row"
+    );
+    r.w.cList = ["b", "a"];
+    r.advance(10);
+    assert.equal(
+        r.played.at(-1),
+        "a",
+        "recovery retains the pinned ID instead of searching again"
+    );
+    assert.equal(
+        r.request({ mode: "set", query: "новости" }).data.channel.id,
+        "b",
+        "a new request follows current catalogue order, not category order"
+    );
+    r.w.cats.all = ["a"];
+    assert.equal(
+        r.request({ mode: "set", query: "новости" }).status,
+        "rejected",
+        "an unavailable first match must not silently select the second match"
+    );
+    assert.equal(r.kiosk.snapshot().channel.id, "b");
+    r.w.cats.all = ["a", "b"];
+    r.w.ifParentalAccessChId = (id) => id === "b";
+    assert.equal(
+        r.request({ mode: "set", query: "новости" }).status,
+        "rejected",
+        "a protected first match must not silently select another channel"
+    );
+}
+{
+    const r = rig();
     r.w.ifParentalAccessChId = () => true;
     assert.equal(r.request({ mode: "on", query: "1" }).status, "rejected");
     assert.equal(r.kiosk.enabled(), false);

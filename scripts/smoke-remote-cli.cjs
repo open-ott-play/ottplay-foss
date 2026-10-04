@@ -314,6 +314,9 @@ function moduleOf(file, requireFn, window) {
                 kiosk: host.__ottKiosk.snapshot(),
                 playlistLoads,
                 reloads,
+                rename: (id, name) => {
+                    host.channels[id].channel_name = name;
+                },
                 select: host.playChannel,
                 streamRestarts,
                 volume,
@@ -436,6 +439,17 @@ function moduleOf(file, requireFn, window) {
         assert.equal(television().kiosk.state, "off");
         await run("kiosk", "on", "2");
         assert.equal(television().kiosk.channel.id, "b");
+        await run("kiosk", "off");
+        television().rename("a", "Новости HD");
+        television().rename("b", "Новости");
+        assert.match(
+            (await run("kiosk", "on", "НОВОСТИ")).stdout,
+            /Новости HD/
+        );
+        assert.equal(television().kiosk.channel.id, "a");
+        await run("kiosk", "set", "2");
+        await run("kiosk", "set", "ВоСт");
+        assert.equal(television().kiosk.channel.id, "a");
         await run("kiosk", "off");
         console.log(
             "PASS kiosk CLI/server/player: arm, capture, set, block ordinary switching, status, disable and device isolation"

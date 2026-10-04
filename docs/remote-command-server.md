@@ -229,7 +229,7 @@ can enable, replace or disable it. There is no local kiosk toggle.
 ```sh
 ott tv kiosk on             # wait for the next admitted channel selection in the UI
 ott tv kiosk on 12          # select and lock catalogue channel 12 immediately
-ott tv kiosk on "Новости"   # select a unique channel name (case insensitive)
+ott tv kiosk on "Новости"   # lock the first matching name (case insensitive)
 ott tv kiosk set 7          # replace the locked channel through the controller
 ott tv kiosk status         # policy, channel metadata, health and retry count
 ott tv kiosk off            # release the lock
@@ -238,8 +238,14 @@ ott tv kiosk off            # release the lock
 Arming without a channel does not capture the already playing channel. The first
 subsequent live selection that passes parental admission is retained, including
 when that stream then fails to load. Repeating `kiosk on` without a channel leaves
-an existing lock unchanged. Ambiguous or unavailable selections reject without
-changing the previous lock. Catalogue numbering matches `ott tv s`.
+an existing lock unchanged. Text queries select the first channel whose name
+contains the query, ignoring case, in the catalogue order shown by `ott tv s`.
+A later exact name does not take priority; duplicate matches are not randomized.
+The query is a literal substring, not a regular expression or wildcard expression.
+Numeric queries retain one-based catalogue numbering. No match, or an unavailable
+or protected first match, rejects without changing the previous lock or skipping
+to another match. Recovery retains the selected channel ID rather than rerunning
+the name search.
 
 The lock retains the source/profile identity and channel ID, not a list position
 or expiring media URL. While enabled, provider/profile/settings mutations, media
@@ -267,4 +273,4 @@ policy on older clients.
 
 The protocol-1 action is `kiosk`, with `params: {"mode":"status|on|set|off"}`;
 `on` optionally accepts `query`, and `set` requires it. `query` is a channel number
-or unique name, limited to 1024 UTF-8 bytes. Read results expose metadata only.
+or name substring, limited to 1024 UTF-8 bytes. Read results expose metadata only.

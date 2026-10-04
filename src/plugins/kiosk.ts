@@ -240,21 +240,16 @@ export function createKiosk(w: any): any {
                             number: i + 1,
                         };
                     });
+                var search = caselessKey(text);
+                // Keep catalogue order, even when a later row is an exact name match.
                 var matches = rows.filter(function (row: any) {
                     return /^\d+$/.test(text)
                         ? row.number === Number(text)
-                        : caselessKey(row.name) === caselessKey(text);
+                        : caselessKey(row.name).indexOf(search) !== -1;
                 });
-                if (!matches.length && !/^\d+$/.test(text))
-                    matches = rows.filter(function (row: any) {
-                        return (
-                            caselessKey(row.name).indexOf(caselessKey(text)) !==
-                            -1
-                        );
-                    });
-                if (matches.length !== 1 || !locate(matches[0].id)) {
+                if (!matches.length || !locate(matches[0].id)) {
                     fail(
-                        "Choose one available channel by its catalogue number or unique name."
+                        "No matching channel is available in the current categories."
                     );
                     return;
                 }
