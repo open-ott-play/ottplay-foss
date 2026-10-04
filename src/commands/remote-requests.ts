@@ -341,6 +341,92 @@ export function executeRemoteRequest(
             reject("Unlock provider settings on the player first.");
             return;
         }
+        if (
+            driver.id === "stalker" &&
+            params.settings &&
+            Object.prototype.hasOwnProperty.call(params.settings, "profile")
+        ) {
+            var settings = params.settings;
+            try {
+                if (
+                    Array.isArray(settings) ||
+                    Object.keys(settings).sort().join(",") !==
+                        "mac,name,profile,server" ||
+                    typeof settings.profile !== "number" ||
+                    Math.floor(settings.profile) !== settings.profile ||
+                    settings.profile < 1 ||
+                    settings.profile > 15 ||
+                    typeof settings.name !== "string" ||
+                    /[\u0000-\u001f\u007f]/.test(settings.name) ||
+                    encodeURIComponent(settings.name).replace(
+                        /%[0-9A-F]{2}/g,
+                        "x"
+                    ).length > 256 ||
+                    typeof settings.server !== "string" ||
+                    settings.server.length > 8192 ||
+                    /[\\\s]/.test(settings.server) ||
+                    !/^https?:\/\//i.test(settings.server) ||
+                    typeof settings.mac !== "string" ||
+                    !/^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$/i.test(settings.mac) ||
+                    typeof driver.configuration !== "function" ||
+                    typeof driver.saveConfiguration !== "function"
+                )
+                    throw new Error();
+                var stalkerEndpoint = new URL(settings.server);
+                if (
+                    !stalkerEndpoint.hostname ||
+                    stalkerEndpoint.username ||
+                    stalkerEndpoint.password ||
+                    !checkProviderUrl(stalkerEndpoint.href)
+                )
+                    throw new Error();
+                var original = JSON.stringify(driver.configuration());
+                var configuration = JSON.parse(original);
+                var slot = settings.profile - 1;
+                if (
+                    !Array.isArray(configuration.portals) ||
+                    configuration.portals.length !== 15 ||
+                    !configuration.portals[slot] ||
+                    (configuration.active === slot &&
+                        typeof w.loadPlaylist !== "function")
+                )
+                    throw new Error();
+                configuration.portals[slot] = {
+                    mac: settings.mac,
+                    name: settings.name,
+                    portal: settings.server,
+                };
+                var stalkerChanged = original !== JSON.stringify(configuration);
+                if (
+                    w.__ottActiveProviderDriver !== driver ||
+                    settingsLocked() ||
+                    JSON.stringify(driver.configuration()) !== original ||
+                    (stalkerChanged &&
+                        driver.saveConfiguration(configuration) !== true) ||
+                    w.__ottActiveProviderDriver !== driver ||
+                    JSON.stringify(driver.configuration()) !==
+                        JSON.stringify(configuration)
+                )
+                    throw new Error();
+                if (stalkerChanged && configuration.active === slot)
+                    w.loadPlaylist();
+                if (
+                    w.__ottActiveProviderDriver !== driver ||
+                    JSON.stringify(driver.configuration()) !==
+                        JSON.stringify(configuration)
+                )
+                    throw new Error();
+                reply({
+                    fields: ["profile", "name", "server", "mac"],
+                    profile: settings.profile,
+                    provider: "stalker",
+                    saved: true,
+                });
+            } catch (_) {
+                reject("Could not validate or save the Stalker profile.");
+            }
+            return;
+        }
         if (driver.id === "plex") {
             var plexSettings =
                 typeof driver.saveRemoteSettings === "function"
