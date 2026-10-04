@@ -2484,7 +2484,7 @@ export function changeVolume(delta: number): void {
  * @sideeffect Sets `#volume` height percentage. Shows `#volume_div`. Hides `#mute`. Sets a 2s timeout to hide.
  */
 function _showVolume(v: number): void {
-    $("#volume").css("height", 100 - v + "%");
+    $("#volume").css("height", v + "%");
     $("#volume_div").show();
     $("#mute").hide();
     clearTimeout(volumeTimeout);
