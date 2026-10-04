@@ -59,6 +59,11 @@ var keyStrings = {
     "All categories": "Усе катэгорыі",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Налады All4you.tv",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Дазвольце гэты ID прылады",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -237,9 +242,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Наладзьце Шаравоз у раздзеле Налады -> Налады правайдара",
     Connect: "Падключыць",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Падключана",
     "Connected. Waiting for the channel list...":
         "Падключана. Чаканне спіса каналаў…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Падключэнне да партала Stalker…",
     "Connecting...": "Падключэнне…",
@@ -279,6 +288,7 @@ var keyStrings = {
     "Diamond TV settings": "Налады Diamond TV",
     Director: "Рэжысёр",
     "Disable HTTP remote": "Выключыць HTTP-пульт",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Па змаўчанні выключаны. Пры ўключэнні ствараецца новы код доступу да прылады.",
     Disconnect: "Адключыць",
@@ -658,6 +668,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт без каляровых кнопак",
     "Remote (number buttons N/A)": "Пульт без лічбавых кнопак",
     "Remote control": "Аддаленае кіраванне",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -792,6 +812,9 @@ var keyStrings = {
     "Stalker portal settings": "Налады партала Stalker",
     "Stalker portals": "Парталы Stalker",
     Status: "Стан",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Спыніць прайграванне і вярнуцца ў эфір",
     "Stream type: %1": "Тып патоку: %1",
@@ -840,6 +863,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змяніць рэжым маштабавання",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налады Top-Tv",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Паспрабаваць дэма",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Налады TV DOSUG",
@@ -858,6 +889,8 @@ var keyStrings = {
         "Абнаўленне ўсталявана. Перазапусціце OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Выкарыстоўвайце HTTP- або HTTPS-адрас сервера.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Выкарыстоўвайце HTTP або HTTPS без імя карыстальніка і пароля ў адрасе.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

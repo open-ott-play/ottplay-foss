@@ -60,6 +60,11 @@ var keyStrings = {
     "All categories": "Tất cả danh mục",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Cài đặt All4you.tv",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Cho phép ID thiết bị này",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -240,9 +245,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Cấu hình Шаравоз trong Cài đặt -> Cài đặt nhà cung cấp",
     Connect: "Kết nối",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Đã kết nối",
     "Connected. Waiting for the channel list...":
         "Đã kết nối. Đang chờ danh sách kênh…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Đang kết nối tới cổng Stalker…",
     "Connecting...": "Đang kết nối…",
@@ -281,6 +290,7 @@ var keyStrings = {
     "Diamond TV settings": "Cài đặt Diamond TV",
     Director: "Đạo diễn",
     "Disable HTTP remote": "Tắt điều khiển từ xa HTTP",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Mặc định tắt. Bật tính năng sẽ tạo mã truy cập thiết bị mới.",
     Disconnect: "Ngắt kết nối",
@@ -657,6 +667,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Điều khiển từ xa không có nút màu",
     "Remote (number buttons N/A)": "Điều khiển từ xa không có nút số",
     "Remote control": "Điều khiển từ xa",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -791,6 +811,9 @@ var keyStrings = {
     "Stalker portal settings": "Cài đặt cổng Stalker",
     "Stalker portals": "Cổng Stalker",
     Status: "Trạng thái",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "Dừng phát và quay lại trực tiếp",
     "Stream type: %1": "Loại luồng: %1",
     "String for search": "Nội dung tìm kiếm",
@@ -837,6 +860,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Đổi chế độ thu phóng",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cài đặt Top-Tv",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Dùng thử",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Cài đặt TV DOSUG",
@@ -855,6 +886,8 @@ var keyStrings = {
         "Đã cài đặt bản cập nhật. Hãy khởi động lại OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Dùng địa chỉ máy chủ HTTP hoặc HTTPS.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Dùng HTTP hoặc HTTPS mà không có tên người dùng hay mật khẩu trong địa chỉ.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

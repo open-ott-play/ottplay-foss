@@ -91,6 +91,11 @@ const CLASSIC_MODULES = [
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
     "build/plugins/command-server.js",
+    "build/plugins/diagnostic-buffer.js",
+    "build/plugins/remote-diagnostics.js",
+    "build/plugins/diagnostics-permission.js",
+    "build/plugins/diagnostics-controller.js",
+
     "build/plugins/kiosk.js",
     "build/plugins/control-discovery.js",
     "build/plugins/mobile-native-media.js",

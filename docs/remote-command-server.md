@@ -220,6 +220,10 @@ OTTClub's `server` is a bare host with an optional port, such as `club.example:8
 its existing driver supplies the URL scheme. Other supported providers accept
 HTTP(S) URLs. Changing an OTTClub key preserves the stored host.
 
+## Remote diagnostics and support
+
+See [Remote diagnostics](remote-diagnostics.md) for temporary or trusted support, exact runtime selection, bounded telemetry, acknowledged repairs, CLI/MCP access and platform limits. Diagnostics uses independent protocol 2 routes; existing command delivery remains compatible.
+
 ### Kiosk mode
 
 Updated players, control servers and CLI builds support a device-local live-channel

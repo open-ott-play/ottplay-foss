@@ -10,6 +10,43 @@ permissions:
   contents: read
 
 jobs:
+  remote-integration:
+    name: Remote control and diagnostics integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: open-ott-play/ottplay-control-server
+          ref: c841ecb14e1158cdf646b80283b98968f60211be
+          path: .control-integration
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.8'
+          cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - name: Build the pinned control server
+        working-directory: .control-integration
+        run: go build -o "$RUNNER_TEMP/ottplay-control-server" ./cmd/ottplay-control-server
+      - name: Exercise real HTTPS diagnostics and legacy repairs
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
+          OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
+        run: |
+          node scripts/smoke-diagnostics.cjs
+          node scripts/smoke-remote-cli.cjs
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest

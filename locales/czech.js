@@ -58,6 +58,11 @@ var keyStrings = {
     "All categories": "Všechny kategorie",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Nastavení All4you.tv",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Povolte toto ID zařízení",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -238,9 +243,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Nastavte Шаравоз v Nastavení -> Nastavení poskytovatele",
     Connect: "Připojit",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Připojeno",
     "Connected. Waiting for the channel list...":
         "Připojeno. Čekání na seznam kanálů…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Připojování k portálu Stalker…",
     "Connecting...": "Připojování…",
@@ -280,6 +289,7 @@ var keyStrings = {
     "Diamond TV settings": "Nastavení Diamond TV",
     Director: "Režie",
     "Disable HTTP remote": "Vypnout ovládání HTTP",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Ve výchozím stavu vypnuto. Zapnutí vytvoří nový přístupový kód zařízení.",
     Disconnect: "Odpojit",
@@ -655,6 +665,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Ovladač bez barevných tlačítek",
     "Remote (number buttons N/A)": "Ovladač bez číselných tlačítek",
     "Remote control": "Dálkové ovládání",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -791,6 +811,9 @@ var keyStrings = {
     "Stalker portal settings": "Nastavení portálu Stalker",
     "Stalker portals": "Portály Stalker",
     Status: "Stav",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Zastavit přehrávání a vrátit se k živému vysílání",
     "Stream type: %1": "Typ streamu: %1",
@@ -839,6 +862,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Změnit režim zvětšení",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Nastavení Top-Tv",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Vyzkoušet demo",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Nastavení TV DOSUG",
@@ -857,6 +888,8 @@ var keyStrings = {
         "Aktualizace je nainstalována. Restartujte OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Použijte HTTP nebo HTTPS adresu serveru.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Použijte HTTP nebo HTTPS bez uživatelského jména a hesla v adrese.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

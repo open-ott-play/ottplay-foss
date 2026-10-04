@@ -6,6 +6,8 @@
  */
 
 var OTT_DEBUG_RING_MAX = 800;
+var OTT_DEBUG_RING_BYTES = 512 * 1024;
+var OTT_DEBUG_EVENT_BYTES = 32 * 1024;
 var OTT_DEBUG_INGEST_MS = 2000;
 var OTT_DEBUG_HUD_MS = 1000;
 var OTT_DEBUG_STALL_MS = 3000;
@@ -41,6 +43,9 @@ interface OttDebugEvent {
 
 var _ottDbgEnabled = false;
 var _ottDbgRing: OttDebugEvent[] = [];
+var _ottDbgRingSizes: number[] = [];
+var _ottDbgRingBytes = 0;
+var _ottDbgDropped = 0;
 var _ottDbgSession = "";
 var _ottDbgPlayerId = "";
 var _ottDbgHudOn = true;
@@ -68,6 +73,43 @@ var _ottDbgRecoverCount = 0;
 var _ottDbgSampleBufAhead = -1;
 var _ottDbgSampleBw = -1;
 var _ottDbgSampleLevel = -1;
+var _ottDbgLocal = false;
+var _ottDbgGeneration = 0;
+var _ottDbgCleanup: (() => void)[] = [];
+var _ottDbgXhrCleanup: (() => void)[] = [];
+var _ottDbgHlsCleanup: (() => void) | null = null;
+var _ottDbgCaptures: {
+    event: (event: OttDebugEvent) => void;
+    stopped?: () => void;
+}[] = [];
+
+function ottDebugListen(target: any, name: string, listener: any): void {
+    if (!target || typeof target.addEventListener !== "function") return;
+    target.addEventListener(name, listener, false);
+    _ottDbgCleanup.push(function () {
+        target.removeEventListener(name, listener, false);
+    });
+}
+
+function ottDebugDetachHls(): void {
+    var detach = _ottDbgHlsCleanup;
+    _ottDbgHlsCleanup = null;
+    _ottDbgHls = null;
+    if (detach) detach();
+    _ottDbgXhrCleanup.slice().forEach(function (dispose) {
+        dispose();
+    });
+}
+
+function ottDebugDeliver(event: OttDebugEvent): void {
+    _ottDbgCaptures.slice().forEach(function (capture) {
+        if (_ottDbgCaptures.indexOf(capture) < 0) return;
+        try {
+            // A consumer cannot mutate the local ring or another consumer's event.
+            capture.event(JSON.parse(JSON.stringify(event)));
+        } catch (_error) {}
+    });
+}
 
 function ottDebugShortId(): string {
     return Math.random().toString(36).slice(2, 8);
@@ -141,6 +183,7 @@ function ottDebugTagEvent(ev: OttDebugEvent): OttDebugEvent {
 }
 
 function ottDebugRedactText(text: string): string {
+    if (text.length > 16384) return "[truncated]";
     // Paths may contain Xtream credentials, so retain only the authority.
     return text
         .replace(/(portal::(?:\[|%5b)key:)[\s\S]*?(\]|%5d)/gi, "$1[redacted]$2")
@@ -158,47 +201,91 @@ function ottDebugRedactText(text: string): string {
         .replace(/\b(?:Bearer|Basic)\s+[a-z0-9_~+./=-]+/gi, "[redacted]");
 }
 
-function ottDebugRedact(value: unknown, depth = 0): unknown {
-    if (depth > 8) return "[truncated]";
-    if (typeof value === "string") return ottDebugRedactText(value);
+function ottDebugRedact(
+    value: unknown,
+    depth = 0,
+    budget = { nodes: 256 }
+): unknown {
+    if (depth > 8 || budget.nodes-- <= 0) return "[truncated]";
+    if (typeof value === "string")
+        return ottDebugRedactText(value).slice(0, 2048);
     if (Array.isArray(value)) {
-        return value.map(function (item) {
-            return ottDebugRedact(item, depth + 1);
+        return value.slice(0, 32).map(function (item) {
+            return ottDebugRedact(item, depth + 1, budget);
         });
     }
     if (value && typeof value === "object") {
         var result: Record<string, unknown> = {};
-        Object.keys(value).forEach(function (key) {
-            if (key === "__proto__" || key === "constructor") return;
-            result[key] =
-                /^(user|pwd|cookie|setcookie|key|auth|credentials?|signature|sig)$|password|passwd|secret|token|authorization|username|apikey/i.test(
-                    key.replace(/[-_]/g, "")
-                )
-                    ? "[redacted]"
-                    : ottDebugRedact(
-                          (value as Record<string, unknown>)[key],
-                          depth + 1
-                      );
-        });
+        var keys = 0;
+        for (var key in value) {
+            if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+            if (++keys > 32 || budget.nodes <= 0) break;
+            if (
+                key.length > 80 ||
+                key === "__proto__" ||
+                key === "constructor" ||
+                key === "toJSON"
+            )
+                continue;
+            try {
+                result[key] =
+                    /^(user|pwd|cookie|setcookie|key|auth|credentials?|signature|sig)$|password|passwd|secret|token|authorization|username|apikey/i.test(
+                        key.replace(/[-_]/g, "")
+                    )
+                        ? "[redacted]"
+                        : ottDebugRedact(
+                              (value as Record<string, unknown>)[key],
+                              depth + 1,
+                              budget
+                          );
+            } catch (_error) {
+                result[key] = "[unavailable]";
+            }
+        }
         return result;
     }
-    return value;
+    if (
+        value === null ||
+        typeof value === "boolean" ||
+        (typeof value === "number" && isFinite(value))
+    )
+        return value;
+    return "[unavailable]";
+}
+
+function ottDebugStore(event: OttDebugEvent): boolean {
+    var bytes = ottDebugBodyBytes(JSON.stringify(event));
+    if (bytes > OTT_DEBUG_EVENT_BYTES) {
+        _ottDbgDropped++;
+        return false;
+    }
+    while (
+        _ottDbgRing.length &&
+        (_ottDbgRing.length >= OTT_DEBUG_RING_MAX ||
+            _ottDbgRingBytes + bytes > OTT_DEBUG_RING_BYTES)
+    ) {
+        _ottDbgRing.shift();
+        _ottDbgRingBytes -= _ottDbgRingSizes.shift() || 0;
+        _ottDbgDropped++;
+    }
+    _ottDbgRing.push(event);
+    _ottDbgRingSizes.push(bytes);
+    _ottDbgRingBytes += bytes;
+    return true;
 }
 
 function ottDebugPush(cat: OttDebugCat, msg: string, data?: any): void {
     if (!_ottDbgEnabled) return;
     var ev: OttDebugEvent = ottDebugTagEvent({
         cat: cat,
-        msg: ottDebugRedactText(msg),
+        msg: ottDebugRedactText(msg).slice(0, 2048),
         session: _ottDbgSession || "-",
         t: Date.now(),
     });
     if (data !== undefined) ev.data = ottDebugRedact(data);
-    _ottDbgRing.push(ev);
-    if (_ottDbgRing.length > OTT_DEBUG_RING_MAX) {
-        _ottDbgRing.splice(0, _ottDbgRing.length - OTT_DEBUG_RING_MAX);
-    }
-    _ottDbgPending.push(ev);
+    if (!ottDebugStore(ev)) return;
+    if (_ottDbgLocal) _ottDbgPending.push(ev);
+    ottDebugDeliver(ev);
     if (
         cat === "stall" ||
         cat === "sys" ||
@@ -227,6 +314,9 @@ function ottDebugDump(): string {
 
 function ottDebugClear(): void {
     _ottDbgRing = [];
+    _ottDbgRingSizes = [];
+    _ottDbgRingBytes = 0;
+    _ottDbgDropped = 0;
     _ottDbgPending = [];
     _ottDbgLastError = "";
     _ottDbgStallSince = 0;
@@ -461,7 +551,10 @@ function ottDebugAuthToken(): string {
 }
 
 function ottDebugRetryBatch(batch: OttDebugEvent[]): void {
-    _ottDbgPending = batch.concat(_ottDbgPending).slice(-OTT_DEBUG_RING_MAX);
+    if (_ottDbgEnabled)
+        _ottDbgPending = batch
+            .concat(_ottDbgPending)
+            .slice(-OTT_DEBUG_RING_MAX);
 }
 
 function ottDebugBodyBytes(body: string): number {
@@ -509,7 +602,11 @@ function ottDebugRetryStatus(status: number): boolean {
 }
 
 function ottDebugFlushIngest(): void {
-    if (!_ottDbgEnabled || !_ottDbgPending.length) return;
+    if (!_ottDbgEnabled || !_ottDbgLocal || !_ottDbgPending.length) return;
+    var generation = _ottDbgGeneration;
+    function retry(batch: OttDebugEvent[]): void {
+        if (generation === _ottDbgGeneration) ottDebugRetryBatch(batch);
+    }
     var token = ottDebugAuthToken();
     if (!token) {
         _ottDbgPending = [];
@@ -529,11 +626,10 @@ function ottDebugFlushIngest(): void {
                 method: "POST",
             })
                 .then(function (response) {
-                    if (ottDebugRetryStatus(response.status))
-                        ottDebugRetryBatch(batch);
+                    if (ottDebugRetryStatus(response.status)) retry(batch);
                 })
                 .catch(function () {
-                    ottDebugRetryBatch(batch);
+                    retry(batch);
                 });
             return;
         }
@@ -545,17 +641,21 @@ function ottDebugFlushIngest(): void {
         xhr.setRequestHeader("Authorization", "Bearer " + token);
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && ottDebugRetryStatus(xhr.status))
-                ottDebugRetryBatch(batch);
+                retry(batch);
         };
         xhr.send(body);
     } catch (_e2) {
-        ottDebugRetryBatch(batch);
+        retry(batch);
     }
 }
 
 /** Unload/hide flush with authentication; Beacon cannot carry the required header. */
 function ottDebugFlushIngestUrgent(): void {
-    if (!_ottDbgEnabled || !_ottDbgPending.length) return;
+    if (!_ottDbgEnabled || !_ottDbgLocal || !_ottDbgPending.length) return;
+    var generation = _ottDbgGeneration;
+    function retry(batch: OttDebugEvent[]): void {
+        if (generation === _ottDbgGeneration) ottDebugRetryBatch(batch);
+    }
     var token = ottDebugAuthToken();
     if (!token) {
         _ottDbgPending = [];
@@ -577,11 +677,10 @@ function ottDebugFlushIngestUrgent(): void {
                 method: "POST",
             })
                 .then(function (response) {
-                    if (ottDebugRetryStatus(response.status))
-                        ottDebugRetryBatch(batch);
+                    if (ottDebugRetryStatus(response.status)) retry(batch);
                 })
                 .catch(function () {
-                    ottDebugRetryBatch(batch);
+                    retry(batch);
                 });
             sent = true;
         }
@@ -593,12 +692,12 @@ function ottDebugFlushIngestUrgent(): void {
             xhr.setRequestHeader("Content-Type", "application/json");
             xhr.setRequestHeader("Authorization", "Bearer " + token);
             xhr.send(body);
-            if (ottDebugRetryStatus(xhr.status)) ottDebugRetryBatch(batch);
+            if (ottDebugRetryStatus(xhr.status)) retry(batch);
             sent = true;
         } catch (_e2) {}
     }
     if (!sent) {
-        ottDebugRetryBatch(batch);
+        retry(batch);
     }
 }
 
@@ -623,6 +722,7 @@ function ottDebugEndStallIfAny(): void {
 
 function ottDebugOnVideoEvent(event: Event): void {
     if (!_ottDbgEnabled || !event || !event.type) return;
+    var generation = _ottDbgGeneration;
     var t = event.type;
     if (
         t !== "waiting" &&
@@ -654,11 +754,13 @@ function ottDebugOnVideoEvent(event: Event): void {
         }
     }
     ottDebugPush("video", t, data);
+    if (!_ottDbgEnabled || generation !== _ottDbgGeneration) return;
     if (t === "waiting" || t === "stalled") {
         _ottDbgWaitingCount++;
         if (!_ottDbgStallSince) _ottDbgStallSince = Date.now();
         ottDebugClearStallTimer();
         _ottDbgStallTimer = setTimeout(function () {
+            if (!_ottDbgEnabled || generation !== _ottDbgGeneration) return;
             _ottDbgStallTimer = null;
             var v2 =
                 _ottDbgVideo ||
@@ -682,7 +784,7 @@ function ottDebugOnVideoEvent(event: Event): void {
 function ottDebugBeginSession(_url?: string): void {
     if (!_ottDbgEnabled) return;
     _ottDbgSession = ottDebugShortId();
-    _ottDbgHls = null;
+    ottDebugDetachHls();
     _ottDbgVideo = document.getElementById("video") as HTMLVideoElement | null;
     _ottDbgLastDecodedBytes = 0;
     _ottDbgLastMbps = 0;
@@ -699,69 +801,120 @@ function ottDebugBeginSession(_url?: string): void {
 
 function ottDebugWrapXhrSetup(
     prevXhr?: any
-): (xhr: XMLHttpRequest, url: string) => void {
-    return function (xhr: XMLHttpRequest, url: string) {
-        if (typeof prevXhr === "function") {
-            try {
-                prevXhr(xhr, url);
-            } catch (_e) {}
-        }
-        if (!_ottDbgEnabled) return;
-        xhr.addEventListener("load", function () {
+): (xhr: XMLHttpRequest, url: string) => any {
+    var generation = _ottDbgGeneration;
+    return function (this: any, xhr: XMLHttpRequest, url: string) {
+        var result =
+            typeof prevXhr === "function"
+                ? prevXhr.apply(this, arguments)
+                : undefined;
+        if (
+            !_ottDbgEnabled ||
+            generation !== _ottDbgGeneration ||
+            !xhr ||
+            typeof xhr.addEventListener !== "function" ||
+            _ottDbgXhrCleanup.length >= 64
+        )
+            return result;
+        var disposed = false;
+        function loaded(): void {
+            if (disposed || !_ottDbgEnabled || generation !== _ottDbgGeneration)
+                return;
             if (xhr.status >= 400) {
                 ottDebugPush("net", "xhr status", {
                     status: xhr.status,
                     url: ottDebugRedactText(String(url)).substring(0, 160),
                 });
             }
-        });
-        xhr.addEventListener("error", function () {
+        }
+        function failed(): void {
+            if (disposed || !_ottDbgEnabled || generation !== _ottDbgGeneration)
+                return;
             ottDebugPush("net", "xhr error", {
                 url: ottDebugRedactText(String(url)).substring(0, 160),
             });
-        });
+        }
+        function dispose(): void {
+            if (disposed) return;
+            disposed = true;
+            xhr.removeEventListener("load", loaded);
+            xhr.removeEventListener("error", failed);
+            xhr.removeEventListener("loadend", dispose);
+            var index = _ottDbgXhrCleanup.indexOf(dispose);
+            if (index >= 0) _ottDbgXhrCleanup.splice(index, 1);
+        }
+        _ottDbgXhrCleanup.push(dispose);
+        xhr.addEventListener("load", loaded);
+        xhr.addEventListener("error", failed);
+        xhr.addEventListener("loadend", dispose);
+        return result;
     };
 }
 
-function ottDebugWrapRecover(hls: any): void {
-    if (!hls) return;
-    if (
-        typeof hls.recoverMediaError === "function" &&
-        !hls.__ottDbgRecoverWrapped
-    ) {
-        var prevRecover = hls.recoverMediaError.bind(hls);
-        hls.recoverMediaError = function () {
-            _ottDbgRecoverCount++;
-            ottDebugPush("hls", "recoverMediaError", {
-                recoverCount: _ottDbgRecoverCount,
-            });
-            return prevRecover();
-        };
-        hls.__ottDbgRecoverWrapped = true;
-    }
-    if (typeof hls.startLoad === "function" && !hls.__ottDbgStartLoadWrapped) {
-        var prevStart = hls.startLoad.bind(hls);
-        hls.startLoad = function (startPosition?: number) {
-            _ottDbgRecoverCount++;
-            ottDebugPush("hls", "startLoad", {
-                recoverCount: _ottDbgRecoverCount,
-                startPosition: startPosition,
-            });
-            return prevStart(startPosition);
-        };
-        hls.__ottDbgStartLoadWrapped = true;
-    }
-}
-
 function ottDebugAttachHls(hls: any): void {
-    if (!_ottDbgEnabled || !hls || typeof hls.on !== "function") return;
+    if (!_ottDbgEnabled || !hls || hls === _ottDbgHls) return;
+    ottDebugDetachHls();
+    if (typeof hls.on !== "function" || typeof hls.off !== "function") return;
     _ottDbgHls = hls;
-    ottDebugWrapRecover(hls);
     var HlsRef = typeof Hls !== "undefined" ? Hls : (window as any).Hls;
     if (!HlsRef || !HlsRef.Events) return;
     var Ev = HlsRef.Events;
+    var cleanup: (() => void)[] = [];
+    var generation = _ottDbgGeneration;
+    function current(): boolean {
+        return (
+            _ottDbgEnabled &&
+            generation === _ottDbgGeneration &&
+            _ottDbgHls === hls
+        );
+    }
+    function listen(name: string, callback: any): void {
+        if (!name) return;
+        var guarded = function (event: any, data: any) {
+            if (current()) callback(event, data);
+        };
+        hls.on(name, guarded);
+        cleanup.push(function () {
+            hls.off(name, guarded);
+        });
+    }
+    function wrap(name: string): void {
+        var previous = hls[name];
+        if (typeof previous !== "function") return;
+        var wrapped = function (this: any) {
+            if (current()) {
+                _ottDbgRecoverCount++;
+                ottDebugPush("hls", name, {
+                    recoverCount: _ottDbgRecoverCount,
+                });
+            }
+            return previous.apply(this, arguments);
+        };
+        hls[name] = wrapped;
+        cleanup.push(function () {
+            if (hls[name] === wrapped) hls[name] = previous;
+        });
+    }
+    _ottDbgHlsCleanup = function () {
+        cleanup.forEach(function (dispose) {
+            try {
+                dispose();
+            } catch (_error) {}
+        });
+    };
+    wrap("recoverMediaError");
+    wrap("startLoad");
+    if (hls.config) {
+        var previousXhr = hls.config.xhrSetup;
+        var wrappedXhr = ottDebugWrapXhrSetup(previousXhr);
+        hls.config.xhrSetup = wrappedXhr;
+        cleanup.push(function () {
+            if (hls.config.xhrSetup === wrappedXhr)
+                hls.config.xhrSetup = previousXhr;
+        });
+    }
 
-    hls.on(Ev.ERROR, function (_e: any, data: any) {
+    listen(Ev.ERROR, function (_e: any, data: any) {
         var fatal = !!(data && data.fatal);
         if (fatal) {
             _ottDbgErrorCount++;
@@ -779,7 +932,7 @@ function ottDebugAttachHls(hls: any): void {
         });
     });
 
-    hls.on(Ev.FRAG_LOADED, function (_e: any, data: any) {
+    listen(Ev.FRAG_LOADED, function (_e: any, data: any) {
         var frag = data && data.frag;
         var stats = data && data.stats;
         ottDebugPush("hls", "FRAG_LOADED", {
@@ -793,11 +946,11 @@ function ottDebugAttachHls(hls: any): void {
         });
     });
 
-    hls.on(Ev.LEVEL_SWITCHED, function (_e: any, data: any) {
+    listen(Ev.LEVEL_SWITCHED, function (_e: any, data: any) {
         ottDebugPush("hls", "LEVEL_SWITCHED", { level: data && data.level });
     });
 
-    hls.on(Ev.LEVEL_LOADED, function (_e: any, data: any) {
+    listen(Ev.LEVEL_LOADED, function (_e: any, data: any) {
         ottDebugPush("hls", "LEVEL_LOADED", {
             details:
                 data && data.details ? { live: data.details.live } : undefined,
@@ -805,7 +958,7 @@ function ottDebugAttachHls(hls: any): void {
         });
     });
 
-    hls.on(Ev.MANIFEST_PARSED, function (_e: any, data: any) {
+    listen(Ev.MANIFEST_PARSED, function (_e: any, data: any) {
         var levels = (data && data.levels) || hls.levels || [];
         var summary: any[] = [];
         for (var i = 0; i < levels.length; i++) {
@@ -821,12 +974,10 @@ function ottDebugAttachHls(hls: any): void {
             summary: summary,
         });
     });
-
-    // xhrSetup must be set on hlsConfig before new Hls — see wrapXhrSetup.
 }
 
 function ottDebugOnVisibilityFlush(): void {
-    if (!_ottDbgEnabled) return;
+    if (!_ottDbgEnabled || !_ottDbgLocal) return;
     try {
         // Final stats into pending without async auto-flush (ottDebugPush would
         // fire fetch for msg===stats); the urgent flush must carry the last batch.
@@ -838,41 +989,127 @@ function ottDebugOnVisibilityFlush(): void {
             t: Date.now(),
         });
         ev.data = ottDebugCounters();
-        _ottDbgRing.push(ev);
-        if (_ottDbgRing.length > OTT_DEBUG_RING_MAX) {
-            _ottDbgRing.splice(0, _ottDbgRing.length - OTT_DEBUG_RING_MAX);
-        }
+        if (!ottDebugStore(ev)) return;
         _ottDbgPending.push(ev);
         ottDebugFlushIngestUrgent();
     } catch (_e) {}
 }
 
 function ottDebugInstallFlushHooks(): void {
-    try {
-        if (typeof document !== "undefined" && document.addEventListener) {
-            document.addEventListener(
-                "visibilitychange",
-                function () {
-                    if (document.visibilityState === "hidden") {
-                        ottDebugOnVisibilityFlush();
-                    }
-                },
-                false
-            );
-        }
-        if (typeof window !== "undefined" && window.addEventListener) {
-            window.addEventListener(
-                "pagehide",
-                ottDebugOnVisibilityFlush,
-                false
-            );
-            window.addEventListener(
-                "beforeunload",
-                ottDebugOnVisibilityFlush,
-                false
-            );
-        }
-    } catch (_e) {}
+    ottDebugListen(document, "visibilitychange", function () {
+        if (document.visibilityState === "hidden") ottDebugOnVisibilityFlush();
+    });
+    ottDebugListen(window, "pagehide", ottDebugOnVisibilityFlush);
+    ottDebugListen(window, "beforeunload", ottDebugOnVisibilityFlush);
+}
+
+function ottDebugDeactivate(): void {
+    if (!_ottDbgEnabled) return;
+    _ottDbgEnabled = false;
+    _ottDbgGeneration++;
+    ottDebugDetachHls();
+    ottDebugClearStallTimer();
+    if (_ottDbgHudTimer !== null) clearInterval(_ottDbgHudTimer);
+    if (_ottDbgIngestTimer !== null) clearInterval(_ottDbgIngestTimer);
+    if (_ottDbgStatsTimer !== null) clearInterval(_ottDbgStatsTimer);
+    _ottDbgHudTimer = _ottDbgIngestTimer = _ottDbgStatsTimer = null;
+    var cleanup = _ottDbgCleanup;
+    _ottDbgCleanup = [];
+    cleanup.forEach(function (dispose) {
+        try {
+            dispose();
+        } catch (_error) {}
+    });
+    _ottDbgXhrCleanup.slice().forEach(function (dispose) {
+        try {
+            dispose();
+        } catch (_error) {}
+    });
+    _ottDbgXhrCleanup = [];
+    if ((window as any).__ottDebugInputStop)
+        (window as any).__ottDebugInputStop();
+    if (_ottDbgHudEl && _ottDbgHudEl.parentNode)
+        _ottDbgHudEl.parentNode.removeChild(_ottDbgHudEl);
+    _ottDbgHudEl = null;
+    _ottDbgPending = [];
+    _ottDbgVideo = null;
+    ottDebugClear();
+    ottDebugInstallApi(false);
+}
+
+/** Stop all local and remote consumers without leaving instrumentation installed. */
+function ottDebugDisable(): void {
+    _ottDbgLocal = false;
+    _ottDbgGeneration++;
+    (window as any).__OTT_DEBUG__ = false;
+    var captures = _ottDbgCaptures;
+    _ottDbgCaptures = [];
+    ottDebugDeactivate();
+    captures.forEach(function (capture) {
+        try {
+            if (capture.stopped) capture.stopped();
+        } catch (_error) {}
+    });
+}
+
+/** Remote capture owns only its subscription; local opt-in survives its release. */
+function ottDebugCapture(
+    event: (event: OttDebugEvent) => void,
+    stopped?: () => void
+): () => void {
+    if (
+        typeof event !== "function" ||
+        (stopped !== undefined && typeof stopped !== "function")
+    ) {
+        throw new Error("Invalid diagnostic consumer");
+    }
+    if (_ottDbgCaptures.length >= 4)
+        throw new Error("Too many diagnostic consumers");
+    var capture = { event: event, stopped: stopped };
+    _ottDbgCaptures.push(capture);
+    if (!_ottDbgEnabled) ottDebugActivate(false);
+    return function () {
+        var index = _ottDbgCaptures.indexOf(capture);
+        if (index < 0) return;
+        _ottDbgCaptures.splice(index, 1);
+        if (!_ottDbgLocal && !_ottDbgCaptures.length) ottDebugDeactivate();
+    };
+}
+
+function ottDebugSnapshot(): any {
+    function number(value: any): number | null {
+        return typeof value === "number" && isFinite(value) && value >= 0
+            ? value
+            : null;
+    }
+    var video = document.getElementById("video") as HTMLVideoElement | null;
+    return {
+        available: true,
+        counters: _ottDbgEnabled
+            ? {
+                  dropped: _ottDbgDropped,
+                  errors: _ottDbgErrorCount,
+                  recoveries: _ottDbgRecoverCount,
+                  stalls: _ottDbgStallCount,
+                  waiting: _ottDbgWaitingCount,
+              }
+            : null,
+        enabled: _ottDbgEnabled,
+        video: video
+            ? {
+                  bufferAhead: number(ottDebugBufferAhead(video)),
+                  currentTime: number(video.currentTime),
+                  droppedFrames: number(ottDebugDroppedFrames(video)),
+                  ended: video.ended === true,
+                  errorCode: video.error ? number(video.error.code) : null,
+                  networkState: number(video.networkState),
+                  paused: video.paused === true,
+                  readyState: number(video.readyState),
+                  videoHeight: number(video.videoHeight),
+                  videoWidth: number(video.videoWidth),
+              }
+            : null,
+    };
 }
 
 function ottDebugInstallApi(enabled: boolean): void {
@@ -880,20 +1117,24 @@ function ottDebugInstallApi(enabled: boolean): void {
     (window as any).__ottDebug = {
         attachHls: enabled ? ottDebugAttachHls : noop,
         beginSession: enabled ? ottDebugBeginSession : noop,
+        capture: ottDebugCapture,
         clear: enabled ? ottDebugClear : noop,
+        disable: ottDebugDisable,
         dump: enabled
             ? ottDebugDump
             : function () {
                   return "";
               },
+        enable: ottDebugEnable,
         enabled: enabled,
         isDebugEnabled: ottDebugIsEnabled,
         onVideoEvent: enabled ? ottDebugOnVideoEvent : noop,
         push: enabled ? ottDebugPush : noop,
         setHud: enabled ? ottDebugSetHud : noop,
+        snapshot: ottDebugSnapshot,
         toggleHud: function () {
             // Menu opt-in lasts for this page; further toggles hide/show HUD.
-            if (!enabled) ottDebugEnable();
+            if (!_ottDbgLocal) ottDebugEnable();
             ottDebugSetHud(enabled ? !_ottDbgHudOn : true);
         },
         wrapXhrSetup: enabled
@@ -905,29 +1146,35 @@ function ottDebugInstallApi(enabled: boolean): void {
 }
 
 function ottDebugEnable(): void {
+    _ottDbgLocal = true;
+    (window as any).__OTT_DEBUG__ = true;
+    if (_ottDbgEnabled) {
+        ottDebugSetHud(true);
+        return;
+    }
+    ottDebugActivate(true);
+}
+
+function ottDebugActivate(local: boolean): void {
     if (_ottDbgEnabled) return;
     _ottDbgEnabled = true;
+    _ottDbgGeneration++;
     if ((window as any).__ottDebugInputInit)
         (window as any).__ottDebugInputInit();
     try {
-        (window as any).__OTT_DEBUG__ = true;
+        if (local) (window as any).__OTT_DEBUG__ = true;
     } catch (_e) {}
     ottDebugEnsurePlayerId();
     console.info(
         "[ottDebug] enabled port=" + ottDebugPort() + " id=" + _ottDbgPlayerId
     );
-    // Restore before creating the HUD; absence keeps the default visible state.
+    _ottDbgHudOn = local;
+    // Restore local HUD preference without persisting a remote session.
     try {
-        if (typeof localStorage !== "undefined")
+        if (local && typeof localStorage !== "undefined")
             _ottDbgHudOn = localStorage.getItem("ottplay_debug_hud") !== "0";
     } catch (_e) {}
     ottDebugEnsureHud();
-    ottDebugPush("sys", "boot", {
-        href: typeof location !== "undefined" ? location.href : "",
-        origin: ottDebugOrigin(),
-        playerId: _ottDbgPlayerId,
-        port: ottDebugPort(),
-    });
 
     if (_ottDbgHudTimer === null) {
         _ottDbgHudTimer = setInterval(ottDebugUpdateHud, OTT_DEBUG_HUD_MS);
@@ -947,7 +1194,6 @@ function ottDebugEnable(): void {
     // when debug is enabled. Safe on PC (keyCode 68 unused) and on MAG/Maple
     // (e.key avoids their PLAY/PREV=68 mapping).
     try {
-        var _ottDbgKeyInstalled = false;
         function _ottDbgOnKeyDown(e: KeyboardEvent) {
             var target = e.target as HTMLElement | null;
             if (
@@ -982,16 +1228,19 @@ function ottDebugEnable(): void {
                 console.info("[ottDebug] HUD " + (_ottDbgHudOn ? "on" : "off"));
             }
         }
-        if (!_ottDbgKeyInstalled) {
-            if (typeof document !== "undefined" && document.addEventListener) {
-                document.addEventListener("keydown", _ottDbgOnKeyDown, false);
-            }
-            _ottDbgKeyInstalled = true;
-        }
+        ottDebugListen(document, "keydown", _ottDbgOnKeyDown);
     } catch (_e3) {}
 
     ottDebugInstallApi(true);
+    if ((window as any).__ottDebugAttachCurrent)
+        (window as any).__ottDebugAttachCurrent();
     ottDebugUpdateHud();
+    ottDebugPush("sys", "boot", {
+        href: typeof location !== "undefined" ? location.href : "",
+        origin: ottDebugOrigin(),
+        playerId: _ottDbgPlayerId,
+        port: ottDebugPort(),
+    });
 }
 
 function ottDebugTryServerConfig(): void {
@@ -999,6 +1248,7 @@ function ottDebugTryServerConfig(): void {
         if (typeof fetch !== "function") return;
         var token = ottDebugAuthToken();
         if (!token) return;
+        var generation = _ottDbgGeneration;
         fetch("/debug/config", {
             headers: { Authorization: "Bearer " + token },
         })
@@ -1007,7 +1257,11 @@ function ottDebugTryServerConfig(): void {
                 return r.json();
             })
             .then(function (cfg) {
-                if (cfg && cfg.enabled === true) {
+                if (
+                    generation === _ottDbgGeneration &&
+                    cfg &&
+                    cfg.enabled === true
+                ) {
                     ottDebugEnable();
                 }
             })

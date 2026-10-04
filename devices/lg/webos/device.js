@@ -223,6 +223,8 @@ stbInit = function () {
 // https://webostv.developer.lge.com/develop/guides/system-ui-visibility
 (function () {
     var started = false;
+    var generation = 0;
+    var listeners = [];
     var cursor = "unknown";
     var focus = "unknown";
     var area = "unknown";
@@ -258,6 +260,16 @@ stbInit = function () {
     window.__ottDebugInputInit = function () {
         if (started || !document.addEventListener) return;
         started = true;
+        var current = ++generation;
+        function listen(target, name, callback, capture) {
+            function guarded(event) {
+                if (started && current === generation) callback(event);
+            }
+            target.addEventListener(name, guarded, capture);
+            listeners.push(function () {
+                target.removeEventListener(name, guarded, capture);
+            });
+        }
         try {
             if (typeof document.hasFocus === "function")
                 focus = document.hasFocus() ? "on" : "off";
@@ -291,7 +303,8 @@ stbInit = function () {
                     window.__ottDebugInput()
                 );
         }
-        document.addEventListener(
+        listen(
+            document,
             "cursorStateChange",
             function (event) {
                 var visible = event.detail && event.detail.visibility;
@@ -301,7 +314,8 @@ stbInit = function () {
             },
             false
         );
-        document.addEventListener(
+        listen(
+            document,
             "webOSMouse",
             function (event) {
                 var type = event.detail && event.detail.type;
@@ -311,7 +325,8 @@ stbInit = function () {
             },
             false
         );
-        window.addEventListener(
+        listen(
+            window,
             "focus",
             function () {
                 focus = "on";
@@ -319,7 +334,8 @@ stbInit = function () {
             },
             false
         );
-        window.addEventListener(
+        listen(
+            window,
             "blur",
             function () {
                 focus = "off";
@@ -328,21 +344,24 @@ stbInit = function () {
             false
         );
         // Count delivery only; never record positions, typed keys or individual moves.
-        document.addEventListener(
+        listen(
+            document,
             "mousemove",
             function () {
                 moves++;
             },
             true
         );
-        document.addEventListener(
+        listen(
+            document,
             "mousedown",
             function () {
                 downs++;
             },
             true
         );
-        document.addEventListener(
+        listen(
+            document,
             "click",
             function () {
                 clicks++;
@@ -353,8 +372,21 @@ stbInit = function () {
         function wheel() {
             wheels++;
         }
-        document.addEventListener("wheel", wheel, true);
-        document.addEventListener("mousewheel", wheel, true);
+        listen(document, "wheel", wheel, true);
+        listen(document, "mousewheel", wheel, true);
+    };
+    window.__ottDebugInputStop = function () {
+        if (!started) return;
+        started = false;
+        generation++;
+        var cleanup = listeners;
+        listeners = [];
+        cleanup.forEach(function (dispose) {
+            dispose();
+        });
+        cursor = focus = area = "unknown";
+        moves = downs = clicks = wheels = 0;
+        delete window.__ottDebugInput;
     };
     if (window.__ottDebug && window.__ottDebug.enabled)
         window.__ottDebugInputInit();

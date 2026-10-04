@@ -303,12 +303,72 @@ export function createKiosk(w: any): any {
         reset();
         if (timer === null) timer = w.setInterval(tick, 1000);
     }
+    function stopDiagnostics(): boolean {
+        if (!locked()) return false;
+        try {
+            var controller = w.__ottRemoteDiagnostics;
+            if (
+                !controller ||
+                typeof controller.status !== "function" ||
+                typeof controller.setEnabled !== "function"
+            )
+                return false;
+            var state = controller.status();
+            if (
+                !state ||
+                (state.enabled !== true &&
+                    state.trusted !== true &&
+                    state.pending !== true)
+            )
+                return false;
+            // Only revoke support. Kiosk playback and its stored policy stay locked.
+            controller.setEnabled(false);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    function diagnosticsStopTarget(event: any): boolean {
+        var doc = w.document;
+        if (!doc || typeof doc.getElementById !== "function") return false;
+        var button = doc.getElementById("remoteDiagnosticsIndicator");
+        return (
+            !!button &&
+            button.nodeName === "BUTTON" &&
+            button.ownerDocument === doc &&
+            event.target === button
+        );
+    }
     function blockInput(event: any): void {
         if (!locked()) return;
         event.preventDefault();
         event.stopImmediatePropagation();
+        // Consume the activation here: neither a DOM onclick nor a delegated
+        // settings handler may run through this exception to kiosk input locking.
+        if (
+            ["click", "pointerdown", "mousedown", "touchstart"].indexOf(
+                event.type
+            ) >= 0 &&
+            diagnosticsStopTarget(event)
+        )
+            stopDiagnostics();
     }
-    if (w.document && w.document.addEventListener)
+    function stopDiagnosticsKey(event: any): void {
+        if (
+            !locked() ||
+            !diagnosticsStopTarget(event) ||
+            (event.key !== "Enter" &&
+                event.key !== " " &&
+                event.keyCode !== 13 &&
+                event.keyCode !== 32)
+        )
+            return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        stopDiagnostics();
+    }
+    if (w.document && w.document.addEventListener) {
+        w.document.addEventListener("keydown", stopDiagnosticsKey, true);
         [
             "click",
             "dblclick",
@@ -322,6 +382,7 @@ export function createKiosk(w: any): any {
                 passive: false,
             });
         });
+    }
     return {
         admit: admit,
         allowed: allowed,
@@ -330,5 +391,6 @@ export function createKiosk(w: any): any {
         locked: locked,
         request: request,
         snapshot: snapshot,
+        stopDiagnostics: stopDiagnostics,
     };
 }

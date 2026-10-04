@@ -60,6 +60,11 @@ var keyStrings = {
     "All categories": "Összes kategória",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv beállításai",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Eszközazonosító engedélyezése",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -241,9 +246,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Állítsa be ezt: Шаравоз, a Beállítások -> Szolgáltató beállításai menüben",
     Connect: "Csatlakozás",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Csatlakoztatva",
     "Connected. Waiting for the channel list...":
         "Csatlakoztatva. Várakozás a csatornalistára…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Csatlakozás a Stalker portálhoz…",
     "Connecting...": "Csatlakozás…",
@@ -284,6 +293,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV beállításai",
     Director: "Rendező",
     "Disable HTTP remote": "HTTP-távirányítás kikapcsolása",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Alapértelmezés szerint kikapcsolva. A bekapcsolás új eszköz-hozzáférési kódot hoz létre.",
     Disconnect: "Leválasztás",
@@ -666,6 +676,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Távirányító (színes gombok nélkül)",
     "Remote (number buttons N/A)": "Távirányító (számgombok nélkül)",
     "Remote control": "Távirányítás",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -806,6 +826,9 @@ var keyStrings = {
     "Stalker portal settings": "Stalker portál beállításai",
     "Stalker portals": "Stalker portálok",
     Status: "Állapot",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Lejátszás leállítása és visszatérés az élő adáshoz",
     "Stream type: %1": "Adatfolyam típusa: %1",
@@ -855,6 +878,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Nagyítási mód váltása",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv beállításai",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Bemutató kipróbálása",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG beállításai",
@@ -873,6 +904,8 @@ var keyStrings = {
         "A frissítés települt. Indítsa újra az OttPlay FOSS alkalmazást.",
     "Use an HTTP or HTTPS server address.":
         "Használjon HTTP- vagy HTTPS-kiszolgálócímet.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Használjon HTTP-t vagy HTTPS-t, felhasználónév és jelszó nélkül a címben.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

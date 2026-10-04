@@ -25,6 +25,7 @@ module.exports = defineConfig({
         "stalker-profiles.spec.cjs",
         "pc2-playback.spec.cjs",
         "window-controls.spec.cjs",
+        "remote-diagnostics.spec.cjs",
     ],
     timeout: 30000,
     use: {

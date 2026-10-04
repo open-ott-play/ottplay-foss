@@ -40,8 +40,41 @@ Object.assign(w, require("./load-wire.cjs")());
 w.eval(compatibilitySource);
 w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
 const stored = new Map();
+let diagnosticEnabled = false;
+let diagnosticTrusted = false;
+let diagnosticSession;
+let diagnosticListener = null;
+const diagnosticChanges = [];
 Object.assign(w, {
     _: (text) => text,
+    __ottRemoteDiagnostics: {
+        setEnabled: (enabled) => {
+            diagnosticEnabled = enabled;
+            if (!enabled) diagnosticTrusted = false;
+            diagnosticChanges.push(enabled);
+            if (diagnosticListener) diagnosticListener();
+        },
+        setTrusted: (trusted) => {
+            diagnosticTrusted = trusted;
+            diagnosticEnabled = trusted;
+            if (diagnosticListener) diagnosticListener();
+        },
+        status: () => ({
+            enabled: diagnosticEnabled,
+            message: diagnosticEnabled
+                ? "Ready for diagnostics"
+                : "Diagnostics are off",
+            sessionId: diagnosticSession,
+            trusted: diagnosticTrusted,
+        }),
+        stopSession: () => {
+            diagnosticSession = undefined;
+            if (diagnosticListener) diagnosticListener();
+        },
+        subscribe: (listener) => {
+            diagnosticListener = listener;
+        },
+    },
     deviceUUID: "<script>window.injected=true</script>" + "uid".repeat(100),
     keys: { DOWN: 40, ENTER: 13, EXIT: 8, N2: 50, RETURN: 27, UP: 38 },
     listCaptionElement: w.document.getElementById("listCaption"),
@@ -420,16 +453,66 @@ assert.equal(
     true
 );
 remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "remoteDiagnosticsToggle");
+assert.deepEqual(
+    diagnosticChanges,
+    [],
+    "Opening settings never grants diagnostics"
+);
+remoteKey(w.keys.ENTER);
+assert.deepEqual(diagnosticChanges, [true]);
+assert.equal(w.document.activeElement.textContent, "Stop diagnostics");
+remoteKey(w.keys.ENTER);
+assert.deepEqual(diagnosticChanges, [true, false]);
+assert.equal(
+    w.document.activeElement.textContent,
+    "Allow diagnostics for 10 minutes"
+);
+remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
+remoteKey(w.keys.ENTER);
+assert.equal(diagnosticTrusted, true, "Trust has its own explicit action");
+assert.equal(
+    w.document.activeElement.textContent,
+    "Disable trusted remote support"
+);
+diagnosticSession = "session-under-test";
+diagnosticListener();
+remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "remoteDiagnosticsStopSession");
+remoteKey(w.keys.ENTER);
+assert.equal(
+    diagnosticSession,
+    undefined,
+    "Stop capture ends the current session"
+);
+assert.equal(
+    diagnosticTrusted,
+    true,
+    "Stopping capture retains explicit server trust"
+);
+remoteKey(w.keys.RIGHT);
 assert.equal(
     w.document.activeElement.id,
     "commandServerAddress",
     "selection wraps"
 );
 remoteKey(w.keys.LEFT);
+assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
+remoteKey(w.keys.ENTER);
+assert.equal(diagnosticTrusted, false);
+remoteKey(w.keys.LEFT);
+assert.equal(w.document.activeElement.id, "remoteDiagnosticsToggle");
+remoteKey(w.keys.LEFT);
 assert.match(w.document.activeElement.textContent, /Close/);
 remoteKey(w.keys.ENTER);
 assert.equal(w.document.getElementById("listAbout").style.display, "none");
 assert.equal(serverListener, null);
+assert.equal(
+    diagnosticListener,
+    null,
+    "closed settings unsubscribe diagnostics updates"
+);
 assert.equal(
     discoveryListener,
     null,

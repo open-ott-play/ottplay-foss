@@ -156,6 +156,12 @@ export var strLANG = "SHIFT";
 
 /** Active hls.js instance for the main video!. */
 var hlsInstance: any = null;
+// Late opt-in attaches to the active engine without restarting playback.
+(window as any).__ottDebugAttachCurrent = function (): void {
+    if (window.__ottDebug && window.__ottDebug.enabled) {
+        window.__ottDebug.attachHls(hlsInstance);
+    }
+};
 /** One-shot live auto-restart after fatal HLS parse/network (reset on success / new play). */
 var _liveRestartPolicy: any = null;
 function liveRestartPolicy(): any {
@@ -1111,15 +1117,6 @@ function startCorePlayback(
             hlsConfig.fragLoadingMaxRetry = 1;
             hlsConfig.levelLoadingMaxRetry = 1;
             hlsConfig.manifestLoadingMaxRetry = 1;
-        }
-        if (
-            window.__ottDebug &&
-            window.__ottDebug.enabled &&
-            typeof window.__ottDebug.wrapXhrSetup === "function"
-        ) {
-            hlsConfig.xhrSetup = window.__ottDebug.wrapXhrSetup(
-                hlsConfig.xhrSetup
-            );
         }
         hlsInstance = new Hls(hlsConfig);
         var playbackHls = hlsInstance;

@@ -59,6 +59,11 @@ var keyStrings = {
     "All categories": "Alla kategorier",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv-inställningar",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Tillåt detta enhets-ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -240,9 +245,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Konfigurera Шаравоз under Inställningar -> Leverantörsinställningar",
     Connect: "Anslut",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Ansluten",
     "Connected. Waiting for the channel list...":
         "Ansluten. Väntar på kanallistan…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Ansluter till Stalker-portalen…",
     "Connecting...": "Ansluter…",
@@ -283,6 +292,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV-inställningar",
     Director: "Regissör",
     "Disable HTTP remote": "Inaktivera HTTP-fjärrkontroll",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Inaktiverat som standard. Aktivering skapar en ny åtkomstkod för enheten.",
     Disconnect: "Koppla från",
@@ -663,6 +673,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Fjärrkontroll utan färgknappar",
     "Remote (number buttons N/A)": "Fjärrkontroll utan sifferknappar",
     "Remote control": "Fjärrkontroll",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -798,6 +818,9 @@ var keyStrings = {
     "Stalker portal settings": "Inställningar för Stalker-portal",
     "Stalker portals": "Stalker-portaler",
     Status: "Status",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Stoppa uppspelning och återgå till direktsändning",
     "Stream type: %1": "Strömtyp: %1",
@@ -846,6 +869,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Byt zoomläge",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-inställningar",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Prova demo",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG-inställningar",
@@ -864,6 +895,8 @@ var keyStrings = {
         "Uppdateringen är installerad. Starta om OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Använd en HTTP- eller HTTPS-serveradress.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Använd HTTP eller HTTPS utan användarnamn eller lösenord i adressen.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

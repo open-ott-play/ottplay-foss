@@ -25,6 +25,7 @@ async function testSource() {
     ).outputText;
     vm.runInContext(source, context);
     context._ottDbgEnabled = true;
+    context._ottDbgLocal = true;
     // Keep queued events visible instead of sending; real serialization is exercised.
     const flushIngest = context.ottDebugFlushIngest;
     context.ottDebugFlushIngest = () => {};
@@ -241,6 +242,9 @@ async function testInputDiagnostics() {
             }
         );
         const context = dom.getInternalVMContext();
+        // Fixed timestamps cannot accidentally contain the tested secret coordinates.
+        context.Date.now = () => 1700000000000;
+        context.Math.random = () => 0.25;
         const timers = [];
         const requests = [];
         const nativeCalls = [];
@@ -954,11 +958,12 @@ async function testBundle() {
         f.flush();
         assert.deepEqual(
             events(f.calls).map((event) => event.msg),
-            ["after oversize"]
+            ["[truncated]", "after oversize"]
         );
         assert(
-            api.dump().includes("x".repeat(100000)),
-            "Oversize events remain locally inspectable"
+            !api.dump().includes("x".repeat(100000)) &&
+                api.dump().includes("[truncated]"),
+            "Oversize messages retain a marker without retaining the raw allocation"
         );
         api.clear();
         f.calls.length = 0;
