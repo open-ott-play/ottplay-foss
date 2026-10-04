@@ -1299,7 +1299,9 @@ export function loadChannels(): void {
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     if ((window as any).__ottChannels) (window as any).__ottChannels.reset();
-    var driverOwned = !!(window as any).__ottActiveProviderDriver;
+    var driver = (window as any).__ottActiveProviderDriver;
+    var driverOwned = !!driver;
+    var libraryOnly = !!(driver && driver.capabilities.libraryOnly);
     var catalogSession = (
         window as any
     ).__ottProviderRuntime.classic.beginCatalog(driverOwned);
@@ -1307,7 +1309,7 @@ export function loadChannels(): void {
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
-    if (!$("#launch").is(":visible")) {
+    if (libraryOnly || !$("#launch").is(":visible")) {
         if (stbIsPlaying()) stbStop();
         $("#dialogbox")
             .html(
@@ -1316,6 +1318,11 @@ export function loadChannels(): void {
             .show();
         launch_id = "#dialogbox";
         closeList();
+        if (libraryOnly) {
+            $("#launch").hide();
+            if (typeof (window as any).clearBootHide === "function")
+                (window as any).clearBootHide();
+        }
     }
 
     primaryIndex = providerGetNum("primaryIndex", 0);
@@ -1346,7 +1353,11 @@ export function loadChannels(): void {
     setPlayerMode((window as any).settings.players);
     if (typeof setPlayer === "function") setPlayer();
 
-    $(launch_id).append("<br/>Loading channel list...");
+    $(launch_id).append(
+        libraryOnly
+            ? "<br/>" + _("Loading. Please wait...") + "<br/>"
+            : "<br/>Loading channel list..."
+    );
     var loadTimer: ReturnType<typeof setTimeout> | number = -1;
     function dismissLoading(): void {
         if (!loadTimer) return;

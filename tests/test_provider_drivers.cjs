@@ -327,6 +327,7 @@ test("all managed provider kinds settle loader only on a terminal catalog result
     assert.equal(representatives.size, 11);
     for (const [kind, id] of representatives) {
         const f = integrationFixture(id);
+        const loadingPanel = kind === "plex" ? "#dialogbox" : "#launch";
         f.host.infoBox = () => {};
         let settingsOpened = 0;
         f.host.showPage = () => {
@@ -340,19 +341,20 @@ test("all managed provider kinds settle loader only on a terminal catalog result
         };
         f.host.loadChannels();
         f.advanceTimers(30000);
-        assert.equal(f.panels["#launch"].visible, true, kind);
+        assert.equal(f.panels[loadingPanel].visible, true, kind);
         deliver(
             { channels: {}, groupOrder: [], groups: {}, ids: [] },
             undefined,
             true
         );
         assert.equal(
-            f.panels["#launch"].visible,
+            f.panels[loadingPanel].visible,
             true,
             kind + ": partial catalog"
         );
         assert.equal(f.completed, 0, kind);
         deliver(undefined, "network");
+        assert.equal(f.panels[loadingPanel].visible, false, kind);
         assert.equal(f.panels["#launch"].visible, false, kind);
         if (kind === "plex") {
             assert.equal(driver.libraryReady(), false);
