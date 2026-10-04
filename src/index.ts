@@ -5770,7 +5770,7 @@ function initRemoteDiagnostics(): void {
                 var badge = document.getElementById(
                     "remoteDiagnosticsIndicator"
                 );
-                if (!status.enabled) {
+                if (!status.enabled && status.state !== "storage-error") {
                     if (badge && badge.parentNode)
                         badge.parentNode.removeChild(badge);
                     return;
@@ -5797,7 +5797,9 @@ function initRemoteDiagnostics(): void {
                     ": " +
                     (window as any)._(status.message) +
                     " · " +
-                    (window as any)._("Stop");
+                    (status.state === "storage-error"
+                        ? (window as any)._("Retry")
+                        : (window as any)._("Stop"));
             },
             runtimeLabel:
                 (typeof window.__TAURI__ !== "undefined"
@@ -6010,6 +6012,7 @@ window.settingsCommands = function (): void {
     function refreshDiagnostics(): void {
         if (!diagnostics || closed) return;
         var status = diagnostics.status();
+        var storageError = status.state === "storage-error";
         var label = document.getElementById("remoteDiagnosticsStatus");
         if (label)
             label.textContent =
@@ -6018,16 +6021,20 @@ window.settingsCommands = function (): void {
         var button = document.getElementById("remoteDiagnosticsToggle");
         if (button)
             button.textContent = w._(
-                status.enabled || status.trusted || status.pending
-                    ? "Stop diagnostics"
-                    : "Allow diagnostics for 10 minutes"
+                storageError
+                    ? "Retry"
+                    : status.enabled || status.trusted || status.pending
+                      ? "Stop diagnostics"
+                      : "Allow diagnostics for 10 minutes"
             );
         var trust = document.getElementById("remoteDiagnosticsTrust");
         if (trust)
             trust.textContent = w._(
-                status.trusted
-                    ? "Disable trusted remote support"
-                    : "Trust this server for remote support"
+                storageError
+                    ? "Retry"
+                    : status.trusted
+                      ? "Disable trusted remote support"
+                      : "Trust this server for remote support"
             );
         var stopSession = document.getElementById(
             "remoteDiagnosticsStopSession"
@@ -6129,14 +6136,23 @@ window.settingsCommands = function (): void {
             if (diagnostics) {
                 var status = diagnostics.status();
                 diagnostics.setEnabled(
-                    !(status.enabled || status.trusted || status.pending)
+                    !(
+                        status.enabled ||
+                        status.trusted ||
+                        status.pending ||
+                        status.state === "storage-error"
+                    )
                 );
             }
             refreshDiagnostics();
         },
         function (): void {
-            if (diagnostics && diagnostics.setTrusted)
-                diagnostics.setTrusted(!diagnostics.status().trusted);
+            if (diagnostics && diagnostics.setTrusted) {
+                var status = diagnostics.status();
+                if (status.state === "storage-error")
+                    diagnostics.setEnabled(false);
+                else diagnostics.setTrusted(!status.trusted);
+            }
             refreshDiagnostics();
         },
         function (): void {

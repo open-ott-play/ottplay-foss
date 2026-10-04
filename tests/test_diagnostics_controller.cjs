@@ -148,6 +148,7 @@ function harness(real = false, permissionStore, runtimeLabel) {
         onConfigure: null,
         onFactory: null,
         onRelease: null,
+        onStatus: null,
         rawSnapshot: {
             available: true,
             counters: { errors: 2 },
@@ -219,6 +220,7 @@ function harness(real = false, permissionStore, runtimeLabel) {
         },
         onStatus(status) {
             h.statuses.push(plain(status));
+            if (h.onStatus) h.onStatus(status);
         },
         permissionStore,
         runtimeLabel,
@@ -985,6 +987,236 @@ test("trusted reconnect backs off and permanent authorization failure revokes", 
     assert.equal(store.value, null);
 });
 
+test("failed durable revocation stays visible until a successful retry", () => {
+    const { h, store } = trustHarness();
+    const grant = plain(store.value);
+    const capture = h.startCapture();
+    h.controller.setEnabled(false);
+    stopped(h);
+    assert.equal(capture.active, false, "storage cannot delay local cleanup");
+    assert.equal(h.controller.status().trusted, false);
+    assert.equal(h.controller.status().pending, true);
+    h.controller.setEnabled(true);
+    h.controller.setTrusted(true);
+    assert.equal(
+        h.clients.length,
+        1,
+        "pending durable revoke blocks new grants"
+    );
+    assert.equal(
+        store.writes.length,
+        1,
+        "new grant cannot supersede a pending revoke"
+    );
+    store.finishWrite(true);
+    const message = "Trusted access could not be removed from device storage.";
+    assert.equal(h.controller.status().state, "storage-error");
+    assert.equal(h.controller.status().message, message);
+    assert.deepEqual(store.value, grant);
+    const observed = h.statuses.length;
+    h.controller.setEnabled(true);
+    h.controller.setTrusted(true);
+    h.controller.configurationChanged({ ...h.config, enabled: false });
+    assert.equal(
+        h.clients.length,
+        1,
+        "unresolved revocation blocks new grants"
+    );
+    h.controller.setEnabled(false);
+    assert.equal(h.controller.status().pending, true);
+    store.finishWrite(true);
+    assert.equal(h.controller.status().pending, false);
+    assert.ok(
+        h.statuses
+            .slice(observed)
+            .every(
+                (value) =>
+                    !value.enabled &&
+                    !value.trusted &&
+                    value.state === "storage-error" &&
+                    value.message === message
+            ),
+        "attempts and their pending state cannot hide the durable failure"
+    );
+    assert.deepEqual(store.value, grant);
+    h.controller.setEnabled(false);
+    store.finishWrite();
+    assert.equal(h.controller.status().state, "disabled");
+    assert.equal(h.controller.status().pending, false);
+    assert.equal(store.value, null);
+    stopped(h);
+    const reopened = harness(false, store);
+    store.finishRead();
+    assert.equal(reopened.controller.status().trusted, false);
+    assert.equal(
+        reopened.clients.length,
+        0,
+        "cleared grant cannot return on reload"
+    );
+    h.controller.setEnabled(true);
+    assert.equal(
+        h.clients.length,
+        2,
+        "new consent works after successful cleanup"
+    );
+    h.controller.stop();
+    store.finishWrite();
+});
+
+test("temporary opt-in cannot skip revocation of an unresolved startup grant", () => {
+    const store = permissionMemory({
+        address: "https://control.example/ottplay/api/webhook/commands",
+        revision: "previous-grant",
+        token,
+    });
+    const h = harness(false, store);
+    h.controller.setEnabled(true);
+    assert.equal(h.clients.length, 0);
+    assert.equal(h.controller.status().pending, true);
+    store.finishRead();
+    assert.equal(
+        h.clients.length,
+        0,
+        "canceled startup read cannot grant trust"
+    );
+    store.finishWrite(true);
+    assert.equal(h.controller.status().state, "storage-error");
+    stopped(h);
+    h.controller.setEnabled(false);
+    store.finishWrite();
+    h.controller.setEnabled(true);
+    assert.equal(h.clients.length, 1);
+    h.controller.stop();
+    store.finishWrite();
+});
+
+test("unavailable storage is distinct from a failed revoke of possible trust", () => {
+    const store = permissionMemory();
+    store.available = () => false;
+    const h = harness(false, store);
+    store.finishRead(true);
+    h.controller.setTrusted(true);
+    store.finishWrite(true);
+    store.finishWrite(true);
+    assert.equal(h.controller.status().state, "storage-error");
+    assert.equal(
+        h.controller.status().message,
+        "Trusted diagnostics is unavailable because device storage could not be updated."
+    );
+    assert.equal(store.value, null);
+    h.controller.setEnabled(true);
+    assert.equal(
+        h.clients.length,
+        1,
+        "temporary mode needs no durable permission"
+    );
+    h.controller.stop();
+    store.finishWrite(true);
+    stopped(h);
+});
+
+test("failed startup reads retain possible durable authority through temporary and failed trusted grants", () => {
+    for (const mode of ["temporary", "trusted-write", "idle-stop"]) {
+        const initial = {
+            address: "https://control.example/ottplay/api/webhook/commands",
+            revision: "unread-old-grant",
+            token,
+        };
+        const store = permissionMemory(initial);
+        const h = harness(false, store);
+        store.finishRead(true);
+        assert.equal(h.controller.status().trusted, false);
+        assert.equal(h.clients.length, 0);
+        if (mode === "temporary") {
+            h.controller.setEnabled(true);
+            h.startCapture();
+            h.controller.setEnabled(false);
+            assert.equal(h.releaseCalls, 1);
+        } else if (mode === "trusted-write") {
+            h.controller.setTrusted(true);
+            store.finishWrite(true);
+        } else h.controller.setEnabled(false);
+        store.finishWrite(true);
+        stopped(h, mode);
+        assert.equal(h.controller.status().state, "storage-error", mode);
+        assert.equal(
+            h.controller.status().message,
+            "Trusted access could not be removed from device storage.",
+            mode
+        );
+        assert.deepEqual(store.value, initial);
+        const count = h.clients.length;
+        h.controller.setEnabled(true);
+        h.controller.setTrusted(true);
+        assert.equal(h.clients.length, count);
+        assert.equal(store.writes.length, 0);
+        h.controller.setEnabled(false);
+        store.finishWrite(true);
+        assert.equal(h.controller.status().state, "storage-error");
+        h.controller.setEnabled(false);
+        store.finishWrite();
+        assert.equal(h.controller.status().state, "disabled");
+        const reopened = harness(false, store);
+        store.finishRead();
+        assert.equal(reopened.clients.length, 0);
+    }
+});
+
+test("failed policy reread preserves durable authority for later local revocation", () => {
+    const { h, store } = trustHarness();
+    const capture = h.startCapture();
+    h.advance(5000);
+    store.finishRead(true);
+    stopped(h);
+    assert.equal(capture.active, false);
+    assert.equal(
+        store.writes.length,
+        0,
+        "read failure does not erase another page's grant"
+    );
+    h.controller.setEnabled(false);
+    store.finishWrite(true);
+    assert.equal(h.controller.status().state, "storage-error");
+    assert.notEqual(store.value, null);
+    h.controller.setEnabled(false);
+    store.finishWrite();
+    assert.equal(h.controller.status().state, "disabled");
+    assert.equal(store.value, null);
+});
+
+test("only successful empty reads or clear resolve possible persisted authority", () => {
+    for (const periodic of [false, true]) {
+        let h, store;
+        if (periodic) {
+            ({ h, store } = trustHarness());
+            h.advance(5000);
+            store.value = null;
+            store.finishRead();
+        } else {
+            store = permissionMemory();
+            h = harness(false, store);
+            store.finishRead();
+        }
+        h.controller.setEnabled(true);
+        h.controller.setEnabled(false);
+        store.finishWrite(true);
+        assert.notEqual(h.controller.status().state, "storage-error");
+        stopped(h);
+    }
+    const store = permissionMemory();
+    const h = harness(false, store);
+    store.finishRead();
+    h.controller.setTrusted(true);
+    // A failed callback cannot exclude a committed write whose completion was lost.
+    store.value = plain(store.writes[0].value);
+    store.finishWrite(true);
+    store.finishWrite(true);
+    assert.equal(h.controller.status().state, "storage-error");
+    h.controller.setEnabled(false);
+    store.finishWrite();
+    assert.equal(store.value, null);
+});
+
 test("startup and pending writes cannot restore authority after local stop or config rotation", () => {
     const initial = {
         address: "https://control.example/ottplay/api/webhook/commands",
@@ -1017,6 +1249,26 @@ test("startup and pending writes cannot restore authority after local stop or co
     granted.store.finishWrite();
     stopped(granted.h);
     assert.equal(granted.store.value, null);
+});
+
+test("revoking synchronously during grant preparation cannot write authority after cleanup", () => {
+    const store = permissionMemory();
+    const h = harness(false, store);
+    store.finishRead();
+    let revoked = false;
+    h.onStatus = (status) => {
+        if (status.pending && !revoked) {
+            revoked = true;
+            h.controller.setEnabled(false);
+        }
+    };
+    h.controller.setTrusted(true);
+    assert.equal(store.writes.length, 1);
+    assert.equal(store.writes[0].value, null, "only revocation is queued");
+    store.finishWrite();
+    assert.equal(store.value, null);
+    assert.equal(h.clients.length, 0);
+    stopped(h);
 });
 
 test("failed or absent IndexedDB disables persistent trust while temporary access works", () => {

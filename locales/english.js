@@ -706,6 +706,7 @@ var keyStrings = {
     "Restart stream": "Restart stream",
     "Restart stream / Live": "Restart stream / Live",
     "Resume from archive?": "Resume from archive?",
+    Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Return to the previous channel",
     Rewind: "Seek",

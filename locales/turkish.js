@@ -710,6 +710,7 @@ var keyStrings = {
     "Restart stream": "Akışı yeniden başlat",
     "Restart stream / Live": "Akışı yeniden başlat / canlı",
     "Resume from archive?": "Arşivden devam edilsin mi?",
+    Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Önceki kanala dön",
     Rewind: "Sar",

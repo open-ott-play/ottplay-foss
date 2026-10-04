@@ -5,6 +5,8 @@ export interface DiagnosticsPermissionBinding {
     token: string;
 }
 export interface DiagnosticsPermissionStore {
+    /** False only when the storage API is absent, not when access fails. */
+    available?: () => boolean;
     read: (
         done: (
             error: boolean,
@@ -27,6 +29,14 @@ export function createDiagnosticsPermissionStore(
     var channel: any = null;
     var listeners: (() => void)[] = [];
     var queue: (() => void)[] = [];
+    function available(): boolean {
+        try {
+            return !!w.indexedDB && typeof w.indexedDB.open === "function";
+        } catch (_) {
+            // Denied access does not prove that an older grant is absent.
+            return true;
+        }
+    }
     function next(): void {
         active = false;
         var operation = queue.shift();
@@ -202,6 +212,7 @@ export function createDiagnosticsPermissionStore(
         if (!active) next();
     }
     return {
+        available: available,
         read: function (done) {
             operate(false, null, done);
         },

@@ -705,6 +705,7 @@ var keyStrings = {
     "Restart stream": "Restartovat stream",
     "Restart stream / Live": "Restartovat stream / živě",
     "Resume from archive?": "Pokračovat z archivu?",
+    Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Vrátit se na předchozí kanál",
     Rewind: "Přetáčení",

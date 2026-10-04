@@ -720,6 +720,7 @@ var keyStrings = {
     "Restart stream": "Riavvia flusso",
     "Restart stream / Live": "Riavvia flusso / diretta",
     "Resume from archive?": "Riprendere dall'archivio?",
+    Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Torna al canale precedente",
     Rewind: "Sposta riproduzione",

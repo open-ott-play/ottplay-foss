@@ -708,6 +708,7 @@ var keyStrings = {
     "Restart stream": "Перезапустить поток",
     "Restart stream / Live": "Перезапустить поток / прямой эфир",
     "Resume from archive?": "Продолжить из архива?",
+    Retry: "Повторить",
     "Retry EPG download": "Повторить загрузку EPG",
     "Return to previous channel": "Вернуться к предыдущему каналу",
     Rewind: "Перемотка",

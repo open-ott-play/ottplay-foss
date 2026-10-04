@@ -706,6 +706,7 @@ var keyStrings = {
     "Restart stream": "Khởi động lại luồng",
     "Restart stream / Live": "Khởi động lại luồng / trực tiếp",
     "Resume from archive?": "Tiếp tục từ lưu trữ?",
+    Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Quay lại kênh trước",
     Rewind: "Tua",

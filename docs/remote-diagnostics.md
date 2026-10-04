@@ -47,6 +47,11 @@ registration resumes with bounded backoff after recovery. Changing controller
 credentials, disconnecting it in settings, or explicitly revoking support clears
 trust. Devices without usable IndexedDB retain the temporary mode. Storage errors
 are displayed, including when durable revocation cannot be completed.
+If removal fails, capture and repairs stop immediately, but the visible indicator
+retains the storage error and a retry action until the saved permission is
+successfully removed. This also works in locked kiosk mode. Resolve that error
+before restarting the player: a failed deletion may leave the old permission on
+the device.
 
 There is no remote action that grants local consent. The existing local HUD has
 independent ownership: a remote session ending does not disable a HUD enabled

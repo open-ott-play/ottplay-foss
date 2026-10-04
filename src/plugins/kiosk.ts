@@ -318,7 +318,8 @@ export function createKiosk(w: any): any {
                 !state ||
                 (state.enabled !== true &&
                     state.trusted !== true &&
-                    state.pending !== true)
+                    state.pending !== true &&
+                    state.state !== "storage-error")
             )
                 return false;
             // Only revoke support. Kiosk playback and its stored policy stay locked.

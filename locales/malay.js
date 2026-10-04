@@ -707,6 +707,7 @@ var keyStrings = {
     "Restart stream": "Mulakan semula strim",
     "Restart stream / Live": "Mulakan semula strim / langsung",
     "Resume from archive?": "Sambung daripada arkib?",
+    Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Kembali ke saluran sebelumnya",
     Rewind: "Cari kedudukan",
