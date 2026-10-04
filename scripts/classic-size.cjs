@@ -75,7 +75,10 @@ const { gzipSync } = require("node:zlib");
 // Catalogue-bound remote archive resolution/playback adds 2553 raw / 735 gzip
 // bytes: Node 26.8.2 web measures 653370 / 198382. Retain the existing native,
 // Node 22 and candidate-suffix allowance for these admission checks.
-const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 199200 });
+// Numbered Stalker preset writes add validation, isolated persistence and safe
+// acknowledgements. Node 22 measures 655603 / 199411 web and 655561 / 199472
+// native; retain bounded native/release-version headroom.
+const BUDGET = Object.freeze({ bytes: 655900, gzipBytes: 199900 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -118,7 +121,9 @@ const BUDGET = Object.freeze({ bytes: 654000, gzipBytes: 199200 });
 // entry budget unchanged and allow release suffix room for both feature costs.
 // The same archive RPCs leave provider assets unchanged: the complete web
 // payload measures 750586 raw / 234697 gzip on Node 26.8.2.
-const TOTAL_BUDGET = Object.freeze({ bytes: 751300, gzipBytes: 236000 });
+// The Stalker preset handler changes only the entry; complete Node 22 outputs
+// measure 752819 / 235808 web and 752777 / 235869 native.
+const TOTAL_BUDGET = Object.freeze({ bytes: 753200, gzipBytes: 236000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
