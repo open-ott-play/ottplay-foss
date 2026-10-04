@@ -388,7 +388,7 @@ export function executeRemoteRequest(
                     configuration.portals.length !== 15 ||
                     !configuration.portals[slot] ||
                     (configuration.active === slot &&
-                        typeof w.loadPlaylist !== "function")
+                        typeof w.loadChannels !== "function")
                 )
                     throw new Error();
                 configuration.portals[slot] = {
@@ -409,7 +409,7 @@ export function executeRemoteRequest(
                 )
                     throw new Error();
                 if (stalkerChanged && configuration.active === slot)
-                    w.loadPlaylist();
+                    w.loadChannels();
                 if (
                     w.__ottActiveProviderDriver !== driver ||
                     JSON.stringify(driver.configuration()) !==

@@ -137,6 +137,10 @@ function call(action, params = {}) {
 
 async function checkStalkerPresetSlots() {
     const previous = host.__ottActiveProviderDriver;
+    const previousPlaylistLoader = host.loadPlaylist;
+    // Fresh Stalker instances never mount the M3U-specific loadPlaylist hook.
+    delete host.loadPlaylist;
+    host.loadChannels = () => loaded++;
     const clone = (value) => JSON.parse(JSON.stringify(value));
     let configuration = {
         active: 2,
@@ -212,6 +216,19 @@ async function checkStalkerPresetSlots() {
     );
     locked = false;
     const active = { ...settings, profile: 3 };
+    const channelLoader = host.loadChannels;
+    delete host.loadChannels;
+    assert.equal(
+        (
+            await call("provider_settings", {
+                provider: "stalker",
+                settings: active,
+            })
+        ).status,
+        "rejected"
+    );
+    assert.equal(saves, 1, "Missing channel lifecycle rejects before saving");
+    host.loadChannels = channelLoader;
     assert.equal(
         (
             await call("provider_settings", {
@@ -237,6 +254,21 @@ async function checkStalkerPresetSlots() {
         "Identical settings are not reloaded"
     );
     assert.equal(saves, 2);
+    host.loadPlaylist = () => {
+        throw new Error("Stale M3U lifecycle must not handle Stalker reloads");
+    };
+    assert.equal(
+        (
+            await call("provider_settings", {
+                provider: "stalker",
+                settings: { ...active, name: "Updated active portal" },
+            })
+        ).status,
+        "ok"
+    );
+    assert.equal(loaded, beforeLoads + 2);
+    host.loadPlaylist = previousPlaylistLoader;
+    delete host.loadChannels;
     host.__ottActiveProviderDriver = previous;
     loaded = beforeLoads;
     console.log(
