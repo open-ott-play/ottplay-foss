@@ -340,6 +340,13 @@ function exitPlayer(): void {
  */
 export function handleCommand(cmd: Command): string {
     if (!validPlayerCommand(cmd)) return "rejected";
+    if (
+        window.__ottKiosk &&
+        window.__ottKiosk.enabled() &&
+        cmd.command !== "set_volume" &&
+        cmd.command !== "popup_message"
+    )
+        return "rejected";
 
     if (
         cmd.command === "channel_by_number" ||

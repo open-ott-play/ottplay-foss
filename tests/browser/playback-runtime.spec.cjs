@@ -1423,3 +1423,123 @@ test("built driver, media session and journal stay connected through playback", 
         .toBe("stopped");
     expect(errors).toEqual([]);
 });
+
+test("kiosk locks UI selection, retries a stopped channel and restores the lock", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    test.setTimeout(60000);
+    const origin = new URL(baseURL).origin;
+    const pending = [],
+        results = [],
+        errors = [];
+    let sequence = 0;
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request(),
+            url = new URL(request.url());
+        if (
+            url.origin === origin &&
+            url.pathname.startsWith("/fixture-control/")
+        ) {
+            if (request.method() === "POST") {
+                if (url.pathname.endsWith("/responses"))
+                    results.push(request.postDataJSON());
+                return route.fulfill({ json: { status: "ok" } });
+            }
+            const next = pending.shift(),
+                now = Date.now() / 1000;
+            return route.fulfill({
+                json: {
+                    commands: [],
+                    requests: next
+                        ? [
+                              {
+                                  ...next,
+                                  expires_at: now + 40,
+                                  id: String(++sequence).padStart(32, "0"),
+                              },
+                          ]
+                        : [],
+                    server_time: now,
+                },
+            });
+        }
+        if (url.pathname.startsWith("/demo/"))
+            return route.fulfill({ body: "fixture offline", status: 503 });
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        if (!localStorage.getItem("ottplayprov"))
+            localStorage.setItem("ottplayprov", "demo");
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    await page.evaluate(() => {
+        window.parentPIN = "";
+        window.parentalArray = [];
+        window.__ottCommandServer.configure({
+            address: location.origin + "/fixture-control",
+            enabled: true,
+            token: "SYNTHETIC_COMMAND_TOKEN_0123456789abcdef",
+        });
+    });
+    async function rpc(action, params) {
+        const length = results.length;
+        pending.push({ action, params });
+        await expect.poll(() => results.length).toBe(length + 1);
+        return results[length];
+    }
+    expect((await rpc("kiosk", { mode: "on" })).data.state).toBe("waiting");
+    const selection = await page.evaluate(() => {
+        const category = window.catsArray.findIndex(
+            (cat) => window.cats[cat].length > 1
+        );
+        const id = String(window.cats[window.catsArray[category]][1]);
+        window.playChannel(category, 1);
+        return { category, id };
+    });
+    expect((await rpc("kiosk", { mode: "status" })).data.channel.id).toBe(
+        selection.id
+    );
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("1");
+    expect(
+        await page.evaluate(({ category }) => {
+            window.playChannel(category, 0);
+            return String(window.curList[window.primaryIndex]);
+        }, selection)
+    ).toBe(selection.id);
+    expect((await rpc("play", { query: "1" })).status).toBe("rejected");
+    expect((await rpc("provider", { query: "m3u" })).status).toBe("rejected");
+    await page.evaluate(() => window.stbStop());
+    await expect
+        .poll(() => page.evaluate(() => window.__ottKiosk.snapshot().retries), {
+            timeout: 15000,
+        })
+        .toBeGreaterThan(0);
+    expect(
+        await page.evaluate(() => String(window.curList[window.primaryIndex]))
+    ).toBe(selection.id);
+    // The persisted policy also takes precedence over URL-selected providers.
+    await page.goto("/f/pc/?m3u");
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    expect(
+        await page.evaluate(() => window.__ottKiosk.snapshot().channel.id)
+    ).toBe(selection.id);
+    expect(await page.evaluate(() => window.__ottActiveProviderDriver.id)).toBe(
+        "demo"
+    );
+    const replacement = await rpc("kiosk", { mode: "set", query: "1" });
+    expect(replacement.status).toBe("ok");
+    expect(replacement.data.channel.id).not.toBe(selection.id);
+    expect((await rpc("kiosk", { mode: "off" })).data.state).toBe("off");
+    expect((await rpc("play", { query: "2" })).status).toBe("ok");
+    expect(errors).toEqual([]);
+});

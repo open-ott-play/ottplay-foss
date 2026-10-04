@@ -179,6 +179,28 @@ function moduleOf(file, requireFn, window) {
                     };
                 },
             });
+            const kioskStorage = {};
+            host.stbGetItem = (key) =>
+                kioskStorage[key] || (key === "ottplayprov" ? "demo" : null);
+            host.stbSetItem = (key, value) => {
+                kioskStorage[key] = value;
+            };
+            host.setInterval = () => 1;
+            host.stbGetPosTime = () => 1;
+            host.stbIsPlaying = () => true;
+            host.__ottSourceIdentity = {
+                current: () => "m3u:" + configuration.active,
+            };
+            host.__ottKiosk = moduleOf(
+                "src/plugins/kiosk.ts",
+                (name) => moduleOf("src/utils/caseless.ts", () => {}, host),
+                host
+            ).createKiosk(host);
+            host.__ottKiosk.init();
+            host.playChannel = (c, i) => {
+                const id = host.cats[host.catsArray[c]][i];
+                if (host.__ottKiosk.admit(id)) host.primaryIndex = i;
+            };
             const dispatch = (command) => {
                 dispatches++;
                 if (command.volume_step !== undefined)
@@ -273,7 +295,10 @@ function moduleOf(file, requireFn, window) {
                 send,
                 () => {},
                 dispatch,
-                execute
+                (request, done, afterReply) =>
+                    request.action === "kiosk"
+                        ? host.__ottKiosk.request(request.params, done)
+                        : execute(request, done, afterReply)
             );
             controller.configure({
                 address,
@@ -286,8 +311,10 @@ function moduleOf(file, requireFn, window) {
                 dispatches,
                 dropped,
                 droppedReload,
+                kiosk: host.__ottKiosk.snapshot(),
                 playlistLoads,
                 reloads,
+                select: host.playChannel,
                 streamRestarts,
                 volume,
             });
@@ -394,6 +421,25 @@ function moduleOf(file, requireFn, window) {
         );
         assert.equal(desktop().reloads, 0);
         assert.equal(desktop().streamRestarts, 0);
+        assert.match((await run("kiosk", "on")).stdout, /waiting/);
+        assert.equal(television().kiosk.state, "waiting");
+        television().select(0, 1);
+        assert.equal(television().kiosk.channel.id, "b");
+        assert.match((await run("kiosk", "status")).stdout, /Кино/);
+        await assert.rejects(run("provider", "demo"));
+        await assert.rejects(run("profile", "1"));
+        await assert.rejects(run("play", "1"));
+        await run("kiosk", "set", "Первый");
+        assert.equal(television().kiosk.channel.id, "a");
+        assert.equal(desktop().kiosk.state, "off");
+        await run("kiosk", "off");
+        assert.equal(television().kiosk.state, "off");
+        await run("kiosk", "on", "2");
+        assert.equal(television().kiosk.channel.id, "b");
+        await run("kiosk", "off");
+        console.log(
+            "PASS kiosk CLI/server/player: arm, capture, set, block ordinary switching, status, disable and device isolation"
+        );
         console.log(
             "PASS real Go + TS + Python through reverse-proxy prefix: device isolation, lost-response deduplication, searches, providers, atomic M3U profile edits, secret-free replies and acknowledged restarts"
         );
