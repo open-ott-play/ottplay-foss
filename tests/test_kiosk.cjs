@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const { JSDOM } = require("jsdom");
 function load(file, globals = {}) {
     const code = ts.transpileModule(fs.readFileSync(file, "utf8"), {
         compilerOptions: {
@@ -308,6 +309,212 @@ function declaration(name) {
     vm.createContext(context);
     vm.runInContext(code, context);
     context._playMedia({ stream_url: "https://wrong.example" }, true); // returns before any VOD side effect
+}
+function diagnosticKiosk(
+    markup = '<button id="remoteDiagnosticsIndicator">Remote diagnostics · Stop</button>'
+) {
+    const dom = new JSDOM(
+        "<body>" + markup + '<button id="settings">Settings</button></body>'
+    );
+    const w = dom.window;
+    const storedPolicy = JSON.stringify({
+        channel: { id: "one", name: "One" },
+        provider: "m3u",
+        source: "fixture",
+    });
+    let stopped = 0;
+    let bubbled = 0;
+    const authority = { enabled: true, pending: false, trusted: true };
+    w.stbGetItem = () => storedPolicy;
+    w.__ottSourceIdentity = { current: () => "fixture" };
+    w.setInterval = () => 1;
+    w.__ottRemoteDiagnostics = {
+        setEnabled(value) {
+            assert.equal(
+                value,
+                false,
+                "kiosk's sole exception must revoke, never grant"
+            );
+            stopped++;
+            authority.enabled = authority.trusted = authority.pending = false;
+        },
+        status: () => ({ ...authority }),
+    };
+    const kiosk = createKiosk(w);
+    w.__ottKiosk = kiosk;
+    kiosk.init();
+    for (const name of [
+        "click",
+        "pointerdown",
+        "mousedown",
+        "touchstart",
+        "wheel",
+        "keydown",
+    ]) {
+        w.document.addEventListener(name, () => bubbled++);
+        w.document
+            .getElementById("settings")
+            .addEventListener(name, () => bubbled++);
+        w.document
+            .getElementById("remoteDiagnosticsIndicator")
+            .addEventListener(name, () => bubbled++);
+    }
+    return {
+        bubbled: () => bubbled,
+        dom,
+        kiosk,
+        stopped: () => stopped,
+        storedPolicy,
+        w,
+    };
+}
+for (const type of ["click", "pointerdown", "mousedown", "touchstart"]) {
+    const r = diagnosticKiosk();
+    const button = r.w.document.getElementById("remoteDiagnosticsIndicator");
+    const event = new r.w.Event(type, { bubbles: true, cancelable: true });
+    button.dispatchEvent(event);
+    assert.equal(
+        r.stopped(),
+        1,
+        type + " must revoke through the live controller"
+    );
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(
+        r.bubbled(),
+        0,
+        "revocation cannot invoke onclick, settings or delegated handlers"
+    );
+    assert.equal(r.kiosk.locked(), true);
+    assert.equal(r.kiosk.snapshot().channel.id, "one");
+    assert.equal(r.w.stbGetItem("__ottKioskV1"), r.storedPolicy);
+    button.dispatchEvent(
+        new r.w.Event("click", { bubbles: true, cancelable: true })
+    );
+    assert.equal(
+        r.stopped(),
+        1,
+        "compatibility mouse/click events cannot revoke twice"
+    );
+    r.dom.window.close();
+}
+for (const key of ["Enter", " "]) {
+    const r = diagnosticKiosk();
+    const button = r.w.document.getElementById("remoteDiagnosticsIndicator");
+    button.focus();
+    const event = new r.w.KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key,
+    });
+    button.dispatchEvent(event);
+    assert.equal(
+        r.stopped(),
+        1,
+        "focused stop control stays keyboard accessible"
+    );
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(r.bubbled(), 0);
+    assert.equal(r.kiosk.locked(), true);
+    r.dom.window.close();
+}
+{
+    const r = diagnosticKiosk();
+    r.w.document
+        .getElementById("settings")
+        .dispatchEvent(
+            new r.w.Event("click", { bubbles: true, cancelable: true })
+        );
+    r.w.document
+        .getElementById("remoteDiagnosticsIndicator")
+        .dispatchEvent(
+            new r.w.Event("wheel", { bubbles: true, cancelable: true })
+        );
+    assert.equal(
+        r.stopped(),
+        0,
+        "other controls and scrolling do not affect support"
+    );
+    assert.equal(r.bubbled(), 0);
+    assert.equal(r.kiosk.locked(), true);
+    r.dom.window.close();
+    const wrongElement = diagnosticKiosk(
+        '<div id="remoteDiagnosticsIndicator">Unrelated element</div>'
+    );
+    wrongElement.w.document
+        .getElementById("remoteDiagnosticsIndicator")
+        .dispatchEvent(
+            new wrongElement.w.Event("click", {
+                bubbles: true,
+                cancelable: true,
+            })
+        );
+    assert.equal(
+        wrongElement.stopped(),
+        0,
+        "a matching ID alone is not the stop button"
+    );
+    assert.equal(wrongElement.bubbled(), 0);
+    wrongElement.dom.window.close();
+}
+{
+    const source = fs.readFileSync("src/key-handler/index.ts", "utf8");
+    const parsed = ts.createSourceFile(
+        "key-handler.ts",
+        source,
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const handler = parsed.statements
+        .find(
+            (node) =>
+                ts.isFunctionDeclaration(node) &&
+                node.name?.text === "keyHandler"
+        )
+        .getText(parsed);
+    const r = diagnosticKiosk();
+    r.w.__ottDevice = {
+        eventToKeyCode: (event) => (event.key === "MediaStop" ? 83 : 37),
+    };
+    const context = {
+        cancelNativeListInertia: () => {},
+        exports: {},
+        keys: { MUTE: 173, STOP: 83, VOL_DOWN: 174, VOL_UP: 175 },
+        window: r.w,
+    };
+    vm.runInNewContext(
+        ts.transpileModule(handler, {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }).outputText,
+        context
+    );
+    const unrelated = new r.w.KeyboardEvent("keydown", {
+        cancelable: true,
+        key: "ArrowLeft",
+    });
+    context.exports.keyHandler(unrelated);
+    assert.equal(r.stopped(), 0);
+    assert.equal(unrelated.defaultPrevented, true);
+    const stop = new r.w.KeyboardEvent("keydown", {
+        cancelable: true,
+        key: "MediaStop",
+        keyCode: 413,
+    });
+    context.exports.keyHandler(stop);
+    assert.equal(
+        r.stopped(),
+        1,
+        "device-mapped STOP revokes support without requiring DOM focus"
+    );
+    assert.equal(stop.defaultPrevented, true);
+    assert.equal(r.kiosk.locked(), true);
+    assert.equal(r.kiosk.snapshot().channel.id, "one");
+    assert.equal(r.w.stbGetItem("__ottKioskV1"), r.storedPolicy);
+    context.exports.keyHandler(stop);
+    assert.equal(r.stopped(), 1);
+    r.dom.window.close();
 }
 console.log(
     "Kiosk admission, recovery, persistence, remote replacement and input tests passed"

@@ -29,6 +29,11 @@ on the player. Existing protocol 1 commands and repairs remain compatible.
    stop through the operator API. `device_stop_confirmed` distinguishes a
    completed device stop from a queued stop or revoked server credential.
 
+In locked kiosk mode, clicking the diagnostic indicator or pressing the remote's
+**STOP** key revokes support while leaving the kiosk's channel policy locked.
+These controls remain available even though ordinary menu/navigation input is
+blocked. Stopping support also cancels pending diagnostic repair work.
+
 The temporary grant is in memory for the current foreground page. Hiding, freezing or
 leaving the page, losing connectivity, changing/disconnecting its saved
 controller, disabling the local logger, an authentication failure, or the

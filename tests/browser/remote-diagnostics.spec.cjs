@@ -236,6 +236,97 @@ async function configure(page, address) {
     );
 }
 
+for (const trusted of [false, true]) {
+    test(`locked kiosk permits local ${trusted ? "STOP-key trusted" : "indicator temporary"} support revocation`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const server = await fixture(page, context, baseURL);
+        await configure(page, CONTROLLER);
+        await openRemoteSettings(page);
+        await page
+            .locator(
+                trusted ? "#remoteDiagnosticsTrust" : "#remoteDiagnosticsToggle"
+            )
+            .click();
+        await expect
+            .poll(
+                () =>
+                    server.calls.filter((call) => call.path === "/runtimes")
+                        .length
+            )
+            .toBe(1);
+        server.start("kiosk-local-stop");
+        await expect
+            .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+            .toBe(true);
+        // Restore a real persisted policy without requiring a provider or decoder.
+        // The production kiosk capture listeners and key dispatcher remain intact.
+        await page.evaluate(() => {
+            window.stbSetItem(
+                "__ottKioskV1",
+                JSON.stringify({
+                    channel: { id: "fixture-channel", name: "Fixture channel" },
+                    provider: "fixture",
+                    source: "fixture-source",
+                })
+            );
+            window.__ottKiosk.init();
+            window.closeList();
+        });
+        expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(
+            true
+        );
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Escape");
+        expect(
+            await page.evaluate(
+                () => window.__ottRemoteDiagnostics.status().enabled
+            )
+        ).toBe(true);
+        if (trusted) {
+            // The desktop adapter's S key maps to the logical TV STOP action.
+            await page.keyboard.press("s");
+        } else {
+            await page.locator("#remoteDiagnosticsIndicator").click();
+        }
+        await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(
+            0
+        );
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => window.__ottRemoteDiagnostics.status().pending
+                )
+            )
+            .toBe(false);
+        expect(
+            await page.evaluate(() => ({
+                collecting: window.__ottDebug.enabled,
+                enabled: window.__ottRemoteDiagnostics.status().enabled,
+                locked: window.__ottKiosk.locked(),
+                trusted: window.__ottRemoteDiagnostics.status().trusted,
+            }))
+        ).toEqual({
+            collecting: false,
+            enabled: false,
+            locked: true,
+            trusted: false,
+        });
+        await expect
+            .poll(() =>
+                server.calls.some(
+                    (call) =>
+                        call.path === "/poll" &&
+                        call.body.consent.granted === false
+                )
+            )
+            .toBe(true);
+        expect(server.errors).toEqual([]);
+    });
+}
+
 test("remote diagnostics is opt-in, captures only an authorized runtime and stops cleanly", async ({
     page,
     context,

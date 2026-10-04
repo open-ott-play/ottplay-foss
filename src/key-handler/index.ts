@@ -144,6 +144,14 @@ export function keyHandler(event: KeyboardEvent): void {
     ) {
         if (event.preventDefault) event.preventDefault();
         if (event.stopPropagation) event.stopPropagation();
+        if (
+            keyCode === keys.STOP &&
+            typeof (window as any).__ottKiosk.stopDiagnostics === "function"
+        ) {
+            if (event.stopImmediatePropagation)
+                event.stopImmediatePropagation();
+            (window as any).__ottKiosk.stopDiagnostics();
+        }
         return;
     }
     // Smart remotes have a combined transport key. Route it through the same

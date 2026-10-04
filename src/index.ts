@@ -5781,7 +5781,9 @@ function initRemoteDiagnostics(): void {
                     badge.style.cssText =
                         "position:fixed;right:8px;top:8px;z-index:99999;max-width:70%;" +
                         "background:#532900;color:white;border:1px solid white;padding:6px;";
-                    badge.onclick = function () {
+                    badge.onclick = function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
                         (window as any).__ottRemoteDiagnostics.setEnabled(
                             false
                         );
