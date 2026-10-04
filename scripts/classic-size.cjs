@@ -75,18 +75,15 @@ const { gzipSync } = require("node:zlib");
 // Catalogue-bound remote archive resolution/playback adds 2553 raw / 735 gzip
 // bytes: Node 26.8.2 web measures 653370 / 198382. Retain the existing native,
 // Node 22 and candidate-suffix allowance for these admission checks.
-// Localized library startup with the shared animated dialog adds 180 raw bytes:
-// Node 26.8.2 web measures 654135. Keep candidate-suffix room and gzip limits.
-// Owned cold-resume loading and Plex connection progress add 522 raw entry
-// bytes; bounded transport retries remain in the optional Plex bundle.
-// Node 22 CI measures 199261 gzip bytes for web. Include native transformation
-// and release suffix room for this loading lifecycle; keep the total gzip cap.
-// Manual Plex queue navigation adds 891 raw bytes, including cancellation,
-// parental admission and rapid-key ownership; retain release suffix headroom.
-// Query-selected HLS Auto fallback reuses the native URL predicate, adding 93
-// raw entry bytes on Node 22.23.3. Include that feature in the combined
-// Plex lifecycle/navigation budget while retaining candidate suffix room.
-const BUDGET = Object.freeze({ bytes: 655800, gzipBytes: 199700 });
+// Query-selected HLS Auto fallback reuses the native URL predicate (+93 raw).
+// Numbered Stalker preset writes add validation, isolated persistence and safe
+// acknowledgements. Combined Node 22.23.3 output before Plex is 655692 /
+// 199432 web and 655650 / 199494 native.
+// Plex adds owned loading, bounded connection retries and manual queue skips
+// with cancellation and parental admission. Together Node 22.23.3 measures
+// 657285 raw / 199888 gzip web entry bytes. Retain bounded native and
+// candidate-version suffix headroom for this combined feature cost.
+const BUDGET = Object.freeze({ bytes: 657600, gzipBytes: 200200 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -129,11 +126,13 @@ const BUDGET = Object.freeze({ bytes: 655800, gzipBytes: 199700 });
 // entry budget unchanged and allow release suffix room for both feature costs.
 // The same archive RPCs leave provider assets unchanged: the complete web
 // payload measures 750586 raw / 234697 gzip on Node 26.8.2.
-// Including the optional Plex connection label, the localized loader measures
-// 751387 raw complete bytes on Node 26.8.2; gzip limits remain unchanged.
-// The HLS predicate adds the same 93 bytes to the complete payload; provider
-// assets are unchanged. Include it in the combined Plex payload bound.
-const TOTAL_BUDGET = Object.freeze({ bytes: 753500, gzipBytes: 236300 });
+// The HLS predicate and Stalker preset handler change only the entry;
+// before Plex, Node 22.23.3 complete outputs measure 752908 / 235829 web and
+// 752866 / 235891 native, including all unchanged optional provider assets.
+// Adding Plex loading, retry and queue navigation measures 754878 raw /
+// 236437 gzip web bytes, including every provider. Keep native and
+// release-suffix headroom while bounding the complete combined payload.
+const TOTAL_BUDGET = Object.freeze({ bytes: 755200, gzipBytes: 236700 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
