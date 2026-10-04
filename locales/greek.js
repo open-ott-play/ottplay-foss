@@ -425,6 +425,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Σφάλμα: Η κατηγορία #%1 δεν υπάρχει!<br>Επιλέξτε άλλη κατηγορία.",
     "ERROR!": "Σφάλμα!",
     "Error Code!": "Μη έγκυρος κωδικός!",
     Exit: "Έξοδος",

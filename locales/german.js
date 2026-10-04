@@ -423,6 +423,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Fehler: Kategorie Nr. %1 existiert nicht!<br>Bitte wählen Sie eine andere Kategorie.",
     "ERROR!": "Fehler!",
     "Error Code!": "Ungültiger Code!",
     Exit: "Beenden",

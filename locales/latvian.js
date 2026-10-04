@@ -420,6 +420,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Kļūda: kategorija Nr. %1 nepastāv!<br>Izvēlieties citu kategoriju.",
     "ERROR!": "Kļūda!",
     "Error Code!": "Nederīgs kods!",
     Exit: "Iziet",

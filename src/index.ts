@@ -2369,9 +2369,10 @@ function _playChannel(catIdx: number, chIdx: number): void {
     );
     if (catsArray[catIdx] === undefined) {
         infoBox(
-            "ERROR: Category #" +
-                catIdx +
-                " does not exist!<br /> Please select other"
+            _(
+                "ERROR: Category #%1 does not exist!<br>Please select another category.",
+                catIdx
+            )
         );
         sendClientFeedback(
             "category_trouble_playChannel: " +
