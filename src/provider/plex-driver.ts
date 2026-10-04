@@ -160,6 +160,12 @@ function createPlexProviderDriver(
                             },
                             {
                                 isCurrent: isCurrent,
+                                onRetry: function () {
+                                    if (isCurrent())
+                                        ports.progress(
+                                            "Server unavailable. Retrying automatically; check its address and network access."
+                                        );
+                                },
                                 sourceId: ports.sourceIdentity!(),
                                 title: "Plex",
                             }

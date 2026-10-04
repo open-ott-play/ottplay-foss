@@ -113,6 +113,7 @@ function createPlexClient(
     options: {
         host?: any;
         isCurrent?(): boolean;
+        onRetry?(): void;
         sourceId: string;
         title?: string;
     }
@@ -133,6 +134,7 @@ function createPlexClient(
     var disposed = false;
     var unloading = false;
     var pending: any = null;
+    var connectTimer: any = null;
     var cancelCollection: (() => void) | null = null;
     var cancelPage: (() => void) | null = null;
     var pageRevision = 0;
@@ -184,7 +186,7 @@ function createPlexClient(
         path: string,
         params: any,
         token: number,
-        done: (data: any, error?: string) => void
+        done: (data: any, error?: string, retryable?: boolean) => void
     ): void {
         var finished = false;
         var owned: any = null;
@@ -202,9 +204,15 @@ function createPlexClient(
                     if (pending === owned) pending = null;
                 },
                 dataType: "text",
-                error: function (_xhr: any, status: string) {
-                    if (current(token) && status !== "abort")
-                        done(null, "Plex connection failed");
+                error: function (xhr: any, status: string) {
+                    if (current(token) && status !== "abort") {
+                        var code = Number(xhr.status) || 0;
+                        done(
+                            null,
+                            "Plex connection failed",
+                            !code || code === 408 || code === 429 || code >= 500
+                        );
+                    }
                 },
                 headers: headers,
                 success: function (data: any) {
@@ -271,6 +279,8 @@ function createPlexClient(
     }
     function cancel(): void {
         revision++;
+        if (connectTimer !== null) w.clearTimeout(connectTimer);
+        connectTimer = null;
         var xhr = pending;
         pending = null;
         if (xhr && typeof xhr.abort === "function") xhr.abort();
@@ -1168,13 +1178,34 @@ function createPlexClient(
         connect: function (done: (error?: string) => void) {
             cancel();
             var token = revision;
-            request("/library/sections", {}, token, function (data, error) {
-                if (data) {
-                    sections = data;
-                    sectionsAt = Date.now();
-                }
-                done(error);
-            });
+            var attempts = 0;
+            function attempt() {
+                connectTimer = null;
+                if (!current(token)) return;
+                attempts++;
+                request(
+                    "/library/sections",
+                    {},
+                    token,
+                    function (data, error, retryable) {
+                        if (retryable && attempts < 3) {
+                            if (options.onRetry) options.onRetry();
+                            if (current(token))
+                                connectTimer = w.setTimeout(
+                                    attempt,
+                                    attempts * 2000
+                                );
+                            return;
+                        }
+                        if (data) {
+                            sections = data;
+                            sectionsAt = Date.now();
+                        }
+                        done(error);
+                    }
+                );
+            }
+            attempt();
             return function () {
                 if (current(token)) cancel();
             };

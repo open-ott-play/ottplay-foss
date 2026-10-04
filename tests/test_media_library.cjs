@@ -2772,6 +2772,49 @@ function coldFolderResumeFixture() {
     return c;
 }
 
+test("Cold Plex startup waits visibly for both folder collection and stream resolution", () => {
+    const c = coldFolderResumeFixture();
+    c.deferFolder = true;
+    let finish;
+    c.providerMediaClient.resolve = (payload, done) => {
+        finish = () => done({ ...payload, stream_url: "ready.mp4" });
+    };
+    c.__ottMedia.restoreLast();
+    const dialog = c.elements["#dialogbox"];
+    assert.match(dialog?.innerHTML || "", /ott-spinner/);
+    assert.equal(dialog.style.display, "");
+    c.completeFolder();
+    assert.equal(dialog.style.display, "", "Metadata is still pending");
+    assert(!c.calls.some((row) => row[0] === "play"));
+    finish();
+    assert.equal(dialog.style.display, "none");
+    assert(c.calls.some((row) => row[0] === "play"));
+});
+
+test("Cold Plex startup cancels on Back and preserves a replacement error dialog", () => {
+    for (const outcome of ["back", "error"]) {
+        const c = coldResumeFixture();
+        c.deferResume = true;
+        let fallback = 0;
+        c.__ottMedia.restoreLast(() => fallback++);
+        const dialog = c.elements["#dialogbox"];
+        assert.equal(dialog?.style.display, "");
+        if (outcome === "back") {
+            c.dialogBoxKeyHandler(c.keys.RETURN);
+            c.finishResume();
+            assert.equal(dialog.style.display, "none");
+        } else {
+            c.__ottClassicScreenPort.setOwnedCallback("dialog", () => {});
+            c.$("#dialogbox").html("Connection error").show();
+            c.finishResume(null);
+            assert.equal(dialog.style.display, "");
+            assert.equal(dialog.innerHTML, "Connection error");
+        }
+        assert.equal(fallback, 1);
+        assert(!c.calls.some((row) => row[0] === "play"));
+    }
+});
+
 test("Cold Plex folder resume restores breadcrumbs, selected file and the next movie sibling", () => {
     const c = coldFolderResumeFixture();
     assert.equal(c.__ottMedia.restoreLast(), true);

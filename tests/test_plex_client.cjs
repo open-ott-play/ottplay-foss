@@ -67,8 +67,11 @@ function fixture(config = {}, capabilities = {}) {
                         options.complete?.();
                     },
                     aborted: false,
-                    fail() {
-                        options.error?.({ responseText: token }, "error");
+                    fail(status = 0) {
+                        options.error?.(
+                            { responseText: token, status },
+                            "error"
+                        );
                         options.complete?.();
                     },
                     options,
@@ -215,6 +218,52 @@ test("configuration is explicit, normalized and refuses embedded credentials or 
         }).playback,
         "auto"
     );
+});
+
+test("connect keeps transient startup failures pending, with bounded cancellable retries", () => {
+    for (const status of [0, 408, 429, 503]) {
+        const f = fixture();
+        const results = [];
+        f.client.connect((error) => results.push(error));
+        last(f).fail(status);
+        assert.deepEqual(results, []);
+        f.tick();
+        assert.equal(f.requests.length, 2);
+        last(f).fail(status);
+        f.tick();
+        assert.equal(f.requests.length, 3);
+        last(f).reply({ MediaContainer: { Directory: [] } });
+        assert.deepEqual(results, [undefined]);
+    }
+    const f = fixture();
+    const results = [];
+    f.client.connect((error) => results.push(error));
+    for (let attempt = 0; attempt < 3; attempt++) {
+        last(f).fail(503);
+        f.tick();
+    }
+    assert.deepEqual(results, ["Plex connection failed"]);
+    assert.equal(f.requests.length, 3);
+    for (const cancel of [() => f.client.cancel(), () => f.client.dispose()]) {
+        f.client.connect(() => assert.fail("Cancelled startup cannot settle"));
+        last(f).fail();
+        const count = f.requests.length;
+        cancel();
+        f.tick();
+        assert.equal(f.requests.length, count);
+    }
+});
+
+test("connect reports rejected credentials without retrying", () => {
+    for (const status of [401, 403]) {
+        const f = fixture();
+        let error;
+        f.client.connect((value) => (error = value));
+        last(f).fail(status);
+        f.tick();
+        assert.equal(error, "Plex connection failed");
+        assert.equal(f.requests.length, 1);
+    }
 });
 
 test("connect authenticates directly and cached sections do not mutate another catalog", () => {
@@ -1192,7 +1241,7 @@ test("explicit Original bypasses uncertain probes and connection failures expose
     assert.equal(f.requests.length, 1);
     let error;
     f.client.connect((message) => (error = message));
-    last(f).fail();
+    last(f).fail(401);
     assert.equal(error, "Plex connection failed");
     assert(!JSON.stringify(f.messages).includes(token));
 });

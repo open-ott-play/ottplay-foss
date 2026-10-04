@@ -74,6 +74,15 @@ for (const language of ["_eng", "_rus"]) {
                 path: test.info().outputPath("plex-loading.png"),
             });
             await pending[0].fulfill({
+                body: "Temporarily unavailable",
+                headers: { "access-control-allow-origin": "*" },
+                status: 503,
+            });
+            await expect(spinner).toBeVisible();
+            await expect(dialog).toContainText(waitText);
+            await expect.poll(() => pending.length).toBe(2);
+            await expect(spinner).toBeVisible();
+            await pending[1].fulfill({
                 headers: { "access-control-allow-origin": "*" },
                 json: {
                     MediaContainer: {
@@ -86,13 +95,13 @@ for (const language of ["_eng", "_rus"]) {
             await expect(dialog).toBeHidden();
             await expect(page.locator("#list")).toContainText("My library");
             await page.evaluate(() => window.loadChannels());
-            await expect.poll(() => pending.length).toBe(2);
+            await expect.poll(() => pending.length).toBe(3);
             await expect(spinner).toBeVisible();
             await expect(dialog).toContainText(waitText);
             await expect(dialog).toContainText(connectionText);
             await page.waitForTimeout(3500);
             await expect(spinner).toBeVisible();
-            await pending[1].fulfill({
+            await pending[2].fulfill({
                 body: "Unauthorized",
                 headers: { "access-control-allow-origin": "*" },
                 status: 401,
@@ -245,6 +254,8 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     let expandedFolder = false;
     let holdCollection = false;
     let releaseCollection;
+    let holdDecision = false;
+    let releaseDecision;
     const folderOffsets = [];
     const folderParents = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -347,11 +358,16 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
                     },
                 ],
             });
-        if (url.pathname.endsWith("/decision"))
+        if (url.pathname.endsWith("/decision")) {
+            if (holdDecision)
+                await new Promise((release) => {
+                    releaseDecision = release;
+                });
             return json({
                 generalDecisionCode: 1001,
                 Metadata: [{ Media: [{ Part: [{ decision: "transcode" }] }] }],
             });
+        }
         if (url.pathname.endsWith("/start.m3u8"))
             return route.fulfill({
                 body:
@@ -571,7 +587,27 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     // A fresh folder listing can grow between sessions; resume must collect
     // later pages without descending into its child folders.
     expandedFolder = true;
+    holdCollection = true;
+    releaseCollection = undefined;
+    holdDecision = true;
     await page.reload();
+    await expect.poll(() => typeof releaseCollection).toBe("function");
+    const startupSpinner = page.locator("#dialogbox .ott-spinner");
+    await expect(startupSpinner).toBeVisible();
+    await expect(page.locator("#dialogbox")).toContainText(
+        "Loading… please wait…"
+    );
+    await page.waitForTimeout(3500);
+    await expect(startupSpinner).toBeVisible();
+    holdCollection = false;
+    releaseCollection();
+    await expect.poll(() => typeof releaseDecision).toBe("function");
+    await expect(startupSpinner).toBeVisible();
+    await page.screenshot({
+        path: test.info().outputPath("plex-restoring.png"),
+    });
+    holdDecision = false;
+    releaseDecision();
     await page.waitForFunction(() => {
         const video = document.querySelector("video");
         return (
@@ -583,6 +619,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     expect(
         await page.evaluate(() => window.__ottMedia.current().ref.itemId)
     ).toBe(bookmark.itemId);
+    await expect(startupSpinner).toBeHidden();
     expect(
         requests.filter((path) => path === "/library/metadata/42").length
     ).toBeGreaterThan(resolvesBeforeReload);
