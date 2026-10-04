@@ -102,15 +102,11 @@ function createGuideScreen(ports: GuideScreenPorts) {
                     });
                 if (mode === 0) {
                     var titles: Record<string, boolean> = Object.create(null);
-                    visible = visible
-                        .slice()
-                        .reverse()
-                        .filter(function (row) {
-                            if (row.end > now || titles[row.title])
-                                return false;
-                            titles[row.title] = true;
-                            return true;
-                        });
+                    visible = visible.reverse().filter(function (row) {
+                        if (row.end > now || titles[row.title]) return false;
+                        titles[row.title] = true;
+                        return true;
+                    });
                 }
                 if (mode !== 1)
                     visible.sort(function (a, b) {
