@@ -418,6 +418,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Xəta: %1 nömrəli kateqoriya mövcud deyil!<br>Başqa kateqoriya seçin.",
     "ERROR!": "Xəta!",
     "Error Code!": "Yanlış kod!",
     Exit: "Çıxış",

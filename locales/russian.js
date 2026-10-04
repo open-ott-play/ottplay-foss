@@ -415,6 +415,8 @@ var keyStrings = {
         "EPG: обновление сохранённой программы передач...",
     "EPG: waiting for another player tab...":
         "EPG: ожидание другой вкладки плеера...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Ошибка: категория №%1 не существует!<br>Выберите другую категорию.",
     "ERROR!": "Ошибка!",
     "Error Code!": "Неверный код!",
     Exit: "Выход",

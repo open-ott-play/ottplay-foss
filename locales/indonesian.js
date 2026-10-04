@@ -419,6 +419,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Kesalahan: Kategori #%1 tidak ada!<br>Pilih kategori lain.",
     "ERROR!": "Kesalahan!",
     "Error Code!": "Kode tidak valid!",
     Exit: "Keluar",
