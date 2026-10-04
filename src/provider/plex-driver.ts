@@ -137,6 +137,7 @@ function createPlexProviderDriver(
                     done(null, "credentials");
                     return;
                 }
+                ports.progress("Connecting to Plex…");
                 var request = revision;
                 function isCurrent(): boolean {
                     return current() && revision === request;

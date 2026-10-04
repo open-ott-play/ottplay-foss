@@ -9,6 +9,103 @@ test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
 
+for (const language of ["_eng", "_rus"]) {
+    test(
+        "Plex shows a localized animated loader through slow startup and reload: " +
+            language,
+        async ({ page, context, baseURL }) => {
+            const local = new URL(baseURL).origin;
+            const pending = [];
+            await context.route("**/*", async (route) => {
+                const url = new URL(route.request().url());
+                if (url.origin === local) return route.continue();
+                if (
+                    url.origin === plex &&
+                    url.pathname === "/library/sections"
+                ) {
+                    pending.push(route);
+                    return;
+                }
+                return route.abort();
+            });
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.addInitScript(
+                ({ language, plex, token }) => {
+                    localStorage.setItem("ottplaylang", language);
+                    localStorage.setItem("ottplayprov", "plex");
+                    localStorage.setItem(
+                        "plexcfg",
+                        JSON.stringify({ address: plex, token })
+                    );
+                },
+                { language, plex, token }
+            );
+            await page.goto("/f/pc/");
+            await expect.poll(() => pending.length).toBe(1);
+            const dialog = page.locator("#dialogbox");
+            const spinner = dialog.locator(".ott-spinner");
+            const waitText =
+                language === "_rus"
+                    ? "Загрузка. Подождите…"
+                    : "Loading… please wait…";
+            const connectionText =
+                language === "_rus"
+                    ? "Подключение к Plex…"
+                    : "Connecting to Plex…";
+            await expect(dialog).toBeVisible();
+            await expect(dialog).toContainText(waitText);
+            await expect(dialog).toContainText(connectionText);
+            await expect(spinner).toBeVisible();
+            await expect(page.locator("#launch")).toBeHidden();
+            const transform = await spinner.evaluate(
+                (element) => getComputedStyle(element).transform
+            );
+            await expect
+                .poll(() =>
+                    spinner.evaluate(
+                        (element) => getComputedStyle(element).transform
+                    )
+                )
+                .not.toBe(transform);
+            // The provider can legitimately take longer than the legacy three-second fallback.
+            await page.waitForTimeout(3500);
+            await expect(spinner).toBeVisible();
+            await page.screenshot({
+                path: test.info().outputPath("plex-loading.png"),
+            });
+            await pending[0].fulfill({
+                headers: { "access-control-allow-origin": "*" },
+                json: {
+                    MediaContainer: {
+                        Directory: [
+                            { key: "7", title: "My library", type: "movie" },
+                        ],
+                    },
+                },
+            });
+            await expect(dialog).toBeHidden();
+            await expect(page.locator("#list")).toContainText("My library");
+            await page.evaluate(() => window.loadChannels());
+            await expect.poll(() => pending.length).toBe(2);
+            await expect(spinner).toBeVisible();
+            await expect(dialog).toContainText(waitText);
+            await expect(dialog).toContainText(connectionText);
+            await page.waitForTimeout(3500);
+            await expect(spinner).toBeVisible();
+            await pending[1].fulfill({
+                body: "Unauthorized",
+                headers: { "access-control-allow-origin": "*" },
+                status: 401,
+            });
+            await expect(spinner).toBeHidden();
+            const settingsText = await page.evaluate(() =>
+                window._("Plex settings")
+            );
+            await expect(page.locator("#listCaption")).toHaveText(settingsText);
+        }
+    );
+}
+
 test("Plex account sign-in selects a server without retaining the account token", async ({
     page,
     context,

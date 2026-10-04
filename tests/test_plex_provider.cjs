@@ -191,6 +191,33 @@ test("Library readiness waits for authenticated connection and publishes the nat
     assert.equal(f.host.cList.length, 0);
 });
 
+test("Plex loader survives slow startup and reload, and stale completions cannot dismiss it", () => {
+    const f = create({ plexcfg: JSON.stringify(config) }, true);
+    f.host.loadChannels();
+    assert.equal(f.panels["#launch"].visible, false);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    assert.match(f.panels["#dialogbox"].html, /ott-spinner/);
+    f.advanceTimers(30000);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.host.loadChannels();
+    f.clients[0].ready();
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    assert.equal(f.host.commandChannelsReady, false);
+    f.clients[1].ready();
+    assert.equal(f.panels["#dialogbox"].visible, false);
+    assert.equal(f.host.commandChannelsReady, true);
+    f.host.loadChannels();
+    f.advanceTimers(30000);
+    assert.equal(f.panels["#dialogbox"].visible, true);
+    f.host.showPage = () => {
+        assert.equal(f.panels["#dialogbox"].visible, false);
+    };
+    f.clients[2].ready("network");
+    assert.equal(f.panels["#dialogbox"].visible, false);
+    assert.equal(f.host.listCaption.innerHTML, "Plex settings");
+    assert.equal(f.errors.length, 1);
+});
+
 test("Manual edits mask the token and save only the local Plex profile", () => {
     const untouched = {
         edmedFavorites: "existing-favorites",
