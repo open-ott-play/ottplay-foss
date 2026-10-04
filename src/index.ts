@@ -5770,7 +5770,12 @@ function initRemoteDiagnostics(): void {
                 var badge = document.getElementById(
                     "remoteDiagnosticsIndicator"
                 );
-                if (!status.enabled && status.state !== "storage-error") {
+                if (
+                    !status.enabled &&
+                    !status.trusted &&
+                    !status.pending &&
+                    status.state !== "storage-error"
+                ) {
                     if (badge && badge.parentNode)
                         badge.parentNode.removeChild(badge);
                     return;

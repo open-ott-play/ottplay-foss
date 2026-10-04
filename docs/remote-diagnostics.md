@@ -31,6 +31,8 @@ on the player. Existing protocol 1 commands and repairs remain compatible.
 
 In locked kiosk mode, clicking the diagnostic indicator or pressing the remote's
 **STOP** key revokes support while leaving the kiosk's channel policy locked.
+The indicator remains available while trusted support is suspended offline, so
+touch-only devices can also remove saved permission without a network connection.
 These controls remain available even though ordinary menu/navigation input is
 blocked. Stopping support also cancels pending diagnostic repair work.
 
