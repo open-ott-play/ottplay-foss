@@ -65,6 +65,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 "testFont",
                 "list_osd",
                 "list_window",
+                "dialogbox",
             ]
                 .map((id) => '<div id="' + id + '"></div>')
                 .join("") +
@@ -327,6 +328,48 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         nativeSleep,
         profile === "server" ? [] : ["allow", "prevent", "allow"]
     );
+
+    // Both missing-category entry points must use the current language pack
+    // in each shipped frontend, including after a language switch.
+    const localeRoot =
+        profile === "tauri"
+            ? "src-tauri/frontend"
+            : profile === "capacitor"
+              ? "dist-mobile"
+              : "dist";
+    w.sendClientFeedback = () => {};
+    w.catsArray = [];
+    w.cats = {};
+    for (const [locale, expected] of [
+        [
+            "russian",
+            "Ошибка: категория №%1 не существует!Выберите другую категорию.",
+        ],
+        [
+            "english",
+            "ERROR: Category #%1 does not exist!Please select another category.",
+        ],
+        [
+            "ukrainian",
+            "Помилка: категорія №%1 не існує!Виберіть іншу категорію.",
+        ],
+    ]) {
+        w.eval(read(localeRoot + "/locales/" + locale + ".js"));
+        for (const entrypoint of ["_playChannel", "_channelsList"]) {
+            for (const category of [0, 42]) {
+                const dialog = w.document.getElementById("dialogbox");
+                dialog.innerHTML = "";
+                w[entrypoint](category, 0);
+                assert.ok(
+                    dialog.textContent.startsWith(
+                        expected.replace("%1", category)
+                    ),
+                    profile + ": " + entrypoint + " uses " + locale
+                );
+                assert.equal(dialog.querySelectorAll("br").length, 3);
+            }
+        }
+    }
     dom.window.close();
     console.log(
         "OK: " +

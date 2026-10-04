@@ -420,6 +420,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Hiba: A(z) %1. kategória nem létezik!<br>Válasszon másik kategóriát.",
     "ERROR!": "Hiba!",
     "Error Code!": "Érvénytelen kód!",
     Exit: "Kilépés",

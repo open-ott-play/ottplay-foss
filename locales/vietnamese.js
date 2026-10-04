@@ -415,6 +415,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Lỗi: Danh mục #%1 không tồn tại!<br>Vui lòng chọn danh mục khác.",
     "ERROR!": "Lỗi!",
     "Error Code!": "Mã không hợp lệ!",
     Exit: "Thoát",
