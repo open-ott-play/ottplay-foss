@@ -29,7 +29,7 @@ import {
 } from "../storage/index";
 import { listPreviewRect } from "../utils/helpers";
 import { watchAutoNativePlayback } from "./auto-playback";
-import { createNativeHlsTransport } from "./native-hls";
+import { createNativeHlsTransport, isNativeHlsUrl } from "./native-hls";
 
 /** Reference to the primary <video> DOM element. */
 export var video: HTMLVideoElement | null = null;
@@ -1032,6 +1032,17 @@ function startCoreEngine(
     window.playTime = window.playTime ?? 0;
 }
 
+/**
+ * Start main-video playback using hls.js, Shaka, or native HTML5.
+ * Configure transport, resume seeking, and session-scoped Auto HLS fallback.
+ *
+ * @param url - Prepared media URL to load.
+ * @param position - Optional playback start offset in seconds.
+ * @param session - Playback session identifier used to ignore stale callbacks.
+ * @param originalUrl - Original stream URL retained for recovery.
+ * @param nativeFile - Use native playback for a prepared local file.
+ * @param forceMse - Prefer hls.js when Media Source Extensions are supported.
+ */
 function startCorePlayback(
     url: string,
     position: number | undefined,
@@ -1425,7 +1436,7 @@ function startCorePlayback(
             if (
                 auto &&
                 !_coreAutoHlsUsed &&
-                /\.m3u8(?:[?#]|$)/i.test(url) &&
+                (/\.m3u8(?:[?#]|$)/i.test(url) || isNativeHlsUrl(url)) &&
                 typeof Hls !== "undefined" &&
                 Hls.isSupported()
             ) {
@@ -1895,7 +1906,11 @@ function startCorePipEngine(url: string): void {
         startHls();
     } else {
         videoPip!.src = url;
-        if (auto && /\.m3u8(?:[?#]|$)/i.test(url) && canHls) {
+        if (
+            auto &&
+            (/\.m3u8(?:[?#]|$)/i.test(url) || isNativeHlsUrl(url)) &&
+            canHls
+        ) {
             var media = videoPip!;
             _corePipAutoCancel = watchAutoNativePlayback(media, url, Hls, {
                 active: function () {
