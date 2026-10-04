@@ -81,7 +81,9 @@ const { gzipSync } = require("node:zlib");
 // bytes; bounded transport retries remain in the optional Plex bundle.
 // Node 22 CI measures 199261 gzip bytes for web. Include native transformation
 // and release suffix room for this loading lifecycle; keep the total gzip cap.
-const BUDGET = Object.freeze({ bytes: 654900, gzipBytes: 199400 });
+// Manual Plex queue navigation adds 891 raw bytes, including cancellation,
+// parental admission and rapid-key ownership; retain release suffix headroom.
+const BUDGET = Object.freeze({ bytes: 655800, gzipBytes: 199700 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -126,7 +128,7 @@ const BUDGET = Object.freeze({ bytes: 654900, gzipBytes: 199400 });
 // payload measures 750586 raw / 234697 gzip on Node 26.8.2.
 // Including the optional Plex connection label, the localized loader measures
 // 751387 raw complete bytes on Node 26.8.2; gzip limits remain unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 752600, gzipBytes: 236000 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 753500, gzipBytes: 236300 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

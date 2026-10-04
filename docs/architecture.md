@@ -346,7 +346,7 @@ There are two independent distribution decisions:
   Menu restrictions alone are not proof that excluded code/assets are absent.
 
 [classic-size.cjs](../scripts/classic-size.cjs) is the executable size contract:
-654,900 raw bytes and 199,400 gzip-level-9 bytes for each final classic artifact.
+655,800 raw bytes and 199,700 gzip-level-9 bytes for each final classic artifact.
 It excludes separately loaded media libraries and shared core. The build report
 at `build/reports/classic-bundle.json` records modules, optimizer options,
 interfaces, hashes and actual sizes.

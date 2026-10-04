@@ -257,6 +257,14 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         else call("numberProg", value);
         return;
     }
+    if (
+        w.p_pref === "plex" &&
+        w.playType < 0 &&
+        (command.id === "up" || command.id === "down")
+    ) {
+        w.__ottMedia.skip(command.id === "up" ? 1 : -1);
+        return;
+    }
     var configured: any = {
         blue: "bFun",
         down: "adFun",

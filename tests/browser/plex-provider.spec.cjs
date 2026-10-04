@@ -629,6 +629,11 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     await page.keyboard.press("Enter");
     await expect(page.locator("#listCaption")).toContainText("Folder 3");
     await expect(page.locator("#list")).toContainText("Following film");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowUp");
+    expect(
+        await page.evaluate(() => window.__ottMedia.current().ref.itemId)
+    ).toBe(bookmark.itemId);
     const restoredFolder = await page.evaluate(() => {
         const view = window.__ottMedia.snapshot();
         return {
@@ -675,6 +680,21 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         true
     );
     expect(folderParents).not.toContain(4);
+    await page.evaluate(() => window.closeList());
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/42" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    await page.keyboard.press("ArrowUp");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/43" &&
+            document.querySelector("video").currentTime > 0.2
+    );
     const stopsBefore = requests.filter((path) =>
         path.endsWith("/stop")
     ).length;
