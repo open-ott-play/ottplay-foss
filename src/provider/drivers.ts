@@ -146,14 +146,19 @@ function driverCatalogSnapshot(catalog: DriverCatalog): DriverCatalog {
         if (!value || typeof value !== "object") return value;
         if (Array.isArray(value)) return value.map(detach);
         var result: any = {};
-        Object.keys(value).forEach(function (key) {
-            Object.defineProperty(result, key, {
-                configurable: true,
-                enumerable: true,
-                value: detach(value[key]),
-                writable: true,
-            });
-        });
+        var keys = Object.keys(value);
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var child = detach(value[key]);
+            if (key in result) {
+                Object.defineProperty(result, key, {
+                    configurable: true,
+                    enumerable: true,
+                    value: child,
+                    writable: true,
+                });
+            } else result[key] = child;
+        }
         return result;
     }
     snapshot.channels = detach(catalog.channels);
