@@ -134,6 +134,147 @@ function call(action, params = {}) {
         ctx.exports.executeRemoteRequest({ action, params }, resolve)
     );
 }
+
+async function checkStalkerPresetSlots() {
+    const previous = host.__ottActiveProviderDriver;
+    const previousPlaylistLoader = host.loadPlaylist;
+    // Fresh Stalker instances never mount the M3U-specific loadPlaylist hook.
+    delete host.loadPlaylist;
+    host.loadChannels = () => loaded++;
+    const clone = (value) => JSON.parse(JSON.stringify(value));
+    let configuration = {
+        active: 2,
+        portals: Array.from({ length: 15 }, (_, index) => ({
+            mac: "02:00:00:00:00:02",
+            name: "Existing " + index,
+            portal: "https://old.example/c/",
+        })),
+    };
+    let saves = 0;
+    const driver = {
+        configuration: () => clone(configuration),
+        id: "stalker",
+        saveConfiguration(value) {
+            saves++;
+            configuration = clone(value);
+            return true;
+        },
+    };
+    host.__ottActiveProviderDriver = driver;
+    const settings = {
+        mac: "02:00:00:00:00:01",
+        name: "Private portal",
+        profile: 1,
+        server: "https://portal.example/c/",
+    };
+    const initial = clone(configuration);
+    const beforeLoads = loaded;
+    const result = await call("provider_settings", {
+        provider: "stalker",
+        settings,
+    });
+    assert.equal(result.status, "ok");
+    assert.equal(result.data.profile, 1);
+    assert.equal(configuration.active, 2);
+    assert.deepEqual(configuration.portals.slice(1), initial.portals.slice(1));
+    assert.deepEqual(configuration.portals[0], {
+        mac: settings.mac,
+        name: settings.name,
+        portal: settings.server,
+    });
+    assert.equal(
+        loaded,
+        beforeLoads,
+        "Editing an inactive slot does not reload playback"
+    );
+    assert.equal(JSON.stringify(result).includes(settings.server), false);
+    assert.equal(JSON.stringify(result).includes(settings.mac), false);
+    for (const update of [
+        { profile: 0 },
+        { profile: 16 },
+        { profile: 1.5 },
+        { profile: "1" },
+        { mac: "invalid" },
+        { name: "bad\u0000name" },
+        { name: "я".repeat(129) },
+        { server: "file:///private" },
+        { server: "http://u:p@portal.example" },
+        { extra: "unexpected" },
+    ]) {
+        const rejected = await call("provider_settings", {
+            provider: "stalker",
+            settings: { ...settings, ...update },
+        });
+        assert.equal(rejected.status, "rejected");
+    }
+    assert.equal(saves, 1);
+    locked = true;
+    assert.equal(
+        (await call("provider_settings", { provider: "stalker", settings }))
+            .status,
+        "rejected"
+    );
+    locked = false;
+    const active = { ...settings, profile: 3 };
+    const channelLoader = host.loadChannels;
+    delete host.loadChannels;
+    assert.equal(
+        (
+            await call("provider_settings", {
+                provider: "stalker",
+                settings: active,
+            })
+        ).status,
+        "rejected"
+    );
+    assert.equal(saves, 1, "Missing channel lifecycle rejects before saving");
+    host.loadChannels = channelLoader;
+    assert.equal(
+        (
+            await call("provider_settings", {
+                provider: "stalker",
+                settings: active,
+            })
+        ).status,
+        "ok"
+    );
+    assert.equal(loaded, beforeLoads + 1);
+    assert.equal(
+        (
+            await call("provider_settings", {
+                provider: "stalker",
+                settings: active,
+            })
+        ).status,
+        "ok"
+    );
+    assert.equal(
+        loaded,
+        beforeLoads + 1,
+        "Identical settings are not reloaded"
+    );
+    assert.equal(saves, 2);
+    host.loadPlaylist = () => {
+        throw new Error("Stale M3U lifecycle must not handle Stalker reloads");
+    };
+    assert.equal(
+        (
+            await call("provider_settings", {
+                provider: "stalker",
+                settings: { ...active, name: "Updated active portal" },
+            })
+        ).status,
+        "ok"
+    );
+    assert.equal(loaded, beforeLoads + 2);
+    host.loadPlaylist = previousPlaylistLoader;
+    delete host.loadChannels;
+    host.__ottActiveProviderDriver = previous;
+    loaded = beforeLoads;
+    console.log(
+        "PASS Stalker preset slots: isolated save, unchanged selection, validation, redaction and reload lifecycle"
+    );
+}
 function checkRealSettingsPolicy() {
     let saves = 0,
         reloads = 0,
@@ -1044,6 +1185,7 @@ function checkRemoteEpgCatalog() {
 
 (async () => {
     checkRealSettingsPolicy();
+    await checkStalkerPresetSlots();
     checkRemoteEpgCatalog();
     await checkStatusDiagnostics();
     checkUnicodeReference();
