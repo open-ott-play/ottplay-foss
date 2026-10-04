@@ -327,6 +327,297 @@ for (const trusted of [false, true]) {
     });
 }
 
+test("offline locked kiosk keeps trusted support locally revocable", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, CONTROLLER);
+    await openRemoteSettings(page);
+    await page.locator("#remoteDiagnosticsTrust").click();
+    const registrations = () =>
+        server.calls.filter((call) => call.path === "/runtimes");
+    await expect.poll(() => registrations().length).toBe(1);
+    server.start("offline-kiosk-revoke");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    const policy = await page.evaluate(() => {
+        const saved = JSON.stringify({
+            channel: { id: "fixture-channel", name: "Fixture channel" },
+            provider: "fixture",
+            source: "fixture-source",
+        });
+        window.stbSetItem("__ottKioskV1", saved);
+        window.__ottKiosk.init();
+        window.closeList();
+        return saved;
+    });
+    await context.setOffline(true);
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const status = window.__ottRemoteDiagnostics.status();
+                return {
+                    collecting: window.__ottDebug.enabled,
+                    enabled: status.enabled,
+                    locked: window.__ottKiosk.locked(),
+                    pending: status.pending,
+                    state: status.state,
+                    trusted: status.trusted,
+                };
+            })
+        )
+        .toEqual({
+            collecting: false,
+            enabled: false,
+            locked: true,
+            pending: true,
+            state: "suspended",
+            trusted: true,
+        });
+    const indicator = page.locator("#remoteDiagnosticsIndicator");
+    await expect(indicator).toBeVisible();
+    await indicator.click();
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const status = window.__ottRemoteDiagnostics.status();
+                return {
+                    enabled: status.enabled,
+                    pending: status.pending,
+                    trusted: status.trusted,
+                };
+            })
+        )
+        .toEqual({ enabled: false, pending: false, trusted: false });
+    await expect(indicator).toHaveCount(0);
+    expect(
+        await page.evaluate(() => ({
+            collecting: window.__ottDebug.enabled,
+            locked: window.__ottKiosk.locked(),
+            policy: window.stbGetItem("__ottKioskV1"),
+        }))
+    ).toEqual({ collecting: false, locked: true, policy });
+    await context.setOffline(false);
+    await page.waitForTimeout(1200);
+    expect(registrations()).toHaveLength(1);
+    // Remove only this synthetic policy so the normal first-run boot can resume.
+    await page.evaluate(() => window.stbSetItem("__ottKioskV1", "null"));
+    await page.reload();
+    await page.waitForFunction(
+        () =>
+            window.__ottRemoteDiagnostics &&
+            !window.__ottRemoteDiagnostics.status().pending
+    );
+    await page.waitForTimeout(1200);
+    expect(registrations()).toHaveLength(1);
+    expect(
+        await page.evaluate(() => ({
+            collecting: window.__ottDebug.enabled,
+            enabled: window.__ottRemoteDiagnostics.status().enabled,
+            trusted: window.__ottRemoteDiagnostics.status().trusted,
+        }))
+    ).toEqual({ collecting: false, enabled: false, trusted: false });
+    expect(server.errors).toEqual([]);
+});
+
+test("failed durable revocation stays visible and retryable in a locked kiosk", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, CONTROLLER);
+    await openRemoteSettings(page);
+    await page.locator("#remoteDiagnosticsTrust").click();
+    const registrations = () =>
+        server.calls.filter((call) => call.path === "/runtimes");
+    await expect.poll(() => registrations().length).toBe(1);
+    server.start("durable-revoke-failure");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    await page.evaluate(() => {
+        window.stbSetItem(
+            "__ottKioskV1",
+            JSON.stringify({
+                channel: { id: "fixture-channel", name: "Fixture channel" },
+                provider: "fixture",
+                source: "fixture-source",
+            })
+        );
+        window.__ottKiosk.init();
+        window.closeList();
+        const transaction = IDBDatabase.prototype.transaction;
+        const erase = IDBFactory.prototype.deleteDatabase;
+        IDBDatabase.prototype.transaction = function (stores, mode, ...rest) {
+            if (
+                this.name === "ottplay-diagnostics-permission-v1" &&
+                mode === "readwrite"
+            )
+                throw new DOMException(
+                    "Synthetic device storage failure",
+                    "UnknownError"
+                );
+            return transaction.call(this, stores, mode, ...rest);
+        };
+        IDBFactory.prototype.deleteDatabase = function (name) {
+            if (name === "ottplay-diagnostics-permission-v1")
+                throw new DOMException(
+                    "Synthetic deletion failure",
+                    "UnknownError"
+                );
+            return erase.call(this, name);
+        };
+        window.__restoreDiagnosticStorage = () => {
+            IDBDatabase.prototype.transaction = transaction;
+            IDBFactory.prototype.deleteDatabase = erase;
+        };
+    });
+    const indicator = page.locator("#remoteDiagnosticsIndicator");
+    for (let attempt = 0; attempt < 2; attempt++) {
+        await indicator.click();
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const status = window.__ottRemoteDiagnostics.status();
+                    return { pending: status.pending, state: status.state };
+                })
+            )
+            .toEqual({ pending: false, state: "storage-error" });
+        await expect(indicator).toBeVisible();
+        await expect(indicator).toContainText("could not be removed");
+        await expect(indicator).toContainText("Retry");
+        await page.evaluate(() => {
+            window.__ottRemoteDiagnostics.setEnabled(true);
+            window.__ottRemoteDiagnostics.setTrusted(true);
+        });
+        expect(
+            await page.evaluate(() => ({
+                capture: window.__ottDebug.enabled,
+                enabled: window.__ottRemoteDiagnostics.status().enabled,
+                locked: window.__ottKiosk.locked(),
+            }))
+        ).toEqual({ capture: false, enabled: false, locked: true });
+    }
+    await page.evaluate(() => window.__restoreDiagnosticStorage());
+    await indicator.click();
+    await expect(indicator).toHaveCount(0);
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__ottRemoteDiagnostics.status().pending)
+        )
+        .toBe(false);
+    expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(true);
+    // Remove only this synthetic kiosk fixture so boot can resume normally.
+    await page.evaluate(() => window.stbSetItem("__ottKioskV1", "null"));
+    await page.reload();
+    await page.waitForFunction(
+        () =>
+            window.__ottRemoteDiagnostics &&
+            !window.__ottRemoteDiagnostics.status().pending
+    );
+    await page.waitForTimeout(1200);
+    expect(registrations()).toHaveLength(1);
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(false);
+    expect(server.errors).toEqual([]);
+});
+
+test("unreadable saved permission is not forgotten during temporary support revocation", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, CONTROLLER);
+    await openRemoteSettings(page);
+    await page.locator("#remoteDiagnosticsTrust").click();
+    const registrations = () =>
+        server.calls.filter((call) => call.path === "/runtimes");
+    await expect.poll(() => registrations().length).toBe(1);
+    await page.evaluate(() =>
+        sessionStorage.setItem("permission-fault-once", "1")
+    );
+    await page.addInitScript(() => {
+        if (sessionStorage.getItem("permission-fault-once") !== "1") return;
+        sessionStorage.removeItem("permission-fault-once");
+        const transaction = IDBDatabase.prototype.transaction;
+        const erase = IDBFactory.prototype.deleteDatabase;
+        IDBDatabase.prototype.transaction = function (...args) {
+            if (this.name === "ottplay-diagnostics-permission-v1")
+                throw new DOMException(
+                    "Synthetic unreadable storage",
+                    "UnknownError"
+                );
+            return transaction.apply(this, args);
+        };
+        IDBFactory.prototype.deleteDatabase = function (name) {
+            if (name === "ottplay-diagnostics-permission-v1")
+                throw new DOMException(
+                    "Synthetic deletion failure",
+                    "UnknownError"
+                );
+            return erase.call(this, name);
+        };
+        window.__restoreDiagnosticStorage = () => {
+            IDBDatabase.prototype.transaction = transaction;
+            IDBFactory.prototype.deleteDatabase = erase;
+        };
+    });
+    await page.reload();
+    await page.waitForFunction(
+        () =>
+            window.__ottRemoteDiagnostics &&
+            !window.__ottRemoteDiagnostics.status().pending
+    );
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(false);
+    expect(registrations()).toHaveLength(1);
+    // Explicit temporary support does not prove absence of the unreadable old grant.
+    await page.evaluate(() => window.__ottRemoteDiagnostics.setEnabled(true));
+    await expect.poll(() => registrations().length).toBe(2);
+    await page.evaluate(() => window.__ottRemoteDiagnostics.setEnabled(false));
+    const indicator = page.locator("#remoteDiagnosticsIndicator");
+    await expect(indicator).toContainText("could not be removed");
+    await expect(indicator).toContainText("Retry");
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().enabled
+        )
+    ).toBe(false);
+    await page.evaluate(() => window.__restoreDiagnosticStorage());
+    await indicator.click();
+    await expect(indicator).toHaveCount(0);
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__ottRemoteDiagnostics.status().pending)
+        )
+        .toBe(false);
+    await page.reload();
+    await page.waitForFunction(
+        () =>
+            window.__ottRemoteDiagnostics &&
+            !window.__ottRemoteDiagnostics.status().pending
+    );
+    await page.waitForTimeout(1200);
+    expect(registrations()).toHaveLength(2);
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(false);
+    expect(server.errors).toEqual([]);
+});
+
 test("remote diagnostics is opt-in, captures only an authorized runtime and stops cleanly", async ({
     page,
     context,

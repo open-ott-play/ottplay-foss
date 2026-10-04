@@ -707,6 +707,7 @@ var keyStrings = {
     "Restart stream": "Перазапусціць паток",
     "Restart stream / Live": "Перазапусціць паток / прамы эфір",
     "Resume from archive?": "Працягнуць з архіва?",
+    Retry: "Паўтарыць",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Вярнуцца да папярэдняга канала",
     Rewind: "Перамотка",

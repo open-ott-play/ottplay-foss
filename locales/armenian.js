@@ -714,6 +714,7 @@ var keyStrings = {
     "Restart stream": "Վերագործարկել հոսքը",
     "Restart stream / Live": "Վերագործարկել հոսքը / ուղիղ եթեր",
     "Resume from archive?": "Շարունակե՞լ արխիվից։",
+    Retry: "Կրկին փորձել",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Վերադառնալ նախորդ ալիքին",
     Rewind: "Տեղաշարժել",

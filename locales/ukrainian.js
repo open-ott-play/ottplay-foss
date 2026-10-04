@@ -710,6 +710,7 @@ var keyStrings = {
     "Restart stream": "Перезапустити потік",
     "Restart stream / Live": "Перезапустити потік / прямий ефір",
     "Resume from archive?": "Продовжити з архіву?",
+    Retry: "Повторити",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Повернутися до попереднього каналу",
     Rewind: "Перемотування",

@@ -710,6 +710,7 @@ var keyStrings = {
     "Restart stream": "Mulai ulang aliran",
     "Restart stream / Live": "Mulai ulang aliran / langsung",
     "Resume from archive?": "Lanjutkan dari arsip?",
+    Retry: "Coba lagi",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Kembali ke saluran sebelumnya",
     Rewind: "Geser posisi putar",
