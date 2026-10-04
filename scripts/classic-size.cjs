@@ -83,6 +83,9 @@ const { gzipSync } = require("node:zlib");
 // and release suffix room for this loading lifecycle; keep the total gzip cap.
 // Manual Plex queue navigation adds 891 raw bytes, including cancellation,
 // parental admission and rapid-key ownership; retain release suffix headroom.
+// Query-selected HLS Auto fallback reuses the native URL predicate, adding 93
+// raw entry bytes on Node 22.23.3. Include that feature in the combined
+// Plex lifecycle/navigation budget while retaining candidate suffix room.
 const BUDGET = Object.freeze({ bytes: 655800, gzipBytes: 199700 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
@@ -128,6 +131,8 @@ const BUDGET = Object.freeze({ bytes: 655800, gzipBytes: 199700 });
 // payload measures 750586 raw / 234697 gzip on Node 26.8.2.
 // Including the optional Plex connection label, the localized loader measures
 // 751387 raw complete bytes on Node 26.8.2; gzip limits remain unchanged.
+// The HLS predicate adds the same 93 bytes to the complete payload; provider
+// assets are unchanged. Include it in the combined Plex payload bound.
 const TOTAL_BUDGET = Object.freeze({ bytes: 753500, gzipBytes: 236300 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",

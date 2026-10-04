@@ -1,3 +1,10 @@
+/** Recognize explicit HTTP HLS sources without changing a portal's signed URL. */
+export function isNativeHlsUrl(url: string): boolean {
+    return /^https?:\/\/[^\s?#]+(?:\.m3u8(?:[?#]|$)|\?(?:[^\s#]*&)?extension=m3u8(?:[&#]|$))/i.test(
+        url
+    );
+}
+
 /** Native HLS keeps the platform decoder; Rust measures the media it requests. */
 export function createNativeHlsTransport(
     url: string,
@@ -10,12 +17,7 @@ export function createNativeHlsTransport(
 ): { cancel: () => void; poll: () => void; mbps: () => number } | null {
     // MAG gateways advertise HLS in the query instead of the PHP path. Keep
     // their signed URL intact and let Rust load the media for the WebView.
-    if (
-        !/^https?:\/\/[^\s?#]+(?:\.m3u8(?:[?#]|$)|\?(?:[^\s#]*&)?extension=m3u8(?:[&#]|$))/i.test(
-            url
-        )
-    )
-        return null;
+    if (!isNativeHlsUrl(url)) return null;
     var host = window as any;
     var bridge =
         (host.__TAURI__ && host.__TAURI__.core) || host.__TAURI_INTERNALS__;
