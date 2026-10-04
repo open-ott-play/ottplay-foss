@@ -25,6 +25,7 @@ function trackMediaSnapshots(host) {
 
 function assertMediaReadContract(host) {
     let reads = 0;
+    let update;
     const items = Array.from({ length: 1000 }, (_, index) => ({
         payload: {
             nested: {
@@ -38,14 +39,18 @@ function assertMediaReadContract(host) {
         title: "Item " + index,
     }));
     const library = host.__ottMediaLibrary.create({
-        describe: () => items,
+        describe: (records) => records,
         items: () => [],
-        load: (_route, done) => done([]),
+        load: (_route, done) => {
+            update = done.update;
+            done(items);
+        },
         render() {},
     });
     library.open({ kind: "catalog", title: "Large catalog" });
     const revision = library.snapshot().revision;
     const firstSelection = library.capture();
+    const frame = library.capture("frame");
     reads = 0;
     assert.equal(library.revision(), revision);
     assert.equal(library.highlight(999), undefined);
@@ -56,6 +61,27 @@ function assertMediaReadContract(host) {
         false,
         "highlight retires old selection guards"
     );
+    library.highlight(0);
+    assert.equal(
+        firstSelection(),
+        false,
+        "returning to a row cannot revive its guard"
+    );
+    assert.equal(frame(), true, "frame ownership survives selection changes");
+    const byReference = library.capture();
+    library.highlightRef(items[1].ref);
+    library.highlightRef(items[0].ref);
+    assert.equal(
+        byReference(),
+        false,
+        "reference selection cannot revive a guard"
+    );
+    assert.equal(
+        reads,
+        0,
+        "captures and selection revisions never copy payloads"
+    );
+    library.highlight(999);
     const highlighted = library.capture();
     library.highlight(-1);
     assert.equal(highlighted(), true, "missing rows cannot change selection");
@@ -68,6 +94,34 @@ function assertMediaReadContract(host) {
     snapshot.frame.items[999].payload.nested.value = -2;
     assert.equal(library.select(999).payload.nested.value, 999);
     assert.equal(library.select(-1), null);
+    library.highlight(0);
+    const replaced = library.capture();
+    const refreshed = items.slice();
+    refreshed[0] = {
+        payload: {},
+        ref: { ...items[0].ref },
+        title: "Refreshed",
+    };
+    update(refreshed);
+    assert.equal(replaced(), true, "same identity and index retain selection");
+    const replacement = items.slice();
+    replacement[0] = {
+        payload: {},
+        ref: { itemId: "replacement", sourceId: "read-contract" },
+        title: "Replacement",
+    };
+    update(replacement);
+    update(items);
+    assert.equal(
+        replaced(),
+        false,
+        "restoring an item cannot revive its guard"
+    );
+    assert.equal(
+        frame(),
+        true,
+        "incremental replacement retains frame ownership"
+    );
     library.cancel();
     assert.notEqual(library.revision(), revision);
     assert.equal(highlighted(), false, "cancellation retires selection guards");

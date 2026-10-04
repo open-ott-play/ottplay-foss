@@ -2,6 +2,7 @@ const { cloudSource } = require("./helpers/cloud-source-fixture.cjs");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
+const vm = require("node:vm");
 const acorn = require("acorn");
 const {
     attachSourceAliases,
@@ -521,6 +522,210 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
     } finally {
         w.close();
     }
+});
+const startupFailure = new Error(hostile + ' & "message"');
+startupFailure.name = hostile + ' & "name"';
+const startupCases = [
+    ["Error", startupFailure, startupFailure.name, startupFailure.message],
+    ["empty Error", new Error(""), "Error", ""],
+    ["empty error shape", { message: "", name: "" }, "", ""],
+    ["null", null, "Error", "null"],
+    ["undefined", undefined, "Error", "undefined"],
+    ["hostile string", hostile, "Error", hostile],
+];
+for (const entrypoint of ["startPlayer", "onStbReady"]) {
+    for (const hasLaunch of [true, false]) {
+        for (const [kind, failure, name, message] of startupCases) {
+            test(
+                entrypoint +
+                    " handles thrown " +
+                    kind +
+                    (hasLaunch ? " as launch text" : " without a launch panel"),
+                () => {
+                    const w = fixture();
+                    try {
+                        const launch = w.document.createElement("div");
+                        launch.id = "launch";
+                        const button = w.document.createElement("button");
+                        button.textContent = "Boot progress";
+                        launch.appendChild(button);
+                        if (hasLaunch) w.document.body.appendChild(launch);
+                        let previous, existingBreaks;
+                        let reachedFailure = false;
+                        const fail = () => {
+                            reachedFailure = true;
+                            previous = launch.firstChild;
+                            existingBreaks =
+                                launch.querySelectorAll("br").length;
+                            throw failure;
+                        };
+                        Object.assign(w, {
+                            hostUrl: "https://localhost",
+                            isPlayDistribution: () => true,
+                            loadSettings: fail,
+                            onPlayerStart() {},
+                            PLAYER_VERSION: "fixture",
+                            storage: { reset: fail },
+                        });
+                        const logged = [];
+                        w.console.error = (error) => logged.push(error);
+                        w.eval(
+                            func("src/index.ts", "startupError") +
+                                func("src/index.ts", entrypoint)
+                        );
+                        assert.doesNotThrow(() => w[entrypoint]());
+                        assert.equal(reachedFailure, true);
+                        assert.equal(logged.length, 1);
+                        assert.equal(logged[0], failure);
+                        assert.equal(launch.firstChild, previous);
+                        if (hasLaunch) {
+                            assert.equal(
+                                launch.querySelector("b").textContent,
+                                entrypoint === "startPlayer"
+                                    ? "Exception:"
+                                    : "Exception.StbReady:"
+                            );
+                            assert.equal(
+                                launch.querySelectorAll("br").length,
+                                existingBreaks + 2
+                            );
+                            assert.equal(
+                                launch.lastChild.textContent,
+                                " name " + name + ", message " + message
+                            );
+                        } else {
+                            assert.equal(
+                                w.document.getElementById("launch"),
+                                null
+                            );
+                            assert.equal(launch.childNodes.length, 1);
+                        }
+                        assert.equal(
+                            launch.querySelectorAll("img,script,[onerror]")
+                                .length,
+                            0
+                        );
+                        assert.equal(w.__executed, undefined);
+                    } finally {
+                        w.close();
+                    }
+                }
+            );
+        }
+    }
+}
+for (const phase of ["request", "poll"]) {
+    test(
+        "remote provider " +
+            phase +
+            " errors display response text without HTML",
+        () => {
+            const w = fixture();
+            try {
+                const requests = [],
+                    timers = [];
+                Object.assign(w, {
+                    __test: "",
+                    host_ott: "localhost",
+                    host_ott_proto: "https://",
+                    isPlayDistribution: () => false,
+                    listFooter: w.document.getElementById("listPodval"),
+                    setTimeout: (callback, delay) =>
+                        timers.push({ callback, delay }),
+                });
+                w.$.ajax = (request) => requests.push(request);
+                w.eval(func("src/provider/index.ts", "edit_dealer_remote"));
+                w.edit_dealer_remote();
+                assert.equal(requests[0].data.c, "get_var");
+                if (phase === "poll") {
+                    requests[0].success({ code: "fixture-code" });
+                    timers.find((timer) => timer.delay === 1e4).callback();
+                    assert.equal(requests[1].data.c, "get_val");
+                }
+                const responseText = hostile + ' & "response"';
+                requests[requests.length - 1].error({ responseText });
+                const panel = w.document.getElementById("listEdit");
+                assert.equal(panel.textContent, "ERROR:" + responseText);
+                assert.equal(panel.firstChild.style.color, "red");
+                assert.equal(panel.querySelectorAll("br").length, 3);
+                assert.equal(
+                    panel.querySelectorAll("img,script,[onerror]").length,
+                    0
+                );
+                assert.equal(w.__executed, undefined);
+            } finally {
+                w.close();
+            }
+        }
+    );
+}
+test("legacy editor treats captions and field values as text and round-trips saved input", () => {
+    const w = fixture();
+    try {
+        w.eval(
+            func("devices/legacy-core.js", "showEditKey2") +
+                func("devices/legacy-core.js", "editKey2")
+        );
+        w.listCaption = w.document.getElementById("listCaption");
+        w.saveCPD = () => {};
+        w.restoreCPD = () => {};
+        w.btnDiv = w.renderButtonHint;
+        w.editCaption = hostile + ' & "caption"';
+        w.editvar =
+            '\"><img src="missing" onerror="window.__executed=true">&quot;&amp;';
+        w.showEditKey2();
+        const panel = w.document.getElementById("listEdit");
+        const input = panel.querySelector("input");
+        assert.equal(w.listCaption.textContent, w.editCaption);
+        assert(panel.textContent.startsWith(w.editCaption + ":"));
+        assert.equal(input.value, w.editvar);
+        assert.equal(input.style.color, "gold");
+        assert.equal(w.document.activeElement, input);
+        assert.equal(
+            w.document.querySelectorAll("img,script,[onerror]").length,
+            0
+        );
+        const updated = 'https://example.invalid/?a="<&b=&quot;';
+        input.value = updated;
+        let saved;
+        w.setEdit = () => (saved = w.editvar);
+        w.editKey2(w.keys.ENTER);
+        assert.equal(saved, updated);
+        assert.equal(panel.style.display, "none");
+        // CSS values must not escape into attributes or markup either.
+        w.curColor = 'red;\" onfocus="window.__executed=true';
+        w.showEditKey2();
+        assert.equal(panel.querySelectorAll("[onfocus],img,script").length, 0);
+        assert.equal(w.__executed, undefined);
+    } finally {
+        w.close();
+    }
+});
+test("button hint label stripping is bounded on long unmatched tag starts", () => {
+    // Isolate the label stage from the HTML sanitizer: a future sanitizer must
+    // not make malformed markup trigger quadratic backtracking in this stage.
+    const context = vm.createContext({
+        _: (value) => value,
+        keys: {},
+        metadataHtml: (value) => value,
+        translate: (value) => value,
+        window: {},
+    });
+    vm.runInContext(
+        func("src/utils/helpers.ts", "metadataText") +
+            func("src/ui/index.ts", "renderButtonHint"),
+        context
+    );
+    const call =
+        (bundleAst ? classicName("renderButtonHint") : "renderButtonHint") +
+        '(13, "Enter", description)';
+    context.description = "<".repeat(150000);
+    const rendered = vm.runInContext(call, context, { timeout: 2000 });
+    assert(rendered.includes('aria-label="' + "&lt;".repeat(150000) + '"'));
+    context.description = "<b>Play</b><br> / pause";
+    assert(
+        vm.runInContext(call, context).includes('aria-label=" Play   / pause"')
+    );
 });
 test("real password action selects a secret editor; normal input restores text and controls are keyboard accessible", () => {
     const w = fixture();

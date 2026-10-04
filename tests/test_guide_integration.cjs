@@ -1327,4 +1327,214 @@ check(
     }
 );
 
+const liveFooter = require("./test_port_vod.cjs").sourceFunctions(
+    "src/ui/index.ts",
+    [
+        "_t2",
+        "formatProgramDateTime",
+        "initBackgroundIntervals",
+        "updateChannelInfo",
+        "virtualTimeshiftProg",
+    ]
+);
+function installLiveFooter(f, paintLimit = 12) {
+    const h = f.host;
+    h.channels[1].rec = 0;
+    h.time2time = (value) => String(value);
+    vm.runInContext(liveFooter, h);
+    let paints = 0;
+    const paint = h.updateChannelInfo;
+    h.updateChannelInfo = (channelId) => {
+        paints += 1;
+        if (paints > paintLimit) throw Error("guide repaint did not settle");
+        return paint(channelId);
+    };
+    h.guidePaints = () => paints;
+    const fetchGuide = h.getChannelEpg;
+    h.getChannelEpg = (id, done) => {
+        const before = f.requests.length;
+        const stop = fetchGuide(id, done);
+        if (f.requests.length === before + 1)
+            f.requests[before].source = h.p_pref;
+        return stop;
+    };
+    return h;
+}
+function footerText(h, id) {
+    return h.document.getElementById(id).textContent;
+}
+const CLOCK_BASE = 1700000000;
+function clockRows(f) {
+    return [
+        f.row(CLOCK_BASE, CLOCK_BASE + 60, "Programme A", "prog-a"),
+        f.row(CLOCK_BASE + 60, CLOCK_BASE + 120, "Programme B", "prog-b"),
+        f.row(CLOCK_BASE + 120, CLOCK_BASE + 180, "Programme C", "prog-c"),
+    ];
+}
+function establishFooter() {
+    const f = fixture({ independentClock: true, now: CLOCK_BASE + 90 });
+    const h = installLiveFooter(f);
+    h.updateChannelInfo(1);
+    f.advanceElapsed(0);
+    assert.equal(f.requests.length, 1);
+    f.complete(clockRows(f));
+    assert.equal(footerText(h, "programm_name"), "Programme B");
+    assert.equal(footerText(h, "nprogramm_name"), "Programme C");
+    assert.equal(footerText(h, "begin_time"), String(CLOCK_BASE + 60));
+    h.initBackgroundIntervals();
+    return { f, h };
+}
+check("channel scalar getters realign immediately after clock rollback", () => {
+    const { f, h } = establishFooter();
+    f.setEpoch(CLOCK_BASE);
+    assert.equal(h.channels[1].name, "Programme A");
+    assert.equal(h.channels[1].time, CLOCK_BASE);
+    assert.equal(h.channels[1].time_to, CLOCK_BASE + 60);
+    assert.equal(h.channels[1].nextpr[0].name, "Programme B");
+    f.advanceElapsed(0);
+    assert.equal(footerText(h, "programm_name"), "Programme A");
+    assert.equal(f.requests.length, 1);
+    assert.ok(h.guidePaints() <= 8);
+    assert.ok(f.timers.size <= 4);
+});
+check(
+    "backward epoch repaints the retained current footer without a second request",
+    () => {
+        const { f, h } = establishFooter();
+        const started = f.requests.length;
+        f.setEpoch(CLOCK_BASE);
+        f.advanceElapsed(30000);
+        assert.equal(f.epoch(), CLOCK_BASE + 30);
+        assert.equal(f.elapsed(), 30000);
+        assert.equal(
+            h.observeCurrentProgramme(1, () => {}),
+            true
+        );
+        assert.equal(footerText(h, "programm_name"), "Programme A");
+        assert.equal(footerText(h, "nprogramm_name"), "Programme B");
+        assert.equal(footerText(h, "begin_time"), String(CLOCK_BASE));
+        assert.equal(footerText(h, "nbegin_time"), String(CLOCK_BASE + 60));
+        assert.equal(f.requests.length, started);
+        assert.equal(h.channels[1].time, CLOCK_BASE);
+        assert.equal(h.channels[1].time_to, CLOCK_BASE + 60);
+        assert.ok(h.guidePaints() <= 8);
+        assert.ok(f.timers.size <= 4);
+    }
+);
+check(
+    "forward elapsed repaint selects the half-open next programme once",
+    () => {
+        const { f, h } = establishFooter();
+        f.advanceElapsed(30000);
+        assert.equal(f.epoch(), CLOCK_BASE + 120);
+        assert.equal(
+            h.observeCurrentProgramme(1, () => {}),
+            true
+        );
+        assert.equal(footerText(h, "programm_name"), "Programme C");
+        assert.equal(footerText(h, "begin_time"), String(CLOCK_BASE + 120));
+        assert.equal(f.requests.length, 1);
+    }
+);
+check(
+    "retired guide timers stay inert while the current footer may request the new source",
+    () => {
+        const { f, h } = establishFooter();
+        const captured = [...f.timers.values()];
+        assert.equal(
+            captured.filter((timer) => !timer.interval && timer.delay === 30000)
+                .length,
+            1
+        );
+        assert.equal(
+            captured.filter((timer) => timer.interval && timer.delay === 1000)
+                .length,
+            1
+        );
+        const guide = captured.filter(
+            (timer) => timer.interval && timer.delay === 30000
+        );
+        assert.equal(guide.length, 1);
+        h.p_pref = "provider-b";
+        h.invalidateEpgCache(false);
+        h.document.getElementById("programm_name").textContent = "sentinel";
+        const before = f.requests.length;
+        for (const timer of captured) {
+            if (timer === guide[0]) continue;
+            timer.fn();
+            f.advanceElapsed(0);
+        }
+        assert.equal(f.requests.length, before);
+        assert.equal(footerText(h, "programm_name"), "sentinel");
+        guide[0].fn();
+        f.advanceElapsed(0);
+        assert.equal(f.requests.length, before + 1);
+        assert.equal(f.requests.at(-1).source, "provider-b");
+        assert.equal(f.requests.at(-1).id, 1);
+    }
+);
+
+check(
+    "distant future footer does not repaint as forward async time advances",
+    () => {
+        const origin = CLOCK_BASE + 90.004;
+        const f = fixture({
+            independentClock: true,
+            minimumDelay: 4,
+            now: origin,
+        });
+        const h = installLiveFooter(f, 40);
+        h.updateChannelInfo(1);
+        f.advanceElapsed(4);
+        assert.equal(f.requests.length, 1);
+        f.complete([
+            f.row(CLOCK_BASE + 10000, CLOCK_BASE + 10100, "Later", "later"),
+        ]);
+        const reference = h.__ottClassicGuide.reference(1);
+        const owner = h.__ottClassicGuide.owner();
+        const retained = owner.snapshot(reference);
+        assert.equal(retained.current, null);
+        assert.equal(retained.following[0].title, "Later");
+        assert.ok(Math.abs(retained.retryAt - (f.epoch() + 3600)) < 0.01);
+        f.advanceElapsed(100);
+        assert.ok(h.guidePaints() <= 3, "paints " + h.guidePaints());
+        assert.equal(f.requests.length, 1);
+        const after = owner.snapshot(reference);
+        assert.equal(after.current, null);
+        assert.equal(after.retryAt, retained.retryAt);
+        assert.equal(
+            [...f.timers.values()].some((timer) => timer.delay <= 4),
+            false
+        );
+    }
+);
+
+for (const delay of [0, -10]) {
+    check(`nonpositive interval ${delay} advances and can be cancelled`, () => {
+        const f = fixture({ independentClock: true, now: CLOCK_BASE });
+        let intervals = 0;
+        let timeouts = 0;
+        f.host.setTimeout(() => {
+            timeouts++;
+        }, 0);
+        const id = f.host.setInterval(() => {
+            intervals++;
+        }, delay);
+        f.advanceElapsed(0);
+        assert.equal(timeouts, 1, "zero-delay timeout remains immediate");
+        assert.equal(
+            intervals,
+            0,
+            "interval advances before its first callback"
+        );
+        f.advanceElapsed(3);
+        assert.equal(intervals, 3);
+        assert.equal(f.elapsed(), 3);
+        f.host.clearInterval(id);
+        f.advanceElapsed(3);
+        assert.equal(intervals, 3, "cancelled interval stays retired");
+        assert.equal(f.timers.has(id), false);
+    });
+}
+
 console.log("PASS " + count + " guide integration scenarios");

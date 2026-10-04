@@ -1613,6 +1613,31 @@ function selectLang(): void {
     showPage();
 }
 
+function startupError(
+    launch: HTMLElement | null,
+    label: string,
+    error: any
+): void {
+    if (launch) {
+        launch.appendChild(document.createElement("br"));
+        launch.appendChild(document.createElement("br"));
+        launch.appendChild(document.createElement("b")).textContent = label;
+        launch.appendChild(
+            document.createTextNode(
+                " name " +
+                    (error != null && error.name != null
+                        ? error.name
+                        : "Error") +
+                    ", message " +
+                    (error != null && error.message != null
+                        ? error.message
+                        : String(error))
+            )
+        );
+    }
+    console.error(error);
+}
+
 // Main entry point
 
 /**
@@ -1646,11 +1671,6 @@ export function startPlayer(): void {
     var launchEl = document.getElementById("launch");
     if (launchEl) {
         launchEl.innerHTML += "<br/>VER: " + PLAYER_VERSION;
-    }
-    if (launchEl) {
-        var iid = (window as any).__iid as string | undefined;
-        launchEl.innerHTML +=
-            "<br/>IID: " + (iid ? "..." + iid.substr(-7) : "-");
     }
 
     onPlayerStart();
@@ -1734,14 +1754,7 @@ export function startPlayer(): void {
             onStbReady();
         }
     } catch (e) {
-        if (launchEl) {
-            launchEl.innerHTML +=
-                "<br/><br/><b>Exception:</b> name " +
-                e.name +
-                ", message " +
-                e.message;
-        }
-        console.error(e);
+        startupError(launchEl, "Exception:", e);
     }
 }
 
@@ -1869,15 +1882,11 @@ function onStbReady(): void {
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
     } catch (e) {
-        var launchEl2 = document.getElementById("launch");
-        if (launchEl2) {
-            launchEl2.innerHTML +=
-                "<br/><br/><b>Exception.StbReady:</b> name " +
-                e.name +
-                ", message " +
-                e.message;
-        }
-        console.error(e);
+        startupError(
+            document.getElementById("launch"),
+            "Exception.StbReady:",
+            e
+        );
     }
 }
 
@@ -5325,7 +5334,7 @@ window.exitPortal = exitPortal;
  * --------------------------------------------------------------------------- */
 /**
  * Display the "About" / plugin info screen.
- * Shows player version, install ID, HTTPS support status, OTT host, and
+ * Shows player version, HTTPS support status, OTT host, and
  * device info (via stbInfo).
  *
  * Side effects: Saves CPD; writes to #listAbout; calls stbInfo() if
@@ -5334,15 +5343,11 @@ window.exitPortal = exitPortal;
 function pluginInfo(): void {
     var v = (window as any).version || "<br/>Version: " + PLAYER_VERSION;
     var host = (window as any).host || "-";
-    var __iid = (window as any).__iid || "-";
     var canHttps = (window as any).client_can_https ? "Yes" : "No";
     var html =
         _("Player info:") +
         "<br/>" +
         v +
-        "<br/>" +
-        "<br/>Install ID: " +
-        __iid +
         "<br/>" +
         "HTTPS support: " +
         canHttps +
