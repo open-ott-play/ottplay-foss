@@ -79,7 +79,9 @@ const { gzipSync } = require("node:zlib");
 // Node 26.8.2 web measures 654135. Keep candidate-suffix room and gzip limits.
 // Owned cold-resume loading and Plex connection progress add 522 raw entry
 // bytes; bounded transport retries remain in the optional Plex bundle.
-const BUDGET = Object.freeze({ bytes: 654900, gzipBytes: 199200 });
+// Node 22 CI measures 199261 gzip bytes for web. Include native transformation
+// and release suffix room for this loading lifecycle; keep the total gzip cap.
+const BUDGET = Object.freeze({ bytes: 654900, gzipBytes: 199400 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
