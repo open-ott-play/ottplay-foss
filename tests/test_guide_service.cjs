@@ -468,6 +468,38 @@ function establishClock() {
     return f;
 }
 check(
+    "field reads realign after clock jumps before any timer or snapshot",
+    () => {
+        for (const [epoch, title, start, end] of [
+            [T + 30, "Programme A", T, T + 60],
+            [T + 120, "Programme C", T + 120, T + 180],
+        ]) {
+            const f = establishClock();
+            const callbackTitles = [];
+            let notifications = 0;
+            f.service.subscribe(f.ref(), () => {
+                notifications++;
+                callbackTitles.push(f.service.field(f.ref(), "title"));
+            });
+            f.setEpoch(epoch);
+            assert.equal(f.service.field(f.ref(), "title"), title);
+            assert.equal(f.service.field(f.ref(), "start"), start);
+            assert.equal(f.service.field(f.ref(), "end"), end);
+            assert.equal(f.service.field(f.ref(), "missing"), false);
+            assert.equal(notifications, 1);
+            const ids = [...f.timers.keys()];
+            for (let step = 1; step <= 10; step++) {
+                f.setEpoch(epoch + step / 1000);
+                assert.equal(f.service.field(f.ref(), "title"), title);
+            }
+            assert.equal(notifications, 1);
+            assert.deepEqual(callbackTitles, [title]);
+            assert.deepEqual([...f.timers.keys()], ids);
+            assert.equal(f.requests.length, 1);
+        }
+    }
+);
+check(
     "backward epoch reselects the retained current programme without another request",
     () => {
         const f = establishClock();

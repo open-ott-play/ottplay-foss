@@ -1384,6 +1384,19 @@ function establishFooter() {
     h.initBackgroundIntervals();
     return { f, h };
 }
+check("channel scalar getters realign immediately after clock rollback", () => {
+    const { f, h } = establishFooter();
+    f.setEpoch(CLOCK_BASE);
+    assert.equal(h.channels[1].name, "Programme A");
+    assert.equal(h.channels[1].time, CLOCK_BASE);
+    assert.equal(h.channels[1].time_to, CLOCK_BASE + 60);
+    assert.equal(h.channels[1].nextpr[0].name, "Programme B");
+    f.advanceElapsed(0);
+    assert.equal(footerText(h, "programm_name"), "Programme A");
+    assert.equal(f.requests.length, 1);
+    assert.ok(h.guidePaints() <= 8);
+    assert.ok(f.timers.size <= 4);
+});
 check(
     "backward epoch repaints the retained current footer without a second request",
     () => {

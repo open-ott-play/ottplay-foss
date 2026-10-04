@@ -460,6 +460,7 @@ function createGuideService(ports: GuideServicePorts) {
         },
         field: function (reference: GuideReference, field: string): any {
             synchronize();
+            alignProjection(reference);
             var state = states[key(reference)];
             if (!state || !active(reference) || !ownsState(state, reference))
                 return undefined;
