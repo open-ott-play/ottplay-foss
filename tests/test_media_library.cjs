@@ -2772,6 +2772,190 @@ function coldFolderResumeFixture() {
     return c;
 }
 
+test("Full-screen Plex arrows select adjacent videos instead of the configured minute seek", () => {
+    const c = coldFolderResumeFixture();
+    vm.runInContext(
+        sourceFunctions("src/key-handler/index.ts", [
+            "handleMainKey",
+            "keyFun",
+        ]),
+        c
+    );
+    c.settings.auFun = 19;
+    c.settings.adFun = 18;
+    const seeks = [];
+    c.shiftArchive = (seconds) => seeks.push(seconds);
+    const press = (key) =>
+        c.handleMainKey(key, {
+            preventDefault() {},
+            stopPropagation() {},
+        });
+    c.__ottMedia.restoreLast();
+    press(c.keys.UP);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    press(c.keys.DOWN);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    assert.deepEqual(seeks, []);
+    assert.equal(
+        c.collections.length,
+        1,
+        "Arrows reuse the loaded folder queue"
+    );
+    c.p_pref = "another-provider";
+    press(c.keys.UP);
+    press(c.keys.DOWN);
+    assert.deepEqual(
+        seeks,
+        [60, -60],
+        "Other providers keep their configured bindings"
+    );
+});
+
+test("Manual media skip respects queue order, repeat boundaries and shuffle", () => {
+    const c = coldFolderResumeFixture();
+    c.__ottMedia.restoreLast();
+    c.__ottMedia.cycleRepeat(); // one
+    c.__ottMedia.skip(1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    c.__ottMedia.cycleRepeat(); // off
+    const count = c.resolutions.length;
+    c.__ottMedia.skip(1);
+    assert.equal(c.resolutions.length, count);
+    c.__ottMedia.skip(-1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    c.__ottMedia.cycleRepeat(); // all
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    c.mediaList(null);
+    c.__ottMedia.shufflePlay();
+    const shuffled = c.__ottMedia.current().sequence;
+    assert(shuffled.ordered);
+    const next = shuffled.items[1].ref.itemId;
+    const first = shuffled.items[0].ref.itemId;
+    c.__ottMedia.skip(1);
+    assert.equal(c.__ottMedia.current().ref.itemId, next);
+    c.__ottMedia.skip(-1);
+    assert.equal(c.__ottMedia.current().ref.itemId, first);
+    assert(c.__ottMedia.current().sequence.ordered);
+});
+
+test("Rapid media skips supersede pending resolutions and cancelled PIN grants cannot play", () => {
+    const c = coldFolderResumeFixture();
+    c.__ottMedia.restoreLast();
+    const pending = [];
+    c.providerMediaClient.resolve = (item, done) =>
+        pending.push(() =>
+            done({
+                ...item,
+                stream_url: item.request.path + ".mp4",
+            })
+        );
+    c.__ottMedia.skip(1);
+    c.__ottMedia.skip(1);
+    pending[0]();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    pending[1]();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/41"
+    );
+    c.__ottMedia.skip(1);
+    c.__ottMedia.cancelAuto();
+    pending[2]();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/41"
+    );
+
+    const protectedQueue = coldFolderResumeFixture();
+    protectedQueue.folderRows[3].adult = 1;
+    protectedQueue.__ottMedia.restoreLast();
+    protectedQueue.__ottMedia.skip(1);
+    assert(protectedQueue.unlock);
+    protectedQueue.__ottMedia.cancelAuto();
+    protectedQueue.parentAccess = true;
+    protectedQueue.unlock();
+    assert.equal(protectedQueue.resolutions.length, 1);
+
+    const edge = coldFolderResumeFixture();
+    edge.__ottMedia.restoreLast();
+    edge.__ottMedia.cycleRepeat();
+    edge.__ottMedia.cycleRepeat(); // off
+    let finish;
+    edge.providerMediaClient.resolve = (item, done) => {
+        finish = () => done({ ...item, stream_url: "last.mp4" });
+    };
+    edge.__ottMedia.skip(1);
+    edge.__ottMedia.skip(1); // A repeated press at the end keeps the pending last video.
+    finish();
+    assert.equal(
+        edge.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+});
+
+test("Cold Plex startup waits visibly for both folder collection and stream resolution", () => {
+    const c = coldFolderResumeFixture();
+    c.deferFolder = true;
+    let finish;
+    c.providerMediaClient.resolve = (payload, done) => {
+        finish = () => done({ ...payload, stream_url: "ready.mp4" });
+    };
+    c.__ottMedia.restoreLast();
+    const dialog = c.elements["#dialogbox"];
+    assert.match(dialog?.innerHTML || "", /ott-spinner/);
+    assert.equal(dialog.style.display, "");
+    c.completeFolder();
+    assert.equal(dialog.style.display, "", "Metadata is still pending");
+    assert(!c.calls.some((row) => row[0] === "play"));
+    finish();
+    assert.equal(dialog.style.display, "none");
+    assert(c.calls.some((row) => row[0] === "play"));
+});
+
+test("Cold Plex startup cancels on Back and preserves a replacement error dialog", () => {
+    for (const outcome of ["back", "error"]) {
+        const c = coldResumeFixture();
+        c.deferResume = true;
+        let fallback = 0;
+        c.__ottMedia.restoreLast(() => fallback++);
+        const dialog = c.elements["#dialogbox"];
+        assert.equal(dialog?.style.display, "");
+        if (outcome === "back") {
+            c.dialogBoxKeyHandler(c.keys.RETURN);
+            c.finishResume();
+            assert.equal(dialog.style.display, "none");
+        } else {
+            c.__ottClassicScreenPort.setOwnedCallback("dialog", () => {});
+            c.$("#dialogbox").html("Connection error").show();
+            c.finishResume(null);
+            assert.equal(dialog.style.display, "");
+            assert.equal(dialog.innerHTML, "Connection error");
+        }
+        assert.equal(fallback, 1);
+        assert(!c.calls.some((row) => row[0] === "play"));
+    }
+});
+
 test("Cold Plex folder resume restores breadcrumbs, selected file and the next movie sibling", () => {
     const c = coldFolderResumeFixture();
     assert.equal(c.__ottMedia.restoreLast(), true);

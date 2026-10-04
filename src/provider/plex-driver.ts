@@ -137,6 +137,7 @@ function createPlexProviderDriver(
                     done(null, "credentials");
                     return;
                 }
+                ports.progress("Connecting to Plex…");
                 var request = revision;
                 function isCurrent(): boolean {
                     return current() && revision === request;
@@ -159,6 +160,12 @@ function createPlexProviderDriver(
                             },
                             {
                                 isCurrent: isCurrent,
+                                onRetry: function () {
+                                    if (isCurrent())
+                                        ports.progress(
+                                            "Server unavailable. Retrying automatically; check its address and network access."
+                                        );
+                                },
                                 sourceId: ports.sourceIdentity!(),
                                 title: "Plex",
                             }

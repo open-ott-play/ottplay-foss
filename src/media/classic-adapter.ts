@@ -101,12 +101,19 @@ function classicMediaRuntime(): any {
     var collectionRequest: any = null;
     var shuffleRequest: any = null;
     var completionRequest: any = null;
+    var skipRequest: any = null;
+    var startupLoading: ScreenOwner | null = null;
     var restored = false;
     var repeat = "all";
     var repeatKey = "mediaRepeat.v1:" + source;
     var screenOwner: any = null;
     var screenRevision = -1;
     var pageScheduled = -1;
+    function finishStartupLoading() {
+        var owner = startupLoading;
+        startupLoading = null;
+        if (owner) owner.close();
+    }
     function bindScreen() {
         var screen = w.__ottClassicScreenPort;
         var owner = screen && screen.listOwner();
@@ -765,6 +772,7 @@ function classicMediaRuntime(): any {
                 }
                 if (!automatic && typeof w.closeList === "function")
                     w.closeList();
+                if (startup) finishStartupLoading();
                 var start = {
                     automatic: automatic,
                     ref: item.ref,
@@ -813,7 +821,9 @@ function classicMediaRuntime(): any {
         },
         cancelAuto: function () {
             automaticGeneration++;
+            finishStartupLoading();
             completionRequest = null;
+            skipRequest = null;
             shuffleRequest = null;
             var collecting = collectionRequest;
             collectionRequest = null;
@@ -1294,10 +1304,33 @@ function classicMediaRuntime(): any {
                 );
             }
             function unavailable() {
-                if (valid() && onUnavailable) onUnavailable();
+                if (!valid()) return;
+                finishStartupLoading();
+                if (onUnavailable) onUnavailable();
             }
             authorize(item, function () {
                 if (!valid()) return;
+                var loading = w.__ottClassicScreenPort.setOwnedCallback(
+                    "dialog",
+                    function (key: number) {
+                        if (key === w.keys.RETURN || key === w.keys.EXIT) {
+                            if (!valid()) return;
+                            api.cancelAuto();
+                            if (current() && onUnavailable) onUnavailable();
+                        }
+                    }
+                ).owner;
+                startupLoading = loading;
+                loading.own(function () {
+                    if (startupLoading === loading) startupLoading = null;
+                });
+                w.$("#dialogbox")
+                    .html(
+                        '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
+                            w._("Loading. Please wait...") +
+                            "<br/>"
+                    )
+                    .show();
                 try {
                     collectFolder(item, valid, function (folder) {
                         if (!valid()) return;
@@ -1574,6 +1607,76 @@ function classicMediaRuntime(): any {
                     }),
                 });
         },
+        skip: function (direction: number) {
+            var playback = mediaClassicPlayback;
+            var sequence = playback && playback.sequence;
+            if (
+                !playback ||
+                playback.runtime !== api ||
+                !sequence ||
+                !sequence.items.length ||
+                (direction !== 1 && direction !== -1)
+            )
+                return;
+            var index =
+                (skipRequest && skipRequest.playback === playback
+                    ? skipRequest.index
+                    : sequence.index) + direction;
+            if (
+                sequence.repeat === "off" &&
+                (index < 0 || index >= sequence.items.length)
+            )
+                return;
+            var admitted = library.capture();
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            var revision = automaticGeneration + 1;
+            api.cancelAuto();
+            function valid() {
+                var state = w.__ottClassicPlayback.snapshot();
+                return (
+                    current() &&
+                    admitted() &&
+                    mediaClassicPlayback === playback &&
+                    (!request || skipRequest === request) &&
+                    automaticGeneration === revision &&
+                    state.generation === generation &&
+                    state.target &&
+                    state.target.kind === "vod" &&
+                    state.target.sourceId === source &&
+                    state.target.channelId === playback.ref.itemId
+                );
+            }
+            if (!valid()) return;
+            index = (index + sequence.items.length) % sequence.items.length;
+            if (index === sequence.index) return;
+            var request = { index: index, playback: playback };
+            skipRequest = request;
+            var item = sequence.items[index];
+            function finish() {
+                if (skipRequest === request) skipRequest = null;
+            }
+            authorize(
+                item,
+                function () {
+                    if (!valid()) return;
+                    resolve(
+                        item,
+                        {
+                            index: index,
+                            items: sequence.items,
+                            ordered: sequence.ordered,
+                            repeat: sequence.repeat,
+                        },
+                        true,
+                        valid,
+                        undefined,
+                        undefined,
+                        finish
+                    );
+                },
+                finish
+            );
+        },
         snapshot: function () {
             var view = library.snapshot();
             view.filter = filterText;
@@ -1744,6 +1847,9 @@ function classicMediaRuntime(): any {
     },
     shufflePlay: function () {
         classicMediaRuntime().shufflePlay();
+    },
+    skip: function (direction: number) {
+        classicMediaRuntime().skip(direction);
     },
     snapshot: function () {
         return classicMediaRuntime().snapshot();

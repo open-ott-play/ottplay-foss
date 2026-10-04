@@ -9,6 +9,112 @@ test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
 
+for (const language of ["_eng", "_rus"]) {
+    test(
+        "Plex shows a localized animated loader through slow startup and reload: " +
+            language,
+        async ({ page, context, baseURL }) => {
+            const local = new URL(baseURL).origin;
+            const pending = [];
+            await context.route("**/*", async (route) => {
+                const url = new URL(route.request().url());
+                if (url.origin === local) return route.continue();
+                if (
+                    url.origin === plex &&
+                    url.pathname === "/library/sections"
+                ) {
+                    pending.push(route);
+                    return;
+                }
+                return route.abort();
+            });
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.addInitScript(
+                ({ language, plex, token }) => {
+                    localStorage.setItem("ottplaylang", language);
+                    localStorage.setItem("ottplayprov", "plex");
+                    localStorage.setItem(
+                        "plexcfg",
+                        JSON.stringify({ address: plex, token })
+                    );
+                },
+                { language, plex, token }
+            );
+            await page.goto("/f/pc/");
+            await expect.poll(() => pending.length).toBe(1);
+            const dialog = page.locator("#dialogbox");
+            const spinner = dialog.locator(".ott-spinner");
+            const waitText =
+                language === "_rus"
+                    ? "Загрузка. Подождите…"
+                    : "Loading… please wait…";
+            const connectionText =
+                language === "_rus"
+                    ? "Подключение к Plex…"
+                    : "Connecting to Plex…";
+            await expect(dialog).toBeVisible();
+            await expect(dialog).toContainText(waitText);
+            await expect(dialog).toContainText(connectionText);
+            await expect(spinner).toBeVisible();
+            await expect(page.locator("#launch")).toBeHidden();
+            const transform = await spinner.evaluate(
+                (element) => getComputedStyle(element).transform
+            );
+            await expect
+                .poll(() =>
+                    spinner.evaluate(
+                        (element) => getComputedStyle(element).transform
+                    )
+                )
+                .not.toBe(transform);
+            // The provider can legitimately take longer than the legacy three-second fallback.
+            await page.waitForTimeout(3500);
+            await expect(spinner).toBeVisible();
+            await page.screenshot({
+                path: test.info().outputPath("plex-loading.png"),
+            });
+            await pending[0].fulfill({
+                body: "Temporarily unavailable",
+                headers: { "access-control-allow-origin": "*" },
+                status: 503,
+            });
+            await expect(spinner).toBeVisible();
+            await expect(dialog).toContainText(waitText);
+            await expect.poll(() => pending.length).toBe(2);
+            await expect(spinner).toBeVisible();
+            await pending[1].fulfill({
+                headers: { "access-control-allow-origin": "*" },
+                json: {
+                    MediaContainer: {
+                        Directory: [
+                            { key: "7", title: "My library", type: "movie" },
+                        ],
+                    },
+                },
+            });
+            await expect(dialog).toBeHidden();
+            await expect(page.locator("#list")).toContainText("My library");
+            await page.evaluate(() => window.loadChannels());
+            await expect.poll(() => pending.length).toBe(3);
+            await expect(spinner).toBeVisible();
+            await expect(dialog).toContainText(waitText);
+            await expect(dialog).toContainText(connectionText);
+            await page.waitForTimeout(3500);
+            await expect(spinner).toBeVisible();
+            await pending[2].fulfill({
+                body: "Unauthorized",
+                headers: { "access-control-allow-origin": "*" },
+                status: 401,
+            });
+            await expect(spinner).toBeHidden();
+            const settingsText = await page.evaluate(() =>
+                window._("Plex settings")
+            );
+            await expect(page.locator("#listCaption")).toHaveText(settingsText);
+        }
+    );
+}
+
 test("Plex account sign-in selects a server without retaining the account token", async ({
     page,
     context,
@@ -148,6 +254,8 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     let expandedFolder = false;
     let holdCollection = false;
     let releaseCollection;
+    let holdDecision = false;
+    let releaseDecision;
     const folderOffsets = [];
     const folderParents = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -250,11 +358,16 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
                     },
                 ],
             });
-        if (url.pathname.endsWith("/decision"))
+        if (url.pathname.endsWith("/decision")) {
+            if (holdDecision)
+                await new Promise((release) => {
+                    releaseDecision = release;
+                });
             return json({
                 generalDecisionCode: 1001,
                 Metadata: [{ Media: [{ Part: [{ decision: "transcode" }] }] }],
             });
+        }
         if (url.pathname.endsWith("/start.m3u8"))
             return route.fulfill({
                 body:
@@ -474,7 +587,27 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     // A fresh folder listing can grow between sessions; resume must collect
     // later pages without descending into its child folders.
     expandedFolder = true;
+    holdCollection = true;
+    releaseCollection = undefined;
+    holdDecision = true;
     await page.reload();
+    await expect.poll(() => typeof releaseCollection).toBe("function");
+    const startupSpinner = page.locator("#dialogbox .ott-spinner");
+    await expect(startupSpinner).toBeVisible();
+    await expect(page.locator("#dialogbox")).toContainText(
+        "Loading… please wait…"
+    );
+    await page.waitForTimeout(3500);
+    await expect(startupSpinner).toBeVisible();
+    holdCollection = false;
+    releaseCollection();
+    await expect.poll(() => typeof releaseDecision).toBe("function");
+    await expect(startupSpinner).toBeVisible();
+    await page.screenshot({
+        path: test.info().outputPath("plex-restoring.png"),
+    });
+    holdDecision = false;
+    releaseDecision();
     await page.waitForFunction(() => {
         const video = document.querySelector("video");
         return (
@@ -486,6 +619,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     expect(
         await page.evaluate(() => window.__ottMedia.current().ref.itemId)
     ).toBe(bookmark.itemId);
+    await expect(startupSpinner).toBeHidden();
     expect(
         requests.filter((path) => path === "/library/metadata/42").length
     ).toBeGreaterThan(resolvesBeforeReload);
@@ -495,6 +629,11 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     await page.keyboard.press("Enter");
     await expect(page.locator("#listCaption")).toContainText("Folder 3");
     await expect(page.locator("#list")).toContainText("Following film");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowUp");
+    expect(
+        await page.evaluate(() => window.__ottMedia.current().ref.itemId)
+    ).toBe(bookmark.itemId);
     const restoredFolder = await page.evaluate(() => {
         const view = window.__ottMedia.snapshot();
         return {
@@ -541,6 +680,21 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         true
     );
     expect(folderParents).not.toContain(4);
+    await page.evaluate(() => window.closeList());
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/42" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    await page.keyboard.press("ArrowUp");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/43" &&
+            document.querySelector("video").currentTime > 0.2
+    );
     const stopsBefore = requests.filter((path) =>
         path.endsWith("/stop")
     ).length;

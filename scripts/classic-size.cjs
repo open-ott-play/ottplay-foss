@@ -78,9 +78,12 @@ const { gzipSync } = require("node:zlib");
 // Query-selected HLS Auto fallback reuses the native URL predicate (+93 raw).
 // Numbered Stalker preset writes add validation, isolated persistence and safe
 // acknowledgements. Missing-category localization adds 22 raw bytes. Combined
-// Node 22.23.3 output is 655714 / 199443 web and 655672 / 199504 native;
-// retain the existing bounded release-version headroom without raising limits.
-const BUDGET = Object.freeze({ bytes: 655900, gzipBytes: 199900 });
+// Node 22.23.3 output before Plex is 655714 / 199443 web and 655672 / 199504 native.
+// Plex adds owned loading, bounded connection retries and manual queue skips
+// with cancellation and parental admission (+1593 raw entry bytes). Combined
+// Node 22.23.3 output is 657307 / 199903 web and 657265 / 199963 native;
+// retain bounded candidate-version suffix headroom for this feature cost.
+const BUDGET = Object.freeze({ bytes: 657600, gzipBytes: 200200 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -124,9 +127,12 @@ const BUDGET = Object.freeze({ bytes: 655900, gzipBytes: 199900 });
 // The same archive RPCs leave provider assets unchanged: the complete web
 // payload measures 750586 raw / 234697 gzip on Node 26.8.2.
 // The HLS predicate, Stalker preset handler and missing-category localization
-// change only the entry. Node 22.23.3 complete outputs measure 752930 /
-// 235840 web and 752888 / 235901 native, including all unchanged providers.
-const TOTAL_BUDGET = Object.freeze({ bytes: 753200, gzipBytes: 236000 });
+// change only the entry. Before Plex, Node 22.23.3 complete outputs measure
+// 752930 / 235840 web and 752888 / 235901 native, including unchanged providers.
+// Plex loading, retry and queue navigation add 1970 raw complete-payload bytes.
+// Combined Node 22.23.3 output is 754900 / 236452 web and 754858 / 236512 native;
+// retain bounded release-suffix headroom while counting every provider.
+const TOTAL_BUDGET = Object.freeze({ bytes: 755200, gzipBytes: 236700 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
