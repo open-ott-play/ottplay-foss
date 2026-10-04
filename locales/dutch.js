@@ -717,6 +717,7 @@ var keyStrings = {
     "Restart stream": "Stream herstarten",
     "Restart stream / Live": "Stream herstarten / live",
     "Resume from archive?": "Hervatten vanuit archief?",
+    Retry: "Opnieuw proberen",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Terug naar vorige zender",
     Rewind: "Spoelen",

@@ -715,6 +715,7 @@ var keyStrings = {
     "Restart stream": "Oqimni qayta ishga tushirish",
     "Restart stream / Live": "Oqimni qayta ishga tushirish / jonli efir",
     "Resume from archive?": "Arxivdan davom ettirilsinmi?",
+    Retry: "Qayta urinish",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Oldingi kanalga qaytish",
     Rewind: "Vaqt boʻyicha oʻtkazish",

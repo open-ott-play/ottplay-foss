@@ -143,6 +143,7 @@ function environment() {
 {
     const h = environment();
     const replies = [];
+    assert.equal(h.store.available(), true);
     h.store.write(binding, (error) => replies.push(error));
     h.store.read((error, value) => replies.push([error, value]));
     assert.equal(h.opens.length, 1, "operations open serially");
@@ -242,8 +243,23 @@ function environment() {
     h.complete();
     assert.deepEqual(plain(replies[3]), [false, null]);
     const missing = createDiagnosticsPermissionStore({});
+    assert.equal(missing.available(), false);
     let result;
     missing.read((error, value) => {
+        result = [error, value];
+    });
+    assert.deepEqual(result, [true, null]);
+    const denied = createDiagnosticsPermissionStore({
+        get indexedDB() {
+            throw new Error("access denied");
+        },
+    });
+    assert.equal(
+        denied.available(),
+        true,
+        "denied access cannot prove no persisted permission"
+    );
+    denied.read((error, value) => {
         result = [error, value];
     });
     assert.deepEqual(result, [true, null]);

@@ -720,6 +720,7 @@ var keyStrings = {
     "Restart stream": "Repornește fluxul",
     "Restart stream / Live": "Repornește fluxul / în direct",
     "Resume from archive?": "Reluați din arhivă?",
+    Retry: "Reîncearcă",
     "Retry EPG download": "Retry EPG download",
     "Return to previous channel": "Revino la canalul anterior",
     Rewind: "Derulare",

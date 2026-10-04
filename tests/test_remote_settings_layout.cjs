@@ -42,6 +42,7 @@ w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
 const stored = new Map();
 let diagnosticEnabled = false;
 let diagnosticTrusted = false;
+let diagnosticStorageError = false;
 let diagnosticSession;
 let diagnosticListener = null;
 const diagnosticChanges = [];
@@ -65,6 +66,7 @@ Object.assign(w, {
                 ? "Ready for diagnostics"
                 : "Diagnostics are off",
             sessionId: diagnosticSession,
+            state: diagnosticStorageError ? "storage-error" : "disabled",
             trusted: diagnosticTrusted,
         }),
         stopSession: () => {
@@ -503,6 +505,22 @@ remoteKey(w.keys.ENTER);
 assert.equal(diagnosticTrusted, false);
 remoteKey(w.keys.LEFT);
 assert.equal(w.document.activeElement.id, "remoteDiagnosticsToggle");
+diagnosticStorageError = true;
+diagnosticListener();
+assert.equal(w.document.activeElement.textContent, "Retry");
+const retryStart = diagnosticChanges.length;
+remoteKey(w.keys.ENTER);
+assert.deepEqual(diagnosticChanges.slice(retryStart), [false]);
+assert.equal(diagnosticEnabled, false, "Retry must revoke, never grant");
+remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
+assert.equal(w.document.activeElement.textContent, "Retry");
+remoteKey(w.keys.ENTER);
+assert.deepEqual(diagnosticChanges.slice(retryStart), [false, false]);
+assert.equal(diagnosticTrusted, false);
+diagnosticStorageError = false;
+diagnosticListener();
+remoteKey(w.keys.LEFT);
 remoteKey(w.keys.LEFT);
 assert.match(w.document.activeElement.textContent, /Close/);
 remoteKey(w.keys.ENTER);

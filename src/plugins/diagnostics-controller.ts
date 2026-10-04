@@ -54,10 +54,13 @@ export function installDiagnosticsController(
     var enabled = false;
     var trusted = false;
     var permissionPending = true;
+    var revocationFailed = false;
+    var revocationPending = false;
     var permissionGeneration = 0;
     var binding: DiagnosticsPermissionBinding | null = null;
     var permissionStore =
         deps.permissionStore || createDiagnosticsPermissionStore(w);
+    var mayHaveDurableAuthority = storageAvailable();
     var retry: any = null;
     var failures = 0;
     var policyReadPending = false;
@@ -77,18 +80,26 @@ export function installDiagnosticsController(
     var lastNow = 0;
     var deadline = 0;
     var sequence = 0;
-    var view: Omit<DiagnosticsControllerStatus, "trusted" | "pending"> = {
-        enabled: false,
-        message: "Remote diagnostics is off.",
-        state: "disabled",
-    };
+    var view: Omit<
+        DiagnosticsControllerStatus,
+        "enabled" | "trusted" | "pending"
+    > = disabledView();
+
+    function disabledView() {
+        return {
+            message: "Remote diagnostics is off.",
+            state: "disabled",
+        };
+    }
 
     function status(): DiagnosticsControllerStatus {
         var result: DiagnosticsControllerStatus = {
             enabled: enabled,
-            message: view.message,
+            message: revocationFailed
+                ? "Trusted access could not be removed from device storage."
+                : view.message,
             pending: permissionPending || (trusted && !enabled),
-            state: view.state,
+            state: revocationFailed ? "storage-error" : view.state,
             trusted: trusted,
         };
         if (view.runtimeId) result.runtimeId = view.runtimeId;
@@ -96,6 +107,14 @@ export function installDiagnosticsController(
         if (view.remainingMs !== undefined)
             result.remainingMs = view.remainingMs;
         return result;
+    }
+
+    function storageAvailable(): boolean {
+        try {
+            return !permissionStore.available || permissionStore.available();
+        } catch (_) {
+            return true;
+        }
     }
 
     function notify(): void {
@@ -219,7 +238,6 @@ export function installDiagnosticsController(
         client = null;
         saved = null;
         view = {
-            enabled: false,
             message:
                 reason === "unsupported"
                     ? "Remote diagnostics is unavailable on this player."
@@ -267,10 +285,15 @@ export function installDiagnosticsController(
     }
 
     function stop(reason?: string, persist = true): void {
-        var hadAuthority = trusted || permissionPending;
+        var hadAuthority =
+            trusted ||
+            permissionPending ||
+            revocationFailed ||
+            mayHaveDurableAuthority;
         var current = ++permissionGeneration;
         trusted = false;
         permissionPending = hadAuthority;
+        revocationPending = persist && hadAuthority;
         binding = null;
         policyReadPending = false;
         resumeAfterPolicy = false;
@@ -286,13 +309,13 @@ export function installDiagnosticsController(
             if (!cleaned || !settled || current !== permissionGeneration)
                 return;
             permissionPending = false;
+            revocationPending = false;
             if (failed && hadAuthority) {
-                view = {
-                    enabled: false,
-                    message:
-                        "Trusted access could not be removed from device storage.",
-                    state: "storage-error",
-                };
+                revocationFailed = true;
+            } else if (!failed && persist) {
+                mayHaveDurableAuthority = false;
+                revocationFailed = false;
+                if (view.state === "storage-error") view = disabledView();
             }
             notify();
         }
@@ -336,7 +359,6 @@ export function installDiagnosticsController(
         stopRuntime(reason);
         if (!trusted) return;
         view = {
-            enabled: false,
             message:
                 "Trusted diagnostics is waiting for this player to reconnect.",
             state: "suspended",
@@ -360,6 +382,7 @@ export function installDiagnosticsController(
             permissionStore.read(function (error, value) {
                 if (current !== permissionGeneration || !trusted) return;
                 policyReadPending = false;
+                if (!error) mayHaveDurableAuthority = !!value;
                 if (
                     error ||
                     !value ||
@@ -459,11 +482,14 @@ export function installDiagnosticsController(
             stop("local_stop");
             return;
         }
+        if (revocationFailed || revocationPending) {
+            notify();
+            return;
+        }
         if (permissionPending || trusted) return;
         var next = config();
         if (!next || next.address.slice(0, 8) !== "https://") {
             view = {
-                enabled: enabled,
                 message: "Use an HTTPS command server for remote diagnostics.",
                 state: "unavailable",
             };
@@ -476,8 +502,10 @@ export function installDiagnosticsController(
             revision: identifier(),
             token: next.token,
         };
+        if (storageAvailable()) mayHaveDurableAuthority = true;
         permissionPending = true;
         notify();
+        if (current !== permissionGeneration) return;
         permissionStore.write(granted, function (error) {
             if (current !== permissionGeneration) return;
             permissionPending = false;
@@ -488,10 +516,11 @@ export function installDiagnosticsController(
                 latest.address !== granted.address ||
                 latest.token !== granted.token
             ) {
-                permissionPending = true;
+                // Failed storage cannot rule out an older or ambiguously committed grant.
+                // Only a successful clear can resolve mayHaveDurableAuthority.
+                permissionPending = !error;
                 stop("consent_revoked");
                 view = {
-                    enabled: enabled,
                     message:
                         "Trusted diagnostics is unavailable because device storage could not be updated.",
                     state: "storage-error",
@@ -720,7 +749,6 @@ export function installDiagnosticsController(
         var active = next.state === "active";
         if (next.runtimeId) failures = 0;
         view = {
-            enabled: true,
             message: active
                 ? "Remote diagnostics is collecting for this page."
                 : "Remote diagnostics is ready for an authorized operator.",
@@ -761,12 +789,17 @@ export function installDiagnosticsController(
             stop("local_stop");
             return;
         }
+        if (revocationFailed || revocationPending) {
+            notify();
+            return;
+        }
         if (trusted) {
             resumeTrusted();
             return;
         }
         if (enabled) return;
         if (permissionPending) stop("local_stop");
+        if (revocationFailed || revocationPending) return;
         startRuntime();
     }
 
@@ -775,7 +808,6 @@ export function installDiagnosticsController(
         var next = config();
         if (!next) {
             view = {
-                enabled: false,
                 message: "Connect this player to a command server first.",
                 state: "unavailable",
             };
@@ -784,7 +816,6 @@ export function installDiagnosticsController(
         }
         if (next.address.slice(0, 8) !== "https://") {
             view = {
-                enabled: false,
                 message: "Use an HTTPS command server for remote diagnostics.",
                 state: "unavailable",
             };
@@ -839,7 +870,6 @@ export function installDiagnosticsController(
             w.removeEventListener("offline", offline, false);
         };
         view = {
-            enabled: true,
             message: "Connecting remote diagnostics for this page.",
             remainingMs: trusted ? undefined : MAX_GRANT_MS,
             state: "ready",
@@ -971,6 +1001,7 @@ export function installDiagnosticsController(
     permissionStore.read(function (error, value) {
         if (reading !== permissionGeneration) return;
         permissionPending = false;
+        if (!error) mayHaveDurableAuthority = !!value;
         if (error || !value) {
             notify();
             return;
