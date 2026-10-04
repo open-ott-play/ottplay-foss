@@ -60,6 +60,11 @@ var keyStrings = {
     "All categories": "Visas kategorijas",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv iestatījumi",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Atļaut šo ierīces ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -241,9 +246,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Konfigurējiet Шаравоз sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     Connect: "Savienot",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Savienots",
     "Connected. Waiting for the channel list...":
         "Savienots. Gaida kanālu sarakstu…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Savienojas ar Stalker portālu…",
     "Connecting...": "Savienojas…",
@@ -283,6 +292,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV iestatījumi",
     Director: "Režisors",
     "Disable HTTP remote": "Izslēgt HTTP tālvadību",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Pēc noklusējuma izslēgta. Ieslēdzot tiek izveidots jauns ierīces piekļuves kods.",
     Disconnect: "Atvienot",
@@ -666,6 +676,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pults (bez krāsu pogām)",
     "Remote (number buttons N/A)": "Pults (bez ciparu pogām)",
     "Remote control": "Tālvadība",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -802,6 +822,9 @@ var keyStrings = {
     "Stalker portal settings": "Stalker portāla iestatījumi",
     "Stalker portals": "Stalker portāli",
     Status: "Statuss",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Apturēt atskaņošanu un atgriezties tiešraidē",
     "Stream type: %1": "Straumes veids: %1",
@@ -848,6 +871,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Mainīt tālummaiņas režīmu",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv iestatījumi",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Izmēģināt demonstrāciju",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG iestatījumi",
@@ -866,6 +897,8 @@ var keyStrings = {
         "Atjauninājums instalēts. Pārstartējiet OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Izmantojiet HTTP vai HTTPS servera adresi.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Izmantojiet HTTP vai HTTPS bez lietotājvārda vai paroles adresē.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

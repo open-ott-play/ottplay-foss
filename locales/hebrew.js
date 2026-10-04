@@ -59,6 +59,11 @@ var keyStrings = {
     "All categories": "כל הקטגוריות",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "הגדרות All4you.tv",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "הוסף את מזהה המכשיר הזה לרשימת המורשים",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -232,9 +237,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "הגדר את Шаравоз בהגדרות -> הגדרות ספק",
     Connect: "התחבר",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "מחובר",
     "Connected. Waiting for the channel list...":
         "מחובר. ממתין לרשימת הערוצים…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "מתחבר לפורטל Stalker…",
     "Connecting...": "מתחבר…",
@@ -273,6 +282,7 @@ var keyStrings = {
     "Diamond TV settings": "הגדרות Diamond TV",
     Director: "במאי",
     "Disable HTTP remote": "כיבוי שליטת HTTP",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "כבוי כברירת מחדל. ההפעלה יוצרת קוד גישה חדש למכשיר.",
     Disconnect: "ניתוק",
@@ -645,6 +655,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "שלט (ללא לחצנים צבעוניים)",
     "Remote (number buttons N/A)": "שלט (ללא לחצני מספרים)",
     "Remote control": "שליטה מרחוק",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -776,6 +796,9 @@ var keyStrings = {
     "Stalker portal settings": "הגדרות פורטל Stalker",
     "Stalker portals": "פורטלי Stalker",
     Status: "מצב",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "הפסק ניגון וחזור לשידור חי",
     "Stream type: %1": "סוג שידור: %1",
     "String for search": "שאילתת חיפוש",
@@ -821,6 +844,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "שנה מצב זום",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "הגדרות Top-Tv",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "נסה הדגמה",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "הגדרות TV DOSUG",
@@ -838,6 +869,8 @@ var keyStrings = {
     "Update installed. Please restart OttPlay FOSS.":
         "העדכון הותקן. הפעל מחדש את OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.": "השתמש בכתובת שרת HTTP או HTTPS.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "השתמש ב-HTTP או HTTPS ללא שם משתמש או סיסמה בכתובת.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

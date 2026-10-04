@@ -60,6 +60,11 @@ var keyStrings = {
     "All categories": "Tüm kategoriler",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ayarları",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Bu cihaz kimliğine izin ver",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -241,9 +246,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз için Ayarlar -> Sağlayıcı Ayarları bölümünü kullanın",
     Connect: "Bağlan",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Bağlandı",
     "Connected. Waiting for the channel list...":
         "Bağlandı. Kanal listesi bekleniyor…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Stalker portalına bağlanılıyor…",
     "Connecting...": "Bağlanılıyor…",
@@ -283,6 +292,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV ayarları",
     Director: "Yönetmen",
     "Disable HTTP remote": "HTTP kumandasını kapat",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Varsayılan olarak kapalıdır. Etkinleştirme yeni bir cihaz erişim kodu oluşturur.",
     Disconnect: "Bağlantıyı kes",
@@ -660,6 +670,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Kumanda (renkli düğme yok)",
     "Remote (number buttons N/A)": "Kumanda (sayı düğmesi yok)",
     "Remote control": "Uzaktan kumanda",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -796,6 +816,9 @@ var keyStrings = {
     "Stalker portal settings": "Stalker portalı ayarları",
     "Stalker portals": "Stalker portalları",
     Status: "Durum",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "Oynatmayı durdur ve canlıya dön",
     "Stream type: %1": "Akış türü: %1",
     "String for search": "Arama sorgusu",
@@ -842,6 +865,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Yakınlaştırma modunu değiştir",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ayarları",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Demoyu dene",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG ayarları",
@@ -860,6 +891,8 @@ var keyStrings = {
         "Güncelleme yüklendi. Lütfen OttPlay FOSS'u yeniden başlatın.",
     "Use an HTTP or HTTPS server address.":
         "HTTP veya HTTPS sunucu adresi kullanın.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Adreste kullanıcı adı veya parola olmadan HTTP veya HTTPS kullanın.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

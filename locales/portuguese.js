@@ -58,6 +58,11 @@ var keyStrings = {
     "All categories": "Todas as categorias",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Configurações de All4you.tv",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Autorizar este ID de dispositivo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -242,9 +247,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Configure Шаравоз em Configurações -> Configurações do fornecedor",
     Connect: "Ligar",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Ligado",
     "Connected. Waiting for the channel list...":
         "Ligado. A aguardar a lista de canais…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "A ligar ao portal Stalker…",
     "Connecting...": "A ligar…",
@@ -284,6 +293,7 @@ var keyStrings = {
     "Diamond TV settings": "Configurações de Diamond TV",
     Director: "Realização",
     "Disable HTTP remote": "Desativar controlo HTTP",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Desativado por predefinição. A ativação cria um novo código de acesso ao dispositivo.",
     Disconnect: "Desligar",
@@ -667,6 +677,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Comando sem botões coloridos",
     "Remote (number buttons N/A)": "Comando sem botões numéricos",
     "Remote control": "Controlo remoto",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -805,6 +825,9 @@ var keyStrings = {
     "Stalker portal settings": "Configurações do portal Stalker",
     "Stalker portals": "Portais Stalker",
     Status: "Estado",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "Parar reprodução e voltar ao direto",
     "Stream type: %1": "Tipo de fluxo: %1",
     "String for search": "Texto de pesquisa",
@@ -851,6 +874,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Mudar modo de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Configurações de Top-Tv",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Experimentar demonstração",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Configurações de TV DOSUG",
@@ -870,6 +901,8 @@ var keyStrings = {
         "Atualização instalada. Reinicie o OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Use um endereço de servidor HTTP ou HTTPS.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Use HTTP ou HTTPS sem nome de utilizador nem palavra-passe no endereço.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

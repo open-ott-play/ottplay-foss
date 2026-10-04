@@ -60,6 +60,11 @@ var keyStrings = {
     "All categories": "Բոլոր կատեգորիաները",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv կարգավորումներ",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Թույլատրել այս սարքի ID-ն",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -240,9 +245,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Կարգավորեք Шаравоз-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     Connect: "Միանալ",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Միացված է",
     "Connected. Waiting for the channel list...":
         "Միացված է։ Սպասում է ալիքների ցուցակին…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Միացում Stalker պորտալին…",
     "Connecting...": "Միացում…",
@@ -283,6 +292,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV կարգավորումներ",
     Director: "Ռեժիսոր",
     "Disable HTTP remote": "Անջատել HTTP հեռակառավարումը",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Լռելյայն անջատված է։ Միացնելիս ստեղծվում է սարքի մուտքի նոր կոդ։",
     Disconnect: "Անջատել",
@@ -664,6 +674,16 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Հեռակառավարման վահանակ (առանց թվային կոճակների)",
     "Remote control": "Հեռակառավարում",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -803,6 +823,9 @@ var keyStrings = {
     "Stalker portal settings": "Stalker պորտալի կարգավորումներ",
     "Stalker portals": "Stalker պորտալներ",
     Status: "Վիճակ",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Դադարեցնել նվագարկումը և վերադառնալ ուղիղ եթերին",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",
@@ -851,6 +874,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Փոխել խոշորացման ռեժիմը",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv կարգավորումներ",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Փորձել ցուցադրությունը",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG կարգավորումներ",
@@ -869,6 +900,8 @@ var keyStrings = {
         "Թարմացումը տեղադրված է։ Վերագործարկեք OttPlay FOSS-ը։",
     "Use an HTTP or HTTPS server address.":
         "Օգտագործեք HTTP կամ HTTPS սերվերի հասցե։",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Օգտագործեք HTTP կամ HTTPS՝ առանց օգտանվան կամ գաղտնաբառի հասցեում։",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

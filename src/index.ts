@@ -45,6 +45,7 @@ import {
     normalizeCommandServerAddress,
 } from "./plugins/command-server";
 import { createControlDiscovery } from "./plugins/control-discovery";
+import { installDiagnosticsController } from "./plugins/diagnostics-controller";
 import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
@@ -1794,6 +1795,9 @@ function onStbReady(): void {
             enabled: settings.commandServerEnabled === 1,
             token: settings.commandServerToken,
         });
+        // Read device-local support permission only after saved settings and
+        // the controller's initial configure callback have completed.
+        if (!(window as any).__ottRemoteDiagnostics) initRemoteDiagnostics();
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
             (window as any).ensureDeviceClientId();
@@ -5718,6 +5722,8 @@ window.showPopup = showPopup;
               : undefined
     ),
     function (config: any): void {
+        if ((window as any).__ottRemoteDiagnostics)
+            (window as any).__ottRemoteDiagnostics.configurationChanged(config);
         if (
             !saveSettings({ commandServerEnabled: 0 }) ||
             !saveSettings({
@@ -5731,6 +5737,78 @@ window.showPopup = showPopup;
     handleCommand,
     executeRemoteRequest
 );
+
+function initRemoteDiagnostics(): void {
+    (window as any).__ottRemoteDiagnostics = installDiagnosticsController(
+        window,
+        {
+            getConfig: function () {
+                return {
+                    address: settings.commandServerAddress,
+                    enabled: settings.commandServerEnabled === 1,
+                    token: settings.commandServerToken,
+                };
+            },
+            onStatus: function (status: any): void {
+                var badge = document.getElementById(
+                    "remoteDiagnosticsIndicator"
+                );
+                if (!status.enabled) {
+                    if (badge && badge.parentNode)
+                        badge.parentNode.removeChild(badge);
+                    return;
+                }
+                if (!badge) {
+                    badge = document.createElement("button");
+                    badge.id = "remoteDiagnosticsIndicator";
+                    badge.style.cssText =
+                        "position:fixed;right:8px;top:8px;z-index:99999;max-width:70%;" +
+                        "background:#532900;color:white;border:1px solid white;padding:6px;";
+                    badge.onclick = function () {
+                        (window as any).__ottRemoteDiagnostics.setEnabled(
+                            false
+                        );
+                    };
+                    (document.body || document.documentElement).appendChild(
+                        badge
+                    );
+                }
+                badge.textContent =
+                    (window as any)._("Remote diagnostics") +
+                    ": " +
+                    (window as any)._(status.message) +
+                    " · " +
+                    (window as any)._("Stop");
+            },
+            runtimeLabel:
+                (typeof window.__TAURI__ !== "undefined"
+                    ? "tauri"
+                    : (window as any).Capacitor
+                      ? "capacitor"
+                      : (window as any).ott_device === "lg/webos"
+                        ? "webos"
+                        : "browser") +
+                "." +
+                (/^[A-Za-z0-9_.-]{1,24}$/.test(PLAYER_VERSION)
+                    ? PLAYER_VERSION
+                    : "development"),
+            send: createCommandServerTransport(
+                window,
+                typeof window.__TAURI__ !== "undefined"
+                    ? function (request: any): Promise<any> {
+                          return tauriInvoke("proxy_http", request);
+                      }
+                    : (window as any).Capacitor &&
+                        (!(window as any).Capacitor.isNativePlatform ||
+                            (window as any).Capacitor.isNativePlatform())
+                      ? function (request: any): Promise<any> {
+                            return StalkerPortal.httpRequest(request);
+                        }
+                      : undefined
+            ),
+        }
+    );
+}
 
 (window as any).__ottControlDiscovery = createControlDiscovery(
     window,
@@ -5909,6 +5987,34 @@ window.settingsCommands = function (): void {
     var w = window as any;
     var commandServer = w.__ottCommandServer;
     var discovery = w.__ottControlDiscovery;
+    var diagnostics = w.__ottRemoteDiagnostics;
+    function refreshDiagnostics(): void {
+        if (!diagnostics || closed) return;
+        var status = diagnostics.status();
+        var label = document.getElementById("remoteDiagnosticsStatus");
+        if (label)
+            label.textContent =
+                w._(status.message) +
+                (status.runtimeId ? " · " + status.runtimeId : "");
+        var button = document.getElementById("remoteDiagnosticsToggle");
+        if (button)
+            button.textContent = w._(
+                status.enabled || status.trusted || status.pending
+                    ? "Stop diagnostics"
+                    : "Allow diagnostics for 10 minutes"
+            );
+        var trust = document.getElementById("remoteDiagnosticsTrust");
+        if (trust)
+            trust.textContent = w._(
+                status.trusted
+                    ? "Disable trusted remote support"
+                    : "Trust this server for remote support"
+            );
+        var stopSession = document.getElementById(
+            "remoteDiagnosticsStopSession"
+        ) as HTMLButtonElement | null;
+        if (stopSession) stopSession.disabled = !status.sessionId;
+    }
     function refreshDiscovery(): void {
         if (!discovery || closed) return;
         var status = discovery.status();
@@ -5927,8 +6033,8 @@ window.settingsCommands = function (): void {
         var choices = document.getElementById("commandServerDiscoveryChoices");
         if (!choices) return;
         choices.textContent = "";
-        controls.length = Math.min(controls.length, 9);
-        controlActions.length = Math.min(controlActions.length, 9);
+        controls.length = Math.min(controls.length, 12);
+        controlActions.length = Math.min(controlActions.length, 12);
         status.servers.forEach(function (server: any, index: number) {
             var button = document.createElement("button");
             button.textContent =
@@ -5972,6 +6078,7 @@ window.settingsCommands = function (): void {
     }
     if (commandServer) commandServer.subscribe(refreshServerStatus);
     if (discovery) discovery.subscribe(refreshDiscovery);
+    if (diagnostics) diagnostics.subscribe(refreshDiagnostics);
     var changingHttpRemote = false;
     var httpRemoteError = false;
     var closed = false;
@@ -5998,6 +6105,25 @@ window.settingsCommands = function (): void {
         close,
         function (): void {
             if (discovery) discovery.cancel();
+        },
+        function (): void {
+            if (diagnostics) {
+                var status = diagnostics.status();
+                diagnostics.setEnabled(
+                    !(status.enabled || status.trusted || status.pending)
+                );
+            }
+            refreshDiagnostics();
+        },
+        function (): void {
+            if (diagnostics && diagnostics.setTrusted)
+                diagnostics.setTrusted(!diagnostics.status().trusted);
+            refreshDiagnostics();
+        },
+        function (): void {
+            if (diagnostics && diagnostics.status().sessionId)
+                diagnostics.stopSession();
+            refreshDiagnostics();
         },
     ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
@@ -6066,6 +6192,7 @@ window.settingsCommands = function (): void {
         closed = true;
         if (commandServer) commandServer.subscribe(null);
         if (discovery) discovery.subscribe(null);
+        if (diagnostics) diagnostics.subscribe(null);
         $("#listAbout").hide().text("");
         ["listCaption", "listDetail", "listPodval"].forEach(
             function (id, index) {
@@ -6163,6 +6290,22 @@ window.settingsCommands = function (): void {
             text(w._("Cancel pairing")) +
             '</button><br/><span id="commandServerDiscoveryStatus" role="status"></span><div id="commandServerDiscoveryChoices"></div><br/>' +
             "<b>" +
+            text(w._("Remote diagnostics")) +
+            "</b><br/>" +
+            text(
+                w._(
+                    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline."
+                )
+            ) +
+            '<br/><span id="remoteDiagnosticsStatus" role="status"></span><br/>' +
+            '<button id="remoteDiagnosticsToggle">' +
+            text(w._("Allow diagnostics for 10 minutes")) +
+            '</button> <button id="remoteDiagnosticsTrust">' +
+            text(w._("Trust this server for remote support")) +
+            '</button> <button id="remoteDiagnosticsStopSession" disabled>' +
+            text(w._("Stop current capture")) +
+            "</button><br/><br/>" +
+            "<b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
             text(w._(remoteStatus.enabled ? "on" : "off")) +
@@ -6254,6 +6397,13 @@ window.settingsCommands = function (): void {
             document.getElementById("commandServerDiscoveryCancel")!,
             8
         );
+        bindControl(document.getElementById("remoteDiagnosticsToggle")!, 9);
+        bindControl(document.getElementById("remoteDiagnosticsTrust")!, 10);
+        bindControl(
+            document.getElementById("remoteDiagnosticsStopSession")!,
+            11
+        );
+        refreshDiagnostics();
         var footerControls = footer
             ? footer.querySelectorAll("span[onclick]")
             : [];

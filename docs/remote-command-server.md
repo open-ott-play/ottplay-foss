@@ -219,3 +219,7 @@ prove visible playback or physical remote behavior.
 OTTClub's `server` is a bare host with an optional port, such as `club.example:8080`;
 its existing driver supplies the URL scheme. Other supported providers accept
 HTTP(S) URLs. Changing an OTTClub key preserves the stored host.
+
+## Temporary remote diagnostics
+
+See [Remote diagnostics](remote-diagnostics.md) for foreground consent, exact runtime selection, bounded telemetry, CLI/MCP access and platform limits. Diagnostics uses independent protocol 2 routes; existing command delivery remains compatible.

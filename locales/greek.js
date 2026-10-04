@@ -60,6 +60,11 @@ var keyStrings = {
     "All categories": "Όλες οι κατηγορίες",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Ρυθμίσεις All4you.tv",
+    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
+        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+    "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
+        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
     "Allowlist this Device ID": "Επιτρέψτε αυτό το αναγνωριστικό συσκευής",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -243,9 +248,13 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Ρυθμίστε το Шаравоз από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     Connect: "Σύνδεση",
+    "Connect this player to a command server first.":
+        "Connect this player to a command server first.",
     Connected: "Συνδέθηκε",
     "Connected. Waiting for the channel list...":
         "Συνδέθηκε. Αναμονή για τη λίστα καναλιών…",
+    "Connecting remote diagnostics for this page.":
+        "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Σύνδεση στην πύλη Stalker…",
     "Connecting...": "Σύνδεση…",
@@ -286,6 +295,7 @@ var keyStrings = {
     "Diamond TV settings": "Ρυθμίσεις Diamond TV",
     Director: "Σκηνοθέτης",
     "Disable HTTP remote": "Απενεργοποίηση τηλεχειρισμού HTTP",
+    "Disable trusted remote support": "Disable trusted remote support",
     "Disabled by default. Enabling creates a new device access code.":
         "Απενεργοποιημένος από προεπιλογή. Η ενεργοποίηση δημιουργεί νέο κωδικό πρόσβασης συσκευής.",
     Disconnect: "Αποσύνδεση",
@@ -673,6 +683,16 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Τηλεχειριστήριο (χωρίς έγχρωμα πλήκτρα)",
     "Remote (number buttons N/A)": "Τηλεχειριστήριο (χωρίς αριθμητικά πλήκτρα)",
     "Remote control": "Τηλεχειρισμός",
+    "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this page.":
+        "Remote diagnostics is collecting for this page.",
+    "Remote diagnostics is off.": "Remote diagnostics is off.",
+    "Remote diagnostics is ready for an authorized operator.":
+        "Remote diagnostics is ready for an authorized operator.",
+    "Remote diagnostics is unavailable on this player.":
+        "Remote diagnostics is unavailable on this player.",
+    "Remote diagnostics stopped. Enable it again to grant access.":
+        "Remote diagnostics stopped. Enable it again to grant access.",
     "Remote input expired. Open a new session to try again.":
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
@@ -813,6 +833,9 @@ var keyStrings = {
     "Stalker portal settings": "Ρυθμίσεις πύλης Stalker",
     "Stalker portals": "Πύλες Stalker",
     Status: "Κατάσταση",
+    Stop: "Stop",
+    "Stop current capture": "Stop current capture",
+    "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Διακοπή αναπαραγωγής και επιστροφή στη ζωντανή μετάδοση",
     "Stream type: %1": "Τύπος ροής: %1",
@@ -862,6 +885,14 @@ var keyStrings = {
     "Toggle Zoom Mode": "Αλλαγή λειτουργίας μεγέθυνσης",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ρυθμίσεις Top-Tv",
+    "Trust this server for remote support":
+        "Trust this server for remote support",
+    "Trusted access could not be removed from device storage.":
+        "Trusted access could not be removed from device storage.",
+    "Trusted diagnostics is unavailable because device storage could not be updated.":
+        "Trusted diagnostics is unavailable because device storage could not be updated.",
+    "Trusted diagnostics is waiting for this player to reconnect.":
+        "Trusted diagnostics is waiting for this player to reconnect.",
     "Try demo": "Δοκιμή επίδειξης",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Ρυθμίσεις TV DOSUG",
@@ -881,6 +912,8 @@ var keyStrings = {
         "Η ενημέρωση εγκαταστάθηκε. Επανεκκινήστε το OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.":
         "Χρησιμοποιήστε διεύθυνση διακομιστή HTTP ή HTTPS.",
+    "Use an HTTPS command server for remote diagnostics.":
+        "Use an HTTPS command server for remote diagnostics.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Χρησιμοποιήστε HTTP ή HTTPS χωρίς όνομα χρήστη ή κωδικό στη διεύθυνση.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":

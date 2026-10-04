@@ -227,6 +227,12 @@ function collectSourceKeys(repository = root) {
             }
         }
         visit(ast, (node) => {
+            if (
+                relative === "src/plugins/diagnostics-controller.ts" &&
+                ts.isPropertyAssignment(node) &&
+                name(node.name) === "message"
+            )
+                collect(node.initializer);
             if (ts.isCallExpression(node)) {
                 const method = name(node.expression);
                 const argument = {

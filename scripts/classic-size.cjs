@@ -83,7 +83,13 @@ const { gzipSync } = require("node:zlib");
 // with cancellation and parental admission (+1593 raw entry bytes). Combined
 // Node 22.23.3 output is 657307 / 199903 web and 657265 / 199963 native;
 // retain bounded candidate-version suffix headroom for this feature cost.
-const BUDGET = Object.freeze({ bytes: 657600, gzipBytes: 200200 });
+// Runtime-scoped diagnostics, consent UI and complete logger cleanup add a
+// measured 28 KB raw / 8.4 KB gzip. Node 26 measures 685215 / 208384 for the
+// entry; allow native transforms, Node 22 compression and release suffix room.
+// Installation-bound trust, durable revocation and acknowledged runtime repairs
+// add about 10.5 KB raw, including cross-tab revocation; retain the bounded
+// native/Node/version allowance.
+const BUDGET = Object.freeze({ bytes: 696900, gzipBytes: 213000 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -132,7 +138,8 @@ const BUDGET = Object.freeze({ bytes: 657600, gzipBytes: 200200 });
 // Plex loading, retry and queue navigation add 1970 raw complete-payload bytes.
 // Combined Node 22.23.3 output is 754900 / 236452 web and 754858 / 236512 native;
 // retain bounded release-suffix headroom while counting every provider.
-const TOTAL_BUDGET = Object.freeze({ bytes: 755200, gzipBytes: 236700 });
+// The same diagnostic implementation is counted once; providers are unchanged.
+const TOTAL_BUDGET = Object.freeze({ bytes: 794500, gzipBytes: 249500 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
