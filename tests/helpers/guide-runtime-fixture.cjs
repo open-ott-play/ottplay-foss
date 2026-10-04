@@ -67,8 +67,12 @@ const code = ts.transpileModule(
     }
 ).outputText;
 module.exports = function guideFixture(options = {}) {
+    const independent = options.independentClock === true;
+    const minimumDelay = Math.max(0, Number(options.minimumDelay) || 0);
     let seconds = options.now || 10000,
-        timerId = 0;
+        timerId = 0,
+        epochMs = seconds * 1000,
+        elapsedMs = 0;
     const timers = new Map(),
         requests = [],
         prompts = [],
@@ -143,8 +147,12 @@ module.exports = function guideFixture(options = {}) {
         curEpgData: null,
         curList: [1, 2],
         Date: class extends Date {
+            constructor(...args) {
+                if (independent && args.length === 0) super(epochMs);
+                else super(...args);
+            }
             static now() {
-                return seconds * 1000;
+                return independent ? epochMs : seconds * 1000;
             }
         },
         document: {
@@ -229,10 +237,16 @@ module.exports = function guideFixture(options = {}) {
         },
         setTimeout(fn, ms) {
             const id = ++timerId;
-            timers.set(id, {
-                at: seconds + Math.max(0, Number(ms) || 0) / 1000,
-                fn,
-            });
+            const delay = Math.max(minimumDelay, Number(ms) || 0);
+            timers.set(
+                id,
+                independent
+                    ? { delay, due: elapsedMs + delay, fn, interval: false }
+                    : {
+                          at: seconds + delay / 1000,
+                          fn,
+                      }
+            );
             return id;
         },
         settings: { epgRemindMinutes: 1 },
@@ -255,6 +269,22 @@ module.exports = function guideFixture(options = {}) {
     });
     host.window = host;
     host.epgCache = host.epg;
+    if (independent) {
+        host.setInterval = function (fn, ms) {
+            const id = ++timerId;
+            const delay = Math.max(1, Number(ms) || 0);
+            timers.set(id, {
+                delay,
+                due: elapsedMs + delay,
+                fn,
+                interval: true,
+            });
+            return id;
+        };
+        host.clearInterval = function (id) {
+            timers.delete(id);
+        };
+    }
     host.epgCacheByChannel = host.epg;
     vm.runInContext(
         fs.readFileSync(path.join(root, "vendor/ottplay-core.js"), "utf8"),
@@ -273,7 +303,43 @@ module.exports = function guideFixture(options = {}) {
         privateRuntime(host, "src/guide/" + name + ".ts");
     vm.runInContext(code, host);
     attachSourceAliases(host);
+    function dueIndependent(limit) {
+        return [...timers]
+            .filter(([, timer]) => timer.due <= limit)
+            .sort((a, b) => a[1].due - b[1].due || a[0] - b[0])[0];
+    }
+    function fireIndependent(entry) {
+        const timer = entry[1];
+        if (timer.interval) timer.due += timer.delay;
+        else timers.delete(entry[0]);
+        timer.fn();
+    }
+    function advanceElapsed(ms) {
+        if (!independent) throw Error("independent clock required");
+        const target = elapsedMs + ms;
+        const started = elapsedMs;
+        const startedEpoch = epochMs;
+        let count = 0;
+        while (true) {
+            const due = dueIndependent(target);
+            if (!due) break;
+            assert(++count < 250, "timer loop converges");
+            elapsedMs = due[1].due;
+            epochMs = startedEpoch + (elapsedMs - started);
+            fireIndependent(due);
+        }
+        elapsedMs = target;
+        epochMs = startedEpoch + ms;
+    }
     function tick(next = seconds) {
+        if (independent) {
+            let count = 0;
+            while (dueIndependent(elapsedMs)) {
+                assert(++count < 250, "timer loop converges");
+                fireIndependent(dueIndependent(elapsedMs));
+            }
+            return;
+        }
         let count = 0;
         while (true) {
             const due = [...timers]
@@ -306,15 +372,22 @@ module.exports = function guideFixture(options = {}) {
         };
     }
     return {
+        advanceElapsed,
         calls,
         complete,
+        elapsed: () => elapsedMs,
         elements,
+        epoch: () => epochMs / 1000,
         host,
         now: () => seconds,
         prompts,
         requests,
         row,
         saved,
+        setEpoch(value) {
+            if (!independent) throw Error("independent clock required");
+            epochMs = value * 1000;
+        },
         tick,
         timers,
     };
