@@ -418,6 +418,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Klaida: kategorija Nr. %1 neegzistuoja!<br>Pasirinkite kitą kategoriją.",
     "ERROR!": "Klaida!",
     "Error Code!": "Netinkamas kodas!",
     Exit: "Išeiti",

@@ -419,6 +419,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Қате: №%1 санаты жоқ!<br>Басқа санатты таңдаңыз.",
     "ERROR!": "Қате!",
     "Error Code!": "Жарамсыз код!",
     Exit: "Шығу",

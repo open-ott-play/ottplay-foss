@@ -414,6 +414,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Chyba: Kategorie č. %1 neexistuje!<br>Vyberte jinou kategorii.",
     "ERROR!": "Chyba!",
     "Error Code!": "Neplatný kód!",
     Exit: "Ukončit",

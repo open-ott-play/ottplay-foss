@@ -420,6 +420,8 @@ var keyStrings = {
         "EPG: updating saved programme guide...",
     "EPG: waiting for another player tab...":
         "EPG: waiting for another player tab...",
+    "ERROR: Category #%1 does not exist!<br>Please select another category.":
+        "Xato: %1-raqamli turkum mavjud emas!<br>Boshqa turkumni tanlang.",
     "ERROR!": "Xato!",
     "Error Code!": "Kod notoʻgʻri!",
     Exit: "Chiqish",
