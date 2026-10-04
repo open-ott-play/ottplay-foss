@@ -868,6 +868,11 @@ declare var confirmBox: (
  * The stored "noProvParam" flag hides provider settings in popup arrays.
  */
 export function loadProv(providerId?: string): void {
+    var kiosk = (window as any).__ottKiosk;
+    if (kiosk && kiosk.enabled()) {
+        if ((window as any).__ottActiveProviderDriver) return;
+        providerId = kiosk.snapshot().provider;
+    }
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
@@ -1018,7 +1023,10 @@ export function loadProv(providerId?: string): void {
             }
         }
 
-        var matchResult = window.location.search.match(/\?([^&]+)/);
+        var matchResult =
+            kiosk && kiosk.enabled()
+                ? null
+                : window.location.search.match(/\?([^&]+)/);
         // Keep an explicitly selected demo after restarting a URL-pinned player.
         // The existing ?clear reset must still be able to clear that selection.
         if (
@@ -1049,6 +1057,7 @@ export function loadProv(providerId?: string): void {
         if (s) removeOption(showProviderSelection);
         else
             s =
+                (kiosk && kiosk.enabled() ? kiosk.snapshot().provider : "") ||
                 demoProviderSelection ||
                 (providerId === "demo"
                     ? "demo"
@@ -1393,6 +1402,8 @@ export function loadChannels(): void {
 
 /** Select a provider from the current registry without bypassing parental or distribution policy. */
 export function selectProviderByIndex(index: number): boolean {
+    if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
+        return false;
     if (
         typeof index !== "number" ||
         !isFinite(index) ||
@@ -1554,6 +1565,8 @@ export function showProviderSelection(): void {
      * Side effects: Writes 'ottplayprov' and 'ottplayprovs' to stb storage.
      */
     function selectProv(id: string): void {
+        if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
+            return;
         if (!id || !isProviderAllowed(id)) return;
         if (savedProvId === id) {
             var edit = (window as any).__ottEditProvider;

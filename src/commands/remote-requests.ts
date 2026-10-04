@@ -40,6 +40,28 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    if (
+        w.__ottKiosk &&
+        w.__ottKiosk.enabled() &&
+        [
+            "status",
+            "channels",
+            "providers",
+            "profiles",
+            "programs",
+            "epg_catalog",
+            "restart",
+            "command",
+        ].indexOf(request.action) < 0
+    ) {
+        done({
+            data: {
+                error: "Kiosk mode is enabled. Use kiosk set CHANNEL or kiosk off.",
+            },
+            status: "rejected",
+        });
+        return;
+    }
     function reply(data: any): void {
         done({ data: data, status: "ok" });
     }
@@ -121,6 +143,7 @@ export function executeRemoteRequest(
     if (request.action === "status") {
         reply({
             channels: channels().length,
+            ...(w.__ottKiosk ? { kiosk: w.__ottKiosk.snapshot() } : {}),
             diagnostics: {
                 epg: remoteSnapshot(
                     w.__ottHostedEpg && w.__ottHostedEpg.remoteSnapshot

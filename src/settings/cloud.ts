@@ -190,6 +190,7 @@ var cloudSettingsTransfer = (function () {
             return code;
         }
         function restore(xml: string): void {
+            if (w.__ottKiosk && w.__ottKiosk.enabled()) return;
             var imported = w.__ottCloudSettingsCodec.read(xml);
             if (!active()) return;
             if (

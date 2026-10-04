@@ -30,6 +30,7 @@ function classicArchiveRows(values: any): ArchiveProgramme[] {
 
 function classicArchiveCapture(): ArchiveContext | null {
     var w = window as any;
+    if (w.__ottKiosk && w.__ottKiosk.enabled()) return null;
     var id = (w.curList || [])[w.primaryIndex];
     var channel = (w.channels || {})[id];
     if (!channel || id === undefined || id === null) return null;

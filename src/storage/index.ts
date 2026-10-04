@@ -535,22 +535,36 @@ export const stbClearAllItems = storage.clear;
  * Backward-compatible alias — dump all items from the underlying storage.
  * @see StorageAdapter.dump
  */
-export const stbGetAllItems = storage.dump;
+export function stbGetAllItems(): Record<string, string> {
+    var items = storage.dump();
+    delete items.__ottKioskV1;
+    return items;
+}
 
 /** Credentials, consent and recursive snapshots belong to this installation. */
 export function isPortableSettingsKey(key: string): boolean {
-    return (window as any).OttPlayCore.classicPortableKey(key, true);
+    return (
+        key !== "__ottKioskV1" &&
+        (window as any).OttPlayCore.classicPortableKey(key, true)
+    );
 }
 
 /** Copy ordinary settings without changing provider payload strings. */
 export function portableSettingsSnapshot(
     items: Record<string, any>
 ): Record<string, any> {
-    return (window as any).OttPlayCore.classicPortableSnapshot(items, true);
+    var result = (window as any).OttPlayCore.classicPortableSnapshot(
+        items,
+        true
+    );
+    delete result.__ottKioskV1;
+    return result;
 }
 
 /** Restore ordinary local backup data without importing remote-control authority. */
 export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
+    if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
+        return;
     var imported = portableSettingsSnapshot(items);
     var w = window as any;
     var current = w.stbGetAllItems();

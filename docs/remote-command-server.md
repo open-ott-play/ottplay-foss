@@ -219,3 +219,58 @@ prove visible playback or physical remote behavior.
 OTTClub's `server` is a bare host with an optional port, such as `club.example:8080`;
 its existing driver supplies the URL scheme. Other supported providers accept
 HTTP(S) URLs. Changing an OTTClub key preserves the stored host.
+
+### Kiosk mode
+
+Updated players, control servers and CLI builds support a device-local live-channel
+lock. Only an authenticated request delivered by the configured command server
+can enable, replace or disable it. There is no local kiosk toggle.
+
+```sh
+ott tv kiosk on             # wait for the next admitted channel selection in the UI
+ott tv kiosk on 12          # select and lock catalogue channel 12 immediately
+ott tv kiosk on "Новости"   # lock the first matching name (case insensitive)
+ott tv kiosk set 7          # replace the locked channel through the controller
+ott tv kiosk status         # policy, channel metadata, health and retry count
+ott tv kiosk off            # release the lock
+```
+
+Arming without a channel does not capture the already playing channel. The first
+subsequent live selection that passes parental admission is retained, including
+when that stream then fails to load. Repeating `kiosk on` without a channel leaves
+an existing lock unchanged. Text queries select the first channel whose name
+contains the query, ignoring case, in the catalogue order shown by `ott tv s`.
+A later exact name does not take priority; duplicate matches are not randomized.
+The query is a literal substring, not a regular expression or wildcard expression.
+Numeric queries retain one-based catalogue numbering. No match, or an unavailable
+or protected first match, rejects without changing the previous lock or skipping
+to another match. Recovery retains the selected channel ID rather than rerunning
+the name search.
+
+The lock retains the source/profile identity and channel ID, not a list position
+or expiring media URL. While enabled, provider/profile/settings mutations, media
+queues, archives, ordinary remote channel commands and exit commands are rejected.
+Once a channel is locked, local pointer/touch navigation and keyboard/remote
+navigation are blocked; volume and mute keys remain available. Status, catalogue
+queries, notifications, volume and explicit remote restarts remain available.
+Use `kiosk off` before changing provider/profile or unlocking parental access,
+then enable kiosk again on the intended channel. Parental restrictions still apply.
+
+The client samples playback once per second. Ten seconds without playback position
+advancing causes a fresh launch of the retained channel through the normal provider
+resolver; unsuccessful attempts repeat at ten-second intervals. Healthy playback
+is not periodically restarted. A missing channel or changed source never falls
+back to another channel. The watchdog also survives decoder getter/resolver errors.
+The inactivity sleep timer is suppressed while kiosk is enabled. The page/process
+must remain running: this is a player watchdog, not an OS process supervisor, and
+suspended browser pages cannot promise real-time timers.
+
+The policy survives player reloads and remote-server outages and is excluded from
+settings exports/imports. Disconnection does not release it. `kiosk off` must reach
+the client to release it. A request receipt confirms stored policy and attempted
+playback, not visible video. Updating only the command server cannot enforce this
+policy on older clients.
+
+The protocol-1 action is `kiosk`, with `params: {"mode":"status|on|set|off"}`;
+`on` optionally accepts `query`, and `set` requires it. `query` is a channel number
+or name substring, limited to 1024 UTF-8 bytes. Read results expose metadata only.

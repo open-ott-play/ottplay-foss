@@ -135,6 +135,17 @@ export function keyHandler(event: KeyboardEvent): void {
           ? device.eventToKeyCode(event)
           : stbEventToKeyCode(event);
     if (!keyCode) return;
+    if (
+        (window as any).__ottKiosk &&
+        (window as any).__ottKiosk.locked() &&
+        keyCode !== keys.VOL_UP &&
+        keyCode !== keys.VOL_DOWN &&
+        keyCode !== keys.MUTE
+    ) {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+        return;
+    }
     // Smart remotes have a combined transport key. Route it through the same
     // PLAY action as separate Play/Pause keys, including page-specific lists.
     if (keyCode === keys.PLAYPAUSE && keys.PLAY) keyCode = keys.PLAY;

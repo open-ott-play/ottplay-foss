@@ -116,6 +116,7 @@ function fixture(initial = []) {
     };
     Object.assign(w, {
         _: (value) => value,
+        __ottKiosk: { init() {} },
         __ottLocalHttpRemote: { init() {}, status: () => ({ enabled: false }) },
         deviceUUID: "fixture-device",
         executeRemoteRequest: () => {},
