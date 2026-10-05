@@ -733,6 +733,92 @@ w._doKey(w.keys.UP);
 assert.equal(accepted, 1);
 assert.equal(cancelled, 2, "Existing non-ENTER cancellation remains available");
 assert.equal(dialog.style.display, "none");
+// The resume timeout belongs to its dialog; stale callbacks cannot accept another prompt.
+{
+    const originalSetTimeout = w.setTimeout;
+    const originalClearTimeout = w.clearTimeout;
+    const scheduled = new Map();
+    let now = 0;
+    let sequence = 0;
+    w.setTimeout = (callback, delay) => {
+        const id = ++sequence;
+        scheduled.set(id, { callback, due: now + delay });
+        return id;
+    };
+    w.clearTimeout = (id) => scheduled.delete(id);
+    const advance = (delay) => {
+        now += delay;
+        for (const [id, timer] of [...scheduled]) {
+            if (timer.due <= now) {
+                scheduled.delete(id);
+                timer.callback();
+            }
+        }
+    };
+    let resumed = 0;
+    const openResume = () =>
+        w.confirmBox("Continue watching?", () => resumed++, undefined, 10000);
+    try {
+        openResume();
+        const expired = [...scheduled.values()][0].callback;
+        advance(9999);
+        assert.equal(resumed, 0, "Resume waits for the full ten seconds");
+        assert.notEqual(dialog.style.display, "none");
+        advance(1);
+        assert.equal(resumed, 1);
+        assert.equal(dialog.style.display, "none");
+        assert.equal(w.dialogBoxKeyHandler, null);
+        expired();
+        assert.equal(resumed, 1, "An expired callback cannot resume twice");
+
+        for (const key of [w.keys.ENTER, w.keys.RETURN]) {
+            openResume();
+            const stale = [...scheduled.values()][0].callback;
+            w._doKey(key);
+            const afterChoice = resumed;
+            assert.equal(
+                scheduled.size,
+                0,
+                "A manual choice cancels the timer"
+            );
+            stale();
+            advance(10000);
+            assert.equal(
+                resumed,
+                afterChoice,
+                "Manual choice wins the timeout race"
+            );
+        }
+        openResume();
+        const replaced = [...scheduled.values()][0].callback;
+        const afterChoice = resumed;
+        w.confirmBox("Delete settings?", () => {
+            throw new Error("Unrelated confirmation must never auto-accept");
+        });
+        const replacement = w.dialogBoxKeyHandler;
+        assert.equal(
+            scheduled.size,
+            0,
+            "Replacing a dialog releases its timer"
+        );
+        replaced();
+        advance(10000);
+        assert.equal(resumed, afterChoice);
+        assert.equal(w.dialogBoxKeyHandler, replacement);
+        assert.notEqual(dialog.style.display, "none");
+        w._doKey(w.keys.RETURN);
+
+        openResume();
+        const closed = [...scheduled.values()][0].callback;
+        w.__ottClassicScreenPort.invalidate();
+        assert.equal(scheduled.size, 0, "Screen teardown releases the timer");
+        closed();
+        assert.equal(resumed, afterChoice);
+    } finally {
+        w.setTimeout = originalSetTimeout;
+        w.clearTimeout = originalClearTimeout;
+    }
+}
 async function testHttpRemoteSettings() {
     const tick = () => new Promise((resolve) => setImmediate(resolve));
     const requests = [];

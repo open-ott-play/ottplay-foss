@@ -79,6 +79,7 @@ const providerUi =
         "provArray",
         "firstRun",
         "selectProvaider",
+        "selectProviderByIndex",
     ]);
 const providerLoad =
     (process.argv.includes("--bundle")
@@ -250,6 +251,8 @@ test("later selection and recent-provider reordering retain the demo ID/name pai
     assert.equal(w.arrayProvaiders[0], "m3u");
     assert.equal(w.arrayProvaiders[1], "stalker");
     assert.equal(w.arrayProvaiders[2], "xtream");
+    assert.equal(w.arrayProvaiders[3], "plex");
+    assert.equal(w.arrayProvaiders[4], "");
     w.selIndex = demo;
     w.listKeyHandlerFn(w.keys.ENTER);
     assert.deepEqual(loaded, ["demo"]);
@@ -258,6 +261,58 @@ test("later selection and recent-provider reordering retain the demo ID/name pai
     w.listKeyHandlerFn(w.keys.ENTER);
     assert.equal(saved.get("ottplayprov"), "m3u");
     assert.equal(saved.get("m3um3uArr"), storage().get("m3um3uArr"));
+});
+
+test("Plex stays with protocol shortcuts when old history contains fixed providers", () => {
+    const { w, saved, loaded } = uiFixture();
+    const history = JSON.stringify([
+        "plex",
+        "demo",
+        "m3u",
+        "stalker",
+        "xtream",
+    ]);
+    saved.set("ottplayprovs", history);
+    for (let opened = 0; opened < 2; opened++) {
+        w.selectProvaider();
+        assert.deepEqual(Array.from(w.arrayProvaiders.slice(0, 6)), [
+            "m3u",
+            "stalker",
+            "xtream",
+            "plex",
+            "",
+            "demo",
+        ]);
+        assert.equal(w.listArray[3], "Plex");
+        assert.equal(w.listArray[4], "");
+        assert.doesNotMatch(w.getListItemFn(w.listArray[3], 3), /class="btn"/);
+        assert.doesNotMatch(w.getListItemFn(w.listArray[4], 4), /class="btn"/);
+        assert.match(w.getListItemFn(w.listArray[5], 5), /class="btn">1</);
+    }
+    w.selIndex = 3;
+    w.listKeyHandlerFn(w.keys.ENTER);
+    assert.equal(saved.get("ottplayprov"), "plex");
+    assert.equal(saved.get("ottplayprovs"), history);
+    let edited = 0;
+    w.__ottEditProvider = () => {
+        edited++;
+        return true;
+    };
+    w.selectProvaider();
+    w.listKeyHandlerFn(w.keys.ENTER);
+    assert.equal(edited, 1, "Reselecting Plex still opens its settings");
+    assert.equal(loaded.length, 1);
+    saved.set("ottplayprov", "m3u");
+    assert.equal(w.selectProviderByIndex(3), true);
+    assert.equal(saved.get("ottplayprov"), "plex");
+    assert.equal(saved.get("ottplayprovs"), history);
+    w.keys.N1 = 49;
+    w.listKeyHandlerFn(w.keys.N1);
+    assert.equal(
+        saved.get("ottplayprov"),
+        "demo",
+        "Number one follows the divider"
+    );
 });
 
 test("reselecting Stalker opens its current settings without a reload or bypassing hidden settings", () => {
