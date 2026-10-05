@@ -141,7 +141,14 @@ function uiFixture() {
         },
         host: "https://player.invalid",
         invalidateEpgCache() {},
-        keys: { ENTER: 13, GREEN: 402, RED: 401, RETURN: 27, YELLOW: 403 },
+        keys: {
+            BLUE: 406,
+            ENTER: 13,
+            GREEN: 402,
+            RED: 401,
+            RETURN: 27,
+            YELLOW: 403,
+        },
         launch_id: "#launch",
         listCaptionElement: {},
         listDetail: {},
@@ -283,7 +290,10 @@ test("Plex stays with protocol shortcuts when old history contains fixed provide
             "",
             "demo",
         ]);
-        assert.equal(w.listArray[3], "Plex");
+        assert.equal(
+            w.listArray[3],
+            '<div class="btn blue">&nbsp;</div>&nbsp;Plex'
+        );
         assert.equal(w.listArray[4], "");
         assert.doesNotMatch(w.getListItemFn(w.listArray[3], 3), /class="btn"/);
         assert.doesNotMatch(w.getListItemFn(w.listArray[4], 4), /class="btn"/);
@@ -313,6 +323,56 @@ test("Plex stays with protocol shortcuts when old history contains fixed provide
         "demo",
         "Number one follows the divider"
     );
+});
+
+test("Plex blue shortcut uses every shipped device mapping in both distributions", () => {
+    const adapters = fs
+        .readdirSync(path.join(root, "devices"), { recursive: true })
+        .filter((file) => path.basename(file) === "device.js")
+        .sort();
+    assert(adapters.length > 0);
+    for (const adapter of adapters) {
+        const deviceKeys = declarations("devices/" + adapter, ["keys"]);
+        for (const distribution of ["full", "play"]) {
+            const { w, saved, loaded } = uiFixture();
+            vm.runInContext(deviceKeys, w);
+            assert(w.keys.BLUE > 0, adapter + " defines BLUE");
+            w.providerDistribution = distribution;
+            const history = JSON.stringify(["demo"]);
+            saved.set("ottplayprovs", history);
+            w.selectProvaider();
+            const plex = w.arrayProvaiders.indexOf("plex");
+            assert.match(w.listArray[plex], /class="btn blue"/);
+            w.selIndex = w.arrayProvaiders.indexOf("demo");
+            assert.equal(w.listKeyHandlerFn(w.keys.BLUE), true, adapter);
+            assert.equal(saved.get("ottplayprov"), "plex", adapter);
+            assert.equal(loaded.length, 1);
+            assert.equal(saved.get("ottplayprovs"), history);
+
+            let edited = 0;
+            w.__ottEditProvider = () => {
+                edited++;
+                return true;
+            };
+            w.selectProvaider();
+            w.selIndex = w.arrayProvaiders.indexOf("m3u");
+            assert.equal(w.listKeyHandlerFn(w.keys.BLUE), true, adapter);
+            assert.equal(edited, 1, adapter + " reopens active Plex settings");
+            assert.equal(loaded.length, 1, "No redundant provider load");
+        }
+    }
+});
+
+test("Plex hides its blue hint when color hints are disabled and remains selectable", () => {
+    const { w, saved } = uiFixture();
+    w.sNoColorKeys = true;
+    w.selectProvaider();
+    const plex = w.arrayProvaiders.indexOf("plex");
+    assert.equal(w.listArray[plex], "Plex");
+    assert.doesNotMatch(w.getListItemFn(w.listArray[plex], plex), /class="btn/);
+    w.selIndex = plex;
+    assert.equal(w.listKeyHandlerFn(w.keys.ENTER), true);
+    assert.equal(saved.get("ottplayprov"), "plex");
 });
 
 test("reselecting Stalker opens its current settings without a reload or bypassing hidden settings", () => {
