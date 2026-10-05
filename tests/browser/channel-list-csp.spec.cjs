@@ -851,6 +851,193 @@ test("browser list swipe retains legacy remote navigation", async ({
     }
 });
 
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(
+        profile + " remote channel selection closes the list after admission",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile);
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    window.channelsList = window._channelsList;
+                    window.curList = window.cList = window.cats.Fixture;
+                    window.catIndex = window.primaryIndex = 0;
+                    window.commandChannelsReady = true;
+                    window.settings.stopPlay = 0;
+                    window.settings.infoSwitch = 0;
+                    window.__remotePlayed = [];
+                    // Keep command admission, selection and overlays real; only
+                    // replace provider/decoder boundaries in this offline fixture.
+                    window.getChannelUrl = (id) => "fixture:" + id;
+                    window.stbPlay = (url) => window.__remotePlayed.push(url);
+                    window.setPlayer = () => {};
+                    window.checkMedia = () => {};
+                    window.providerGetItem = () => null;
+                    window.providerSetItem = () => {};
+                });
+                const list = page.locator("#list");
+                const play = (query, pendingPreview) =>
+                    page.evaluate(
+                        ({ query, pendingPreview }) =>
+                            new Promise((resolve) => {
+                                if (pendingPreview)
+                                    window.previewChId(pendingPreview);
+                                executeRemoteRequest(
+                                    { action: "play", params: { query } },
+                                    resolve
+                                );
+                            }),
+                        { pendingPreview, query }
+                    );
+                const openList = () =>
+                    page.evaluate(() => {
+                        window.__remotePlayed = [];
+                        window.channelsList(
+                            window.catIndex,
+                            window.primaryIndex
+                        );
+                    });
+                const playback = () =>
+                    page.evaluate(() => ({
+                        channel: window.curList[window.primaryIndex],
+                        played: window.__remotePlayed,
+                        preview: window.previewChan,
+                        visible: window.isListVisible,
+                    }));
+
+                // The actual ott request handler must enter fullscreen even
+                // when the requested channel is already playing.
+                for (const query of ["2", "2"]) {
+                    await openList();
+                    await expect(list).toBeVisible();
+                    expect((await play(query)).status).toBe("ok");
+                    await expect(list).toBeHidden();
+                    expect(await playback()).toMatchObject({
+                        channel: "two",
+                        played: ["fixture:two"],
+                        visible: false,
+                    });
+                }
+
+                // Legacy remote commands share the same production admission.
+                for (const command of [
+                    { channel_number: 1, command: "channel_by_number" },
+                    { channel_name: "Films", command: "channel_by_name" },
+                    { command: "random_channel", random_range: [1, 1] },
+                ]) {
+                    await openList();
+                    await expect(list).toBeVisible();
+                    await page.evaluate(
+                        (command) => window.handleCommand(command),
+                        command
+                    );
+                    await expect(list).toBeHidden();
+                    expect(await playback()).toMatchObject({
+                        channel:
+                            command.command === "channel_by_name"
+                                ? "two"
+                                : "one",
+                        played: [
+                            command.command === "channel_by_name"
+                                ? "fixture:two"
+                                : "fixture:one",
+                        ],
+                        visible: false,
+                    });
+                }
+
+                // Closing an active preview must not restore the old stream;
+                // a pending preview must not replace the remote choice later.
+                await page.evaluate(() => {
+                    window.sPreview = 1;
+                });
+                for (const previewStarted of [true, false]) {
+                    await openList();
+                    if (previewStarted) {
+                        await page.evaluate(() =>
+                            window.previewChId("fixture3")
+                        );
+                        await expect
+                            .poll(() =>
+                                page.evaluate(() => window.__remotePlayed)
+                            )
+                            .toEqual(["fixture:fixture3"]);
+                        await page.evaluate(() => {
+                            window.__remotePlayed = [];
+                        });
+                    }
+                    expect(
+                        (
+                            await play(
+                                "2",
+                                previewStarted ? undefined : "fixture3"
+                            )
+                        ).status
+                    ).toBe("ok");
+                    await expect(list).toBeHidden();
+                    await page.waitForTimeout(650);
+                    expect(await playback()).toEqual({
+                        channel: "two",
+                        played: ["fixture:two"],
+                        preview: null,
+                        visible: false,
+                    });
+                }
+
+                await page.evaluate(() => {
+                    window.sPreview = 0;
+                    window.settings.psChannels = window.sPSchannels = 1;
+                    window.parentPIN = "1234";
+                    window.parentalArray = ["one"];
+                    window.__ottParental.revoke();
+                });
+                await openList();
+                expect((await play("9999")).status).toBe("rejected");
+                await expect(list).toBeVisible();
+                expect((await playback()).played).toEqual([]);
+
+                // A remote request may dispatch a PIN challenge, but cannot
+                // dismiss the list or start media until the real PIN succeeds.
+                expect((await play("1")).status).toBe("ok");
+                const dialog = page.locator("#dialogbox");
+                await expect(dialog).toBeVisible();
+                await expect(list).toBeVisible();
+                expect((await playback()).played).toEqual([]);
+                expect((await play("9999")).status).toBe("rejected");
+                await expect(dialog).toBeVisible();
+                for (let digit = 0; digit < 4; digit++)
+                    await page.locator("#k0 .btn").click();
+                await expect(dialog).toBeHidden();
+                await expect(list).toBeVisible();
+                expect((await playback()).played).toEqual([]);
+
+                expect((await play("1")).status).toBe("ok");
+                await expect(dialog).toBeVisible();
+                for (const digit of [1, 2, 3, 4])
+                    await page.locator("#k" + digit + " .btn").click();
+                await expect(dialog).toBeHidden();
+                await expect(list).toBeHidden();
+                expect(await playback()).toMatchObject({
+                    channel: "one",
+                    played: ["fixture:one"],
+                    visible: false,
+                });
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+                expect(
+                    await page.evaluate(() =>
+                        window.__fixtureViolations.filter((directive) =>
+                            directive.startsWith("script-src")
+                        )
+                    )
+                ).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+}
+
 for (const profile of ["server", "tauri"]) {
     test(
         profile +

@@ -178,8 +178,10 @@ function createClassicAccess(host: any) {
             abandon();
             return;
         }
-        function click(digit: number): () => void {
-            return function () {
+        function click(digit: number): (event?: Event) => void {
+            return function (event) {
+                // Completing the PIN can close every overlay during this click.
+                if (event) event.stopPropagation();
                 if (owner.foreground()) handler(host.keys["N" + digit]);
             };
         }

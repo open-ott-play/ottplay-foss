@@ -743,7 +743,7 @@ export function executeRemoteRequest(
                         reject("Playback is unavailable.");
                         return;
                     }
-                    w.playChannel(c, i);
+                    w.playChannel(c, i, true);
                     reply({ channel: matches[0], dispatched: true });
                     return;
                 }

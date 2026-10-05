@@ -114,8 +114,8 @@ const w = {
         zero: { channel_name: "Zero" },
     },
     curList: ["a", "b", "zero"],
-    playChannel(cat, channel) {
-        delivered.push([cat, channel]);
+    playChannel(...args) {
+        delivered.push(args);
     },
     stbGetVolume() {
         return volume;
@@ -148,11 +148,15 @@ const cmdContext = {
 vm.runInNewContext(emit(source), cmdContext);
 const handle = cmdContext.exports.handleCommand;
 handle({ channel_name: "SCIENCE", command: "channel_by_name" });
-assert.deepEqual(delivered, [[1, 0]], "name search reaches later categories");
+assert.deepEqual(
+    delivered,
+    [[1, 0, true]],
+    "name search commits fullscreen playback in later categories"
+);
 handle({ channel_name: "absent", command: "channel_by_name" });
 assert.equal(delivered.length, 1, "not found must not play (-1,-1)");
 handle({ channel_number: 3, command: "channel_by_number" });
-assert.deepEqual(delivered.at(-1), [1, 1]);
+assert.deepEqual(delivered.at(-1), [1, 1, true]);
 handle({ command: "set_volume", volume: 150 });
 assert.equal(volume, 100);
 handle({ command: "set_volume", volume_step: -25 });
@@ -179,7 +183,7 @@ for (const range of [
     handle({ command: "random_channel", random_range: range });
 assert.equal(delivered.length, 2);
 handle({ command: "random_channel", random_range: [2, 2] });
-assert.deepEqual(delivered.at(-1), [1, 0]);
+assert.deepEqual(delivered.at(-1), [1, 0, true]);
 handle({ channel_name: {}, command: "channel_by_name" });
 handle({ command: "change_provider", provider: 1 });
 assert.equal(
@@ -200,6 +204,122 @@ assert.equal(
 );
 console.log(
     "PASS commands: later-category/no-match channels, string IDs, numeric validation, actual provider selection and PIN/Play policy"
+);
+
+// Exercise the actual shared playback boundary: only admitted remote selections
+// retire the list/preview; the PIN continuation must keep that intent.
+const playerAst = ts.createSourceFile(
+    "index.ts",
+    fs.readFileSync(path.join(root, "src/index.ts"), "utf8"),
+    ts.ScriptTarget.Latest,
+    true
+);
+const playSource = playerAst.statements
+    .find(
+        (node) =>
+            ts.isFunctionDeclaration(node) && node.name?.text === "_playChannel"
+    )
+    .getText(playerAst);
+function playbackFixture() {
+    const events = [];
+    const p = {
+        cats: { All: ["a", "b"] },
+        catsArray: ["All"],
+        checkMedia() {},
+        clearTimeout(id) {
+            events.push(["cancel", id]);
+        },
+        closeList() {
+            assert.equal(
+                p.previewChan,
+                null,
+                "closing must not restore the old preview"
+            );
+            p.isListVisible = false;
+            events.push(["close"]);
+        },
+        console: { log() {} },
+        getChannelUrl: (id) => id,
+        ifParentalAccessChId(_id, callback) {
+            p.pendingPin = callback;
+            return !!p.locked;
+        },
+        isListVisible: true,
+        previewChan: { ch_id: "a" },
+        previewTimer: 42,
+        setCurrent(_category, index) {
+            p.curList = p.cats.All;
+            p.primaryIndex = index;
+        },
+        setTimeout() {},
+        settings: {},
+        stbPlay(url) {
+            events.push(["play", url]);
+        },
+        updateChannelInfo() {},
+    };
+    p.window = p;
+    vm.runInNewContext(emit(playSource), p);
+    p.playChannel = p._playChannel;
+    return { events, p };
+}
+for (const index of [0, 1]) {
+    const { p, events } = playbackFixture();
+    p.playChannel(0, index, true);
+    assert.deepEqual(events.slice(0, 3), [
+        ["cancel", 42],
+        ["close"],
+        ["play", index ? "b" : "a"],
+    ]);
+    assert.equal(p.isListVisible, false);
+}
+{
+    const { p, events } = playbackFixture();
+    p.locked = true;
+    p.playChannel(0, 1, true);
+    assert.deepEqual(events, [], "pending PIN preserves list and preview");
+    p.locked = false;
+    p.pendingPin();
+    assert.equal(
+        p.isListVisible,
+        false,
+        "PIN continuation preserves fullscreen intent"
+    );
+    assert.deepEqual(
+        events.filter((event) => event[0] === "play"),
+        [["play", "b"]]
+    );
+}
+for (const kiosk of [
+    null,
+    { allowed: () => false },
+    { admit: () => false, allowed: () => true },
+]) {
+    const { p, events } = playbackFixture();
+    p.__ottKiosk = kiosk;
+    p.playChannel(0, kiosk ? 1 : 99, true);
+    assert.deepEqual(
+        events,
+        [],
+        "invalid or kiosk-denied selection leaves the list intact"
+    );
+    assert.equal(p.isListVisible, true);
+}
+{
+    const { p, events } = playbackFixture();
+    p.playChannel(0, 1);
+    assert.equal(
+        p.isListVisible,
+        true,
+        "local preview/startup behavior is unchanged"
+    );
+    assert.equal(
+        events.some((event) => event[0] === "cancel" && event[1] === 42),
+        false
+    );
+}
+console.log(
+    "PASS remote fullscreen: admitted selection, current channel, PIN continuation, preview cancellation, kiosk denial and local playback"
 );
 
 const writes = [];

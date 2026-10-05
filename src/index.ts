@@ -2352,6 +2352,7 @@ function setupTauriEpgCacheReady(): void {
  *
  * @param catIdx - Category index.
  * @param chIdx - Channel index within the category.
+ * @param fullscreen - Close the list after admitting a remote selection.
  *
  * Side effects: Calls stbStop(), setCurrent(), updateChannelInfo(),
  * showChannelInfo(), stbPlay(). Sets window.playType = 0. Creates a
@@ -2360,14 +2361,18 @@ function setupTauriEpgCacheReady(): void {
  * Edge case: If the category doesn't exist, shows an error via infoBox()
  * and sendClientFeedback(). If parental access is required, defers via callback.
  */
-function _playChannel(catIdx: number, chIdx: number): void {
-    var kiosk = (window as any).__ottKiosk;
+function _playChannel(
+    catIdx: number,
+    chIdx: number,
+    fullscreen?: boolean
+): void {
+    var w = window as any;
+    var kiosk = w.__ottKiosk;
     var kioskId = (cats[catsArray[catIdx]] || [])[chIdx];
     if (kiosk && !kiosk.allowed(kioskId)) return;
-    if ((window as any).__ottMedia && (window as any).__ottMedia.cancelRequest)
-        (window as any).__ottMedia.cancelRequest();
-    else if ((window as any).providerMediaClient)
-        (window as any).providerMediaClient.cancel();
+    if (w.__ottMedia && w.__ottMedia.cancelRequest)
+        w.__ottMedia.cancelRequest();
+    else if (w.providerMediaClient) w.providerMediaClient.cancel();
     console.log(
         "[playChannel] catIdx=" +
             catIdx +
@@ -2400,13 +2405,20 @@ function _playChannel(catIdx: number, chIdx: number): void {
             var category = catsArray.indexOf(requestedCategory);
             var list = cats[requestedCategory];
             var index = list ? list.indexOf(requestedId) : -1;
-            if (category >= 0 && index >= 0) playChannel(category, index);
+            if (category >= 0 && index >= 0)
+                playChannel(category, index, fullscreen);
         })
     ) {
         console.log("[playChannel] blocked by parental");
         return;
     }
     if (kiosk && !kiosk.admit(requestedId)) return;
+    if (fullscreen) {
+        // A remote selection commits playback, rather than restoring the preview.
+        clearTimeout(w.previewTimer);
+        w.previewChan = null;
+        if (w.isListVisible) closeList();
+    }
     if (settings.stopPlay) stbStop();
     setCurrent(catIdx, chIdx);
     var channelId = curList[primaryIndex];
@@ -2417,20 +2429,20 @@ function _playChannel(catIdx: number, chIdx: number): void {
             getChannelUrl(channelId)
     );
     if (
-        (window as any).__ottClassicPlayback &&
-        typeof (window as any).__ottClassicPlayback.command === "function"
+        w.__ottClassicPlayback &&
+        typeof w.__ottClassicPlayback.command === "function"
     )
-        (window as any).__ottClassicPlayback.command({
+        w.__ottClassicPlayback.command({
             channelId: channelId,
             type: "live",
         });
-    else (window as any).playType = 0;
+    else w.playType = 0;
     updateChannelInfo(channelId);
     if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (typeof setPlayer === "function") setPlayer();
     stbPlay(getChannelUrl(channelId));
-    clearTimeout((window as any)._tmedia);
-    (window as any)._tmedia = setTimeout(checkMedia, 2000);
+    clearTimeout(w._tmedia);
+    w._tmedia = setTimeout(checkMedia, 2000);
 }
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */

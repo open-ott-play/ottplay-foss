@@ -482,7 +482,7 @@ function checkUnicodeRequests() {
         const play = f.run("play", query);
         assert.equal(play.status, "ok", title);
         assert.equal(play.data.channel.name, title);
-        assert.deepEqual(f.played, [0, 0]);
+        assert.deepEqual(f.played, [0, 0, true]);
     }
     for (const [title, query] of [
         ["ıx", "ix"],
@@ -1032,7 +1032,7 @@ function checkRemoteEpgCatalog() {
         channel: { id: "7", name: "РЕН ТВ +2", number: 1 },
         dispatched: true,
     });
-    assert.deepEqual(f.plays, [[0, 0]]);
+    assert.deepEqual(f.plays, [[0, 0, true]]);
     const a = fixture();
     const archiveSnapshot = a.run("epg_catalog");
     const params = {
@@ -1198,7 +1198,7 @@ function checkRemoteEpgCatalog() {
     assert.equal(r.data.channels[0].number, 1);
     r = await call("play", { query: "Первый" });
     assert.equal(r.status, "ok");
-    assert.equal(JSON.stringify(played), "[1,0]");
+    assert.equal(JSON.stringify(played), "[1,0,true]");
     r = await call("play", { query: "ПЕРВ" });
     assert.equal(r.status, "rejected");
     assert.equal(r.data.matches.length, 2);
