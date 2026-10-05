@@ -1478,7 +1478,8 @@ export function showProviderSelection(): void {
                 _("Stalker portals"),
             (sNoColorKeys ? "" : '<div class="btn yellow">&nbsp;</div>&nbsp;') +
                 "Xtream-codes",
-            "Plex",
+            (sNoColorKeys ? "" : '<div class="btn blue">&nbsp;</div>&nbsp;') +
+                "Plex",
             "",
             _("Demo — moving test pattern"),
             // OTTPLAY_FULL_ONLY_BEGIN
@@ -1683,6 +1684,9 @@ export function showProviderSelection(): void {
                 return true;
             case keys.YELLOW:
                 selectProv("xtream");
+                return true;
+            case keys.BLUE:
+                selectProv("plex");
                 return true;
             case keys.ENTER:
                 selectProv(providerIds[selIndex]);
