@@ -1417,8 +1417,7 @@ export function onChannelsLoaded(): void {
                 window.stbSetItem("ottplayprov", window._pendingProvId);
                 var id = window._pendingProvId;
                 var arr = window.providerIds;
-                var recentCount = 3;
-                if (arr && arr.indexOf(id) > recentCount - 1) {
+                if (arr && arr.indexOf(id) > arr.indexOf("")) {
                     var recentProviders: any[] = [];
                     try {
                         recentProviders = JSON.parse(
