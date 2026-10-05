@@ -105,7 +105,7 @@ function channelByNumber(num: number): void {
         return;
     }
     if (typeof w.playChannel === "function") {
-        w.playChannel(indices[0], indices[1]);
+        w.playChannel(indices[0], indices[1], true);
     }
     var chName =
         w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
@@ -153,7 +153,7 @@ function channelByName(name: string): void {
     }
 
     if (typeof w.playChannel === "function") {
-        w.playChannel(bestCatIdx, bestChIdx);
+        w.playChannel(bestCatIdx, bestChIdx, true);
     }
     var chName =
         w.channels && w.channels[bestChId]
@@ -204,7 +204,7 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
     }
 
     if (typeof w.playChannel === "function") {
-        w.playChannel(indices[0], indices[1]);
+        w.playChannel(indices[0], indices[1], true);
     }
     var chName =
         w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";

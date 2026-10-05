@@ -129,6 +129,8 @@ for (const [adapter, keys] of Object.entries(adapters)) {
         w.eval(code);
         w._doKey = w.dispatchKey;
         w.addEventListener("keydown", w.keyHandler);
+        let bodyClicks = 0;
+        w.document.body.addEventListener("click", () => bodyClicks++);
         const results = [];
         const open = () => {
             results.length = 0;
@@ -215,6 +217,11 @@ for (const [adapter, keys] of Object.entries(adapters)) {
             results,
             ["1209"],
             `${adapter}: ENTER uses the highlighted digit's actual key code`
+        );
+        assert.equal(
+            bodyClicks,
+            0,
+            `${adapter}: PIN clicks, including completion, cannot reach video controls`
         );
     } finally {
         dom.window.close();
