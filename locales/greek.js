@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Μια IP χωρίς θύρα χρησιμοποιεί τη θύρα HTTP 8081. Διαγράψτε τη διεύθυνση ή επιλέξτε Αποσύνδεση για διακοπή.",
+    "Another source sign-in is already open":
+        "Ένα παράθυρο σύνδεσης σε άλλη πηγή είναι ήδη ανοιχτό",
     "API failed, trying M3U...": "Αποτυχία API, δοκιμή M3U…",
     "API Server": "Διακομιστής API",
     "API server URL": "URL διακομιστή API",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Πίσω / μπροστά κατά 1 λεπτό",
     "Background color": "Χρώμα φόντου",
     "Background color of selected item": "Χρώμα φόντου επιλεγμένου στοιχείου",
+    "Balance, $": "Υπόλοιπο, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Ρυθμίσεις BEST LiST IPTV [HLS Playlist]",
@@ -176,6 +179,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Έληξε το χρονικό όριο αναζήτησης διακομιστή εντολών.",
     "Command server found.": "Βρέθηκε διακομιστής εντολών.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Δεν ήταν δυνατή η φόρτωση των στοιχείων συμβατότητας. Ανοίξτε ξανά το πρόγραμμα αναπαραγωγής.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ρυθμίστε το All4you.tv από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
@@ -261,6 +266,10 @@ var keyStrings = {
     "Continue watching?": "Συνέχεια προβολής;",
     "Copy category": "Αντιγραφή κατηγορίας",
     "Copy JSON": "Αντιγραφή JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Αντιγράψτε το JSON για να διατηρήσετε ένα αντίγραφο ασφαλείας. Χρησιμοποιήστε την εισαγωγή ρυθμίσεων για να το επαναφέρετε.",
+    "Copy the selected JSON with your device's copy command":
+        "Αντιγράψτε το επιλεγμένο JSON με την εντολή αντιγραφής της συσκευής σας",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Αδυναμία σύνδεσης στον διακομιστή.",
@@ -275,6 +284,8 @@ var keyStrings = {
     Country: "Χώρα",
     "Create category": "Δημιουργία κατηγορίας",
     current: "τρέχον",
+    "Debug enabled. Restart to apply.":
+        "Ο εντοπισμός σφαλμάτων ενεργοποιήθηκε. Επανεκκινήστε τη συσκευή αναπαραγωγής για εφαρμογή.",
     "Debug HUD": "Πίνακας αποσφαλμάτωσης",
     "Debug HUD is not available":
         "Ο πίνακας αποσφαλμάτωσης δεν είναι διαθέσιμος",
@@ -306,6 +317,7 @@ var keyStrings = {
     "Download! Wait ...": "Λήψη… παρακαλώ περιμένετε…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Ρυθμίσεις DRVAO",
+    "Drag window": "Μετακίνηση παραθύρου",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Ρυθμίσεις Dragon Media PRO",
     Duration: "Διάρκεια",
@@ -322,6 +334,8 @@ var keyStrings = {
         "Εισαγάγετε κωδικό πρόσβασης (8 χαρακτήρες).",
     "Enter a playlist URL to access this service.":
         "Εισαγάγετε URL λίστας αναπαραγωγής για πρόσβαση σε αυτή την υπηρεσία.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Εισαγάγετε το URL μιας λίστας αναπαραγωγής. Η εφαρμογή θα επανεκκινηθεί μετά την αποθήκευση.",
     "Enter a server address without spaces or a fragment.":
         "Εισαγάγετε διεύθυνση διακομιστή χωρίς κενά ή τμήμα μετά το #.",
     "Enter a username (8 characters).":
@@ -333,6 +347,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Εισαγάγετε έγκυρη διεύθυνση διακομιστή, για παράδειγμα 192.168.1.20:8081.",
     "Enter access key for": "Εισαγάγετε κλειδί πρόσβασης για",
+    "Enter an application access key (%1–%2 characters).":
+        "Εισαγάγετε ένα κλειδί πρόσβασης για την εφαρμογή (%1–%2 χαρακτήρες).",
     "Enter an application access key (8 characters).":
         "Εισαγάγετε κλειδί πρόσβασης εφαρμογής (8 χαρακτήρες).",
     "Enter an ID and PIN to access this service.":
@@ -361,6 +377,7 @@ var keyStrings = {
         "Εισαγάγετε το URL της πύλης Stalker (π.χ. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Εισαγάγετε το URL της πύλης Stalker (π.χ. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Εισαγάγετε τον αριθμό διακομιστή (%1).",
     "Enter the access code separately, not in the server address.":
         "Εισαγάγετε τον κωδικό πρόσβασης ξεχωριστά, όχι στη διεύθυνση του διακομιστή.",
     "Enter the command server IP or address.":
@@ -463,11 +480,13 @@ var keyStrings = {
     Favorites: "Αγαπημένα",
     "File selection is not supported on this device":
         "Η επιλογή αρχείου δεν υποστηρίζεται σε αυτή τη συσκευή",
+    "Fill screen": "Γέμισμα οθόνης",
     Filter: "Φίλτρο",
     Filters: "Φίλτρα",
     "Find command server": "Εύρεση διακομιστή εντολών",
     "Finding command servers...": "Αναζήτηση διακομιστών εντολών...",
     "First Run Setup": "Ρύθμιση πρώτης εκκίνησης",
+    "Fit to screen": "Προσαρμογή στην οθόνη",
     Folders: "Folders",
     "Font type": "Γραμματοσειρά",
     "For download settings file open":
@@ -495,6 +514,7 @@ var keyStrings = {
     "HTTP port": "Θύρα HTTP",
     "HTTP remote control is unavailable on this device.":
         "Ο τηλεχειρισμός HTTP δεν είναι διαθέσιμος σε αυτήν τη συσκευή.",
+    "HTTPS support": "Υποστήριξη HTTPS",
     ID: "ID",
     "Import settings": "Εισαγωγή ρυθμίσεων",
     "In live mode: <br/>": "Στη ζωντανή λειτουργία:<br/>",
@@ -508,6 +528,8 @@ var keyStrings = {
     "Interface transparency": "Διαφάνεια περιβάλλοντος",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Μη έγκυρος σύνδεσμος καναλιού! Εισαγάγετε το πλήρες όνομα κεντρικού υπολογιστή όπως στο URL ροής του λογαριασμού (π.χ. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Μη έγκυρη διαμόρφωση προστατευμένης πηγής",
     "IPTV token": "Διακριτικό IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Ρυθμίσεις IpStream.one",
@@ -606,6 +628,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "Διακομιστής OTT / εφαρμογής",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ρυθμίσεις OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -615,6 +638,7 @@ var keyStrings = {
     on: "ενεργός",
     "on ": "ενεργό ",
     "or scan": "ή σαρώστε",
+    Packages: "Πακέτα",
     "Pairing approved. Command server configured.":
         "Η σύζευξη εγκρίθηκε. Ο διακομιστής εντολών ρυθμίστηκε.",
     "Pairing expired. Find the server again to retry.":
@@ -625,8 +649,10 @@ var keyStrings = {
         "Η σύζευξη απορρίφθηκε ή επιστράφηκε μη έγκυρη έγκριση. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
     "Parental control": "Γονικός έλεγχος",
     Password: "Κωδικός πρόσβασης",
+    "Paste settings JSON": "Επικολλήστε τις ρυθμίσεις σε μορφή JSON",
     Pause: "Παύση",
     "Pause/Play": "Παύση / αναπαραγωγή",
+    "Payment method": "Τρόπος πληρωμής",
     "Permanent clock on screen": "Πάντα εμφάνιση ρολογιού στην οθόνη",
     PIN: "PIN",
     "PiP exchange": "Εναλλαγή PiP",
@@ -636,6 +662,8 @@ var keyStrings = {
     Playback: "Playback",
     "Player and device info":
         "Πληροφορίες προγράμματος αναπαραγωγής και συσκευής",
+    "Player could not start":
+        "Δεν ήταν δυνατή η εκκίνηση του προγράμματος αναπαραγωγής",
     "Player info:": "Πληροφορίες προγράμματος αναπαραγωγής:",
     Playlist: "Λίστα αναπαραγωγής",
     "Playlist file": "Αρχείο λίστας αναπαραγωγής",
@@ -654,17 +682,23 @@ var keyStrings = {
     "Portal URL": "URL πύλης",
     "Position shift -10 seconds after pause":
         "Μετάβαση 10 δευτερόλεπτα πίσω μετά από παύση",
+    Postpaid: "Εκ των υστέρων πληρωμή",
     PROST: "PROST",
     "PROST settings": "Ρυθμίσεις PROST",
+    Prepaid: "Προπληρωμή",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Προηγούμενο",
     "Preview in channel list": "Προεπισκόπηση στη λίστα καναλιών",
     Previous: "Προηγούμενο",
     "Privacy policy": "Πολιτική απορρήτου",
+    "Privacy policy unavailable. Contact: %1":
+        "Η πολιτική απορρήτου δεν είναι διαθέσιμη. Επικοινωνία: %1",
     "Profile name": "Όνομα προφίλ",
     "Protect Adult Channels": "Προστασία καναλιών ενηλίκων",
     "Protect Change Provider": "Προστασία αλλαγής παρόχου",
     "Protect Settings": "Προστασία ρυθμίσεων",
+    "Protected source is unavailable":
+        "Η προστατευμένη πηγή δεν είναι διαθέσιμη",
     "p...": "p...",
     paging: "ανά σελίδα",
     Quality: "Ποιότητα",
@@ -782,7 +816,12 @@ var keyStrings = {
     Settings: "Ρυθμίσεις",
     "Settings changed. Discovery was canceled.":
         "Οι ρυθμίσεις άλλαξαν. Η αναζήτηση ακυρώθηκε.",
+    "Settings copied": "Οι ρυθμίσεις αντιγράφηκαν",
+    "Settings could not be exported": "Δεν ήταν δυνατή η εξαγωγή των ρυθμίσεων",
     "Settings could not be saved": "Δεν ήταν δυνατή η αποθήκευση των ρυθμίσεων",
+    "Settings download requested": "Ζητήθηκε λήψη των ρυθμίσεων",
+    "Settings imported": "Οι ρυθμίσεις εισήχθησαν",
+    "Settings JSON": "Ρυθμίσεις σε μορφή JSON",
     "Settings loaded from storage":
         "Οι ρυθμίσεις φορτώθηκαν από τον χώρο αποθήκευσης",
     "Settings STB": "Ρυθμίσεις STB",
@@ -823,13 +862,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Τυχαία αναπαραγωγή: φόρτωση…",
     "Shuffle: Off": "Τυχαία αναπαραγωγή: ανενεργή",
     "Shuffle: On": "Τυχαία αναπαραγωγή: ενεργή",
+    "Sign in to the protected source again":
+        "Συνδεθείτε ξανά στην προστατευμένη πηγή",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Σύνδεση: %1",
+    "Sign out of all sources": "Αποσύνδεση από όλες τις πηγές",
+    "Sign-in opens when you load a protected playlist.":
+        "Η σύνδεση ανοίγει όταν φορτώνετε μια προστατευμένη λίστα αναπαραγωγής.",
     "Sleep timer": "Χρονοδιακόπτης ύπνου",
     "Sort channels": "Ταξινόμηση καναλιών",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Η σύνδεση στην πηγή ακυρώθηκε",
     "Stalker Portal Provider": "Πάροχος πύλης Stalker",
     "Stalker portal settings": "Ρυθμίσεις πύλης Stalker",
     "Stalker portals": "Πύλες Stalker",
@@ -839,9 +885,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Διακοπή αναπαραγωγής και επιστροφή στη ζωντανή μετάδοση",
+    "Stream could not be played": "Δεν ήταν δυνατή η αναπαραγωγή της ροής",
     "Stream type: %1": "Τύπος ροής: %1",
     "String for search": "Όρος αναζήτησης",
     "Su Mo Tu We Th Fr Sa": "Κυ Δε Τρ Τε Πε Πα Σα",
+    "Subscription information": "Πληροφορίες συνδρομής",
     Subtitle: "Υπότιτλοι",
     Switch: "Εναλλαγή",
     "Switch sound track": "Αλλαγή κομματιού ήχου",
@@ -924,6 +972,7 @@ var keyStrings = {
         "Λείπει το όνομα χρήστη ή ο κωδικός πρόσβασης.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Έκδοση",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Ρυθμίσεις VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

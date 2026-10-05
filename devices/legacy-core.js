@@ -177,10 +177,14 @@ function _aspect() {
     $("#video").css("object-fit", arrayRatio[aspect]);
 }
 function stbToggleAspectRatio() {
-    showSelectBox(aspect, ["contain", "cover"], function (val) {
-        _setAspect(val);
-        saveCHarr("aAspects", val);
-    });
+    showSelectBox(
+        aspect,
+        [_("Fit to screen"), _("Fill screen")],
+        function (val) {
+            _setAspect(val);
+            saveCHarr("aAspects", val);
+        }
+    );
 }
 function _setAudioTrack(ind) {
     if (hls) {

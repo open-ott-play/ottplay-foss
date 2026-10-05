@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Առանց պորտի IP-ն օգտագործում է HTTP 8081 պորտը։ Դադարեցնելու համար մաքրեք հասցեն կամ ընտրեք «Անջատել»։",
+    "Another source sign-in is already open":
+        "Այլ աղբյուրի մուտքի պատուհանն արդեն բաց է",
     "API failed, trying M3U...": "API-ն չաշխատեց, փորձարկվում է M3U…",
     "API Server": "API սերվեր",
     "API server URL": "API սերվերի URL",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 րոպե հետ / առաջ",
     "Background color": "Ֆոնի գույն",
     "Background color of selected item": "Ընտրված տարրի ֆոնի գույն",
+    "Balance, $": "Մնացորդ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] կարգավորումներ",
@@ -173,6 +176,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Հրամանների սերվերի որոնման սպասման ժամանակը սպառվել է։",
     "Command server found.": "Հրամանների սերվերը գտնվել է։",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Չհաջողվեց բեռնել համատեղելիության բաղադրիչները։ Կրկին բացեք նվագարկիչը։",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Կարգավորեք All4you.tv-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
@@ -258,6 +263,10 @@ var keyStrings = {
     "Continue watching?": "Շարունակե՞լ դիտումը։",
     "Copy category": "Պատճենել կատեգորիան",
     "Copy JSON": "Պատճենել JSON-ը",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Պատճենեք JSON-ը՝ պահուստային պատճենը պահպանելու համար։ Վերականգնման համար օգտագործեք կարգավորումների ներմուծումը։",
+    "Copy the selected JSON with your device's copy command":
+        "Պատճենեք ընտրված JSON-ը՝ օգտագործելով սարքի պատճենման հրամանը",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
@@ -272,6 +281,8 @@ var keyStrings = {
     Country: "Երկիր",
     "Create category": "Ստեղծել կատեգորիա",
     current: "ընթացիկ",
+    "Debug enabled. Restart to apply.":
+        "Վրիպազերծումը միացված է։ Կիրառելու համար վերագործարկեք նվագարկիչը։",
     "Debug HUD": "Վրիպազերծման վահանակ",
     "Debug HUD is not available": "Վրիպազերծման վահանակը հասանելի չէ",
     Delete: "Ջնջել",
@@ -302,6 +313,7 @@ var keyStrings = {
     "Download! Wait ...": "Ներբեռնում… խնդրում ենք սպասել…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO կարգավորումներ",
+    "Drag window": "Տեղափոխել պատուհանը",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO կարգավորումներ",
     Duration: "Տևողություն",
@@ -317,6 +329,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Մուտքագրեք գաղտնաբառը (8 նիշ)։",
     "Enter a playlist URL to access this service.":
         "Այս ծառայությունից օգտվելու համար մուտքագրեք նվագարկման ցուցակի URL-ը։",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Մուտքագրեք երգացանկի URL-ը։ Պահպանելուց հետո նվագարկիչը կվերագործարկվի։",
     "Enter a server address without spaces or a fragment.":
         "Մուտքագրեք սերվերի հասցեն՝ առանց բացատների և URL հատվածի։",
     "Enter a username (8 characters).": "Մուտքագրեք օգտանունը (8 նիշ)։",
@@ -327,6 +341,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Մուտքագրեք վավեր սերվերի հասցե, օրինակ՝ 192.168.1.20:8081։",
     "Enter access key for": "Մուտքագրեք մուտքի բանալին՝",
+    "Enter an application access key (%1–%2 characters).":
+        "Մուտքագրեք հավելվածի մուտքի բանալին (%1–%2 նիշ)։",
     "Enter an application access key (8 characters).":
         "Մուտքագրեք հավելվածի մուտքի բանալին (8 նիշ)։",
     "Enter an ID and PIN to access this service.":
@@ -354,6 +370,7 @@ var keyStrings = {
         "Մուտքագրեք Stalker պորտալի URL-ը (օր.՝ http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Մուտքագրեք Stalker պորտալի URL-ը (օր.՝ http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Մուտքագրեք սերվերի համարը (%1)։",
     "Enter the access code separately, not in the server address.":
         "Մուտքի կոդը մուտքագրեք առանձին, ոչ թե սերվերի հասցեում։",
     "Enter the command server IP or address.":
@@ -455,11 +472,13 @@ var keyStrings = {
     Favorites: "Ընտրյալներ",
     "File selection is not supported on this device":
         "Այս սարքը չի աջակցում ֆայլի ընտրությանը",
+    "Fill screen": "Լրացնել էկրանը",
     Filter: "Զտիչ",
     Filters: "Զտիչներ",
     "Find command server": "Գտնել հրամանների սերվերը",
     "Finding command servers...": "Հրամանների սերվերների որոնում...",
     "First Run Setup": "Առաջին գործարկման կարգավորում",
+    "Fit to screen": "Հարմարեցնել էկրանին",
     Folders: "Folders",
     "Font type": "Տառատեսակ",
     "For download settings file open":
@@ -487,6 +506,7 @@ var keyStrings = {
     "HTTP port": "HTTP պորտ",
     "HTTP remote control is unavailable on this device.":
         "HTTP հեռակառավարումն այս սարքում հասանելի չէ։",
+    "HTTPS support": "HTTPS աջակցություն",
     ID: "ID",
     "Import settings": "Ներմուծել կարգավորումները",
     "In live mode: <br/>": "Ուղիղ եթերի ռեժիմում՝<br/>",
@@ -500,6 +520,8 @@ var keyStrings = {
     "Interface transparency": "Միջերեսի թափանցիկություն",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ալիքի հղումն անվավեր է։ Մուտքագրեք ամբողջական հոսթը՝ ինչպես անձնական էջի հոսքի URL-ում (օր.՝ subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Պաշտպանված աղբյուրի սխալ կարգավորում",
     "IPTV token": "IPTV թոքեն",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one կարգավորումներ",
@@ -596,6 +618,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "OTT / հավելվածի սերվեր",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE կարգավորումներ",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -605,6 +628,7 @@ var keyStrings = {
     on: "միացված",
     "on ": "միացված ",
     "or scan": "կամ սկանավորեք",
+    Packages: "Փաթեթներ",
     "Pairing approved. Command server configured.":
         "Զուգակցումը հաստատվել է։ Հրամանների սերվերը կարգավորված է։",
     "Pairing expired. Find the server again to retry.":
@@ -615,8 +639,10 @@ var keyStrings = {
         "Զուգակցումը մերժվել է կամ ստացվել է անվավեր հաստատում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
     "Parental control": "Ծնողական վերահսկողություն",
     Password: "Գաղտնաբառ",
+    "Paste settings JSON": "Տեղադրեք կարգավորումները՝ JSON ձևաչափով",
     Pause: "Դադար",
     "Pause/Play": "Դադար / նվագարկել",
+    "Payment method": "Վճարման եղանակ",
     "Permanent clock on screen": "Միշտ ցուցադրել ժամացույցը էկրանին",
     PIN: "PIN",
     "PiP exchange": "Փոխանակել PiP-ը",
@@ -625,6 +651,7 @@ var keyStrings = {
     Play: "Նվագարկել",
     Playback: "Playback",
     "Player and device info": "Նվագարկչի և սարքի տվյալներ",
+    "Player could not start": "Չհաջողվեց գործարկել նվագարկիչը",
     "Player info:": "Նվագարկչի տվյալներ՝",
     Playlist: "Նվագարկման ցուցակ",
     "Playlist file": "Նվագարկման ցուցակի ֆայլ",
@@ -643,17 +670,22 @@ var keyStrings = {
     "Portal URL": "Պորտալի URL",
     "Position shift -10 seconds after pause":
         "Դադարից հետո 10 վայրկյան հետ անցնել",
+    Postpaid: "Հետվճար",
     PROST: "PROST",
     "PROST settings": "PROST կարգավորումներ",
+    Prepaid: "Կանխավճար",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Նախորդ",
     "Preview in channel list": "Նախադիտում ալիքների ցուցակում",
     Previous: "Նախորդ",
     "Privacy policy": "Գաղտնիության քաղաքականություն",
+    "Privacy policy unavailable. Contact: %1":
+        "Գաղտնիության քաղաքականությունը հասանելի չէ։ Կապ՝ %1",
     "Profile name": "Պրոֆիլի անունը",
     "Protect Adult Channels": "Պաշտպանել մեծահասակների ալիքները",
     "Protect Change Provider": "Պաշտպանել մատակարարի փոփոխությունը",
     "Protect Settings": "Պաշտպանել կարգավորումները",
+    "Protected source is unavailable": "Պաշտպանված աղբյուրը հասանելի չէ",
     "p...": "p...",
     paging: "էջերով",
     Quality: "Որակ",
@@ -772,7 +804,12 @@ var keyStrings = {
     Settings: "Կարգավորումներ",
     "Settings changed. Discovery was canceled.":
         "Կարգավորումները փոխվել են։ Որոնումը չեղարկվել է։",
+    "Settings copied": "Կարգավորումները պատճենվել են",
+    "Settings could not be exported": "Չհաջողվեց արտահանել կարգավորումները",
     "Settings could not be saved": "Չհաջողվեց պահպանել կարգավորումները",
+    "Settings download requested": "Կարգավորումների ներբեռնումը պահանջվել է",
+    "Settings imported": "Կարգավորումները ներմուծվել են",
+    "Settings JSON": "Կարգավորումներ՝ JSON ձևաչափով",
     "Settings loaded from storage": "Կարգավորումները բեռնված են պահոցից",
     "Settings STB": "STB կարգավորումներ",
     "Settings saved": "Կարգավորումները պահպանված են",
@@ -813,13 +850,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Խառը նվագարկում՝ բեռնում…",
     "Shuffle: Off": "Խառը նվագարկում՝ անջատված",
     "Shuffle: On": "Խառը նվագարկում՝ միացված",
+    "Sign in to the protected source again":
+        "Կրկին մուտք գործեք պաշտպանված աղբյուր",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Մուտք գործել՝ %1",
+    "Sign out of all sources": "Դուրս գալ բոլոր աղբյուրներից",
+    "Sign-in opens when you load a protected playlist.":
+        "Մուտքի պատուհանը բացվում է պաշտպանված երգացանկը բեռնելիս։",
     "Sleep timer": "Քնի ժամանակաչափ",
     "Sort channels": "Դասավորել ալիքները",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Մուտքը աղբյուր չեղարկվել է",
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
     "Stalker portal settings": "Stalker պորտալի կարգավորումներ",
     "Stalker portals": "Stalker պորտալներ",
@@ -829,9 +873,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Դադարեցնել նվագարկումը և վերադառնալ ուղիղ եթերին",
+    "Stream could not be played": "Չհաջողվեց նվագարկել հոսքը",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",
     "String for search": "Որոնման հարցում",
     "Su Mo Tu We Th Fr Sa": "Կիր Երկ Երք Չրք Հնգ Ուրբ Շբթ",
+    "Subscription information": "Բաժանորդագրության տվյալներ",
     Subtitle: "Ենթագրեր",
     Switch: "Փոխել",
     "Switch sound track": "Փոխել ձայնաշերտը",
@@ -912,6 +958,7 @@ var keyStrings = {
         "Օգտանունը կամ գաղտնաբառը բացակայում է։",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Տարբերակ",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM կարգավորումներ",
     "Vidok.TV": "Vidok.TV",

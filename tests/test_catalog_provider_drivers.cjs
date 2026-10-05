@@ -34,6 +34,8 @@ function context(id, input = {}) {
     let timerId = 0,
         restarts = 0;
     Object.assign(host, {
+        _: (key, ...args) =>
+            key.replace(/%(\d+)/g, (_match, index) => args[Number(index) - 1]),
         clearTimeout: (id) => timers.delete(id),
         epg: { retained: [{ name: "retained" }] },
         infoBox: (value) => {
@@ -170,6 +172,18 @@ test("21 captured catalog/seed EPG contracts with two intentional malformed-star
             failure = { message: error.message, name: error.name };
         }
         const expected = clone(row.expected);
+        expected.errors = expected.errors.map((message) => {
+            if (message.includes("10-12"))
+                return "Enter an application access key (10–12 characters).";
+            if (
+                message ===
+                "Для доступа необходимо ввести ключ и адрес плейлиста!"
+            )
+                return "Access key is required!<br>Enter playlist URL";
+            if (message.startsWith("Не удалось"))
+                return "Failed to load channel list!";
+            return message;
+        });
         // Intentional runtime repair: the old async decoder threw and never completed startup.
         if (expected.failure)
             Object.assign(expected, {
@@ -243,7 +257,14 @@ test("Shura12 captured bootstrap contracts including account failure/category fa
             ids: f.host.cList,
             writes: [],
         });
-        assert.deepEqual(actual, row.expected, JSON.stringify(row.input));
+        const expected = clone(row.expected);
+        for (const event of expected.events)
+            if (
+                event[0] === "info" &&
+                event[1] === "Для доступа необходимо ввести ключ!"
+            )
+                event[1] = "Access key is required!";
+        assert.deepEqual(actual, expected, JSON.stringify(row.input));
     }
 });
 
@@ -696,7 +717,7 @@ test("ITV subscription renders data/errors, escapes service text, and tolerates 
     });
     assert.equal(
         f.panels["#listAbout"].html,
-        "Информация о подписке:<br/><br/>Логин: viewer<br/>Баланс,$: 12.5<br/>Система: Предоплата<br/>Пакеты: Basic, Sport"
+        "Subscription information:<br/><br/>Login: viewer<br/>Balance, $: 12.5<br/>Payment method: Prepaid<br/>Packages: Basic, Sport"
     );
     open();
     f.requests.at(-1).resolve({
@@ -716,10 +737,68 @@ test("ITV subscription renders data/errors, escapes service text, and tolerates 
             "<error>"
         );
     assert(!f.panels["#listAbout"].html.includes("<script>"));
-    assert(f.panels["#listAbout"].html.includes("textStatus: &lt;status&gt;"));
+    assert.equal(f.panels["#listAbout"].html, "Failed to load!");
     for (const value of [undefined, null]) {
         open();
         assert.doesNotThrow(() => f.requests.at(-1).resolve(value));
+    }
+});
+
+test("catalog settings, validation and subscription use the current language", () => {
+    for (const id of ids) {
+        const f = context(id);
+        f.mount(id);
+        addSettings(f);
+        f.host._ = (key, ...args) =>
+            "localized:" +
+            key.replace(/%(\d+)/g, (_match, index) => args[Number(index) - 1]);
+        const editKey = f.host.popupActions[id === "itv" ? 1 : 2];
+        editKey();
+        assert(f.host.editCaption.startsWith("localized:Edit access key"));
+        assert(editKey.menuDetail().startsWith("localized:"));
+        if (id === "itv") {
+            assert(f.host.editCaption.includes("10–12"));
+            f.host.editvar = "short";
+            f.host.setEdit();
+            assert.equal(
+                f.errors.at(-1),
+                "localized:Enter an application access key (10–12 characters)."
+            );
+            f.host.popupActions[3]();
+            assert.equal(
+                f.panels["#listAbout"].html,
+                "localized:Loading. Please wait..."
+            );
+            f.requests.at(-1).resolve({
+                package_info: [{ name: "Provider package" }],
+                user_info: { cash: 1, login: "viewer", pay_system: 2 },
+            });
+            assert(f.panels["#listAbout"].html.includes("localized:Postpaid"));
+            assert(
+                f.panels["#listAbout"].html.includes(
+                    "localized:Packages: Provider package"
+                )
+            );
+        } else {
+            const address = f.host.popupActions[1];
+            address();
+            assert.equal(
+                f.host.editCaption,
+                id === "shura"
+                    ? "localized:Enter server number (1, 2, 3, 5)."
+                    : "localized:Enter playlist URL"
+            );
+            assert(address.menuDetail().startsWith("localized:"));
+        }
+        if (id !== "ottclub") {
+            const mode = f.host.popupActions[id === "itv" ? 2 : 3];
+            assert(mode.menuTitle().startsWith("localized:Stream type: "));
+            assert(
+                mode
+                    .menuDetail()
+                    .startsWith("localized:Select a stream type:<br>")
+            );
+        }
     }
 });
 

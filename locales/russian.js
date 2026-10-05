@@ -70,6 +70,8 @@ var keyStrings = {
         "Плеер по HTTPS не может скачать EPG по HTTP. Укажите источник HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Для IP без порта используется HTTP-порт 8081. Для отключения очистите адрес или выберите «Отключить».",
+    "Another source sign-in is already open":
+        "Окно входа в другой источник уже открыто",
     "API failed, trying M3U...": "Ошибка API, пробуем M3U…",
     "API Server": "Сервер API",
     "API server URL": "Адрес сервера API",
@@ -93,6 +95,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Назад / вперёд на 1 минуту",
     "Background color": "Цвет фона",
     "Background color of selected item": "Цвет фона выбранного пункта",
+    "Balance, $": "Баланс, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Настройки BEST LiST IPTV [HLS Playlist]",
@@ -171,6 +174,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Время поиска сервера команд истекло.",
     "Command server found.": "Сервер команд найден.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Не удалось загрузить компоненты совместимости. Откройте плеер заново.",
     "Compatible HLS": "Совместимый HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в разделе Настройки -> Настройки провайдера",
@@ -256,6 +261,10 @@ var keyStrings = {
     "Continue watching?": "Продолжить просмотр?",
     "Copy category": "Копировать категорию",
     "Copy JSON": "Копировать JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Скопируйте JSON, чтобы сохранить резервную копию. Для восстановления используйте «Импорт настроек».",
+    "Copy the selected JSON with your device's copy command":
+        "Скопируйте выделенный JSON с помощью команды копирования на устройстве",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Не удалось подключиться к Plex. Проверьте адрес сервера, токен и доступ к сети.",
     "Could not connect to the server.": "Не удалось подключиться к серверу.",
@@ -270,6 +279,8 @@ var keyStrings = {
     Country: "Страна",
     "Create category": "Создать категорию",
     current: "текущий",
+    "Debug enabled. Restart to apply.":
+        "Отладка включена. Перезапустите плеер, чтобы применить изменения.",
     "Debug HUD": "Отладочная панель",
     "Debug HUD is not available": "Отладочная панель недоступна",
     Delete: "Удалить",
@@ -300,6 +311,7 @@ var keyStrings = {
     "Download! Wait ...": "Загрузка… Подождите…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Настройки DRVAO",
+    "Drag window": "Переместить окно",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Настройки Dragon Media PRO",
     Duration: "Длительность",
@@ -315,6 +327,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Введите пароль (8 символов).",
     "Enter a playlist URL to access this service.":
         "Введите адрес плейлиста для доступа к сервису.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Введите URL плейлиста. После сохранения плеер перезапустится.",
     "Enter a server address without spaces or a fragment.":
         "Введите адрес сервера без пробелов и фрагмента после #.",
     "Enter a username (8 characters).":
@@ -326,6 +340,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Введите правильный адрес сервера, например 192.168.1.20:8081.",
     "Enter access key for": "Ввод ключа доступа",
+    "Enter an application access key (%1–%2 characters).":
+        "Введите ключ доступа для плеера (%1–%2 символов).",
     "Enter an application access key (8 characters).":
         "Введите ключ доступа приложения (8 символов).",
     "Enter an ID and PIN to access this service.":
@@ -353,6 +369,7 @@ var keyStrings = {
         "Введите адрес портала Stalker (например, http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Введите адрес портала Stalker (например, http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Введите номер сервера (%1).",
     "Enter the access code separately, not in the server address.":
         "Введите код доступа отдельно от адреса сервера.",
     "Enter the command server IP or address.":
@@ -454,11 +471,13 @@ var keyStrings = {
     Favorites: "Избранные",
     "File selection is not supported on this device":
         "Выбор файла не поддерживается на этом устройстве",
+    "Fill screen": "Заполнить экран",
     Filter: "Фильтр",
     Filters: "Фильтры",
     "Find command server": "Найти сервер команд",
     "Finding command servers...": "Поиск серверов команд…",
     "First Run Setup": "Первоначальная настройка",
+    "Fit to screen": "Вписать в экран",
     Folders: "Папки",
     "Font type": "Шрифт",
     "For download settings file open": "Для скачивания файла настроек откройте",
@@ -484,6 +503,7 @@ var keyStrings = {
     "HTTP port": "HTTP-порт",
     "HTTP remote control is unavailable on this device.":
         "HTTP-пульт недоступен на этом устройстве.",
+    "HTTPS support": "Поддержка HTTPS",
     ID: "ID",
     "Import settings": "Импорт настроек",
     "In live mode: <br/>": "В прямом эфире:<br/>",
@@ -497,6 +517,8 @@ var keyStrings = {
     "Interface transparency": "Прозрачность интерфейса",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Некорректная ссылка на канал! Укажите полный хост как в URL потока в кабинете (например subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Неверная конфигурация защищённого источника",
     "IPTV token": "IPTV-токен",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Настройки IpStream.one",
@@ -593,6 +615,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Или откройте эту полную секретную ссылку на другом устройстве:",
     "Original file": "Оригинальный файл",
+    "OTT / APP host": "Сервер OTT / приложения",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -602,6 +625,7 @@ var keyStrings = {
     on: "включен",
     "on ": "по ",
     "or scan": "или отсканируйте",
+    Packages: "Пакеты",
     "Pairing approved. Command server configured.":
         "Сопряжение подтверждено. Сервер команд настроен.",
     "Pairing expired. Find the server again to retry.":
@@ -612,8 +636,10 @@ var keyStrings = {
         "Сопряжение отклонено или получено неверное подтверждение. Повторите поиск сервера, чтобы попробовать снова.",
     "Parental control": "Родительский контроль",
     Password: "Пароль",
+    "Paste settings JSON": "Вставьте настройки в формате JSON",
     Pause: "Пауза",
     "Pause/Play": "Пауза / воспроизведение",
+    "Payment method": "Способ оплаты",
     "Permanent clock on screen": "Постоянные часы на экране",
     PIN: "PIN",
     "PiP exchange": "Поменять окна PiP местами",
@@ -622,6 +648,7 @@ var keyStrings = {
     Play: "Воспроизвести",
     Playback: "Воспроизведение",
     "Player and device info": "Информация о плеере и устройстве",
+    "Player could not start": "Не удалось запустить плеер",
     "Player info:": "Информация о плеере:",
     Playlist: "Плейлист",
     "Playlist file": "Файл плейлиста",
@@ -640,18 +667,23 @@ var keyStrings = {
     "Portal URL": "Адрес портала",
     "Position shift -10 seconds after pause":
         "Отступить на 10 секунд после паузы",
+    Postpaid: "Постоплата",
     PROST: "PROST",
     "PROST settings": "Настройки PROST",
+    Prepaid: "Предоплата",
     "Preparing secure remote input...":
         "Подготовка защищённого удалённого ввода...",
     Prev: "Предыдущая",
     "Preview in channel list": "Предпросмотр в списке каналов",
     Previous: "Предыдущий канал",
     "Privacy policy": "Политика конфиденциальности",
+    "Privacy policy unavailable. Contact: %1":
+        "Политика конфиденциальности недоступна. Контакт: %1",
     "Profile name": "Название профиля",
     "Protect Adult Channels": "Защитить каналы для взрослых",
     "Protect Change Provider": "Защитить смену провайдера",
     "Protect Settings": "Защитить настройки",
+    "Protected source is unavailable": "Защищённый источник недоступен",
     "p...": "п…",
     paging: "листание страниц",
     Quality: "Качество",
@@ -765,7 +797,12 @@ var keyStrings = {
     Settings: "Настройки",
     "Settings changed. Discovery was canceled.":
         "Настройки изменились. Поиск отменён.",
+    "Settings copied": "Настройки скопированы",
+    "Settings could not be exported": "Не удалось экспортировать настройки",
     "Settings could not be saved": "Не удалось сохранить настройки",
+    "Settings download requested": "Запрошено скачивание настроек",
+    "Settings imported": "Настройки импортированы",
+    "Settings JSON": "Настройки в формате JSON",
     "Settings loaded from storage": "Настройки загружены из хранилища",
     "Settings STB": "Настройки устройства",
     "Settings saved": "Настройки сохранены",
@@ -803,13 +840,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Перемешивание: загрузка…",
     "Shuffle: Off": "Перемешивание: выключено",
     "Shuffle: On": "Перемешивание: включено",
+    "Sign in to the protected source again":
+        "Войдите в защищённый источник снова",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Войдите в учетную запись Plex и выберите сервер. Пароль вводится только на сайте Plex.",
     "Sign in with Plex": "Войти через Plex",
+    "Sign in: %1": "Войти: %1",
+    "Sign out of all sources": "Выйти из всех источников",
+    "Sign-in opens when you load a protected playlist.":
+        "Окно входа откроется при загрузке защищённого плейлиста.",
     "Sleep timer": "Таймер сна",
     "Sort channels": "Сортировать каналы",
     "Source access": "Доступ к источникам",
     "Source sign-in required": "Войдите для доступа к источнику",
+    "Source sign-in was cancelled": "Вход в источник отменён",
     "Stalker Portal Provider": "Провайдер портала Stalker",
     "Stalker portal settings": "Настройки портала Stalker",
     "Stalker portals": "Сталкер порталы",
@@ -819,9 +863,11 @@ var keyStrings = {
     "Stop diagnostics": "Остановить диагностику",
     "Stop playback and return to live":
         "Остановить воспроизведение и вернуться в эфир",
+    "Stream could not be played": "Не удалось воспроизвести поток",
     "Stream type: %1": "Тип потока: %1",
     "String for search": "Поисковый запрос",
     "Su Mo Tu We Th Fr Sa": "Вс Пн Вт Ср Чт Пт Сб",
+    "Subscription information": "Информация о подписке",
     Subtitle: "Субтитры",
     Switch: "Переключить",
     "Switch sound track": "Сменить звуковую дорожку",
@@ -903,6 +949,7 @@ var keyStrings = {
         "Не указано имя пользователя или пароль.",
     "Valid for 10 minutes. Back closes this session.":
         "Действует 10 минут. Кнопка «Назад» закрывает сеанс.",
+    Version: "Версия",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Настройки VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

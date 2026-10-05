@@ -69,6 +69,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP adresas be prievado naudoja HTTP prievadą 8081. Norėdami sustabdyti, išvalykite adresą arba pasirinkite Atsijungti.",
+    "Another source sign-in is already open":
+        "Prisijungimo prie kito šaltinio langas jau atidarytas",
     "API failed, trying M3U...": "API klaida, bandomas M3U…",
     "API Server": "API serveris",
     "API server URL": "API serverio URL",
@@ -93,6 +95,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 minutę atgal / pirmyn",
     "Background color": "Fono spalva",
     "Background color of selected item": "Pasirinkto elemento fono spalva",
+    "Balance, $": "Likutis, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] nustatymai",
@@ -172,6 +175,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Komandų serverio paieškos laikas baigėsi.",
     "Command server found.": "Komandų serveris rastas.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Nepavyko įkelti suderinamumo komponentų. Atidarykite leistuvą iš naujo.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nustatykite All4you.tv skiltyje Nustatymai -> Teikėjo nustatymai",
@@ -257,6 +262,10 @@ var keyStrings = {
     "Continue watching?": "Tęsti žiūrėjimą?",
     "Copy category": "Kopijuoti kategoriją",
     "Copy JSON": "Kopijuoti JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Nukopijuokite JSON, kad išsaugotumėte atsarginę kopiją. Atkurkite ją importuodami nustatymus.",
+    "Copy the selected JSON with your device's copy command":
+        "Nukopijuokite pasirinktą JSON naudodami įrenginio kopijavimo komandą",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
@@ -271,6 +280,8 @@ var keyStrings = {
     Country: "Šalis",
     "Create category": "Sukurti kategoriją",
     current: "dabartinis",
+    "Debug enabled. Restart to apply.":
+        "Derinimas įjungtas. Paleiskite grotuvą iš naujo, kad pritaikytumėte pakeitimą.",
     "Debug HUD": "Derinimo skydelis",
     "Debug HUD is not available": "Derinimo skydelis nepasiekiamas",
     Delete: "Pašalinti",
@@ -301,6 +312,7 @@ var keyStrings = {
     "Download! Wait ...": "Atsiunčiama… palaukite…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO nustatymai",
+    "Drag window": "Perkelti langą",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO nustatymai",
     Duration: "Trukmė",
@@ -316,6 +328,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Įveskite slaptažodį (8 simboliai).",
     "Enter a playlist URL to access this service.":
         "Norėdami naudotis šia paslauga, įveskite grojaraščio URL.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Įveskite grojaraščio URL. Išsaugojus leistuvas bus paleistas iš naujo.",
     "Enter a server address without spaces or a fragment.":
         "Įveskite serverio adresą be tarpų ir dalies po #.",
     "Enter a username (8 characters).":
@@ -327,6 +341,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Įveskite tinkamą serverio adresą, pavyzdžiui, 192.168.1.20:8081.",
     "Enter access key for": "Įveskite prieigos raktą:",
+    "Enter an application access key (%1–%2 characters).":
+        "Įveskite programos prieigos raktą (%1–%2 simbolių).",
     "Enter an application access key (8 characters).":
         "Įveskite programos prieigos raktą (8 simboliai).",
     "Enter an ID and PIN to access this service.":
@@ -354,6 +370,7 @@ var keyStrings = {
         "Įveskite Stalker portalo URL (pvz., http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Įveskite Stalker portalo URL (pvz., http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Įveskite serverio numerį (%1).",
     "Enter the access code separately, not in the server address.":
         "Prieigos kodą įveskite atskirai, o ne serverio adrese.",
     "Enter the command server IP or address.":
@@ -456,11 +473,13 @@ var keyStrings = {
     Favorites: "Mėgstamiausi",
     "File selection is not supported on this device":
         "Šiame įrenginyje failų pasirinkimas nepalaikomas",
+    "Fill screen": "Užpildyti ekraną",
     Filter: "Filtras",
     Filters: "Filtrai",
     "Find command server": "Rasti komandų serverį",
     "Finding command servers...": "Ieškoma komandų serverių...",
     "First Run Setup": "Pirmojo paleidimo nustatymas",
+    "Fit to screen": "Pritaikyti ekranui",
     Folders: "Folders",
     "Font type": "Šriftas",
     "For download settings file open":
@@ -488,6 +507,7 @@ var keyStrings = {
     "HTTP port": "HTTP prievadas",
     "HTTP remote control is unavailable on this device.":
         "HTTP valdymas šiame įrenginyje nepasiekiamas.",
+    "HTTPS support": "HTTPS palaikymas",
     ID: "ID",
     "Import settings": "Importuoti nustatymus",
     "In live mode: <br/>": "Tiesioginės transliacijos režimu:<br/>",
@@ -501,6 +521,8 @@ var keyStrings = {
     "Interface transparency": "Sąsajos permatomumas",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Netinkama kanalo nuoroda! Įveskite visą pagrindinio kompiuterio vardą, kaip paskyros srauto URL (pvz., subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Neteisinga apsaugoto šaltinio konfigūracija",
     "IPTV token": "IPTV prieigos žetonas",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one nustatymai",
@@ -597,6 +619,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "OTT / programos serveris",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nustatymai",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -606,6 +629,7 @@ var keyStrings = {
     on: "įjungta",
     "on ": "įjungta ",
     "or scan": "arba nuskaitykite",
+    Packages: "Paketai",
     "Pairing approved. Command server configured.":
         "Susiejimas patvirtintas. Komandų serveris sukonfigūruotas.",
     "Pairing expired. Find the server again to retry.":
@@ -616,8 +640,10 @@ var keyStrings = {
         "Susiejimas atmestas arba gautas netinkamas patvirtinimas. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
     "Parental control": "Tėvų kontrolė",
     Password: "Slaptažodis",
+    "Paste settings JSON": "Įklijuokite nustatymus JSON formatu",
     Pause: "Pristabdyti",
     "Pause/Play": "Pristabdyti / leisti",
+    "Payment method": "Mokėjimo būdas",
     "Permanent clock on screen": "Visada rodyti laikrodį ekrane",
     PIN: "PIN",
     "PiP exchange": "Sukeisti PiP",
@@ -626,6 +652,7 @@ var keyStrings = {
     Play: "Leisti",
     Playback: "Playback",
     "Player and device info": "Grotuvo ir įrenginio informacija",
+    "Player could not start": "Nepavyko paleisti leistuvo",
     "Player info:": "Grotuvo informacija:",
     Playlist: "Grojaraštis",
     "Playlist file": "Grojaraščio failas",
@@ -643,17 +670,22 @@ var keyStrings = {
     "POLMEDIA settings": "POLMEDIA nustatymai",
     "Portal URL": "Portalo URL",
     "Position shift -10 seconds after pause": "Po pauzės atsukti 10 sekundžių",
+    Postpaid: "Mokėjimas po naudojimo",
     PROST: "PROST",
     "PROST settings": "PROST nustatymai",
+    Prepaid: "Išankstinis mokėjimas",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Ankstesnis",
     "Preview in channel list": "Peržiūra kanalų sąraše",
     Previous: "Ankstesnis",
     "Privacy policy": "Privatumo politika",
+    "Privacy policy unavailable. Contact: %1":
+        "Privatumo politika nepasiekiama. Kontaktas: %1",
     "Profile name": "Profilio pavadinimas",
     "Protect Adult Channels": "Apsaugoti suaugusiųjų kanalus",
     "Protect Change Provider": "Apsaugoti teikėjo keitimą",
     "Protect Settings": "Apsaugoti nustatymus",
+    "Protected source is unavailable": "Apsaugotas šaltinis nepasiekiamas",
     "p...": "p...",
     paging: "puslapiais",
     Quality: "Kokybė",
@@ -768,7 +800,12 @@ var keyStrings = {
     Settings: "Nustatymai",
     "Settings changed. Discovery was canceled.":
         "Nustatymai pasikeitė. Paieška atšaukta.",
+    "Settings copied": "Nustatymai nukopijuoti",
+    "Settings could not be exported": "Nepavyko eksportuoti nustatymų",
     "Settings could not be saved": "Nepavyko išsaugoti nustatymų",
+    "Settings download requested": "Paprašyta atsisiųsti nustatymus",
+    "Settings imported": "Nustatymai importuoti",
+    "Settings JSON": "Nustatymai JSON formatu",
     "Settings loaded from storage": "Nustatymai įkelti iš saugyklos",
     "Settings STB": "STB nustatymai",
     "Settings saved": "Nustatymai išsaugoti",
@@ -806,13 +843,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Maišymas: įkeliama…",
     "Shuffle: Off": "Maišymas: išjungtas",
     "Shuffle: On": "Maišymas: įjungtas",
+    "Sign in to the protected source again":
+        "Prisijunkite prie apsaugoto šaltinio iš naujo",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Prisijungti: %1",
+    "Sign out of all sources": "Atsijungti nuo visų šaltinių",
+    "Sign-in opens when you load a protected playlist.":
+        "Prisijungimo langas atidaromas įkeliant apsaugotą grojaraštį.",
     "Sleep timer": "Miego laikmatis",
     "Sort channels": "Rikiuoti kanalus",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Prisijungimas prie šaltinio atšauktas",
     "Stalker Portal Provider": "Stalker portalo teikėjas",
     "Stalker portal settings": "Stalker portalo nustatymai",
     "Stalker portals": "Stalker portalai",
@@ -822,9 +866,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Sustabdyti atkūrimą ir grįžti į tiesioginę transliaciją",
+    "Stream could not be played": "Nepavyko paleisti srauto",
     "Stream type: %1": "Srauto tipas: %1",
     "String for search": "Paieškos užklausa",
     "Su Mo Tu We Th Fr Sa": "Sk Pr An Tr Kt Pn Št",
+    "Subscription information": "Prenumeratos informacija",
     Subtitle: "Subtitrai",
     Switch: "Perjungti",
     "Switch sound track": "Keisti garso takelį",
@@ -904,6 +950,7 @@ var keyStrings = {
         "Trūksta naudotojo vardo arba slaptažodžio.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versija",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM nustatymai",
     "Vidok.TV": "Vidok.TV",

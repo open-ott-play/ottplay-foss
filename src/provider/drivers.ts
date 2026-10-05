@@ -1457,6 +1457,34 @@ function mountNamedProviderSettings(
         host.$("#listPopUp").hide();
         host.showPage();
     }
+    [editUser, editPassword].forEach(function (action: any, password) {
+        action.menuTitle = function () {
+            return (
+                profile.title +
+                ": " +
+                host._(password ? "Password" : "Username")
+            );
+        };
+        action.menuDetail = function () {
+            return (
+                host._(password ? "Enter password" : "Enter username") +
+                " " +
+                profile.title +
+                host._(" (after changing, restart player)")
+            );
+        };
+    });
+    editUrl.menuTitle = function () {
+        return "tv.team : " + host._("Playlist URL");
+    };
+    editUrl.menuDetail = function () {
+        return host._(
+            'Enter the tv.team playlist URL.<br>Playlist type: <b>OTTPlayer</b><br/><br/>The "/playlist.m3u8" suffix is added automatically if omitted.'
+        );
+    };
+    settingsMenu.menuTitle = function () {
+        return host._("Settings") + " " + profile.title;
+    };
     host.duneAddSettings = function (index: number) {
         if (!owner.active()) return;
         if (isNaN(parseInt(storage.get("sShowArchive") || "", 10)))
@@ -1476,38 +1504,26 @@ function mountNamedProviderSettings(
             host.popupArray.splice(
                 index,
                 0,
-                profile.title + ": " + host._("Username"),
-                profile.title + ": " + host._("Password")
+                (editUser as any).menuTitle(),
+                (editPassword as any).menuTitle()
             );
             host.popupDetail.splice(
                 index,
                 0,
-                host._("Enter username") +
-                    " " +
-                    profile.title +
-                    host._(" (after changing, restart player)"),
-                host._("Enter password") +
-                    " " +
-                    profile.title +
-                    host._(" (after changing, restart player)")
+                (editUser as any).menuDetail(),
+                (editPassword as any).menuDetail()
             );
             host.popupActions.splice(index, 0, editUser, editPassword);
         } else {
             host.popupArray.splice(
                 index,
                 1,
-                id === "tvteam"
-                    ? "tv.team : " + host._("Playlist URL")
-                    : host._("Settings") + " " + profile.title
+                id === "tvteam" ? editUrl.menuTitle() : settingsMenu.menuTitle()
             );
             host.popupDetail.splice(
                 index,
                 1,
-                id === "tvteam"
-                    ? host._(
-                          'Enter the tv.team playlist URL.<br>Playlist type: <b>OTTPlayer</b><br/><br/>The "/playlist.m3u8" suffix is added automatically if omitted.'
-                      )
-                    : ""
+                id === "tvteam" ? editUrl.menuDetail() : ""
             );
             host.popupActions.splice(
                 index,
@@ -1957,11 +1973,15 @@ function mountProviderDriver(
         host.$("#listPopUp").hide();
         host.showPage();
     }
+    editSettings.menuTitle = label;
+    editSettings.menuDetail = function () {
+        return host._(profile.title + " settings");
+    };
     host.duneAddSettings = function (index: number) {
         if (!owner.active() || !driver.capabilities.settings) return;
         host.popupActions.splice(index, 1, editSettings);
         host.popupArray.splice(index, 1, label());
-        host.popupDetail.splice(index, 1, host._(profile.title + " settings"));
+        host.popupDetail.splice(index, 1, editSettings.menuDetail());
     };
     // OTTPLAY_FULL_ONLY_BEGIN
     if (named) mountNamedProviderSettings(host, profile, driver, owner, store);

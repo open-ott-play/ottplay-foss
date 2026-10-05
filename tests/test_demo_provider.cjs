@@ -364,6 +364,22 @@ test("retained Full dealer extension rejects older script completion", () => {
     assert.equal(channelLoads, 1);
 });
 
+test("provider script failure messages follow the selected language", () => {
+    const { w, saved } = menuFixture(0, 0);
+    w.arrayProvaiders.push("custom/dealer");
+    saved.set("ottplayprov", "custom/dealer");
+    const alerts = [],
+        scripts = [];
+    w._ = (key) => "localized:" + key;
+    w.alert = (message) => alerts.push(message);
+    w.firstRun = () => {};
+    w.getScriptDOM = (url, ready, failed) =>
+        scripts.push({ failed, ready, url });
+    w.loadProv();
+    scripts[0].failed(new Error("offline"));
+    assert.deepEqual(alerts, ["localized:Failed to load! (custom/dealer)"]);
+});
+
 test("Try demo can recover from a failed URL-pinned provider", () => {
     const { w, loaded } = uiFixture();
     vm.runInContext(providerLoad, w);

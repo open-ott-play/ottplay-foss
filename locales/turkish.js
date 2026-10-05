@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Port belirtilmeyen IP adreslerinde HTTP portu 8081 kullanılır. Durdurmak için adresi silin veya Bağlantıyı kes'i seçin.",
+    "Another source sign-in is already open":
+        "Başka bir kaynak için oturum açma penceresi zaten açık",
     "API failed, trying M3U...": "API başarısız, M3U deneniyor…",
     "API Server": "API sunucusu",
     "API server URL": "API sunucusu URL'si",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 dakika geri / ileri atla",
     "Background color": "Arka plan rengi",
     "Background color of selected item": "Seçili öğenin arka plan rengi",
+    "Balance, $": "Bakiye, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] ayarları",
@@ -174,6 +177,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Komut sunucusu araması zaman aşımına uğradı.",
     "Command server found.": "Komut sunucusu bulundu.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Uyumluluk bileşenleri yüklenemedi. Yeniden denemek için oynatıcıyı tekrar açın.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv için Ayarlar -> Sağlayıcı Ayarları bölümünü kullanın",
@@ -259,6 +264,10 @@ var keyStrings = {
     "Continue watching?": "İzlemeye devam edilsin mi?",
     "Copy category": "Kategoriyi kopyala",
     "Copy JSON": "JSON kopyala",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Yedek saklamak için JSON'u kopyalayın. Geri yüklemek için ayarları içe aktarma işlevini kullanın.",
+    "Copy the selected JSON with your device's copy command":
+        "Seçili JSON'u cihazınızın kopyalama komutuyla kopyalayın",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Sunucuya bağlanılamadı.",
@@ -273,6 +282,8 @@ var keyStrings = {
     Country: "Ülke",
     "Create category": "Kategori oluştur",
     current: "geçerli",
+    "Debug enabled. Restart to apply.":
+        "Hata ayıklama etkinleştirildi. Uygulamak için oynatıcıyı yeniden başlatın.",
     "Debug HUD": "Hata ayıklama paneli",
     "Debug HUD is not available": "Hata ayıklama paneli kullanılamıyor",
     Delete: "Sil",
@@ -302,6 +313,7 @@ var keyStrings = {
     "Download! Wait ...": "İndiriliyor… lütfen bekleyin…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO ayarları",
+    "Drag window": "Pencereyi taşı",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO ayarları",
     Duration: "Süre",
@@ -317,6 +329,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Parolayı girin (8 karakter).",
     "Enter a playlist URL to access this service.":
         "Bu hizmete erişmek için oynatma listesi URL'sini girin.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Bir oynatma listesi URL’si girin. Kaydettikten sonra oynatıcı yeniden başlatılacak.",
     "Enter a server address without spaces or a fragment.":
         "Sunucu adresini boşluk veya # sonrası parça olmadan girin.",
     "Enter a username (8 characters).": "Kullanıcı adını girin (8 karakter).",
@@ -327,6 +341,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Geçerli bir sunucu adresi girin, örneğin 192.168.1.20:8081.",
     "Enter access key for": "Şunun için erişim anahtarı girin:",
+    "Enter an application access key (%1–%2 characters).":
+        "Uygulama erişim anahtarını girin (%1–%2 karakter).",
     "Enter an application access key (8 characters).":
         "Uygulama erişim anahtarını girin (8 karakter).",
     "Enter an ID and PIN to access this service.":
@@ -354,6 +370,7 @@ var keyStrings = {
         "Stalker portalı URL'sini girin (ör. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker portalı URL'sini girin (ör. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Sunucu numarasını girin (%1).",
     "Enter the access code separately, not in the server address.":
         "Erişim kodunu sunucu adresine değil, ayrı olarak girin.",
     "Enter the command server IP or address.":
@@ -455,11 +472,13 @@ var keyStrings = {
     Favorites: "Favoriler",
     "File selection is not supported on this device":
         "Bu cihazda dosya seçimi desteklenmiyor",
+    "Fill screen": "Ekranı doldur",
     Filter: "Filtre",
     Filters: "Filtreler",
     "Find command server": "Komut sunucusunu bul",
     "Finding command servers...": "Komut sunucuları aranıyor...",
     "First Run Setup": "İlk çalıştırma kurulumu",
+    "Fit to screen": "Ekrana sığdır",
     Folders: "Folders",
     "Font type": "Yazı tipi",
     "For download settings file open": "Ayar dosyasını indirmek için açın:",
@@ -485,6 +504,7 @@ var keyStrings = {
     "HTTP port": "HTTP bağlantı noktası",
     "HTTP remote control is unavailable on this device.":
         "HTTP uzaktan kumandası bu cihazda kullanılamıyor.",
+    "HTTPS support": "HTTPS desteği",
     ID: "Kimlik",
     "Import settings": "Ayarları içe aktar",
     "In live mode: <br/>": "Canlı modda:<br/>",
@@ -498,6 +518,8 @@ var keyStrings = {
     "Interface transparency": "Arayüz saydamlığı",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Geçersiz kanal bağlantısı! Hesabınızdaki akış URL'sinde olduğu gibi tam ana bilgisayar adını girin (ör. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Korumalı kaynak yapılandırması geçersiz",
     "IPTV token": "IPTV belirteci",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ayarları",
@@ -595,6 +617,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "OTT / uygulama sunucusu",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ayarları",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -604,6 +627,7 @@ var keyStrings = {
     on: "açık",
     "on ": "açık ",
     "or scan": "veya tarayın",
+    Packages: "Paketler",
     "Pairing approved. Command server configured.":
         "Eşleştirme onaylandı. Komut sunucusu yapılandırıldı.",
     "Pairing expired. Find the server again to retry.":
@@ -614,8 +638,10 @@ var keyStrings = {
         "Eşleştirme reddedildi veya geçersiz bir onay döndürüldü. Yeniden denemek için sunucuyu tekrar bulun.",
     "Parental control": "Ebeveyn denetimi",
     Password: "Parola",
+    "Paste settings JSON": "JSON biçimindeki ayarları yapıştırın",
     Pause: "Duraklat",
     "Pause/Play": "Duraklat / oynat",
+    "Payment method": "Ödeme yöntemi",
     "Permanent clock on screen": "Saati ekranda her zaman göster",
     PIN: "PIN",
     "PiP exchange": "PiP yer değiştir",
@@ -624,6 +650,7 @@ var keyStrings = {
     Play: "Oynat",
     Playback: "Playback",
     "Player and device info": "Oynatıcı ve cihaz bilgileri",
+    "Player could not start": "Oynatıcı başlatılamadı",
     "Player info:": "Oynatıcı bilgileri:",
     Playlist: "Oynatma listesi",
     "Playlist file": "Oynatma listesi dosyası",
@@ -642,17 +669,22 @@ var keyStrings = {
     "Portal URL": "Portal URL'si",
     "Position shift -10 seconds after pause":
         "Duraklatmadan sonra 10 saniye geri git",
+    Postpaid: "Sonradan ödemeli",
     PROST: "PROST",
     "PROST settings": "PROST ayarları",
+    Prepaid: "Ön ödemeli",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Önceki",
     "Preview in channel list": "Kanal listesinde önizleme",
     Previous: "Önceki",
     "Privacy policy": "Gizlilik politikası",
+    "Privacy policy unavailable. Contact: %1":
+        "Gizlilik politikası kullanılamıyor. İletişim: %1",
     "Profile name": "Profil adı",
     "Protect Adult Channels": "Yetişkin kanallarını koru",
     "Protect Change Provider": "Sağlayıcı değişikliğini koru",
     "Protect Settings": "Ayarları koru",
+    "Protected source is unavailable": "Korumalı kaynağa erişilemiyor",
     "p...": "p...",
     paging: "sayfalama",
     Quality: "Kalite",
@@ -767,7 +799,12 @@ var keyStrings = {
     Settings: "Ayarlar",
     "Settings changed. Discovery was canceled.":
         "Ayarlar değişti. Arama iptal edildi.",
+    "Settings copied": "Ayarlar kopyalandı",
+    "Settings could not be exported": "Ayarlar dışa aktarılamadı",
     "Settings could not be saved": "Ayarlar kaydedilemedi",
+    "Settings download requested": "Ayarların indirilmesi istendi",
+    "Settings imported": "Ayarlar içe aktarıldı",
+    "Settings JSON": "JSON biçiminde ayarlar",
     "Settings loaded from storage": "Ayarlar depolamadan yüklendi",
     "Settings STB": "STB Ayarları",
     "Settings saved": "Ayarlar kaydedildi",
@@ -806,13 +843,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Karıştır: yükleniyor…",
     "Shuffle: Off": "Karıştır: kapalı",
     "Shuffle: On": "Karıştır: açık",
+    "Sign in to the protected source again":
+        "Korumalı kaynakta yeniden oturum açın",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Oturum aç: %1",
+    "Sign out of all sources": "Tüm kaynaklardan çıkış yap",
+    "Sign-in opens when you load a protected playlist.":
+        "Korumalı bir oynatma listesi yüklediğinizde oturum açma penceresi açılır.",
     "Sleep timer": "Uyku zamanlayıcısı",
     "Sort channels": "Kanalları sırala",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Kaynakta oturum açma iptal edildi",
     "Stalker Portal Provider": "Stalker portalı sağlayıcısı",
     "Stalker portal settings": "Stalker portalı ayarları",
     "Stalker portals": "Stalker portalları",
@@ -821,9 +865,11 @@ var keyStrings = {
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "Oynatmayı durdur ve canlıya dön",
+    "Stream could not be played": "Akış oynatılamadı",
     "Stream type: %1": "Akış türü: %1",
     "String for search": "Arama sorgusu",
     "Su Mo Tu We Th Fr Sa": "Pa Pt Sa Ça Pe Cu Ct",
+    "Subscription information": "Abonelik bilgileri",
     Subtitle: "Altyazılar",
     Switch: "Değiştir",
     "Switch sound track": "Ses parçasını değiştir",
@@ -902,6 +948,7 @@ var keyStrings = {
     "Username or password is missing.": "Kullanıcı adı veya parola eksik.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Sürüm",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM ayarları",
     "Vidok.TV": "Vidok.TV",

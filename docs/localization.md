@@ -2,7 +2,7 @@
 
 ## Translation catalog
 
-`locales/english.js` is the canonical 619-key dictionary. The other 27 language
+`locales/english.js` is the canonical interface dictionary. The other 27 language
 packs contain the same keys; `lang` and the historical `alhabet` spelling are
 locale metadata. Existing language codes and the first 20 selector positions
 are preserved. Translations were completed with AI assistance and checked for

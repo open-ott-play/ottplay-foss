@@ -1752,6 +1752,7 @@ export function updateMediaInfo(): void {
 export function refreshAudioBadge(): void {
     var badge = document.getElementById("audio_badge");
     if (!badge) return;
+    badge.title = _("Switch sound track") + " (S)";
     var hasMulti =
         typeof (window as any).stbAudioTracksExists === "function" &&
         (window as any).stbAudioTracksExists();

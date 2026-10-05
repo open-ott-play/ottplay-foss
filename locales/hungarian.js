@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Port nélküli IP-cím esetén a HTTP-port 8081. A leállításhoz törölje a címet, vagy válassza a Leválasztás lehetőséget.",
+    "Another source sign-in is already open":
+        "Egy másik forrás bejelentkezési ablaka már nyitva van",
     "API failed, trying M3U...": "Az API nem működik, M3U próbálása…",
     "API Server": "API-kiszolgáló",
     "API server URL": "API-kiszolgáló URL-címe",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 perc ugrás vissza / előre",
     "Background color": "Háttérszín",
     "Background color of selected item": "Kijelölt elem háttérszíne",
+    "Balance, $": "Egyenleg, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] beállításai",
@@ -174,6 +177,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "A parancskiszolgáló keresésének időkorlátja lejárt.",
     "Command server found.": "Parancskiszolgáló megtalálva.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "A kompatibilitási összetevők nem tölthetők be. Nyissa meg újra a lejátszót.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Állítsa be ezt: All4you.tv, a Beállítások -> Szolgáltató beállításai menüben",
@@ -259,6 +264,10 @@ var keyStrings = {
     "Continue watching?": "Folytatja a nézést?",
     "Copy category": "Kategória másolása",
     "Copy JSON": "JSON másolása",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Másolja ki a JSON-t a biztonsági másolat megőrzéséhez. A visszaállításhoz használja a beállítások importálását.",
+    "Copy the selected JSON with your device's copy command":
+        "Másolja ki a kijelölt JSON-t az eszköz másolási parancsával",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
@@ -274,6 +283,8 @@ var keyStrings = {
     Country: "Ország",
     "Create category": "Kategória létrehozása",
     current: "jelenlegi",
+    "Debug enabled. Restart to apply.":
+        "A hibakeresés bekapcsolva. Az alkalmazáshoz indítsa újra a lejátszót.",
     "Debug HUD": "Hibakeresési panel",
     "Debug HUD is not available": "A hibakeresési panel nem érhető el",
     Delete: "Törlés",
@@ -303,6 +314,7 @@ var keyStrings = {
     "Download! Wait ...": "Letöltés… kis türelmet…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO beállításai",
+    "Drag window": "Ablak mozgatása",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO beállításai",
     Duration: "Időtartam",
@@ -318,6 +330,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Adja meg a jelszót (8 karakter).",
     "Enter a playlist URL to access this service.":
         "A szolgáltatás eléréséhez adja meg a lejátszási lista URL-címét.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Adja meg a lejátszási lista URL-jét. A lejátszó mentés után újraindul.",
     "Enter a server address without spaces or a fragment.":
         "Adjon meg kiszolgálócímet szóközök és # utáni töredék nélkül.",
     "Enter a username (8 characters).":
@@ -329,6 +343,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Adjon meg érvényes kiszolgálócímet, például: 192.168.1.20:8081.",
     "Enter access key for": "Adja meg a hozzáférési kulcsot ehhez:",
+    "Enter an application access key (%1–%2 characters).":
+        "Adja meg az alkalmazás hozzáférési kulcsát (%1–%2 karakter).",
     "Enter an application access key (8 characters).":
         "Adja meg az alkalmazás hozzáférési kulcsát (8 karakter).",
     "Enter an ID and PIN to access this service.":
@@ -356,6 +372,7 @@ var keyStrings = {
         "Adja meg a Stalker portál URL-címét (pl. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Adja meg a Stalker portál URL-címét (pl. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Adja meg a szerver számát (%1).",
     "Enter the access code separately, not in the server address.":
         "A hozzáférési kódot külön adja meg, ne a kiszolgáló címében.",
     "Enter the command server IP or address.":
@@ -458,11 +475,13 @@ var keyStrings = {
     Favorites: "Kedvencek",
     "File selection is not supported on this device":
         "Ez az eszköz nem támogatja a fájlkiválasztást",
+    "Fill screen": "Képernyő kitöltése",
     Filter: "Szűrő",
     Filters: "Szűrők",
     "Find command server": "Parancskiszolgáló keresése",
     "Finding command servers...": "Parancskiszolgálók keresése...",
     "First Run Setup": "Első indítás beállításai",
+    "Fit to screen": "Képernyőhöz igazítás",
     Folders: "Folders",
     "Font type": "Betűtípus",
     "For download settings file open":
@@ -490,6 +509,7 @@ var keyStrings = {
     "HTTP port": "HTTP-port",
     "HTTP remote control is unavailable on this device.":
         "A HTTP-távirányítás nem érhető el ezen az eszközön.",
+    "HTTPS support": "HTTPS-támogatás",
     ID: "Azonosító",
     "Import settings": "Beállítások importálása",
     "In live mode: <br/>": "Élő módban:<br/>",
@@ -503,6 +523,8 @@ var keyStrings = {
     "Interface transparency": "Felület átlátszósága",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Érvénytelen csatornahivatkozás! Adja meg a teljes gépnevet az ügyfélfiók adatfolyamának URL-címéből (pl. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Érvénytelen védettforrás-konfiguráció",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one beállításai",
@@ -600,6 +622,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "OTT- / alkalmazáskiszolgáló",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE beállításai",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -609,6 +632,7 @@ var keyStrings = {
     on: "bekapcsolva",
     "on ": "be ",
     "or scan": "vagy olvassa be",
+    Packages: "Csomagok",
     "Pairing approved. Command server configured.":
         "A párosítás jóváhagyva. A parancskiszolgáló beállítva.",
     "Pairing expired. Find the server again to retry.":
@@ -619,8 +643,10 @@ var keyStrings = {
         "A párosítást elutasították, vagy érvénytelen jóváhagyás érkezett. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
     "Parental control": "Szülői felügyelet",
     Password: "Jelszó",
+    "Paste settings JSON": "Illessze be a beállításokat JSON-formátumban",
     Pause: "Szünet",
     "Pause/Play": "Szünet / lejátszás",
+    "Payment method": "Fizetési mód",
     "Permanent clock on screen": "Óra állandó megjelenítése a képernyőn",
     PIN: "PIN",
     "PiP exchange": "PiP felcserélése",
@@ -629,6 +655,7 @@ var keyStrings = {
     Play: "Lejátszás",
     Playback: "Playback",
     "Player and device info": "Lejátszó- és eszközinformációk",
+    "Player could not start": "A lejátszó nem indítható el",
     "Player info:": "Lejátszóinformációk:",
     Playlist: "Lejátszási lista",
     "Playlist file": "Playlist fájl",
@@ -647,17 +674,22 @@ var keyStrings = {
     "Portal URL": "Portál URL-címe",
     "Position shift -10 seconds after pause":
         "10 másodperc visszaugrás szünet után",
+    Postpaid: "Utólag fizetett",
     PROST: "PROST",
     "PROST settings": "PROST beállításai",
+    Prepaid: "Előre fizetett",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Előző",
     "Preview in channel list": "Előnézet a csatornalistában",
     Previous: "Előző",
     "Privacy policy": "Adatvédelmi szabályzat",
+    "Privacy policy unavailable. Contact: %1":
+        "Az adatvédelmi tájékoztató nem érhető el. Kapcsolat: %1",
     "Profile name": "Profil neve",
     "Protect Adult Channels": "Felnőttcsatornák védelme",
     "Protect Change Provider": "Szolgáltatóváltás védelme",
     "Protect Settings": "Beállítások védelme",
+    "Protected source is unavailable": "A védett forrás nem érhető el",
     "p...": "p...",
     paging: "lapozás",
     Quality: "Minőség",
@@ -774,7 +806,12 @@ var keyStrings = {
     Settings: "Beállítások",
     "Settings changed. Discovery was canceled.":
         "A beállítások megváltoztak. A keresés megszakadt.",
+    "Settings copied": "Beállítások másolva",
+    "Settings could not be exported": "A beállításokat nem sikerült exportálni",
     "Settings could not be saved": "Nem sikerült menteni a beállításokat",
+    "Settings download requested": "Beállítások letöltése kérve",
+    "Settings imported": "Beállítások importálva",
+    "Settings JSON": "Beállítások JSON-formátumban",
     "Settings loaded from storage": "Beállítások betöltve a tárhelyről",
     "Settings STB": "STB beállítások",
     "Settings saved": "Beállítások elmentve",
@@ -816,13 +853,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Keverés: betöltés…",
     "Shuffle: Off": "Keverés: kikapcsolva",
     "Shuffle: On": "Keverés: bekapcsolva",
+    "Sign in to the protected source again":
+        "Jelentkezzen be újra a védett forrásba",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Bejelentkezés: %1",
+    "Sign out of all sources": "Kijelentkezés minden forrásból",
+    "Sign-in opens when you load a protected playlist.":
+        "A bejelentkezés védett lejátszási lista betöltésekor nyílik meg.",
     "Sleep timer": "Elalvásidőzítő",
     "Sort channels": "Csatornák rendezése",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "A forrásba való bejelentkezés megszakítva",
     "Stalker Portal Provider": "Stalker portálszolgáltató",
     "Stalker portal settings": "Stalker portál beállításai",
     "Stalker portals": "Stalker portálok",
@@ -832,9 +876,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Lejátszás leállítása és visszatérés az élő adáshoz",
+    "Stream could not be played": "A stream nem játszható le",
     "Stream type: %1": "Adatfolyam típusa: %1",
     "String for search": "Keresőkifejezés",
     "Su Mo Tu We Th Fr Sa": "V H K Sze Cs P Szo",
+    "Subscription information": "Előfizetési adatok",
     Subtitle: "Feliratok",
     Switch: "Váltás",
     "Switch sound track": "Hangsáv váltása",
@@ -916,6 +962,7 @@ var keyStrings = {
         "Hiányzik a felhasználónév vagy a jelszó.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Verzió",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM beállításai",
     "Vidok.TV": "Vidok.TV",

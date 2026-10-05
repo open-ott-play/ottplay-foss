@@ -407,13 +407,7 @@ function reportCatalogProviderLoad(
     error?: string
 ): void {
     if (error && error !== "catalog-credentials")
-        host.alert(
-            driver.id === "ottclub"
-                ? error === "catalog-processing"
-                    ? "Не удалось обработать список каналов! Проверьте правильность адреса плейлиста!!"
-                    : "Не удалось загрузить список каналов! Проверьте правильность адреса плейлиста!!"
-                : host._("Failed to load channel list!")
-        );
+        host.alert(host._("Failed to load channel list!"));
     var value = driver.credentials();
     if (
         !host.OttPlayCore.operatorCredentialsValid(
@@ -427,10 +421,16 @@ function reportCatalogProviderLoad(
         );
         host.infoBox(
             driver.id === "itv"
-                ? "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
+                ? host._(
+                      "Enter an application access key (%1–%2 characters).",
+                      10,
+                      12
+                  )
                 : driver.id === "ottclub"
-                  ? "Для доступа необходимо ввести ключ и адрес плейлиста!"
-                  : "Для доступа необходимо ввести ключ!"
+                  ? host._("Access key is required!") +
+                    "<br>" +
+                    host._("Enter playlist URL")
+                  : host._("Access key is required!")
         );
     }
 }
@@ -445,10 +445,15 @@ function mountCatalogProviderSettings(
     var id = driver.id;
     var modes =
         id === "itv" ? ["HLS(a)", "MPEGTS", "HLS(v)"] : ["HLS", "MPEGTS"];
-    var keyMessage =
-        id === "itv"
-            ? "Для доступа необходимо ввести ключ! (Ключ для плеера 10-12 символов)"
-            : "Для доступа необходимо ввести ключ!";
+    function keyMessage() {
+        return id === "itv"
+            ? host._(
+                  "Enter an application access key (%1–%2 characters).",
+                  10,
+                  12
+              )
+            : host._("Access key is required!");
+    }
     var editor = 0;
     function replay() {
         host.playChannel(host.catIndex, host.primaryIndex);
@@ -473,7 +478,7 @@ function mountCatalogProviderSettings(
                 ((id === "itv" && (value.length < 10 || value.length > 12)) ||
                     (id === "shura" && value && value.length < 8))
             ) {
-                host.alert(keyMessage);
+                host.alert(keyMessage());
                 if (id === "shura") {
                     var release = function () {};
                     var timer = host.setTimeout(function () {
@@ -499,8 +504,8 @@ function mountCatalogProviderSettings(
         edit(
             "server",
             id === "shura"
-                ? "Редактирование номера сервера Шура ТВ<br/>Только 1, 2, 3 или 5 !!!"
-                : "Редактирование адреса плейлиста OTTCLUB",
+                ? host._("Enter server number (%1).", "1, 2, 3, 5")
+                : host._("Enter playlist URL"),
             id === "shura" ? [0] : [0, 2],
             id === "shura" ? replay : host.restart
         );
@@ -508,20 +513,14 @@ function mountCatalogProviderSettings(
     function editKey() {
         edit(
             "username",
-            id === "itv"
-                ? "Редактирование ключа доступа iTV.Live (Ключ для плеера)"
-                : id === "shura"
-                  ? "Редактирование ключа доступа Шура ТВ"
-                  : "Редактирование ключа доступа OTTCLUB",
+            host._("Edit access key") +
+                (id === "itv" ? "<br>" + keyMessage() : ""),
             id === "shura" ? [0, 1, 2] : [0, 1],
             id === "itv" ? host.restart : replay
         );
     }
     function modeLabel() {
-        return (
-            (id === "shura" ? "Шура ТВ: Тип потоков: " : "Тип потоков: ") +
-            modes[driver.credentials().mode || 0]
-        );
+        return host._("Stream type: %1", modes[driver.credentials().mode || 0]);
     }
     function changeMode() {
         if (!owner.active()) return;
@@ -543,6 +542,18 @@ function mountCatalogProviderSettings(
         else if (host.playType > 0)
             host.playArchive(host.playType + host.playTime);
     }
+    (changeMode as any).menuTitle = modeLabel;
+    (changeMode as any).menuDetail = function () {
+        return host._("Select a stream type:<br>%1", modes.join(", "));
+    };
+    (editAddress as any).menuDetail = function () {
+        return id === "shura"
+            ? host._("Enter server number (%1).", "1, 2, 3, 5")
+            : host._(
+                  "Enter a playlist URL. The player will restart after saving."
+              );
+    };
+    (editKey as any).menuDetail = keyMessage;
     var closePanel = function () {};
     function subscription() {
         if (!owner.active() || !driver.subscription) return;
@@ -565,7 +576,7 @@ function mountCatalogProviderSettings(
         }
         closePanel = close;
         host.aboutKeyHandler = handler;
-        host.$("#listAbout").html("Загрузка. Подождите...").show();
+        host.$("#listAbout").html(host._("Loading. Please wait...")).show();
         release = owner.own(close);
         cancel = driver.subscription(function (result) {
             if (!visible || !owner.active()) return;
@@ -582,20 +593,7 @@ function mountCatalogProviderSettings(
                     .replace(/'/g, "&#39;");
             }
             if (result.error) {
-                var details: any;
-                try {
-                    details = JSON.stringify(result.error.xhr);
-                } catch (_) {
-                    details = "unavailable";
-                }
-                host.$("#listAbout").html(
-                    "get_user_info failed!<br/><br/>jqXHR:" +
-                        escape(details) +
-                        "<br/>textStatus: " +
-                        escape(result.error.status) +
-                        "<br/>errorThrown: " +
-                        escape(result.error.error)
-                );
+                host.$("#listAbout").html(host._("Failed to load!"));
             } else if (result.data !== null && result.data !== undefined) {
                 var packages: string[] = [];
                 try {
@@ -605,13 +603,24 @@ function mountCatalogProviderSettings(
                 } catch (_) {}
                 var user = result.data.user_info || {};
                 host.$("#listAbout").html(
-                    "Информация о подписке:<br/><br/>Логин: " +
+                    host._("Subscription information") +
+                        ":<br/><br/>" +
+                        host._("Login") +
+                        ": " +
                         escape(user.login || "") +
-                        "<br/>Баланс,$: " +
+                        "<br/>" +
+                        host._("Balance, $") +
+                        ": " +
                         escape(user.cash || "") +
-                        "<br/>Система: " +
-                        ["", "Предоплата", "Постоплата"][user.pay_system || 0] +
-                        "<br/>Пакеты: " +
+                        "<br/>" +
+                        host._("Payment method") +
+                        ": " +
+                        (["", host._("Prepaid"), host._("Postpaid")][
+                            user.pay_system || 0
+                        ] || "") +
+                        "<br/>" +
+                        host._("Packages") +
+                        ": " +
                         packages.join(", ")
                 );
             }
@@ -627,7 +636,7 @@ function mountCatalogProviderSettings(
                 host.$("#itvkey").val(value);
             } catch (_) {}
             if (!host.OttPlayCore.operatorCredentialsValid(id, value, ""))
-                host.alert(keyMessage);
+                host.alert(keyMessage());
             return value;
         };
         host.setProviderParams = function () {
@@ -644,7 +653,7 @@ function mountCatalogProviderSettings(
                     ""
                 )
             )
-                host.alert(keyMessage);
+                host.alert(keyMessage());
             return previous !== next.username;
         };
     }
@@ -665,34 +674,19 @@ function mountCatalogProviderSettings(
             host.delPopup(host.restart);
         var titles =
             id === "itv"
-                ? [
-                      "Ключ доступа iTV.Live",
-                      modeLabel(),
-                      "Информация о подписке",
-                  ]
+                ? ["Access key", modeLabel(), "Subscription information"]
                 : id === "ottclub"
-                  ? ["OTTCLUB: Адрес плейлиста", "OTTCLUB: Ключ доступа"]
-                  : [
-                        "Шура ТВ: номер сервера",
-                        "Шура ТВ: Ключ доступа",
-                        modeLabel(),
-                    ];
+                  ? ["Playlist URL", "Access key"]
+                  : ["Server", "Access key", modeLabel()];
         var details =
             id === "itv"
-                ? [
-                      "Ввод ключа доступа iTV.Live (Ключ для плеера)",
-                      "Выберите тип потоков:<br>" + modes.join(", "),
-                      "",
-                  ]
+                ? [keyMessage(), (changeMode as any).menuDetail(), ""]
                 : id === "ottclub"
-                  ? [
-                        "Ввод адреса плейлиста OTTCLUB (После изменения плеер перезапустится!)",
-                        "",
-                    ]
+                  ? [(editAddress as any).menuDetail(), keyMessage()]
                   : [
-                        "Ввод номера сервера Шура ТВ",
-                        "Ввод ключа доступа Шура ТВ",
-                        "Выберите тип потоков: HLS или MPEGTS",
+                        (editAddress as any).menuDetail(),
+                        keyMessage(),
+                        (changeMode as any).menuDetail(),
                     ];
         var actions =
             id === "itv"

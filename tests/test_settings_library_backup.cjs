@@ -387,4 +387,49 @@ check(
         assert.equal(f.restarts(), 0);
     }
 );
+check(
+    "import success and save failure use the selected Russian language",
+    () => {
+        for (const fail of [false, true]) {
+            const f = fixture();
+            f.mount();
+            const notices = [];
+            f.w.showShift = (message) => notices.push(message);
+            vm.runInContext(
+                ts
+                    .transpileModule(
+                        fs.readFileSync(
+                            require.resolve("../src/localization/index.ts"),
+                            "utf8"
+                        ),
+                        {
+                            compilerOptions: {
+                                module: ts.ModuleKind.ES2015,
+                                target: ts.ScriptTarget.ES5,
+                            },
+                        }
+                    )
+                    .outputText.replace(/^export /gm, ""),
+                f.w
+            );
+            vm.runInContext(
+                fs.readFileSync(
+                    require.resolve("../locales/russian.js"),
+                    "utf8"
+                ),
+                f.w
+            );
+            const e = f.export();
+            e.settings.fontSize = 3;
+            if (fail) f.fail("sFont");
+            f.import(e);
+            assert.equal(f.accept(), !fail);
+            assert.deepEqual(notices, [
+                fail
+                    ? "Не удалось сохранить настройки"
+                    : "Настройки импортированы",
+            ]);
+        }
+    }
+);
 console.log("OK: " + count + " settings/library backup integration groups");

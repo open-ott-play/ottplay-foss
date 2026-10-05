@@ -33,7 +33,15 @@ function extract(file, names) {
     acorn.parse(code, { ecmaVersion: 5 });
     return code;
 }
-const viewer = extract("src/index.ts", ["privacyPolicy"]);
+const viewer = extract("src/index.ts", ["privacyPolicy", "pluginInfo"]);
+const localization = ts
+    .transpileModule(read("src/localization/index.ts"), {
+        compilerOptions: {
+            module: ts.ModuleKind.ES2015,
+            target: ts.ScriptTarget.ES5,
+        },
+    })
+    .outputText.replace(/^export /gm, "");
 const cpd = extract("src/ui/index.ts", [
     "saveListPanelState",
     "restoreListPanelState",
@@ -58,7 +66,8 @@ function fixture({
     const requests = [];
     const previousHandler = () => false;
     Object.assign(w, {
-        _: (text) => text,
+        _: (text, ...args) =>
+            text.replace(/%(\d+)/g, (_match, index) => args[Number(index) - 1]),
         aboutKeyHandler: previousHandler,
         host,
         keys: { DOWN: 40, ENTER: 13, EXIT: 27, RETURN: 8, UP: 38 },
@@ -156,6 +165,30 @@ test("missing bundled file shows a local fallback without external retry", (f) =
     f.fail();
     assert.match(f.content().textContent, /Privacy policy unavailable/);
     assert.match(f.content().textContent, /alvit\.work@gmail\.com/);
+    assert.equal(f.requests.length, 1);
+});
+
+test("About labels and a missing privacy file follow the selected Russian language", (f) => {
+    f.w.eval(localization + read("locales/russian.js"));
+    f.w.PLAYER_VERSION = "1.2.3";
+    f.w.version = "<br/>Version: 1.2.3";
+    f.w.client_can_https = true;
+    f.w.pluginInfo();
+    assert.match(f.panel.textContent, /Версия: 1\.2\.3/);
+    assert.match(f.panel.textContent, /Поддержка HTTPS: Да/);
+    assert.match(
+        f.panel.textContent,
+        /Сервер OTT \/ приложения: https:\/\/localhost/
+    );
+    f.w.client_can_https = false;
+    f.w.pluginInfo();
+    assert.match(f.panel.textContent, /Поддержка HTTPS: Нет/);
+    f.w.privacyPolicy();
+    f.fail();
+    assert.equal(
+        f.content().textContent,
+        "Политика конфиденциальности недоступна. Контакт: alvit.work@gmail.com"
+    );
     assert.equal(f.requests.length, 1);
 });
 

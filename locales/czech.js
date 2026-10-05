@@ -68,6 +68,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP bez portu používá port HTTP 8081. Pro odpojení smažte adresu nebo zvolte Odpojit.",
+    "Another source sign-in is already open":
+        "Přihlášení k jinému zdroji je již otevřené",
     "API failed, trying M3U...": "Chyba API, zkoušíme M3U…",
     "API Server": "Server API",
     "API server URL": "URL serveru API",
@@ -92,6 +94,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Zpět / vpřed o 1 minutu",
     "Background color": "Barva pozadí",
     "Background color of selected item": "Barva pozadí vybrané položky",
+    "Balance, $": "Zůstatek, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Nastavení BEST LiST IPTV [HLS Playlist]",
@@ -171,6 +174,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Vypršel časový limit hledání příkazového serveru.",
     "Command server found.": "Příkazový server nalezen.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Nepodařilo se načíst komponenty kompatibility. Otevřete přehrávač znovu.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nastavte All4you.tv v Nastavení -> Nastavení poskytovatele",
@@ -256,6 +261,10 @@ var keyStrings = {
     "Continue watching?": "Pokračovat ve sledování?",
     "Copy category": "Kopírovat kategorii",
     "Copy JSON": "Kopírovat JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Zkopírujte JSON a uchovejte si zálohu. Obnovíte ji pomocí importu nastavení.",
+    "Copy the selected JSON with your device's copy command":
+        "Zkopírujte vybraný JSON pomocí příkazu kopírování v zařízení",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
@@ -270,6 +279,8 @@ var keyStrings = {
     Country: "Země",
     "Create category": "Vytvořit kategorii",
     current: "aktuální",
+    "Debug enabled. Restart to apply.":
+        "Ladění je zapnuto. Změny použijete restartováním přehrávače.",
     "Debug HUD": "Diagnostický panel",
     "Debug HUD is not available": "Diagnostický panel není dostupný",
     Delete: "Smazat",
@@ -299,6 +310,7 @@ var keyStrings = {
     "Download! Wait ...": "Stahování… Čekejte…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Nastavení DRVAO",
+    "Drag window": "Přesunout okno",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Nastavení Dragon Media PRO",
     Duration: "Délka",
@@ -314,6 +326,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Zadejte heslo (8 znaků).",
     "Enter a playlist URL to access this service.":
         "Pro přístup ke službě zadejte URL playlistu.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Zadejte URL seznamu skladeb. Přehrávač se po uložení restartuje.",
     "Enter a server address without spaces or a fragment.":
         "Zadejte adresu serveru bez mezer a části za #.",
     "Enter a username (8 characters).": "Zadejte uživatelské jméno (8 znaků).",
@@ -324,6 +338,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Zadejte platnou adresu serveru, například 192.168.1.20:8081.",
     "Enter access key for": "Zadejte přístupový klíč pro",
+    "Enter an application access key (%1–%2 characters).":
+        "Zadejte přístupový klíč aplikace (%1–%2 znaků).",
     "Enter an application access key (8 characters).":
         "Zadejte přístupový klíč aplikace (8 znaků).",
     "Enter an ID and PIN to access this service.":
@@ -350,6 +366,7 @@ var keyStrings = {
         "Zadejte URL portálu Stalker (např. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Zadejte URL portálu Stalker (např. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Zadejte číslo serveru (%1).",
     "Enter the access code separately, not in the server address.":
         "Zadejte přístupový kód odděleně od adresy serveru.",
     "Enter the command server IP or address.":
@@ -452,11 +469,13 @@ var keyStrings = {
     Favorites: "Oblíbené",
     "File selection is not supported on this device":
         "Výběr souboru není na tomto zařízení podporován",
+    "Fill screen": "Vyplnit obrazovku",
     Filter: "Filtr",
     Filters: "Filtry",
     "Find command server": "Najít příkazový server",
     "Finding command servers...": "Hledání příkazových serverů…",
     "First Run Setup": "Počáteční nastavení",
+    "Fit to screen": "Přizpůsobit obrazovce",
     Folders: "Folders",
     "Font type": "Druh písma",
     "For download settings file open": "Pro stažení souboru nastavení otevřete",
@@ -482,6 +501,7 @@ var keyStrings = {
     "HTTP port": "Port HTTP",
     "HTTP remote control is unavailable on this device.":
         "Ovládání HTTP není na tomto zařízení dostupné.",
+    "HTTPS support": "Podpora HTTPS",
     ID: "ID",
     "Import settings": "Importovat nastavení",
     "In live mode: <br/>": "V živém vysílání:<br/>",
@@ -495,6 +515,8 @@ var keyStrings = {
     "Interface transparency": "Průhlednost rozhraní",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Neplatný odkaz na kanál! Zadejte úplný název hostitele z URL streamu v klientské sekci (např. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Neplatná konfigurace chráněného zdroje",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Nastavení IpStream.one",
@@ -591,6 +613,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "Server OTT / aplikace",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Nastavení OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -600,6 +623,7 @@ var keyStrings = {
     on: "zapnuto",
     "on ": "při ",
     "or scan": "nebo naskenujte",
+    Packages: "Balíčky",
     "Pairing approved. Command server configured.":
         "Párování schváleno. Příkazový server je nastaven.",
     "Pairing expired. Find the server again to retry.":
@@ -610,8 +634,10 @@ var keyStrings = {
         "Párování bylo odmítnuto nebo přišlo neplatné schválení. Pro další pokus znovu vyhledejte server.",
     "Parental control": "Rodičovská kontrola",
     Password: "Heslo",
+    "Paste settings JSON": "Vložte nastavení ve formátu JSON",
     Pause: "Pauza",
     "Pause/Play": "Pauza / přehrávání",
+    "Payment method": "Způsob platby",
     "Permanent clock on screen": "Trvalé hodiny na obrazovce",
     PIN: "PIN",
     "PiP exchange": "Prohodit okna PiP",
@@ -620,6 +646,7 @@ var keyStrings = {
     Play: "Přehrát",
     Playback: "Playback",
     "Player and device info": "Informace o přehrávači a zařízení",
+    "Player could not start": "Přehrávač se nepodařilo spustit",
     "Player info:": "Informace o přehrávači:",
     Playlist: "Playlist",
     "Playlist file": "Soubor playlistu",
@@ -637,17 +664,22 @@ var keyStrings = {
     "POLMEDIA settings": "Nastavení POLMEDIA",
     "Portal URL": "URL portálu",
     "Position shift -10 seconds after pause": "Vrátit o 10 sekund po pauze",
+    Postpaid: "Platba zpětně",
     PROST: "PROST",
     "PROST settings": "Nastavení PROST",
+    Prepaid: "Předplaceno",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Předchozí",
     "Preview in channel list": "Náhled v seznamu kanálů",
     Previous: "Předchozí kanál",
     "Privacy policy": "Zásady ochrany osobních údajů",
+    "Privacy policy unavailable. Contact: %1":
+        "Zásady ochrany soukromí nejsou dostupné. Kontakt: %1",
     "Profile name": "Název profilu",
     "Protect Adult Channels": "Chránit kanály pro dospělé",
     "Protect Change Provider": "Chránit změnu poskytovatele",
     "Protect Settings": "Chránit nastavení",
+    "Protected source is unavailable": "Chráněný zdroj není dostupný",
     "p...": "p…",
     paging: "listování",
     Quality: "Kvalita",
@@ -762,7 +794,12 @@ var keyStrings = {
     Settings: "Nastavení",
     "Settings changed. Discovery was canceled.":
         "Nastavení se změnilo. Hledání bylo zrušeno.",
+    "Settings copied": "Nastavení zkopírováno",
+    "Settings could not be exported": "Nastavení se nepodařilo exportovat",
     "Settings could not be saved": "Nastavení se nepodařilo uložit",
+    "Settings download requested": "Bylo vyžádáno stažení nastavení",
+    "Settings imported": "Nastavení importováno",
+    "Settings JSON": "Nastavení ve formátu JSON",
     "Settings loaded from storage": "Nastavení načteno z úložiště",
     "Settings STB": "Nastavení zařízení",
     "Settings saved": "Nastavení uloženo",
@@ -801,13 +838,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Náhodné přehrávání: načítání…",
     "Shuffle: Off": "Náhodné přehrávání: vypnuto",
     "Shuffle: On": "Náhodné přehrávání: zapnuto",
+    "Sign in to the protected source again":
+        "Znovu se přihlaste k chráněnému zdroji",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Přihlásit se: %1",
+    "Sign out of all sources": "Odhlásit se ze všech zdrojů",
+    "Sign-in opens when you load a protected playlist.":
+        "Přihlášení se otevře při načtení chráněného seznamu skladeb.",
     "Sleep timer": "Časovač vypnutí",
     "Sort channels": "Řadit kanály",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Přihlášení ke zdroji bylo zrušeno",
     "Stalker Portal Provider": "Poskytovatel portálu Stalker",
     "Stalker portal settings": "Nastavení portálu Stalker",
     "Stalker portals": "Portály Stalker",
@@ -817,9 +861,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Zastavit přehrávání a vrátit se k živému vysílání",
+    "Stream could not be played": "Stream se nepodařilo přehrát",
     "Stream type: %1": "Typ streamu: %1",
     "String for search": "Hledaný text",
     "Su Mo Tu We Th Fr Sa": "Ne Po Út St Čt Pá So",
+    "Subscription information": "Informace o předplatném",
     Subtitle: "Titulky",
     Switch: "Přepnout",
     "Switch sound track": "Změnit zvukovou stopu",
@@ -899,6 +945,7 @@ var keyStrings = {
     "Username or password is missing.": "Chybí uživatelské jméno nebo heslo.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Verze",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Nastavení VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

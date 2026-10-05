@@ -69,6 +69,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "En IP-adress utan port använder HTTP-port 8081. Rensa adressen eller välj Koppla från för att stoppa.",
+    "Another source sign-in is already open":
+        "Ett inloggningsfönster för en annan källa är redan öppet",
     "API failed, trying M3U...": "API misslyckades, försöker med M3U…",
     "API Server": "API-server",
     "API server URL": "API-serverns URL",
@@ -93,6 +95,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Bakåt / framåt 1 minut",
     "Background color": "Bakgrundsfärg",
     "Background color of selected item": "Bakgrundsfärg för valt objekt",
+    "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist]-inställningar",
@@ -173,6 +176,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Tidsgränsen för sökning efter kommandoserver överskreds.",
     "Command server found.": "Kommandoserver hittades.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Kompatibilitetskomponenterna kunde inte läsas in. Öppna spelaren igen.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurera All4you.tv under Inställningar -> Leverantörsinställningar",
@@ -258,6 +263,10 @@ var keyStrings = {
     "Continue watching?": "Fortsätta titta?",
     "Copy category": "Kopiera kategori",
     "Copy JSON": "Kopiera JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Kopiera JSON för att spara en säkerhetskopia. Återställ den genom att importera inställningarna.",
+    "Copy the selected JSON with your device's copy command":
+        "Kopiera markerad JSON med enhetens kopieringskommando",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
@@ -272,6 +281,8 @@ var keyStrings = {
     Country: "Land",
     "Create category": "Skapa kategori",
     current: "aktuell",
+    "Debug enabled. Restart to apply.":
+        "Felsökning aktiverad. Starta om spelaren för att tillämpa ändringen.",
     "Debug HUD": "Felsökningspanel",
     "Debug HUD is not available": "Felsökningspanelen är inte tillgänglig",
     Delete: "Ta bort",
@@ -302,6 +313,7 @@ var keyStrings = {
     "Download! Wait ...": "Laddar ned… vänta…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO-inställningar",
+    "Drag window": "Flytta fönstret",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO-inställningar",
     Duration: "Längd",
@@ -317,6 +329,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Ange ett lösenord (8 tecken).",
     "Enter a playlist URL to access this service.":
         "Ange en spelliste-URL för att använda tjänsten.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Ange en spellistas URL. Spelaren startas om efter att du har sparat.",
     "Enter a server address without spaces or a fragment.":
         "Ange en serveradress utan blanksteg eller fragment efter #.",
     "Enter a username (8 characters).": "Ange ett användarnamn (8 tecken).",
@@ -327,6 +341,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Ange en giltig serveradress, t.ex. 192.168.1.20:8081.",
     "Enter access key for": "Ange åtkomstnyckel för",
+    "Enter an application access key (%1–%2 characters).":
+        "Ange en åtkomstnyckel för appen (%1–%2 tecken).",
     "Enter an application access key (8 characters).":
         "Ange programmets åtkomstnyckel (8 tecken).",
     "Enter an ID and PIN to access this service.":
@@ -353,6 +369,7 @@ var keyStrings = {
         "Ange Stalker-portalens URL (t.ex. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Ange Stalker-portalens URL (t.ex. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Ange servernumret (%1).",
     "Enter the access code separately, not in the server address.":
         "Ange åtkomstkoden separat från serveradressen.",
     "Enter the command server IP or address.":
@@ -455,11 +472,13 @@ var keyStrings = {
     Favorites: "Favoriter",
     "File selection is not supported on this device":
         "Filval stöds inte på den här enheten",
+    "Fill screen": "Fyll skärmen",
     Filter: "Filter",
     Filters: "Filter",
     "Find command server": "Hitta kommandoserver",
     "Finding command servers...": "Söker efter kommandoservrar…",
     "First Run Setup": "Förstagångsinställning",
+    "Fit to screen": "Anpassa till skärmen",
     Folders: "Folders",
     "Font type": "Typsnitt",
     "For download settings file open":
@@ -487,6 +506,7 @@ var keyStrings = {
     "HTTP port": "HTTP-port",
     "HTTP remote control is unavailable on this device.":
         "HTTP-fjärrkontroll är inte tillgänglig på den här enheten.",
+    "HTTPS support": "HTTPS-stöd",
     ID: "ID",
     "Import settings": "Importera inställningar",
     "In live mode: <br/>": "Vid direktsändning:<br/>",
@@ -500,6 +520,8 @@ var keyStrings = {
     "Interface transparency": "Gränssnittets genomskinlighet",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ogiltig kanallänk! Ange hela värdnamnet från strömmens URL på kundkontot (t.ex. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Ogiltig konfiguration för skyddad källa",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one-inställningar",
@@ -597,6 +619,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "OTT- / appserver",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-inställningar",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -606,6 +629,7 @@ var keyStrings = {
     on: "på",
     "on ": "vid ",
     "or scan": "eller skanna",
+    Packages: "Paket",
     "Pairing approved. Command server configured.":
         "Parkopplingen godkändes. Kommandoservern är konfigurerad.",
     "Pairing expired. Find the server again to retry.":
@@ -616,8 +640,10 @@ var keyStrings = {
         "Parkopplingen avvisades eller gav ett ogiltigt godkännande. Sök efter servern igen för att försöka på nytt.",
     "Parental control": "Föräldrakontroll",
     Password: "Lösenord",
+    "Paste settings JSON": "Klistra in inställningar i JSON-format",
     Pause: "Paus",
     "Pause/Play": "Paus / spela",
+    "Payment method": "Betalningsmetod",
     "Permanent clock on screen": "Visa alltid klocka på skärmen",
     PIN: "PIN",
     "PiP exchange": "Växla PiP-fönster",
@@ -626,6 +652,7 @@ var keyStrings = {
     Play: "Spela",
     Playback: "Playback",
     "Player and device info": "Spelar- och enhetsinformation",
+    "Player could not start": "Spelaren kunde inte starta",
     "Player info:": "Spelarinformation:",
     Playlist: "Spellista",
     "Playlist file": "Spellistefil",
@@ -644,17 +671,23 @@ var keyStrings = {
     "Portal URL": "Portalens URL",
     "Position shift -10 seconds after pause":
         "Hoppa tillbaka 10 sekunder efter paus",
+    Postpaid: "Efterskottsbetalning",
     PROST: "PROST",
     "PROST settings": "PROST-inställningar",
+    Prepaid: "Förskottsbetalning",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Föregående",
     "Preview in channel list": "Förhandsvisning i kanallistan",
     Previous: "Föregående kanal",
     "Privacy policy": "Integritetspolicy",
+    "Privacy policy unavailable. Contact: %1":
+        "Integritetspolicyn är inte tillgänglig. Kontakt: %1",
     "Profile name": "Profilnamn",
     "Protect Adult Channels": "Skydda vuxenkanaler",
     "Protect Change Provider": "Skydda leverantörsbyte",
     "Protect Settings": "Skydda inställningar",
+    "Protected source is unavailable":
+        "Den skyddade källan är inte tillgänglig",
     "p...": "p…",
     paging: "sidbläddring",
     Quality: "Kvalitet",
@@ -770,7 +803,12 @@ var keyStrings = {
     Settings: "Inställningar",
     "Settings changed. Discovery was canceled.":
         "Inställningarna ändrades. Sökningen avbröts.",
+    "Settings copied": "Inställningarna har kopierats",
+    "Settings could not be exported": "Inställningarna kunde inte exporteras",
     "Settings could not be saved": "Inställningarna kunde inte sparas",
+    "Settings download requested": "Nedladdning av inställningar har begärts",
+    "Settings imported": "Inställningarna har importerats",
+    "Settings JSON": "Inställningar i JSON-format",
     "Settings loaded from storage": "Inställningar inlästa från lagring",
     "Settings STB": "Enhetsinställningar",
     "Settings saved": "Inställningarna sparades",
@@ -808,13 +846,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Blanda: läser in…",
     "Shuffle: Off": "Blanda: av",
     "Shuffle: On": "Blanda: på",
+    "Sign in to the protected source again":
+        "Logga in på den skyddade källan igen",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Logga in: %1",
+    "Sign out of all sources": "Logga ut från alla källor",
+    "Sign-in opens when you load a protected playlist.":
+        "Inloggningen öppnas när du läser in en skyddad spellista.",
     "Sleep timer": "Insomningstimer",
     "Sort channels": "Sortera kanaler",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Inloggningen till källan avbröts",
     "Stalker Portal Provider": "Stalker-portalleverantör",
     "Stalker portal settings": "Inställningar för Stalker-portal",
     "Stalker portals": "Stalker-portaler",
@@ -824,9 +869,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Stoppa uppspelning och återgå till direktsändning",
+    "Stream could not be played": "Strömmen kunde inte spelas upp",
     "Stream type: %1": "Strömtyp: %1",
     "String for search": "Söktext",
     "Su Mo Tu We Th Fr Sa": "Sö Må Ti On To Fr Lö",
+    "Subscription information": "Prenumerationsinformation",
     Subtitle: "Undertexter",
     Switch: "Byt",
     "Switch sound track": "Byt ljudspår",
@@ -906,6 +953,7 @@ var keyStrings = {
     "Username or password is missing.": "Användarnamn eller lösenord saknas.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Version",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM-inställningar",
     "Vidok.TV": "Vidok.TV",

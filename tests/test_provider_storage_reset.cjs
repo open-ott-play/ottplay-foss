@@ -84,6 +84,7 @@ const code = bundle
 const saved = new Map();
 let firstRuns = 0;
 const context = {
+    _: (text) => text,
     $() {
         return {
             append() {

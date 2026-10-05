@@ -9,6 +9,37 @@
     var lifecycle = 0;
     var libraries = {};
     var booted = false;
+    var labels = {
+        loading: "Loading…",
+        playback: "Stream could not be played",
+        startup: "Player could not start",
+        runtime:
+            "Compatibility runtime could not load. Reopen the player to retry.",
+    };
+
+    function updateLabels(value) {
+        if (!value || typeof value !== "object") return;
+        Object.keys(labels).forEach(function (key) {
+            if (
+                Object.prototype.hasOwnProperty.call(value, key) &&
+                typeof value[key] === "string" &&
+                value[key].trim() &&
+                value[key].length <= 512
+            )
+                labels[key] = value[key];
+        });
+    }
+    // The native window receives a bounded text-only snapshot before runtime boot,
+    // including when the compatibility script itself could not load.
+    try {
+        var initialLabels = /[?&]labels=([^&]*)/.exec(window.location.search);
+        if (initialLabels && initialLabels[1].length <= 24000)
+            updateLabels(
+                JSON.parse(
+                    decodeURIComponent(initialLabels[1].replace(/\+/g, " "))
+                )
+            );
+    } catch (_) {}
 
     function invoke(command, args) {
         return window.__TAURI__.core.invoke(command, args);
@@ -81,7 +112,7 @@
         if (!active(state)) return;
         state.failed = true;
         release(state);
-        status("Stream could not be played");
+        status(labels.playback);
         report(state, "error");
     }
 
@@ -114,7 +145,10 @@
 
     function configureHlsWorker() {
         if (window.Hls && window.Hls.DefaultConfig) {
-            window.Hls.DefaultConfig.workerPath = new URL("./js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion, window.location.href).href;
+            window.Hls.DefaultConfig.workerPath = new URL(
+                "./js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion,
+                window.location.href
+            ).href;
         }
     }
 
@@ -122,7 +156,13 @@
         if (libraries[name]) return libraries[name];
         libraries[name] = new Promise(function (resolve, reject) {
             var script = document.createElement("script");
-            script.src = new URL(path + (name === "hls" ? "?v=" + window.__ottMediaRuntimeVersion : ""), window.location.href).href;
+            script.src = new URL(
+                path +
+                    (name === "hls"
+                        ? "?v=" + window.__ottMediaRuntimeVersion
+                        : ""),
+                window.location.href
+            ).href;
             script.onload = function () {
                 if (name === "hls") configureHlsWorker();
                 resolve();
@@ -221,7 +261,7 @@
                     state.video.removeAttribute("src");
                     state.video.load();
                 } catch (_) {}
-                status("Loading…");
+                status(labels.loading);
                 if (fallback) hls(state, false);
                 else direct(state);
             }
@@ -267,18 +307,20 @@
                     )
                         fail(state);
                 });
-                Promise.resolve(player.attach(state.video)).then(function () {
-                    if (active(state) && state.shaka === player)
-                        return player.load(state.url);
-                }).then(
-                    function () {
+                Promise.resolve(player.attach(state.video))
+                    .then(function () {
                         if (active(state) && state.shaka === player)
-                            playVideo(state);
-                    },
-                    function () {
-                        if (active(state)) fail(state);
-                    }
-                );
+                            return player.load(state.url);
+                    })
+                    .then(
+                        function () {
+                            if (active(state) && state.shaka === player)
+                                playVideo(state);
+                        },
+                        function () {
+                            if (active(state)) fail(state);
+                        }
+                    );
             } catch (_) {
                 fail(state);
             }
@@ -302,6 +344,7 @@
         )
             return;
         lastSession = request.session;
+        updateLabels(request.labels);
         stop();
         var previous = document.getElementById("ottplay-pip-video");
         var video = document.createElement("video");
@@ -329,7 +372,7 @@
             playbackEpoch: 0,
         };
         current = state;
-        status("Loading…");
+        status(labels.loading);
         video.onplaying = function () {
             if (!active(state)) return;
             status("");
@@ -359,9 +402,12 @@
 
     function boot() {
         if (booted) return;
-        if (window.__ottRuntimePolyfillsReady !== true ||
-            !/^[a-f0-9]{16}$/.test(window.__ottMediaRuntimeVersion || "")) {
-            status("Compatibility runtime could not load. Reopen the player to retry.");
+        status(labels.loading);
+        if (
+            window.__ottRuntimePolyfillsReady !== true ||
+            !/^[a-f0-9]{16}$/.test(window.__ottMediaRuntimeVersion || "")
+        ) {
+            status(labels.runtime);
             return;
         }
         booted = true;
@@ -387,12 +433,11 @@
                     if (lifecycle === readyLifecycle) play(request);
                 },
                 function () {
-                    if (lifecycle === readyLifecycle)
-                        status("Player could not start");
+                    if (lifecycle === readyLifecycle) status(labels.startup);
                 }
             );
         } catch (_) {
-            status("Player could not start");
+            status(labels.startup);
         }
     }
     if (document.readyState === "loading")

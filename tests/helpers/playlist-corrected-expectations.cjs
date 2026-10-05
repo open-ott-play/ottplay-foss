@@ -92,7 +92,7 @@ function title(record, before, after) {
     );
 }
 
-function media(row, profile) {
+function media(row, profile, localizedTitles = profile === "antifriz") {
     const expected = clone(row.media[profile]);
     if (row.input === quotedInput)
         title(
@@ -120,6 +120,11 @@ function media(row, profile) {
             title: "",
         });
     }
+    // Generated names are application UI; historical fixtures retain the old Russian fallback.
+    if (localizedTitles)
+        for (const record of expected.records)
+            if (record.title === "??? Нет названия")
+                title(record, "??? Нет названия", "Untitled");
     return expected;
 }
 

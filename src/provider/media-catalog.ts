@@ -55,7 +55,7 @@ function createOwnedMediaCatalog(
                 var title = entry.generatedName
                     ? profile === "kb-team"
                         ? ports.translate("??? No channel name")
-                        : "??? Нет названия"
+                        : ports.translate("Untitled")
                     : entry.name;
                 var logo =
                     typeof entry.logo === "string" &&
@@ -205,7 +205,15 @@ function createOwnedMediaCatalog(
                                         value.title ||
                                         request.name ||
                                         "?",
-                                    records: value.channels || [],
+                                    records: (value.channels || []).map(
+                                        function (item: any) {
+                                            var record = detach(item);
+                                            if (!record.title)
+                                                record.title =
+                                                    ports.translate("Untitled");
+                                            return record;
+                                        }
+                                    ),
                                 };
                                 if (value.next_page_url)
                                     decoded.records = decoded.records.concat([

@@ -209,9 +209,11 @@ function mountM3uProviderSettings(
                             if (result.name) host.mediaName = result.name;
                             if (result.error)
                                 host.alert(
-                                    result.error === "network"
-                                        ? "Error: " + result.status
-                                        : "Error: Cannot load media catalog!"
+                                    host._("Unable to load playlist") +
+                                        (result.error === "network" &&
+                                        result.status
+                                            ? " (" + result.status + ")"
+                                            : "")
                                 );
                             if (busyView === busy) busyView = null;
                             busy.close();
@@ -288,20 +290,23 @@ function mountM3uProviderSettings(
         if (host.providerMediaClient === previous)
             host.providerMediaClient = null;
     });
-    function label(): void {
-        if (!active()) return;
+    function menuTitle(): string {
         var config = driver.configuration(),
             slot = config.M3Us[config.active];
+        return (
+            host._("Select playlist") +
+            ": " +
+            (config.active + 1) +
+            " - " +
+            text(slot.name || masked(slot.www))
+        );
+    }
+    function label(): void {
+        if (!active()) return;
         var index = host.popupActions.indexOf(
             driver.fixedSlot() >= 0 ? showDetails : showSlots
         );
-        if (index !== -1)
-            host.popupArray[index] =
-                host._("Select playlist") +
-                ": " +
-                (config.active + 1) +
-                " - " +
-                text(slot.name || masked(slot.www));
+        if (index !== -1) host.popupArray[index] = menuTitle();
     }
     function loadPlaylist(): void {
         if (!active()) return;
@@ -619,6 +624,10 @@ function mountM3uProviderSettings(
         if (next.M3Us[next.active].www.length < 8)
             host.alert(host._("Enter playlist URL"));
         return before !== JSON.stringify(next);
+    };
+    showSlots.menuTitle = showDetails.menuTitle = menuTitle;
+    showSlots.menuDetail = showDetails.menuDetail = function () {
+        return host._("Select playlist");
     };
     host.duneAddSettings = function (index: number) {
         if (!active()) return;

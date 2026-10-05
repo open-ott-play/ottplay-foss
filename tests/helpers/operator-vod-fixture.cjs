@@ -2,12 +2,13 @@
 const vm = require("node:vm"),
     { JSDOM } = require("jsdom");
 const { context, declarations } = require("./playlist-fixture.cjs");
-exports.run = function (profile, input) {
+exports.run = function (profile, input, translate = (value) => value) {
     const ctx = context(),
         calls = [],
         events = [];
     const window = new JSDOM("").window;
     Object.assign(ctx, {
+        _: translate,
         alert: (value) => events.push(["alert", value]),
         box_mac: input.mac === undefined ? "00:11:22:33:44:55" : input.mac,
         mediaName: "Previous catalog",

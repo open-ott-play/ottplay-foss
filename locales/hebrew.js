@@ -69,6 +69,7 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "כתובת IP ללא יציאה משתמשת ביציאת HTTP 8081. כדי להפסיק, נקה את הכתובת או בחר ניתוק.",
+    "Another source sign-in is already open": "חלון כניסה למקור אחר כבר פתוח",
     "API failed, trying M3U...": "ה-API נכשל, מנסה M3U…",
     "API Server": "שרת API",
     "API server URL": "כתובת שרת API",
@@ -92,6 +93,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "דלג דקה אחורה / קדימה",
     "Background color": "צבע רקע",
     "Background color of selected item": "צבע הרקע של הפריט הנבחר",
+    "Balance, $": "יתרה, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "הגדרות BEST LiST IPTV [HLS Playlist]",
@@ -165,6 +167,8 @@ var keyStrings = {
         "חיפוש שרת הפקודות אינו זמין. יש לבחור ב״חיפוש שרת פקודות״ כדי לנסות שוב.",
     "Command server discovery timed out.": "תם הזמן הקצוב לחיפוש שרת הפקודות.",
     "Command server found.": "נמצא שרת פקודות.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "לא ניתן היה לטעון את רכיבי התאימות. יש לפתוח את הנגן מחדש כדי לנסות שוב.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "הגדר את All4you.tv בהגדרות -> הגדרות ספק",
@@ -250,6 +254,10 @@ var keyStrings = {
     "Continue watching?": "להמשיך לצפות?",
     "Copy category": "העתק קטגוריה",
     "Copy JSON": "העתק JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "העתיקו את ה-JSON כדי לשמור גיבוי. השתמשו בייבוא הגדרות כדי לשחזר אותו.",
+    "Copy the selected JSON with your device's copy command":
+        "העתיקו את ה-JSON המסומן באמצעות פקודת ההעתקה של המכשיר",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
@@ -263,6 +271,8 @@ var keyStrings = {
     Country: "מדינה",
     "Create category": "צור קטגוריה",
     current: "נוכחי",
+    "Debug enabled. Restart to apply.":
+        "מצב ניפוי שגיאות הופעל. יש להפעיל מחדש את הנגן כדי להחיל את השינוי.",
     "Debug HUD": "לוח ניפוי שגיאות",
     "Debug HUD is not available": "לוח ניפוי השגיאות אינו זמין",
     Delete: "מחק",
@@ -292,6 +302,7 @@ var keyStrings = {
     "Download! Wait ...": "מוריד… נא להמתין…",
     DRVAO: "DRVAO",
     "DRVAO settings": "הגדרות DRVAO",
+    "Drag window": "הזזת החלון",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "הגדרות Dragon Media PRO",
     Duration: "משך",
@@ -307,6 +318,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "הזן סיסמה (8 תווים).",
     "Enter a playlist URL to access this service.":
         "הזן כתובת פלייליסט כדי לגשת לשירות זה.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "יש להזין כתובת URL של רשימת השמעה. הנגן יופעל מחדש לאחר השמירה.",
     "Enter a server address without spaces or a fragment.":
         "הזן כתובת שרת ללא רווחים או מקטע אחרי #.",
     "Enter a username (8 characters).": "הזן שם משתמש (8 תווים).",
@@ -317,6 +330,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "הזן כתובת שרת תקינה, למשל 192.168.1.20:8081.",
     "Enter access key for": "הזן מפתח גישה עבור",
+    "Enter an application access key (%1–%2 characters).":
+        "יש להזין מפתח גישה ליישום (%1–%2 תווים).",
     "Enter an application access key (8 characters).":
         "הזן מפתח גישה ליישום (8 תווים).",
     "Enter an ID and PIN to access this service.":
@@ -342,6 +357,7 @@ var keyStrings = {
         "הזן כתובת פורטל Stalker (למשל http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "הזן כתובת פורטל Stalker (למשל http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "יש להזין את מספר השרת (%1).",
     "Enter the access code separately, not in the server address.":
         "הזן את קוד הגישה בנפרד, ולא בכתובת השרת.",
     "Enter the command server IP or address.":
@@ -442,11 +458,13 @@ var keyStrings = {
     Favorites: "מועדפים",
     "File selection is not supported on this device":
         "בחירת קבצים אינה נתמכת במכשיר זה",
+    "Fill screen": "מלא את המסך",
     Filter: "מסנן",
     Filters: "מסננים",
     "Find command server": "חיפוש שרת פקודות",
     "Finding command servers...": "חיפוש שרתי פקודות...",
     "First Run Setup": "הגדרות הפעלה ראשונה",
+    "Fit to screen": "התאם למסך",
     Folders: "Folders",
     "Font type": "סוג גופן",
     "For download settings file open": "כדי להוריד את קובץ ההגדרות, פתח",
@@ -472,6 +490,7 @@ var keyStrings = {
     "HTTP port": "יציאת HTTP",
     "HTTP remote control is unavailable on this device.":
         "שליטה דרך HTTP אינה זמינה במכשיר זה.",
+    "HTTPS support": "תמיכה ב-HTTPS",
     ID: "מזהה",
     "Import settings": "ייבא הגדרות",
     "In live mode: <br/>": "במצב שידור חי:<br/>",
@@ -485,6 +504,7 @@ var keyStrings = {
     "Interface transparency": "שקיפות הממשק",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "קישור הערוץ אינו תקין! הזן את שם המארח המלא כמו בכתובת השידור באזור האישי (למשל subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration": "הגדרות המקור המוגן אינן תקינות",
     "IPTV token": "אסימון IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "הגדרות IpStream.one",
@@ -581,6 +601,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "שרת OTT / יישום",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "הגדרות OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -590,6 +611,7 @@ var keyStrings = {
     on: "פעיל",
     "on ": "פעיל ",
     "or scan": "או סרוק",
+    Packages: "חבילות",
     "Pairing approved. Command server configured.":
         "הצימוד אושר. שרת הפקודות הוגדר.",
     "Pairing expired. Find the server again to retry.":
@@ -600,8 +622,10 @@ var keyStrings = {
         "הצימוד נדחה או שהתקבל אישור לא תקין. יש לחפש שוב את השרת כדי לנסות שוב.",
     "Parental control": "בקרת הורים",
     Password: "סיסמה",
+    "Paste settings JSON": "הדביקו הגדרות בפורמט JSON",
     Pause: "השהה",
     "Pause/Play": "השהה / נגן",
+    "Payment method": "אמצעי תשלום",
     "Permanent clock on screen": "הצג תמיד שעון על המסך",
     PIN: "PIN",
     "PiP exchange": "החלף PiP",
@@ -610,6 +634,7 @@ var keyStrings = {
     Play: "נגן",
     Playback: "Playback",
     "Player and device info": "פרטי הנגן והמכשיר",
+    "Player could not start": "לא ניתן היה להפעיל את הנגן",
     "Player info:": "פרטי הנגן:",
     Playlist: "פלייליסט",
     "Playlist file": "קובץ פלייליסט",
@@ -627,17 +652,22 @@ var keyStrings = {
     "POLMEDIA settings": "הגדרות POLMEDIA",
     "Portal URL": "כתובת פורטל",
     "Position shift -10 seconds after pause": "חזור 10 שניות אחורה לאחר השהיה",
+    Postpaid: "תשלום בדיעבד",
     PROST: "PROST",
     "PROST settings": "הגדרות PROST",
+    Prepaid: "תשלום מראש",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "הקודם",
     "Preview in channel list": "תצוגה מקדימה ברשימת הערוצים",
     Previous: "הקודם",
     "Privacy policy": "מדיניות פרטיות",
+    "Privacy policy unavailable. Contact: %1":
+        "מדיניות הפרטיות אינה זמינה. ליצירת קשר: %1",
     "Profile name": "שם הפרופיל",
     "Protect Adult Channels": "הגן על ערוצי מבוגרים",
     "Protect Change Provider": "הגן על החלפת ספק",
     "Protect Settings": "הגן על ההגדרות",
+    "Protected source is unavailable": "המקור המוגן אינו זמין",
     "p...": "p...",
     paging: "דפדוף בין עמודים",
     Quality: "איכות",
@@ -748,7 +778,12 @@ var keyStrings = {
     "Set timer?": "להגדיר טיימר?",
     Settings: "הגדרות",
     "Settings changed. Discovery was canceled.": "ההגדרות השתנו. החיפוש בוטל.",
+    "Settings copied": "ההגדרות הועתקו",
+    "Settings could not be exported": "לא ניתן לייצא את ההגדרות",
     "Settings could not be saved": "לא ניתן לשמור את ההגדרות",
+    "Settings download requested": "נשלחה בקשה להורדת ההגדרות",
+    "Settings imported": "ההגדרות יובאו",
+    "Settings JSON": "הגדרות בפורמט JSON",
     "Settings loaded from storage": "ההגדרות נטענו מהאחסון",
     "Settings STB": "הגדרות STB",
     "Settings saved": "ההגדרות נשמרו",
@@ -786,13 +821,19 @@ var keyStrings = {
     "Shuffle: Loading...": "ערבוב: טוען…",
     "Shuffle: Off": "ערבוב: כבוי",
     "Shuffle: On": "ערבוב: פעיל",
+    "Sign in to the protected source again": "יש להיכנס שוב למקור המוגן",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "כניסה: %1",
+    "Sign out of all sources": "יציאה מכל המקורות",
+    "Sign-in opens when you load a protected playlist.":
+        "חלון הכניסה נפתח בעת טעינת רשימת השמעה מוגנת.",
     "Sleep timer": "טיימר שינה",
     "Sort channels": "מיין ערוצים",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "הכניסה למקור בוטלה",
     "Stalker Portal Provider": "ספק פורטל Stalker",
     "Stalker portal settings": "הגדרות פורטל Stalker",
     "Stalker portals": "פורטלי Stalker",
@@ -801,9 +842,11 @@ var keyStrings = {
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "הפסק ניגון וחזור לשידור חי",
+    "Stream could not be played": "לא ניתן היה להפעיל את הזרם",
     "Stream type: %1": "סוג שידור: %1",
     "String for search": "שאילתת חיפוש",
     "Su Mo Tu We Th Fr Sa": "א ב ג ד ה ו ש",
+    "Subscription information": "פרטי מנוי",
     Subtitle: "כתוביות",
     Switch: "החלף",
     "Switch sound track": "החלף רצועת שמע",
@@ -880,6 +923,7 @@ var keyStrings = {
     "Username or password is missing.": "שם המשתמש או הסיסמה חסרים.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "גרסה",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "הגדרות VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

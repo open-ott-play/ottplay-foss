@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Un IP senza porta usa la porta HTTP 8081. Cancella l'indirizzo o seleziona Disconnetti per interrompere.",
+    "Another source sign-in is already open":
+        "È già aperta una finestra di accesso a un’altra sorgente",
     "API failed, trying M3U...": "API non riuscita, tentativo con M3U…",
     "API Server": "Server API",
     "API server URL": "URL del server API",
@@ -95,6 +97,7 @@ var keyStrings = {
     "Background color": "Colore di sfondo",
     "Background color of selected item":
         "Colore di sfondo dell'elemento selezionato",
+    "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Impostazioni di BEST LiST IPTV [HLS Playlist]",
@@ -178,6 +181,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Tempo scaduto per la ricerca del server comandi.",
     "Command server found.": "Server comandi trovato.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Impossibile caricare i componenti di compatibilità. Riapri il lettore per riprovare.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configura All4you.tv in Impostazioni -> Impostazioni del fornitore",
@@ -263,6 +268,10 @@ var keyStrings = {
     "Continue watching?": "Continuare la visione?",
     "Copy category": "Copia categoria",
     "Copy JSON": "Copia JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Copia il JSON per conservare un backup. Usa l’importazione delle impostazioni per ripristinarlo.",
+    "Copy the selected JSON with your device's copy command":
+        "Copia il JSON selezionato con il comando di copia del dispositivo",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Impossibile connettersi al server.",
@@ -277,6 +286,8 @@ var keyStrings = {
     Country: "Paese",
     "Create category": "Crea categoria",
     current: "attuale",
+    "Debug enabled. Restart to apply.":
+        "Debug attivato. Riavvia il lettore per applicare la modifica.",
     "Debug HUD": "Pannello di debug",
     "Debug HUD is not available": "Pannello di debug non disponibile",
     Delete: "Elimina",
@@ -306,6 +317,7 @@ var keyStrings = {
     "Download! Wait ...": "Download in corso… attendere…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Impostazioni di DRVAO",
+    "Drag window": "Sposta la finestra",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Impostazioni di Dragon Media PRO",
     Duration: "Durata",
@@ -321,6 +333,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Inserisci una password (8 caratteri).",
     "Enter a playlist URL to access this service.":
         "Inserisci l'URL di una playlist per accedere al servizio.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Inserisci l’URL di una playlist. Il lettore verrà riavviato dopo il salvataggio.",
     "Enter a server address without spaces or a fragment.":
         "Inserisci un indirizzo server senza spazi o frammenti.",
     "Enter a username (8 characters).":
@@ -332,6 +346,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Inserisci un indirizzo server valido, ad esempio 192.168.1.20:8081.",
     "Enter access key for": "Inserisci chiave di accesso per",
+    "Enter an application access key (%1–%2 characters).":
+        "Inserisci una chiave di accesso per l’applicazione (%1–%2 caratteri).",
     "Enter an application access key (8 characters).":
         "Inserisci una chiave di accesso per applicazioni (8 caratteri).",
     "Enter an ID and PIN to access this service.":
@@ -359,6 +375,7 @@ var keyStrings = {
         "Inserisci URL del portale Stalker (es. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Inserisci URL del portale Stalker (es. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Inserisci il numero del server (%1).",
     "Enter the access code separately, not in the server address.":
         "Inserisci il codice di accesso separatamente, non nell'indirizzo del server.",
     "Enter the command server IP or address.":
@@ -461,11 +478,13 @@ var keyStrings = {
     Favorites: "Preferiti",
     "File selection is not supported on this device":
         "La selezione dei file non è supportata su questo dispositivo",
+    "Fill screen": "Riempi lo schermo",
     Filter: "Filtro",
     Filters: "Filtri",
     "Find command server": "Trova server comandi",
     "Finding command servers...": "Ricerca dei server comandi...",
     "First Run Setup": "Configurazione iniziale",
+    "Fit to screen": "Adatta allo schermo",
     Folders: "Folders",
     "Font type": "Tipo di carattere",
     "For download settings file open":
@@ -493,6 +512,7 @@ var keyStrings = {
     "HTTP port": "Porta HTTP",
     "HTTP remote control is unavailable on this device.":
         "Il controllo remoto HTTP non è disponibile su questo dispositivo.",
+    "HTTPS support": "Supporto HTTPS",
     ID: "ID",
     "Import settings": "Importa impostazioni",
     "In live mode: <br/>": "In modalità diretta:<br/>",
@@ -506,6 +526,8 @@ var keyStrings = {
     "Interface transparency": "Trasparenza dell'interfaccia",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Link del canale non valido! Inserisci l'host completo come nell'URL del flusso dell'area clienti (es. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Configurazione della sorgente protetta non valida",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Impostazioni di IpStream.one",
@@ -604,6 +626,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "Server OTT / app",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Impostazioni di OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -613,6 +636,7 @@ var keyStrings = {
     on: "attivo",
     "on ": "attivato ",
     "or scan": "o scansiona",
+    Packages: "Pacchetti",
     "Pairing approved. Command server configured.":
         "Abbinamento approvato. Server comandi configurato.",
     "Pairing expired. Find the server again to retry.":
@@ -623,8 +647,10 @@ var keyStrings = {
         "L’abbinamento è stato rifiutato o ha restituito un’approvazione non valida. Cerca nuovamente il server per riprovare.",
     "Parental control": "Controllo parentale",
     Password: "Password",
+    "Paste settings JSON": "Incolla le impostazioni in formato JSON",
     Pause: "Pausa",
     "Pause/Play": "Pausa / riproduci",
+    "Payment method": "Metodo di pagamento",
     "Permanent clock on screen": "Mostra sempre l'orologio sullo schermo",
     PIN: "PIN",
     "PiP exchange": "Scambia PiP",
@@ -633,6 +659,7 @@ var keyStrings = {
     Play: "Riproduci",
     Playback: "Playback",
     "Player and device info": "Informazioni su lettore e dispositivo",
+    "Player could not start": "Impossibile avviare il lettore",
     "Player info:": "Informazioni lettore:",
     Playlist: "Playlist",
     "Playlist file": "File playlist",
@@ -651,17 +678,22 @@ var keyStrings = {
     "Portal URL": "URL del portale",
     "Position shift -10 seconds after pause":
         "Torna indietro di 10 secondi dopo una pausa",
+    Postpaid: "Postpagato",
     PROST: "PROST",
     "PROST settings": "Impostazioni di PROST",
+    Prepaid: "Prepagato",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Precedente",
     "Preview in channel list": "Anteprima nell'elenco canali",
     Previous: "Precedente",
     "Privacy policy": "Informativa sulla privacy",
+    "Privacy policy unavailable. Contact: %1":
+        "Informativa sulla privacy non disponibile. Contatto: %1",
     "Profile name": "Nome del profilo",
     "Protect Adult Channels": "Proteggi canali per adulti",
     "Protect Change Provider": "Proteggi cambio fornitore",
     "Protect Settings": "Proteggi impostazioni",
+    "Protected source is unavailable": "La sorgente protetta non è disponibile",
     "p...": "p...",
     paging: "per pagina",
     Quality: "Qualità",
@@ -779,7 +811,12 @@ var keyStrings = {
     Settings: "Impostazioni",
     "Settings changed. Discovery was canceled.":
         "Impostazioni modificate. Ricerca annullata.",
+    "Settings copied": "Impostazioni copiate",
+    "Settings could not be exported": "Impossibile esportare le impostazioni",
     "Settings could not be saved": "Impossibile salvare le impostazioni",
+    "Settings download requested": "Download delle impostazioni richiesto",
+    "Settings imported": "Impostazioni importate",
+    "Settings JSON": "Impostazioni in formato JSON",
     "Settings loaded from storage": "Impostazioni caricate dalla memoria",
     "Settings STB": "Impostazioni STB",
     "Settings saved": "Impostazioni salvate",
@@ -819,13 +856,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Riproduzione casuale: caricamento…",
     "Shuffle: Off": "Riproduzione casuale: disattivata",
     "Shuffle: On": "Riproduzione casuale: attivata",
+    "Sign in to the protected source again":
+        "Accedi di nuovo alla sorgente protetta",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Accedi: %1",
+    "Sign out of all sources": "Esci da tutte le sorgenti",
+    "Sign-in opens when you load a protected playlist.":
+        "L’accesso si apre quando carichi una playlist protetta.",
     "Sleep timer": "Timer di spegnimento",
     "Sort channels": "Ordina canali",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Accesso alla sorgente annullato",
     "Stalker Portal Provider": "Fornitore portale Stalker",
     "Stalker portal settings": "Impostazioni portale Stalker",
     "Stalker portals": "Portali Stalker",
@@ -835,9 +879,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Interrompi riproduzione e torna alla diretta",
+    "Stream could not be played": "Impossibile riprodurre il flusso",
     "Stream type: %1": "Tipo di flusso: %1",
     "String for search": "Testo da cercare",
     "Su Mo Tu We Th Fr Sa": "Do Lu Ma Me Gi Ve Sa",
+    "Subscription information": "Informazioni sull’abbonamento",
     Subtitle: "Sottotitoli",
     Switch: "Cambia",
     "Switch sound track": "Cambia traccia audio",
@@ -917,6 +963,7 @@ var keyStrings = {
     "Username or password is missing.": "Nome utente o password mancante.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versione",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Impostazioni di VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

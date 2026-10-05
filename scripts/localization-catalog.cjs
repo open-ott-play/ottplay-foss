@@ -247,6 +247,11 @@ function collectSourceKeys(repository = root) {
                     collect(node.arguments[argument], true);
                 // Wrappers with a documented translation boundary.
                 if (
+                    relative === "src/settings/transfer-ui.ts" &&
+                    method === "notice"
+                )
+                    collect(node.arguments[0], true);
+                if (
                     relative === "src/channels/classic-search.ts" &&
                     method === "hint"
                 )

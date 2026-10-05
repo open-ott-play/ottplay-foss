@@ -145,7 +145,19 @@ function createScreenMenuRegistry() {
                 definition = candidate;
                 return true;
             });
-            var title = String((host.popupArray || [])[index] || "");
+            // Provider captions may include mutable account/playlist metadata.
+            // Resolve their translated pieces when opening the menu, just like
+            // the static command keys, without translating user-supplied names.
+            var title = String(
+                typeof action.menuTitle === "function"
+                    ? action.menuTitle()
+                    : (host.popupArray || [])[index] || ""
+            );
+            var detail = String(
+                typeof action.menuDetail === "function"
+                    ? action.menuDetail()
+                    : (host.popupDetail || [])[index] || title
+            );
 
             var legacyId = host.popupActionId
                 ? host.popupActionId(action)
@@ -155,7 +167,7 @@ function createScreenMenuRegistry() {
             records.push({
                 action: action,
                 color: definition && definition[5],
-                detail: String((host.popupDetail || [])[index] || title),
+                detail: detail,
                 hint: definition && host[definition[6]],
                 id: definition
                     ? definition[0]

@@ -952,10 +952,10 @@ export function loadProv(providerId?: string): void {
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             (window as any)._pendingProvId = "";
             if (s !== "no") {
-                alert(s + ": load error!!!");
+                alert(_("Failed to load!") + " (" + s + ")");
             }
             $(launch_id)
-                .append("<br/><b>Failed to load provider script !!!</b>")
+                .append("<br/><b>" + _("Failed to load!") + "</b>")
                 .hide();
             firstRun();
         }

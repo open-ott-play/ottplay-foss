@@ -67,6 +67,7 @@ function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
         );
     }
     const c = {
+        _: (key) => (key === "Loading..." ? "Загрузка…" : key),
         __TAURI__: {},
         Capacitor: { getPlatform: () => capacitorPlatform },
         cap: {
@@ -103,6 +104,12 @@ function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
                 const result = nativePlay(args.url);
                 requests.at(-1).engine = args.engine;
                 requests.at(-1).loop = args.loop;
+                requests.at(-1).labels = args.labels;
+                assert.equal(
+                    args.labels.loading,
+                    "Загрузка…",
+                    "Native PiP receives current app translations"
+                );
                 return result;
             }
             if (command === "set_pip_bounds") {

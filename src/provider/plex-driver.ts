@@ -598,12 +598,16 @@ function mountPlexProvider(
         host.showPage();
         return true;
     }
+    edit.menuTitle = label;
+    edit.menuDetail = function () {
+        return host._("Plex settings");
+    };
     host.__ottEditProvider = edit;
     host.duneAddSettings = function (index: number) {
         if (!active()) return;
         host.popupActions.splice(index, 1, edit);
         host.popupArray.splice(index, 1, label());
-        host.popupDetail.splice(index, 1, host._("Plex settings"));
+        host.popupDetail.splice(index, 1, edit.menuDetail());
     };
     function publish(): void {
         if (!active()) return;

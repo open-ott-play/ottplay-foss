@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Portsiz IP manzil HTTP 8081 portidan foydalanadi. Toʻxtatish uchun manzilni tozalang yoki Uzish bandini tanlang.",
+    "Another source sign-in is already open":
+        "Boshqa manbaga kirish oynasi allaqachon ochiq",
     "API failed, trying M3U...": "API ishlamadi, M3U sinab koʻrilmoqda…",
     "API Server": "API serveri",
     "API server URL": "API serveri URL manzili",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 daqiqa orqaga / oldinga oʻtish",
     "Background color": "Fon rangi",
     "Background color of selected item": "Tanlangan elementning fon rangi",
+    "Balance, $": "Balans, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] sozlamalari",
@@ -175,6 +178,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Buyruqlar serverini qidirish vaqti tugadi.",
     "Command server found.": "Buyruqlar serveri topildi.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Moslik komponentlarini yuklab bo‘lmadi. Qayta urinish uchun pleyerni yana oching.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
@@ -260,6 +265,10 @@ var keyStrings = {
     "Continue watching?": "Tomosha davom ettirilsinmi?",
     "Copy category": "Turkum nusxasini olish",
     "Copy JSON": "JSON nusxasini olish",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Zaxira nusxani saqlash uchun JSON matnidan nusxa oling. Tiklash uchun sozlamalarni import qilishdan foydalaning.",
+    "Copy the selected JSON with your device's copy command":
+        "Tanlangan JSON matnidan qurilmaning nusxalash buyrug‘i yordamida nusxa oling",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
@@ -274,6 +283,8 @@ var keyStrings = {
     Country: "Mamlakat",
     "Create category": "Turkum yaratish",
     current: "joriy",
+    "Debug enabled. Restart to apply.":
+        "Nosozliklarni tuzatish yoqildi. Qoʻllash uchun pleyerni qayta ishga tushiring.",
     "Debug HUD": "Nosozliklarni aniqlash paneli",
     "Debug HUD is not available": "Nosozliklarni aniqlash paneli mavjud emas",
     Delete: "Oʻchirish",
@@ -303,6 +314,7 @@ var keyStrings = {
     "Download! Wait ...": "Yuklab olinmoqda… kuting…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO sozlamalari",
+    "Drag window": "Oynani ko‘chirish",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO sozlamalari",
     Duration: "Davomiylik",
@@ -318,6 +330,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Parolni kiriting (8 ta belgi).",
     "Enter a playlist URL to access this service.":
         "Bu xizmatga kirish uchun pleylist URL manzilini kiriting.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Pleylist URL manzilini kiriting. Saqlangandan so‘ng pleyer qayta ishga tushadi.",
     "Enter a server address without spaces or a fragment.":
         "Server manzilini boʻsh joy va # dan keyingi qismsiz kiriting.",
     "Enter a username (8 characters).":
@@ -329,6 +343,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Toʻgʻri server manzilini kiriting, masalan, 192.168.1.20:8081.",
     "Enter access key for": "Quyidagiga kirish kalitini kiriting:",
+    "Enter an application access key (%1–%2 characters).":
+        "Ilovaga kirish kalitini kiriting (%1–%2 belgi).",
     "Enter an application access key (8 characters).":
         "Ilovaning kirish kalitini kiriting (8 ta belgi).",
     "Enter an ID and PIN to access this service.":
@@ -356,6 +372,7 @@ var keyStrings = {
         "Stalker portali URL manzilini kiriting (masalan, http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker portali URL manzilini kiriting (masalan, http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Server raqamini kiriting (%1).",
     "Enter the access code separately, not in the server address.":
         "Kirish kodini server manzilida emas, alohida kiriting.",
     "Enter the command server IP or address.":
@@ -458,11 +475,13 @@ var keyStrings = {
     Favorites: "Sevimlilar",
     "File selection is not supported on this device":
         "Bu qurilmada fayl tanlash qoʻllab-quvvatlanmaydi",
+    "Fill screen": "Ekranni to‘ldirish",
     Filter: "Filtr",
     Filters: "Filtrlar",
     "Find command server": "Buyruqlar serverini topish",
     "Finding command servers...": "Buyruqlar serverlari qidirilmoqda...",
     "First Run Setup": "Birinchi ishga tushirish sozlamalari",
+    "Fit to screen": "Ekranga moslash",
     Folders: "Folders",
     "Font type": "Shrift turi",
     "For download settings file open":
@@ -489,6 +508,7 @@ var keyStrings = {
     "HTTP port": "HTTP porti",
     "HTTP remote control is unavailable on this device.":
         "Bu qurilmada HTTP pulti mavjud emas.",
+    "HTTPS support": "HTTPS qo‘llab-quvvatlashi",
     ID: "ID",
     "Import settings": "Sozlamalarni import qilish",
     "In live mode: <br/>": "Jonli efir rejimida:<br/>",
@@ -503,6 +523,8 @@ var keyStrings = {
     "Interface transparency": "Interfeys shaffofligi",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Kanal havolasi notoʻgʻri! Shaxsiy kabinetdagi oqim URL manzilidagi kabi xostning toʻliq nomini kiriting (masalan, subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Himoyalangan manba sozlamalari noto‘g‘ri",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one sozlamalari",
@@ -600,6 +622,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "OTT / APP host": "OTT / ilova serveri",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sozlamalari",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -609,6 +632,7 @@ var keyStrings = {
     on: "yoqilgan",
     "on ": "yoqilgan ",
     "or scan": "yoki skanerlang",
+    Packages: "Paketlar",
     "Pairing approved. Command server configured.":
         "Juftlash tasdiqlandi. Buyruqlar serveri sozlandi.",
     "Pairing expired. Find the server again to retry.":
@@ -619,8 +643,10 @@ var keyStrings = {
         "Juftlash rad etildi yoki yaroqsiz tasdiq olindi. Qayta urinish uchun serverni yana toping.",
     "Parental control": "Ota-ona nazorati",
     Password: "Parol",
+    "Paste settings JSON": "JSON formatidagi sozlamalarni joylashtiring",
     Pause: "Pauza",
     "Pause/Play": "Pauza / ijro",
+    "Payment method": "To‘lov usuli",
     "Permanent clock on screen": "Soatni ekranda doim koʻrsatish",
     PIN: "PIN",
     "PiP exchange": "PiP oynalarini almashtirish",
@@ -629,6 +655,7 @@ var keyStrings = {
     Play: "Ijro",
     Playback: "Playback",
     "Player and device info": "Pleyer va qurilma haqida",
+    "Player could not start": "Pleyerni ishga tushirib bo‘lmadi",
     "Player info:": "Pleyer haqida:",
     Playlist: "Playlist",
     "Playlist file": "Playlist fayli",
@@ -647,17 +674,22 @@ var keyStrings = {
     "Portal URL": "Portal URL manzili",
     "Position shift -10 seconds after pause":
         "Pauzadan keyin 10 soniya orqaga qaytish",
+    Postpaid: "Keyin to‘lov",
     PROST: "PROST",
     "PROST settings": "PROST sozlamalari",
+    Prepaid: "Oldindan to‘lov",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Oldingi",
     "Preview in channel list": "Kanallar roʻyxatida oldindan koʻrish",
     Previous: "Oldingi",
     "Privacy policy": "Maxfiylik siyosati",
+    "Privacy policy unavailable. Contact: %1":
+        "Maxfiylik siyosati mavjud emas. Aloqa: %1",
     "Profile name": "Profil nomi",
     "Protect Adult Channels": "Kattalar kanallarini himoyalash",
     "Protect Change Provider": "Provayder almashtirishni himoyalash",
     "Protect Settings": "Sozlamalarni himoyalash",
+    "Protected source is unavailable": "Himoyalangan manba mavjud emas",
     "p...": "p...",
     paging: "sahifalash",
     Quality: "Sifat",
@@ -774,7 +806,12 @@ var keyStrings = {
     Settings: "Sozlamalar",
     "Settings changed. Discovery was canceled.":
         "Sozlamalar oʻzgardi. Qidiruv bekor qilindi.",
+    "Settings copied": "Sozlamalardan nusxa olindi",
+    "Settings could not be exported": "Sozlamalarni eksport qilib bo‘lmadi",
     "Settings could not be saved": "Sozlamalarni saqlab boʻlmadi",
+    "Settings download requested": "Sozlamalarni yuklab olish so‘raldi",
+    "Settings imported": "Sozlamalar import qilindi",
+    "Settings JSON": "JSON formatidagi sozlamalar",
     "Settings loaded from storage": "Sozlamalar xotiradan yuklandi",
     "Settings STB": "STB sozlamalari",
     "Settings saved": "Sozlamalar saqlandi",
@@ -813,13 +850,20 @@ var keyStrings = {
     "Shuffle: Loading...": "Aralashtirish: yuklanmoqda…",
     "Shuffle: Off": "Aralashtirish: oʻchirilgan",
     "Shuffle: On": "Aralashtirish: yoqilgan",
+    "Sign in to the protected source again":
+        "Himoyalangan manbaga qayta kiring",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Kirish: %1",
+    "Sign out of all sources": "Barcha manbalardan chiqish",
+    "Sign-in opens when you load a protected playlist.":
+        "Himoyalangan pleylist yuklanganda kirish oynasi ochiladi.",
     "Sleep timer": "Uyqu taymeri",
     "Sort channels": "Kanallarni saralash",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Manbaga kirish bekor qilindi",
     "Stalker Portal Provider": "Stalker portali provayderi",
     "Stalker portal settings": "Stalker portali sozlamalari",
     "Stalker portals": "Stalker portallari",
@@ -829,9 +873,11 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Ijroni toʻxtatish va jonli efirga qaytish",
+    "Stream could not be played": "Oqimni ijro etib bo‘lmadi",
     "Stream type: %1": "Oqim turi: %1",
     "String for search": "Qidiruv soʻrovi",
     "Su Mo Tu We Th Fr Sa": "Ya Du Se Ch Pa Ju Sh",
+    "Subscription information": "Obuna ma’lumotlari",
     Subtitle: "Subtitrlar",
     Switch: "Almashtirish",
     "Switch sound track": "Ovoz yoʻlagini almashtirish",
@@ -912,6 +958,7 @@ var keyStrings = {
         "Foydalanuvchi nomi yoki parol kiritilmagan.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versiya",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM sozlamalari",
     "Vidok.TV": "Vidok.TV",

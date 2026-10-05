@@ -701,6 +701,44 @@ struct PipInner {
     pending: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
 }
 
+/// Only app-owned status labels cross into the isolated PiP document.
+#[derive(Clone, serde::Deserialize, Serialize)]
+#[serde(default)]
+pub struct PipLabels {
+    loading: String,
+    playback: String,
+    startup: String,
+    runtime: String,
+}
+
+impl Default for PipLabels {
+    fn default() -> Self {
+        Self {
+            loading: "Loading…".into(),
+            playback: "Stream could not be played".into(),
+            startup: "Player could not start".into(),
+            runtime: "Compatibility runtime could not load. Reopen the player to retry.".into(),
+        }
+    }
+}
+
+impl PipLabels {
+    fn bounded(mut self) -> Self {
+        let fallback = Self::default();
+        for (value, default) in [
+            (&mut self.loading, fallback.loading),
+            (&mut self.playback, fallback.playback),
+            (&mut self.startup, fallback.startup),
+            (&mut self.runtime, fallback.runtime),
+        ] {
+            if value.trim().is_empty() || value.encode_utf16().count() > 512 {
+                *value = default;
+            }
+        }
+        self
+    }
+}
+
 #[derive(Clone, Serialize)]
 pub struct PipRequest {
     instance: u64,
@@ -708,6 +746,7 @@ pub struct PipRequest {
     url: String,
     engine: Option<i32>,
     r#loop: bool,
+    labels: PipLabels,
 }
 
 impl PipInner {
@@ -803,7 +842,36 @@ mod pip_lifecycle_tests {
             url: "https://fixture.invalid/channel.m3u8".into(),
             engine: Some(1),
             r#loop: false,
+            labels: PipLabels::default(),
         }
+    }
+
+    #[test]
+    fn localized_labels_are_bounded_and_survive_bootstrap_encoding() {
+        let labels: PipLabels = serde_json::from_value(serde_json::json!({
+            "loading": "Загрузка…",
+            "playback": "Не удалось воспроизвести поток",
+            "startup": "",
+            "runtime": "x".repeat(513),
+            "unexpected": "ignored",
+        }))
+        .unwrap();
+        let labels = labels.bounded();
+        assert_eq!(labels.loading, "Загрузка…");
+        assert_eq!(labels.startup, PipLabels::default().startup);
+        assert_eq!(labels.runtime, PipLabels::default().runtime);
+        let encoded = serde_json::to_string(&labels).unwrap();
+        let query = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("labels", &encoded)
+            .finish();
+        assert_eq!(
+            url::form_urlencoded::parse(query.as_bytes())
+                .next()
+                .unwrap()
+                .1,
+            encoded
+        );
+        assert!(!encoded.contains("unexpected"));
     }
 
     #[test]
@@ -912,6 +980,7 @@ pub async fn play_pip(
     engine: Option<i32>,
     request_id: Option<u64>,
     r#loop: Option<bool>,
+    labels: Option<PipLabels>,
 ) -> Result<PipResult, String> {
     use tauri::Manager;
 
@@ -951,6 +1020,7 @@ pub async fn play_pip(
             url,
             engine,
             r#loop: r#loop.unwrap_or(false),
+            labels: labels.unwrap_or_default().bounded(),
         };
         let (sender, receiver) = tokio::sync::oneshot::channel();
         inner.pending = Some(sender);
@@ -962,10 +1032,14 @@ pub async fn play_pip(
         Ok(win)
     } else {
         let (w, h) = pip_size(2);
+        let labels_json = serde_json::to_string(&request.labels).map_err(|e| e.to_string())?;
+        let query = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("labels", &labels_json)
+            .finish();
         let mut builder = tauri::WebviewWindowBuilder::new(
             &app,
             PIP_LABEL,
-            tauri::WebviewUrl::App(format!("pip.html#{}", request.instance).into()),
+            tauri::WebviewUrl::App(format!("pip.html?{query}#{}", request.instance).into()),
         )
         .title("OttPlay PiP")
         .inner_size(w, h)
