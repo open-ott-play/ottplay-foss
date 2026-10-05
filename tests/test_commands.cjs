@@ -147,6 +147,11 @@ const cmdContext = {
 };
 vm.runInNewContext(emit(source), cmdContext);
 const handle = cmdContext.exports.handleCommand;
+assert.equal(
+    handle({ command: "exit_player" }),
+    "unsupported",
+    "legacy delivery cannot silently enter standby or unload before its ACK"
+);
 handle({ channel_name: "SCIENCE", command: "channel_by_name" });
 assert.deepEqual(
     delivered,

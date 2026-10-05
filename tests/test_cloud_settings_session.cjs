@@ -457,4 +457,39 @@ check(
         );
     }
 );
+check("remote input cannot start cloud read/write or native export", (f) => {
+    f.w.__ottRemoteInputActive = true;
+    f.w.stbGetAllItems = () =>
+        assert.fail("remote input cannot read private preferences");
+    f.w.cloudLoadSettings();
+    f.w.cloudSendSettings();
+    f.w.__TAURI__ = {};
+    f.w.exportSettingsUI = () =>
+        assert.fail("remote input cannot start native export");
+    f.w.cloudSendSettings();
+    f.w.__ottRemoteInputActive = false;
+    assert.equal(f.requests.length, 0);
+    assert.equal(f.jobs.size, 0);
+    assert.equal(f.mutations(), 0);
+    assert.equal(f.restarts(), 0);
+});
+check(
+    "rejected remote input cannot cancel an authorized local cloud transfer",
+    (f) => {
+        const pending = f.load();
+        const count = f.requests.length;
+        f.w.__ottRemoteInputActive = true;
+        f.w.cloudLoadSettings();
+        f.w.cloudSendSettings();
+        f.w.__ottRemoteInputActive = false;
+        assert.equal(f.requests.length, count);
+        assert.equal(pending.aborted, false);
+        assert.equal(
+            f.w.__ottClassicScreenPort.owner("about").model.localOnlyInput,
+            true
+        );
+        pending.options.success({ data: f.payload(), status: "success" });
+        assert.equal(f.restarts(), 1);
+    }
+);
 console.log("Cloud settings session: " + passed + " scenarios passed");

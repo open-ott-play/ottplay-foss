@@ -7,13 +7,13 @@ const vm = require("node:vm");
 const { spawn } = require("node:child_process");
 const { promisify } = require("node:util");
 const execFile = promisify(require("node:child_process").execFile);
-const ts = require("typescript");
 const net = require("node:net");
 const http = require("node:http");
 const binary = process.env.OTT_CONTROL_BINARY,
     cli = process.env.OTT_CLI;
 assert(binary && cli, "Set OTT_CONTROL_BINARY and OTT_CLI");
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ott-remote-test-"));
+const emitted = path.join(dir, "player");
 function moduleOf(file, requireFn, window) {
     const context = {
         console,
@@ -27,18 +27,27 @@ function moduleOf(file, requireFn, window) {
     require("../tests/helpers/shared-core-runtime.cjs")(context, {
         vendorOnly: true,
     });
-    vm.runInContext(
-        ts.transpileModule(fs.readFileSync(file, "utf8"), {
-            compilerOptions: {
-                module: ts.ModuleKind.CommonJS,
-                target: ts.ScriptTarget.ES5,
-            },
-        }).outputText,
-        context
+    const built = path.join(
+        emitted,
+        file.replace(/^src\//, "").replace(/\.ts$/, ".js")
     );
+    vm.runInContext(fs.readFileSync(built, "utf8"), context, {
+        filename: built,
+    });
     return context.exports;
 }
 (async () => {
+    // Exercise actual project compiler output, not independent unchecked
+    // transpileModule fragments. Keep it private so concurrent builds are safe.
+    await execFile(process.execPath, [
+        require.resolve("typescript/bin/tsc"),
+        "--project",
+        "tsconfig.json",
+        "--module",
+        "commonjs",
+        "--outDir",
+        emitted,
+    ]);
     const listener = net.createServer();
     await new Promise((r) => listener.listen(0, "127.0.0.1", r));
     const port = listener.address().port;
@@ -97,7 +106,7 @@ function moduleOf(file, requireFn, window) {
             } catch {}
             await new Promise((r) => setTimeout(r, 50));
         }
-        function player(device, token, initialVolume) {
+        function player(device, token, initialVolume, native = false) {
             let volume = initialVolume,
                 dispatches = 0,
                 dropped = false,
@@ -105,6 +114,20 @@ function moduleOf(file, requireFn, window) {
                 reloads = 0,
                 streamRestarts = 0,
                 droppedReload = false;
+            let standby = false,
+                playbackKind = "live",
+                phase = "playing",
+                position = 0,
+                paused = 0,
+                resumed = 0,
+                seeks = 0,
+                nativeExits = 0,
+                nativeRestarts = 0,
+                protectedInput = false,
+                pendingAck = null;
+            const keysReceived = [],
+                controlsReceived = [],
+                receipts = [];
             let configuration = {
                 active: 0,
                 M3Us: Array.from({ length: 15 }, (_, index) => ({
@@ -167,9 +190,74 @@ function moduleOf(file, requireFn, window) {
                 stbGetItem: () => "demo",
                 stbGetVolume: () => volume,
             };
+            host.keys = {
+                CH_UP: 427,
+                ENTER: 13,
+                RETURN: 27,
+                SUBTITLE: 72,
+                UP: 38,
+                VOL_DOWN: 174,
+            };
+            host.$ = () => ({ is: () => protectedInput });
+            host.stbIsStandby = () => standby;
+            host.stbToggleStandby = () => {
+                standby = !standby;
+            };
+            moduleOf("src/ui/input-router.ts", () => {}, host);
+            const router = host.__ottInputRouter.create({
+                keys: () => host.keys,
+            });
+            host.__ottClassicScreenPort = {
+                normalize: router.normalize,
+                screens: { current: () => null },
+            };
+            host.keyHandler = (event) => keysReceived.push(event.keyCode);
+            host.__ottClassicPlayback = {
+                checkpoint: () => {},
+                snapshot: () => ({ target: { kind: playbackKind } }),
+            };
+            if (native)
+                host.__TAURI__ = {
+                    core: {
+                        invoke: async (command) => {
+                            if (command === "lifecycle_capabilities")
+                                return {
+                                    exit: true,
+                                    reboot: false,
+                                    restart: true,
+                                };
+                            if (command === "exit_app") nativeExits++;
+                            else if (command === "restart_app")
+                                nativeRestarts++;
+                            else throw new Error("Unexpected native command");
+                        },
+                    },
+                };
+            moduleOf(
+                "src/plugins/remote-lifecycle.ts",
+                () => {},
+                host
+            ).installRemoteLifecycle(host, { prepare: () => {} });
             host.stbPlay = () => {};
             host.__ottCoreTransport = { play: host.stbPlay };
             host.__ottCoreBackend = () => ({
+                current: () => ({
+                    active: () => true,
+                    pause: () => {
+                        phase = "paused";
+                        paused++;
+                    },
+                    resume: () => {
+                        phase = "playing";
+                        resumed++;
+                    },
+                    sample: () => {},
+                    seek: (value) => {
+                        position = value;
+                        seeks++;
+                    },
+                    snapshot: () => ({ phase, position }),
+                }),
                 restart: () => {
                     streamRestarts++;
                     return {
@@ -257,6 +345,40 @@ function moduleOf(file, requireFn, window) {
                     async (response) => {
                         const body = await response.text();
                         if (aborted) return;
+                        if (request.url.endsWith("/api/responses")) {
+                            const receipt = JSON.parse(request.body);
+                            receipts.push(receipt);
+                            if (
+                                pendingAck &&
+                                receipt.data &&
+                                receipt.data.effect === pendingAck.effect &&
+                                receipt.data[pendingAck.field] ===
+                                    pendingAck.value
+                            ) {
+                                const gate = pendingAck;
+                                assert.equal(
+                                    response.status,
+                                    200,
+                                    "Go must accept the exact control receipt"
+                                );
+                                gate.bodies.push(request.body);
+                                if (!gate.dropped) {
+                                    gate.dropped = true;
+                                    complete();
+                                } else {
+                                    gate.finish = () => {
+                                        pendingAck = null;
+                                        gate.delivered = true;
+                                        complete({
+                                            body,
+                                            status: response.status,
+                                        });
+                                    };
+                                    if (gate.released) gate.finish();
+                                }
+                                return;
+                            }
+                        }
                         if (
                             request.url.endsWith("/api/responses") &&
                             request.body.includes(
@@ -295,10 +417,12 @@ function moduleOf(file, requireFn, window) {
                 send,
                 () => {},
                 dispatch,
-                (request, done, afterReply) =>
-                    request.action === "kiosk"
+                (request, done, afterReply) => {
+                    controlsReceived.push(clone(request));
+                    return request.action === "kiosk"
                         ? host.__ottKiosk.request(request.params, done)
-                        : execute(request, done, afterReply)
+                        : execute(request, done, afterReply);
+                }
             );
             controller.configure({
                 address,
@@ -308,22 +432,60 @@ function moduleOf(file, requireFn, window) {
             controllers.push(controller);
             return () => ({
                 configuration: clone(configuration),
+                controlsReceived: clone(controlsReceived),
+                defer: (action, value) => {
+                    assert.equal(
+                        pendingAck,
+                        null,
+                        "previous ACK must finish before creating a new gate"
+                    );
+                    const gate = {
+                        bodies: [],
+                        delivered: false,
+                        dropped: false,
+                        effect: action + "-after-ack",
+                        field: action === "input" ? "key" : "operation",
+                        release() {
+                            gate.released = true;
+                            if (gate.finish) gate.finish();
+                        },
+                        released: false,
+                        value,
+                    };
+                    pendingAck = gate;
+                    return gate;
+                },
                 dispatches,
                 dropped,
                 droppedReload,
+                keysReceived: keysReceived.slice(),
                 kiosk: host.__ottKiosk.snapshot(),
+                nativeExits,
+                nativeRestarts,
+                paused,
+                playback: (kind) => {
+                    playbackKind = kind;
+                },
                 playlistLoads,
+                position,
+                protectInput: (value) => {
+                    protectedInput = value;
+                },
+                receipts: clone(receipts),
                 reloads,
                 rename: (id, name) => {
                     host.channels[id].channel_name = name;
                 },
+                resumed,
+                seeks,
                 select: host.playChannel,
+                standby,
                 streamRestarts,
                 volume,
             });
         }
         const television = player("dev_test", "b".repeat(32), 30);
-        const desktop = player("dev_second", "c".repeat(32), 70);
+        const desktop = player("dev_second", "c".repeat(32), 70, true);
         async function runOn(name, ...args) {
             return execFile("python3", [
                 cli,
@@ -336,6 +498,27 @@ function moduleOf(file, requireFn, window) {
             ]);
         }
         const run = (...args) => runOn("tv", ...args);
+        async function jsonOn(name, ...args) {
+            const result = await execFile("python3", [
+                cli,
+                "--config",
+                path.join(dir, "cli.json"),
+                "--timeout",
+                "8",
+                "--json",
+                name,
+                ...args,
+            ]);
+            assert.equal(result.stderr, "");
+            return JSON.parse(result.stdout);
+        }
+        async function eventually(read, predicate, message) {
+            for (let attempt = 0; attempt < 80; attempt++) {
+                if (predicate(read())) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+            assert.fail(message);
+        }
         assert.equal((await run("v")).stdout.trim(), "30%");
         assert.equal((await run("v", "+5")).stdout.trim(), "35%");
         assert.equal(television().dispatches, 1);
@@ -451,6 +634,242 @@ function moduleOf(file, requireFn, window) {
         await run("kiosk", "set", "ВоСт");
         assert.equal(television().kiosk.channel.id, "a");
         await run("kiosk", "off");
+        const browserCaps = await jsonOn("tv", "CAPS");
+        const nativeCaps = await jsonOn("mac", "capabilities");
+        assert.equal(browserCaps.version, 1);
+        assert.equal(browserCaps.player.platform, "browser");
+        assert.equal(nativeCaps.player.platform, "tauri");
+        assert.notEqual(browserCaps.player.runtime, nativeCaps.player.runtime);
+        assert(browserCaps.lifecycle.includes("reload_player"));
+        for (const operation of ["exit_app", "restart_app", "reboot_device"])
+            assert(!browserCaps.lifecycle.includes(operation));
+        assert(nativeCaps.lifecycle.includes("exit_app"));
+        assert(nativeCaps.lifecycle.includes("restart_app"));
+        assert(!nativeCaps.lifecycle.includes("reboot_device"));
+        assert.deepEqual(browserCaps.playback, []);
+        assert(browserCaps.input.includes("ok"));
+
+        async function unsupported(name, get, args, action, params) {
+            const before = get().controlsReceived.length;
+            await assert.rejects(runOn(name, ...args), (error) => {
+                assert.equal(error.stdout, "");
+                assert.match(error.stderr, /unsupported by this player/);
+                return true;
+            });
+            const requests = get().controlsReceived.slice(before);
+            assert.equal(
+                requests.length,
+                1,
+                "unsupported controls must never retry through a legacy fallback"
+            );
+            assert.equal(requests[0].action, action);
+            assert.deepEqual(requests[0].params, params);
+        }
+        await unsupported("tv", television, ["EXIT"], "lifecycle", {
+            operation: "exit_app",
+        });
+        await unsupported("tv", television, ["restart", "app"], "lifecycle", {
+            operation: "restart_app",
+        });
+        for (const [name, get] of [
+            ["tv", television],
+            ["mac", desktop],
+        ])
+            await unsupported(name, get, ["reboot", "device"], "lifecycle", {
+                operation: "reboot_device",
+            });
+        await unsupported("tv", television, ["pause"], "playback", {
+            operation: "pause",
+        });
+        assert.equal(
+            television().nativeExits +
+                desktop().nativeExits +
+                desktop().nativeRestarts,
+            0
+        );
+
+        async function deferred(
+            name,
+            get,
+            args,
+            action,
+            value,
+            readEffect,
+            afterIntent
+        ) {
+            const gate = get().defer(action, value);
+            const before = readEffect();
+            const receipt = await jsonOn(name, ...args);
+            assert.deepEqual(receipt, {
+                [action === "input" ? "key" : "operation"]: value,
+                accepted: true,
+                dispatched: false,
+                effect: action + "-after-ack",
+            });
+            assert(
+                gate.dropped,
+                "must lose the first successful Go response ACK"
+            );
+            assert.equal(
+                readEffect(),
+                before,
+                "CLI acceptance must precede the native/input effect"
+            );
+            if (afterIntent) afterIntent();
+            gate.release();
+            await eventually(
+                () => gate.delivered,
+                Boolean,
+                "retried exact receipt was not acknowledged"
+            );
+            assert(
+                gate.bodies.length >= 2,
+                "must exercise receipt retry, not only delay"
+            );
+            assert(
+                gate.bodies.every((body) => body === gate.bodies[0]),
+                "retry must preserve exact receipt bytes"
+            );
+            return before;
+        }
+        for (const [alias, key, code] of [
+            ["ENTER", "ok", 13],
+            ["ch+", "channel_up", 427],
+            ["vol-", "volume_down", 174],
+        ]) {
+            const before = await deferred(
+                "tv",
+                television,
+                ["KEY", alias],
+                "input",
+                key,
+                () => television().keysReceived.length
+            );
+            assert.equal(television().keysReceived.length, before + 1);
+            assert.equal(television().keysReceived.at(-1), code);
+        }
+        const protectedBefore = await deferred(
+            "tv",
+            television,
+            ["input", "ok"],
+            "input",
+            "ok",
+            () => television().keysReceived.length,
+            () => television().protectInput(true)
+        );
+        assert.equal(
+            television().keysReceived.length,
+            protectedBefore,
+            "new PIN/support surface cancels already accepted input"
+        );
+        television().protectInput(false);
+        assert.deepEqual(desktop().keysReceived, []);
+        for (const [args, operation, read, expected] of [
+            [["reload"], "reload_player", () => television().reloads, 2],
+            [["standby"], "standby", () => television().standby, true],
+            [["wake"], "wake", () => television().standby, false],
+        ]) {
+            await deferred(
+                "tv",
+                television,
+                args,
+                "lifecycle",
+                operation,
+                read
+            );
+            assert.equal(read(), expected);
+        }
+        await deferred(
+            "mac",
+            desktop,
+            ["restart", "APPLICATION"],
+            "lifecycle",
+            "restart_app",
+            () => desktop().nativeRestarts
+        );
+        assert.equal(desktop().nativeRestarts, 1);
+        assert.equal(
+            desktop().reloads,
+            0,
+            "native app restart must not become a page reload"
+        );
+        await deferred(
+            "mac",
+            desktop,
+            ["quit"],
+            "lifecycle",
+            "exit_app",
+            () => desktop().nativeExits
+        );
+        assert.equal(desktop().nativeExits, 1);
+        assert.equal(television().nativeExits + television().nativeRestarts, 0);
+
+        television().playback("vod");
+        assert.deepEqual((await jsonOn("tv", "caps")).playback, [
+            "pause",
+            "resume",
+            "seek",
+        ]);
+        for (const operation of ["pause", "resume"])
+            assert.deepEqual(await jsonOn("tv", operation), {
+                dispatched: true,
+                operation,
+            });
+        assert.deepEqual(await jsonOn("tv", "seek", "12.5"), {
+            dispatched: true,
+            operation: "seek",
+            position: 12.5,
+        });
+        assert.equal(television().paused, 1);
+        assert.equal(television().resumed, 1);
+        assert.equal(television().position, 12.5);
+        assert.equal(television().seeks, 1);
+        television().playback("archive");
+        assert.deepEqual((await jsonOn("tv", "caps")).playback, [
+            "pause",
+            "resume",
+        ]);
+        await unsupported("tv", television, ["seek", "1"], "playback", {
+            operation: "seek",
+            position: 1,
+        });
+        assert.equal(desktop().paused + desktop().resumed + desktop().seeks, 0);
+
+        const malformed = [
+            { action: "capabilities", params: { all: true } },
+            {
+                action: "lifecycle",
+                params: { force: true, operation: "exit_app" },
+            },
+            { action: "input", params: { key: "power" } },
+            { action: "input", params: { key: "ok", repeat: 2 } },
+            { action: "playback", params: { operation: "pause", position: 0 } },
+            {
+                action: "playback",
+                params: { operation: "seek", position: 9007199254740992 },
+            },
+        ];
+        for (const payload of malformed) {
+            const result = await fetch(
+                address + "/api/requests?device_id=dev_test",
+                {
+                    body: JSON.stringify(payload),
+                    headers: {
+                        Authorization: "Bearer " + serverConfig.admin_token,
+                        "Content-Type": "application/json",
+                    },
+                    method: "POST",
+                }
+            );
+            assert.equal(
+                result.status,
+                400,
+                "Go must reject an ambiguous control before queue admission"
+            );
+        }
+        console.log(
+            "PASS real Go + compiled TS + Python controls: capability identities, CLI key aliases, exact after-ACK effects/retries, protected-input cancellation, native/browser lifecycle distinctions and owned playback shapes"
+        );
         console.log(
             "PASS kiosk CLI/server/player: arm, capture, set, block ordinary switching, status, disable and device isolation"
         );
@@ -466,6 +885,7 @@ function moduleOf(file, requireFn, window) {
         fs.rmSync(dir, { force: true, recursive: true });
     }
 })().catch((error) => {
+    fs.rmSync(dir, { force: true, recursive: true });
     console.error(error);
     process.exitCode = 1;
 });

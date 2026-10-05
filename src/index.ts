@@ -51,6 +51,7 @@ import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { tauriInvoke } from "./plugins/native-bridge";
+import { installRemoteLifecycle } from "./plugins/remote-lifecycle";
 import "./plugins/native-http";
 import {
     StalkerPortal,
@@ -4809,6 +4810,9 @@ window.settingsManage = function (): void {
     if (typeof jQuery !== "undefined") jQuery("#listPopUp").hide();
     w.listDataArray = w.listArray;
     if (typeof w.showPage === "function") w.showPage();
+    var owner =
+        w.__ottClassicScreenPort && w.__ottClassicScreenPort.listOwner();
+    if (owner) owner.model.localOnlyInput = true;
 };
 
 // Cloud-based send/load settings (from original stbPlayer.js)
@@ -5050,6 +5054,7 @@ window.stbExit = stbExit;
 // Tauri Mode B: real app exit (window.close() does not quit Tauri).
 if (typeof window.__TAURI__ !== "undefined") {
     window.stbExit = function (): void {
+        if (window.__ottRemoteInputActive) return;
         try {
             body_onUnload();
         } catch (_) {
@@ -5064,6 +5069,7 @@ if (typeof window.__TAURI__ !== "undefined") {
 // Stop both the decoder and native media session before finishing the Activity.
 if (typeof (window as any).Capacitor !== "undefined") {
     window.stbExit = function (): void {
+        if (window.__ottRemoteInputActive) return;
         if (typeof window.stbStop === "function") window.stbStop();
         const Cap = (window as any).Capacitor;
         const plugins = Cap && Cap.Plugins ? Cap.Plugins : null;
@@ -5101,6 +5107,16 @@ if (typeof (window as any).Capacitor !== "undefined") {
         })();
     };
 }
+installRemoteLifecycle(window, {
+    mobileMedia: MobileNativeMedia,
+    prepare: function (): void {
+        try {
+            body_onUnload();
+        } finally {
+            if (typeof window.stbStop === "function") window.stbStop();
+        }
+    },
+});
 window.setPlayer = setPlayer;
 window.stbGetItem = stbGetItem;
 window.stbSetItem = stbSetItem;

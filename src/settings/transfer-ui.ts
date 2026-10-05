@@ -7,6 +7,7 @@
  */
 export function exportSettingsUI(): void {
     var w = window as any;
+    if (w.__ottRemoteInputActive) return;
     if (typeof w.exportSettings !== "function") return;
     var jsonStr: string;
     try {
@@ -153,6 +154,7 @@ export function editSettingsText(
 /** Read pasted settings JSON, then use the existing validated import/confirmation flow. */
 export function importSettingsUI(): void {
     var w = window as any;
+    if (w.__ottRemoteInputActive) return;
     if (typeof w.importSettings !== "function") return;
     editSettingsText("Paste settings JSON", "", function (value) {
         if (value.trim()) w.importSettings(value.trim());

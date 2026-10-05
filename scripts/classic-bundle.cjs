@@ -99,6 +99,7 @@ const CLASSIC_MODULES = [
     "build/plugins/kiosk.js",
     "build/plugins/control-discovery.js",
     "build/plugins/mobile-native-media.js",
+    "build/plugins/remote-lifecycle.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
     "build/plugins/stalker-portal.js",

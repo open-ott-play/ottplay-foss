@@ -120,7 +120,47 @@ Retries send the same serialized result bytes. Invalid or oversized handler
 results are explicitly rejected so polling can continue. EPG collection yields
 between batches, keeps at most four guide requests pending, and rejects results
 if the source or channel-load generation changes during collection.
-The previous command-only API remains compatible with older servers and players.
+The previous command-only API remains compatible with older servers and players,
+except that unacknowledged `exit_player` is now explicitly unsupported. Modern
+`command: exit_player` uses the acknowledged native exit path; it never toggles standby.
+
+### Named controls and platform capabilities
+
+`ott NAME caps` reports the current player version, public page-runtime identity,
+and available lifecycle, input and playback operations. The same player identity
+is included in `status`; it is observable metadata, never an access credential.
+Short and full channel queries retain case-insensitive literal matching, including
+Cyrillic. The CLI also accepts exact command aliases such as `v` / `vol` / `volume`,
+`s` / `channels`, `profile` / `prof` and `key` / `input`. Use `play TITLE` when a
+channel name is reserved by a command. Malformed recognized commands fail explicitly.
+
+`reload` / `restart player` reloads the page; `restart app` relaunches the native
+application; `exit` / `quit` closes a supported app; `standby` / `wake` controls
+player standby while its connection stays active. `reboot device` means an OS
+reboot and is currently unsupported on every shipped platform. No command falls
+back to a different lifecycle operation, and wake cannot wake an offline device.
+
+Tauri advertises native exit/restart only after the shell answers a read-only
+capability probe, so newer web code in an older shell remains compatible.
+Android Capacitor exit requires the actual native media exit method; the separate
+native Android app does not automatically gain this shared frontend feature.
+Packaged Tizen and LG webOS can advertise their verified app-exit API. Ordinary
+browsers and iOS do not advertise native exit or application relaunch.
+
+Lifecycle and named input effects wait for the exact server acknowledgement,
+then recheck current restrictions and ownership. An accepted reply is not proof
+that the effect completed. Repeated result delivery does not replay the effect;
+an expired acknowledgement, changed screen or revoked permission may cancel it.
+Named keys follow the existing player UI; unmapped keys and hardware collisions
+are unavailable. PIN entry, local diagnostic consent/trust, exit confirmations
+and private settings import/export/reset screens require local interaction.
+Use explicit typed lifecycle commands for remote exit or reload.
+
+`pause` and `resume` operate on current owned archive/VOD playback; `seek SECONDS`
+uses the VOD timeline only. Live playback and archive seeking retain their existing
+domain-specific controls. Capability availability can change between reading it
+and issuing a command. These administrator controls do not expand scoped diagnostic
+operator permissions or grant local diagnostic consent.
 
 Updated clients additionally support `resolve_archive` and `play_archive_catalog`
 for the CLI's channel → current programme → available archive search. Archive

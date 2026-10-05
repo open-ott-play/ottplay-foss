@@ -82,6 +82,7 @@ var _webosBackActive = false;
 var _webosBackDepth = 0;
 var _baseWebosExit = window.stbExit;
 window.stbExit = function () {
+    if (window.__ottRemoteInputActive) return;
     var releaseHistory = _webosBackActive;
     _webosBackActive = false;
     var result;

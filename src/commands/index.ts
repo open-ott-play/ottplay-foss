@@ -309,27 +309,6 @@ function setVolume(level?: number, step?: number): void {
     }
 }
 
-/**
- * Exit / shutdown the player.
- * Tries stbToggleStandby first (if supported), then exitPortal.
- */
-function exitPlayer(): void {
-    var w = window;
-    var didSomething = false;
-    if (typeof w.stbToggleStandby === "function") {
-        w.stbToggleStandby();
-        didSomething = true;
-    }
-    if (didSomething) {
-        showPopup("Standby mode");
-    } else {
-        showPopup("Exiting player...");
-        if (typeof w.stbExit === "function") {
-            w.stbExit();
-        }
-    }
-}
-
 // ─── Main dispatcher ──────────────────────────────────────────────────────────
 
 /**
@@ -414,8 +393,8 @@ export function handleCommand(cmd: Command): string {
             break;
 
         case "exit_player":
-            exitPlayer();
-            break;
+            // Only the modern request/result lane can acknowledge an unloading effect.
+            return "unsupported";
 
         default:
             showPopup("This remote command is not supported by the player.");

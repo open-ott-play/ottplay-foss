@@ -2066,6 +2066,7 @@ export function setPlayer(): void {
  * Close the current browser window/tab (standard STB exit behaviour).
  */
 export function stbExit(): void {
+    if ((window as any).__ottRemoteInputActive) return;
     setCoreDemoMute(false);
     window.close();
 }
