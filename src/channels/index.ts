@@ -518,8 +518,8 @@ export function setCurrent(
  * Reads the `continueWatch` provider key. If the saved mode is archive or
  * vod for a channel still present in the current playlist and the bookmark
  * is younger than 7 days, shows a `confirmBox` "Resume from archive?" dialog.
- * On Yes: plays archive at the saved position (reusing `window.playArchive`).
- * On No: returns false so the caller falls back to normal live playback.
+ * On Yes or after 10 seconds: plays archive at the saved position.
+ * On No: starts normal live playback.
  *
  * Returns true if a resume was offered (archive/vod dialog shown), false
  * otherwise (no bookmark / stale / channel missing / live mode) — the caller
@@ -654,7 +654,8 @@ export function restoreContinueWatch(): boolean {
                 playSavedArchive,
                 function () {
                     playLiveFallback();
-                }
+                },
+                10000
             );
         } else {
             // No confirmBox available — skip archive, let caller play live.

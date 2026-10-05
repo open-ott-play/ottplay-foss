@@ -761,6 +761,62 @@ if (require.main === module) {
         assert.equal(c.elements["#begin_time"].textContent, "2");
         assert.equal(first.stream_url, "first.mp4");
     }
+    // VOD, including Plex, uses the actual owned dialog to resume after ten seconds.
+    for (const answer of ["timeout", "no", "stopped", "replacement"]) {
+        const c = fixture();
+        const pending = [];
+        c.strENTER = "Enter";
+        c.strRETURN = "Back";
+        c.setTimeout = (callback, delay) => {
+            pending.push({ callback, delay });
+            return pending.length;
+        };
+        c.clearTimeout = (id) => {
+            if (pending[id - 1]) pending[id - 1].cancelled = true;
+        };
+        vm.runInContext(
+            sourceFunctions("src/ui/index.ts", ["confirmBox"]),
+            vm.createContext(c)
+        );
+        c.stored.medHistory = JSON.stringify([
+            { current: 125, id: 7, stream_url: "old.mp4", title: "Film" },
+        ]);
+        c._playMedia({ id: 7, stream_url: "fresh.mp4", title: "Film" });
+        const resumeTimers = pending.filter((timer) => timer.delay === 10000);
+        assert.equal(resumeTimers.length, 1);
+        const timer = resumeTimers[0];
+        assert.equal(
+            c.calls.some((call) => call[0] === "seek"),
+            false
+        );
+        if (answer === "no") c.dialogBoxKeyHandler(c.keys.RETURN);
+        if (answer === "stopped")
+            c.__ottClassicPlayback.command({ type: "stop" });
+        if (answer === "replacement")
+            c._playMedia({
+                id: 8,
+                stream_url: "other.mp4",
+                title: "Other film",
+            });
+        // Exercise even a callback already queued before cancellation.
+        timer.callback();
+        const seeks = c.calls.filter((call) => call[0] === "seek");
+        assert.deepEqual(
+            seeks,
+            answer === "timeout" ? [["seek", 120]] : [],
+            answer
+        );
+        assert.equal(
+            timer.cancelled,
+            true,
+            "Dialog retirement clears the timer"
+        );
+        timer.callback();
+        assert.equal(
+            c.calls.filter((call) => call[0] === "seek").length,
+            seeks.length
+        );
+    }
     // Legacy history imports once and resume uses provider item identity across URL rotation.
     {
         const c = fixture();
