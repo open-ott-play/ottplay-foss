@@ -194,10 +194,12 @@ slot does not select it or reload the active playlist. Responses contain only
 the slot number, name, active state, archive hours and configuration flags;
 they never return playlist URLs, VPortal keys or media source identities.
 
-`restart` restarts the current stream through its playback backend while
-preserving the supported session state. Unsupported playback contexts report
-an error rather than starting a different channel. `restart player` reloads
-the complete player page. Its response means the reload was accepted; the
+`ott PLAYER restart` reloads the complete player page, as do
+`ott PLAYER restart player` and `ott PLAYER restart p`.
+`ott PLAYER restart stream` (or `ott PLAYER restart s`) explicitly restarts
+the current stream through its playback backend while preserving the supported
+session state. Unsupported playback contexts report an error rather than
+starting a different channel. The page-reload response means it was accepted; the
 player performs it only after the command server acknowledges the response.
 It does not claim that the replacement page has loaded or playback resumed.
 Full reload has the same session behavior as the player's existing restart:

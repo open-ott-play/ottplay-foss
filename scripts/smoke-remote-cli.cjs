@@ -590,7 +590,7 @@ function moduleOf(file, requireFn, window) {
             "profile commands must remain device-scoped"
         );
         assert.deepEqual(desktop().configuration.M3Us[1], original.M3Us[1]);
-        await run("restart");
+        await run("restart", "stream");
         assert.equal(television().streamRestarts, 1);
         const restart = await run("restart", "player");
         assert.match(restart.stdout, /accepted/);
