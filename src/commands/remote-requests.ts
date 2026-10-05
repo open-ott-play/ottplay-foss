@@ -9,7 +9,11 @@ import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
 import { handleRemoteArchive } from "./remote-archive";
 import { handleRemoteProfiles } from "./remote-profiles";
-import { executeRemoteRestart } from "./remote-restart";
+import {
+    executeRemoteControl,
+    executeRemoteRestart,
+    remotePlayerInfo,
+} from "./remote-restart";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -52,6 +56,10 @@ export function executeRemoteRequest(
             "epg_catalog",
             "restart",
             "command",
+            "capabilities",
+            "lifecycle",
+            "input",
+            "playback",
         ].indexOf(request.action) < 0
     ) {
         done({
@@ -140,9 +148,18 @@ export function executeRemoteRequest(
         executeRemoteRestart(w, params, done, afterReply);
         return;
     }
+    if (
+        ["capabilities", "lifecycle", "input", "playback"].indexOf(
+            request.action
+        ) >= 0
+    ) {
+        executeRemoteControl(w, request.action, params, done, afterReply);
+        return;
+    }
     if (request.action === "status") {
         reply({
             channels: channels().length,
+            player: remotePlayerInfo(w),
             ...(w.__ottKiosk ? { kiosk: w.__ottKiosk.snapshot() } : {}),
             diagnostics: {
                 epg: remoteSnapshot(
@@ -530,6 +547,20 @@ export function executeRemoteRequest(
         return;
     }
     if (request.action === "command") {
+        if (params.command === "exit_player") {
+            if (Object.keys(params).length !== 1) {
+                reject("Exit accepts no additional parameters.");
+                return;
+            }
+            executeRemoteControl(
+                w,
+                "lifecycle",
+                { operation: "exit_app" },
+                done,
+                afterReply
+            );
+            return;
+        }
         var outcome = handleCommand(params);
         if (outcome !== "accepted") {
             reject(

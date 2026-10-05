@@ -236,6 +236,124 @@ async function configure(page, address) {
     );
 }
 
+test("remote named input cannot grant local diagnostic consent or cross an ACK UI transition", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    const request = (action, params = {}) =>
+        page.evaluate(
+            ({ action, params }) =>
+                new Promise((resolve) => {
+                    window.__pendingRemoteInput = null;
+                    executeRemoteRequest(
+                        { action, params },
+                        resolve,
+                        (effect) => {
+                            window.__pendingRemoteInput = effect;
+                        }
+                    );
+                }),
+            { action, params }
+        );
+    await page.evaluate(() => window.optionsList(window.settingsCommands));
+    await expect(page.locator("#listCaption")).toHaveText("Settings");
+    const caps = await request("capabilities");
+    expect(caps.status).toBe("ok");
+    expect(caps.data.player.platform).toBe("browser");
+    expect(caps.data.input).toContain("ok");
+    expect(caps.data.lifecycle).not.toContain("reboot_device");
+    expect(caps.data.lifecycle).not.toContain("exit_app");
+    const queued = await request("input", { key: "ok" });
+    expect(queued).toMatchObject({
+        data: { accepted: true, dispatched: false, effect: "input-after-ack" },
+        status: "ok",
+    });
+    // A real local key opens the consent-bearing screen before the remote ACK.
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#remoteDiagnosticsToggle")).toBeVisible();
+    await page.evaluate(() => window.__pendingRemoteInput());
+    for (const key of ["down", "right", "ok", "back"]) {
+        expect((await request("input", { key })).status).toBe("rejected");
+        expect(
+            await page.evaluate(() => window.__pendingRemoteInput)
+        ).toBeNull();
+    }
+    expect((await request("capabilities")).data.input).toEqual([]);
+    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveText(
+        "Allow diagnostics for 10 minutes"
+    );
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(false);
+    expect(server.calls).toEqual([]);
+    expect(server.errors).toEqual([]);
+});
+
+test("remote navigation cannot enter or confirm legacy exit while local controls still work", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await page.evaluate(() => {
+        window.closeList();
+        window.infoBarHide();
+        window.settings.eFun = 1;
+        window.__remoteExitCount = 0;
+        // Keep the production UI and admission; intercept only the native exit.
+        window.stbExit = () => window.__remoteExitCount++;
+    });
+    const input = (key) =>
+        page.evaluate(
+            (key) =>
+                new Promise((resolve) => {
+                    let effect;
+                    executeRemoteRequest(
+                        { action: "input", params: { key } },
+                        (result) => {
+                            if (effect) effect();
+                            resolve(result);
+                        },
+                        (pending) => {
+                            effect = pending;
+                        }
+                    );
+                }),
+            key
+        );
+    expect((await input("back")).status).toBe("ok");
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    expect(await page.evaluate(() => window.__remoteExitCount)).toBe(0);
+    await page.evaluate(() => window.exitPortal());
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    expect((await input("ok")).status).toBe("rejected");
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    expect(await page.evaluate(() => window.__remoteExitCount)).toBe(0);
+    await page.keyboard.press("Enter");
+    expect(await page.evaluate(() => window.__remoteExitCount)).toBe(1);
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    // Private settings transfers remain local, including a dialog layered
+    // above their owner. A remote key must not consume its confirmation.
+    await page.evaluate(() => window.settingsManage());
+    expect((await input("ok")).status).toBe("rejected");
+    await page.evaluate(() => {
+        window.__remoteConfirmationCount = 0;
+        window.confirmBox(
+            "Fixture confirmation",
+            () => window.__remoteConfirmationCount++
+        );
+    });
+    expect((await input("ok")).status).toBe("rejected");
+    expect(await page.evaluate(() => window.__remoteConfirmationCount)).toBe(0);
+    await page.keyboard.press("Enter");
+    expect(await page.evaluate(() => window.__remoteConfirmationCount)).toBe(1);
+    expect(server.errors).toEqual([]);
+});
+
 for (const trusted of [false, true]) {
     test(`locked kiosk permits local ${trusted ? "STOP-key trusted" : "indicator temporary"} support revocation`, async ({
         page,

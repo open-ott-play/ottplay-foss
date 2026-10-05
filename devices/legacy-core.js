@@ -49,6 +49,7 @@ function closeFullscreen() {
     else if (document.msExitFullscreen) document.msExitFullscreen();
 }
 function stbExit() {
+    if (window.__ottRemoteInputActive) return;
     window.close();
 }
 

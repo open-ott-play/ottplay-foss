@@ -77,10 +77,24 @@ const player = cmds.map((c) => {
         return { error: e.name, name: c.name };
     }
 });
-assert.deepEqual(
-    player,
-    JSON.parse(fs.readFileSync(path.join(fixtures, "before-js.json"))).player
-);
+const baseline = JSON.parse(
+    fs.readFileSync(path.join(fixtures, "before-js.json"))
+).player;
+let unacknowledgedExits = 0;
+const expectedPlayer = baseline.map((expected, index) => {
+    // Wire parsing remains compatible. The application refuses unloading work
+    // on this legacy lane, which cannot acknowledge a result before the effect.
+    if (
+        expected.result === "accepted" &&
+        JSON.parse(cmds[index].body).command === "exit_player"
+    ) {
+        unacknowledgedExits++;
+        return { ...expected, result: "unsupported" };
+    }
+    return expected;
+});
+assert.equal(unacknowledgedExits, 3, "only known legacy exit effects change");
+assert.deepEqual(player, expectedPlayer);
 const policy = require("./load-wire.cjs")();
 for (const v of [NaN, Infinity, -Infinity])
     assert.equal(
@@ -124,5 +138,5 @@ assert.equal(
     false
 );
 console.log(
-    "PASS 81 immutable command-handler contracts and ES5/non-JSON/envelope boundaries"
+    "PASS 81 wire contracts with explicit unacknowledged-exit refusal and ES5/non-JSON/envelope boundaries"
 );

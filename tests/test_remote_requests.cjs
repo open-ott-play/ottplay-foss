@@ -824,6 +824,9 @@ async function checkStatusDiagnostics() {
     host.fetch = forbidden;
     try {
         let data = await snapshot();
+        assert.match(data.player.runtime, /^[a-z0-9-]{1,64}$/);
+        assert.equal(data.player.version, "__OTTP_VERSION__");
+        assert.equal(data.player.platform, "browser");
         assert.deepEqual(data, {
             channels: 3,
             diagnostics: {
@@ -831,6 +834,7 @@ async function checkStatusDiagnostics() {
                 input: { available: false },
                 version: 1,
             },
+            player: data.player,
             provider: "xtream",
             ready: true,
             uuid: "dev_test",
@@ -1293,6 +1297,31 @@ function checkRemoteEpgCatalog() {
     r = await call("channels");
     assert.equal(r.status, "rejected");
     require("./test_remote_profiles.cjs");
+    require("./test_remote_controls.cjs");
+    const lifecycleEffects = [];
+    host.__ottRemoteLifecycle = {
+        exit: () => lifecycleEffects.push("exit"),
+        platform: "tauri",
+    };
+    let modernExit, modernEffect;
+    ctx.exports.executeRemoteRequest(
+        { action: "command", params: { command: "exit_player" } },
+        (value) => {
+            modernExit = value;
+        },
+        (effect) => {
+            modernEffect = effect;
+        }
+    );
+    assert.equal(modernExit.data.operation, "exit_app");
+    assert.equal(modernExit.data.dispatched, false);
+    assert.deepEqual(lifecycleEffects, []);
+    modernEffect();
+    assert.deepEqual(
+        lifecycleEffects,
+        ["exit"],
+        "modern legacy alias uses native ACK lane"
+    );
     console.log(
         "PASS remote requests: ES5, stable channel numbering, Cyrillic search, ambiguity, EPG window, provider policy and credential privacy"
     );

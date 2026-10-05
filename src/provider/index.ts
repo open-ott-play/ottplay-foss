@@ -741,6 +741,7 @@ export function toggleProviderSettingsVisibility(): void {
  * Side effects: Calls stbStop(), then window.location.href = self and reload.
  */
 export function restart(): void {
+    if ((window as any).__ottRemoteInputActive) return;
     stbStop();
     window.location.href = window.location.href;
     window.location.reload();

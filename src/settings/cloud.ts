@@ -7,6 +7,7 @@ var cloudSettingsTransfer = (function () {
     var cancelCloudSettings: (() => void) | null = null;
     function startCloudSettings(receive: boolean): void {
         var w = window as any;
+        if (w.__ottRemoteInputActive) return;
         var intent = ++cloudSettingsIntent;
         if (cancelCloudSettings) cancelCloudSettings();
         if (intent !== cloudSettingsIntent) return;
@@ -292,7 +293,10 @@ var cloudSettingsTransfer = (function () {
         }
         if (port) {
             owner = port.owner("about");
-            if (owner) owner.own(cancel);
+            if (owner) {
+                owner.model.localOnlyInput = true;
+                owner.own(cancel);
+            }
         }
         if (!active()) return;
         deadline = setTimeout(cancel, 600000);
@@ -325,6 +329,7 @@ var cloudSettingsTransfer = (function () {
     /** Retained device ABI; native shells export a local portable JSON document. */
     function cloudSendSettings(): void {
         var w = window as any;
+        if (w.__ottRemoteInputActive) return;
         if (
             (w.Capacitor || w.__TAURI__) &&
             typeof w.exportSettingsUI === "function"

@@ -3918,11 +3918,16 @@ export function selectValue(t: any): void {
  *             calls `window.stbExit()`.
  */
 export function exitPortal(): void {
+    var w = window as any;
+    if (w.__ottRemoteInputActive) return;
     confirmBox(_("Do you want to exit player?"), function () {
-        var w = window as any;
+        if (w.__ottRemoteInputActive) return;
         if (typeof w.setCurrent === "function")
             w.setCurrent(w.catIndex, w.primaryIndex);
         w.playType = 0;
         if (typeof w.stbExit === "function") w.stbExit();
     });
+    var port = w.__ottClassicScreenPort;
+    var owner = port && port.owner && port.owner("dialog");
+    if (owner) owner.model.localOnlyInput = true;
 }

@@ -1386,3 +1386,81 @@ const executeRestart = restartContext.exports.executeRemoteRestart;
 console.log(
     "PASS remote restart: validation, owned backend, locked settings, checkpoint and truthful acceptance"
 );
+
+// Real controls use the transport's retained exact response; a lost reply never
+// repeats an input or native lifecycle effect, and retirement cancels both.
+for (const action of ["lifecycle", "input"]) {
+    for (const outcome of ["ack", "disabled", "expired", "policy"]) {
+        let effects = 0,
+            locked = false;
+        const w = {
+            __ottClassicScreenPort: {
+                normalize: () => ({ id: "up" }),
+                revision: () => 0,
+            },
+            __ottParental: { needs: () => locked },
+            __ottRemoteLifecycle: { exit: () => effects++, platform: "tauri" },
+            $: () => ({ is: () => locked }),
+            keyHandler: () => effects++,
+            keys: { UP: 38 },
+        };
+        const rpc = harness("http:", (request, done, afterReply) =>
+            restartContext.exports.executeRemoteControl(
+                w,
+                request.action,
+                request.params,
+                done,
+                afterReply
+            )
+        );
+        const envelope = {
+            commands: [],
+            requests: [
+                {
+                    action,
+                    expires_at: 5030,
+                    id: "f".repeat(32),
+                    params:
+                        action === "lifecycle"
+                            ? { operation: "exit_app" }
+                            : { key: "up" },
+                },
+            ],
+            server_time: 5000,
+        };
+        rpc.connect();
+        rpc.respond(envelope);
+        rpc.next();
+        const body = rpc.requests.at(-1).request.body;
+        assert.equal(JSON.parse(body).data.dispatched, false);
+        assert.equal(effects, 0);
+        rpc.respond({}, 0);
+        rpc.next();
+        assert.equal(rpc.requests.at(-1).request.body, body);
+        const pending = rpc.requests.at(-1);
+        if (outcome === "disabled") rpc.connect({ enabled: false });
+        if (outcome === "expired") clock += 30000;
+        if (outcome === "policy") locked = true;
+        pending.complete({ body: '{"status":"ok"}', status: 200 });
+        assert.equal(
+            effects,
+            outcome === "ack" ? 1 : 0,
+            action + " " + outcome
+        );
+        if (outcome === "ack") {
+            rpc.next();
+            rpc.respond(envelope);
+            rpc.next();
+            assert.equal(rpc.requests.at(-1).request.body, body);
+            rpc.respond({ status: "ok" });
+            assert.equal(
+                effects,
+                1,
+                action + " duplicate request only replays the receipt"
+            );
+        }
+    }
+}
+console.log(
+    "PASS actual lifecycle/input transport: lost ACK, byte-identical retry, single dispatch, duplicate replay, disable, expiry and local policy changes"
+);
