@@ -59,7 +59,8 @@ function classicMediaTitle(item: any): string {
 }
 function classicMediaDescription(item: any, text: string): string {
     var label = classicMediaLabel(item);
-    if (!label || label.heading !== true) return text;
+    if (!label || label.heading !== true || typeof text !== "string")
+        return text;
     function escape(value: string): string {
         return value
             .replace(/&/g, "&amp;")

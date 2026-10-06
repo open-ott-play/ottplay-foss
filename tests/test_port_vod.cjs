@@ -403,6 +403,7 @@ if (require.main === module) {
         };
         assert.equal(c.__ottMedia.title(malformed), "42");
         assert.equal(c.getMediaDescr(malformed), "User description");
+        assert.equal(c.__ottMedia.description(generated, 42), 42);
         for (const route of ["history", "favorites"])
             assert.equal(
                 c.__ottMedia.title(

@@ -560,6 +560,10 @@ for (const entrypoint of ["startPlayer", "onStbReady"]) {
                             throw failure;
                         };
                         Object.assign(w, {
+                            _: (key) =>
+                                key === "Player could not start"
+                                    ? "Не удалось запустить плеер"
+                                    : key,
                             hostUrl: "https://localhost",
                             isPlayDistribution: () => true,
                             loadSettings: fail,
@@ -581,9 +585,7 @@ for (const entrypoint of ["startPlayer", "onStbReady"]) {
                         if (hasLaunch) {
                             assert.equal(
                                 launch.querySelector("b").textContent,
-                                entrypoint === "startPlayer"
-                                    ? "Exception:"
-                                    : "Exception.StbReady:"
+                                "Не удалось запустить плеер"
                             );
                             assert.equal(
                                 launch.querySelectorAll("br").length,
@@ -591,7 +593,7 @@ for (const entrypoint of ["startPlayer", "onStbReady"]) {
                             );
                             assert.equal(
                                 launch.lastChild.textContent,
-                                " name " + name + ", message " + message
+                                entrypoint + " " + name + ": " + message
                             );
                         } else {
                             assert.equal(

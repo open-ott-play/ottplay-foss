@@ -1667,14 +1667,17 @@ function startupError(
     if (launch) {
         launch.appendChild(document.createElement("br"));
         launch.appendChild(document.createElement("br"));
-        launch.appendChild(document.createElement("b")).textContent = label;
+        launch.appendChild(document.createElement("b")).textContent = _(
+            "Player could not start"
+        );
         launch.appendChild(
             document.createTextNode(
-                " name " +
+                label +
+                    " " +
                     (error != null && error.name != null
                         ? error.name
                         : "Error") +
-                    ", message " +
+                    ": " +
                     (error != null && error.message != null
                         ? error.message
                         : String(error))
@@ -1698,19 +1701,19 @@ function startupError(
  * Edge case: Wrapped in try/catch — exceptions are displayed in #launch.
  */
 export function startPlayer(): void {
-    var uiHost = window as any;
     // Cap/Tauri boot leaves hostUrl ""; language packs + icons resolve via
     // absolute "/locales/…". Prefer location.origin when present so nested
     // Cap paths and capacitor://localhost match CSS/bundle host.
     try {
         if (!hostUrl) {
             var locHost =
-                (typeof uiHost.host === "string" && uiHost.host) ||
-                (uiHost.location && uiHost.location.origin) ||
+                (typeof (window as any).host === "string" &&
+                    (window as any).host) ||
+                ((window as any).location && (window as any).location.origin) ||
                 "";
             if (locHost && locHost !== "null" && locHost !== "file://") {
                 hostUrl = locHost;
-                uiHost.hostUrl = hostUrl;
+                (window as any).hostUrl = hostUrl;
             }
         }
     } catch (_hu) {}
@@ -1745,33 +1748,37 @@ export function startPlayer(): void {
             capabilities: function () {
                 return {
                     audio:
-                        typeof uiHost.stbAudioTracksExists === "function" &&
-                        uiHost.stbAudioTracksExists(),
-                    pip: typeof uiHost.stbPlayPip === "function",
+                        typeof (window as any).stbAudioTracksExists ===
+                            "function" &&
+                        (window as any).stbAudioTracksExists(),
+                    pip: typeof (window as any).stbPlayPip === "function",
                     subtitles:
-                        typeof uiHost.stbSubtitleExists === "function" &&
-                        !!uiHost.stbSubtitleExists(),
+                        typeof (window as any).stbSubtitleExists ===
+                            "function" && !!(window as any).stbSubtitleExists(),
                 };
             },
             clearInterval: function (id: number) {
-                uiHost.clearInterval(id);
+                (window as any).clearInterval(id);
             },
             command: function (command: any) {
                 deviceHost.__ottClassicPlayback.command(command);
             },
             duration: function () {
-                return typeof uiHost.stbGetLen === "function"
-                    ? uiHost.stbGetLen()
+                return typeof (window as any).stbGetLen === "function"
+                    ? (window as any).stbGetLen()
                     : NaN;
             },
             importLegacy: function () {
                 return deviceHost.__ottClassicPlayback.importLegacy();
             },
             isManaged: function () {
-                return uiHost.stbPlay === deviceHost.__ottCoreTransport.play;
+                return (
+                    (window as any).stbPlay ===
+                    deviceHost.__ottCoreTransport.play
+                );
             },
             key: function (event: any) {
-                return uiHost.stbEventToKeyCode(event);
+                return (window as any).stbEventToKeyCode(event);
             },
             keys: function () {
                 return deviceHost.keys;
@@ -1780,27 +1787,27 @@ export function startPlayer(): void {
                 return Date.now();
             },
             playing: function () {
-                return uiHost.stbIsPlaying();
+                return (window as any).stbIsPlaying();
             },
             position: function () {
-                return typeof uiHost.stbGetPosTime === "function"
-                    ? uiHost.stbGetPosTime()
+                return typeof (window as any).stbGetPosTime === "function"
+                    ? (window as any).stbGetPosTime()
                     : NaN;
             },
             route: function () {
                 return deviceHost.ott_device;
             },
             setInterval: function (callback: () => void, delay: number) {
-                return uiHost.setInterval(callback, delay);
+                return (window as any).setInterval(callback, delay);
             },
         });
         deviceHost.__ottDevice.start();
-        uiHost.listFooter = uiHost.listFooterElement;
+        (window as any).listFooter = (window as any).listFooterElement;
         if (typeof stbInit === "function" && (stbInit() as any) !== false) {
             onStbReady();
         }
     } catch (e) {
-        startupError(launchEl, "Exception:", e);
+        startupError(launchEl, "startPlayer", e);
     }
 }
 
@@ -1825,33 +1832,33 @@ export function startPlayer(): void {
  * Wrapped in try/catch — exceptions are displayed in #launch.
  */
 function onStbReady(): void {
-    var uiHost = window as any;
     try {
         // Merge device-specific key mappings from window.keys (set by devices/{device}/device.js)
-        if (typeof uiHost.keys !== "undefined") {
-            Object.assign(keys, uiHost.keys);
+        if (typeof (window as any).keys !== "undefined") {
+            Object.assign(keys, (window as any).keys);
         }
         // Load all settings
         loadSettings();
         // Sync PlayerSettings → window.* for settings submenu compatibility
-        installSettingsFacade(uiHost);
-        uiHost.__ottKiosk.init();
-        uiHost.__ottLocalHttpRemote.init();
-        uiHost.__ottCommandServer.configure({
+        installSettingsFacade(window as any);
+        (window as any).__ottKiosk.init();
+        (window as any).__ottLocalHttpRemote.init();
+        (window as any).__ottCommandServer.configure({
             address: settings.commandServerAddress,
             enabled: settings.commandServerEnabled === 1,
             token: settings.commandServerToken,
         });
         // Read device-local support permission only after saved settings and
         // the controller's initial configure callback have completed.
-        if (!uiHost.__ottRemoteDiagnostics) initRemoteDiagnostics();
+        if (!(window as any).__ottRemoteDiagnostics) initRemoteDiagnostics();
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
-        if (typeof uiHost.ensureDeviceClientId === "function")
-            uiHost.ensureDeviceClientId();
-        uiHost.__ottControlDiscovery.start();
-        if (typeof uiHost.applyLocalSwopConfig === "function")
-            uiHost.applyLocalSwopConfig();
-        if (uiHost.__ottNasLibrary) uiHost.__ottNasLibrary.init();
+        if (typeof (window as any).ensureDeviceClientId === "function")
+            (window as any).ensureDeviceClientId();
+        (window as any).__ottControlDiscovery.start();
+        if (typeof (window as any).applyLocalSwopConfig === "function")
+            (window as any).applyLocalSwopConfig();
+        if ((window as any).__ottNasLibrary)
+            (window as any).__ottNasLibrary.init();
         initUIReferences();
 
         // Apply settings
@@ -1867,12 +1874,12 @@ function onStbReady(): void {
 
         // Expose edit globals for provider scripts (stalker, edem, etc.)
         // Providers assign window.setEdit, window.editCaption, window.editvar directly
-        if (typeof uiHost.setEdit === "undefined")
-            uiHost.setEdit = function () {};
-        if (typeof uiHost.editKey === "undefined")
-            uiHost.editKey = uiHost.editKey1;
-        if (typeof uiHost.showEditKey === "undefined")
-            uiHost.showEditKey = uiHost.showEditKey1;
+        if (typeof (window as any).setEdit === "undefined")
+            (window as any).setEdit = function () {};
+        if (typeof (window as any).editKey === "undefined")
+            (window as any).editKey = (window as any).editKey1;
+        if (typeof (window as any).showEditKey === "undefined")
+            (window as any).showEditKey = (window as any).showEditKey1;
 
         // Save current popup state (read by loadProv when switching providers)
         savedPopup.popupActions = popupActions.slice();
@@ -1886,10 +1893,9 @@ function onStbReady(): void {
         if (!lang) {
             console.log("TRACE no lang, calling selectLang()");
             if (launchEl) {
-                launchEl.innerHTML += "<br/><b>No language selected !!!</b>";
                 launchEl.style.display = "none";
-                if (typeof uiHost.clearBootHide === "function")
-                    uiHost.clearBootHide();
+                if (typeof (window as any).clearBootHide === "function")
+                    (window as any).clearBootHide();
             }
             selectLang();
             return;
@@ -1899,20 +1905,21 @@ function onStbReady(): void {
         getScriptDOM(
             hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
             function () {
-                uiHost.__ottBootDictionary = uiHost.keyStrings;
+                (window as any).__ottBootDictionary = (
+                    window as any
+                ).keyStrings;
                 if (typeof duneAddSettings !== "function") loadProv();
-                else if (typeof uiHost.optionsList === "function")
-                    uiHost.optionsList(selectLang);
+                else if (typeof (window as any).optionsList === "function")
+                    (window as any).optionsList(selectLang);
                 checkTauriUpdatesAfterLanguage();
             },
             function () {
                 var el = document.getElementById("launch");
                 if (el) {
-                    el.innerHTML += "<br/><b>No language selected !!!</b>";
                     el.style.display = "none";
                 }
-                if (typeof uiHost.clearBootHide === "function")
-                    uiHost.clearBootHide();
+                if (typeof (window as any).clearBootHide === "function")
+                    (window as any).clearBootHide();
                 selectLang(true);
             }
         );
@@ -1920,13 +1927,13 @@ function onStbReady(): void {
         // Re-apply Tauri IPC override after provider script loads.
         // This ensures the getChannelEpg override persists even when provider scripts
         // attempt to reset window.getChannelEpg (as they do in loadProv → getScriptDOM callback).
-        if (typeof uiHost.__TAURI__ !== "undefined") {
+        if (typeof (window as any).__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
             setupTauriEpgCacheReady();
             setupTauriCompanionShim();
             if (typeof setupStalkerPortalShim === "function")
                 setupStalkerPortalShim();
-        } else if (typeof uiHost.Capacitor !== "undefined") {
+        } else if (typeof (window as any).Capacitor !== "undefined") {
             setupCapacitorCompanionShim();
             if (typeof setupStalkerPortalShim === "function")
                 setupStalkerPortalShim();
@@ -1934,11 +1941,7 @@ function onStbReady(): void {
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
     } catch (e) {
-        startupError(
-            document.getElementById("launch"),
-            "Exception.StbReady:",
-            e
-        );
+        startupError(document.getElementById("launch"), "onStbReady", e);
     }
 }
 
@@ -5594,95 +5597,97 @@ window.privacyPolicy = privacyPolicy;
  * sets aboutKeyHandler to dismiss on RETURN.
  */
 function buttonsInfo(): void {
-    var uiHost = window as any;
     var e = '<br/><div class="btn">';
     var t = "</div> - ";
-    var strYellow = uiHost.strTools || "";
-    var strRed = uiHost.strEPG || "";
+    var strYellow = (window as any).strTools || "";
+    var strRed = (window as any).strEPG || "";
     var html =
         e +
-        uiHost.strENTER +
+        (window as any).strENTER +
         t +
         _("Show channel selection list") +
         e +
-        uiHost.strRETURN +
+        (window as any).strRETURN +
         t +
         _("Hide / Return") +
         e +
-        uiHost.strEXIT +
+        (window as any).strEXIT +
         t +
         _("Exit player") +
         "<br/><br/>" +
         _("In live mode: <br/>") +
         e +
-        uiHost.strSTOP +
+        (window as any).strSTOP +
         t +
         _("Restart stream") +
         e +
-        uiHost.strPLAY +
+        (window as any).strPLAY +
         " / " +
-        uiHost.strPAUSE +
+        (window as any).strPAUSE +
         " / 0" +
         t +
         _("Pause/Play") +
         e +
-        uiHost.strPREV +
+        (window as any).strPREV +
         t +
         _("Timeshift: to start of TV program") +
         e +
-        uiHost.strRW +
+        (window as any).strRW +
         t +
         _("Timeshift: one minute back") +
         e +
-        uiHost.strFF +
+        (window as any).strFF +
         " / " +
-        uiHost.strNEXT +
+        (window as any).strNEXT +
         t +
         _("Show rewind window") +
         _("<br/><br/>In archive mode:<br/>") +
         e +
-        uiHost.strPLAY +
+        (window as any).strPLAY +
         " / " +
-        uiHost.strPAUSE +
+        (window as any).strPAUSE +
         " / 0" +
         t +
         _("Pause/Play") +
         e +
-        uiHost.strSTOP +
+        (window as any).strSTOP +
         " / 8" +
         t +
         _("Stop playback and return to live") +
         e +
-        uiHost.strPREV +
+        (window as any).strPREV +
         " / 2" +
         t +
         _("To start of TV program / Previous TV program") +
         e +
-        uiHost.strNEXT +
+        (window as any).strNEXT +
         " / 5" +
         t +
         _("Next TV program") +
         e +
-        uiHost.strRW +
+        (window as any).strRW +
         " / " +
-        uiHost.strFF +
+        (window as any).strFF +
         t +
         _("Back / Forward for 1 minute") +
         (strYellow ? "<br/>" + e + strYellow + t + _("Show player menu") : "") +
         (strRed
             ? "<br/>" + e + strRed + t + _("Show EPG and archive for channel")
             : "");
-    uiHost.saveListPanelState();
+    (window as any).saveListPanelState();
     $("#listAbout")
         .html('<div id="_prd">' + html + "</div>")
         .show();
     var a = $("#_prd").height() + 10 - $("#listAbout").height();
-    uiHost.scrollUp("_prd", a, 10000);
-    uiHost.aboutKeyHandler = function (e: number): boolean {
-        if (e === uiHost.keys.RETURN || e === uiHost.keys.EXIT) {
-            uiHost.restoreListPanelState();
+    (window as any).scrollUp("_prd", a, 10000);
+    (window as any).aboutKeyHandler = function (e: number): boolean {
+        if (
+            e === (window as any).keys.RETURN ||
+            e === (window as any).keys.EXIT
+        ) {
+            (window as any).restoreListPanelState();
             $("#listAbout").hide().text("");
-            clearTimeout(uiHost.detailTimer);
+            clearTimeout((window as any).detailTimer);
         }
         return true;
     };
