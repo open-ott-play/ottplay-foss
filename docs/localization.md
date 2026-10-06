@@ -47,7 +47,10 @@ in browsers. Older engines fall back to `language`, `userLanguage`, then
 `browserLanguage` when no preference list is available. A nonempty list is
 authoritative: unsupported entries do not trigger a different browser fallback.
 Native preferences are injected at document start, before the HTML loader;
-this avoids WebKit's reduced browser-language list. The archived Android bridge
+this avoids WebKit's reduced browser-language list. Injection is limited to the
+trusted main player origin: bundled assets, the explicitly configured player
+server, and Tauri's configured dev URL in development; other navigations and
+subframes receive no native language list. The archived Android bridge
 fixtures are not a shipped Capacitor target in this repository.
 On Linux, an effective `C`/`POSIX` message locale (including encoding suffixes)
 selects English ahead of `LANGUAGE` and WebView preferences; the first nonempty

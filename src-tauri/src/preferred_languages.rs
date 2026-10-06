@@ -1,13 +1,52 @@
 //! Supply the full native preference list before the shared HTML bootstrap.
 //! WebKit deliberately exposes only its first language through navigator.languages.
 
-pub fn initialization_script() -> String {
-    script_for(&preferred_languages())
+// Tauri runs initialization scripts on subsequent navigations too, and Windows
+// also runs them in subframes. Keep native preferences in the trusted main page.
+const SCRIPT_TEMPLATE: &str = r#"(function () {
+    if (window !== window.top) return;
+    var origin = window.location.protocol + "//" + window.location.host;
+    if (__OTT_LANGUAGE_ORIGINS__.indexOf(origin) === -1) return;
+    window.__ottPreferredLanguages = __OTT_LANGUAGE_VALUES__;
+}());"#;
+
+pub fn initialization_script(
+    configured_url: Option<&url::Url>,
+    dev_url: Option<&url::Url>,
+) -> String {
+    script_for(
+        &preferred_languages(),
+        &trusted_origins(configured_url, dev_url),
+    )
 }
 
-fn script_for(languages: &[String]) -> String {
+fn trusted_origins(configured_url: Option<&url::Url>, dev_url: Option<&url::Url>) -> Vec<String> {
+    let mut origins: Vec<String> = [
+        "tauri://localhost",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+    ]
+    .map(String::from)
+    .into();
+    for url in [configured_url, dev_url].into_iter().flatten() {
+        // Only server origins have a usable tuple here. Do not trust all opaque
+        // file/data/about URLs via origin="null" or expose URL credentials.
+        if matches!(url.scheme(), "http" | "https") {
+            let origin = url.origin().ascii_serialization();
+            if !origins.contains(&origin) {
+                origins.push(origin);
+            }
+        }
+    }
+    origins
+}
+
+fn script_for(languages: &[String], origins: &[String]) -> String {
     let json = serde_json::to_string(languages).unwrap_or_else(|_| "[]".into());
-    format!("window.__ottPreferredLanguages={json};")
+    let origins = serde_json::to_string(origins).unwrap_or_else(|_| "[]".into());
+    SCRIPT_TEMPLATE
+        .replace("__OTT_LANGUAGE_ORIGINS__", &origins)
+        .replace("__OTT_LANGUAGE_VALUES__", &json)
 }
 
 #[cfg(not(all(unix, not(target_vendor = "apple"))))]
@@ -90,14 +129,58 @@ mod tests {
     #[test]
     fn script_preserves_order_and_escapes_values() {
         let values = vec!["zz-ZZ".into(), "ru-RU".into(), "x-\"\\\n".into()];
-        let script = script_for(&values);
+        let script = script_for(&values, &[]);
         let json = script
-            .strip_prefix("window.__ottPreferredLanguages=")
+            .split_once("window.__ottPreferredLanguages = ")
             .unwrap()
-            .strip_suffix(';')
-            .unwrap();
+            .1
+            .split_once(';')
+            .unwrap()
+            .0;
         assert_eq!(serde_json::from_str::<Vec<String>>(json).unwrap(), values);
-        assert_eq!(script_for(&[]), "window.__ottPreferredLanguages=[];");
+        assert!(script_for(&[], &[]).contains("window.__ottPreferredLanguages = [];"));
+    }
+
+    #[test]
+    fn scope_contains_only_bundled_and_selected_server_origins() {
+        let configured = url::Url::parse(
+            "https://owner:password@Custom.Example:8443/player?token=private#fragment",
+        )
+        .unwrap();
+        let dev = url::Url::parse("http://[::1]:5173/player").unwrap();
+        let origins = trusted_origins(Some(&configured), Some(&dev));
+        assert_eq!(
+            origins,
+            [
+                "tauri://localhost",
+                "http://tauri.localhost",
+                "https://tauri.localhost",
+                "https://custom.example:8443",
+                "http://[::1]:5173"
+            ]
+        );
+        let script = script_for(&["ru-RU".into()], &origins);
+        for private in [
+            "owner", "password", "token", "private", "fragment", "/player",
+        ] {
+            assert!(!script.contains(private), "URL details leaked: {private}");
+        }
+        for value in [
+            "file:///player/index.html",
+            "data:text/html,player",
+            "about:blank",
+        ] {
+            let url = url::Url::parse(value).unwrap();
+            assert_eq!(
+                trusted_origins(Some(&url), None),
+                trusted_origins(None, None)
+            );
+        }
+        let default_port = url::Url::parse("https://custom.example:443/player").unwrap();
+        assert_eq!(
+            trusted_origins(Some(&default_port), None).last().unwrap(),
+            "https://custom.example"
+        );
     }
 
     #[test]
@@ -132,10 +215,8 @@ mod tests {
                 }
                 let languages = posix_languages(values);
                 assert_eq!(languages, ["en"], "locale {locale} at level {index}");
-                assert_eq!(
-                    script_for(&languages),
-                    "window.__ottPreferredLanguages=[\"en\"];"
-                );
+                assert!(script_for(&languages, &[])
+                    .contains("window.__ottPreferredLanguages = [\"en\"];"));
             }
         }
     }
