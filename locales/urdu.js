@@ -276,6 +276,8 @@ var keyStrings = {
         "جوڑا بنانے کی درخواست نہیں بن سکی۔ دوبارہ کوشش کرنے کے لیے دوبارہ سرور تلاش کریں۔",
     "Could not load. Select to retry.":
         "لوڈ نہیں ہو سکا۔ دوبارہ کوشش کرنے کے لیے منتخب کریں۔",
+    "Could not save provider settings.":
+        "فراہم کنندہ کی ترتیبات محفوظ نہیں ہو سکیں۔",
     "Could not save the approved command server settings.":
         "منظور شدہ کمانڈ سرور سیٹنگز کو محفوظ نہیں کیا جا سکا۔",
     "Could not update HTTP remote control.":
@@ -603,6 +605,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "کوئی پروگرام پلے لسٹ چینلز اور تاریخوں سے مماثل نہیں ہے۔ ماخذ اور آلہ کی گھڑی کو چیک کریں۔",
     "No saved settings found": "کوئی محفوظ کردہ ترتیبات نہیں ملی",
+    "Not configured": "ترتیب نہیں دیا گیا",
     "Not found": "نہیں ملا",
     "Not reduce video when showing the list (bugfix)":
         "فہرست دکھاتے وقت ویڈیو کو چھوٹا نہ کریں (بگ فکس)",
@@ -972,6 +975,7 @@ var keyStrings = {
         "VOD اس فراہم کنندہ کے ذریعہ تعاون یافتہ نہیں ہے۔",
     "Volume step, %": "آواز کی تبدیلی کا قدم، %",
     "VPortal link": "VPortal لنک",
+    "VPortal profiles": "VPortal پروفائلز",
     "VPortal request failed":
         "VPortal لوڈ نہیں ہو سکا۔ لنک، رسائی کلید، اور پورٹل کی دستیابی کو چیک کریں۔",
     volume: "آواز",

@@ -4,7 +4,7 @@ import { checkProviderUrl, isProviderAllowed } from "../provider";
 // Configuration publication can synchronously reenter the remote dispatcher.
 var profileRequestActive = false;
 
-/** Handle M3U slot operations without returning stored endpoints or credentials. */
+/** Handle managed profile operations without returning endpoints or credentials. */
 export function handleRemoteProfiles(
     request: any,
     done: (result: any) => void
@@ -96,6 +96,13 @@ export function handleRemoteProfiles(
     function run(): any {
         var params = request.params === undefined ? {} : request.params;
         var driver = w.__ottActiveProviderDriver;
+        if (
+            driver &&
+            driver.id === "vportal" &&
+            isProviderAllowed("vportal") &&
+            typeof driver.remoteProfiles === "function"
+        )
+            return driver.remoteProfiles(request);
         if (
             !driver ||
             driver.id !== "m3u" ||

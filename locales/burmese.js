@@ -270,6 +270,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "တွဲချိတ်ရန် တောင်းဆိုချက်ကို မဖန်တီးနိုင်ခဲ့ပါ။ ထပ်ကြိုးစားရန် ဆာဗာကို ထပ်မံရှာဖွေပါ။",
     "Could not load. Select to retry.": "မတင်နိုင်ပါ။ ထပ်ကြိုးစားရန် ရွေးချယ်ပါ။",
+    "Could not save provider settings.": "ဝန်ဆောင်မှုပေးသူ၏ ဆက်တင်များကို သိမ်းဆည်း၍မရပါ။",
     "Could not save the approved command server settings.":
         "အတည်ပြုထားသော အမိန့်ပေးဆာဗာ ဆက်တင်များကို မသိမ်းဆည်းနိုင်ပါ။",
     "Could not update HTTP remote control.": "HTTP အဝေးထိန်းခလုတ်ကို အပ်ဒိတ်မလုပ်နိုင်ခဲ့ပါ။",
@@ -587,6 +588,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "အစီအစဉ်များနှင့် ရက်စွဲများနှင့် ကိုက်ညီသည့် အစီအစဉ်မရှိပါ။ အရင်းအမြစ်နှင့် စက်နာရီကို စစ်ဆေးပါ။",
     "No saved settings found": "သိမ်းဆည်းထားသော ဆက်တင်များကို မတွေ့ပါ။",
+    "Not configured": "မသတ်မှတ်ရသေးပါ",
     "Not found": "ရှာမတွေ့ပါ။",
     "Not reduce video when showing the list (bugfix)":
         "စာရင်းကိုပြသသည့်အခါ ဗီဒီယိုကို မလျှော့ပါနှင့် (ချွတ်ယွင်းချက်ပြင်ဆင်ခြင်း)",
@@ -950,6 +952,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD ကို ဤဝန်ဆောင်မှုပေးသူက မပံ့ပိုးပါ။",
     "Volume step, %": "အသံအတိုးအကျယ် အဆင့်၊ %",
     "VPortal link": "VPortal လင့်ခ်",
+    "VPortal profiles": "VPortal ပရိုဖိုင်များ",
     "VPortal request failed":
         "VPortal ကို ဖွင့်၍မရပါ။ လင့်ခ်၊ ဝင်သုံးကီးနှင့် ပေါ်တယ်ရရှိနိုင်မှုတို့ကို စစ်ဆေးပါ။",
     volume: "အသံအတိုးအကျယ်",

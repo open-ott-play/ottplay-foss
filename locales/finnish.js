@@ -275,6 +275,8 @@ var keyStrings = {
         "Pariliitospyyntöä ei voitu luoda. Etsi palvelin uudelleen ja yritä uudelleen.",
     "Could not load. Select to retry.":
         "Ei voitu ladata. Yritä uudelleen valitsemalla.",
+    "Could not save provider settings.":
+        "Palveluntarjoajan asetusten tallentaminen epäonnistui.",
     "Could not save the approved command server settings.":
         "Ei voitu tallentaa hyväksyttyjä komentopalvelimen asetuksia.",
     "Could not update HTTP remote control.":
@@ -602,6 +604,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Yksikään ohjelma ei vastannut soittolistan kanavia ja päivämääriä. Tarkista lähde ja laitteen kello.",
     "No saved settings found": "Tallennettuja asetuksia ei löytynyt",
+    "Not configured": "Ei määritetty",
     "Not found": "Ei löytynyt",
     "Not reduce video when showing the list (bugfix)":
         "Älä kutista videota, kun näytät luetteloa (virheenkorjaus)",
@@ -969,6 +972,7 @@ var keyStrings = {
     "VOD not supported by provider": "Tämä palveluntarjoaja ei tue VOD:ta",
     "Volume step, %": "Äänenvoimakkuuden askel, %",
     "VPortal link": "VPortal linkki",
+    "VPortal profiles": "VPortal-profiilit",
     "VPortal request failed":
         "Ei voitu ladata VPortal. Tarkista linkki, pääsyavain ja portaalin saatavuus.",
     volume: "äänenvoimakkuus",

@@ -267,6 +267,7 @@ var keyStrings = {
         "युग्मन अनुरोध नहीं बनाया जा सका। पुनः प्रयास करने के लिए फिर से सर्वर ढूंढें।",
     "Could not load. Select to retry.":
         "लोड नहीं हो सका. पुनः प्रयास करने के लिए चयन करें.",
+    "Could not save provider settings.": "प्रदाता की सेटिंग्स सहेजी नहीं जा सकीं।",
     "Could not save the approved command server settings.":
         "स्वीकृत कमांड सर्वर सेटिंग्स को सहेजा नहीं जा सका।",
     "Could not update HTTP remote control.":
@@ -586,6 +587,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "कोई भी कार्यक्रम प्लेलिस्ट चैनल और तारीखों से मेल नहीं खाता। स्रोत और डिवाइस घड़ी की जाँच करें।",
     "No saved settings found": "कोई सहेजी गई सेटिंग नहीं मिली",
+    "Not configured": "सेटअप नहीं हुआ",
     "Not found": "नहीं मिला",
     "Not reduce video when showing the list (bugfix)":
         "सूची दिखाते समय वीडियो को छोटा न करें (बग फिक्स)",
@@ -948,6 +950,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD इस प्रदाता द्वारा समर्थित नहीं है",
     "Volume step, %": "आवाज़ बदलने का चरण, %",
     "VPortal link": "VPortal लिंक",
+    "VPortal profiles": "VPortal प्रोफ़ाइल",
     "VPortal request failed":
         "VPortal लोड नहीं हो सका। लिंक, एक्सेस कुंजी और पोर्टल उपलब्धता की जाँच करें।",
     volume: "आवाज़",

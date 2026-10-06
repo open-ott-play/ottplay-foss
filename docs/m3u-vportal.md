@@ -1,5 +1,45 @@
 # VPortal with an M3U TV playlist
 
+## Standalone VPortal provider
+
+Choose **VPortal** beside Plex in **Change provider** to use the media library
+without a TV playlist. **VPortal profiles** contains 15 independently named
+slots. Enter the complete cabinet link and select **Save and open library**.
+Links are masked in summaries. These slots use their own storage; existing
+VPortal links in M3U profiles are preserved and do not change with these slots.
+
+The current provider determines which profiles the remote CLI manages:
+
+```sh
+ott a1 provider vportal
+ott a1 profile-config 1 /path/to/private-vportal-profile.json
+ott a1 profile 1
+ott a1 profiles
+```
+
+The private JSON file contains `name` and `vportal`. Standalone profiles do not
+accept playlist URLs or archive hours. Profile responses contain only names,
+slot numbers and configuration flags; they never return the cabinet link/key.
+
+### VPortal kiosk
+
+Start a film, series or remote VPortal queue, then run `ott a1 kiosk on` without
+a channel query. The kiosk locks that video's existing episode queue, repeats
+it, blocks local navigation/settings and preserves the current episode and
+position across player reloads. Media addresses are resolved from the saved
+provider requests on recovery; signed stream URLs are not kept in the policy.
+The policy is bound to the exact VPortal profile/account, including after a
+reload. Switching to another profile cannot play identically numbered videos.
+
+VPortal gets a 60-second startup allowance for slow devices; after playback
+starts, ten seconds without progress triggers recovery. `ott a1 kiosk off`
+releases the lock. To replace the selection, unlock, choose the next film or
+queue, then lock again. `kiosk set CHANNEL` remains the live-TV command.
+This requires the updated player and CLI. Actual provider access and device
+codec support remain separate from profile/kiosk configuration.
+
+## VPortal alongside television
+
 The M3U provider can use a VPortal media library independently of its TV
 playlist. In the selected playlist's settings, enter the ordinary M3U/M3U8
 channel URL in **Playlist URL** and the full portal value in **VPortal link**:

@@ -274,6 +274,8 @@ var keyStrings = {
         "Չհաջողվեց ստեղծել զուգակցման հարցում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
     "Could not load. Select to retry.":
         "Չհաջողվեց բեռնել։ Ընտրեք՝ կրկին փորձելու համար։",
+    "Could not save provider settings.":
+        "Չհաջողվեց պահպանել մատակարարի կարգավորումները։",
     "Could not save the approved command server settings.":
         "Չհաջողվեց պահպանել հրամանների սերվերի հաստատված կարգավորումները։",
     "Could not update HTTP remote control.":
@@ -602,6 +604,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Պահպանված կարգավորումներ չեն գտնվել",
+    "Not configured": "Կարգավորված չէ",
     "Not found": "Չի գտնվել",
     "Not reduce video when showing the list (bugfix)":
         "Չփոքրացնել տեսանյութը ցուցակը ցուցադրելիս (սխալի շտկում)",
@@ -977,6 +980,7 @@ var keyStrings = {
     "VOD not supported by provider": "Այս մատակարարը չի աջակցում VOD-ին",
     "Volume step, %": "Ձայնի քայլ, %",
     "VPortal link": "VPortal-ի հղում",
+    "VPortal profiles": "VPortal պրոֆիլներ",
     "VPortal request failed":
         "Չհաջողվեց բեռնել VPortal-ը։ Ստուգեք հղումը, մուտքի բանալին և պորտալի հասանելիությունը։",
     volume: "ձայն",

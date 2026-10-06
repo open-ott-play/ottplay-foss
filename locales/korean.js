@@ -270,6 +270,7 @@ var keyStrings = {
         "페어링 요청을 생성할 수 없습니다. 다시 시도하려면 서버를 찾으세요.",
     "Could not load. Select to retry.":
         "로드할 수 없습니다. 다시 시도하려면 선택하세요.",
+    "Could not save provider settings.": "제공업체 설정을 저장하지 못했습니다.",
     "Could not save the approved command server settings.":
         "승인된 명령 서버 설정을 저장할 수 없습니다.",
     "Could not update HTTP remote control.":
@@ -597,6 +598,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "재생목록 채널 및 날짜와 일치하는 프로그램이 없습니다. 소스 및 장치 시계를 확인하십시오.",
     "No saved settings found": "저장된 설정을 찾을 수 없습니다.",
+    "Not configured": "구성되지 않음",
     "Not found": "찾을 수 없음",
     "Not reduce video when showing the list (bugfix)":
         "목록 표시 시 영상 축소 안 함(버그 수정)",
@@ -964,6 +966,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD는 이 공급자에서 지원되지 않습니다.",
     "Volume step, %": "음량 단계, %",
     "VPortal link": "VPortal 링크",
+    "VPortal profiles": "VPortal 프로필",
     "VPortal request failed":
         "VPortal를 로드할 수 없습니다. 링크, 액세스 키, 포털 가용성을 확인하세요.",
     volume: "사운드 볼륨",

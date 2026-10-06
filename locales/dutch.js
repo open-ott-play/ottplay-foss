@@ -277,6 +277,8 @@ var keyStrings = {
         "Kan geen koppelingsverzoek aanmaken. Zoek de server opnieuw om het nogmaals te proberen.",
     "Could not load. Select to retry.":
         "Laden mislukt. Selecteer om opnieuw te proberen.",
+    "Could not save provider settings.":
+        "De providerinstellingen konden niet worden opgeslagen.",
     "Could not save the approved command server settings.":
         "Kan de goedgekeurde opdrachtserverinstellingen niet opslaan.",
     "Could not update HTTP remote control.":
@@ -607,6 +609,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Geen opgeslagen instellingen gevonden",
+    "Not configured": "Niet ingesteld",
     "Not found": "Niet gevonden",
     "Not reduce video when showing the list (bugfix)":
         "Video niet verkleinen bij tonen van de lijst (foutoplossing)",
@@ -981,6 +984,7 @@ var keyStrings = {
         "VOD wordt niet ondersteund door deze provider",
     "Volume step, %": "Volumestap, %",
     "VPortal link": "VPortal-link",
+    "VPortal profiles": "VPortal-profielen",
     "VPortal request failed":
         "VPortal kon niet worden geladen. Controleer de link, toegangssleutel en beschikbaarheid van het portaal.",
     volume: "volume",

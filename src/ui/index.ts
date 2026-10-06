@@ -341,8 +341,20 @@ export function uiInit(): void {
                     $(root!).is(":visible")) &&
                 key &&
                 isFinite(key)
-            )
+            ) {
+                if (
+                    id === "listEdit" &&
+                    owner.model &&
+                    owner.model.nativeInputIme &&
+                    key === w.keys.ENTER
+                ) {
+                    // Synthetic/assistive clicks need not focus a role=button
+                    // span. Make this explicit action visible to the key router.
+                    button.focus();
+                    if (!owner.foreground()) return;
+                }
                 w._doKey(key, event);
+            }
         };
         root.addEventListener("click", dispatchButton, true);
         root.addEventListener(
@@ -3362,11 +3374,8 @@ export function editKey2(code: number): void {
         code === w.keys.ENTER &&
         owner.model.nativeInputIme &&
         document.activeElement !== save
-    ) {
-        var event = port.keyEvent();
-        if (!save || !event || !event.target || !save.contains(event.target))
-            return;
-    }
+    )
+        return;
     if (code === w.keys.ENTER)
         w.editvar = ($("#editvar").val() as string) || "";
     port.finishEditor(code === w.keys.ENTER, function () {

@@ -74,6 +74,7 @@ const CLASSIC_MODULES = [
     "build/plugins/plex.js",
     "build/plugins/plex-auth.js",
     "build/provider/plex-driver.js",
+    "build/provider/vportal-driver.js",
     "build/provider/drivers.js",
     "build/provider/assets.js",
     "build/provider/index.js",
@@ -119,6 +120,7 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
         "build/provider/plex-driver.js",
     ],
     stalker: ["build/provider/stalker-driver.js"],
+    vportal: ["build/provider/vportal-driver.js"],
 });
 const providerModules = new Set(Object.values(CLASSIC_PROVIDER_BUNDLES).flat());
 const CLASSIC_MAIN_MODULES = CLASSIC_MODULES.filter(
@@ -210,6 +212,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/provider/vportal-driver.js": Object.freeze([
+        "window.__ottVPortalDriver",
     ]),
     "build/settings/cloud-codec.js": Object.freeze([
         "window.__ottCloudSettingsCodec",

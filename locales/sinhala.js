@@ -270,6 +270,7 @@ var keyStrings = {
         "යුගල කිරීමේ ඉල්ලීමක් තැනීමට නොහැකි විය. නැවත උත්සාහ කිරීමට සේවාදායකය නැවත සොයන්න.",
     "Could not load. Select to retry.":
         "පූරණය කළ නොහැකි විය. නැවත උත්සාහ කිරීමට තෝරන්න.",
+    "Could not save provider settings.": "සැපයුම්කරුගේ සැකසුම් සුරැකීමට නොහැකි විය.",
     "Could not save the approved command server settings.":
         "අනුමත විධාන සේවාදායක සැකසුම් සුරැකීමට නොහැකි විය.",
     "Could not update HTTP remote control.": "HTTP දුරස්ථ පාලකය යාවත්කාලීන කළ නොහැක.",
@@ -591,6 +592,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ධාවන ලැයිස්තු නාලිකා සහ දිනයන් සමඟ කිසිදු වැඩසටහනක් නොගැලපේ. මූලාශ්රය සහ උපාංග ඔරලෝසුව පරීක්ෂා කරන්න.",
     "No saved settings found": "සුරැකි සැකසුම් කිසිවක් හමු නොවිණි",
+    "Not configured": "වින්‍යාස කර නැත",
     "Not found": "හමු නොවීය",
     "Not reduce video when showing the list (bugfix)":
         "ලැයිස්තුව පෙන්වන විට වීඩියෝව හැකිලීම නොකරන්න (දෝෂ නිරාකරණය)",
@@ -954,6 +956,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD මෙම සැපයුම්කරු විසින් සහාය නොදක්වයි",
     "Volume step, %": "ශබ්ද පරිමාව පියවර, %",
     "VPortal link": "VPortal සබැඳිය",
+    "VPortal profiles": "VPortal පැතිකඩ",
     "VPortal request failed":
         "VPortal පූරණය කළ නොහැකි විය. සබැඳිය, ප්‍රවේශ යතුර සහ ද්වාර ලබා ගැනීමේ හැකියාව පරීක්ෂා කරන්න.",
     volume: "ශබ්ද පරිමාව",

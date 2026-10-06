@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { isManagedProviderScript } = require("./provider-assets.cjs");
 
-const PLAY_PROVIDERS = ["demo", "m3u", "plex", "stalker", "xtream"];
+const PLAY_PROVIDERS = ["demo", "m3u", "plex", "stalker", "vportal", "xtream"];
 
 function transformDistribution(code, flavor) {
     if (!["full", "play"].includes(flavor))
@@ -70,6 +70,8 @@ function stagePlayProviders(root, destination) {
         plex: "Connect to your own Plex server and browse its libraries and folders. Server settings are stored on this device.",
         stalker:
             "Connect to your authorized Stalker portal using its address and credentials. No portal subscription is included.",
+        vportal:
+            "Open your VPortal media library with independently saved profiles.",
         xtream: "Connect using your authorized Xtream-compatible server address and credentials. No subscription is included.",
     };
     for (const id of PLAY_PROVIDERS) {

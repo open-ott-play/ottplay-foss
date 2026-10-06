@@ -262,6 +262,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "无法创建配对请求。再次查找服务器重试。",
     "Could not load. Select to retry.": "无法加载。选择重试。",
+    "Could not save provider settings.": "无法保存提供商设置。",
     "Could not save the approved command server settings.":
         "无法保存批准的命令服务器设置。",
     "Could not update HTTP remote control.": "无法更新HTTP 远程控制。",
@@ -573,6 +574,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "没有与播放列表频道和日期匹配的节目。检查源和设备时钟。",
     "No saved settings found": "未找到已保存的设置",
+    "Not configured": "未配置",
     "Not found": "未找到",
     "Not reduce video when showing the list (bugfix)":
         "显示列表时不缩小视频（错误修复）",
@@ -923,6 +925,7 @@ var keyStrings = {
     "VOD not supported by provider": "该提供商不支持 VOD",
     "Volume step, %": "音量步长，%",
     "VPortal link": "VPortal 链接",
+    "VPortal profiles": "VPortal 配置文件",
     "VPortal request failed":
         "无法加载VPortal。检查链接、访问密钥和门户可用性。",
     volume: "音量",

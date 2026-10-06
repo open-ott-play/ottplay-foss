@@ -268,6 +268,7 @@ var keyStrings = {
         "जोडी बनाउने अनुरोध सिर्जना गर्न सकिएन। पुन: प्रयास गर्न सर्भर फेला पार्नुहोस्।",
     "Could not load. Select to retry.":
         "लोड गर्न सकिएन। पुन: प्रयास गर्न चयन गर्नुहोस्।",
+    "Could not save provider settings.": "प्रदायकका सेटिङहरू सुरक्षित गर्न सकिएन।",
     "Could not save the approved command server settings.":
         "स्वीकृत आदेश सर्भर सेटिङहरू बचत गर्न सकेन।",
     "Could not update HTTP remote control.":
@@ -591,6 +592,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "कुनै पनि कार्यक्रम प्लेलिस्ट च्यानल र मितिहरूसँग मेल खाएन। स्रोत र उपकरण घडी जाँच गर्नुहोस्।",
     "No saved settings found": "सुरक्षित गरिएका सेटिङहरू फेला परेनन्",
+    "Not configured": "कन्फिगर गरिएको छैन",
     "Not found": "फेला परेन",
     "Not reduce video when showing the list (bugfix)":
         "सूची देखाउँदा भिडियोलाई संकुचित नगर्नुहोस् (बग समाधान)",
@@ -955,6 +957,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD यस प्रदायकद्वारा समर्थित छैन",
     "Volume step, %": "ध्वनि भोल्युम चरण, %",
     "VPortal link": "VPortal लिङ्क",
+    "VPortal profiles": "VPortal प्रोफाइलहरू",
     "VPortal request failed":
         "VPortal लोड गर्न सकिएन। लिङ्क, पहुँच कुञ्जी, र पोर्टल उपलब्धता जाँच गर्नुहोस्।",
     volume: "ध्वनि भोल्युम",

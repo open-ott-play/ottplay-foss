@@ -266,6 +266,7 @@ var keyStrings = {
         "జత చేసే అభ్యర్థనను సృష్టించడం సాధ్యపడలేదు. మళ్లీ ప్రయత్నించడానికి సర్వర్‌ని మళ్లీ కనుగొనండి.",
     "Could not load. Select to retry.":
         "లోడ్ చేయడం సాధ్యపడలేదు. మళ్లీ ప్రయత్నించడానికి ఎంచుకోండి.",
+    "Could not save provider settings.": "ప్రొవైడర్ సెట్టింగ్‌లను సేవ్ చేయలేకపోయాము.",
     "Could not save the approved command server settings.":
         "ఆమోదించబడిన కమాండ్ సర్వర్ సెట్టింగ్‌లను సేవ్ చేయడం సాధ్యపడలేదు.",
     "Could not update HTTP remote control.":
@@ -585,6 +586,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ఏ ప్రోగ్రామ్‌లు ప్లేజాబితా ఛానెల్‌లు మరియు తేదీలతో సరిపోలలేదు. మూలం మరియు పరికర గడియారాన్ని తనిఖీ చేయండి.",
     "No saved settings found": "సేవ్ చేయబడిన సెట్టింగ్‌లు ఏవీ కనుగొనబడలేదు",
+    "Not configured": "కాన్ఫిగర్ చేయబడలేదు",
     "Not found": "కనుగొనబడలేదు",
     "Not reduce video when showing the list (bugfix)":
         "జాబితాను చూపుతున్నప్పుడు వీడియోను కుదించవద్దు (బగ్ ఫిక్స్)",
@@ -943,6 +945,7 @@ var keyStrings = {
     "VOD not supported by provider": "VODకి ఈ ప్రొవైడర్ మద్దతు లేదు",
     "Volume step, %": "శబ్ద స్థాయి మార్పు, %",
     "VPortal link": "VPortal లింక్",
+    "VPortal profiles": "VPortal ప్రొఫైల్‌లు",
     "VPortal request failed":
         "VPortalని లోడ్ చేయడం సాధ్యపడలేదు. లింక్, యాక్సెస్ కీ మరియు పోర్టల్ లభ్యతను తనిఖీ చేయండి.",
     volume: "శబ్ద స్థాయి",

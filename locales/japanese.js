@@ -273,6 +273,8 @@ var keyStrings = {
         "ペアリング要求を作成できませんでした。サーバーを再度見つけて再試行してください。",
     "Could not load. Select to retry.":
         "読み込みに失敗しました。再試行するには選択してください。",
+    "Could not save provider settings.":
+        "プロバイダーの設定を保存できませんでした。",
     "Could not save the approved command server settings.":
         "承認されたコマンドサーバーの設定を保存できませんでした。",
     "Could not update HTTP remote control.":
@@ -600,6 +602,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "プレイリストのチャンネルと日付に一致する番組はありませんでした。ソースとデバイスのクロックを確認してください。",
     "No saved settings found": "保存された設定が見つかりません",
+    "Not configured": "未設定",
     "Not found": "見つかりません",
     "Not reduce video when showing the list (bugfix)":
         "リスト表示時に動画を縮小しないようにしました（バグ修正）",
@@ -972,6 +975,7 @@ var keyStrings = {
         "VOD はこのプロバイダーではサポートされていません",
     "Volume step, %": "音量ステップ、%",
     "VPortal link": "VPortalリンク",
+    "VPortal profiles": "VPortal プロファイル",
     "VPortal request failed":
         "VPortalをロードできませんでした。リンク、アクセス キー、ポータルの可用性を確認します。",
     volume: "音量",

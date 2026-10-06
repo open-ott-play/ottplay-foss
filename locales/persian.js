@@ -271,6 +271,7 @@ var keyStrings = {
         "درخواست جفت سازی ایجاد نشد. دوباره سرور را پیدا کنید تا دوباره امتحان کنید.",
     "Could not load. Select to retry.":
         "بارگیری نشد. برای امتحان مجدد انتخاب کنید.",
+    "Could not save provider settings.": "تنظیمات ارائه‌دهنده ذخیره نشد.",
     "Could not save the approved command server settings.":
         "تنظیمات سرور فرمان تایید شده ذخیره نشد.",
     "Could not update HTTP remote control.":
@@ -595,6 +596,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "هیچ برنامه ای با کانال ها و تاریخ های لیست پخش مطابقت نداشت. منبع و ساعت دستگاه را بررسی کنید.",
     "No saved settings found": "هیچ تنظیمات ذخیره شده ای یافت نشد",
+    "Not configured": "پیکربندی نشده",
     "Not found": "یافت نشد",
     "Not reduce video when showing the list (bugfix)":
         "هنگام نمایش لیست ویدیو را کوچک نکنید (رفع اشکال)",
@@ -969,6 +971,7 @@ var keyStrings = {
         "VOD توسط این ارائه دهنده پشتیبانی نمی شود",
     "Volume step, %": "مرحله حجم صدا، %",
     "VPortal link": "لینک VPortal",
+    "VPortal profiles": "نمایه‌های VPortal",
     "VPortal request failed":
         "VPortal بارگیری نشد. پیوند، کلید دسترسی و در دسترس بودن پورتال را بررسی کنید.",
     volume: "حجم صدا",

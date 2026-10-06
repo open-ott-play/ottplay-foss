@@ -273,6 +273,8 @@ var keyStrings = {
         "Sidumistaotlust ei saanud luua. Uuesti proovimiseks leidke server uuesti.",
     "Could not load. Select to retry.":
         "Ei saanud laadida. Valige uuesti proovimiseks.",
+    "Could not save provider settings.":
+        "Teenusepakkuja seadeid ei õnnestunud salvestada.",
     "Could not save the approved command server settings.":
         "Kinnitatud käsuserveri seadeid ei saanud salvestada.",
     "Could not update HTTP remote control.":
@@ -599,6 +601,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Esitusloendi kanalitele ja kuupäevadele ei vastanud ükski saade. Kontrollige allikat ja seadme kella.",
     "No saved settings found": "Salvestatud seadeid ei leitud",
+    "Not configured": "Seadistamata",
     "Not found": "Ei leitud",
     "Not reduce video when showing the list (bugfix)":
         "Ärge vähendage videot loendi kuvamisel (veaparandus)",
@@ -969,6 +972,7 @@ var keyStrings = {
     "VOD not supported by provider": "See teenusepakkuja ei toeta VOD-d",
     "Volume step, %": "Helitugevuse samm, %",
     "VPortal link": "VPortal link",
+    "VPortal profiles": "VPortal-profiilid",
     "VPortal request failed":
         "VPortal ei saanud laadida. Kontrollige linki, juurdepääsuvõtit ja portaali saadavust.",
     volume: "helitugevus",

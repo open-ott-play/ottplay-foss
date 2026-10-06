@@ -273,6 +273,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "Không thể tạo yêu cầu ghép nối. Hãy tìm lại máy chủ để thử lại.",
     "Could not load. Select to retry.": "Không tải được. Chọn để thử lại.",
+    "Could not save provider settings.": "Không thể lưu cài đặt nhà cung cấp.",
     "Could not save the approved command server settings.":
         "Không thể lưu cài đặt máy chủ lệnh đã được phê duyệt.",
     "Could not update HTTP remote control.":
@@ -598,6 +599,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Không tìm thấy cài đặt đã lưu",
+    "Not configured": "Chưa cấu hình",
     "Not found": "Không tìm thấy",
     "Not reduce video when showing the list (bugfix)":
         "Không thu nhỏ video khi hiển thị danh sách (sửa lỗi)",
@@ -962,6 +964,7 @@ var keyStrings = {
     "VOD not supported by provider": "Nhà cung cấp không hỗ trợ VOD",
     "Volume step, %": "Bước âm lượng, %",
     "VPortal link": "Liên kết VPortal",
+    "VPortal profiles": "Hồ sơ VPortal",
     "VPortal request failed":
         "Không thể tải VPortal. Kiểm tra liên kết, khóa truy cập và tình trạng hoạt động của cổng.",
     volume: "âm lượng",

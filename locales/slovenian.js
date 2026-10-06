@@ -275,6 +275,8 @@ var keyStrings = {
         "Ni bilo mogoče ustvariti zahteve za seznanjanje. Ponovno poiščite strežnik, da poskusite znova.",
     "Could not load. Select to retry.":
         "Ni bilo mogoče naložiti. Izberite za ponovni poskus.",
+    "Could not save provider settings.":
+        "Nastavitev ponudnika ni bilo mogoče shraniti.",
     "Could not save the approved command server settings.":
         "Odobrenih nastavitev ukaznega strežnika ni bilo mogoče shraniti.",
     "Could not update HTTP remote control.":
@@ -609,6 +611,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Noben program se ni ujemal s kanali in datumi seznama predvajanja. Preverite vir in uro naprave.",
     "No saved settings found": "Ni shranjenih nastavitev",
+    "Not configured": "Ni nastavljeno",
     "Not found": "Ni najden",
     "Not reduce video when showing the list (bugfix)":
         "Ne skrči videa, ko je prikazan seznam (popravek napak)",
@@ -981,6 +984,7 @@ var keyStrings = {
     "VOD not supported by provider": "Ta ponudnik ne podpira VOD",
     "Volume step, %": "Korak glasnosti, %",
     "VPortal link": "VPortal povezava",
+    "VPortal profiles": "Profili VPortal",
     "VPortal request failed":
         "Ni bilo mogoče naložiti VPortal. Preverite povezavo, dostopni ključ in razpoložljivost portala.",
     volume: "glasnost",

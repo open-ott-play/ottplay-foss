@@ -264,6 +264,7 @@ var keyStrings = {
         "જોડી બનાવવાની વિનંતી બનાવી શકાઈ નથી. ફરીથી પ્રયાસ કરવા માટે સર્વર ફરીથી શોધો.",
     "Could not load. Select to retry.":
         "લોડ કરી શકાયું નથી. ફરી પ્રયાસ કરવા માટે પસંદ કરો.",
+    "Could not save provider settings.": "પ્રદાતાની સેટિંગ્સ સાચવી શકાઈ નહીં.",
     "Could not save the approved command server settings.":
         "મંજૂર આદેશ સર્વર સેટિંગ્સ સાચવી શકાયું નથી.",
     "Could not update HTTP remote control.":
@@ -587,6 +588,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "કોઈ પ્રોગ્રામ પ્લેલિસ્ટ ચેનલો અને તારીખો સાથે મેળ ખાતા નથી. સ્ત્રોત અને ઉપકરણ ઘડિયાળ તપાસો.",
     "No saved settings found": "કોઈ સાચવેલી સેટિંગ્સ મળી નથી",
+    "Not configured": "ગોઠવેલ નથી",
     "Not found": "મળ્યું નથી",
     "Not reduce video when showing the list (bugfix)":
         "યાદી દર્શાવતી વખતે વિડિયોને સંકોચો નહીં (બગ ફિક્સ)",
@@ -945,6 +947,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD આ પ્રદાતા દ્વારા સમર્થિત નથી",
     "Volume step, %": "અવાજ બદલવાનું પગલું, %",
     "VPortal link": "VPortal લિંક",
+    "VPortal profiles": "VPortal પ્રોફાઇલ્સ",
     "VPortal request failed":
         "VPortal લોડ કરી શકાયું નથી. લિંક, એક્સેસ કી અને પોર્ટલની ઉપલબ્ધતા તપાસો.",
     volume: "અવાજ",

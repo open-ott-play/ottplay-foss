@@ -272,6 +272,8 @@ var keyStrings = {
         "இணைத்தல் கோரிக்கையை உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்க சர்வரைக் கண்டறியவும்.",
     "Could not load. Select to retry.":
         "ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்க தேர்ந்தெடுக்கவும்.",
+    "Could not save provider settings.":
+        "வழங்குநர் அமைப்புகளைச் சேமிக்க முடியவில்லை.",
     "Could not save the approved command server settings.":
         "அங்கீகரிக்கப்பட்ட கட்டளை சேவையக அமைப்புகளைச் சேமிக்க முடியவில்லை.",
     "Could not update HTTP remote control.":
@@ -597,6 +599,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "பிளேலிஸ்ட் சேனல்கள் மற்றும் தேதிகளுடன் எந்த நிகழ்ச்சிகளும் பொருந்தவில்லை. மூலத்தையும் சாதன கடிகாரத்தையும் சரிபார்க்கவும்.",
     "No saved settings found": "சேமிக்கப்பட்ட அமைப்புகள் எதுவும் இல்லை",
+    "Not configured": "அமைக்கப்படவில்லை",
     "Not found": "கிடைக்கவில்லை",
     "Not reduce video when showing the list (bugfix)":
         "பட்டியலைக் காண்பிக்கும் போது வீடியோவை சுருக்க வேண்டாம் (பிழை திருத்தம்)",
@@ -962,6 +965,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD இந்த வழங்குநரால் ஆதரிக்கப்படவில்லை",
     "Volume step, %": "ஒலியளவு மாற்றப் படி, %",
     "VPortal link": "VPortal இணைப்பு",
+    "VPortal profiles": "VPortal சுயவிவரங்கள்",
     "VPortal request failed":
         "VPortal ஐ ஏற்ற முடியவில்லை. இணைப்பு, அணுகல் விசை மற்றும் போர்டல் கிடைக்கும் தன்மையை சரிபார்க்கவும்.",
     volume: "ஒலியளவு",

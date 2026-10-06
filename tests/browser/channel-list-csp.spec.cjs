@@ -1593,7 +1593,10 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                     await input.press("ArrowDown");
                     await page.locator("#editRemoteInput").press("ArrowDown");
                     await expect(save).toBeFocused();
-                    await save.press("Enter");
+                    if (code === "_ara") {
+                        await input.focus();
+                        await save.dispatchEvent("click");
+                    } else await save.press("Enter");
                     await expect(page.locator("#listEdit")).toBeHidden();
                     expect(
                         await page.evaluate(() =>

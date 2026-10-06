@@ -269,6 +269,8 @@ var keyStrings = {
         "ജോടിയാക്കൽ അഭ്യർത്ഥന സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കാൻ സെർവർ വീണ്ടും കണ്ടെത്തുക.",
     "Could not load. Select to retry.":
         "ലോഡ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കാൻ തിരഞ്ഞെടുക്കുക.",
+    "Could not save provider settings.":
+        "ദാതാവിന്റെ ക്രമീകരണങ്ങൾ സംരക്ഷിക്കാൻ കഴിഞ്ഞില്ല.",
     "Could not save the approved command server settings.":
         "അംഗീകൃത കമാൻഡ് സെർവർ ക്രമീകരണങ്ങൾ സംരക്ഷിക്കാൻ കഴിഞ്ഞില്ല.",
     "Could not update HTTP remote control.":
@@ -591,6 +593,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "പ്രോഗ്രാമുകളൊന്നും പ്ലേലിസ്റ്റ് ചാനലുകളുമായും തീയതികളുമായും പൊരുത്തപ്പെടുന്നില്ല. ഉറവിടവും ഉപകരണ ക്ലോക്കും പരിശോധിക്കുക.",
     "No saved settings found": "സംരക്ഷിച്ച ക്രമീകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല",
+    "Not configured": "സജ്ജീകരിച്ചിട്ടില്ല",
     "Not found": "കണ്ടെത്തിയില്ല",
     "Not reduce video when showing the list (bugfix)":
         "ലിസ്റ്റ് കാണിക്കുമ്പോൾ വീഡിയോ ചുരുക്കരുത് (ബഗ് ഫിക്സ്)",
@@ -956,6 +959,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD ഈ ദാതാവ് പിന്തുണയ്ക്കുന്നില്ല",
     "Volume step, %": "ശബ്ദനില മാറ്റുന്ന ഘട്ടം, %",
     "VPortal link": "VPortal ലിങ്ക്",
+    "VPortal profiles": "VPortal പ്രൊഫൈലുകൾ",
     "VPortal request failed":
         "VPortal ലോഡ് ചെയ്യാനായില്ല. ലിങ്ക്, ആക്സസ് കീ, പോർട്ടൽ ലഭ്യത എന്നിവ പരിശോധിക്കുക.",
     volume: "ശബ്ദനില",

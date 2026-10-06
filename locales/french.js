@@ -281,6 +281,8 @@ var keyStrings = {
         "Impossible de créer une demande d’appairage. Recherchez à nouveau le serveur pour réessayer.",
     "Could not load. Select to retry.":
         "Échec du chargement. Sélectionnez pour réessayer.",
+    "Could not save provider settings.":
+        "Impossible d’enregistrer les paramètres du fournisseur.",
     "Could not save the approved command server settings.":
         "Impossible d’enregistrer les paramètres approuvés du serveur de commandes.",
     "Could not update HTTP remote control.":
@@ -616,6 +618,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Aucun paramètre enregistré trouvé",
+    "Not configured": "Non configuré",
     "Not found": "Introuvable",
     "Not reduce video when showing the list (bugfix)":
         "Ne pas réduire la vidéo à l'affichage de la liste (correctif)",
@@ -994,6 +997,7 @@ var keyStrings = {
         "Ce fournisseur ne prend pas en charge la VOD",
     "Volume step, %": "Pas du volume, %",
     "VPortal link": "Lien VPortal",
+    "VPortal profiles": "Profils VPortal",
     "VPortal request failed":
         "Impossible de charger VPortal. Vérifiez le lien, la clé d'accès et la disponibilité du portail.",
     volume: "volume",

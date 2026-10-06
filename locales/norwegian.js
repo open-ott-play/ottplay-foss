@@ -276,6 +276,8 @@ var keyStrings = {
         "Kunne ikke opprette en sammenkoblingsforespørsel. Finn serveren igjen for å prøve på nytt.",
     "Could not load. Select to retry.":
         "Kunne ikke laste. Velg for å prøve på nytt.",
+    "Could not save provider settings.":
+        "Kunne ikke lagre leverandørinnstillingene.",
     "Could not save the approved command server settings.":
         "Kunne ikke lagre de godkjente kommandoserverinnstillingene.",
     "Could not update HTTP remote control.":
@@ -603,6 +605,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ingen programmer samsvarte med spillelistekanalene og datoene. Sjekk kilden og enhetens klokke.",
     "No saved settings found": "Finner ingen lagrede innstillinger",
+    "Not configured": "Ikke konfigurert",
     "Not found": "Ikke funnet",
     "Not reduce video when showing the list (bugfix)":
         "Ikke forminsk video når du viser listen (feilretting)",
@@ -973,6 +976,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD støttes ikke av denne leverandøren",
     "Volume step, %": "Volumtrinn, %",
     "VPortal link": "VPortal lenke",
+    "VPortal profiles": "VPortal-profiler",
     "VPortal request failed":
         "Kunne ikke laste VPortal. Sjekk koblingen, tilgangsnøkkelen og portalens tilgjengelighet.",
     volume: "lydstyrke",

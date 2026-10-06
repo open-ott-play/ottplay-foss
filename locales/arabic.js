@@ -268,6 +268,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "تعذر إنشاء طلب الاقتران. ابحث عن الخادم مرة أخرى لإعادة المحاولة.",
     "Could not load. Select to retry.": "تعذر التحميل. حدد لإعادة المحاولة.",
+    "Could not save provider settings.": "تعذّر حفظ إعدادات مزوّد الخدمة.",
     "Could not save the approved command server settings.":
         "لا يمكن حفظ إعدادات خادم الأوامر المعتمدة.",
     "Could not update HTTP remote control.":
@@ -588,6 +589,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "لا توجد برامج مطابقة لقنوات قائمة التشغيل والتواريخ. تحقق من المصدر وساعة الجهاز.",
     "No saved settings found": "لم يتم العثور على إعدادات محفوظة",
+    "Not configured": "غير مُعدّ",
     "Not found": "غير موجود",
     "Not reduce video when showing the list (bugfix)":
         "عدم تصغير الفيديو عند إظهار القائمة (إصلاح الأخطاء)",
@@ -955,6 +957,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD غير مدعوم من قبل هذا الموفر",
     "Volume step, %": "خطوة مستوى الصوت، %",
     "VPortal link": "رابط VPortal",
+    "VPortal profiles": "ملفات تعريف VPortal",
     "VPortal request failed":
         "تعذر تحميل VPortal. تحقق من الرابط ومفتاح الوصول وتوافر البوابة.",
     volume: "مستوى الصوت",

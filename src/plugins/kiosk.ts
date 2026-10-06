@@ -9,6 +9,9 @@ export function createKiosk(w: any): any {
     var lastPosition: number | null = null;
     var retries = 0;
     var health = "idle";
+    var lastSaved = 0;
+    var lastMediaId = "";
+    var mediaStarting = false;
     function now(): number {
         return w.performance && typeof w.performance.now === "function"
             ? w.performance.now()
@@ -24,11 +27,14 @@ export function createKiosk(w: any): any {
         return !!policy;
     }
     function locked(): boolean {
-        return !!(policy && policy.channel);
+        return !!(policy && (policy.channel || policy.media));
     }
     function reset(): void {
         lastPosition = null;
         lastProgress = now();
+        lastSaved = lastProgress;
+        lastMediaId = "";
+        mediaStarting = !!(policy && policy.media);
         health = locked() ? "starting" : policy ? "waiting" : "idle";
     }
     function save(next: any): boolean {
@@ -46,9 +52,20 @@ export function createKiosk(w: any): any {
     }
     function snapshot(): any {
         return {
-            channel: locked()
-                ? { id: policy.channel.id, name: policy.channel.name }
-                : null,
+            channel:
+                policy && policy.channel
+                    ? { id: policy.channel.id, name: policy.channel.name }
+                    : null,
+            ...(policy && policy.media
+                ? {
+                      media: {
+                          index: policy.media.index,
+                          title: policy.media.records[policy.media.index].title,
+                          total: policy.media.records.length,
+                      },
+                      startup_grace_seconds: 60,
+                  }
+                : {}),
             enabled: enabled(),
             health: health,
             provider: policy ? policy.provider : null,
@@ -60,12 +77,64 @@ export function createKiosk(w: any): any {
     function allowed(id: any): boolean {
         return (
             !locked() ||
-            (source() === policy.source && String(id) === policy.channel.id)
+            (!!policy.channel &&
+                source() === policy.source &&
+                String(id) === policy.channel.id)
+        );
+    }
+    function validMedia(value: any): boolean {
+        try {
+            return (
+                !!value &&
+                typeof value.source === "string" &&
+                Array.isArray(value.records) &&
+                value.records.length > 0 &&
+                value.records.length <= 1000 &&
+                typeof value.index === "number" &&
+                Math.floor(value.index) === value.index &&
+                value.index >= 0 &&
+                value.index < value.records.length &&
+                typeof value.position === "number" &&
+                isFinite(value.position) &&
+                value.position >= 0 &&
+                JSON.stringify(value).length <= 500000 &&
+                value.records.every(function (row: any) {
+                    return (
+                        row &&
+                        typeof row.title === "string" &&
+                        row.request &&
+                        typeof row.request === "object" &&
+                        !Array.isArray(row.request) &&
+                        row.__ottMediaRef &&
+                        row.__ottMediaRef.sourceId === value.source &&
+                        typeof row.__ottMediaRef.itemId === "string" &&
+                        !!row.__ottMediaRef.itemId &&
+                        !row.stream_url
+                    );
+                })
+            );
+        } catch (_) {
+            return false;
+        }
+    }
+    function allowedMedia(ref: any): boolean {
+        return (
+            !locked() ||
+            !!(
+                policy.media &&
+                ref &&
+                w.__ottMedia &&
+                w.__ottMedia.sourceId() === policy.source &&
+                ref.sourceId === policy.source &&
+                policy.media.records.some(function (row: any) {
+                    return row.__ottMediaRef.itemId === ref.itemId;
+                })
+            )
         );
     }
     function admit(id: any): boolean {
         if (!allowed(id)) return false;
-        if (policy && !policy.channel) {
+        if (policy && !policy.channel && !policy.media) {
             // Arming does not capture the already playing channel or a boot callback.
             if (w.commandChannelsReady !== true || source() !== policy.source)
                 return false;
@@ -102,6 +171,25 @@ export function createKiosk(w: any): any {
     }
     function play(): void {
         if (!locked() || w.commandChannelsReady !== true) return;
+        if (policy.media) {
+            var selected = policy;
+            if (!w.__ottMedia || w.__ottMedia.sourceId() !== selected.source) {
+                health = "source-unavailable";
+                return;
+            }
+            mediaStarting = true;
+            lastProgress = now();
+            if (
+                !w.__ottMedia.restoreKiosk(selected.media, function () {
+                    return (
+                        policy === selected &&
+                        w.__ottMedia.sourceId() === selected.source
+                    );
+                })
+            )
+                health = "error";
+            return;
+        }
         if (source() !== policy.source) {
             health = "source-unavailable";
             return;
@@ -119,6 +207,71 @@ export function createKiosk(w: any): any {
         if (!locked()) return;
         var time = now();
         if (time < lastProgress) lastProgress = time;
+        var mediaAdmitted = false;
+        if (policy.media) {
+            try {
+                // Health polling reads the current identity/position, never copies the queue.
+                var selection = w.__ottMedia && w.__ottMedia.current();
+                var state =
+                    w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
+                if (
+                    selection &&
+                    state &&
+                    state.target &&
+                    state.target.kind === "vod" &&
+                    selection.ref.sourceId === policy.source &&
+                    state.target.sourceId === policy.source &&
+                    state.target.channelId === selection.ref.itemId
+                ) {
+                    var selectedRef = selection.ref;
+                    mediaAdmitted = allowedMedia(selectedRef);
+                    if (mediaAdmitted) {
+                        // Natural EOF may resolve the next episode asynchronously on slow devices.
+                        if (selection.ended && !mediaStarting) {
+                            mediaStarting = true;
+                            lastProgress = time;
+                            lastPosition = null;
+                        }
+                        if (lastMediaId !== selectedRef.itemId) {
+                            lastMediaId = selectedRef.itemId;
+                            lastPosition = null;
+                            lastProgress = time;
+                            mediaStarting = true;
+                        }
+                        for (var i = 0; i < policy.media.records.length; i++) {
+                            if (
+                                policy.media.records[i].__ottMediaRef.itemId ===
+                                selectedRef.itemId
+                            ) {
+                                policy.media.index = i;
+                                policy.media.position =
+                                    !selection.ended &&
+                                    typeof state.position === "number" &&
+                                    isFinite(state.position) &&
+                                    state.position >= 0
+                                        ? state.position
+                                        : 0;
+                                break;
+                            }
+                        }
+                        if (time - lastSaved >= 5000) {
+                            try {
+                                var stored = JSON.stringify(policy);
+                                w.stbSetItem(key, stored);
+                                if (w.stbGetItem(key) === stored)
+                                    lastSaved = time;
+                            } catch (_) {
+                                // Keep the live cursor for recovery. A failed checkpoint
+                                // does not describe decoder health; retry in five seconds.
+                                lastSaved = time;
+                            }
+                        }
+                    }
+                }
+            } catch (_) {
+                health = "error";
+            }
+        }
         try {
             var id = (w.curList || [])[w.primaryIndex];
             var position = w.stbGetPosTime();
@@ -127,7 +280,7 @@ export function createKiosk(w: any): any {
                 isFinite(position) &&
                 position >= 0;
             if (
-                allowed(id) &&
+                (policy.media ? mediaAdmitted : allowed(id)) &&
                 w.stbIsPlaying() &&
                 valid &&
                 lastPosition !== null &&
@@ -135,13 +288,14 @@ export function createKiosk(w: any): any {
             ) {
                 lastProgress = time;
                 health = "playing";
+                mediaStarting = false;
             }
             lastPosition = valid ? position : null;
         } catch (_) {
             lastPosition = null;
             health = "error";
         }
-        if (time - lastProgress < 10000) return;
+        if (time - lastProgress < (mediaStarting ? 60000 : 10000)) return;
         lastProgress = time;
         lastPosition = null;
         health = "retrying";
@@ -202,6 +356,60 @@ export function createKiosk(w: any): any {
                 return;
             }
             if (mode === "on" && enabled() && params.query === undefined) {
+                done({ data: snapshot(), status: "ok" });
+                return;
+            }
+            if (provider() === "vportal") {
+                if (params.query !== undefined) {
+                    fail(
+                        "Start the required VPortal playback, then use kiosk on without a channel query."
+                    );
+                    return;
+                }
+                if (
+                    w.__ottParental &&
+                    (w.__ottParental.needs("providers") ||
+                        w.__ottParental.needs("settings"))
+                ) {
+                    fail("Unlock player settings before enabling kiosk mode.");
+                    return;
+                }
+                var selection = w.__ottMedia && w.__ottMedia.kioskSelection();
+                if (
+                    w.commandChannelsReady !== true ||
+                    !validMedia(selection) ||
+                    selection.source !== w.__ottMedia.sourceId()
+                ) {
+                    fail("Start VPortal playback before enabling kiosk mode.");
+                    return;
+                }
+                if (
+                    w.sPSchannels &&
+                    w.parentPIN !== "*" &&
+                    !w.parentAccess &&
+                    selection.records.some(function (row: any) {
+                        return Number(row.adult) === 1;
+                    })
+                ) {
+                    fail(
+                        "Unlock parental access before locking this VPortal queue."
+                    );
+                    return;
+                }
+                if (
+                    !save({
+                        channel: null,
+                        media: selection,
+                        provider: "vportal",
+                        source: selection.source,
+                    })
+                ) {
+                    fail("Could not save kiosk policy.");
+                    return;
+                }
+                retries = 0;
+                w.__ottMedia.keepKioskLoop();
+                closeControls();
                 done({ data: snapshot(), status: "ok" });
                 return;
             }
@@ -293,10 +501,15 @@ export function createKiosk(w: any): any {
                 saved &&
                 typeof saved.source === "string" &&
                 typeof saved.provider === "string" &&
-                (saved.channel === null ||
-                    (saved.channel &&
-                        typeof saved.channel.id === "string" &&
-                        typeof saved.channel.name === "string"))
+                (saved.media
+                    ? saved.provider === "vportal" &&
+                      saved.channel === null &&
+                      validMedia(saved.media) &&
+                      saved.media.source === saved.source
+                    : saved.channel === null ||
+                      (saved.channel &&
+                          typeof saved.channel.id === "string" &&
+                          typeof saved.channel.name === "string"))
             )
                 policy = saved;
         } catch (_) {}
@@ -387,10 +600,17 @@ export function createKiosk(w: any): any {
     return {
         admit: admit,
         allowed: allowed,
+        allowedMedia: allowedMedia,
         enabled: enabled,
         init: init,
         locked: locked,
         request: request,
+        restoreMedia: function (): boolean {
+            if (!locked() || !policy.media) return false;
+            reset();
+            play();
+            return true;
+        },
         snapshot: snapshot,
         stopDiagnostics: stopDiagnostics,
     };

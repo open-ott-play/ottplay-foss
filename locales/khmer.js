@@ -269,6 +269,7 @@ var keyStrings = {
         "មិនអាចបង្កើតសំណើផ្គូផ្គងបានទេ។ ស្វែងរកម៉ាស៊ីនមេម្តងទៀតដើម្បីព្យាយាមម្តងទៀត។",
     "Could not load. Select to retry.":
         "មិនអាចផ្ទុកបានទេ។ ជ្រើសរើសដើម្បីព្យាយាមម្តងទៀត។",
+    "Could not save provider settings.": "មិនអាចរក្សាទុកការកំណត់អ្នកផ្ដល់សេវាបានទេ។",
     "Could not save the approved command server settings.":
         "មិនអាចរក្សាទុកការកំណត់ម៉ាស៊ីនមេពាក្យបញ្ជាដែលបានអនុម័តទេ។",
     "Could not update HTTP remote control.":
@@ -590,6 +591,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "គ្មានកម្មវិធីដែលត្រូវគ្នានឹងប៉ុស្តិ៍ និងកាលបរិច្ឆេទនៃបញ្ជីចាក់ទេ។ ពិនិត្យមើលប្រភព និងនាឡិកាឧបករណ៍។",
     "No saved settings found": "រកមិនឃើញការកំណត់ដែលបានរក្សាទុកទេ។",
+    "Not configured": "មិនទាន់បានកំណត់",
     "Not found": "រកមិនឃើញ",
     "Not reduce video when showing the list (bugfix)":
         "កុំបង្រួញវីដេអូពេលបង្ហាញបញ្ជី (ជួសជុលកំហុស)",
@@ -957,6 +959,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD មិនត្រូវបានគាំទ្រដោយអ្នកផ្តល់សេវានេះទេ។",
     "Volume step, %": "ជំហានកម្រិតសំឡេង, %\nតំណភ្ជាប់",
     "VPortal link": "VPortal",
+    "VPortal profiles": "ប្រវត្តិរូប VPortal",
     "VPortal request failed":
         "មិនអាចផ្ទុក VPortal បានទេ។ ពិនិត្យមើលតំណភ្ជាប់ សោចូលប្រើប្រាស់ និងលទ្ធភាពប្រើប្រាស់វិបផតថល។",
     volume: "កម្រិតសំឡេង",

@@ -267,6 +267,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "ಜೋಡಿಸುವ ವಿನಂತಿಯನ್ನು ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮರುಪ್ರಯತ್ನಿಸಲು ಸರ್ವರ್ ಅನ್ನು ಮತ್ತೆ ಹುಡುಕಿ.",
     "Could not load. Select to retry.": "ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಮರುಪ್ರಯತ್ನಿಸಲು ಆಯ್ಕೆಮಾಡಿ.",
+    "Could not save provider settings.": "ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ.",
     "Could not save the approved command server settings.":
         "ಅನುಮೋದಿತ ಕಮಾಂಡ್ ಸರ್ವರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ.",
     "Could not update HTTP remote control.":
@@ -589,6 +590,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ಯಾವುದೇ ಕಾರ್ಯಕ್ರಮಗಳು ಪ್ಲೇಪಟ್ಟಿ ಚಾನಲ್‌ಗಳು ಮತ್ತು ದಿನಾಂಕಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ. ಮೂಲ ಮತ್ತು ಸಾಧನ ಗಡಿಯಾರವನ್ನು ಪರಿಶೀಲಿಸಿ.",
     "No saved settings found": "ಯಾವುದೇ ಉಳಿಸಿದ ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
+    "Not configured": "ಸಂರಚಿಸಲಾಗಿಲ್ಲ",
     "Not found": "ಕಂಡುಬಂದಿಲ್ಲ",
     "Not reduce video when showing the list (bugfix)":
         "ಪಟ್ಟಿಯನ್ನು ತೋರಿಸುವಾಗ ವೀಡಿಯೊವನ್ನು ಕುಗ್ಗಿಸಬೇಡಿ (ದೋಷ ಪರಿಹಾರ)",
@@ -950,6 +952,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD ಈ ಪೂರೈಕೆದಾರರಿಂದ ಬೆಂಬಲಿತವಾಗಿಲ್ಲ",
     "Volume step, %": "ಧ್ವನಿಯ ಮಟ್ಟ ಬದಲಾವಣೆಯ ಹಂತ, %",
     "VPortal link": "VPortal ಲಿಂಕ್",
+    "VPortal profiles": "VPortal ಪ್ರೊಫೈಲ್‌ಗಳು",
     "VPortal request failed":
         "VPortal ಅನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಲಿಂಕ್, ಪ್ರವೇಶ ಕೀ ಮತ್ತು ಪೋರ್ಟಲ್ ಲಭ್ಯತೆಯನ್ನು ಪರಿಶೀಲಿಸಿ.",
     volume: "ಧ್ವನಿಯ ಮಟ್ಟ",

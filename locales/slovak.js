@@ -277,6 +277,8 @@ var keyStrings = {
         "Nepodarilo sa vytvoriť žiadosť o spárovanie. Znova vyhľadajte server a skúste to znova.",
     "Could not load. Select to retry.":
         "Nepodarilo sa načítať. Výberom to skúste znova.",
+    "Could not save provider settings.":
+        "Nastavenia poskytovateľa sa nepodarilo uložiť.",
     "Could not save the approved command server settings.":
         "Nepodarilo sa uložiť schválené nastavenia servera príkazov.",
     "Could not update HTTP remote control.":
@@ -611,6 +613,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Kanálom a dátumom zoznamu videí nezodpovedajú žiadne programy. Skontrolujte zdroj a hodiny zariadenia.",
     "No saved settings found": "Nenašli sa žiadne uložené nastavenia",
+    "Not configured": "Nenakonfigurované",
     "Not found": "Nenájdené",
     "Not reduce video when showing the list (bugfix)":
         "Nezmenšovať video pri zobrazení zoznamu (oprava chyby)",
@@ -983,6 +986,7 @@ var keyStrings = {
     "VOD not supported by provider": "Tento poskytovateľ nepodporuje VOD",
     "Volume step, %": "Krok hlasitosti, %",
     "VPortal link": "odkaz VPortal",
+    "VPortal profiles": "Profily VPortal",
     "VPortal request failed":
         "Nepodarilo sa načítať VPortal. Skontrolujte prepojenie, prístupový kľúč a dostupnosť portálu.",
     volume: "hlasitosť",

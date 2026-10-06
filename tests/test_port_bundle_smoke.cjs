@@ -100,6 +100,7 @@ const optionalProviderApis = {
     playlist: ["__ottPlaylistDrivers"],
     plex: ["__ottPlex", "__ottPlexAuth", "__ottPlexDriver"],
     stalker: ["__ottStalkerDriver"],
+    vportal: ["__ottVPortalDriver"],
 };
 assert.deepEqual(
     Object.keys(CLASSIC_PROVIDER_BUNDLES).sort(),
@@ -109,7 +110,7 @@ assert.deepEqual(
 
 function providerKinds() {
     return playDistribution
-        ? ["m3u", "plex", "stalker"]
+        ? ["m3u", "plex", "stalker", "vportal"]
         : Object.keys(CLASSIC_PROVIDER_BUNDLES);
 }
 
@@ -609,10 +610,10 @@ function assertPrivateRuntime(w, profile) {
         assert.equal(w.__ottEdemDriver, undefined);
         assert.deepEqual(
             Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
-            ["demo", "m3u", "plex", "stalker", "xtream"]
+            ["demo", "m3u", "plex", "stalker", "vportal", "xtream"]
         );
     } else {
-        assert.equal(w.__ottProviderDrivers.registry.ids().length, 49);
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 50);
     }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
@@ -2028,10 +2029,16 @@ function exerciseProviderRuntime(profile) {
     w.listCaption = w.listCaptionElement;
     w.listDetail = w.document.getElementById("listDetail");
     w.listFooter = w.document.getElementById("listFooter");
-    w.loadProv("plex");
-    assert.equal(w.__ottActiveProviderDriver.id, "plex");
-    assert.equal(w.__ottActiveProviderDriver.capabilities.libraryOnly, true);
-    assert.equal(w.__ottActiveProviderDriver.libraryReady(), false);
+    for (const id of ["plex", "vportal"]) {
+        stored.set("ottplayprov", id);
+        w.loadProv(id);
+        assert.equal(w.__ottActiveProviderDriver.id, id);
+        assert.equal(
+            w.__ottActiveProviderDriver.capabilities.libraryOnly,
+            true
+        );
+        assert.equal(w.__ottActiveProviderDriver.libraryReady(), false);
+    }
     w.loadProv("demo");
     assert.deepEqual(
         scripts,

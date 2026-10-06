@@ -278,6 +278,8 @@ var keyStrings = {
         "Kunne ikke oprette en parringsanmodning. Find serveren igen for at prøve igen.",
     "Could not load. Select to retry.":
         "Kunne ikke indlæse. Vælg for at prøve igen.",
+    "Could not save provider settings.":
+        "Kunne ikke gemme udbyderindstillingerne.",
     "Could not save the approved command server settings.":
         "Kunne ikke gemme de godkendte kommandoserverindstillinger.",
     "Could not update HTTP remote control.":
@@ -606,6 +608,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ingen programmer matchede spillelistens kanaler og datoer. Tjek kilden og enhedens ur.",
     "No saved settings found": "Ingen gemte indstillinger fundet",
+    "Not configured": "Ikke konfigureret",
     "Not found": "Ikke fundet",
     "Not reduce video when showing the list (bugfix)":
         "Formindsk ikke video, når du viser listen (fejlrettelse)",
@@ -974,6 +977,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD understøttes ikke af denne udbyder",
     "Volume step, %": "Lydstyrketrin, %",
     "VPortal link": "VPortal link",
+    "VPortal profiles": "VPortal-profiler",
     "VPortal request failed":
         "Kunne ikke indlæse VPortal. Tjek linket, adgangsnøglen og portalens tilgængelighed.",
     volume: "lydstyrke",

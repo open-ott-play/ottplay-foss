@@ -1412,6 +1412,73 @@ test("Remote VPortal queue loops every result in order with fresh URLs and no re
     }
 });
 
+test("VPortal kiosk captures requests, restores the episode cursor and renews URLs", () => {
+    function configured() {
+        const c = remoteQueueFixture();
+        c.p_pref = "vportal";
+        c.__ottActiveProviderDriver = {
+            configuration: () => ({ active: 0 }),
+            credentials: () => ({
+                playlist: "portal::[key:private]https://portal.invalid/api/",
+            }),
+            id: "vportal",
+        };
+        return c;
+    }
+    const c = configured();
+    c.requestQueue();
+    c.completeSearch(
+        [1, 2].map((id) => ({ id, request: { id }, title: "Episode " + id }))
+    );
+    c.__ottMedia.keepKioskLoop();
+    c.finishItem();
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 42,
+        type: "position",
+    });
+    const selected = c.__ottMedia.kioskSelection();
+    assert(selected);
+    assert.equal(selected.index, 1);
+    assert.equal(selected.position, 42);
+    assert.equal(selected.records.length, 2);
+    assert(!JSON.stringify(selected).includes(".mp4"));
+    selected.records[0].request.id = 999;
+    assert.equal(
+        c.__ottMedia.current().sequence.items[0].payload.request.id,
+        1,
+        "saved selection is detached"
+    );
+    const saved = c.__ottMedia.kioskSelection();
+    const restored = configured();
+    assert.equal(
+        restored.__ottMedia.restoreKiosk(saved, () => true),
+        true
+    );
+    assert.equal(restored.resolutions[0].item.request.id, 2);
+    assert.equal(restored.__ottMedia.current().sequence.repeat, "all");
+    restored.finishItem();
+    assert.equal(restored.resolutions.at(-1).item.request.id, 1);
+    assert.equal(
+        restored.__ottMedia.restoreKiosk(
+            { ...saved, source: "another-profile" },
+            () => true
+        ),
+        false
+    );
+    restored.deferResolve = true;
+    let enabled = true;
+    restored.__ottMedia.restoreKiosk(saved, () => enabled);
+    const before = restored.calls.filter((row) => row[0] === "play").length;
+    enabled = false;
+    restored.completeResolve();
+    assert.equal(
+        restored.calls.filter((row) => row[0] === "play").length,
+        before,
+        "unlock rejects late resume"
+    );
+});
+
 function isolateQueueRandom(c, random) {
     const playQueue = c.__ottMedia.playQueue;
     c.Math = Object.create(Math);

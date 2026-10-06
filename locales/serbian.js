@@ -273,6 +273,8 @@ var keyStrings = {
         "Није могуће направити захтев за упаривање. Поново пронађите сервер да бисте покушали поново.",
     "Could not load. Select to retry.":
         "Није могуће учитати. Изаберите да покушате поново.",
+    "Could not save provider settings.":
+        "Није могуће сачувати подешавања провајдера.",
     "Could not save the approved command server settings.":
         "Није могуће сачувати одобрена подешавања командног сервера.",
     "Could not update HTTP remote control.":
@@ -604,6 +606,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ниједан програм се не подудара са каналима и датумима плејлисте. Проверите извор и сат уређаја.",
     "No saved settings found": "Нису пронађена сачувана подешавања",
+    "Not configured": "Није подешено",
     "Not found": "Није пронађено",
     "Not reduce video when showing the list (bugfix)":
         "Не смањи видео када се приказује листа (исправка грешке)",
@@ -972,6 +975,7 @@ var keyStrings = {
     "VOD not supported by provider": "Овај провајдер не подржава ВОД",
     "Volume step, %": "Корак јачине звука, %",
     "VPortal link": "VPortal веза",
+    "VPortal profiles": "Профили VPortal",
     "VPortal request failed":
         "Није могуће учитати VPortal. Проверите везу, приступни кључ и доступност портала.",
     volume: "јачина звука",

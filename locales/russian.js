@@ -272,6 +272,8 @@ var keyStrings = {
         "Не удалось создать запрос на сопряжение. Повторите поиск сервера, чтобы попробовать снова.",
     "Could not load. Select to retry.":
         "Не удалось загрузить. Нажмите для повтора.",
+    "Could not save provider settings.":
+        "Не удалось сохранить настройки провайдера.",
     "Could not save the approved command server settings.":
         "Не удалось сохранить подтверждённые настройки сервера команд.",
     "Could not update HTTP remote control.":
@@ -599,6 +601,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Не найдены передачи для каналов и дат плейлиста. Проверьте источник и часы устройства.",
     "No saved settings found": "Сохранённые настройки не найдены",
+    "Not configured": "Не настроено",
     "Not found": "Не найдено",
     "Not reduce video when showing the list (bugfix)":
         "Не уменьшать видео при показе списка (исправление)",
@@ -969,6 +972,7 @@ var keyStrings = {
         "Провайдер не поддерживает видео по запросу",
     "Volume step, %": "Шаг громкости, %",
     "VPortal link": "Ссылка VPortal",
+    "VPortal profiles": "Профили VPortal",
     "VPortal request failed":
         "Не удалось загрузить VPortal. Проверьте ссылку, ключ и доступность портала.",
     volume: "громкость",

@@ -268,6 +268,7 @@ var keyStrings = {
         "একটি জোড়ার অনুরোধ তৈরি করা যায়নি। পুনরায় চেষ্টা করতে সার্ভারটি আবার খুঁজুন।",
     "Could not load. Select to retry.":
         "লোড করা যায়নি। আবার চেষ্টা করতে নির্বাচন করুন।",
+    "Could not save provider settings.": "প্রদানকারীর সেটিংস সংরক্ষণ করা যায়নি।",
     "Could not save the approved command server settings.":
         "অনুমোদিত কমান্ড সার্ভার সেটিংস সংরক্ষণ করা যায়নি।",
     "Could not update HTTP remote control.": "HTTP রিমোট কন্ট্রোল আপডেট করা যায়নি।",
@@ -587,6 +588,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "কোনো প্রোগ্রাম প্লেলিস্ট চ্যানেল এবং তারিখের সাথে মেলেনি। উৎস এবং ডিভাইস ঘড়ি পরীক্ষা করুন.",
     "No saved settings found": "কোনো সংরক্ষিত সেটিংস পাওয়া যায়নি",
+    "Not configured": "কনফিগার করা হয়নি",
     "Not found": "পাওয়া যায়নি",
     "Not reduce video when showing the list (bugfix)":
         "তালিকা দেখানোর সময় ভিডিও সঙ্কুচিত করবেন না (বাগ সংশোধন)",
@@ -948,6 +950,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD এই প্রদানকারী দ্বারা সমর্থিত নয়",
     "Volume step, %": "শব্দের মাত্রা পরিবর্তনের ধাপ, %",
     "VPortal link": "VPortal লিঙ্ক",
+    "VPortal profiles": "VPortal প্রোফাইল",
     "VPortal request failed":
         "VPortal লোড করা যায়নি। লিঙ্ক, অ্যাক্সেস কী এবং পোর্টাল উপলব্ধতা পরীক্ষা করুন।",
     volume: "শব্দের মাত্রা",

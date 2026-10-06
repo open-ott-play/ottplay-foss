@@ -104,12 +104,16 @@ const { gzipSync } = require("node:zlib");
 // 722395/220390. Allocate the reviewed 3300 raw/950 gzip increment in addition
 // to the localization budget, preserving both feature reserves.
 // Atomic signed channel offsets add 426 raw / at most 186 gzip bytes over
-// a845242 on Node 22.23.3. Allocate 450 raw / 200 gzip for this feature;
-// provider assets and the existing release suffix allowance remain unchanged.
+// a845242 on Node 22.23.3. Preserve its 450 raw / 200 gzip feature allowance.
+// Independent VPortal profiles load in an optional family. Persisted VOD kiosk
+// admission/recovery adds about 6 KB to the entry. Keep both feature reserves
+// and bounded native/Node/release-suffix room in the combined cap.
+// Preserve the additional 2100 raw / 700 gzip allowance for Tauri native
+// frame-loss recovery from main; it does not change optional provider assets.
 // Thirty external catalogs add selector labels, script-mark labels and owned
-// native composition/explicit-apply handling. Allocate 3.5 KB raw / 1.2 KB gzip
-// for this feature; retain the existing Node 22 and version-suffix reserve.
-const BUDGET = Object.freeze({ bytes: 726750, gzipBytes: 221850 });
+// native composition/explicit-apply handling. Add 3.5 KB raw / 1.2 KB gzip
+// while preserving each upstream feature and release-version reserve.
+const BUDGET = Object.freeze({ bytes: 734950, gzipBytes: 224900 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -165,7 +169,10 @@ const BUDGET = Object.freeze({ bytes: 726750, gzipBytes: 221850 });
 // totals are web 819932/256711 and native 819890/256774. Provider assets are
 // unchanged by adjacent-channel admission; add its reviewed 3300 raw/950 gzip
 // increment to the localization complete-payload cap.
-const TOTAL_BUDGET = Object.freeze({ bytes: 824250, gzipBytes: 258350 });
+// Include the optional VPortal family and VOD kiosk entry logic, plus the
+// 450 raw / 200 gzip allowance for signed channel offsets from main.
+// Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
+const TOTAL_BUDGET = Object.freeze({ bytes: 841050, gzipBytes: 264100 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

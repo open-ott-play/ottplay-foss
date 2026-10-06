@@ -275,6 +275,7 @@ var keyStrings = {
         "Eşleştirme isteği oluşturulamadı. Yeniden denemek için sunucuyu tekrar bulun.",
     "Could not load. Select to retry.":
         "Yüklenemedi. Yeniden denemek için seçin.",
+    "Could not save provider settings.": "Sağlayıcı ayarları kaydedilemedi.",
     "Could not save the approved command server settings.":
         "Onaylanan komut sunucusu ayarları kaydedilemedi.",
     "Could not update HTTP remote control.":
@@ -601,6 +602,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Kaydedilmiş ayar bulunamadı",
+    "Not configured": "Yapılandırılmadı",
     "Not found": "Bulunamadı",
     "Not reduce video when showing the list (bugfix)":
         "Liste gösterilirken videoyu küçültme (hata düzeltmesi)",
@@ -967,6 +969,7 @@ var keyStrings = {
     "VOD not supported by provider": "Bu sağlayıcı VOD'u desteklemiyor",
     "Volume step, %": "Ses düzeyi adımı, %",
     "VPortal link": "VPortal bağlantısı",
+    "VPortal profiles": "VPortal profilleri",
     "VPortal request failed":
         "VPortal yüklenemedi. Bağlantıyı, erişim anahtarını ve portalın kullanılabilirliğini kontrol edin.",
     volume: "ses düzeyi",

@@ -164,7 +164,7 @@ Burmese, Khmer, Swahili, Filipino, Finnish, Danish, Norwegian Bokmål, Estonian,
 Slovak, Slovenian, Croatian and Serbian. Punjabi uses Gurmukhi and Serbian uses
 Cyrillic. Norwegian Bokmål inherits its CLDR exemplar from `no`.
 
-Each new pack translates all 803 canonical entries. The initial translations
+Each new pack translates all 806 canonical entries. The initial translations
 used Google Translate on the public English UI text, followed by AI-assisted
 editing of controls, playback/catch-up terminology, settings, HTML fragments,
 days, units and remaining English prose. Proper names, protocols and identifiers

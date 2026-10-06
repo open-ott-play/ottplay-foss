@@ -259,7 +259,8 @@ test("later selection and recent-provider reordering retain the demo ID/name pai
     assert.equal(w.arrayProvaiders[1], "stalker");
     assert.equal(w.arrayProvaiders[2], "xtream");
     assert.equal(w.arrayProvaiders[3], "plex");
-    assert.equal(w.arrayProvaiders[4], "");
+    assert.equal(w.arrayProvaiders[4], "vportal");
+    assert.equal(w.arrayProvaiders[5], "");
     w.selIndex = demo;
     w.listKeyHandlerFn(w.keys.ENTER);
     assert.deepEqual(loaded, ["demo"]);
@@ -282,11 +283,12 @@ test("Plex stays with protocol shortcuts when old history contains fixed provide
     saved.set("ottplayprovs", history);
     for (let opened = 0; opened < 2; opened++) {
         w.selectProvaider();
-        assert.deepEqual(Array.from(w.arrayProvaiders.slice(0, 6)), [
+        assert.deepEqual(Array.from(w.arrayProvaiders.slice(0, 7)), [
             "m3u",
             "stalker",
             "xtream",
             "plex",
+            "vportal",
             "",
             "demo",
         ]);
@@ -294,10 +296,12 @@ test("Plex stays with protocol shortcuts when old history contains fixed provide
             w.listArray[3],
             '<div class="btn blue">&nbsp;</div>&nbsp;Plex'
         );
-        assert.equal(w.listArray[4], "");
+        assert.equal(w.listArray[4], "VPortal");
+        assert.equal(w.listArray[5], "");
         assert.doesNotMatch(w.getListItemFn(w.listArray[3], 3), /class="btn"/);
         assert.doesNotMatch(w.getListItemFn(w.listArray[4], 4), /class="btn"/);
-        assert.match(w.getListItemFn(w.listArray[5], 5), /class="btn">1</);
+        assert.doesNotMatch(w.getListItemFn(w.listArray[5], 5), /class="btn"/);
+        assert.match(w.getListItemFn(w.listArray[6], 6), /class="btn">1</);
     }
     w.selIndex = 3;
     w.listKeyHandlerFn(w.keys.ENTER);

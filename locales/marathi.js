@@ -266,6 +266,8 @@ var keyStrings = {
         "पेअरिंग विनंती तयार करू शकलो नाही. पुन्हा प्रयत्न करण्यासाठी सर्व्हर शोधा.",
     "Could not load. Select to retry.":
         "लोड करू शकलो नाही. पुन्हा प्रयत्न करण्यासाठी निवडा.",
+    "Could not save provider settings.":
+        "प्रदात्याच्या सेटिंग्ज जतन करता आल्या नाहीत.",
     "Could not save the approved command server settings.":
         "मंजूर आदेश सर्व्हर सेटिंग्ज जतन करू शकलो नाही.",
     "Could not update HTTP remote control.":
@@ -588,6 +590,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "कोणतेही कार्यक्रम प्लेलिस्ट चॅनेल आणि तारखांशी जुळलेले नाहीत. स्त्रोत आणि डिव्हाइस घड्याळ तपासा.",
     "No saved settings found": "कोणतीही जतन केलेली सेटिंग्ज आढळली नाहीत",
+    "Not configured": "कॉन्फिगर केलेले नाही",
     "Not found": "आढळले नाही",
     "Not reduce video when showing the list (bugfix)":
         "सूची दाखवताना व्हिडिओ लहान करू नका (बग निराकरण)",
@@ -947,6 +950,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD या प्रदात्याद्वारे समर्थित नाही",
     "Volume step, %": "आवाज बदलण्याचा टप्पा, %",
     "VPortal link": "VPortal लिंक",
+    "VPortal profiles": "VPortal प्रोफाइल",
     "VPortal request failed":
         "VPortal लोड करू शकलो नाही. लिंक, ऍक्सेस की आणि पोर्टलची उपलब्धता तपासा.",
     volume: "आवाज",

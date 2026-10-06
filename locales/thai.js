@@ -269,6 +269,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "ไม่สามารถสร้างคำขอจับคู่ได้ ค้นหาเซิร์ฟเวอร์อีกครั้งเพื่อลองอีกครั้ง",
     "Could not load. Select to retry.": "ไม่สามารถโหลดได้ เลือกเพื่อลองอีกครั้ง",
+    "Could not save provider settings.": "ไม่สามารถบันทึกการตั้งค่าผู้ให้บริการได้",
     "Could not save the approved command server settings.":
         "ไม่สามารถบันทึกการตั้งค่าเซิร์ฟเวอร์คำสั่งที่ได้รับอนุมัติได้",
     "Could not update HTTP remote control.": "ไม่สามารถอัพเดตรีโมตคอนโทรล HTTP ได้",
@@ -587,6 +588,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ไม่มีโปรแกรมที่ตรงกับช่องและวันที่ของเพลย์ลิสต์ ตรวจสอบแหล่งที่มาและนาฬิกาของอุปกรณ์",
     "No saved settings found": "ไม่พบการตั้งค่าที่บันทึกไว้",
+    "Not configured": "ยังไม่ได้กำหนดค่า",
     "Not found": "ไม่พบ",
     "Not reduce video when showing the list (bugfix)":
         "อย่าย่อขนาดวิดีโอเมื่อแสดงรายการ (แก้ไขข้อบกพร่อง)",
@@ -945,6 +947,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD ไม่ได้รับการสนับสนุนโดยผู้ให้บริการรายนี้",
     "Volume step, %": "ระดับระดับเสียง, %",
     "VPortal link": "ลิงค์ VPortal",
+    "VPortal profiles": "โปรไฟล์ VPortal",
     "VPortal request failed":
         "ไม่สามารถโหลด VPortal ได้ ตรวจสอบลิงก์ รหัสการเข้าถึง และความพร้อมใช้งานของพอร์ทัล",
     volume: "ระดับเสียง",

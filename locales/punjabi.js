@@ -267,6 +267,7 @@ var keyStrings = {
         "ਜੋੜਾ ਬਣਾਉਣ ਦੀ ਬੇਨਤੀ ਨਹੀਂ ਬਣਾਈ ਜਾ ਸਕੀ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਸਰਵਰ ਨੂੰ ਦੁਬਾਰਾ ਲੱਭੋ।",
     "Could not load. Select to retry.":
         "ਲੋਡ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਚੁਣੋ।",
+    "Could not save provider settings.": "ਪ੍ਰਦਾਤਾ ਦੀਆਂ ਸੈਟਿੰਗਾਂ ਸੰਭਾਲੀਆਂ ਨਹੀਂ ਜਾ ਸਕੀਆਂ।",
     "Could not save the approved command server settings.":
         "ਪ੍ਰਵਾਨਿਤ ਕਮਾਂਡ ਸਰਵਰ ਸੈਟਿੰਗਾਂ ਨੂੰ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ।",
     "Could not update HTTP remote control.":
@@ -587,6 +588,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ਕੋਈ ਵੀ ਪ੍ਰੋਗਰਾਮ ਪਲੇਲਿਸਟ ਚੈਨਲਾਂ ਅਤੇ ਤਾਰੀਖਾਂ ਨਾਲ ਮੇਲ ਨਹੀਂ ਖਾਂਦਾ। ਸਰੋਤ ਅਤੇ ਡਿਵਾਈਸ ਘੜੀ ਦੀ ਜਾਂਚ ਕਰੋ।",
     "No saved settings found": "ਕੋਈ ਰੱਖਿਅਤ ਸੈਟਿੰਗਾਂ ਨਹੀਂ ਮਿਲੀਆਂ",
+    "Not configured": "ਸੈੱਟਅੱਪ ਨਹੀਂ ਹੋਇਆ",
     "Not found": "ਨਹੀਂ ਮਿਲਿਆ",
     "Not reduce video when showing the list (bugfix)":
         "ਸੂਚੀ ਦਿਖਾਉਂਦੇ ਸਮੇਂ ਵੀਡੀਓ ਨੂੰ ਸੰਕੁਚਿਤ ਨਾ ਕਰੋ (ਬੱਗ ਫਿਕਸ)",
@@ -946,6 +948,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD ਇਸ ਪ੍ਰਦਾਤਾ ਦੁਆਰਾ ਸਮਰਥਿਤ ਨਹੀਂ ਹੈ",
     "Volume step, %": "ਆਵਾਜ਼ ਬਦਲਣ ਦਾ ਕਦਮ, %",
     "VPortal link": "VPortal ਲਿੰਕ",
+    "VPortal profiles": "VPortal ਪ੍ਰੋਫਾਈਲਾਂ",
     "VPortal request failed":
         "VPortal ਲੋਡ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ। ਲਿੰਕ, ਐਕਸੈਸ ਕੁੰਜੀ ਅਤੇ ਪੋਰਟਲ ਦੀ ਉਪਲਬਧਤਾ ਦੀ ਜਾਂਚ ਕਰੋ।",
     volume: "ਆਵਾਜ਼",

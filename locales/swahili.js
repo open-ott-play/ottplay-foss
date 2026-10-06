@@ -278,6 +278,8 @@ var keyStrings = {
         "Haikuweza kuunda ombi la kuoanisha. Tafuta seva tena ili ujaribu tena.",
     "Could not load. Select to retry.":
         "Haikuweza kupakia. Chagua ili kujaribu tena.",
+    "Could not save provider settings.":
+        "Imeshindikana kuhifadhi mipangilio ya mtoa huduma.",
     "Could not save the approved command server settings.":
         "Haikuweza kuhifadhi mipangilio ya seva ya amri iliyoidhinishwa.",
     "Could not update HTTP remote control.":
@@ -610,6 +612,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Hakuna programu zinazolingana na vituo na tarehe za orodha ya kucheza. Angalia chanzo na saa ya kifaa.",
     "No saved settings found": "Hakuna mipangilio iliyohifadhiwa iliyopatikana",
+    "Not configured": "Haijasanidiwa",
     "Not found": "Haijapatikana",
     "Not reduce video when showing the list (bugfix)":
         "Usipunguze video wakati wa kuonyesha orodha (kurekebisha hitilafu)",
@@ -982,6 +985,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD haitumiki na mtoa huduma huyu",
     "Volume step, %": "Hatua ya sauti, %",
     "VPortal link": "VPortal kiungo",
+    "VPortal profiles": "Wasifu wa VPortal",
     "VPortal request failed":
         "Haikuweza kupakia VPortal. Angalia kiungo, ufunguo wa kufikia, na upatikanaji wa tovuti.",
     volume: "sauti",

@@ -279,6 +279,8 @@ var keyStrings = {
         "Hindi makalikha ng kahilingan sa pagpapares. Hanapin muli ang server upang muling subukan.",
     "Could not load. Select to retry.":
         "Hindi ma-load. Piliin upang muling subukan.",
+    "Could not save provider settings.":
+        "Hindi ma-save ang mga setting ng provider.",
     "Could not save the approved command server settings.":
         "Hindi ma-save ang mga naaprubahang setting ng command server.",
     "Could not update HTTP remote control.":
@@ -614,6 +616,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Walang mga programa ang tumugma sa mga channel at petsa ng playlist. Suriin ang pinagmulan at orasan ng device.",
     "No saved settings found": "Walang nakitang mga naka-save na setting",
+    "Not configured": "Hindi pa na-configure",
     "Not found": "Hindi nahanap",
     "Not reduce video when showing the list (bugfix)":
         "Huwag paliitin ang video kapag ipinapakita ang listahan (pag-aayos ng bug)",
@@ -994,6 +997,7 @@ var keyStrings = {
         "Ang VOD ay hindi sinusuportahan ng provider na ito",
     "Volume step, %": "Hakbang ng lakas ng tunog, %",
     "VPortal link": "Link ng VPortal",
+    "VPortal profiles": "Mga profile ng VPortal",
     "VPortal request failed":
         "Hindi ma-load ang VPortal. Tingnan ang link, access key, at availability ng portal.",
     volume: "lakas ng tunog",

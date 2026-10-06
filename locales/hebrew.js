@@ -264,6 +264,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "לא ניתן ליצור בקשת צימוד. יש לחפש שוב את השרת כדי לנסות שוב.",
     "Could not load. Select to retry.": "הטעינה נכשלה. בחרו כדי לנסות שוב.",
+    "Could not save provider settings.": "לא ניתן לשמור את הגדרות הספק.",
     "Could not save the approved command server settings.":
         "לא ניתן לשמור את הגדרות שרת הפקודות שאושרו.",
     "Could not update HTTP remote control.":
@@ -585,6 +586,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "לא נמצאו הגדרות שמורות",
+    "Not configured": "לא הוגדר",
     "Not found": "לא נמצא",
     "Not reduce video when showing the list (bugfix)":
         "אל תקטין את הווידאו בעת הצגת הרשימה (תיקון תקלה)",
@@ -942,6 +944,7 @@ var keyStrings = {
     "VOD not supported by provider": "הספק הזה אינו תומך ב-VOD",
     "Volume step, %": "מרווח עוצמת קול, %",
     "VPortal link": "קישור VPortal",
+    "VPortal profiles": "פרופילי VPortal",
     "VPortal request failed":
         "לא ניתן לטעון את VPortal. בדוק את הקישור, מפתח הגישה וזמינות הפורטל.",
     volume: "עוצמת קול",

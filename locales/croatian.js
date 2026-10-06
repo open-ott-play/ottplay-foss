@@ -274,6 +274,8 @@ var keyStrings = {
         "Nije moguće izraditi zahtjev za uparivanje. Ponovno pronađite poslužitelj za ponovni pokušaj.",
     "Could not load. Select to retry.":
         "Nije moguće učitati. Odaberite za ponovni pokušaj.",
+    "Could not save provider settings.":
+        "Nije moguće spremiti postavke pružatelja usluge.",
     "Could not save the approved command server settings.":
         "Nije moguće spremiti odobrene postavke poslužitelja naredbi.",
     "Could not update HTTP remote control.":
@@ -604,6 +606,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Nijedan program ne odgovara kanalima i datumima popisa za reprodukciju. Provjerite izvor i sat uređaja.",
     "No saved settings found": "Nisu pronađene spremljene postavke",
+    "Not configured": "Nije konfigurirano",
     "Not found": "Nije pronađeno",
     "Not reduce video when showing the list (bugfix)":
         "Nemoj smanjivati video kada se prikazuje popis (ispravak greške)",
@@ -973,6 +976,7 @@ var keyStrings = {
     "VOD not supported by provider": "Ovaj pružatelj usluga ne podržava VOD",
     "Volume step, %": "Korak glasnoće, %",
     "VPortal link": "VPortal veza",
+    "VPortal profiles": "Profili VPortal",
     "VPortal request failed":
         "Nije moguće učitati VPortal. Provjerite dostupnost poveznice, pristupnog ključa i portala.",
     volume: "glasnoća",

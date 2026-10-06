@@ -279,6 +279,8 @@ var keyStrings = {
         "Impossibile creare una richiesta di abbinamento. Cerca nuovamente il server per riprovare.",
     "Could not load. Select to retry.":
         "Caricamento non riuscito. Seleziona per riprovare.",
+    "Could not save provider settings.":
+        "Impossibile salvare le impostazioni del provider.",
     "Could not save the approved command server settings.":
         "Impossibile salvare le impostazioni approvate del server comandi.",
     "Could not update HTTP remote control.":
@@ -610,6 +612,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nessuna impostazione salvata trovata",
+    "Not configured": "Non configurato",
     "Not found": "Non trovato",
     "Not reduce video when showing the list (bugfix)":
         "Non ridurre il video quando viene mostrato l'elenco (correzione)",
@@ -982,6 +985,7 @@ var keyStrings = {
     "VOD not supported by provider": "La VOD non è supportata dal fornitore",
     "Volume step, %": "Incremento volume, %",
     "VPortal link": "Link VPortal",
+    "VPortal profiles": "Profili VPortal",
     "VPortal request failed":
         "Impossibile caricare VPortal. Controlla il link, la chiave di accesso e la disponibilità del portale.",
     volume: "volume",

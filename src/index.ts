@@ -2546,7 +2546,17 @@ function _playChannel(
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */
 function _playMedia(item: MediaHistoryEntry, automatic = false): void {
-    if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
+    var kiosk = (window as any).__ottKiosk;
+    if (
+        kiosk &&
+        kiosk.enabled() &&
+        !(
+            automatic &&
+            kiosk.locked() &&
+            typeof kiosk.allowedMedia === "function" &&
+            kiosk.allowedMedia(item && (item as any).__ottMediaRef)
+        )
+    )
         return;
     if (!item) return;
     var reference = (item as any).__ottMediaRef;
