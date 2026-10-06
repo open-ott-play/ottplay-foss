@@ -483,6 +483,8 @@ var keyStrings = {
     "For upload settings file open": "Để tải tệp cài đặt lên, mở",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Cài đặt Fox-TV",
+    "Full history, sources and license terms":
+        "Lịch sử đầy đủ, nguồn và điều khoản giấy phép",
     FXML: "FXML",
     "FXML settings": "Cài đặt FXML",
     Genre: "Thể loại",
@@ -539,10 +541,14 @@ var keyStrings = {
     "Load:": "Tải:",
     "Loading channels from Xtream API...": "Đang tải kênh từ API Xtream…",
     "Loading channels...": "Đang tải kênh…",
+    "Loading device...": "Đang tải thành phần thiết bị…",
     "Loading from API...": "Đang tải từ API…",
     "Loading from Edem API...": "Đang tải từ API Edem…",
+    "Loading interface...": "Đang tải giao diện…",
     "Loading M3U playlist...": "Đang tải danh sách phát M3U…",
     "Loading M3U...": "Đang tải M3U…",
+    "Loading media libraries...": "Đang tải thư viện đa phương tiện…",
+    "Loading player...": "Đang tải trình phát…",
     "Loading via proxy...": "Đang tải qua proxy…",
     "Loading. Please wait...": "Đang tải… vui lòng đợi…",
     "Loading...": "Đang tải…",
@@ -614,6 +620,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Văn bản gốc: %1",
     "OTT / APP host": "Máy chủ OTT / ứng dụng",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cài đặt OTT Prime ONLINE",
@@ -641,6 +648,7 @@ var keyStrings = {
     "Payment method": "Phương thức thanh toán",
     "Permanent clock on screen": "Luôn hiển thị đồng hồ trên màn hình",
     PIN: "PIN",
+    "Picture in Picture": "Hình trong hình",
     "PiP exchange": "Đổi PiP",
     "PiP window position": "Vị trí cửa sổ PiP",
     "PiP window size": "Kích thước cửa sổ PiP",
@@ -855,6 +863,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
     "Stalker portal settings": "Cài đặt cổng Stalker",
     "Stalker portals": "Cổng Stalker",
+    "Starting...": "Đang khởi động…",
     Status: "Trạng thái",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -939,6 +948,8 @@ var keyStrings = {
         "Dùng HTTP hoặc HTTPS mà không có tên người dùng hay mật khẩu trong địa chỉ.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Dùng TRÁI/PHẢI để chọn điều khiển, OK để kích hoạt và LÊN/XUỐNG để cuộn.",
+    "Use Up / Down to scroll. Back to close.":
+        "Dùng Lên / Xuống để cuộn. Quay lại để đóng.",
     Username: "Tên người dùng",
     "Username or password is missing.": "Thiếu tên người dùng hoặc mật khẩu.",
     "Valid for 10 minutes. Back closes this session.":

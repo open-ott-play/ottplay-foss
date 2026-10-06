@@ -1556,6 +1556,9 @@ function selectLang(forceReload?: boolean): void {
     ];
     selIndex = langCodes.indexOf(stbGetItem("ottplaylang") || "");
     var prevSelIndex = selIndex;
+    var languageHost = window as any;
+    var cancelled = false;
+    var cancelLanguageLoad: (() => void) | undefined;
     if (selIndex === -1) selIndex = 0;
     listDataArray = langCodes.map(function (code) {
         return languageNames[code];
@@ -1581,21 +1584,52 @@ function selectLang(forceReload?: boolean): void {
     listKeyHandlerFn = function (key: number): boolean {
         switch (key) {
             case keys.ENTER:
+                // Only one active choice owns the dictionary. Timed-out or
+                // cancelled scripts may still execute and must restore it.
+                if (languageHost.__ottLanguagePending) return true;
                 if (prevSelIndex === selIndex && forceReload !== true) {
                     resumeAfterLanguage();
                 } else {
                     var selectedLanguage = langCodes[selIndex];
+                    var request = {};
+                    languageHost.__ottLanguagePending = request;
+                    languageHost.__ottBootDictionary = languageHost.keyStrings;
+                    var finish = function (loaded: boolean): void {
+                        if (languageHost.__ottLanguagePending !== request) {
+                            if (loaded)
+                                languageHost.keyStrings =
+                                    languageHost.__ottBootDictionary;
+                            return;
+                        }
+                        clearTimeout(timer);
+                        languageHost.__ottLanguagePending = null;
+                        if (!loaded || cancelled) {
+                            languageHost.keyStrings =
+                                languageHost.__ottBootDictionary;
+                            if (!cancelled) infoBox(_("Failed to load!"));
+                            return;
+                        }
+                        languageHost.__ottBootDictionary =
+                            languageHost.keyStrings;
+                        stbSetItem("ottplaylang", selectedLanguage);
+                        resumeAfterLanguage();
+                    };
+                    var timer = setTimeout(function () {
+                        finish(false);
+                    }, 10000);
+                    cancelLanguageLoad = function () {
+                        finish(false);
+                    };
                     getScriptDOM(
                         hostUrl +
                             languageAssetPath(selectedLanguage) +
                             "?" +
                             PLAYER_VERSION,
                         function () {
-                            stbSetItem("ottplaylang", selectedLanguage);
-                            resumeAfterLanguage();
+                            finish(true);
                         },
                         function () {
-                            infoBox(_("Failed to load!"));
+                            finish(false);
                         }
                     );
                 }
@@ -1603,6 +1637,8 @@ function selectLang(forceReload?: boolean): void {
             case keys.EXIT:
                 if (typeof duneAddSettings === "function") return false;
             case keys.RETURN:
+                cancelled = true;
+                if (cancelLanguageLoad) cancelLanguageLoad();
                 resumeAfterLanguage(true);
                 return true;
         }
@@ -1863,6 +1899,7 @@ function onStbReady(): void {
         getScriptDOM(
             hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
             function () {
+                uiHost.__ottBootDictionary = uiHost.keyStrings;
                 if (typeof duneAddSettings !== "function") loadProv();
                 else if (typeof uiHost.optionsList === "function")
                     uiHost.optionsList(selectLang);
@@ -2490,7 +2527,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
         'url("' + metadataCssUrl(item.logo_30x30) + '")'
     );
     $("#channel_number").text(" ");
-    $("#channel_name").text(item.title);
+    $("#channel_name").text((window as any).__ottMedia.title(item));
     $("#nprogramm_name").html("&nbsp; ");
     $("#nbegin_time").text("");
     $("#nend_time").text("");
@@ -2742,6 +2779,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                       request: function (url: string) {
                           return {
                               loop: (window as any).ottplayDemoActive === true,
+                              subtitle: _("Picture in Picture"),
                               url: url,
                           };
                       },
@@ -5451,6 +5489,16 @@ function interfaceCredits(): void {
     w.saveListPanelState();
     $("#listCaption").text(_("Interface credits"));
     $("#listAbout").html($("#interfaceCreditsSource").html()).show();
+    $("#listAbout .credits-title").text(_("Interface credits"));
+    $("#listAbout .credits-navigation").text(
+        _("Use Up / Down to scroll. Back to close.")
+    );
+    $("#listAbout .credits-language").text(
+        _("Original text: %1", _("English"))
+    );
+    $("#listAbout .credits-history").text(
+        _("Full history, sources and license terms")
+    );
     $("#listPodval").html(renderButtonHint(keys.RETURN, strRETURN, "Close"));
     w.aboutKeyHandler = function (key: number): boolean {
         if (key === w.keys.RETURN || key === w.keys.EXIT) {
@@ -5489,7 +5537,11 @@ function privacyPolicy(onClose?: () => void): void {
             close();
         })
         .appendTo(panel);
+    $("<p>")
+        .text(_("Original text: %1", _("English")))
+        .appendTo(panel);
     var content = $("<pre>")
+        .attr("lang", "en")
         .css({
             fontFamily: "inherit",
             fontSize: "0.75em",

@@ -491,6 +491,8 @@ var keyStrings = {
         "Lai augšupielādētu iestatījumu failu, atveriet",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV iestatījumi",
+    "Full history, sources and license terms":
+        "Pilna vēsture, avoti un licences noteikumi",
     FXML: "FXML",
     "FXML settings": "FXML iestatījumi",
     Genre: "Žanrs",
@@ -547,10 +549,14 @@ var keyStrings = {
     "Load:": "Ielādēt:",
     "Loading channels from Xtream API...": "Ielādē kanālus no Xtream API…",
     "Loading channels...": "Ielādē kanālus…",
+    "Loading device...": "Ielādē ierīces komponentus…",
     "Loading from API...": "Ielādē no API…",
     "Loading from Edem API...": "Ielādē no Edem API…",
+    "Loading interface...": "Ielādē saskarni…",
     "Loading M3U playlist...": "Ielādē M3U atskaņošanas sarakstu…",
     "Loading M3U...": "Ielādē M3U…",
+    "Loading media libraries...": "Ielādē multivides bibliotēkas…",
+    "Loading player...": "Ielādē atskaņotāju…",
     "Loading via proxy...": "Ielādē caur starpniekserveri…",
     "Loading. Please wait...": "Ielādē… lūdzu, uzgaidiet…",
     "Loading...": "Ielādē…",
@@ -622,6 +628,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Oriģinālais teksts: %1",
     "OTT / APP host": "OTT / lietotnes serveris",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE iestatījumi",
@@ -649,6 +656,7 @@ var keyStrings = {
     "Payment method": "Maksājuma veids",
     "Permanent clock on screen": "Vienmēr rādīt pulksteni ekrānā",
     PIN: "PIN",
+    "Picture in Picture": "Attēls attēlā",
     "PiP exchange": "Samainīt PiP",
     "PiP window position": "PiP loga novietojums",
     "PiP window size": "PiP loga izmērs",
@@ -866,6 +874,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
     "Stalker portal settings": "Stalker portāla iestatījumi",
     "Stalker portals": "Stalker portāli",
+    "Starting...": "Palaiž…",
     Status: "Statuss",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -950,6 +959,8 @@ var keyStrings = {
         "Izmantojiet HTTP vai HTTPS bez lietotājvārda vai paroles adresē.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Ar PA KREISI/PA LABI izvēlieties vadīklu, ar OK aktivizējiet to, ar UZ AUGŠU/UZ LEJU ritiniet.",
+    "Use Up / Down to scroll. Back to close.":
+        "Ritiniet ar Augšup / Lejup. Atpakaļ, lai aizvērtu.",
     Username: "Lietotājvārds",
     "Username or password is missing.": "Trūkst lietotājvārda vai paroles.",
     "Valid for 10 minutes. Back closes this session.":

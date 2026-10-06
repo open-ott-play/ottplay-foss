@@ -13,7 +13,7 @@
     },
     {
       "file": "src/channels/index.ts",
-      "expression": "(w._ ? w._(\"Delete list\") : \"Delete list\") + \": \" + listName + \"?\"",
+      "expression": "(w._ ? w._(\"Delete list\") : \"Delete list\") + \": \" + favoritesListLabel(listName) + \"?\"",
       "reason": "Already-translated constituent labels plus runtime data or markup; nested literal calls are scanned independently."
     },
     {

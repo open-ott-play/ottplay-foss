@@ -489,6 +489,8 @@ var keyStrings = {
     "For upload settings file open": "Баптаулар файлын жіберу үшін ашыңыз",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV баптаулары",
+    "Full history, sources and license terms":
+        "Толық тарих, дереккөздер және лицензия шарттары",
     FXML: "FXML",
     "FXML settings": "FXML баптаулары",
     Genre: "Жанр",
@@ -546,10 +548,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Xtream API арқылы арналар жүктелуде…",
     "Loading channels...": "Арналар жүктелуде…",
+    "Loading device...": "Құрылғы компоненттері жүктелуде…",
     "Loading from API...": "API арқылы жүктелуде…",
     "Loading from Edem API...": "Edem API арқылы жүктелуде…",
+    "Loading interface...": "Интерфейс жүктелуде…",
     "Loading M3U playlist...": "M3U ойнату тізімі жүктелуде…",
     "Loading M3U...": "M3U жүктелуде…",
+    "Loading media libraries...": "Медиакітапханалар жүктелуде…",
+    "Loading player...": "Ойнатқыш жүктелуде…",
     "Loading via proxy...": "Прокси арқылы жүктелуде…",
     "Loading. Please wait...": "Жүктелуде. Күтіңіз…",
     "Loading...": "Жүктелуде…",
@@ -620,6 +626,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Түпнұсқа мәтін: %1",
     "OTT / APP host": "OTT / қолданба сервері",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE баптаулары",
@@ -647,6 +654,7 @@ var keyStrings = {
     "Payment method": "Төлем әдісі",
     "Permanent clock on screen": "Экрандағы тұрақты сағат",
     PIN: "PIN",
+    "Picture in Picture": "Сурет ішіндегі сурет",
     "PiP exchange": "PiP терезелерін ауыстыру",
     "PiP window position": "PiP терезесінің орны",
     "PiP window size": "PiP терезесінің өлшемі",
@@ -864,6 +872,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker порталының провайдері",
     "Stalker portal settings": "Stalker порталының баптаулары",
     "Stalker portals": "Stalker порталдары",
+    "Starting...": "Іске қосылуда…",
     Status: "Күй",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -950,6 +959,8 @@ var keyStrings = {
         "Мекенжайда пайдаланушы аты мен құпиясөзі жоқ HTTP немесе HTTPS қолданыңыз.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Элементті таңдау үшін СОЛ/ОҢ, іске қосу үшін OK, айналдыру үшін ЖОҒАРЫ/ТӨМЕН түймелерін пайдаланыңыз.",
+    "Use Up / Down to scroll. Back to close.":
+        "Айналдыру үшін Жоғары / Төмен басыңыз. Жабу үшін Артқа басыңыз.",
     Username: "Пайдаланушы аты",
     "Username or password is missing.": "Пайдаланушы аты немесе құпиясөз жоқ.",
     "Valid for 10 minutes. Back closes this session.":

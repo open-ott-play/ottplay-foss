@@ -48,10 +48,15 @@ function boot(options = {}) {
     const storage = options.storage || {};
     const elements = {};
     const stoppedTimers = [];
+    const timers = new Map();
+    const messages = [];
+    let timerId = 10;
+    let languageTag;
     let starts = 0;
     let context;
     const document = {
         body: { className: "booting", style: {} },
+        cookie: options.cookie || "",
         createElement(tagName) {
             return { style: {}, tagName };
         },
@@ -61,7 +66,13 @@ function boot(options = {}) {
                     return null;
                 },
                 style: {},
-                textContent: "",
+                get textContent() {
+                    return this.text || "";
+                },
+                set textContent(text) {
+                    this.text = text;
+                    messages.push({ id, text });
+                },
             });
         },
         getElementsByTagName() {
@@ -98,6 +109,13 @@ function boot(options = {}) {
                     context.__ottRuntimePolyfillsReady = true;
                 }
                 if (typeof tag.onload === "function") tag.onload();
+                return;
+            }
+            if (requestPath.startsWith("/locales/")) {
+                languageTag = tag;
+                if (options.languageFailure)
+                    tag.onerror(new Error("Missing locale"));
+                else if (!options.stalledLanguage) finishLanguage();
                 return;
             }
             if (name === "ottplay-core.js") {
@@ -180,6 +198,9 @@ function boot(options = {}) {
         clearInterval(timer) {
             stoppedTimers.push(timer);
         },
+        clearTimeout(timer) {
+            timers.delete(timer);
+        },
         console,
         document,
         localStorage: {
@@ -208,8 +229,9 @@ function boot(options = {}) {
         setInterval() {
             return 1;
         },
-        setTimeout() {
-            return 1;
+        setTimeout(callback, delay) {
+            timers.set(++timerId, { callback, delay });
+            return timerId;
         },
         URL: Object.assign(function URL() {}, { createObjectURL() {} }),
     });
@@ -264,6 +286,14 @@ function boot(options = {}) {
             context
         );
     }
+    function finishLanguage() {
+        const name = new URL(languageTag.src).pathname.split("/").pop();
+        vm.runInContext(
+            fs.readFileSync(path.join(__dirname, "../locales", name), "utf8"),
+            context
+        );
+        languageTag.onload();
+    }
     for (const script of bootScripts) {
         if (script.src) {
             document.head.appendChild({
@@ -281,6 +311,14 @@ function boot(options = {}) {
                     filename: "index.html boot",
                 }
             );
+    }
+    if (options.stalledLanguage) {
+        assert.equal(
+            starts,
+            0,
+            "Player waits for the saved catalog before booting"
+        );
+        [...timers.values()].find((timer) => timer.delay === 2500).callback();
     }
     assert.equal(
         starts,
@@ -314,7 +352,16 @@ function boot(options = {}) {
     )
         assert.equal(storage.ott_device_uuid, context.deviceUUID);
     else assert.equal(storage.ott_device_uuid, undefined);
-    return { context, elements, requests, stoppedTimers, storage, styles };
+    return {
+        context,
+        elements,
+        finishLanguage,
+        messages,
+        requests,
+        stoppedTimers,
+        storage,
+        styles,
+    };
 }
 
 // Exercise the same version substitution as packaged HTML on an old engine.
@@ -468,10 +515,7 @@ for (const options of [
     { libraryFailures: ["hls.min.js", "shaka-player.compiled.js"] },
 ]) {
     const result = boot(options);
-    assert.match(
-        result.elements["boot-log"].textContent,
-        /unavailable; using device playback/
-    );
+    assert.match(result.elements["boot-log"].textContent, /→ HTML5/);
     assert(
         result.requests.some((url) =>
             url.includes("/devices/hisense/device.js?")
@@ -483,9 +527,12 @@ for (const polyfillsFailure of ["network", "partial", "missing-version"]) {
     assert.deepEqual(result.requests, [mediaURL("runtime-polyfills.js")]);
     assert.equal(
         result.elements["boot-status"].textContent,
-        "Failed to load runtime support"
+        "Compatibility runtime could not load. Reopen the player to retry."
     );
-    assert.match(result.elements["boot-log"].textContent, /Reload the player/);
+    assert.match(
+        result.elements["boot-log"].textContent,
+        /js\/runtime-polyfills\.js/
+    );
     assert.equal(result.context.document.body.className, "");
     assert(
         result.stoppedTimers.includes(1),
@@ -610,7 +657,7 @@ for (const options of [
     const result = boot(options);
     assert.equal(
         result.elements["boot-status"].textContent,
-        "Failed to load shared core"
+        "Player could not start"
     );
     assert.equal(
         result.requests.length,
@@ -618,3 +665,93 @@ for (const options of [
         "A broken core must not start the player"
     );
 }
+
+// Real dictionaries are available even when the runtime/core cannot load.
+const {
+    languageAssets,
+    readDictionary,
+} = require("../scripts/localization-catalog.cjs");
+for (const [code, asset] of Object.entries(languageAssets)) {
+    const result = boot({ storage: { ottplaylang: code } });
+    const dictionary = readDictionary(path.join(__dirname, "..", asset));
+    assert(
+        result.requests.some((url) => new URL(url).pathname === asset),
+        code + " uses canonical locale filename"
+    );
+    assert.equal(
+        result.elements["boot-status"].textContent,
+        dictionary["Starting..."]
+    );
+    assert.deepEqual(
+        result.messages
+            .filter((entry) => entry.id === "boot-status")
+            .map((entry) => entry.text),
+        [
+            "Starting...",
+            "Loading interface...",
+            "Loading media libraries...",
+            "Loading player...",
+            "Loading device...",
+            "Starting...",
+        ].map((key) => dictionary[key])
+    );
+}
+for (const globals of [
+    {},
+    { __ottNativeRuntime: true, __TAURI__: {} },
+    { __ottNativeRuntime: true, Capacitor: {} },
+]) {
+    const result = boot({
+        globals,
+        polyfillsFailure: "network",
+        storage: { ottplaylang: "_rus" },
+    });
+    assert.match(result.elements["boot-status"].textContent, /^Не удалось/);
+    assert.equal(
+        result.requests.length,
+        2,
+        "Locale loads independently of runtime support"
+    );
+}
+const cookieLanguage = boot({
+    cookie: "other=x; ottplaylang=_rus",
+    storageError: "read",
+});
+assert.equal(cookieLanguage.elements["boot-status"].textContent, "Запуск…");
+const clearedLanguage = boot({ cookie: "ottplaylang=_rus" });
+assert(
+    !clearedLanguage.requests.some((url) => url.includes("/locales/")),
+    "A cleared localStorage preference beats stale cookies"
+);
+for (const code of [
+    "constructor",
+    "__proto__",
+    "../../private",
+    "_not_a_language",
+])
+    assert(
+        !boot({ storage: { ottplaylang: code } }).requests.some((url) =>
+            url.includes("/locales/")
+        )
+    );
+const missingLocale = boot({
+    languageFailure: true,
+    storage: { ottplaylang: "_rus" },
+});
+assert.equal(missingLocale.elements["boot-status"].textContent, "Starting...");
+const stalledLocale = boot({
+    stalledLanguage: true,
+    storage: { ottplaylang: "_rus" },
+});
+const laterDictionary = { "Starting...": "Démarrage…" };
+stalledLocale.context.keyStrings = stalledLocale.context.__ottBootDictionary =
+    laterDictionary;
+stalledLocale.finishLanguage();
+assert.equal(
+    stalledLocale.context.keyStrings,
+    laterDictionary,
+    "Late bootstrap locale cannot replace the player's newer dictionary"
+);
+console.log(
+    "OK: all 28 boot locales, native/runtime failures, cookie fallback and safe timeout settlement"
+);

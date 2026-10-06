@@ -15,6 +15,75 @@ interface ClassicMediaSource {
 var mediaClassicContext: ClassicMediaSource | null = null;
 var mediaClassicContextRevision = 0;
 
+/** A label is generated only while its original value has not been edited. */
+function classicMediaLabel(item: any): any {
+    var label = item && item.__ottMediaLabel;
+    return label &&
+        typeof label.key === "string" &&
+        typeof label.value === "string" &&
+        label.value === item.title
+        ? label
+        : null;
+}
+function classicMediaTitle(item: any): string {
+    var w = window as any;
+    if (item && item.__ottMediaRoute === "history")
+        return w._("History of watched movies");
+    if (item && item.__ottMediaRoute === "favorites") return w._("Favorites");
+    if (item && item.__ottMediaFilter)
+        return w._("Filter") + ": " + (item.__ottMediaFilterText || "");
+    var label = classicMediaLabel(item);
+    // Explicit keys keep the catalog inventory auditable and exclude arbitrary provider keys.
+    switch (label && label.key) {
+        case "Untitled":
+            return w._("Untitled");
+        case "Untitled folder":
+            return w._("Untitled folder");
+        case "??? No channel name":
+            return w._("??? No channel name");
+        case "Browse folders":
+            return w._("Browse folders");
+        case "Search":
+            return w._("Search");
+        case "Filters":
+            return w._("Filters");
+        case "Next":
+            return w._("Next");
+        case "Media Library":
+            return w._("Media Library");
+    }
+    return String(
+        (item && (item.title || item.name || item.playlist_name)) ||
+            w._("Untitled")
+    );
+}
+function classicMediaDescription(item: any, text: string): string {
+    var label = classicMediaLabel(item);
+    if (!label || label.heading !== true) return text;
+    function escape(value: string): string {
+        return value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+    var prefix = "<table><h2><center>" + escape(label.value) + "</center></h2>";
+    return text.slice(0, prefix.length) === prefix
+        ? "<table><h2><center>" +
+              escape(classicMediaTitle(item)) +
+              "</center></h2>" +
+              text.slice(prefix.length)
+        : text;
+}
+function classicMediaRouteTitle(route: any): string {
+    return classicMediaTitle({
+        __ottMediaLabel: route.label,
+        __ottMediaRoute: route.kind,
+        title: route.title,
+    });
+}
+
 function classicMediaSourceId(): string {
     return mediaClassicContext
         ? mediaClassicContext.sourceId
@@ -196,13 +265,22 @@ function classicMediaRuntime(): any {
                 else {
                     var origin = row.__ottMediaOrigin || route;
                     var location = origin.target || "";
-                    var titleKey = serializeMediaIdentity([location, title]);
+                    var label = classicMediaLabel(row);
+                    var identityTitle = label ? "\u0000" + label.key : title;
+                    var titleKey = serializeMediaIdentity([
+                        location,
+                        identityTitle,
+                    ]);
                     var occurrence = titles[titleKey] || 0;
                     titles[titleKey] = occurrence + 1;
                     // Providers without IDs get a catalog-local identity, never a signed stream URL.
                     id =
                         "catalog:" +
-                        serializeMediaIdentity([location, title, occurrence]);
+                        serializeMediaIdentity([
+                            location,
+                            identityTitle,
+                            occurrence,
+                        ]);
                 }
                 var identity = { itemId: id, sourceId: source };
                 payload.__ottMediaRef = identity;
@@ -288,9 +366,9 @@ function classicMediaRuntime(): any {
             .map(function (item: MediaLibraryItem) {
                 return item.payload;
             });
-        w.mediaName = frame ? frame.route.title : "";
+        w.mediaName = frame ? classicMediaRouteTitle(frame.route) : "";
         w.mediaNames = view.frames.map(function (row) {
-            return row.route.title;
+            return classicMediaRouteTitle(row.route);
         });
         // Read-only projections for provider codecs. Navigation never reads these arrays back.
         w.mediaUrls = view.frames.map(function (row) {
@@ -464,12 +542,18 @@ function classicMediaRuntime(): any {
                         (!payload.playlist_url &&
                             (payload.stream_url || payload.request))
                     ) ||
-                    normalizedFilter(item.title).indexOf(query) !== -1
+                    normalizedFilter(classicMediaTitle(item.payload)).indexOf(
+                        query
+                    ) !== -1
                 );
             });
             var title = w._("Filter") + ": " + filterText;
             result.push({
-                payload: { __ottMediaFilter: true, title: title },
+                payload: {
+                    __ottMediaFilter: true,
+                    __ottMediaFilterText: filterText,
+                    title: title,
+                },
                 ref: { itemId: "view:filter", sourceId: source },
                 title: title,
             });
@@ -1023,7 +1107,9 @@ function classicMediaRuntime(): any {
                 var items = collectionItems("favorites");
                 if (admitted()) library.replaceItems(items);
             } else if (w.showShift)
-                w.showShift(item.title + w._(" added to favorites"));
+                w.showShift(
+                    classicMediaTitle(item.payload) + w._(" added to favorites")
+                );
         },
         filter: function () {
             var admitted = api.capture();
@@ -1070,7 +1156,7 @@ function classicMediaRuntime(): any {
                     library.more();
             }, 0);
         },
-        open: function (target: any, title?: string) {
+        open: function (target: any, title?: string, label?: any) {
             var view = library.snapshot("none");
             if (target === null && view.frame) {
                 if (
@@ -1096,6 +1182,7 @@ function classicMediaRuntime(): any {
                 if (item && Array.isArray(item.payload.submenu))
                     navigate({
                         kind: "variants",
+                        label: classicMediaLabel(item.payload),
                         target: item.payload.submenu,
                         title: item.title,
                     });
@@ -1118,6 +1205,14 @@ function classicMediaRuntime(): any {
             navigate(
                 {
                     kind: "catalog",
+                    label:
+                        label ||
+                        (!title && reset && !context
+                            ? {
+                                  key: "Media Library",
+                                  value: w._("Media Library"),
+                              }
+                            : undefined),
                     target: target === null ? "" : target,
                     title:
                         title ||
@@ -1395,10 +1490,16 @@ function classicMediaRuntime(): any {
                     )
                         navigate({
                             kind: "variants",
+                            label: classicMediaLabel(payload),
                             target: payload.submenu,
                             title: item.title,
                         });
-                    else api.open(payload.playlist_url, item.title);
+                    else
+                        api.open(
+                            payload.playlist_url,
+                            item.title,
+                            classicMediaLabel(payload)
+                        );
                 } else if (payload.stream_url || payload.request) {
                     var revision = automaticGeneration;
                     var generation =
@@ -1515,9 +1616,9 @@ function classicMediaRuntime(): any {
                             if (
                                 !playable(item) ||
                                 (query &&
-                                    normalizedFilter(item.title).indexOf(
-                                        query
-                                    ) === -1) ||
+                                    normalizedFilter(
+                                        classicMediaTitle(item.payload)
+                                    ).indexOf(query) === -1) ||
                                 seen[item.ref.itemId]
                             )
                                 return false;
@@ -1789,6 +1890,7 @@ function classicMediaRuntime(): any {
     cycleRepeat: function () {
         classicMediaRuntime().cycleRepeat();
     },
+    description: classicMediaDescription,
     ended: function (generation: number) {
         if (mediaClassicInstance) mediaClassicInstance.ended(generation);
     },
@@ -1855,6 +1957,7 @@ function classicMediaRuntime(): any {
         return classicMediaRuntime().snapshot();
     },
     sourceId: classicMediaSourceId,
+    title: classicMediaTitle,
     toggleShuffle: function () {
         classicMediaRuntime().toggleShuffle();
     },

@@ -248,7 +248,7 @@ function operatorMediaPlaylist(profile: string, data: string): void {
                     ? runtime._("Untitled")
                     : runtime._("??? No channel name")
                 : entry.name;
-            runtime.mediaRecords.push({
+            var record: any = {
                 description:
                     "<table><h2><center>" +
                     name +
@@ -262,7 +262,17 @@ function operatorMediaPlaylist(profile: string, data: string): void {
                 logo_30x30: entry.logo,
                 stream_url: entry.url,
                 title: name,
-            });
+            };
+            if (entry.generatedName)
+                record.__ottMediaLabel = {
+                    heading: true,
+                    key:
+                        profile === "antifriz"
+                            ? "Untitled"
+                            : "??? No channel name",
+                    value: name,
+                };
+            runtime.mediaRecords.push(record);
         });
     } catch (error) {
         runtime.alert(runtime._("Unable to load playlist") + " (M3U)");

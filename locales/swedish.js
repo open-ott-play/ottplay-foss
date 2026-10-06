@@ -488,6 +488,8 @@ var keyStrings = {
         "För att ladda upp inställningsfilen, öppna",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV-inställningar",
+    "Full history, sources and license terms":
+        "Fullständig historik, källor och licensvillkor",
     FXML: "FXML",
     "FXML settings": "FXML-inställningar",
     Genre: "Genre",
@@ -544,10 +546,14 @@ var keyStrings = {
     "Load:": "Läs in:",
     "Loading channels from Xtream API...": "Läser in kanaler från Xtream API…",
     "Loading channels...": "Läser in kanaler…",
+    "Loading device...": "Läser in enhetskomponenter…",
     "Loading from API...": "Läser in via API…",
     "Loading from Edem API...": "Läser in från Edem API…",
+    "Loading interface...": "Läser in gränssnittet…",
     "Loading M3U playlist...": "Läser in M3U-spellista…",
     "Loading M3U...": "Läser in M3U…",
+    "Loading media libraries...": "Läser in mediebibliotek…",
+    "Loading player...": "Läser in spelaren…",
     "Loading via proxy...": "Läser in via proxy…",
     "Loading. Please wait...": "Läser in. Vänta…",
     "Loading...": "Läser in…",
@@ -619,6 +625,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Originaltext: %1",
     "OTT / APP host": "OTT- / appserver",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-inställningar",
@@ -646,6 +653,7 @@ var keyStrings = {
     "Payment method": "Betalningsmetod",
     "Permanent clock on screen": "Visa alltid klocka på skärmen",
     PIN: "PIN",
+    "Picture in Picture": "Bild i bild",
     "PiP exchange": "Växla PiP-fönster",
     "PiP window position": "PiP-fönstrets placering",
     "PiP window size": "PiP-fönstrets storlek",
@@ -863,6 +871,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker-portalleverantör",
     "Stalker portal settings": "Inställningar för Stalker-portal",
     "Stalker portals": "Stalker-portaler",
+    "Starting...": "Startar…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -949,6 +958,8 @@ var keyStrings = {
         "Använd HTTP eller HTTPS utan användarnamn eller lösenord i adressen.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Använd VÄNSTER/HÖGER för att välja, OK för att aktivera och UPP/NED för att rulla.",
+    "Use Up / Down to scroll. Back to close.":
+        "Använd Upp / Ned för att rulla. Tillbaka för att stänga.",
     Username: "Användarnamn",
     "Username or password is missing.": "Användarnamn eller lösenord saknas.",
     "Valid for 10 minutes. Back closes this session.":

@@ -491,6 +491,8 @@ var keyStrings = {
         "A beállításfájl feltöltéséhez nyissa meg:",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV beállításai",
+    "Full history, sources and license terms":
+        "Teljes történet, források és licencfeltételek",
     FXML: "FXML",
     "FXML settings": "FXML beállításai",
     Genre: "Műfaj",
@@ -548,10 +550,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Csatornák betöltése az Xtream API-ból…",
     "Loading channels...": "Csatornák betöltése…",
+    "Loading device...": "Eszközösszetevők betöltése…",
     "Loading from API...": "Betöltés az API-ból…",
     "Loading from Edem API...": "Betöltés az Edem API-ból…",
+    "Loading interface...": "Felület betöltése…",
     "Loading M3U playlist...": "M3U-lejátszási lista betöltése…",
     "Loading M3U...": "M3U betöltése…",
+    "Loading media libraries...": "Médiakönyvtárak betöltése…",
+    "Loading player...": "Lejátszó betöltése…",
     "Loading via proxy...": "Betöltés proxyn keresztül…",
     "Loading. Please wait...": "Betöltés… kis türelmet…",
     "Loading...": "Betöltés…",
@@ -622,6 +628,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Eredeti szöveg: %1",
     "OTT / APP host": "OTT- / alkalmazáskiszolgáló",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE beállításai",
@@ -649,6 +656,7 @@ var keyStrings = {
     "Payment method": "Fizetési mód",
     "Permanent clock on screen": "Óra állandó megjelenítése a képernyőn",
     PIN: "PIN",
+    "Picture in Picture": "Kép a képben",
     "PiP exchange": "PiP felcserélése",
     "PiP window position": "PiP-ablak helye",
     "PiP window size": "PiP-ablak mérete",
@@ -870,6 +878,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker portálszolgáltató",
     "Stalker portal settings": "Stalker portál beállításai",
     "Stalker portals": "Stalker portálok",
+    "Starting...": "Indítás…",
     Status: "Állapot",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -957,6 +966,8 @@ var keyStrings = {
         "Használjon HTTP-t vagy HTTPS-t, felhasználónév és jelszó nélkül a címben.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "A BAL/JOBB gombbal válasszon vezérlőt, az OK-val aktiválja, a FEL/LE gombbal görgessen.",
+    "Use Up / Down to scroll. Back to close.":
+        "Görgetés: Fel / Le. Bezárás: Vissza.",
     Username: "Felhasználónév",
     "Username or password is missing.":
         "Hiányzik a felhasználónév vagy a jelszó.",

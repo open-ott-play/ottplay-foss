@@ -486,6 +486,8 @@ var keyStrings = {
     "For upload settings file open": "Ayar dosyasını yüklemek için açın:",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV ayarları",
+    "Full history, sources and license terms":
+        "Tam geçmiş, kaynaklar ve lisans koşulları",
     FXML: "FXML",
     "FXML settings": "FXML ayarları",
     Genre: "Tür",
@@ -543,10 +545,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Xtream API'den kanallar yükleniyor…",
     "Loading channels...": "Kanallar yükleniyor…",
+    "Loading device...": "Cihaz bileşenleri yükleniyor…",
     "Loading from API...": "API'den yükleniyor…",
     "Loading from Edem API...": "Edem API'den yükleniyor…",
+    "Loading interface...": "Arayüz yükleniyor…",
     "Loading M3U playlist...": "M3U oynatma listesi yükleniyor…",
     "Loading M3U...": "M3U yükleniyor…",
+    "Loading media libraries...": "Medya kitaplıkları yükleniyor…",
+    "Loading player...": "Oynatıcı yükleniyor…",
     "Loading via proxy...": "Vekil sunucu üzerinden yükleniyor…",
     "Loading. Please wait...": "Yükleniyor… lütfen bekleyin…",
     "Loading...": "Yükleniyor…",
@@ -617,6 +623,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Özgün metin: %1",
     "OTT / APP host": "OTT / uygulama sunucusu",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ayarları",
@@ -644,6 +651,7 @@ var keyStrings = {
     "Payment method": "Ödeme yöntemi",
     "Permanent clock on screen": "Saati ekranda her zaman göster",
     PIN: "PIN",
+    "Picture in Picture": "Resim içinde resim",
     "PiP exchange": "PiP yer değiştir",
     "PiP window position": "PiP penceresinin konumu",
     "PiP window size": "PiP penceresinin boyutu",
@@ -860,6 +868,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker portalı sağlayıcısı",
     "Stalker portal settings": "Stalker portalı ayarları",
     "Stalker portals": "Stalker portalları",
+    "Starting...": "Başlatılıyor…",
     Status: "Durum",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -944,6 +953,8 @@ var keyStrings = {
         "Adreste kullanıcı adı veya parola olmadan HTTP veya HTTPS kullanın.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Bir denetim seçmek için SOL/SAĞ, etkinleştirmek için OK ve kaydırmak için YUKARI/AŞAĞI düğmelerini kullanın.",
+    "Use Up / Down to scroll. Back to close.":
+        "Kaydırmak için Yukarı / Aşağı. Kapatmak için Geri.",
     Username: "Kullanıcı adı",
     "Username or password is missing.": "Kullanıcı adı veya parola eksik.",
     "Valid for 10 minutes. Back closes this session.":

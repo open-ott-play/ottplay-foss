@@ -489,6 +489,8 @@ var keyStrings = {
         "Norėdami įkelti nustatymų failą, atverkite",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV nustatymai",
+    "Full history, sources and license terms":
+        "Visa istorija, šaltiniai ir licencijų sąlygos",
     FXML: "FXML",
     "FXML settings": "FXML nustatymai",
     Genre: "Žanras",
@@ -545,10 +547,14 @@ var keyStrings = {
     "Load:": "Įkelti:",
     "Loading channels from Xtream API...": "Įkeliami kanalai iš Xtream API…",
     "Loading channels...": "Įkeliami kanalai…",
+    "Loading device...": "Įkeliami įrenginio komponentai…",
     "Loading from API...": "Įkeliama iš API…",
     "Loading from Edem API...": "Įkeliama iš Edem API…",
+    "Loading interface...": "Įkeliama sąsaja…",
     "Loading M3U playlist...": "Įkeliamas M3U grojaraštis…",
     "Loading M3U...": "Įkeliamas M3U…",
+    "Loading media libraries...": "Įkeliamos medijos bibliotekos…",
+    "Loading player...": "Įkeliamas leistuvas…",
     "Loading via proxy...": "Įkeliama per tarpinį serverį…",
     "Loading. Please wait...": "Įkeliama… palaukite…",
     "Loading...": "Įkeliama…",
@@ -619,6 +625,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Originalus tekstas: %1",
     "OTT / APP host": "OTT / programos serveris",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nustatymai",
@@ -646,6 +653,7 @@ var keyStrings = {
     "Payment method": "Mokėjimo būdas",
     "Permanent clock on screen": "Visada rodyti laikrodį ekrane",
     PIN: "PIN",
+    "Picture in Picture": "Vaizdas vaizde",
     "PiP exchange": "Sukeisti PiP",
     "PiP window position": "PiP lango padėtis",
     "PiP window size": "PiP lango dydis",
@@ -860,6 +868,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker portalo teikėjas",
     "Stalker portal settings": "Stalker portalo nustatymai",
     "Stalker portals": "Stalker portalai",
+    "Starting...": "Paleidžiama…",
     Status: "Būsena",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -945,6 +954,8 @@ var keyStrings = {
         "Naudokite HTTP arba HTTPS be naudotojo vardo ar slaptažodžio adrese.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "KAIRĖN/DEŠINĖN pasirinkite valdiklį, OK jį aktyvinkite, AUKŠTYN/ŽEMYN slinkite.",
+    "Use Up / Down to scroll. Back to close.":
+        "Slinkite mygtukais Aukštyn / Žemyn. Atgal uždaro langą.",
     Username: "Naudotojo vardas",
     "Username or password is missing.":
         "Trūksta naudotojo vardo arba slaptažodžio.",

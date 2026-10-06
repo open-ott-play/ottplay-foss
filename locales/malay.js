@@ -483,6 +483,8 @@ var keyStrings = {
     "For upload settings file open": "Untuk memuat naik fail tetapan, buka",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Tetapan Fox-TV",
+    "Full history, sources and license terms":
+        "Sejarah penuh, sumber dan terma lesen",
     FXML: "FXML",
     "FXML settings": "Tetapan FXML",
     Genre: "Genre",
@@ -540,10 +542,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Memuatkan saluran daripada API Xtream…",
     "Loading channels...": "Memuatkan saluran…",
+    "Loading device...": "Memuatkan komponen peranti…",
     "Loading from API...": "Memuatkan daripada API…",
     "Loading from Edem API...": "Memuatkan daripada API Edem…",
+    "Loading interface...": "Memuatkan antara muka…",
     "Loading M3U playlist...": "Memuatkan senarai main M3U…",
     "Loading M3U...": "Memuatkan M3U…",
+    "Loading media libraries...": "Memuatkan pustaka media…",
+    "Loading player...": "Memuatkan pemain…",
     "Loading via proxy...": "Memuatkan melalui proksi…",
     "Loading. Please wait...": "Memuatkan… sila tunggu…",
     "Loading...": "Memuatkan…",
@@ -614,6 +620,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Teks asal: %1",
     "OTT / APP host": "Pelayan OTT / aplikasi",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Tetapan OTT Prime ONLINE",
@@ -641,6 +648,7 @@ var keyStrings = {
     "Payment method": "Kaedah pembayaran",
     "Permanent clock on screen": "Sentiasa tunjukkan jam pada skrin",
     PIN: "PIN",
+    "Picture in Picture": "Gambar dalam gambar",
     "PiP exchange": "Tukar PiP",
     "PiP window position": "Kedudukan tetingkap PiP",
     "PiP window size": "Saiz tetingkap PiP",
@@ -857,6 +865,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Penyedia portal Stalker",
     "Stalker portal settings": "Tetapan portal Stalker",
     "Stalker portals": "Portal Stalker",
+    "Starting...": "Memulakan…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -943,6 +952,8 @@ var keyStrings = {
         "Gunakan HTTP atau HTTPS tanpa nama pengguna atau kata laluan dalam alamat.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gunakan KIRI/KANAN untuk memilih kawalan, OK untuk mengaktifkannya dan ATAS/BAWAH untuk menatal.",
+    "Use Up / Down to scroll. Back to close.":
+        "Gunakan Atas / Bawah untuk menatal. Kembali untuk menutup.",
     Username: "Nama pengguna",
     "Username or password is missing.": "Nama pengguna atau kata laluan tiada.",
     "Valid for 10 minutes. Back closes this session.":

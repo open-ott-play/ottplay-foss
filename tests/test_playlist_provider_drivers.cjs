@@ -373,6 +373,11 @@ test("media parsing errors and generated titles use the selected language", () =
                 (id === "kb-team" ? "??? No channel name" : "Untitled")
         );
         assert(w.mediaRecords[0].description.includes(w.mediaRecords[0].title));
+        assert.equal(
+            w.mediaRecords[0].__ottMediaLabel.value,
+            w.mediaRecords[0].title
+        );
+        assert.equal(w.mediaRecords[0].__ottMediaLabel.heading, true);
     }
 });
 

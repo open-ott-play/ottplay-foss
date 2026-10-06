@@ -494,6 +494,8 @@ var keyStrings = {
         "Pentru a încărca fișierul de setări, deschideți",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Setări Fox-TV",
+    "Full history, sources and license terms":
+        "Istoric complet, surse și condiții de licență",
     FXML: "FXML",
     "FXML settings": "Setări FXML",
     Genre: "Gen",
@@ -551,10 +553,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Se încarcă canalele din Xtream API…",
     "Loading channels...": "Se încarcă canalele…",
+    "Loading device...": "Se încarcă componentele dispozitivului…",
     "Loading from API...": "Se încarcă din API…",
     "Loading from Edem API...": "Se încarcă din Edem API…",
+    "Loading interface...": "Se încarcă interfața…",
     "Loading M3U playlist...": "Se încarcă lista de redare M3U…",
     "Loading M3U...": "Se încarcă M3U…",
+    "Loading media libraries...": "Se încarcă bibliotecile multimedia…",
+    "Loading player...": "Se încarcă playerul…",
     "Loading via proxy...": "Se încarcă prin proxy…",
     "Loading. Please wait...": "Se încarcă… așteptați…",
     "Loading...": "Se încarcă…",
@@ -626,6 +632,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Text original: %1",
     "OTT / APP host": "Server OTT / aplicație",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Setări OTT Prime ONLINE",
@@ -653,6 +660,7 @@ var keyStrings = {
     "Payment method": "Metodă de plată",
     "Permanent clock on screen": "Afișează permanent ceasul pe ecran",
     PIN: "PIN",
+    "Picture in Picture": "Imagine în imagine",
     "PiP exchange": "Schimbă ferestrele PiP",
     "PiP window position": "Poziția ferestrei PiP",
     "PiP window size": "Dimensiunea ferestrei PiP",
@@ -872,6 +880,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Furnizor de portal Stalker",
     "Stalker portal settings": "Setările portalului Stalker",
     "Stalker portals": "Portaluri Stalker",
+    "Starting...": "Se pornește…",
     Status: "Stare",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -958,6 +967,8 @@ var keyStrings = {
         "Folosiți HTTP sau HTTPS fără nume de utilizator ori parolă în adresă.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Folosiți STÂNGA/DREAPTA pentru a selecta un control, OK pentru a-l activa și SUS/JOS pentru derulare.",
+    "Use Up / Down to scroll. Back to close.":
+        "Folosiți Sus / Jos pentru derulare. Înapoi pentru închidere.",
     Username: "Nume de utilizator",
     "Username or password is missing.":
         "Lipsește numele de utilizator sau parola.",

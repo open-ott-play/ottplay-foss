@@ -121,10 +121,19 @@ function media(row, profile, localizedTitles = profile === "antifriz") {
         });
     }
     // Generated names are application UI; historical fixtures retain the old Russian fallback.
-    if (localizedTitles)
-        for (const record of expected.records)
-            if (record.title === "??? Нет названия")
-                title(record, "??? Нет названия", "Untitled");
+    for (const record of expected.records) {
+        const generated =
+            record.title === "??? Нет названия" ||
+            (profile === "kb-team" && record.title === "??? No channel name");
+        if (localizedTitles && record.title === "??? Нет названия")
+            title(record, "??? Нет названия", "Untitled");
+        if (generated && (profile !== "m3u" || localizedTitles))
+            record.__ottMediaLabel = {
+                heading: true,
+                key: profile === "kb-team" ? "??? No channel name" : "Untitled",
+                value: record.title,
+            };
+    }
     return expected;
 }
 

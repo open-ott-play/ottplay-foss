@@ -432,4 +432,24 @@ check(
         }
     }
 );
+check(
+    "backup restore preserves generated default-list provenance without inventing it for custom names",
+    () => {
+        const f = fixture();
+        f.mount();
+        const saved = f.export();
+        assert.equal(saved.tv.favorites.defaultList, "Favorites");
+        assert(f.w.renameFavoritesList("Favorites", "Custom"));
+        assert(f.w.saveFavoritesLists());
+        f.import(saved);
+        assert.equal(f.accept(), true);
+        f.mount();
+        assert.equal(f.export().tv.favorites.defaultList, "Favorites");
+        delete saved.tv.favorites.defaultList;
+        f.import(saved);
+        assert.equal(f.accept(), true);
+        f.mount();
+        assert.equal(f.export().tv.favorites.defaultList, undefined);
+    }
+);
 console.log("OK: " + count + " settings/library backup integration groups");

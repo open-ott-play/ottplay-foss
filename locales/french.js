@@ -501,6 +501,8 @@ var keyStrings = {
         "Pour envoyer le fichier de paramètres, ouvrez",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Paramètres de Fox-TV",
+    "Full history, sources and license terms":
+        "Historique complet, sources et conditions de licence",
     FXML: "FXML",
     "FXML settings": "Paramètres de FXML",
     Genre: "Genre",
@@ -558,10 +560,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Chargement des chaînes depuis l'API Xtream…",
     "Loading channels...": "Chargement des chaînes…",
+    "Loading device...": "Chargement des composants de l’appareil…",
     "Loading from API...": "Chargement depuis l'API…",
     "Loading from Edem API...": "Chargement depuis l'API Edem…",
+    "Loading interface...": "Chargement de l’interface…",
     "Loading M3U playlist...": "Chargement de la liste M3U…",
     "Loading M3U...": "Chargement M3U…",
+    "Loading media libraries...": "Chargement des bibliothèques multimédias…",
+    "Loading player...": "Chargement du lecteur…",
     "Loading via proxy...": "Chargement via le proxy…",
     "Loading. Please wait...": "Chargement… veuillez patienter…",
     "Loading...": "Chargement…",
@@ -632,6 +638,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Texte original : %1",
     "OTT / APP host": "Hôte OTT / application",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Paramètres de OTT Prime ONLINE",
@@ -659,6 +666,7 @@ var keyStrings = {
     "Payment method": "Mode de paiement",
     "Permanent clock on screen": "Toujours afficher l'horloge à l'écran",
     PIN: "PIN",
+    "Picture in Picture": "Image dans l’image",
     "PiP exchange": "Permuter PiP",
     "PiP window position": "Position de la fenêtre PiP",
     "PiP window size": "Taille de la fenêtre PiP",
@@ -882,6 +890,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Fournisseur de portail Stalker",
     "Stalker portal settings": "Paramètres du portail Stalker",
     "Stalker portals": "Portails Stalker",
+    "Starting...": "Démarrage…",
     Status: "État",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -969,6 +978,8 @@ var keyStrings = {
         "Utilisez HTTP ou HTTPS sans nom d'utilisateur ni mot de passe dans l'adresse.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Utilisez GAUCHE/DROITE pour choisir une commande, OK pour l'activer et HAUT/BAS pour faire défiler.",
+    "Use Up / Down to scroll. Back to close.":
+        "Utilisez Haut / Bas pour défiler. Retour pour fermer.",
     Username: "Nom d'utilisateur",
     "Username or password is missing.":
         "Nom d'utilisateur ou mot de passe manquant.",

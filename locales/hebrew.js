@@ -472,6 +472,8 @@ var keyStrings = {
     "For upload settings file open": "כדי להעלות את קובץ ההגדרות, פתח",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "הגדרות Fox-TV",
+    "Full history, sources and license terms":
+        "היסטוריה מלאה, מקורות ותנאי רישיון",
     FXML: "FXML",
     "FXML settings": "הגדרות FXML",
     Genre: "ז'אנר",
@@ -527,10 +529,14 @@ var keyStrings = {
     "Load:": "טען:",
     "Loading channels from Xtream API...": "טוען ערוצים מ-Xtream API…",
     "Loading channels...": "טוען ערוצים…",
+    "Loading device...": "טוען רכיבי מכשיר…",
     "Loading from API...": "טוען מה-API…",
     "Loading from Edem API...": "טוען מ-Edem API…",
+    "Loading interface...": "טוען ממשק…",
     "Loading M3U playlist...": "טוען פלייליסט M3U…",
     "Loading M3U...": "טוען M3U…",
+    "Loading media libraries...": "טוען ספריות מדיה…",
+    "Loading player...": "טוען נגן…",
     "Loading via proxy...": "טוען דרך פרוקסי…",
     "Loading. Please wait...": "טוען… נא להמתין…",
     "Loading...": "טוען…",
@@ -601,6 +607,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "טקסט מקורי: %1",
     "OTT / APP host": "שרת OTT / יישום",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "הגדרות OTT Prime ONLINE",
@@ -628,6 +635,7 @@ var keyStrings = {
     "Payment method": "אמצעי תשלום",
     "Permanent clock on screen": "הצג תמיד שעון על המסך",
     PIN: "PIN",
+    "Picture in Picture": "תמונה בתוך תמונה",
     "PiP exchange": "החלף PiP",
     "PiP window position": "מיקום חלון PiP",
     "PiP window size": "גודל חלון PiP",
@@ -837,6 +845,7 @@ var keyStrings = {
     "Stalker Portal Provider": "ספק פורטל Stalker",
     "Stalker portal settings": "הגדרות פורטל Stalker",
     "Stalker portals": "פורטלי Stalker",
+    "Starting...": "מתחיל…",
     Status: "מצב",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -919,6 +928,8 @@ var keyStrings = {
         "השתמש ב-HTTP או HTTPS ללא שם משתמש או סיסמה בכתובת.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "השתמש בשמאל/ימין לבחירת פקד, ב-OK להפעלתו ובמעלה/מטה לגלילה.",
+    "Use Up / Down to scroll. Back to close.":
+        "השתמשו בלמעלה / למטה לגלילה. חזרה לסגירה.",
     Username: "שם משתמש",
     "Username or password is missing.": "שם המשתמש או הסיסמה חסרים.",
     "Valid for 10 minutes. Back closes this session.":

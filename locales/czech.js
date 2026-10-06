@@ -483,6 +483,8 @@ var keyStrings = {
     "For upload settings file open": "Pro nahrání souboru nastavení otevřete",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Nastavení Fox-TV",
+    "Full history, sources and license terms":
+        "Úplná historie, zdroje a licenční podmínky",
     FXML: "FXML",
     "FXML settings": "Nastavení FXML",
     Genre: "Žánr",
@@ -539,10 +541,14 @@ var keyStrings = {
     "Load:": "Načíst:",
     "Loading channels from Xtream API...": "Načítání kanálů z Xtream API…",
     "Loading channels...": "Načítání kanálů…",
+    "Loading device...": "Načítání komponent zařízení…",
     "Loading from API...": "Načítání přes API…",
     "Loading from Edem API...": "Načítání z Edem API…",
+    "Loading interface...": "Načítání rozhraní…",
     "Loading M3U playlist...": "Načítání playlistu M3U…",
     "Loading M3U...": "Načítání M3U…",
+    "Loading media libraries...": "Načítání multimediálních knihoven…",
+    "Loading player...": "Načítání přehrávače…",
     "Loading via proxy...": "Načítání přes proxy…",
     "Loading. Please wait...": "Načítání. Čekejte…",
     "Loading...": "Načítání…",
@@ -613,6 +619,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Původní text: %1",
     "OTT / APP host": "Server OTT / aplikace",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Nastavení OTT Prime ONLINE",
@@ -640,6 +647,7 @@ var keyStrings = {
     "Payment method": "Způsob platby",
     "Permanent clock on screen": "Trvalé hodiny na obrazovce",
     PIN: "PIN",
+    "Picture in Picture": "Obraz v obraze",
     "PiP exchange": "Prohodit okna PiP",
     "PiP window position": "Umístění okna PiP",
     "PiP window size": "Velikost okna PiP",
@@ -855,6 +863,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Poskytovatel portálu Stalker",
     "Stalker portal settings": "Nastavení portálu Stalker",
     "Stalker portals": "Portály Stalker",
+    "Starting...": "Spouštění…",
     Status: "Stav",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -941,6 +950,8 @@ var keyStrings = {
         "Použijte HTTP nebo HTTPS bez uživatelského jména a hesla v adrese.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "VLEVO/VPRAVO — výběr prvku, OK — aktivace, NAHORU/DOLŮ — posouvání.",
+    "Use Up / Down to scroll. Back to close.":
+        "Posouvejte pomocí Nahoru / Dolů. Zpět zavře obrazovku.",
     Username: "Uživatelské jméno",
     "Username or password is missing.": "Chybí uživatelské jméno nebo heslo.",
     "Valid for 10 minutes. Back closes this session.":

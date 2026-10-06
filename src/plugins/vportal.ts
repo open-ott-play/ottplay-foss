@@ -860,6 +860,7 @@ export function createVPortalClient(
                 })
             )
                 records.push({
+                    __ottMediaLabel: { key: "Next", value: translate("Next") },
                     __ottMediaNext: true,
                     playlist_url: sourceTarget({
                         mediaName: name,
@@ -870,12 +871,17 @@ export function createVPortalClient(
         }
         if (data.controls && data.controls.search)
             records.push({
+                __ottMediaLabel: { key: "Search", value: translate("Search") },
                 playlist_url: "search",
                 search_on: 1,
                 title: translate("Search"),
             });
         if (data.controls && Array.isArray(data.controls.filters))
             records.push({
+                __ottMediaLabel: {
+                    key: "Filters",
+                    value: translate("Filters"),
+                },
                 playlist_url: sourceTarget({
                     a: "filters",
                     filters: data.controls.filters,

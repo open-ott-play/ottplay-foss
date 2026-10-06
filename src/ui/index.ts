@@ -3627,7 +3627,7 @@ function showMediaList1(view?: any): void {
                               ? "Could not load. Select to retry."
                               : "Loading..."
                       )
-                    : item.title || item.name || w._("Untitled")
+                    : w.__ottMedia.title(item)
             )
         );
     };

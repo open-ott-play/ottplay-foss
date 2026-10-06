@@ -176,9 +176,11 @@
     </head>
     <body class="booting" style="background: #111; color: #ccc;">
         <div id="interfaceCreditsSource" hidden>
-          <div class="interface-credits" lang="en">
-            <p><b>Interface credits &amp; history</b></p>
-            <p>Use Up / Down to scroll. Back to close.</p>
+          <div class="interface-credits">
+            <p><b class="credits-title">Interface credits &amp; history</b></p>
+            <p class="credits-navigation">Use Up / Down to scroll. Back to close.</p>
+            <p class="credits-language">Original text: English</p>
+            <div lang="en">
             <p>The PLi-HD theme adapts the layout and colours of
                 <a href="https://github.com/littlesat/skin-PLiHD" target="_blank" rel="noopener noreferrer">PLi-HD</a>,
                 the Enigma2 receiver skin maintained by littlesat and contributors.</p>
@@ -197,9 +199,10 @@
                 project uses graphite surfaces, mint accents and a light focus row.
                 Classic and PLi-HD remain selectable. Saved density, fonts and
                 display options take precedence over the theme.</p>
-            <p><a href="https://github.com/open-ott-play/ottplay-foss/blob/main/docs/interface-history.md"
-                target="_blank" rel="noopener noreferrer">Full history, source references and upstream terms</a></p>
             <p>Independent adaptation; no endorsement by OpenPLi or the original designers is implied.</p>
+            </div>
+            <p><a class="credits-history" href="https://github.com/open-ott-play/ottplay-foss/blob/main/docs/interface-history.md"
+                target="_blank" rel="noopener noreferrer">Full history, sources and license terms</a></p>
           </div>
         </div>
         <div id="permanentTime" class="osd"></div>
@@ -255,7 +258,7 @@
         </div>
         <div id="launch">
             <div id="boot-row"><span id="boot-spin">|</span><span id="boot-title">OTT-play</span></div>
-            <div id="boot-status">Starting…</div>
+            <div id="boot-status"></div>
             <div id="boot-log"></div>
         </div>
         <div id="info" class="osd"></div>
@@ -458,13 +461,61 @@
             }, 120);
             function bootStatus(msg) {
                 var el = document.getElementById("boot-status");
-                if (el) el.textContent = msg;
+                if (el) el.textContent = bootText(msg);
+            }
+            function bootText(key) {
+                var dictionary = window.keyStrings;
+                return dictionary && Object.prototype.hasOwnProperty.call(dictionary, key) ? dictionary[key] : key;
             }
             function bootLog(msg) {
                 var el = document.getElementById("boot-log");
                 if (el) el.textContent += (el.textContent ? "\n" : "") + msg;
             }
 
+
+            // Same unprefixed preference used by stbGetItem, including its
+            // cookie fallback when localStorage is denied. No catalog is copied.
+            function loadBootLanguage(ready) {
+                var language = "", ended = false;
+                var assets = {
+                    _arm: "armenian", _aze: "azerbaijani", _bel: "belarusian", _bul: "bulgarian",
+                    _cze: "czech", _dut: "dutch", _eng: "english", _fra: "french",
+                    _ger: "german", _gre: "greek", _heb: "hebrew", _hun: "hungarian",
+                    _ind: "indonesian", _ita: "italian", _kaz: "kazakh", _lat: "latvian",
+                    _lit: "lithuanian", _may: "malay", _pol: "polish", _por: "portuguese",
+                    _rou: "romanian", _rus: "russian", _spa: "spanish", _swe: "swedish",
+                    _tur: "turkish", _ukr: "ukrainian", _uzb: "uzbek", _vie: "vietnamese"
+                };
+                try {
+                    if (!window.localStorage) throw new Error("storage unavailable");
+                    language = window.localStorage.getItem("ottplaylang") || "";
+                } catch (ignore) {
+                    try {
+                        var cookie = /(?:^|;\s*)ottplaylang=([^;]*)/.exec(document.cookie || "");
+                        if (cookie) language = decodeURIComponent(cookie[1]);
+                    } catch (ignored) {}
+                }
+                if (!Object.prototype.hasOwnProperty.call(assets, language)) { ready(); return; }
+                window.__ottBootDictionary = window.keyStrings;
+                function finish() {
+                    if (ended) return;
+                    ended = true;
+                    clearTimeout(timer);
+                    ready();
+                }
+                // A missing or stalled language asset must not stop startup.
+                // Late scripts still assign keyStrings: restore the dictionary
+                // subsequently selected by the player instead of reviving theirs.
+                var timer = setTimeout(finish, 2500);
+                loadJS(host + "/locales/" + assets[language] + ".js?" + __cv, function () {
+                    if (ended) {
+                        window.keyStrings = window.__ottBootDictionary || {};
+                        return;
+                    }
+                    window.__ottBootDictionary = window.keyStrings;
+                    finish();
+                }, _head, finish);
+            }
 
             function clearBootHide() {
                 var b = document.body;
@@ -510,20 +561,20 @@
             }
 
             function loadSTB() {
-                bootStatus("Loading player…");
+                bootStatus("Loading player...");
                 // Load player bundle first (defines window.version), then device key mapping
                 loadJS(
                     host + "/dist/player.js?" + __cv,
                     function () {
-                        bootStatus("Loading device layer…");
+                        bootStatus("Loading device...");
                         loadJS(
                             host + "/devices/" + ott_device + "/device.js?" + __cv,
                             function () {
-                                bootStatus("Starting…");
+                                bootStatus("Starting...");
                                 if (typeof startPlayer === "function")
                                     startPlayer();
                                 else {
-                                    bootStatus("startPlayer missing");
+                                    bootStatus("Player could not start");
                                     console.error("startPlayer not defined");
                                 }
                             },
@@ -532,14 +583,14 @@
                     },
                     _head,
                     function () {
-                        bootStatus("Failed to load player");
-                        bootLog("Error: dist/player.js");
+                        bootStatus("Failed to load!");
+                        bootLog("dist/player.js");
                     }
                 );
             }
 
             function loadLibraries() {
-                bootStatus("Loading media libraries…");
+                bootStatus("Loading media libraries...");
                 if (ott_device === "pc2") {
                     loadCSS(host + "/devices/pc2/player.css?" + __av, _head);
                     loadJS(host + "/js/video.min.js?v=" + window.__ottMediaRuntimeVersion,
@@ -551,7 +602,7 @@
             }
 
             function pc2Failed() {
-                bootLog("Local Video.js unavailable; using standard playback");
+                bootLog("Video.js → HTML5");
                 loadStandardLibraries();
             }
 
@@ -563,7 +614,7 @@
                 function hlsReady() {
                     if (typeof Hls === "function" && Hls.DefaultConfig)
                         Hls.DefaultConfig.workerPath = host + "/js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion;
-                    else bootLog("Local HLS unavailable; using device playback");
+                    else bootLog("HLS → HTML5");
                     checkDone();
                 }
                 if (typeof Hls === "undefined") {
@@ -574,7 +625,7 @@
                 // createObjectURL while loading, before it can report support.
                 if (!window.URL && window.webkitURL) window.URL = window.webkitURL;
                 if (!window.URL || typeof window.URL.createObjectURL !== "function") {
-                    bootLog("Blob URLs unavailable; using device playback");
+                    bootLog("Blob URL → HTML5");
                     checkDone();
                 } else if (
                     typeof shaka === "undefined" ||
@@ -587,7 +638,7 @@
                         checkDone,
                         _head,
                         function () {
-                            bootLog("Local Shaka unavailable; using device playback");
+                            bootLog("Shaka → HTML5");
                             checkDone();
                         }
                     );
@@ -595,7 +646,7 @@
             }
 
             function loadJQ() {
-                bootStatus("Loading UI…");
+                bootStatus("Loading interface...");
                 loadCSS(host + "/styles/player.css?" + __av, _head);
                 // Same 1.11.1 release as the old CDN URL; legacy boot works offline.
                 loadJS(
@@ -603,8 +654,8 @@
                     loadLibraries,
                     _head,
                     function () {
-                        bootStatus("Failed to load UI");
-                        bootLog("Error: bundled UI library");
+                        bootStatus("Failed to load!");
+                        bootLog("jQuery");
                     }
                 );
             }
@@ -612,34 +663,38 @@
             // Expose script loaders globally for player.js
             window.getScriptDOM = getScriptDOM;
 
-            bootLog("device: " + ott_device);
-            if (window.__ottRuntimePolyfillsReady !== true ||
-                typeof window.__ottMediaRuntimeVersion !== "string" ||
-                !/^[0-9a-f]{16}$/.test(window.__ottMediaRuntimeVersion)) {
-                clearInterval(_bootTimer);
-                clearBootHide();
-                bootStatus("Failed to load runtime support");
-                bootLog("Reload the player to retry loading js/runtime-polyfills.js");
-                return;
-            }
-            function coreFailed() {
-                clearInterval(_bootTimer);
-                clearBootHide();
-                bootStatus("Failed to load shared core");
-                bootLog("Reload the player to retry loading js/ottplay-core.js");
-            }
-            loadJS(host + "/js/ottplay-core.js?" + __av, function () {
-                if (!window.OttPlayCore || typeof window.OttPlayCore.NativeGuide !== "function" || typeof window.OttPlayCore.providerArchiveUrl !== "function" || typeof window.OttPlayCore.parseProviderPlaylist !== "function" || typeof window.OttPlayCore.parseOperatorPlaylist !== "function" || typeof window.OttPlayCore.parsePlaylistMedia !== "function" || typeof window.OttPlayCore.XtreamClient !== "function" || typeof window.OttPlayCore.StalkerClient !== "function" || typeof window.OttPlayCore.LegacyStalkerClient !== "function" || typeof window.OttPlayCore.legacyXtreamClient !== "function" || typeof window.OttPlayCore.legacyGuideSelection !== "function" || typeof window.OttPlayCore.legacyGuideCacheRead !== "function") {
-                    coreFailed();
+            function bootPlayer() {
+                bootStatus("Starting...");
+                bootLog(ott_device);
+                if (window.__ottRuntimePolyfillsReady !== true ||
+                    typeof window.__ottMediaRuntimeVersion !== "string" ||
+                    !/^[0-9a-f]{16}$/.test(window.__ottMediaRuntimeVersion)) {
+                    clearInterval(_bootTimer);
+                    clearBootHide();
+                    bootStatus("Compatibility runtime could not load. Reopen the player to retry.");
+                    bootLog("js/runtime-polyfills.js");
                     return;
                 }
-                if (typeof jQuery === "undefined") loadJQ();
-                else {
-                    bootStatus("Loading UI…");
-                    loadCSS(host + "/styles/player.css?" + __av, _head);
-                    loadLibraries();
+                function coreFailed() {
+                    clearInterval(_bootTimer);
+                    clearBootHide();
+                    bootStatus("Player could not start");
+                    bootLog(bootText("Restart player") + "\njs/ottplay-core.js");
                 }
-            }, _head, coreFailed);
+                loadJS(host + "/js/ottplay-core.js?" + __av, function () {
+                    if (!window.OttPlayCore || typeof window.OttPlayCore.NativeGuide !== "function" || typeof window.OttPlayCore.providerArchiveUrl !== "function" || typeof window.OttPlayCore.parseProviderPlaylist !== "function" || typeof window.OttPlayCore.parseOperatorPlaylist !== "function" || typeof window.OttPlayCore.parsePlaylistMedia !== "function" || typeof window.OttPlayCore.XtreamClient !== "function" || typeof window.OttPlayCore.StalkerClient !== "function" || typeof window.OttPlayCore.LegacyStalkerClient !== "function" || typeof window.OttPlayCore.legacyXtreamClient !== "function" || typeof window.OttPlayCore.legacyGuideSelection !== "function" || typeof window.OttPlayCore.legacyGuideCacheRead !== "function") {
+                        coreFailed();
+                        return;
+                    }
+                    if (typeof jQuery === "undefined") loadJQ();
+                    else {
+                        bootStatus("Loading interface...");
+                        loadCSS(host + "/styles/player.css?" + __av, _head);
+                        loadLibraries();
+                    }
+                }, _head, coreFailed);
+            }
+            loadBootLanguage(bootPlayer);
 
             // Local HTTP command polling is owned by the consent/authentication
             // controller in player.js. A configured URL alone never starts it.

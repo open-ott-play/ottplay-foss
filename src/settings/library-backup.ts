@@ -167,26 +167,35 @@ function createLibraryBackupCodec() {
                 }))
         );
     }
-    var favoriteDocument = record({
-        lists: record({
-            active: function (value) {
-                return text(value) && name(value);
+    var favoriteDocument = record(
+        {
+            lists: record({
+                active: function (value) {
+                    return text(value) && name(value);
+                },
+                lists: dictionary(function (value) {
+                    return array(value, reference);
+                }, 1000),
+                order: strings,
+                v: 1,
+            }),
+            sourceId: text,
+            version: 2,
+        },
+        {
+            defaultList: function (value) {
+                return value === "Favorites";
             },
-            lists: dictionary(function (value) {
-                return array(value, reference);
-            }, 1000),
-            order: strings,
-            v: 1,
-        }),
-        sourceId: text,
-        version: 2,
-    });
+        }
+    );
     function favorites(value: any): boolean {
         if (value === null) return true;
         if (!favoriteDocument(value)) return false;
         var lists = value.lists;
         return (
             owns(lists.lists, lists.active) &&
+            (value.defaultList === undefined ||
+                owns(lists.lists, value.defaultList)) &&
             lists.order.length <= 1000 &&
             lists.order.every(function (key: string) {
                 return owns(lists.lists, key);
@@ -264,6 +273,7 @@ function createLibraryBackupCodec() {
         });
         result.channels = channel;
         var favorite = result.favorites || {
+            defaultList: "Favorites",
             lists: {
                 active: "Favorites",
                 lists: { Favorites: [] },

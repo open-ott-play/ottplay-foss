@@ -490,6 +490,8 @@ var keyStrings = {
     "For upload settings file open": "Sozlamalar faylini yuklash uchun oching:",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV sozlamalari",
+    "Full history, sources and license terms":
+        "To‘liq tarix, manbalar va litsenziya shartlari",
     FXML: "FXML",
     "FXML settings": "FXML sozlamalari",
     Genre: "Janr",
@@ -548,10 +550,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Xtream API orqali kanallar yuklanmoqda…",
     "Loading channels...": "Kanallar yuklanmoqda…",
+    "Loading device...": "Qurilma komponentlari yuklanmoqda…",
     "Loading from API...": "API orqali yuklanmoqda…",
     "Loading from Edem API...": "Edem API orqali yuklanmoqda…",
+    "Loading interface...": "Interfeys yuklanmoqda…",
     "Loading M3U playlist...": "M3U pleylist yuklanmoqda…",
     "Loading M3U...": "M3U yuklanmoqda…",
+    "Loading media libraries...": "Media kutubxonalari yuklanmoqda…",
+    "Loading player...": "Pleyer yuklanmoqda…",
     "Loading via proxy...": "Proksi orqali yuklanmoqda…",
     "Loading. Please wait...": "Yuklanmoqda… kuting…",
     "Loading...": "Yuklanmoqda…",
@@ -622,6 +628,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Asl matn: %1",
     "OTT / APP host": "OTT / ilova serveri",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sozlamalari",
@@ -649,6 +656,7 @@ var keyStrings = {
     "Payment method": "To‘lov usuli",
     "Permanent clock on screen": "Soatni ekranda doim koʻrsatish",
     PIN: "PIN",
+    "Picture in Picture": "Rasm ichida rasm",
     "PiP exchange": "PiP oynalarini almashtirish",
     "PiP window position": "PiP oynasining joylashuvi",
     "PiP window size": "PiP oynasining oʻlchami",
@@ -867,6 +875,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker portali provayderi",
     "Stalker portal settings": "Stalker portali sozlamalari",
     "Stalker portals": "Stalker portallari",
+    "Starting...": "Ishga tushirilmoqda…",
     Status: "Holat",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -953,6 +962,8 @@ var keyStrings = {
         "Manzilda foydalanuvchi nomi yoki parolsiz HTTP yoki HTTPS dan foydalaning.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Boshqaruv elementini tanlash uchun CHAP/OʻNG, faollashtirish uchun OK, aylantirish uchun YUQORI/PAST tugmalaridan foydalaning.",
+    "Use Up / Down to scroll. Back to close.":
+        "Siljitish uchun Yuqoriga / Pastga tugmalaridan foydalaning. Yopish uchun Orqaga.",
     Username: "Foydalanuvchi nomi",
     "Username or password is missing.":
         "Foydalanuvchi nomi yoki parol kiritilmagan.",

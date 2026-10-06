@@ -64,7 +64,7 @@ function createOwnedMediaCatalog(
                         /^https?:/i.test(entry.logo.trim()))
                         ? entry.logo
                         : "";
-                return {
+                var record: any = {
                     description:
                         "<table><h2><center>" +
                         escape(title) +
@@ -79,6 +79,16 @@ function createOwnedMediaCatalog(
                     stream_url: entry.url,
                     title: title,
                 };
+                if (entry.generatedName)
+                    record.__ottMediaLabel = {
+                        heading: true,
+                        key:
+                            profile === "kb-team"
+                                ? "??? No channel name"
+                                : "Untitled",
+                        value: title,
+                    };
+                return record;
             }),
         };
     }
@@ -208,9 +218,14 @@ function createOwnedMediaCatalog(
                                     records: (value.channels || []).map(
                                         function (item: any) {
                                             var record = detach(item);
-                                            if (!record.title)
+                                            if (!record.title) {
                                                 record.title =
                                                     ports.translate("Untitled");
+                                                record.__ottMediaLabel = {
+                                                    key: "Untitled",
+                                                    value: record.title,
+                                                };
+                                            }
                                             return record;
                                         }
                                     ),

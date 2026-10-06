@@ -67,11 +67,20 @@ function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
         );
     }
     const c = {
-        _: (key) => (key === "Loading..." ? "Загрузка…" : key),
+        _: (key) =>
+            ({
+                "Loading...": "Загрузка…",
+                "Picture in Picture": "Картинка в картинке",
+            })[key] || key,
         __TAURI__: {},
         Capacitor: { getPlatform: () => capacitorPlatform },
         cap: {
-            playPip: ({ url, loop }) => {
+            playPip: ({ url, loop, subtitle }) => {
+                assert.equal(
+                    subtitle,
+                    "Картинка в картинке",
+                    "iOS system card uses the player language"
+                );
                 const result = nativePlay(url);
                 requests.at(-1).loop = loop;
                 return result;

@@ -495,6 +495,8 @@ var keyStrings = {
         "Zum Hochladen der Einstellungsdatei öffnen Sie",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Einstellungen für Fox-TV",
+    "Full history, sources and license terms":
+        "Vollständige Geschichte, Quellen und Lizenzbedingungen",
     FXML: "FXML",
     "FXML settings": "Einstellungen für FXML",
     Genre: "Genre",
@@ -552,10 +554,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Sender werden über die Xtream-API geladen…",
     "Loading channels...": "Sender werden geladen…",
+    "Loading device...": "Gerätekomponenten werden geladen…",
     "Loading from API...": "Laden über die API…",
     "Loading from Edem API...": "Laden über die Edem-API…",
+    "Loading interface...": "Benutzeroberfläche wird geladen…",
     "Loading M3U playlist...": "M3U-Wiedergabeliste wird geladen…",
     "Loading M3U...": "M3U wird geladen…",
+    "Loading media libraries...": "Medienbibliotheken werden geladen…",
+    "Loading player...": "Player wird geladen…",
     "Loading via proxy...": "Laden über Proxy…",
     "Loading. Please wait...": "Wird geladen… bitte warten…",
     "Loading...": "Wird geladen…",
@@ -627,6 +633,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Originaltext: %1",
     "OTT / APP host": "OTT- / App-Server",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Einstellungen für OTT Prime ONLINE",
@@ -654,6 +661,7 @@ var keyStrings = {
     "Payment method": "Zahlungsart",
     "Permanent clock on screen": "Uhr dauerhaft anzeigen",
     PIN: "PIN",
+    "Picture in Picture": "Bild im Bild",
     "PiP exchange": "PiP tauschen",
     "PiP window position": "Position des PiP-Fensters",
     "PiP window size": "Größe des PiP-Fensters",
@@ -875,6 +883,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker-Portal-Anbieter",
     "Stalker portal settings": "Stalker-Portal-Einstellungen",
     "Stalker portals": "Stalker-Portale",
+    "Starting...": "Wird gestartet…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -962,6 +971,8 @@ var keyStrings = {
         "Verwenden Sie HTTP oder HTTPS ohne Benutzernamen oder Passwort in der Adresse.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Wählen Sie mit LINKS/RECHTS ein Steuerelement, aktivieren Sie es mit OK und scrollen Sie mit AUF/AB.",
+    "Use Up / Down to scroll. Back to close.":
+        "Mit Auf / Ab scrollen. Mit Zurück schließen.",
     Username: "Benutzername",
     "Username or password is missing.": "Benutzername oder Passwort fehlt.",
     "Valid for 10 minutes. Back closes this session.":

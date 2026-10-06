@@ -496,6 +496,8 @@ var keyStrings = {
         "Για αποστολή του αρχείου ρυθμίσεων, ανοίξτε",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Ρυθμίσεις Fox-TV",
+    "Full history, sources and license terms":
+        "Πλήρες ιστορικό, πηγές και όροι αδειών",
     FXML: "FXML",
     "FXML settings": "Ρυθμίσεις FXML",
     Genre: "Είδος",
@@ -553,10 +555,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Φόρτωση καναλιών από το Xtream API…",
     "Loading channels...": "Φόρτωση καναλιών…",
+    "Loading device...": "Φόρτωση στοιχείων συσκευής…",
     "Loading from API...": "Φόρτωση από το API…",
     "Loading from Edem API...": "Φόρτωση από το Edem API…",
+    "Loading interface...": "Φόρτωση διεπαφής…",
     "Loading M3U playlist...": "Φόρτωση λίστας αναπαραγωγής M3U…",
     "Loading M3U...": "Φόρτωση M3U…",
+    "Loading media libraries...": "Φόρτωση βιβλιοθηκών πολυμέσων…",
+    "Loading player...": "Φόρτωση προγράμματος αναπαραγωγής…",
     "Loading via proxy...": "Φόρτωση μέσω διαμεσολαβητή…",
     "Loading. Please wait...": "Φόρτωση… παρακαλώ περιμένετε…",
     "Loading...": "Φόρτωση…",
@@ -628,6 +634,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Αρχικό κείμενο: %1",
     "OTT / APP host": "Διακομιστής OTT / εφαρμογής",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ρυθμίσεις OTT Prime ONLINE",
@@ -655,6 +662,7 @@ var keyStrings = {
     "Payment method": "Τρόπος πληρωμής",
     "Permanent clock on screen": "Πάντα εμφάνιση ρολογιού στην οθόνη",
     PIN: "PIN",
+    "Picture in Picture": "Εικόνα σε εικόνα",
     "PiP exchange": "Εναλλαγή PiP",
     "PiP window position": "Θέση παραθύρου PiP",
     "PiP window size": "Μέγεθος παραθύρου PiP",
@@ -879,6 +887,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Πάροχος πύλης Stalker",
     "Stalker portal settings": "Ρυθμίσεις πύλης Stalker",
     "Stalker portals": "Πύλες Stalker",
+    "Starting...": "Εκκίνηση…",
     Status: "Κατάσταση",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -967,6 +976,8 @@ var keyStrings = {
         "Χρησιμοποιήστε HTTP ή HTTPS χωρίς όνομα χρήστη ή κωδικό στη διεύθυνση.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Χρησιμοποιήστε ΑΡΙΣΤΕΡΑ/ΔΕΞΙΑ για επιλογή χειριστηρίου, OK για ενεργοποίηση και ΠΑΝΩ/ΚΑΤΩ για κύλιση.",
+    "Use Up / Down to scroll. Back to close.":
+        "Χρησιμοποιήστε Πάνω / Κάτω για κύλιση. Πίσω για κλείσιμο.",
     Username: "Όνομα χρήστη",
     "Username or password is missing.":
         "Λείπει το όνομα χρήστη ή ο κωδικός πρόσβασης.",

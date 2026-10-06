@@ -1001,6 +1001,16 @@ test("Dune media errors and generated names follow the selected language", () =>
                 '#EXTM3U\n#EXTINF:-1 tvg-name="one"\nhttps://video.test/unnamed\n'
             );
         assert.equal(f.host.mediaRecords[0].title, "localized:Untitled");
+        assert.equal(f.host.mediaRecords[0].__ottMediaLabel.key, "Untitled");
+        f.host.getMediaArray("", () => {});
+        f.requests
+            .at(-1)
+            .resolve(
+                "<items><channel><stream_url>unnamed</stream_url></channel><channel><title>localized:Untitled</title><stream_url>named</stream_url></channel></items>"
+            );
+        assert.equal(f.host.mediaRecords[0].__ottMediaLabel.key, "Untitled");
+        assert.equal(f.host.mediaRecords[1].__ottMediaLabel, undefined);
+        assert.equal(f.host.mediaRecords[1].title, "localized:Untitled");
     } finally {
         f.dom.window.close();
     }

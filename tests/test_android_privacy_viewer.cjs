@@ -33,7 +33,11 @@ function extract(file, names) {
     acorn.parse(code, { ecmaVersion: 5 });
     return code;
 }
-const viewer = extract("src/index.ts", ["privacyPolicy", "pluginInfo"]);
+const viewer = extract("src/index.ts", [
+    "privacyPolicy",
+    "pluginInfo",
+    "interfaceCredits",
+]);
 const localization = ts
     .transpileModule(read("src/localization/index.ts"), {
         compilerOptions: {
@@ -190,6 +194,47 @@ test("About labels and a missing privacy file follow the selected Russian langua
         "Политика конфиденциальности недоступна. Контакт: alvit.work@gmail.com"
     );
     assert.equal(f.requests.length, 1);
+});
+
+test("credits navigation follows the language while the attributed history stays marked as English", (f) => {
+    const template = new JSDOM(read("index.html"));
+    f.w.document.body.insertAdjacentHTML(
+        "beforeend",
+        template.window.document.getElementById("interfaceCreditsSource")
+            .outerHTML
+    );
+    template.window.close();
+    f.w.eval(localization + read("locales/russian.js"));
+    f.w.renderButtonHint = (_key, _icon, text) => f.w._(text);
+    f.w.strRETURN = "Back";
+    f.w.interfaceCredits();
+    assert.equal(
+        f.panel.querySelector(".credits-title").textContent,
+        "Авторы интерфейса"
+    );
+    assert.equal(
+        f.panel.querySelector(".credits-navigation").textContent,
+        "Прокрутка — вверх и вниз. Назад — закрыть."
+    );
+    assert.equal(
+        f.panel.querySelector(".credits-language").textContent,
+        "Оригинальный текст: Английский"
+    );
+    assert.equal(
+        f.panel.querySelector(".credits-history").textContent,
+        "Полная история, источники и условия лицензий"
+    );
+    assert.match(
+        f.panel.querySelector('[lang="en"]').textContent,
+        /The PLi-HD theme adapts/
+    );
+    f.w.aboutKeyHandler(f.w.keys.RETURN);
+    f.w.eval(read("locales/english.js"));
+    f.w.interfaceCredits();
+    assert.equal(
+        f.panel.querySelector(".credits-navigation").textContent,
+        "Use Up / Down to scroll. Back to close."
+    );
 });
 
 for (const key of ["RETURN", "EXIT", "ENTER"]) {

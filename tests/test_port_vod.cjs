@@ -320,6 +320,161 @@ function fixture() {
 module.exports = { fixture, sourceFunctions };
 
 if (require.main === module) {
+    // Generated labels retain provenance across cached frames and serialized journals.
+    // Provider/user titles that happen to equal a translation remain literal.
+    {
+        const c = fixture(),
+            dictionaries = {};
+        for (const locale of ["russian", "english"])
+            vm.runInNewContext(
+                fs.readFileSync(
+                    path.join(root, "locales", locale + ".js"),
+                    "utf8"
+                ),
+                (dictionaries[locale] = {})
+            );
+        const language = (host, locale) => {
+            host._ = (key) => dictionaries[locale].keyStrings[key] || key;
+        };
+        language(c, "russian");
+        const title = c._("Untitled");
+        const description =
+            "<table><h2><center>" + title + "</center></h2></table>";
+        const generated = {
+            __ottMediaLabel: { heading: true, key: "Untitled", value: title },
+            description,
+            stream_url: "unnamed.mp4",
+            title,
+        };
+        c.catalogs[""] = [
+            generated,
+            { stream_url: "explicit.mp4", title },
+            {
+                __ottMediaLabel: generated.__ottMediaLabel,
+                description: "User description",
+                stream_url: "edited.mp4",
+                title: "My chosen title",
+            },
+            {
+                __ottMediaLabel: {
+                    key: "Untitled folder",
+                    value: c._("Untitled folder"),
+                },
+                playlist_url: "unnamed-folder",
+                title: c._("Untitled folder"),
+            },
+        ];
+        c.catalogs["unnamed-folder"] = [
+            { stream_url: "child.mp4", title: "Child" },
+        ];
+        const provider = c.getMediaArray,
+            rootTitle = c._("Media Library");
+        c.getMediaArray = (url, done) => {
+            c.mediaName =
+                url === "unnamed-folder" ? c.catalogs[""][3].title : rootTitle;
+            provider(url, done);
+        };
+        c.mediaList(null);
+        const identity = c.__ottMedia.snapshot().frame.items[0].ref.itemId;
+        c.__ottMedia.favorite(c.listArray[0]);
+        const saved = c.documentState().favorites[0].payload;
+        assert.equal(saved.__ottMediaLabel.key, "Untitled");
+        const requests = c.calls.filter((call) => call[0] === "fetch").length;
+        language(c, "english");
+        c.mediaList(null);
+        assert.equal(
+            c.calls.filter((call) => call[0] === "fetch").length,
+            requests
+        );
+        assert.equal(
+            c.__ottMedia.snapshot().frame.items[0].ref.itemId,
+            identity
+        );
+        assert(c.getListItemFn(c.listArray[0], 0).includes("Untitled"));
+        assert(c.getMediaDescr(c.listArray[0]).includes("Untitled"));
+        assert(!c.getMediaDescr(c.listArray[0]).includes(title));
+        assert.equal(c.__ottMedia.title(c.listArray[1]), title);
+        assert.equal(c.__ottMedia.title(c.listArray[2]), "My chosen title");
+        assert.equal(c.getMediaDescr(c.listArray[2]), "User description");
+        const malformed = {
+            __ottMediaLabel: { heading: true, key: "Untitled", value: 42 },
+            description: "User description",
+            title: 42,
+        };
+        assert.equal(c.__ottMedia.title(malformed), "42");
+        assert.equal(c.getMediaDescr(malformed), "User description");
+        for (const route of ["history", "favorites"])
+            assert.equal(
+                c.__ottMedia.title(
+                    c.listArray.find((item) => item.__ottMediaRoute === route)
+                ),
+                c._(
+                    route === "history"
+                        ? "History of watched movies"
+                        : "Favorites"
+                )
+            );
+        assert.equal(c.__ottMedia.title(c.listArray.at(-1)), "Filter: ");
+        c.selectMedia(3);
+        assert.equal(c.mediaName, "Untitled folder");
+        language(c, "russian");
+        c.mediaList(null);
+        assert.equal(c.mediaName, c._("Untitled folder"));
+        c.mediaKeyHandler(c.keys.RETURN);
+        c.__ottMedia.filter();
+        c.editvar = c._("Untitled");
+        c.setEdit();
+        assert.equal(c.listArray.filter((item) => item.stream_url).length, 2);
+        language(c, "english");
+        c.__ottMedia.filter();
+        c.editvar = "Untitled";
+        c.setEdit();
+        assert.deepEqual(
+            Array.from(
+                c.listArray.filter((item) => item.stream_url),
+                (item) => item.stream_url
+            ),
+            ["unnamed.mp4"]
+        );
+        c._playMedia(c.listArray[0]);
+        assert.equal(c.elements["#channel_name"].textContent, "Untitled");
+        assert.equal(
+            c.documentState().history[0].payload.__ottMediaLabel.key,
+            "Untitled"
+        );
+        // A backup/restore-style JSON round trip retains provenance, without rewriting its source text.
+        const restored = fixture();
+        Object.assign(restored.stored, JSON.parse(JSON.stringify(c.stored)));
+        language(restored, "english");
+        restored.mediaList(-1);
+        assert.equal(
+            restored.__ottMedia.title(restored.listArray[0]),
+            "Untitled"
+        );
+        assert.equal(restored.listArray[0].title, title);
+        restored._playMedia(restored.listArray[0]);
+        assert.equal(
+            restored.elements["#channel_name"].textContent,
+            "Untitled"
+        );
+        assert.equal(restored.documentState().history[0].payload.title, title);
+        // Newly loaded generated rows share an identity across UI languages.
+        const reload = fixture();
+        reload.catalogs[""] = [
+            {
+                ...generated,
+                __ottMediaLabel: { key: "Untitled", value: "Untitled" },
+                description:
+                    "<table><h2><center>Untitled</center></h2></table>",
+                title: "Untitled",
+            },
+        ];
+        reload.mediaList(null);
+        assert.equal(
+            reload.__ottMedia.snapshot().frame.items[0].ref.itemId,
+            identity
+        );
+    }
     // Startup resumes begin at the exact saved position, without the manual
     // minute rounding or confirmation, even while the decoder is loading.
     {

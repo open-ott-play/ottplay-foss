@@ -485,6 +485,8 @@ var keyStrings = {
     "For upload settings file open": "Для отправки файла настроек откройте",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Настройки Fox-TV",
+    "Full history, sources and license terms":
+        "Полная история, источники и условия лицензий",
     FXML: "FXML",
     "FXML settings": "Настройки FXML",
     Genre: "Жанр",
@@ -541,10 +543,14 @@ var keyStrings = {
     "Load:": "Загрузить:",
     "Loading channels from Xtream API...": "Загрузка каналов из Xtream API…",
     "Loading channels...": "Загрузка каналов…",
+    "Loading device...": "Загрузка компонентов устройства…",
     "Loading from API...": "Загрузка через API…",
     "Loading from Edem API...": "Загрузка из Edem API…",
+    "Loading interface...": "Загрузка интерфейса…",
     "Loading M3U playlist...": "Загрузка плейлиста M3U…",
     "Loading M3U...": "Загрузка M3U…",
+    "Loading media libraries...": "Загрузка медиабиблиотек…",
+    "Loading player...": "Загрузка плеера…",
     "Loading via proxy...": "Загрузка через прокси…",
     "Loading. Please wait...": "Загрузка. Подождите…",
     "Loading...": "Загрузка…",
@@ -615,6 +621,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Или откройте эту полную секретную ссылку на другом устройстве:",
     "Original file": "Оригинальный файл",
+    "Original text: %1": "Оригинальный текст: %1",
     "OTT / APP host": "Сервер OTT / приложения",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки OTT Prime ONLINE",
@@ -642,6 +649,7 @@ var keyStrings = {
     "Payment method": "Способ оплаты",
     "Permanent clock on screen": "Постоянные часы на экране",
     PIN: "PIN",
+    "Picture in Picture": "Картинка в картинке",
     "PiP exchange": "Поменять окна PiP местами",
     "PiP window position": "Расположение окна PiP",
     "PiP window size": "Размер окна PiP",
@@ -857,6 +865,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Провайдер портала Stalker",
     "Stalker portal settings": "Настройки портала Stalker",
     "Stalker portals": "Сталкер порталы",
+    "Starting...": "Запуск…",
     Status: "Состояние",
     Stop: "Остановить",
     "Stop current capture": "Завершить текущий сбор",
@@ -944,6 +953,8 @@ var keyStrings = {
         "Используйте HTTP или HTTPS без имени пользователя и пароля в адресе.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ВЛЕВО/ВПРАВО — выбрать элемент, OK — выполнить действие, ВВЕРХ/ВНИЗ — прокрутить.",
+    "Use Up / Down to scroll. Back to close.":
+        "Прокрутка — вверх и вниз. Назад — закрыть.",
     Username: "Имя пользователя",
     "Username or password is missing.":
         "Не указано имя пользователя или пароль.",

@@ -493,6 +493,8 @@ var keyStrings = {
         "Open voor het uploaden van het instellingenbestand",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Instellingen voor Fox-TV",
+    "Full history, sources and license terms":
+        "Volledige geschiedenis, bronnen en licentievoorwaarden",
     FXML: "FXML",
     "FXML settings": "Instellingen voor FXML",
     Genre: "Genre",
@@ -549,10 +551,14 @@ var keyStrings = {
     "Load:": "Laden:",
     "Loading channels from Xtream API...": "Zenders laden via Xtream-API…",
     "Loading channels...": "Zenders laden…",
+    "Loading device...": "Apparaatcomponenten laden…",
     "Loading from API...": "Laden via API…",
     "Loading from Edem API...": "Laden via Edem-API…",
+    "Loading interface...": "Interface laden…",
     "Loading M3U playlist...": "M3U-afspeellijst laden…",
     "Loading M3U...": "M3U laden…",
+    "Loading media libraries...": "Mediabibliotheken laden…",
+    "Loading player...": "Speler laden…",
     "Loading via proxy...": "Laden via proxy…",
     "Loading. Please wait...": "Laden… even geduld…",
     "Loading...": "Laden…",
@@ -623,6 +629,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Oorspronkelijke tekst: %1",
     "OTT / APP host": "OTT- / app-server",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Instellingen voor OTT Prime ONLINE",
@@ -650,6 +657,7 @@ var keyStrings = {
     "Payment method": "Betaalmethode",
     "Permanent clock on screen": "Klok altijd op scherm tonen",
     PIN: "PIN",
+    "Picture in Picture": "Beeld in beeld",
     "PiP exchange": "PiP wisselen",
     "PiP window position": "Positie van PiP-venster",
     "PiP window size": "Grootte van PiP-venster",
@@ -870,6 +878,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker-portaalprovider",
     "Stalker portal settings": "Instellingen van Stalker-portaal",
     "Stalker portals": "Stalker-portalen",
+    "Starting...": "Starten…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -956,6 +965,8 @@ var keyStrings = {
         "Gebruik HTTP of HTTPS zonder gebruikersnaam of wachtwoord in het adres.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gebruik LINKS/RECHTS om een bedieningselement te kiezen, OK om het te activeren en OMHOOG/OMLAAG om te scrollen.",
+    "Use Up / Down to scroll. Back to close.":
+        "Gebruik Omhoog / Omlaag om te scrollen. Terug om te sluiten.",
     Username: "Gebruikersnaam",
     "Username or password is missing.":
         "Gebruikersnaam of wachtwoord ontbreekt.",

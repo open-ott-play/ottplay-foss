@@ -482,6 +482,8 @@ var keyStrings = {
     "For upload settings file open": "To upload the settings file, open",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV settings",
+    "Full history, sources and license terms":
+        "Full history, sources and license terms",
     FXML: "FXML",
     "FXML settings": "FXML settings",
     Genre: "Genre",
@@ -538,10 +540,14 @@ var keyStrings = {
     "Load:": "Load:",
     "Loading channels from Xtream API...": "Loading channels from Xtream API…",
     "Loading channels...": "Loading channels…",
+    "Loading device...": "Loading device…",
     "Loading from API...": "Loading from API…",
     "Loading from Edem API...": "Loading from Edem API…",
+    "Loading interface...": "Loading interface…",
     "Loading M3U playlist...": "Loading M3U playlist…",
     "Loading M3U...": "Loading M3U…",
+    "Loading media libraries...": "Loading media libraries…",
+    "Loading player...": "Loading player…",
     "Loading via proxy...": "Loading via proxy…",
     "Loading. Please wait...": "Loading… please wait…",
     "Loading...": "Loading…",
@@ -612,6 +618,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Original text: %1",
     "OTT / APP host": "OTT / APP host",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE settings",
@@ -639,6 +646,7 @@ var keyStrings = {
     "Payment method": "Payment method",
     "Permanent clock on screen": "Always show clock on screen",
     PIN: "PIN",
+    "Picture in Picture": "Picture in Picture",
     "PiP exchange": "Swap PiP",
     "PiP window position": "PiP window position",
     "PiP window size": "PiP window size",
@@ -854,6 +862,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker portal provider",
     "Stalker portal settings": "Stalker portal settings",
     "Stalker portals": "Stalker portals",
+    "Starting...": "Starting…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -938,6 +947,8 @@ var keyStrings = {
         "Use HTTP or HTTPS without a username or password in the address.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Use LEFT/RIGHT to select a control, OK to activate it, and UP/DOWN to scroll.",
+    "Use Up / Down to scroll. Back to close.":
+        "Use Up / Down to scroll. Back to close.",
     Username: "Username",
     "Username or password is missing.": "Username or password is missing.",
     "Valid for 10 minutes. Back closes this session.":

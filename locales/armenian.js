@@ -488,6 +488,8 @@ var keyStrings = {
         "Կարգավորումների ֆայլը վերբեռնելու համար բացեք",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV կարգավորումներ",
+    "Full history, sources and license terms":
+        "Ամբողջական պատմություն, աղբյուրներ և արտոնագրերի պայմաններ",
     FXML: "FXML",
     "FXML settings": "FXML կարգավորումներ",
     Genre: "Ժանր",
@@ -544,10 +546,14 @@ var keyStrings = {
     "Load:": "Բեռնել՝",
     "Loading channels from Xtream API...": "Ալիքների բեռնում Xtream API-ից…",
     "Loading channels...": "Ալիքների բեռնում…",
+    "Loading device...": "Սարքի բաղադրիչները բեռնվում են…",
     "Loading from API...": "Բեռնում API-ից…",
     "Loading from Edem API...": "Բեռնում Edem API-ից…",
+    "Loading interface...": "Միջերեսը բեռնվում է…",
     "Loading M3U playlist...": "M3U նվագարկման ցուցակի բեռնում…",
     "Loading M3U...": "M3U-ի բեռնում…",
+    "Loading media libraries...": "Մեդիա գրադարանները բեռնվում են…",
+    "Loading player...": "Նվագարկիչը բեռնվում է…",
     "Loading via proxy...": "Բեռնում պրոքսիի միջոցով…",
     "Loading. Please wait...": "Բեռնում… խնդրում ենք սպասել…",
     "Loading...": "Բեռնում…",
@@ -618,6 +624,7 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Բնօրինակ տեքստ՝ %1",
     "OTT / APP host": "OTT / հավելվածի սերվեր",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE կարգավորումներ",
@@ -645,6 +652,7 @@ var keyStrings = {
     "Payment method": "Վճարման եղանակ",
     "Permanent clock on screen": "Միշտ ցուցադրել ժամացույցը էկրանին",
     PIN: "PIN",
+    "Picture in Picture": "Պատկեր պատկերի մեջ",
     "PiP exchange": "Փոխանակել PiP-ը",
     "PiP window position": "PiP պատուհանի դիրք",
     "PiP window size": "PiP պատուհանի չափ",
@@ -867,6 +875,7 @@ var keyStrings = {
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
     "Stalker portal settings": "Stalker պորտալի կարգավորումներ",
     "Stalker portals": "Stalker պորտալներ",
+    "Starting...": "Գործարկվում է…",
     Status: "Վիճակ",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
@@ -953,6 +962,8 @@ var keyStrings = {
         "Օգտագործեք HTTP կամ HTTPS՝ առանց օգտանվան կամ գաղտնաբառի հասցեում։",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Օգտագործեք ՁԱԽ/ԱՋ՝ տարրն ընտրելու, OK՝ այն ակտիվացնելու և ՎԵՐԵՎ/ՆԵՐՔԵՎ՝ ոլորելու համար։",
+    "Use Up / Down to scroll. Back to close.":
+        "Ոլորելու համար օգտագործեք Վերև / Ներքև։ Փակելու համար՝ Հետ։",
     Username: "Օգտանուն",
     "Username or password is missing.":
         "Օգտանունը կամ գաղտնաբառը բացակայում է։",
