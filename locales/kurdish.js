@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Mîhengên All4you.tv",
     "Allow diagnostics for 10 minutes": "Ji bo 10 deqeyan destûrê bide teşhîsê",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Destûrê bidin vê pêşkêşkerê ku jimarkerên diyagnostîkê berhev bike û vê weşanê an lêdêrê ji nû ve bide destpêkirin. Gihîştina demkî 10 deqîqe didome. Piştgiriya bawermend piştî ji nû ve girêdan an destpêkirinê jî berdest dimîne; her berhevkirina daneyan piştî 10 deqîqeyan diqede. Dema rûpel veşartî an negirêdayî be, berhevkirin tê rawestandin.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Destûrê bidin vê pêşkêşkerê ku ji bo vê danişîna rûpela li pêş jimarkerên lêdanê, torê û têketinan berhev bike. HTTPS û destûra pêşkêşkerê hewce ne. Piştî 10 deqîqeyan, dema rûpel veşartî be an girêdan qut bibe, disekine.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "ID-ya vê amûrê li lîsteya destûrdar zêde bikin",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -252,6 +257,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз di Mîheng -> Mîhengên dabînkerê de saz bikin",
     Connect: "Girêde",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Pêşî vê lêdêra medyayê bi serverek fermanê ve girêdin.",
     Connected: "Girêdayî",
@@ -729,6 +736,10 @@ var keyStrings = {
         "Ketina ji dûr ve qediya. Danişînek nû veke ku dîsa biceribîne.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Danişîna têketina ji dûr ve ne berdest e. Danişînek nû veke ku dîsa biceribîne.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Danişîna dûr bi dawî bû",
     "Remote text entry": "Têketina nivîsê ji dûr ve",
     "Remote text entry denied": "Têketina nivîsê ji dûr ve hat red kirin",
@@ -777,6 +788,13 @@ var keyStrings = {
     "Save settings to storage": "Mîhengan di bîrgehê de tomar bike",
     "Scan this QR code with your phone to enter text.":
         "Ji bo nivîsandina nivîsê vê koda QR bi têlefona xwe skan bikin.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Senaryo",
     Search: "Lêgerîn",
     "Search programme": "Li bernameyê bigere",
@@ -796,6 +814,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Ji bo EPG û logoyan çavkaniya şablonê lîsteya lêdanê hilbijêrin",
     "Select Stalker portal": "Portala Stalker hilbijêre",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Daxwazê bişîne",
     "Send settings": "Mîhengan bişîne",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -882,6 +902,7 @@ var keyStrings = {
     "Stop diagnostics": "Diyagnostîkê bisekinîne",
     "Stop playback and return to live":
         "Lêdanê bisekinîne û vegere weşana zindî",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Weşan nehat lêdan",
     "Stream type: %1": "Cureyê weşanê: %1",
     "String for search": "Gotina lêgerînê",
@@ -906,6 +927,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID-ya amûrê di navnîşanê de nederbasdar e.",
     "The discovery response is invalid.": "Bersiva lêgerînê nederbasdar e.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ev gerok nikare bi ewlehî û xweber were cotkirin. Wê nû bikin an mîhengên pêşkêşkerê fermanan bi destan binivîsin.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -63,6 +63,15 @@ try {
     `
     );
     write("providers/example/provider.js", 'translate("Provider message");');
+    write(
+        "src/plugins/remote-screenshot.ts",
+        `
+        var message = "Screenshots initially disabled";
+        message = "Screenshots permission active";
+        failGrant("Screenshot grant denied");
+        console.log("Not a screenshot UI message");
+    `
+    );
     write("src/settings/transfer-ui.ts", 'notice("New settings notice");');
     write(
         "index.html",
@@ -101,12 +110,16 @@ try {
         "Discovery initial status",
         "Approve at %1",
         "Discovery failed",
+        "Screenshots initially disabled",
+        "Screenshots permission active",
+        "Screenshot grant denied",
     ])
         assert(
             fixtureKeys.keys.has(key),
             `New source key must be discovered: ${key}`
         );
     assert(!fixtureKeys.keys.has("Not a translated message"));
+    assert(!fixtureKeys.keys.has("Not a screenshot UI message"));
     assert(!fixtureKeys.keys.has("privateId"));
     assert(
         fixtureKeys.dynamic.some(
@@ -558,6 +571,9 @@ try {
         "Could not save provider settings.",
         "Remote text entry",
         "Find command server",
+        "Remote screenshots",
+        "Allow screenshots for 10 minutes",
+        "Screen sharing could not start.",
         "Cancel pairing",
         "Enter the command server IP or address.",
         "OttPlay FOSS %1 is available. Download and install now?",
@@ -570,7 +586,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 88);
-    assert.equal(result.keyCount, 806);
+    assert.equal(result.keyCount, 819);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

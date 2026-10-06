@@ -126,6 +126,14 @@ const remoteCode = ts.transpileModule(
 function remote(f) {
     f.host.exports = {};
     f.host.require = (name) => {
+        if (name === "./remote-screenshot")
+            return {
+                executeRemoteScreenshot() {
+                    throw new Error(
+                        "Plex provider settings must not request a screenshot"
+                    );
+                },
+            };
         if (name === "../provider")
             return {
                 checkProviderUrl: (url) => f.host.checkProviderUrl(url),

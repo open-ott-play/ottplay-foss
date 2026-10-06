@@ -82,6 +82,8 @@ pub fn run() {
             commands::tauri_commands::exit_app,
             commands::lifecycle::lifecycle_capabilities,
             commands::lifecycle::restart_app,
+            commands::screenshot::screenshot_capabilities,
+            commands::screenshot::capture_screenshot,
             commands::media_session::start_media_session,
             commands::media_session::pause_media_session,
             commands::media_session::resume_media_session,

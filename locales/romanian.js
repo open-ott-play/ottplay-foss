@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Setări All4you.tv",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Permite acest ID de dispozitiv",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -253,6 +258,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Configurați Шаравоз în Setări -> Setările furnizorului",
     Connect: "Conectare",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Conectat",
@@ -736,6 +743,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Sesiunea de la distanță a expirat",
     "Remote text entry": "Introducerea textului de la distanță",
     "Remote text entry denied":
@@ -784,6 +795,13 @@ var keyStrings = {
     "Save settings to storage": "Salvează setările în stocare",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Scenariu",
     Search: "Căutare",
     "Search programme": "Caută emisiunea",
@@ -803,6 +821,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Alegeți sursa șablonului listei de redare pentru EPG și sigle",
     "Select Stalker portal": "Selectează portalul Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Trimite cererea",
     "Send settings": "Trimite setările",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -890,6 +910,7 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Oprește redarea și revino la transmisia în direct",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Fluxul nu a putut fi redat",
     "Stream type: %1": "Tip de flux: %1",
     "String for search": "Text de căutat",
@@ -913,6 +934,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID-ul dispozitivului din adresă este nevalid.",
     "The discovery response is invalid.": "Răspunsul la căutare nu este valid.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Acest browser nu poate efectua o asociere automată în siguranță. Actualizați-l sau introduceți manual setările serverului de comenzi.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

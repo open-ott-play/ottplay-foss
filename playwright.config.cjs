@@ -27,6 +27,7 @@ module.exports = defineConfig({
         "pc2-playback.spec.cjs",
         "window-controls.spec.cjs",
         "remote-diagnostics.spec.cjs",
+        "remote-screenshot.spec.cjs",
     ],
     timeout: 30000,
     use: {

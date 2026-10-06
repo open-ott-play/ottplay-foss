@@ -197,7 +197,7 @@ Burmese, Khmer, Swahili, Filipino, Finnish, Danish, Norwegian Bokmål, Estonian,
 Slovak, Slovenian, Croatian and Serbian. Punjabi uses Gurmukhi and Serbian uses
 Cyrillic. Norwegian Bokmål inherits its CLDR exemplar from `no`.
 
-Each new pack translates all 806 canonical entries. The initial translations
+Each new pack translated the original 806 canonical entries. The initial translations
 used Google Translate on the public English UI text, followed by AI-assisted
 editing of controls, playback/catch-up terminology, settings, HTML fragments,
 days, units and remaining English prose. Proper names, protocols and identifiers
@@ -251,11 +251,18 @@ Thirty further languages append to the existing 58 selector positions: Georgian,
 Albanian, Bosnian, Macedonian, Icelandic, Catalan, Basque, Galician, Irish,
 Maltese, Pashto, Kurdish, Tajik, Kyrgyz, Turkmen, Mongolian, Lao, Odia,
 Assamese, Sindhi, Afrikaans, Amharic, Hausa, Yoruba, Igbo, Somali, Zulu,
-Xhosa, Malagasy and Kinyarwanda. Every pack covers the same 806 canonical keys
+Xhosa, Malagasy and Kinyarwanda. Every pack covers the same 819 canonical keys
 and is shipped in Server, Tauri and Capacitor. These packs were drafted and
 edited with AI from the public English catalog; cached machine translations
 and existing closely related language packs were used where available. The
 same structural checks and native-speaker review limitations apply.
+
+The 13 additional remote-screenshot keys have English and Russian text. The
+remaining 86 packs currently use explicitly marked English fallback for those
+new entries; structural coverage is not a claim that these new captions have
+been translated into every language. The source scanner extracts screenshot
+status declarations/assignments and `failGrant` messages, and separately audits
+the settings page's `view.message` translation boundary.
 
 Kurdish uses Kurmanji Latin, Sindhi uses Arabic, Tajik/Kyrgyz/Mongolian use
 Cyrillic, and Turkmen uses Latin. These choices do not represent other scripts

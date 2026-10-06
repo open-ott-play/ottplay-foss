@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Iisetingi ze-All4you.tv",
     "Allow diagnostics for 10 minutes": "Vumela uxilongo kangangemizuzu eli-10",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Vumela le seva iqokelele izibalo zoxilongo kwaye iqale kwakhona olu sasazo okanye isidlali. Ukufikelela okwethutyana kuhlala imizuzu eli-10. Inkxaso ethembekileyo iyaqhubeka ifumaneka emva kokuqhagamshela okanye ukuqala kwakhona; uqokelelo ngalunye lusaphelelwa emva kwemizuzu eli-10. Uqokelelo luyanqumama xa iphepha lifihlakele okanye kungekho intanethi.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Vumela le seva iqokelele izibalo zokudlala, zenethiwekhi nezokufaka ngeli xesha lokusebenza iphepha livuliwe ngaphambili. Kufuneka i-HTTPS kunye nemvume yeseva. Iyema emva kwemizuzu eli-10, xa iphepha lifihlakele, okanye xa kuqhawulwe uqhagamshelo.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Vumela esi sazisi sesixhobo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Isidlali se-HTTPS asinakukhuphela umthombo we-EPG we-HTTP. Sebenzisa umthombo we-HTTPS.",
@@ -254,6 +259,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Lungiselela i-Шаравоз ku Iisetingi -> Iisetingi zomboneleli",
     Connect: "Qhagamshela",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Qala ngokuqhagamshela esi sidlali kwiseva yemiyalelo.",
     Connected: "Kuqhagamshelwe",
@@ -745,6 +752,10 @@ var keyStrings = {
         "Ukufaka okukude kuphelelwe lixesha. Vula iseshoni entsha ukuze uzame kwakhona.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Iseshoni yokufaka okukude ayifumaneki. Vula iseshoni entsha ukuze uzame kwakhona.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Iseshoni ekude iphelelwe lixesha",
     "Remote text entry": "Ukufaka umbhalo ukude",
     "Remote text entry denied": "Ukufaka umbhalo ukude kwaliwe",
@@ -792,6 +803,13 @@ var keyStrings = {
     "Save settings to storage": "Gcina iisetingi kwindawo yogcino",
     "Scan this QR code with your phone to enter text.":
         "Skena le khowudi ye-QR ngefowuni yakho ukuze ufake umbhalo.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Umbhalo wefilimu",
     Search: "Khangela",
     "Search programme": "Khangela inkqubo",
@@ -810,6 +828,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Khetha umthombo wesakhelo soluhlu lokudlala se-EPG neelogo",
     "Select Stalker portal": "Khetha iphothali ye-Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Thumela isicelo",
     "Send settings": "Thumela iisetingi",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -899,6 +919,7 @@ var keyStrings = {
     "Stop diagnostics": "Misa uxilongo",
     "Stop playback and return to live":
         "Misa ukudlala uze ubuyele kusasazo ngqo",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Usasazo alukwazanga ukudlalwa",
     "Stream type: %1": "Uhlobo losasazo: %1",
     "String for search": "Amagama okukhangela",
@@ -924,6 +945,8 @@ var keyStrings = {
         "Isazisi sesixhobo esikwidilesi asisebenzi.",
     "The discovery response is invalid.":
         "Impendulo yokufunyanwa kweseva ayisebenzi.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Esi sikhangeli asikwazi ukubhangqa ngokuzenzekelayo ngokukhuselekileyo. Sihlaziye okanye ufake iisetingi zeseva yemiyalelo ngesandla.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

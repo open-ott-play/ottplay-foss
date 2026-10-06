@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(StalkerPortalPlugin.class);
         registerPlugin(MobileCommandQueuePlugin.class);
         registerPlugin(DashExoPlayerPlugin.class);
+        registerPlugin(RemoteScreenshotPlugin.class);
         super.onCreate(savedInstanceState);
     }
 

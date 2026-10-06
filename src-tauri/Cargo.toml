@@ -40,6 +40,12 @@ tauri-plugin-window-state = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 dispatch2 = "0.3"
+base64 = "0.22"
+block2 = "0.6"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSBitmapImageRep", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSView"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSError", "NSGeometry", "NSValue"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "block2", "WKSnapshotConfiguration", "WKWebView"] }
 
 # Required for production embed of frontendDist. Plain `cargo build`
 # without this leaves cfg(dev) on and never embeds assets (white screen).

@@ -72,6 +72,10 @@ instrumentation; `enable()` enables local diagnostics.
 
 The remote event schema excludes URLs, provider/account configuration, headers,
 credentials, key text, coordinates, raw console lines, stacks, DOM and images.
+Remote screenshots are a separate, locally granted protocol-1 command, described
+in [Remote screenshots](remote-command-server.md#remote-screenshots). Trusting a
+server for diagnostic telemetry never grants screenshots, and screenshot images
+are not diagnostic events or attachments.
 Collection and server retention have independent byte/event/rate bounds, and
 readers receive sequence gaps and drop counters. Diagnostic delivery uses a
 separate control loop and upload lane, so a pending legacy command or upload

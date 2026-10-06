@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv կարգավորումներ",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Թույլատրել այս սարքի ID-ն",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -250,6 +255,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Կարգավորեք Шаравоз-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     Connect: "Միանալ",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Միացված է",
@@ -731,6 +738,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Հեռակա աշխատաշրջանի ժամկետը լրացել է",
     "Remote text entry": "Հեռակա տեքստի մուտքագրում",
     "Remote text entry denied": "Հեռակա տեքստի մուտքագրումը մերժված է",
@@ -778,6 +789,13 @@ var keyStrings = {
     "Save settings to storage": "Պահպանել կարգավորումները պահոցում",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Սցենար",
     Search: "Որոնել",
     "Search programme": "Որոնել հաղորդումը",
@@ -797,6 +815,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Ընտրեք նվագարկման ցուցակի ձևանմուշի աղբյուրը՝ հեռուստածրագրի և պատկերանշանների համար",
     "Select Stalker portal": "Ընտրել Stalker պորտալը",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Ուղարկել հարցումը",
     "Send settings": "Ուղարկել կարգավորումները",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -885,6 +905,7 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Դադարեցնել նվագարկումը և վերադառնալ ուղիղ եթերին",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Չհաջողվեց նվագարկել հոսքը",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",
     "String for search": "Որոնման հարցում",
@@ -908,6 +929,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Հասցեում սարքի ID-ն անվավեր է։",
     "The discovery response is invalid.": "Որոնման պատասխանը անվավեր է։",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Այս դիտարկիչը չի կարող անվտանգ կատարել ավտոմատ զուգակցում։ Թարմացրեք այն կամ ձեռքով մուտքագրեք հրամանների սերվերի կարգավորումները։",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

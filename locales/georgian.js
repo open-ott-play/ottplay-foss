@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv პარამეტრები",
     "Allow diagnostics for 10 minutes":
         "დაუშვით დიაგნოსტიკა 10 წუთის განმავლობაში",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ნება მიეცით ამ სერვერს შეაგროვოს დიაგნოსტიკური მაჩვენებლები და თავიდან გაუშვას ეს ნაკადი ან პლეერი. დროებითი წვდომა 10 წუთს გრძელდება. სანდო მხარდაჭერა ხელმისაწვდომი რჩება ხელახლა დაკავშირების ან გადატვირთვის შემდეგაც; მონაცემთა შეგროვების თითოეული სესია მაინც 10 წუთში სრულდება. შეგროვება ჩერდება, როდესაც აპლიკაცია დამალულია ან ქსელთან კავშირი არ აქვს.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ნება მიეცით ამ სერვერს შეაგროვოს დაკვრის, ქსელისა და შეყვანის მაჩვენებლები ამ აქტიური სესიისთვის. საჭიროა HTTPS და სერვერის ნებართვა. შეგროვება წყდება 10 წუთის შემდეგ, გვერდის დამალვისას ან კავშირის გათიშვისას.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "დაამატეთ ამ მოწყობილობის ID დაშვებულთა სიაში",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS მედია ფლეერი ვერ ჩამოტვირთავს HTTP EPG წყაროს. გამოიყენეთ HTTPS წყარო.",
@@ -249,6 +254,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз-ის კონფიგურაცია პარამეტრებში -> პროვაიდერის პარამეტრები",
     Connect: "დაკავშირება",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "ჯერ დაუკავშირეთ ეს მედია ფლეერი ბრძანების სერვერს.",
     Connected: "დაკავშირებულია",
@@ -733,6 +740,10 @@ var keyStrings = {
         "დისტანციური შეყვანის ვადა ამოიწურა. გახსენით ახალი სესია ხელახლა საცდელად.",
     "Remote input session is unavailable. Open a new session to try again.":
         "დისტანციური შეყვანის სესია მიუწვდომელია. გახსენით ახალი სესია ხელახლა საცდელად.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "დისტანციური სესიის ვადა ამოიწურა",
     "Remote text entry": "დისტანციური ტექსტის შეყვანა",
     "Remote text entry denied": "დისტანციური ტექსტის შეყვანა უარყოფილია",
@@ -780,6 +791,13 @@ var keyStrings = {
     "Save settings to storage": "პარამეტრების შენახვა საცავში",
     "Scan this QR code with your phone to enter text.":
         "დაასკანირეთ ეს QR კოდი თქვენი ტელეფონით ტექსტის შესაყვანად.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "სცენარი",
     Search: "ძებნა",
     "Search programme": "გადაცემის ძებნა",
@@ -798,6 +816,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "აირჩიეთ დასაკრავი სიის შაბლონის წყარო EPG და ლოგოებისთვის",
     "Select Stalker portal": "აირჩიეთ Stalker პორტალი",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "მოთხოვნის გაგზავნა",
     "Send settings": "პარამეტრების გაგზავნა",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -884,6 +904,7 @@ var keyStrings = {
     "Stop diagnostics": "შეაჩერე დიაგნოსტიკა",
     "Stop playback and return to live":
         "შეაჩერე დაკვრა და დაბრუნდი პირდაპირ ეთერში",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ნაკადის დაკვრა ვერ მოხერხდა",
     "Stream type: %1": "ნაკადის ტიპი: %1",
     "String for search": "საძიებო მოთხოვნა",
@@ -908,6 +929,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "მისამართში მოწყობილობის ID არასწორია.",
     "The discovery response is invalid.": "აღმოჩენის პასუხი არასწორია.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ამ ბრაუზერს არ შეუძლია უსაფრთხოდ ავტომატურად დაწყვილება. განაახლეთ იგი ან ხელით შეიყვანეთ ბრძანების სერვერის პარამეტრები.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

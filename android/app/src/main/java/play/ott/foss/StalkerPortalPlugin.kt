@@ -18,9 +18,20 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 
 @CapacitorPlugin(name = "StalkerPortal")
 class StalkerPortalPlugin : Plugin() {
+    private val screenshotRequests = HashMap<String, ScreenshotRequest>()
+    private var screenshotDestroyed = false
+    private class ScreenshotRequest(val call: PluginCall, val task: okhttp3.Call) {
+        val settled = AtomicBoolean(false)
+        fun cancel() {
+            task.cancel()
+            if (settled.compareAndSet(false, true)) call.reject("Screenshot transport cancelled", "cancelled")
+        }
+    }
 
     private val swopClient = OkHttpClient.Builder()
         .followRedirects(false).followSslRedirects(false)
@@ -114,7 +125,117 @@ class StalkerPortalPlugin : Plugin() {
             call.reject("missing url")
             return
         }
-        performRequest(call, rawUrl)
+        if (call.getBoolean("screenshotControl", false) == true) screenshotRequest(call, rawUrl)
+        else performRequest(call, rawUrl)
+    }
+
+    @PluginMethod
+    fun cancelHttpRequest(call: PluginCall) {
+        val id = call.getString("requestId").orEmpty()
+        if (!Regex("^[A-Za-z0-9_-]{1,128}$").matches(id)) {
+            call.reject("Invalid HTTP request identifier"); return
+        }
+        val pending = synchronized(screenshotRequests) { screenshotRequests.remove(id) }
+        pending?.cancel()
+        call.resolve(JSObject().put("cancelled", pending != null))
+    }
+
+    override fun handleOnDestroy() {
+        val pending = synchronized(screenshotRequests) {
+            screenshotDestroyed = true
+            screenshotRequests.values.toList().also { screenshotRequests.clear() }
+        }
+        pending.forEach { it.cancel() }
+        super.handleOnDestroy()
+    }
+
+    private fun screenshotRequest(call: PluginCall, raw: String) {
+        try {
+            val limit = 2 * 1024 * 1024
+            require(raw.length <= 8192 && raw.none { it <= ' ' || it == '\u007f' || it == '\\' })
+            val uri = java.net.URI(raw)
+            require(uri.host != null && uri.rawUserInfo == null && uri.rawFragment == null)
+            require(uri.port == -1 || uri.port in 1..65535)
+            val loopback = uri.host.lowercase() in listOf("localhost", "127.0.0.1", "[::1]", "::1")
+            require(uri.scheme == "https" || (uri.scheme == "http" && loopback))
+            if (BuildConfig.FLAVOR == "play" && uri.scheme != "https") {
+                call.reject("This edition requires HTTPS for screenshots", "https_required"); return
+            }
+            val id = call.getString("requestId") ?: "screenshot_" + java.util.UUID.randomUUID()
+            require(Regex("^[A-Za-z0-9_-]{1,128}$").matches(id))
+            val method = call.getString("method") ?: "GET"
+            val body = (call.getString("body") ?: "").toByteArray(Charsets.UTF_8)
+            val timeout = call.getInt("timeoutMs") ?: 15000
+            require(method in listOf("GET", "POST") && body.size <= limit && (method != "GET" || body.isEmpty()))
+            require(timeout in 1..60000)
+            val builder = Request.Builder().url(raw).header("Content-Type", "application/json")
+            val headers = call.getObject("headers")
+            val seen = HashSet<String>()
+            headers?.keys()?.forEach { name ->
+                val key = name.lowercase()
+                val value = headers.opt(name)
+                require(key in listOf("authorization", "accept", "content-type") && seen.add(key))
+                require(value is String && value.toByteArray(Charsets.UTF_8).size <= 1024 && value.none { it < ' ' || it == '\u007f' })
+                builder.header(name, value)
+            }
+            if (method == "POST") builder.post(body.toRequestBody("application/json".toMediaType()))
+            else builder.get()
+            // swopClient has no redirects, cookie jar, authenticator, proxy or
+            // provider interceptor. A derived client changes only this timeout.
+            val client = swopClient.newBuilder().callTimeout(timeout.toLong(), TimeUnit.MILLISECONDS).build()
+            val task = client.newCall(builder.build())
+            val pending = ScreenshotRequest(call, task)
+            synchronized(screenshotRequests) {
+                if (screenshotDestroyed || screenshotRequests.size >= 8 || screenshotRequests.containsKey(id)) {
+                    call.reject("Screenshot transport is busy or unavailable", "busy"); return
+                }
+                screenshotRequests[id] = pending
+            }
+            val callback = object : okhttp3.Callback {
+                private fun finish(result: JSObject?, code: String = "transport_failed") {
+                    synchronized(screenshotRequests) {
+                        if (screenshotRequests[id] === pending) screenshotRequests.remove(id)
+                    }
+                    if (!pending.settled.compareAndSet(false, true)) return
+                    if (result != null) call.resolve(result)
+                    else call.reject("Screenshot transport failed", code)
+                }
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    finish(null, if (e is java.io.InterruptedIOException) "timeout" else "transport_failed")
+                }
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    try {
+                        response.use {
+                            require(response.code !in 300..399)
+                            val responseBody = response.body
+                            require(responseBody.contentLength() <= limit)
+                            val output = ByteArrayOutputStream()
+                            responseBody.byteStream().use { stream ->
+                                val buffer = ByteArray(8192)
+                                while (true) {
+                                    val read = stream.read(buffer)
+                                    if (read == -1) break
+                                    require(output.size() + read <= limit)
+                                    output.write(buffer, 0, read)
+                                }
+                            }
+                            val text = Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(output.toByteArray())).toString()
+                            finish(JSObject().put("status", response.code).put("statusText", response.message)
+                                .put("body", text).put("headers", "Content-Type: application/json\r\n"))
+                        }
+                    } catch (_: Exception) { finish(null) }
+                }
+            }
+            try { task.enqueue(callback) }
+            catch (_: Exception) {
+                synchronized(screenshotRequests) {
+                    if (screenshotRequests[id] === pending) screenshotRequests.remove(id)
+                }
+                pending.cancel()
+            }
+        } catch (_: Exception) {
+            call.reject("Invalid screenshot transport request", "invalid_request")
+        }
     }
 
     private fun performRequest(call: PluginCall, rawUrl: String) {

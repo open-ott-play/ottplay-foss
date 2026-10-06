@@ -265,6 +265,11 @@
       "file": "src/settings/transfer-ui.ts",
       "expression": "key",
       "reason": "Local label/notice helpers forward their literal key argument; label calls and transfer-ui notice calls are explicitly scanned by localization-catalog.cjs."
+    },
+    {
+      "file": "src/index.ts",
+      "expression": "view.message",
+      "reason": "Screenshot status messages are the finite message declarations/assignments and failGrant arguments in remote-screenshot.ts, all extracted by localization-catalog.cjs; image bytes and protocol errors never enter this UI translation boundary."
     }
   ]
 }

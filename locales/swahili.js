@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv mipangilio",
     "Allow diagnostics for 10 minutes": "Ruhusu uchunguzi kwa dakika 10",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ruhusu seva hii kukusanya vihesabio vya uchunguzi na kuwasha upya mtiririko huu au kicheza media. Ufikiaji wa muda hudumu dakika 10. Usaidizi unaoaminika hubakia kupatikana baada ya kuunganisha tena au kuanzisha upya; kila ukamataji bado unaisha baada ya dakika 10. Mkusanyiko husitishwa ukiwa umefichwa au nje ya mtandao.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ruhusu seva hii kukusanya vihesabio vya kucheza, mtandao na ingizo kwa kipindi hiki cha mbele. Inahitaji HTTPS na ruhusa ya seva. Inasimama baada ya dakika 10, inapofichwa, au inapokatwa.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Ongeza ID ya kifaa hiki kwenye orodha inayoruhusiwa",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -253,6 +258,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Sanidi Шаравоз katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     Connect: "Unganisha",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Unganisha kicheza media hiki kwenye seva ya amri kwanza.",
     Connected: "Imeunganishwa",
@@ -738,6 +745,10 @@ var keyStrings = {
         "Ingizo la mbali limekwisha. Fungua kipindi kipya ili ujaribu tena.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kipindi cha kuingiza data kwa mbali hakipatikani. Fungua kipindi kipya ili ujaribu tena.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Muda wa kipindi cha mbali umekwisha",
     "Remote text entry": "Ingizo la maandishi ya mbali",
     "Remote text entry denied": "Ingizo la maandishi ya mbali limekataliwa",
@@ -785,6 +796,13 @@ var keyStrings = {
     "Save settings to storage": "Hifadhi mipangilio kwenye hifadhi",
     "Scan this QR code with your phone to enter text.":
         "Changanua msimbo huu QR kwa simu yako ili kuandika maandishi.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Hati ya filamu",
     Search: "Tafuta",
     "Search programme": "Tafuta programu",
@@ -803,6 +821,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Chagua chanzo cha kiolezo cha orodha ya kucheza kwa EPG na nembo",
     "Select Stalker portal": "Chagua tovuti ya Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Tuma ombi",
     "Send settings": "Tuma mipangilio",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -889,6 +909,7 @@ var keyStrings = {
     "Stop diagnostics": "Acha uchunguzi",
     "Stop playback and return to live":
         "Simamisha uchezaji na urudi kwenye matangazo ya moja kwa moja",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Mtiririko haukuweza kuchezwa",
     "Stream type: %1": "Aina ya mtiririko: %1",
     "String for search": "Swali la utafutaji",
@@ -913,6 +934,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Kifaa ID katika anwani ni batili.",
     "The discovery response is invalid.": "Jibu la ugunduzi ni batili.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Kivinjari hiki hakiwezi kuoanisha kiotomatiki kwa usalama. Isasishe au ingiza mipangilio ya seva ya amri kwa mikono.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

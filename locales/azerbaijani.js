@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ayarları",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Bu cihaz ID-sinə icazə verin",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -251,6 +256,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
     Connect: "Qoşul",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Qoşuldu",
@@ -728,6 +735,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Uzaq sessiyanın müddəti bitdi",
     "Remote text entry": "Uzaqdan mətn daxil etmə",
     "Remote text entry denied": "Uzaqdan mətn daxil etmə rədd edildi",
@@ -774,6 +785,13 @@ var keyStrings = {
     "Save settings to storage": "Ayarları yaddaşa saxla",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Ssenari",
     Search: "Axtarış",
     "Search programme": "Veriliş axtar",
@@ -793,6 +811,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Proqram cədvəli və loqolar üçün pleylist şablonunu seçin",
     "Select Stalker portal": "Stalker portalını seçin",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Sorğu göndər",
     "Send settings": "Ayarları göndər",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -879,6 +899,7 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Oynatmanı dayandır və canlı yayıma qayıt",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Axını oxutmaq mümkün olmadı",
     "Stream type: %1": "Yayım növü: %1",
     "String for search": "Axtarış mətni",
@@ -903,6 +924,8 @@ var keyStrings = {
         "Ünvandakı cihaz ID-si etibarsızdır.",
     "The discovery response is invalid.":
         "Axtarış sorğusunun cavabı etibarsızdır.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Bu brauzer təhlükəsiz avtomatik cütləşməni dəstəkləmir. Onu yeniləyin və ya əmr serverinin ayarlarını əl ilə daxil edin.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
