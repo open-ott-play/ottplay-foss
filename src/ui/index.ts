@@ -3002,20 +3002,22 @@ export function showEditKey1(
     secret?: boolean,
     resume?: boolean
 ): void {
-    // Desktop / Tauri / Capacitor: always use the native <input> line. The
-    // graphical OSK is for STB remotes; several call sites still invoke
+    // Desktop / Tauri / Capacitor use the native <input> line. CJK also needs
+    // the system IME (or remote text entry) for phonetic conversion. Several
+    // call sites still invoke
     // showEditKey1 (or a stale window.showEditKey alias) directly.
     var w = window as any;
     var isPc =
         typeof w.__TAURI__ !== "undefined" ||
         /^(pc|pc2|tauri|desktop|nodejs)$/.test(String(w.ott_device || ""));
     var isCap = typeof w.Capacitor !== "undefined";
+    var needsIme = /^_(chi|jpn|kor)$/.test(String(_ottplaylang() || ""));
     var port = w.__ottClassicScreenPort;
     var previousEditor = resume && port.owner("editor");
     var nativeResume =
         previousEditor && previousEditor.model.nativeInputSecret !== undefined;
     if (
-        (isPc || isCap || nativeResume) &&
+        (isPc || isCap || needsIme || nativeResume) &&
         typeof w.showEditKey2 === "function"
     ) {
         w.showEditKey2(_initKeys, secret, resume);
@@ -3077,13 +3079,26 @@ export function showEdit(): void {
         ((window as any).editCaption || "") +
         "</div>";
     r += '<div id="ee" dir="auto"></div><div class="osk-grid">';
-    var combiningMark = /^[\u0300-\u036f]/;
+    // Unicode marks in the shipped alphabets need a visible standalone label.
+    var combiningMark =
+        /^[\u0301\u064b-\u0652\u0654\u0670\u0901-\u0903\u093c\u093e-\u0943\u0945\u0947-\u0949\u094b-\u094d\u0981-\u0983\u09bc\u09be-\u09c4\u09c7-\u09c8\u09cb-\u09cd\u09d7\u09e2-\u09e3\u0a02\u0a3c\u0a3e-\u0a42\u0a47-\u0a48\u0a4b-\u0a4d\u0a70-\u0a71\u0a81-\u0a83\u0abc\u0abe-\u0ac5\u0ac7-\u0ac9\u0acb-\u0acd\u0bbe-\u0bc2\u0bc6-\u0bc8\u0bca-\u0bcd\u0c01-\u0c03\u0c3e-\u0c44\u0c46-\u0c48\u0c4a-\u0c4d\u0c55-\u0c56\u0c82-\u0c83\u0cbc\u0cbe-\u0cc4\u0cc6-\u0cc8\u0cca-\u0ccd\u0cd5-\u0cd6\u0d02-\u0d03\u0d3e-\u0d44\u0d46-\u0d48\u0d4a-\u0d4d\u0d57\u0d62-\u0d63\u0d82-\u0d83\u0dca\u0dcf-\u0dd4\u0dd6\u0dd8-\u0ddf\u0df2-\u0df3\u0e31\u0e34-\u0e3a\u0e47-\u0e4e\u102b-\u1032\u1036-\u103e\u17b6-\u17cb\u17cd\u17d0\u17d2\u3099-\u309a]/;
     for (var s = 0; s < _keys.length; s++) {
         if (s > 0 && s % 10 === 0) r += "<br/>";
         var charCode = _keys.charCodeAt(s);
         var sym = _keysSymbol[charCode];
         var n = sym ? sym.s : _keyboardCharacter(_keys[s]);
-        if (!sym) n = metadataText(combiningMark.test(n) ? "◌" + n : n);
+        if (!sym)
+            n = metadataText(
+                n === "\u200c"
+                    ? "ZWNJ"
+                    : n === "\u200d"
+                      ? "ZWJ"
+                      : combiningMark.test(n)
+                        ? "◌" + n
+                        : n
+            );
+        if (charCode === 0x200c || charCode === 0x200d)
+            n = '<span style="font-size:60%">' + n + "</span>";
         r +=
             '<div id="ik' +
             s +
@@ -3316,11 +3331,24 @@ export function editKey2(code: number): void {
     var w = window as any;
     var port = w.__ottClassicScreenPort;
     var owner = port.owner("editor");
-    if (!owner || !owner.foreground()) return;
+    if (!owner || !owner.foreground() || owner.model.nativeInputComposing)
+        return;
     var input = document.getElementById("editvar");
     var remote = document.getElementById("editRemoteInput");
+    var save = owner.model.nativeInputIme
+        ? document.querySelector(
+              '#listEdit [data-ott-key="' + w.keys.ENTER + '"]'
+          )
+        : null;
     if (code === w.keys.UP || code === w.keys.DOWN) {
         var next = document.activeElement === remote ? input : remote;
+        if (owner.model.nativeInputIme) {
+            var controls = [input, remote, save];
+            var index = controls.indexOf(document.activeElement);
+            next = controls[
+                (index + (code === w.keys.UP ? 2 : 1)) % 3
+            ] as HTMLElement;
+        }
         if (next) next.focus();
         return;
     }
@@ -3330,6 +3358,15 @@ export function editKey2(code: number): void {
     }
     if (code !== w.keys.ENTER && code !== w.keys.EXIT && code !== w.keys.RETURN)
         return;
+    if (
+        code === w.keys.ENTER &&
+        owner.model.nativeInputIme &&
+        document.activeElement !== save
+    ) {
+        var event = port.keyEvent();
+        if (!save || !event || !event.target || !save.contains(event.target))
+            return;
+    }
     if (code === w.keys.ENTER)
         w.editvar = ($("#editvar").val() as string) || "";
     port.finishEditor(code === w.keys.ENTER, function () {
@@ -3360,7 +3397,10 @@ export function showEditKey2(
     var port = w.__ottClassicScreenPort;
     var editorOwner = resume ? port.owner("editor") : port.openEditor();
     if (!editorOwner || !editorOwner.active()) return;
-    if (!resume) editorOwner.model.nativeInputSecret = !!secret;
+    if (!resume) {
+        editorOwner.model.nativeInputSecret = !!secret;
+        editorOwner.model.nativeInputIme = false;
+    }
     if (editorOwner.model.releaseNativeInput)
         editorOwner.model.releaseNativeInput();
     var caption = w.editCaption || "";
@@ -3379,7 +3419,7 @@ export function showEditKey2(
     html +=
         '<br/><input type="' +
         (editorOwner.model.nativeInputSecret ? "password" : "text") +
-        '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
+        '" dir="auto" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
         escapedCaption +
         '" id="editvar" style="color:' +
         (w.curColor || "#fff") +
@@ -3388,8 +3428,8 @@ export function showEditKey2(
         '<button type="button" id="editRemoteInput">' +
         metadataText(_("Remote text entry")) +
         "</button>";
-    html += "<br/>" + hint(keys.EXIT || 27, strExit, "- return without save");
-    html += "<br/>" + hint(keys.ENTER || 13, strEnter, "- save");
+    html += "<br/>" + hint(keys.EXIT || 27, strExit, "Cancel");
+    html += "<br/>" + hint(keys.ENTER || 13, strEnter, "Set");
     $("#listEdit").show().html(html);
     var editEl = document.getElementById("editvar") as HTMLInputElement | null;
     var remoteButton = document.getElementById("editRemoteInput");
@@ -3435,6 +3475,16 @@ export function showEditKey2(
             }
         });
         if (openingCode) openingListeners(true);
+        editorOwner.model.nativeInputComposing = false;
+        var onComposition = editorOwner.guard(function (
+            ev: CompositionEvent
+        ): void {
+            editorOwner.model.nativeInputComposing =
+                ev.type === "compositionstart";
+            editorOwner.model.nativeInputIme = true;
+            // The browser owns composition and commits to input.value. Never
+            // append event.data: doing so duplicates or loses candidate text.
+        });
         var onInput = editorOwner.guard(function (
             ev: KeyboardEvent | MouseEvent
         ): void {
@@ -3445,6 +3495,7 @@ export function showEditKey2(
                 return;
             if (ev.type === "click") {
                 consumeEvent(ev);
+                if (editorOwner.model.nativeInputComposing) return;
                 // Native typing lives in the input until save or remote handoff.
                 w.editvar = editEl!.value;
                 swopLoadValue();
@@ -3452,15 +3503,33 @@ export function showEditKey2(
             }
             // The only other registered event is keydown.
             var keyEvent = ev as KeyboardEvent;
-            if (keyEvent.isComposing || keyEvent.keyCode === 229) {
+            if (
+                editorOwner.model.nativeInputComposing ||
+                keyEvent.isComposing ||
+                keyEvent.keyCode === 229
+            ) {
                 // Keep IME default handling, but do not let the window key router save.
+                ev.stopPropagation();
+                return;
+            }
+            // Composition-confirm Enter may arrive after compositionend in
+            // some engines. Once using an IME, saving is an explicit action on
+            // the existing focusable Save hint; no timeout/ignore-next-key guess.
+            if (
+                editorOwner.model.nativeInputIme &&
+                ev.currentTarget === editEl &&
+                (keyEvent.key === "Enter" || keyEvent.keyCode === 13)
+            ) {
                 ev.stopPropagation();
                 return;
             }
             var command = 0;
             if (
                 keyEvent.key === "ArrowUp" ||
-                keyEvent.keyCode === (keys.UP || 38) ||
+                keyEvent.keyCode === (keys.UP || 38)
+            )
+                command = keys.UP || 38;
+            else if (
                 keyEvent.key === "ArrowDown" ||
                 keyEvent.keyCode === (keys.DOWN || 40)
             )
@@ -3485,13 +3554,18 @@ export function showEditKey2(
         });
         editorOwner.model.releaseNativeInput = editorOwner.own(function () {
             releaseOpeningKey();
+            editorOwner.model.nativeInputComposing = false;
             editEl!.removeEventListener("keydown", onInput);
+            editEl!.removeEventListener("compositionstart", onComposition);
+            editEl!.removeEventListener("compositionend", onComposition);
             if (remoteButton) {
                 remoteButton.removeEventListener("click", onInput);
                 remoteButton.removeEventListener("keydown", onInput);
             }
         });
         editEl.addEventListener("keydown", onInput);
+        editEl.addEventListener("compositionstart", onComposition);
+        editEl.addEventListener("compositionend", onComposition);
         if (remoteButton) {
             remoteButton.addEventListener("click", onInput);
             remoteButton.addEventListener("keydown", onInput);

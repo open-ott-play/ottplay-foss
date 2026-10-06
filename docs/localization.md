@@ -2,10 +2,10 @@
 
 ## Translation catalog
 
-`locales/english.js` is the canonical interface dictionary. The other 27 language
+`locales/english.js` is the canonical interface dictionary. The other 57 language
 packs contain the same keys; `lang` and the historical `alhabet` spelling are
-locale metadata. Existing language codes and the first 20 selector positions
-are preserved. Translations were completed with AI assistance and checked for
+locale metadata. Existing language codes and the first 28 selector positions
+are preserved. Translations were completed with machine/AI assistance and checked for
 key and formatting consistency; these checks do not replace native-speaker
 editorial review.
 
@@ -15,7 +15,7 @@ as `_eng` and `_rus` to `/locales/english.js` and `/locales/russian.js`.
 Both runtime loaders and the catalog/packaging checks use this map. Existing
 saved preferences and keyboard locale identifiers are unchanged; an unknown
 identifier loads English. The catalog audit verifies a one-to-one relationship
-between the selector, the asset map, and all 28 shipped files.
+between the selector, the asset map, and all 58 shipped files.
 
 `scripts/localization-catalog.cjs` derives keys from translation calls, settings
 labels, menu definitions, provider schemas and shipped device/provider scripts.
@@ -154,6 +154,63 @@ The source is the World Bank population indicator `SP.POP.TOTL`, queried on
 [Sweden](https://api.worldbank.org/v2/country/SE/indicator/SP.POP.TOTL?date=2024&format=json),
 [Azerbaijan](https://api.worldbank.org/v2/country/AZ/indicator/SP.POP.TOTL?date=2024&format=json),
 and [Kazakhstan](https://api.worldbank.org/v2/country/KZ/indicator/SP.POP.TOTL?date=2024&format=json).
+
+## Thirty additional languages
+
+Thirty further packs append to those 28 stable selector positions: Arabic,
+Simplified Chinese, Japanese, Korean, Persian, Hindi, Bengali, Urdu, Punjabi,
+Marathi, Telugu, Tamil, Gujarati, Kannada, Malayalam, Nepali, Sinhala, Thai,
+Burmese, Khmer, Swahili, Filipino, Finnish, Danish, Norwegian Bokmål, Estonian,
+Slovak, Slovenian, Croatian and Serbian. Punjabi uses Gurmukhi and Serbian uses
+Cyrillic. Norwegian Bokmål inherits its CLDR exemplar from `no`.
+
+Each new pack translates all 803 canonical entries. The initial translations
+used Google Translate on the public English UI text, followed by AI-assisted
+editing of controls, playback/catch-up terminology, settings, HTML fragments,
+days, units and remaining English prose. Proper names, protocols and identifiers
+remain literal. Structural validation checks every entry, but does not certify
+linguistic fluency; native-speaker review is still welcome.
+
+The new keyboard inventories include every CLDR main-exemplar character and
+explicitly documented additions: dependent vowels, viramas, diacritics, local
+digits and punctuation. Malayalam also includes its auxiliary vowel signs and
+chillu letters; Urdu includes noon ghunna and additional hamza forms. Direct
+encoded variants such as Punjabi ਸ਼ and Bengali ড় remain reachable alongside
+their combining sequences, because channel search compares literal strings. Shaping
+controls ZWNJ/ZWJ have visible key labels. Combining marks show a dotted circle
+only on the key; inserted text retains its original logical Unicode sequence.
+The fixture preserves source expressions, additions and writing-system choices.
+
+### CJK and native composition
+
+The Chinese, Japanese and Korean inventories retain all 2,210, 2,311 and 11,172
+CLDR main-exemplar characters respectively, plus the fixture's additions. They
+are literal character inventories, **not** a phonetic conversion dictionary or
+all historical/rare Unicode ideographs. The classic renderer can page through
+them if native input is unavailable, but CJK normally opens the existing native
+text field even on TV devices. Server, Tauri and Capacitor already use that field.
+
+Full phonetic CJK input uses the platform's installed IME and its candidate UI;
+remote text entry from a phone is another existing route. A device without a
+usable system IME cannot gain Chinese/Japanese conversion from the literal grid.
+No bundled conversion engine or remote-only predictive CJK IME is added. Font
+coverage and shaping still depend on the device's fonts and text engine.
+
+During composition, candidate Enter/Escape/arrows keep their browser behavior
+and cannot save or switch the editor. The browser owns the field value; the
+application never appends `compositionend.data`. Once composition has been used
+in an editor session, saving requires the existing explicit Set control:
+Enter in the field continues to belong to the IME, including after
+`compositionend`. Down cycles through the field, remote text entry and Set;
+Up moves back. This avoids a timing-based guess that can either submit a
+candidate or swallow the next intentional Enter. Closing the editor removes its
+composition listeners. Native input uses `dir="auto"` and never adds direction
+controls to the stored value; ordinary URLs retain their LTR first character.
+
+Automated tests verify the full inventories, marks/joiners, source and packaged
+catalogs, and composition event handling in Chromium and WebKit for Server,
+Tauri and Capacitor profiles. Synthetic composition events are not a substitute
+for testing an installed IME on each supported physical device.
 
 ## Unicode attribution
 

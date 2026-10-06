@@ -52,6 +52,7 @@ try {
         ["settings.open", "action", "Another menu label", "Menu explanation"]
     ];`
     );
+    write("src/ui/index.ts", 'hint(13, "ENTER", "Native editor action");');
     write("devices/example.js", '_("Adapter message");');
     write(
         "src/plugins/control-discovery.ts",
@@ -77,6 +78,7 @@ try {
         "Disabled status",
         "New setting label",
         "New action caption",
+        "Native editor action",
         "New settings title",
         "First choice",
         "Second choice",
@@ -143,7 +145,7 @@ try {
             "utf8"
         )
     );
-    assert.equal(Object.keys(languageAssets).length, 28);
+    assert.equal(Object.keys(languageAssets).length, 58);
     assert.deepEqual(
         Object.keys(languageAssets).sort(),
         Object.keys(alphabets.locales).sort(),
@@ -440,7 +442,7 @@ try {
         englishOnly: process.argv.includes("--english-only"),
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
-    assert.equal(result.localeCount, 28);
+    assert.equal(result.localeCount, 58);
     assert.equal(result.keyCount, 803);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`

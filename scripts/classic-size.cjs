@@ -106,7 +106,10 @@ const { gzipSync } = require("node:zlib");
 // Atomic signed channel offsets add 426 raw / at most 186 gzip bytes over
 // a845242 on Node 22.23.3. Allocate 450 raw / 200 gzip for this feature;
 // provider assets and the existing release suffix allowance remain unchanged.
-const BUDGET = Object.freeze({ bytes: 723250, gzipBytes: 220650 });
+// Thirty external catalogs add selector labels, script-mark labels and owned
+// native composition/explicit-apply handling. Allocate 3.5 KB raw / 1.2 KB gzip
+// for this feature; retain the existing Node 22 and version-suffix reserve.
+const BUDGET = Object.freeze({ bytes: 726750, gzipBytes: 221850 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -162,7 +165,7 @@ const BUDGET = Object.freeze({ bytes: 723250, gzipBytes: 220650 });
 // totals are web 819932/256711 and native 819890/256774. Provider assets are
 // unchanged by adjacent-channel admission; add its reviewed 3300 raw/950 gzip
 // increment to the localization complete-payload cap.
-const TOTAL_BUDGET = Object.freeze({ bytes: 820750, gzipBytes: 257150 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 824250, gzipBytes: 258350 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
