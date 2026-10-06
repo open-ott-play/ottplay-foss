@@ -33,8 +33,8 @@ export var useGraphicIcons = false;
  * When `useGraphicIcons` is `true`, the keys `"yes"`, `"no"`, and `"off"`
  * return Fontello icon HTML (`&#xf205;`, `&#xf204;`) instead of text.
  *
- * Substitution uses a global regex replace for each argument in order
- * (e.g. `%1` → args[0], `%2` → args[1], ...).
+ * Substitution replaces positional tokens once. Argument text is literal:
+ * dollar sequences and placeholder-like channel/programme names are preserved.
  */
 export function translate(key: string, ...args: any[]): string {
     if ((window as any).sGrapI || useGraphicIcons) {
@@ -51,15 +51,16 @@ export function translate(key: string, ...args: any[]): string {
     // prefer the live keyStrings table (needed for _("alhabet") / OSK Lang).
     var ks = (window as any).keyStrings;
     var text =
-        ks && ks[key] !== undefined
+        ks && Object.prototype.hasOwnProperty.call(ks, key)
             ? ks[key]
-            : translations[key] !== undefined
+            : Object.prototype.hasOwnProperty.call(translations, key)
               ? translations[key]
               : key;
-    for (var i = 0; i < args.length; i++) {
-        text = text.replace(new RegExp("%" + (i + 1), "g"), args[i]);
-    }
-    return text;
+    if (!args.length) return text;
+    return text.replace(/%([1-9][0-9]*)/g, function (token: string, n: string) {
+        var index = Number(n) - 1;
+        return index < args.length ? String(args[index]) : token;
+    });
 }
 
 /**

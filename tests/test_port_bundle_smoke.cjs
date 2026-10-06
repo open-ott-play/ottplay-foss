@@ -2083,7 +2083,7 @@ function exerciseProviderRuntime(profile) {
     driverRegistry.has = (id) => (id === "demo" ? false : hasDriver(id));
     try {
         w.loadProv("demo");
-        assert.deepEqual(alerts, ["demo: load error!!!"]);
+        assert.deepEqual(alerts, ["Failed to load! (demo)"]);
         assert.equal(w.listCaptionElement.innerHTML, "First Run Setup");
         assert.equal(w.__ottActiveProviderDriver, null);
         assert.deepEqual(

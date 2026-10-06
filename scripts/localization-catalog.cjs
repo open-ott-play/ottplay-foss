@@ -247,6 +247,11 @@ function collectSourceKeys(repository = root) {
                     collect(node.arguments[argument], true);
                 // Wrappers with a documented translation boundary.
                 if (
+                    relative === "src/settings/transfer-ui.ts" &&
+                    method === "notice"
+                )
+                    collect(node.arguments[0], true);
+                if (
                     relative === "src/channels/classic-search.ts" &&
                     method === "hint"
                 )
@@ -410,6 +415,40 @@ function collectSourceKeys(repository = root) {
             )
                 collect(node.right);
         });
+    }
+    // Boot runs before the player translator exists, but uses the same catalog.
+    const bootFile = path.join(repository, "index.html");
+    if (fs.existsSync(bootFile)) {
+        const html = fs.readFileSync(bootFile, "utf8");
+        let offset = 0;
+        for (const script of require("./html-scripts.cjs").inlineScripts(
+            html
+        )) {
+            if (!script) continue;
+            const start = html.indexOf(script, offset);
+            offset = start + script.length;
+            const ast = ts.createSourceFile(
+                "index.html",
+                html.slice(0, start).replace(/[^\n]/g, " ") + script,
+                ts.ScriptTarget.Latest,
+                true
+            );
+            visit(ast, (node) => {
+                if (
+                    ts.isCallExpression(node) &&
+                    ["bootStatus", "bootText"].includes(
+                        name(node.expression)
+                    ) &&
+                    node.arguments[0] &&
+                    ts.isStringLiteral(node.arguments[0])
+                )
+                    add(
+                        node.arguments[0].text,
+                        "index.html",
+                        node.arguments[0]
+                    );
+            });
+        }
     }
     return { dynamic, keys, locations };
 }

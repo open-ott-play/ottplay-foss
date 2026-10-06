@@ -21,6 +21,7 @@ import {
     deleteFavoritesList,
     type FavoritesListsBlob,
     favoritesArray,
+    favoritesListLabel,
     favoritesLists,
     getActiveFavoritesListName,
     listFavoritesLists,
@@ -802,7 +803,9 @@ export function popFavLists(): void {
         saveChannelsCats();
         refreshFavoritesViewIfActive();
         w.showShift(
-            (w._ ? w._("Active list") : "Active list") + ": " + listName
+            (w._ ? w._("Active list") : "Active list") +
+                ": " +
+                favoritesListLabel(listName)
         );
     }
 
@@ -850,13 +853,13 @@ export function popFavLists(): void {
                         w.editCaption =
                             (w._ ? w._("Rename to") : "Rename to") +
                             ": " +
-                            listName;
-                        w.editvar = listName;
+                            favoritesListLabel(listName);
+                        w.editvar = favoritesListLabel(listName);
                         w.setEdit = function () {
                             var newName = (w.editvar || "").trim();
                             if (
                                 newName &&
-                                newName !== listName &&
+                                newName !== favoritesListLabel(listName) &&
                                 renameFavoritesList(listName, newName)
                             ) {
                                 switchTo(newName);
@@ -874,7 +877,7 @@ export function popFavLists(): void {
                         w.confirmBox(
                             (w._ ? w._("Delete list") : "Delete list") +
                                 ": " +
-                                listName +
+                                favoritesListLabel(listName) +
                                 "?",
                             function () {
                                 deleteFavoritesList(listName);
@@ -899,7 +902,7 @@ export function popFavLists(): void {
             cap.textContent =
                 (w._ ? w._("Favorite lists") : "Favorite lists") +
                 ": " +
-                listName;
+                favoritesListLabel(listName);
         var footerElement = document.getElementById("listPodval");
         if (footerElement && typeof w.renderButtonHint === "function") {
             footerElement.innerHTML = w.renderButtonHint(
@@ -920,9 +923,9 @@ export function popFavLists(): void {
         var rows = names.map(function (n: string) {
             return n === activeName
                 ? "\u2713 " +
-                      n +
+                      favoritesListLabel(n) +
                       (w._ ? " (" + w._("current") + ")" : " (current)")
-                : n;
+                : favoritesListLabel(n);
         });
         rows.push(w._ ? w._("Add new list") : "Add new list");
 
@@ -974,7 +977,7 @@ export function popFavLists(): void {
         var names = listFavoritesLists();
         var activeName = getActiveFavoritesListName();
         var rows = names.map(function (n: string) {
-            return n === activeName ? "\u2713 " + n : n;
+            return (n === activeName ? "\u2713 " : "") + favoritesListLabel(n);
         });
         rows.push(
             w._
@@ -2281,6 +2284,8 @@ export function showMediaList(): void {
 export function getMediaDescr(item?: MediaHistoryEntry): string {
     var text = (item && (item.description || item.descr)) || "";
     if (typeof text === "function") text = text();
+    var media = (window as any).__ottMedia;
+    if (media && media.description) text = media.description(item, text);
     return metadataHtml(text);
 }
 

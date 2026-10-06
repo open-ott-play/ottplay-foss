@@ -2,7 +2,7 @@
 
 ## Translation catalog
 
-`locales/english.js` is the canonical 619-key dictionary. The other 27 language
+`locales/english.js` is the canonical interface dictionary. The other 27 language
 packs contain the same keys; `lang` and the historical `alhabet` spelling are
 locale metadata. Existing language codes and the first 20 selector positions
 are preserved. Translations were completed with AI assistance and checked for
@@ -30,6 +30,32 @@ against the actual ES5 bundle and verifies that server, Tauri and Capacitor
 packages retain every dictionary and the Unicode license. Browser tests in
 `npm run test:native:ui` cover remote/pointer paging and layout across Classic,
 PLi-HD and Studio, list densities 10/25/30, and 640×360 through 3840×2160.
+
+## Generated labels and original content
+
+Bootstrap loads the saved language's existing catalog before showing startup
+messages. Its filename allowlist is checked against the canonical asset map.
+A missing preference, unavailable catalog or preload timeout falls back to
+English so translation failures cannot prevent startup. The language picker
+serializes downloads and preserves the current dictionary on cancellation or
+failure. Tauri and Capacitor dialogs receive the player's translated labels.
+
+Resolve interface labels when displaying them, including retained media frames,
+provider menus and native dialogs. Placeholder arguments are literal content:
+channel names containing `$&` or `%2` must not become replacement instructions.
+
+Generated media titles and the default favorites list carry provenance separate
+from their stored names. Only marked defaults change with the interface language.
+Explicit provider titles and user names remain unchanged, including a list that
+the user calls `Favorites`. Older multi-list records without provenance retain
+their literal names; their origin cannot safely be inferred from spelling.
+Backups preserve the default-list marker, and renaming a list makes its name
+user-authored.
+
+The privacy policy and historical attribution text retain their authored English
+content and are identified as such in the selected interface language. Their
+surrounding titles, instructions and controls are localized. License notices and
+external programme/provider metadata are original content, not interface keys.
 
 ## Alphabet contract and source
 

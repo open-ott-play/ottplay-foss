@@ -7,13 +7,16 @@
  */
 export function exportSettingsUI(): void {
     var w = window as any;
+    function notice(key: string): void {
+        if (typeof w.showShift === "function") w.showShift(w._(key));
+    }
     if (w.__ottRemoteInputActive) return;
     if (typeof w.exportSettings !== "function") return;
     var jsonStr: string;
     try {
         jsonStr = w.exportSettings();
     } catch (_error) {
-        if (w.showShift) w.showShift("Settings could not be exported");
+        notice("Settings could not be exported");
         return;
     }
     if (
@@ -29,8 +32,9 @@ export function exportSettingsUI(): void {
         var footer = document.getElementById("listPodval");
         if (caption) caption.textContent = w._("Export settings");
         if (detail)
-            detail.textContent =
-                "Copy the JSON to keep a backup. Use Import settings to restore it.";
+            detail.textContent = w._(
+                "Copy the JSON to keep a backup. Use Import settings to restore it."
+            );
         if (footer)
             footer.innerHTML =
                 w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close") +
@@ -38,11 +42,12 @@ export function exportSettingsUI(): void {
         $("#listAbout")
             .show()
             .html(
-                '<textarea id="settingsExportText" readonly aria-label="Settings JSON" style="box-sizing:border-box;width:100%;height:100%;resize:none;white-space:pre;overflow:auto;background:#17171c;color:inherit;font:inherit;user-select:text;-webkit-user-select:text;"></textarea>'
+                '<textarea id="settingsExportText" readonly style="box-sizing:border-box;width:100%;height:100%;resize:none;white-space:pre;overflow:auto;background:#17171c;color:inherit;font:inherit;user-select:text;-webkit-user-select:text;"></textarea>'
             );
         var output = document.getElementById(
             "settingsExportText"
         ) as HTMLTextAreaElement;
+        output.setAttribute("aria-label", w._("Settings JSON"));
         output.value = jsonStr;
         var backupOpen = true;
         var selectBackup = function (): void {
@@ -53,10 +58,9 @@ export function exportSettingsUI(): void {
             function manualCopy(): void {
                 if (!backupOpen) return;
                 selectBackup();
-                if (typeof w.showShift === "function")
-                    w.showShift(
-                        "Copy the selected JSON with your device's copy command"
-                    );
+                notice(
+                    "Copy the selected JSON with your device's copy command"
+                );
             }
             try {
                 if (
@@ -65,8 +69,7 @@ export function exportSettingsUI(): void {
                 ) {
                     navigator.clipboard.writeText(jsonStr).then(function () {
                         if (!backupOpen) return;
-                        if (typeof w.showShift === "function")
-                            w.showShift("Settings copied");
+                        notice("Settings copied");
                     }, manualCopy);
                     return;
                 }
@@ -112,9 +115,7 @@ export function exportSettingsUI(): void {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-    if (typeof w.showShift === "function") {
-        w.showShift("Settings download requested");
-    }
+    notice("Settings download requested");
 }
 
 /** Open the shared text editor and finish teardown before applying a saved value. */
@@ -156,7 +157,7 @@ export function importSettingsUI(): void {
     var w = window as any;
     if (w.__ottRemoteInputActive) return;
     if (typeof w.importSettings !== "function") return;
-    editSettingsText("Paste settings JSON", "", function (value) {
+    editSettingsText(w._("Paste settings JSON"), "", function (value) {
         if (value.trim()) w.importSettings(value.trim());
     });
 }

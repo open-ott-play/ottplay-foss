@@ -67,10 +67,20 @@ function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
         );
     }
     const c = {
+        _: (key) =>
+            ({
+                "Loading...": "Загрузка…",
+                "Picture in Picture": "Картинка в картинке",
+            })[key] || key,
         __TAURI__: {},
         Capacitor: { getPlatform: () => capacitorPlatform },
         cap: {
-            playPip: ({ url, loop }) => {
+            playPip: ({ url, loop, subtitle }) => {
+                assert.equal(
+                    subtitle,
+                    "Картинка в картинке",
+                    "iOS system card uses the player language"
+                );
                 const result = nativePlay(url);
                 requests.at(-1).loop = loop;
                 return result;
@@ -103,6 +113,12 @@ function fixture(platform, capacitorPlatform = "ios", deferStop = false) {
                 const result = nativePlay(args.url);
                 requests.at(-1).engine = args.engine;
                 requests.at(-1).loop = args.loop;
+                requests.at(-1).labels = args.labels;
+                assert.equal(
+                    args.labels.loading,
+                    "Загрузка…",
+                    "Native PiP receives current app translations"
+                );
                 return result;
             }
             if (command === "set_pip_bounds") {

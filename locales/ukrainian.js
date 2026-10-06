@@ -69,6 +69,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Для IP без порту використовується HTTP-порт 8081. Для відключення очистьте адресу або виберіть «Відключити».",
+    "Another source sign-in is already open":
+        "Вікно входу до іншого джерела вже відкрите",
     "API failed, trying M3U...": "Помилка API, спроба M3U…",
     "API Server": "Сервер API",
     "API server URL": "Адреса сервера API",
@@ -93,6 +95,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Назад / вперед на 1 хвилину",
     "Background color": "Колір тла",
     "Background color of selected item": "Колір тла вибраного пункту",
+    "Balance, $": "Баланс, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Налаштування BEST LiST IPTV [HLS Playlist]",
@@ -171,6 +174,8 @@ var keyStrings = {
         "Пошук сервера команд недоступний. Натисніть «Знайти сервер команд», щоб повторити.",
     "Command server discovery timed out.": "Час пошуку сервера команд минув.",
     "Command server found.": "Сервер команд знайдено.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Не вдалося завантажити компоненти сумісності. Відкрийте плеєр знову.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Налаштуйте All4you.tv у розділі Налаштування -> Налаштування провайдера",
@@ -256,6 +261,10 @@ var keyStrings = {
     "Continue watching?": "Продовжити перегляд?",
     "Copy category": "Копіювати категорію",
     "Copy JSON": "Копіювати JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Скопіюйте JSON, щоб зберегти резервну копію. Для відновлення скористайтеся імпортом налаштувань.",
+    "Copy the selected JSON with your device's copy command":
+        "Скопіюйте виділений JSON за допомогою команди копіювання на пристрої",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Не вдалося підключитися до сервера.",
@@ -270,6 +279,8 @@ var keyStrings = {
     Country: "Країна",
     "Create category": "Створити категорію",
     current: "поточний",
+    "Debug enabled. Restart to apply.":
+        "Налагодження ввімкнено. Перезапустіть плеєр, щоб застосувати зміни.",
     "Debug HUD": "Панель налагодження",
     "Debug HUD is not available": "Панель налагодження недоступна",
     Delete: "Видалити",
@@ -299,6 +310,7 @@ var keyStrings = {
     "Download! Wait ...": "Завантаження… Зачекайте…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Налаштування DRVAO",
+    "Drag window": "Перемістити вікно",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Налаштування Dragon Media PRO",
     Duration: "Тривалість",
@@ -314,6 +326,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Введіть пароль (8 символів).",
     "Enter a playlist URL to access this service.":
         "Введіть адресу списку відтворення для доступу до сервісу.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Введіть URL плейлиста. Після збереження програвач перезапуститься.",
     "Enter a server address without spaces or a fragment.":
         "Введіть адресу сервера без пробілів і фрагмента після #.",
     "Enter a username (8 characters).":
@@ -325,6 +339,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Введіть правильну адресу сервера, наприклад 192.168.1.20:8081.",
     "Enter access key for": "Введіть ключ доступу для",
+    "Enter an application access key (%1–%2 characters).":
+        "Введіть ключ доступу для програвача (%1–%2 символів).",
     "Enter an application access key (8 characters).":
         "Введіть ключ доступу застосунку (8 символів).",
     "Enter an ID and PIN to access this service.":
@@ -352,6 +368,7 @@ var keyStrings = {
         "Введіть адресу порталу Stalker (наприклад, http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Введіть адресу порталу Stalker (наприклад, http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Введіть номер сервера (%1).",
     "Enter the access code separately, not in the server address.":
         "Введіть код доступу окремо від адреси сервера.",
     "Enter the command server IP or address.":
@@ -454,11 +471,13 @@ var keyStrings = {
     Favorites: "Обрані",
     "File selection is not supported on this device":
         "Вибір файлу не підтримується на цьому пристрої",
+    "Fill screen": "Заповнити екран",
     Filter: "Фільтр",
     Filters: "Фільтри",
     "Find command server": "Знайти сервер команд",
     "Finding command servers...": "Пошук серверів команд…",
     "First Run Setup": "Початкове налаштування",
+    "Fit to screen": "Вписати в екран",
     Folders: "Folders",
     "Font type": "Шрифт",
     "For download settings file open":
@@ -468,6 +487,8 @@ var keyStrings = {
         "Щоб надіслати файл налаштувань, відкрийте",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Налаштування Fox-TV",
+    "Full history, sources and license terms":
+        "Повна історія, джерела й умови ліцензій",
     FXML: "FXML",
     "FXML settings": "Налаштування FXML",
     Genre: "Жанр",
@@ -486,6 +507,7 @@ var keyStrings = {
     "HTTP port": "HTTP-порт",
     "HTTP remote control is unavailable on this device.":
         "HTTP-пульт недоступний на цьому пристрої.",
+    "HTTPS support": "Підтримка HTTPS",
     ID: "ID",
     "Import settings": "Імпорт налаштувань",
     "In live mode: <br/>": "У прямому ефірі:<br/>",
@@ -499,6 +521,8 @@ var keyStrings = {
     "Interface transparency": "Прозорість інтерфейсу",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Неправильне посилання на канал! Введіть повне ім’я вузла з посилання на потік у кабінеті (наприклад, subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Неправильна конфігурація захищеного джерела",
     "IPTV token": "IPTV-токен",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Налаштування IpStream.one",
@@ -521,10 +545,14 @@ var keyStrings = {
     "Load:": "Завантажити:",
     "Loading channels from Xtream API...": "Завантаження каналів з Xtream API…",
     "Loading channels...": "Завантаження каналів…",
+    "Loading device...": "Завантаження компонентів пристрою…",
     "Loading from API...": "Завантаження через API…",
     "Loading from Edem API...": "Завантаження з Edem API…",
+    "Loading interface...": "Завантаження інтерфейсу…",
     "Loading M3U playlist...": "Завантаження списку M3U…",
     "Loading M3U...": "Завантаження M3U…",
+    "Loading media libraries...": "Завантаження медіабібліотек…",
+    "Loading player...": "Завантаження плеєра…",
     "Loading via proxy...": "Завантаження через проксі…",
     "Loading. Please wait...": "Завантаження. Зачекайте…",
     "Loading...": "Завантаження…",
@@ -595,6 +623,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Оригінальний текст: %1",
+    "OTT / APP host": "Сервер OTT / застосунку",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Налаштування OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -604,6 +634,7 @@ var keyStrings = {
     on: "увімкнено",
     "on ": "за ",
     "or scan": "або відскануйте",
+    Packages: "Пакети",
     "Pairing approved. Command server configured.":
         "Сполучення підтверджено. Сервер команд налаштовано.",
     "Pairing expired. Find the server again to retry.":
@@ -614,16 +645,20 @@ var keyStrings = {
         "Сполучення відхилено або отримано недійсне підтвердження. Повторіть пошук сервера, щоб спробувати знову.",
     "Parental control": "Батьківський контроль",
     Password: "Пароль",
+    "Paste settings JSON": "Вставте налаштування у форматі JSON",
     Pause: "Пауза",
     "Pause/Play": "Пауза / відтворення",
+    "Payment method": "Спосіб оплати",
     "Permanent clock on screen": "Постійний годинник на екрані",
     PIN: "PIN",
+    "Picture in Picture": "Картинка в картинці",
     "PiP exchange": "Поміняти вікна PiP місцями",
     "PiP window position": "Розташування вікна PiP",
     "PiP window size": "Розмір вікна PiP",
     Play: "Відтворити",
     Playback: "Playback",
     "Player and device info": "Інформація про програвач і пристрій",
+    "Player could not start": "Не вдалося запустити плеєр",
     "Player info:": "Інформація про програвач:",
     Playlist: "Плейлист",
     "Playlist file": "Файл плейлиста",
@@ -642,17 +677,22 @@ var keyStrings = {
     "Portal URL": "Адреса порталу",
     "Position shift -10 seconds after pause":
         "Відступити на 10 секунд після паузи",
+    Postpaid: "Післяплата",
     PROST: "PROST",
     "PROST settings": "Налаштування PROST",
+    Prepaid: "Передплата",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Попередня",
     "Preview in channel list": "Попередній перегляд у списку каналів",
     Previous: "Попередній канал",
     "Privacy policy": "Політика конфіденційності",
+    "Privacy policy unavailable. Contact: %1":
+        "Політика конфіденційності недоступна. Контакт: %1",
     "Profile name": "Назва профілю",
     "Protect Adult Channels": "Захистити канали для дорослих",
     "Protect Change Provider": "Захистити зміну провайдера",
     "Protect Settings": "Захистити налаштування",
+    "Protected source is unavailable": "Захищене джерело недоступне",
     "p...": "с…",
     paging: "гортання сторінок",
     Quality: "Якість",
@@ -767,7 +807,12 @@ var keyStrings = {
     Settings: "Налаштування",
     "Settings changed. Discovery was canceled.":
         "Налаштування змінилися. Пошук скасовано.",
+    "Settings copied": "Налаштування скопійовано",
+    "Settings could not be exported": "Не вдалося експортувати налаштування",
     "Settings could not be saved": "Не вдалося зберегти налаштування",
+    "Settings download requested": "Запитано завантаження налаштувань",
+    "Settings imported": "Налаштування імпортовано",
+    "Settings JSON": "Налаштування у форматі JSON",
     "Settings loaded from storage": "Налаштування завантажено зі сховища",
     "Settings STB": "Налаштування пристрою",
     "Settings saved": "Налаштування збережено",
@@ -805,25 +850,35 @@ var keyStrings = {
     "Shuffle: Loading...": "Перемішування: завантаження…",
     "Shuffle: Off": "Перемішування: вимкнено",
     "Shuffle: On": "Перемішування: увімкнено",
+    "Sign in to the protected source again":
+        "Увійдіть до захищеного джерела знову",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Увійти: %1",
+    "Sign out of all sources": "Вийти з усіх джерел",
+    "Sign-in opens when you load a protected playlist.":
+        "Вікно входу відкриється під час завантаження захищеного плейлиста.",
     "Sleep timer": "Таймер сну",
     "Sort channels": "Сортувати канали",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Вхід до джерела скасовано",
     "Stalker Portal Provider": "Провайдер порталу Stalker",
     "Stalker portal settings": "Налаштування порталу Stalker",
     "Stalker portals": "Портали Stalker",
+    "Starting...": "Запуск…",
     Status: "Стан",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Зупинити відтворення й повернутися до ефіру",
+    "Stream could not be played": "Не вдалося відтворити потік",
     "Stream type: %1": "Тип потоку: %1",
     "String for search": "Пошуковий запит",
     "Su Mo Tu We Th Fr Sa": "Нд Пн Вт Ср Чт Пт Сб",
+    "Subscription information": "Інформація про передплату",
     Subtitle: "Субтитри",
     Switch: "Перемкнути",
     "Switch sound track": "Змінити звукову доріжку",
@@ -899,11 +954,14 @@ var keyStrings = {
         "Використовуйте HTTP або HTTPS без імені користувача й пароля в адресі.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ЛІВОРУЧ/ПРАВОРУЧ — вибрати елемент, OK — виконати дію, ВГОРУ/ВНИЗ — прокрутити.",
+    "Use Up / Down to scroll. Back to close.":
+        "Прокручування — вгору та вниз. Назад — закрити.",
     Username: "Ім’я користувача",
     "Username or password is missing.":
         "Не вказано ім’я користувача або пароль.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Версія",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Налаштування VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

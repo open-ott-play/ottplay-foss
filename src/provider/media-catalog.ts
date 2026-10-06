@@ -55,7 +55,7 @@ function createOwnedMediaCatalog(
                 var title = entry.generatedName
                     ? profile === "kb-team"
                         ? ports.translate("??? No channel name")
-                        : "??? Нет названия"
+                        : ports.translate("Untitled")
                     : entry.name;
                 var logo =
                     typeof entry.logo === "string" &&
@@ -64,7 +64,7 @@ function createOwnedMediaCatalog(
                         /^https?:/i.test(entry.logo.trim()))
                         ? entry.logo
                         : "";
-                return {
+                var record: any = {
                     description:
                         "<table><h2><center>" +
                         escape(title) +
@@ -79,6 +79,16 @@ function createOwnedMediaCatalog(
                     stream_url: entry.url,
                     title: title,
                 };
+                if (entry.generatedName)
+                    record.__ottMediaLabel = {
+                        heading: true,
+                        key:
+                            profile === "kb-team"
+                                ? "??? No channel name"
+                                : "Untitled",
+                        value: title,
+                    };
+                return record;
             }),
         };
     }
@@ -205,7 +215,20 @@ function createOwnedMediaCatalog(
                                         value.title ||
                                         request.name ||
                                         "?",
-                                    records: value.channels || [],
+                                    records: (value.channels || []).map(
+                                        function (item: any) {
+                                            var record = detach(item);
+                                            if (!record.title) {
+                                                record.title =
+                                                    ports.translate("Untitled");
+                                                record.__ottMediaLabel = {
+                                                    key: "Untitled",
+                                                    value: record.title,
+                                                };
+                                            }
+                                            return record;
+                                        }
+                                    ),
                                 };
                                 if (value.next_page_url)
                                     decoded.records = decoded.records.concat([

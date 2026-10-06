@@ -159,7 +159,8 @@ function decodeProviderCatalogXml(
             found = true;
         }
         if (!found) return;
-        if (!record.title) record.title = "<Без названия>";
+        // Leave generated labels to the media presentation boundary and its active language.
+        if (!record.title) record.title = "";
         result.channels.push(record);
     }
     var first = document.documentElement;

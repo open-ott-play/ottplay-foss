@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "O adresă IP fără port folosește portul HTTP 8081. Ștergeți adresa sau alegeți Deconectare pentru a opri.",
+    "Another source sign-in is already open":
+        "O altă fereastră de autentificare la o sursă este deja deschisă",
     "API failed, trying M3U...": "API a eșuat, se încearcă M3U…",
     "API Server": "Server API",
     "API server URL": "URL server API",
@@ -95,6 +97,7 @@ var keyStrings = {
     "Background color": "Culoare de fundal",
     "Background color of selected item":
         "Culoarea de fundal a elementului selectat",
+    "Balance, $": "Sold, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Setări BEST LiST IPTV [HLS Playlist]",
@@ -176,6 +179,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Căutarea serverului de comenzi a expirat.",
     "Command server found.": "Server de comenzi găsit.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Componentele de compatibilitate nu s-au putut încărca. Redeschideți playerul pentru a reîncerca.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configurați All4you.tv în Setări -> Setările furnizorului",
@@ -261,6 +266,10 @@ var keyStrings = {
     "Continue watching?": "Continuați vizionarea?",
     "Copy category": "Copiază categoria",
     "Copy JSON": "Copiază JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Copiați JSON-ul pentru a păstra o copie de rezervă. Folosiți importul setărilor pentru a o restaura.",
+    "Copy the selected JSON with your device's copy command":
+        "Copiați JSON-ul selectat cu comanda de copiere a dispozitivului",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
@@ -275,6 +284,8 @@ var keyStrings = {
     Country: "Țară",
     "Create category": "Creează o categorie",
     current: "curent",
+    "Debug enabled. Restart to apply.":
+        "Depanarea este activată. Reporniți playerul pentru a aplica modificarea.",
     "Debug HUD": "Panou de depanare",
     "Debug HUD is not available": "Panoul de depanare nu este disponibil",
     Delete: "Șterge",
@@ -304,6 +315,7 @@ var keyStrings = {
     "Download! Wait ...": "Se descarcă… așteptați…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Setări DRVAO",
+    "Drag window": "Mutați fereastra",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Setări Dragon Media PRO",
     Duration: "Durată",
@@ -319,6 +331,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Introduceți o parolă (8 caractere).",
     "Enter a playlist URL to access this service.":
         "Introduceți URL-ul listei de redare pentru a accesa acest serviciu.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Introduceți URL-ul unei liste de redare. Playerul va reporni după salvare.",
     "Enter a server address without spaces or a fragment.":
         "Introduceți adresa serverului fără spații sau fragment după #.",
     "Enter a username (8 characters).":
@@ -330,6 +344,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Introduceți o adresă validă de server, de exemplu 192.168.1.20:8081.",
     "Enter access key for": "Introduceți cheia de acces pentru",
+    "Enter an application access key (%1–%2 characters).":
+        "Introduceți o cheie de acces pentru aplicație (%1–%2 caractere).",
     "Enter an application access key (8 characters).":
         "Introduceți cheia de acces a aplicației (8 caractere).",
     "Enter an ID and PIN to access this service.":
@@ -358,6 +374,7 @@ var keyStrings = {
         "Introduceți URL-ul portalului Stalker (de ex. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Introduceți URL-ul portalului Stalker (de ex. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Introduceți numărul serverului (%1).",
     "Enter the access code separately, not in the server address.":
         "Introduceți codul de acces separat, nu în adresa serverului.",
     "Enter the command server IP or address.":
@@ -461,11 +478,13 @@ var keyStrings = {
     Favorites: "Favorite",
     "File selection is not supported on this device":
         "Selectarea fișierelor nu este acceptată pe acest dispozitiv",
+    "Fill screen": "Umple ecranul",
     Filter: "Filtru",
     Filters: "Filtre",
     "Find command server": "Caută server de comenzi",
     "Finding command servers...": "Se caută servere de comenzi...",
     "First Run Setup": "Configurare la prima pornire",
+    "Fit to screen": "Încadrează în ecran",
     Folders: "Folders",
     "Font type": "Tip de font",
     "For download settings file open":
@@ -475,6 +494,8 @@ var keyStrings = {
         "Pentru a încărca fișierul de setări, deschideți",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Setări Fox-TV",
+    "Full history, sources and license terms":
+        "Istoric complet, surse și condiții de licență",
     FXML: "FXML",
     "FXML settings": "Setări FXML",
     Genre: "Gen",
@@ -493,6 +514,7 @@ var keyStrings = {
     "HTTP port": "Port HTTP",
     "HTTP remote control is unavailable on this device.":
         "Controlul HTTP nu este disponibil pe acest dispozitiv.",
+    "HTTPS support": "Suport HTTPS",
     ID: "ID",
     "Import settings": "Importă setările",
     "In live mode: <br/>": "În modul în direct:<br/>",
@@ -506,6 +528,8 @@ var keyStrings = {
     "Interface transparency": "Transparența interfeței",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Link de canal nevalid! Introduceți numele complet al gazdei, ca în URL-ul fluxului din cont (de ex. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Configurație nevalidă a sursei protejate",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Setări IpStream.one",
@@ -529,10 +553,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Se încarcă canalele din Xtream API…",
     "Loading channels...": "Se încarcă canalele…",
+    "Loading device...": "Se încarcă componentele dispozitivului…",
     "Loading from API...": "Se încarcă din API…",
     "Loading from Edem API...": "Se încarcă din Edem API…",
+    "Loading interface...": "Se încarcă interfața…",
     "Loading M3U playlist...": "Se încarcă lista de redare M3U…",
     "Loading M3U...": "Se încarcă M3U…",
+    "Loading media libraries...": "Se încarcă bibliotecile multimedia…",
+    "Loading player...": "Se încarcă playerul…",
     "Loading via proxy...": "Se încarcă prin proxy…",
     "Loading. Please wait...": "Se încarcă… așteptați…",
     "Loading...": "Se încarcă…",
@@ -604,6 +632,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Text original: %1",
+    "OTT / APP host": "Server OTT / aplicație",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Setări OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -613,6 +643,7 @@ var keyStrings = {
     on: "activat",
     "on ": "pornit ",
     "or scan": "sau scanați",
+    Packages: "Pachete",
     "Pairing approved. Command server configured.":
         "Asociere aprobată. Serverul de comenzi a fost configurat.",
     "Pairing expired. Find the server again to retry.":
@@ -623,16 +654,20 @@ var keyStrings = {
         "Asocierea a fost respinsă sau a returnat o aprobare nevalidă. Căutați din nou serverul pentru a reîncerca.",
     "Parental control": "Control parental",
     Password: "Parolă",
+    "Paste settings JSON": "Lipiți setările în format JSON",
     Pause: "Pauză",
     "Pause/Play": "Pauză / redare",
+    "Payment method": "Metodă de plată",
     "Permanent clock on screen": "Afișează permanent ceasul pe ecran",
     PIN: "PIN",
+    "Picture in Picture": "Imagine în imagine",
     "PiP exchange": "Schimbă ferestrele PiP",
     "PiP window position": "Poziția ferestrei PiP",
     "PiP window size": "Dimensiunea ferestrei PiP",
     Play: "Redare",
     Playback: "Playback",
     "Player and device info": "Informații despre player și dispozitiv",
+    "Player could not start": "Playerul nu a putut porni",
     "Player info:": "Informații despre player:",
     Playlist: "Playlist",
     "Playlist file": "Fișier playlist",
@@ -650,17 +685,22 @@ var keyStrings = {
     "POLMEDIA settings": "Setări POLMEDIA",
     "Portal URL": "URL portal",
     "Position shift -10 seconds after pause": "Revino cu 10 secunde după pauză",
+    Postpaid: "Plată ulterioară",
     PROST: "PROST",
     "PROST settings": "Setări PROST",
+    Prepaid: "Preplătit",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Anterior",
     "Preview in channel list": "Previzualizare în lista de canale",
     Previous: "Anterior",
     "Privacy policy": "Politica de confidențialitate",
+    "Privacy policy unavailable. Contact: %1":
+        "Politica de confidențialitate nu este disponibilă. Contact: %1",
     "Profile name": "Numele profilului",
     "Protect Adult Channels": "Protejează canalele pentru adulți",
     "Protect Change Provider": "Protejează schimbarea furnizorului",
     "Protect Settings": "Protejează setările",
+    "Protected source is unavailable": "Sursa protejată nu este disponibilă",
     "p...": "p...",
     paging: "paginare",
     Quality: "Calitate",
@@ -779,7 +819,12 @@ var keyStrings = {
     Settings: "Setări",
     "Settings changed. Discovery was canceled.":
         "Setările s-au schimbat. Căutarea a fost anulată.",
+    "Settings copied": "Setări copiate",
+    "Settings could not be exported": "Setările nu au putut fi exportate",
     "Settings could not be saved": "Setările nu au putut fi salvate",
+    "Settings download requested": "Descărcarea setărilor a fost solicitată",
+    "Settings imported": "Setări importate",
+    "Settings JSON": "Setări în format JSON",
     "Settings loaded from storage": "Setările au fost încărcate din stocare",
     "Settings STB": "Setări STB",
     "Settings saved": "Setări salvate",
@@ -818,25 +863,35 @@ var keyStrings = {
     "Shuffle: Loading...": "Redare aleatorie: se încarcă…",
     "Shuffle: Off": "Redare aleatorie: oprită",
     "Shuffle: On": "Redare aleatorie: pornită",
+    "Sign in to the protected source again":
+        "Autentificați-vă din nou la sursa protejată",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Autentificare: %1",
+    "Sign out of all sources": "Deconectare de la toate sursele",
+    "Sign-in opens when you load a protected playlist.":
+        "Autentificarea se deschide când încărcați o listă de redare protejată.",
     "Sleep timer": "Temporizator de oprire",
     "Sort channels": "Sortează canalele",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Autentificarea la sursă a fost anulată",
     "Stalker Portal Provider": "Furnizor de portal Stalker",
     "Stalker portal settings": "Setările portalului Stalker",
     "Stalker portals": "Portaluri Stalker",
+    "Starting...": "Se pornește…",
     Status: "Stare",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Oprește redarea și revino la transmisia în direct",
+    "Stream could not be played": "Fluxul nu a putut fi redat",
     "Stream type: %1": "Tip de flux: %1",
     "String for search": "Text de căutat",
     "Su Mo Tu We Th Fr Sa": "Du Lu Ma Mi Jo Vi Sâ",
+    "Subscription information": "Informații despre abonament",
     Subtitle: "Subtitrări",
     Switch: "Schimbă",
     "Switch sound track": "Schimbă pista audio",
@@ -912,11 +967,14 @@ var keyStrings = {
         "Folosiți HTTP sau HTTPS fără nume de utilizator ori parolă în adresă.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Folosiți STÂNGA/DREAPTA pentru a selecta un control, OK pentru a-l activa și SUS/JOS pentru derulare.",
+    "Use Up / Down to scroll. Back to close.":
+        "Folosiți Sus / Jos pentru derulare. Înapoi pentru închidere.",
     Username: "Nume de utilizator",
     "Username or password is missing.":
         "Lipsește numele de utilizator sau parola.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versiune",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Setări VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

@@ -1762,6 +1762,7 @@ export function updateMediaInfo(): void {
 export function refreshAudioBadge(): void {
     var badge = document.getElementById("audio_badge");
     if (!badge) return;
+    badge.title = _("Switch sound track") + " (S)";
     var hasMulti =
         typeof (window as any).stbAudioTracksExists === "function" &&
         (window as any).stbAudioTracksExists();
@@ -3636,7 +3637,7 @@ function showMediaList1(view?: any): void {
                               ? "Could not load. Select to retry."
                               : "Loading..."
                       )
-                    : item.title || item.name || w._("Untitled")
+                    : w.__ottMedia.title(item)
             )
         );
     };

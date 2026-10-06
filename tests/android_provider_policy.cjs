@@ -627,7 +627,7 @@ test("missing managed driver cannot fall back to its retired provider script", (
         const has = registry.has;
         registry.has = (id) => (id === "m3u" ? false : has(id));
         f.w.loadProv();
-        assert.deepEqual(alerts, ["m3u: load error!!!"]);
+        assert.deepEqual(alerts, ["Failed to load! (m3u)"]);
         assert.equal(f.w.listCaptionElement.innerHTML, "First Run Setup");
         assert.deepEqual(f.scripts, []);
         assert.deepEqual(f.requests, []);

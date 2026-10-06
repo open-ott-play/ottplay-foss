@@ -107,7 +107,7 @@ for (const index of [5, 6, 14, 15, 17, 18, 20, 21]) {
         assert.equal(callbacks, 1);
         assert.deepEqual(
             clone(f.host.mediaRecords),
-            corrected.media(row, "m3u").records,
+            corrected.media(row, "m3u", true).records,
             "Actual Dune media path: " + index
         );
     } finally {

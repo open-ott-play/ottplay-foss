@@ -348,6 +348,39 @@ test("owned media navigation supports JSON/XML/M3U and blocks stale/cancelled vi
     }
 });
 
+test("media parsing errors and generated titles use the selected language", () => {
+    for (const id of ["antifriz", "kb-team"]) {
+        const f = fixture(id),
+            w = f.host;
+        w._ = (key) => "localized:" + key;
+        for (const data of ["{broken json", '<?xml version="1.0"?><broken>']) {
+            w.getMediaArray("https://vod.test/broken", () => {});
+            f.requests.at(-1).resolve(data);
+            assert.match(
+                f.errors.at(-1),
+                /^localized:Unable to load playlist \((JSON|XML)\)$/
+            );
+        }
+        w.getMediaArray("https://vod.test/unnamed", () => {});
+        f.requests
+            .at(-1)
+            .resolve(
+                '#EXTM3U\n#EXTINF:-1 tvg-name="one"\nhttps://video.test/unnamed\n'
+            );
+        assert.equal(
+            w.mediaRecords[0].title,
+            "localized:" +
+                (id === "kb-team" ? "??? No channel name" : "Untitled")
+        );
+        assert(w.mediaRecords[0].description.includes(w.mediaRecords[0].title));
+        assert.equal(
+            w.mediaRecords[0].__ottMediaLabel.value,
+            w.mediaRecords[0].title
+        );
+        assert.equal(w.mediaRecords[0].__ottMediaLabel.heading, true);
+    }
+});
+
 test("media busy views retire on cancel/keys/source disposal without closing a newer dialog", () => {
     for (const id of ["antifriz", "kb-team"])
         for (const action of [

@@ -245,10 +245,10 @@ function operatorMediaPlaylist(profile: string, data: string): void {
         ): void {
             const name = entry.generatedName
                 ? profile === "antifriz"
-                    ? "??? Нет названия"
+                    ? runtime._("Untitled")
                     : runtime._("??? No channel name")
                 : entry.name;
-            runtime.mediaRecords.push({
+            var record: any = {
                 description:
                     "<table><h2><center>" +
                     name +
@@ -262,10 +262,20 @@ function operatorMediaPlaylist(profile: string, data: string): void {
                 logo_30x30: entry.logo,
                 stream_url: entry.url,
                 title: name,
-            });
+            };
+            if (entry.generatedName)
+                record.__ottMediaLabel = {
+                    heading: true,
+                    key:
+                        profile === "antifriz"
+                            ? "Untitled"
+                            : "??? No channel name",
+                    value: name,
+                };
+            runtime.mediaRecords.push(record);
         });
     } catch (error) {
-        runtime.alert("Error M3U !!!");
+        runtime.alert(runtime._("Unable to load playlist") + " (M3U)");
     }
 }
 (window as any).operatorMediaPlaylist = operatorMediaPlaylist;
@@ -304,7 +314,9 @@ function operatorLoadVod(profile: string, url: string, callback: any): void {
                             " "
                         );
                     } catch (error) {
-                        runtime.alert("Error XML !!!");
+                        runtime.alert(
+                            runtime._("Unable to load playlist") + " (XML)"
+                        );
                         return;
                     }
                 } else if (content.format === "M3U") {
@@ -315,7 +327,9 @@ function operatorLoadVod(profile: string, url: string, callback: any): void {
                 try {
                     decoded = JSON.parse(data);
                 } catch (error) {
-                    runtime.alert("Error JSON !!!");
+                    runtime.alert(
+                        runtime._("Unable to load playlist") + " (JSON)"
+                    );
                     return;
                 }
                 const catalog = runtime.OttPlayCore.operatorVodCatalog(

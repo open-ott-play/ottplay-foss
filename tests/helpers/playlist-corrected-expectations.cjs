@@ -92,7 +92,7 @@ function title(record, before, after) {
     );
 }
 
-function media(row, profile) {
+function media(row, profile, localizedTitles = profile === "antifriz") {
     const expected = clone(row.media[profile]);
     if (row.input === quotedInput)
         title(
@@ -119,6 +119,20 @@ function media(row, profile) {
             stream_url: "http://v.test/token/two/a.ts",
             title: "",
         });
+    }
+    // Generated names are application UI; historical fixtures retain the old Russian fallback.
+    for (const record of expected.records) {
+        const generated =
+            record.title === "??? Нет названия" ||
+            (profile === "kb-team" && record.title === "??? No channel name");
+        if (localizedTitles && record.title === "??? Нет названия")
+            title(record, "??? Нет названия", "Untitled");
+        if (generated && (profile !== "m3u" || localizedTitles))
+            record.__ottMediaLabel = {
+                heading: true,
+                key: profile === "kb-team" ? "??? No channel name" : "Untitled",
+                value: record.title,
+            };
     }
     return expected;
 }

@@ -57,7 +57,7 @@ function fixture(options = {}) {
     if (options.noChannel) delete window.__TAURI__.core.Channel;
     if (options.relaunch)
         window.__TAURI__.process = { relaunch: options.relaunch };
-    vm.runInNewContext(code, {
+    const context = {
         _: (key, ...values) => {
             let text = options.translations?.[key] || key;
             values.forEach((value, index) => {
@@ -76,10 +76,43 @@ function fixture(options = {}) {
             if (options.installFails) throw new Error("Download failed");
         },
         window,
-    });
-    return { calls, confirmations, errors, notices };
+    };
+    vm.createContext(context);
+    vm.runInContext(code, context);
+    assert.equal(
+        calls.length,
+        0,
+        "Updater must wait for the selected language to load"
+    );
+    const start = () => context.checkTauriUpdatesAfterLanguage();
+    if (!options.deferLanguage) start();
+    return { calls, confirmations, errors, notices, start };
 }
 (async () => {
+    const delayedOptions = { deferLanguage: true };
+    const delayed = fixture(delayedOptions);
+    await settle();
+    assert.equal(
+        delayed.confirmations.length,
+        0,
+        "No English prompt while the selected catalog is loading"
+    );
+    delayedOptions.translations = {
+        "OttPlay FOSS %1 is available. Download and install now?":
+            "Доступна версия %1. Установить?",
+    };
+    delayed.start();
+    await settle();
+    assert.equal(
+        delayed.confirmations[0].message,
+        "Доступна версия 1.1.41. Установить?"
+    );
+    delayed.start();
+    assert.equal(
+        delayed.calls.length,
+        1,
+        "Changing language cannot repeat the startup update check"
+    );
     const pending = fixture();
     await settle();
     assert.equal(

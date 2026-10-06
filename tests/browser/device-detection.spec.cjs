@@ -138,7 +138,7 @@ for (const fixture of fixtures.concat(routeFixtures)) {
             );
             await expect(page.locator("#list")).toBeVisible();
             await expect(page.locator("#boot-log")).toContainText(
-                "device: " + fixture.expectedDevice
+                fixture.expectedDevice
             );
             const remote = {
                 DOWN: 40,
@@ -250,9 +250,11 @@ test("a failed runtime download shows a retry message before loading libraries",
     });
     await page.goto("/f/lg/webos/", { waitUntil: "load" });
     await expect(page.locator("#boot-status")).toHaveText(
-        "Failed to load runtime support"
+        "Compatibility runtime could not load. Reopen the player to retry."
     );
-    await expect(page.locator("#boot-log")).toContainText("Reload the player");
+    await expect(page.locator("#boot-log")).toContainText(
+        "js/runtime-polyfills.js"
+    );
     await expect(page.locator("body")).not.toHaveClass(/\bbooting\b/);
     expect(requestedScripts).toEqual(["/js/runtime-polyfills.js"]);
 });

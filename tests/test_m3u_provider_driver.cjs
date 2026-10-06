@@ -963,6 +963,59 @@ test("Dune saved XML/JSON/M3U catalogs use owned media transport with MAC and st
     }
 });
 
+test("Dune media errors and generated names follow the selected language", () => {
+    const f = fixture({
+        config: {
+            active: 0,
+            M3Us: [
+                {
+                    medUrl: "https://catalog.test/root",
+                    www: "https://tv.test/",
+                },
+            ],
+        },
+        dune: true,
+    });
+    try {
+        f.host._ = (key) => "localized:" + key;
+        f.start();
+        for (const data of [
+            "short",
+            "{broken json",
+            "unrecognized data header",
+        ]) {
+            f.host.getMediaArray("", () => {});
+            f.requests.at(-1).resolve(data);
+            assert.equal(f.errors.at(-1), "localized:Unable to load playlist");
+        }
+        f.host.getMediaArray("", () => {});
+        f.requests.at(-1).reject({ status: 503 });
+        assert.equal(
+            f.errors.at(-1),
+            "localized:Unable to load playlist (503)"
+        );
+        f.host.getMediaArray("", () => {});
+        f.requests
+            .at(-1)
+            .resolve(
+                '#EXTM3U\n#EXTINF:-1 tvg-name="one"\nhttps://video.test/unnamed\n'
+            );
+        assert.equal(f.host.mediaRecords[0].title, "localized:Untitled");
+        assert.equal(f.host.mediaRecords[0].__ottMediaLabel.key, "Untitled");
+        f.host.getMediaArray("", () => {});
+        f.requests
+            .at(-1)
+            .resolve(
+                "<items><channel><stream_url>unnamed</stream_url></channel><channel><title>localized:Untitled</title><stream_url>named</stream_url></channel></items>"
+            );
+        assert.equal(f.host.mediaRecords[0].__ottMediaLabel.key, "Untitled");
+        assert.equal(f.host.mediaRecords[1].__ottMediaLabel, undefined);
+        assert.equal(f.host.mediaRecords[1].title, "localized:Untitled");
+    } finally {
+        f.dom.window.close();
+    }
+});
+
 test("catalog delivery detaches nested XML rows and never appends pagination to the decoder cache", () => {
     const f = fixture();
     const cached = JSON.parse(

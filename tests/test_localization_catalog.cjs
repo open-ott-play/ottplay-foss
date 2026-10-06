@@ -62,7 +62,15 @@ try {
     `
     );
     write("providers/example/provider.js", 'translate("Provider message");');
+    write("src/settings/transfer-ui.ts", 'notice("New settings notice");');
+    write(
+        "index.html",
+        '<script>bootStatus("Early startup status"); bootText("Early restart action"); console.log("Boot diagnostic");</script>'
+    );
     const fixtureKeys = collectSourceKeys(fixture);
+    assert(fixtureKeys.keys.has("Early startup status"));
+    assert(fixtureKeys.keys.has("Early restart action"));
+    assert(!fixtureKeys.keys.has("Boot diagnostic"));
     for (const key of [
         "New static message %1",
         "Enabled status",
@@ -87,6 +95,7 @@ try {
         "Menu explanation",
         "Adapter message",
         "Provider message",
+        "New settings notice",
         "Discovery initial status",
         "Approve at %1",
         "Discovery failed",
@@ -211,6 +220,200 @@ try {
     loader.exports.loadLanguage("_rus", () => {});
     assert.equal(scripts.at(-1).src, "/locales/russian.js?local");
 
+    const runtime = { exports: {}, window: {} };
+    vm.runInNewContext(
+        ts.transpileModule(
+            fs.readFileSync(
+                path.join(root, "src/localization/index.ts"),
+                "utf8"
+            ),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.CommonJS,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText,
+        runtime
+    );
+    const translate = runtime.exports.translate;
+    runtime.window.keyStrings = readDictionary(
+        path.join(root, "locales/russian.js")
+    );
+    assert.equal(
+        translate(
+            "Reminder: %1 — %2 in %3 min",
+            "Канал $& %2",
+            "Новости $$ %3",
+            5
+        ),
+        "Напоминание: Канал $& %2 — Новости $$ %3 через 5 мин",
+        "EPG metadata must remain literal when substituted into translated reminders"
+    );
+    assert.equal(translate("%1 / %10 / %2", "one", "two"), "one / %10 / two");
+    assert.equal(
+        translate("%2 %1 %2", "first", "second"),
+        "second first second"
+    );
+    for (const key of ["constructor", "toString", "__proto__"])
+        assert.equal(
+            translate(key, "argument"),
+            key,
+            "Unknown keys cannot resolve prototype members"
+        );
+
+    // A failed language download must leave the current Russian UI and saved
+    // preference intact, so a transient network error cannot force English.
+    const selectionSource = ts.createSourceFile(
+        "src/index.ts",
+        fs.readFileSync(path.join(root, "src/index.ts"), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const selectLang = selectionSource.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) && node.name.text === "selectLang"
+    );
+    let savedLanguage = "_rus";
+    let languageRequest;
+    let resumed = 0;
+    const messages = [];
+    const timers = new Map();
+    let timerId = 0;
+    const selection = {
+        _: translate,
+        checkTauriUpdatesAfterLanguage() {},
+        clearTimeout: (id) => timers.delete(id),
+        document: { getElementById: () => null },
+        duneAddSettings() {},
+        getScriptDOM: (url, success, error) => {
+            languageRequest = { error, success, url };
+        },
+        hostUrl: "",
+        infoBox: (message) => messages.push(message),
+        keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
+        languageAssetPath,
+        languageNames: {},
+        PLAYER_VERSION: "test",
+        renderButtonHint: () => "",
+        setTimeout: (callback, delay) => {
+            assert.equal(delay, 10000);
+            timers.set(++timerId, callback);
+            return timerId;
+        },
+        showPage() {},
+        stbGetItem: () => savedLanguage,
+        stbSetItem: (_key, value) => {
+            savedLanguage = value;
+        },
+        strRETURN: "BACK",
+        window: {
+            keyStrings: runtime.window.keyStrings,
+            optionsList: () => {
+                resumed++;
+            },
+        },
+    };
+    vm.createContext(selection);
+    vm.runInContext(
+        ts.transpileModule(selectLang.getText(selectionSource), {}).outputText,
+        selection
+    );
+    selection.selectLang();
+    selection.selIndex = 0;
+    selection.listKeyHandlerFn(13);
+    assert.match(languageRequest.url, /locales\/english\.js/);
+    assert.equal(savedLanguage, "_rus");
+    assert.equal(selection.window.keyStrings, runtime.window.keyStrings);
+    languageRequest.error();
+    assert.deepEqual(messages, [translate("Failed to load!")]);
+    assert.equal(savedLanguage, "_rus");
+    assert.equal(resumed, 0);
+    selection.listKeyHandlerFn(13);
+    languageRequest.success();
+    assert.equal(savedLanguage, "_eng");
+    assert.equal(resumed, 1);
+    savedLanguage = "_rus";
+    languageRequest = null;
+    selection.selectLang(true);
+    selection.listKeyHandlerFn(13);
+    assert.match(languageRequest.url, /locales\/russian\.js/);
+    assert.equal(
+        resumed,
+        1,
+        "Retrying the saved language waits for its dictionary"
+    );
+    languageRequest.success();
+    assert.equal(resumed, 2);
+
+    // A cancelled or stalled script can finish late, even while a newer
+    // request is pending. Only the current request may persist or resume.
+    savedLanguage = "_rus";
+    selection.window.keyStrings = runtime.window.keyStrings;
+    selection.selectLang();
+    selection.selIndex = 0;
+    selection.listKeyHandlerFn(13);
+    const cancelledLanguage = languageRequest;
+    selection.selIndex = 2;
+    selection.listKeyHandlerFn(13);
+    assert.equal(
+        languageRequest,
+        cancelledLanguage,
+        "Only one active choice loads"
+    );
+    selection.listKeyHandlerFn(8);
+    const afterCancel = resumed;
+    assert.equal(timers.size, 0, "Back releases its timeout");
+    selection.selectLang();
+    selection.selIndex = 2;
+    selection.listKeyHandlerFn(13);
+    const stalledLanguage = languageRequest;
+    const owner = selection.window.__ottLanguagePending;
+    assert.notEqual(
+        stalledLanguage,
+        cancelledLanguage,
+        "Back allows immediate retry"
+    );
+    selection.window.keyStrings = { stale: "cancelled" };
+    cancelledLanguage.success();
+    assert.equal(selection.window.keyStrings, runtime.window.keyStrings);
+    assert.equal(selection.window.__ottLanguagePending, owner);
+    assert.equal(savedLanguage, "_rus");
+    assert.equal(resumed, afterCancel);
+    const timeout = [...timers.values()][0];
+    timeout();
+    assert.equal(selection.window.__ottLanguagePending, null);
+    assert.equal(timers.size, 0);
+    assert.equal(savedLanguage, "_rus");
+    assert.equal(messages.at(-1), translate("Failed to load!"));
+    selection.selIndex = 0;
+    selection.listKeyHandlerFn(13);
+    const newestLanguage = languageRequest;
+    assert.notEqual(
+        newestLanguage,
+        stalledLanguage,
+        "A timed-out choice is retryable"
+    );
+    selection.window.keyStrings = { stale: "timed out" };
+    stalledLanguage.success();
+    assert.equal(selection.window.keyStrings, runtime.window.keyStrings);
+    assert(
+        selection.window.__ottLanguagePending,
+        "Late load keeps newer owner"
+    );
+    const englishDictionary = { "Failed to load!": "Failed to load!" };
+    selection.window.keyStrings = englishDictionary;
+    newestLanguage.success();
+    assert.equal(savedLanguage, "_eng");
+    assert.equal(resumed, afterCancel + 1);
+    assert.equal(timers.size, 0);
+    selection.window.keyStrings = { stale: "after commit" };
+    cancelledLanguage.success();
+    stalledLanguage.error();
+    assert.equal(selection.window.keyStrings, englishDictionary);
+    assert.equal(savedLanguage, "_eng");
+    assert.equal(resumed, afterCancel + 1);
+
     const reference = readDictionary(
         path.join(root, languageAssetPath("_eng"))
     );
@@ -238,7 +441,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 28);
-    assert.equal(result.keyCount, 758);
+    assert.equal(result.keyCount, 803);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

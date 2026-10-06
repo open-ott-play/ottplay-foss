@@ -1824,10 +1824,14 @@ export function applyAspectRatio(): void {
  * Side effects: Shows a select-box UI; writes to per-channel storage (aAspects).
  */
 export function stbToggleAspectRatio(): void {
-    showSelectBox(aspectRatio, ["contain", "cover"], function (v: number) {
-        setAspect(v);
-        saveChannelPreference("aAspects", v);
-    });
+    showSelectBox(
+        aspectRatio,
+        [_("Fit to screen"), _("Fill screen")],
+        function (v: number) {
+            setAspect(v);
+            saveChannelPreference("aAspects", v);
+        }
+    );
 }
 
 /**
