@@ -887,7 +887,7 @@ for (const [name, mutate] of Object.entries({
 })) {
     for (const params of [
         { operation: "next_channel" },
-        { operation: "step_channel", offset: 1 },
+        { offset: 1, operation: "step_channel" },
     ]) {
         const f = channelStepFixture();
         mutate(f);
@@ -924,7 +924,7 @@ for (const mutate of [
 ]) {
     for (const params of [
         { operation: "next_channel" },
-        { operation: "step_channel", offset: -2 },
+        { offset: -2, operation: "step_channel" },
     ]) {
         const f = channelStepFixture();
         f.w.isListVisible = true;
@@ -961,8 +961,8 @@ for (const mutate of [
         { operation: "next_channel", position: 0 },
         { operation: "previous_channel", position: undefined },
         { count: 2, operation: "next_channel" },
-        { operation: "next_channel", offset: 1 },
-        { operation: "previous_channel", offset: undefined },
+        { offset: 1, operation: "next_channel" },
+        { offset: undefined, operation: "previous_channel" },
     ])
         assert.equal(f.run("playback", params).result.status, "rejected");
     assert.deepEqual(f.effects, []);
@@ -1016,15 +1016,15 @@ for (const [start, offset, id] of [
     f.w.listCatIndex = 2;
     f.w.listArray = [101];
     f.w.previewChan = { ch_id: 101 };
-    const pending = f.run("playback", { operation: "step_channel", offset });
+    const pending = f.run("playback", { offset, operation: "step_channel" });
     assert.deepEqual(pending.result, {
-        status: "ok",
         data: {
-            operation: "step_channel",
-            offset,
+            channel: { id, name: "Channel " + id, number: id },
             dispatched: true,
-            channel: { id, number: id, name: "Channel " + id },
+            offset,
+            operation: "step_channel",
         },
+        status: "ok",
     });
     assert.equal(pending.effect, undefined);
     assert.equal(f.w.catIndex, 1);
@@ -1043,11 +1043,11 @@ for (const [start, offset, id] of [
 // Favourites order differs from global catalogue numbering.
 {
     const f = channelStepFixture();
-    const result = f.run("playback", { operation: "step_channel", offset: 2 });
+    const result = f.run("playback", { offset: 2, operation: "step_channel" });
     assert.deepEqual(result.result.data.channel, {
         id: 4,
-        number: 3,
         name: "Четвёртый",
+        number: 3,
     });
     assert.deepEqual(f.played(), [["play", "https://private.example/4"]]);
 }
@@ -1062,7 +1062,7 @@ for (const [start, offset, id] of [
     ]);
     assert.deepEqual(f.effects, []);
     assert.equal(
-        f.run("playback", { operation: "step_channel", offset: 15 }).result
+        f.run("playback", { offset: 15, operation: "step_channel" }).result
             .status,
         "ok"
     );
@@ -1077,7 +1077,7 @@ for (const [start, offset, id] of [
         f.run("capabilities").result.data.playback.includes("step_channel")
     );
     assert.equal(
-        f.run("playback", { operation: "step_channel", offset: 15 }).result
+        f.run("playback", { offset: 15, operation: "step_channel" }).result
             .status,
         "rejected"
     );
@@ -1089,8 +1089,8 @@ for (const [start, offset, id] of [
     f.w.curList.splice(1);
     assert.equal(
         f.run("playback", {
-            operation: "step_channel",
             offset: -9007199254740991,
+            operation: "step_channel",
         }).result.status,
         "ok"
     );
@@ -1115,17 +1115,17 @@ for (const [start, offset, id] of [
         -9007199254740992,
     ])
         assert.equal(
-            f.run("playback", { operation: "step_channel", offset }).result
+            f.run("playback", { offset, operation: "step_channel" }).result
                 .status,
             "rejected"
         );
     for (const params of [
         { operation: "step_channel" },
-        { operation: "step_channel", offset: 15, position: 0 },
-        { operation: "step_channel", offset: 15, count: 1 },
-        { operation: "pause", offset: 15 },
-        { operation: "resume", offset: undefined },
-        { operation: "seek", position: 1, offset: 1 },
+        { offset: 15, operation: "step_channel", position: 0 },
+        { count: 1, offset: 15, operation: "step_channel" },
+        { offset: 15, operation: "pause" },
+        { offset: undefined, operation: "resume" },
+        { offset: 1, operation: "seek", position: 1 },
     ])
         assert.equal(f.run("playback", params).result.status, "rejected");
     assert.deepEqual(f.effects, []);
