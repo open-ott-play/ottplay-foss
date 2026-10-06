@@ -1874,6 +1874,64 @@ export function startPlayer(): void {
 
 // Post-STB-init setup
 
+/** Reuse the successful early dictionary and commit first-run auto selection. */
+function loadStartupLanguage(): boolean {
+    var lang = stbGetItem("ottplaylang");
+    var bootLanguage = (window as any).__ottBootLanguage;
+    (window as any).__ottBootLanguage = null;
+    var preloaded =
+        bootLanguage &&
+        Object.prototype.hasOwnProperty.call(
+            languageNames,
+            bootLanguage.code
+        ) &&
+        bootLanguage.dictionary === (window as any).keyStrings;
+    if (!lang && preloaded && bootLanguage.automatic) {
+        lang = String(bootLanguage.code);
+        stbSetItem("ottplaylang", lang);
+    }
+    var launchEl = document.getElementById("launch");
+    if (!lang) {
+        console.log("TRACE no lang, calling selectLang()");
+        if (launchEl) {
+            launchEl.style.display = "none";
+            if (typeof (window as any).clearBootHide === "function")
+                (window as any).clearBootHide();
+        }
+        selectLang();
+        return false;
+    }
+
+    function ready(): void {
+        (window as any).__ottBootDictionary = (window as any).keyStrings;
+        if (typeof duneAddSettings !== "function") loadProv();
+        else if (typeof (window as any).optionsList === "function")
+            (window as any).optionsList(selectLang);
+        checkTauriUpdatesAfterLanguage();
+    }
+    if (preloaded && bootLanguage.code === lang) {
+        // Keep the script-load callback's ordering: onStbReady must install
+        // native HTTP/EPG shims before a saved provider starts its first request.
+        setTimeout(ready, 0);
+        return true;
+    }
+    console.log("TRACE lang=" + lang + ", loading langJS");
+    getScriptDOM(
+        hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
+        ready,
+        function () {
+            var el = document.getElementById("launch");
+            if (el) {
+                el.style.display = "none";
+            }
+            if (typeof (window as any).clearBootHide === "function")
+                (window as any).clearBootHide();
+            selectLang(true);
+        }
+    );
+    return true;
+}
+
 /**
  * Called after stbInit() completes. Responsible for:
  * - Merging device-specific key mappings
@@ -1948,42 +2006,7 @@ function onStbReady(): void {
         savedPopup.popupDetail = popupDetail.slice();
         savedPopup.ver = version;
 
-        // Load language
-        var lang = stbGetItem("ottplaylang");
-        var launchEl = document.getElementById("launch");
-        if (!lang) {
-            console.log("TRACE no lang, calling selectLang()");
-            if (launchEl) {
-                launchEl.style.display = "none";
-                if (typeof (window as any).clearBootHide === "function")
-                    (window as any).clearBootHide();
-            }
-            selectLang();
-            return;
-        }
-
-        console.log("TRACE lang=" + lang + ", loading langJS");
-        getScriptDOM(
-            hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
-            function () {
-                (window as any).__ottBootDictionary = (
-                    window as any
-                ).keyStrings;
-                if (typeof duneAddSettings !== "function") loadProv();
-                else if (typeof (window as any).optionsList === "function")
-                    (window as any).optionsList(selectLang);
-                checkTauriUpdatesAfterLanguage();
-            },
-            function () {
-                var el = document.getElementById("launch");
-                if (el) {
-                    el.style.display = "none";
-                }
-                if (typeof (window as any).clearBootHide === "function")
-                    (window as any).clearBootHide();
-                selectLang(true);
-            }
-        );
+        if (!loadStartupLanguage()) return;
 
         // Re-apply Tauri IPC override after provider script loads.
         // This ensures the getChannelEpg override persists even when provider scripts
