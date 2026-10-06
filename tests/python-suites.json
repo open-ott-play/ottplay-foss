@@ -14,6 +14,7 @@
   ],
   "android": [
     ["tests/test_android_queue.py"],
+    ["tests/test_android_screenshot.py"],
     ["tests/test_android_network_policy.py"],
     ["tests/test_native_dash_state.py"],
     ["tests/test_android_epg_editions.py"],
@@ -29,6 +30,7 @@
     ["tests/test_ios_access_auth.py"],
     ["tests/test_ios_public_http.py"],
     ["tests/test_native_swop_swift.py"],
+    ["tests/test_native_screenshot_transport_swift.py"],
     ["tests/test_native_epg_cache.py", "--platform", "ios"],
     ["tests/test_native_xmltv_records.py", "--platform", "ios"],
     ["tests/test_native_media_lifecycle.py", "--platform", "ios"]
