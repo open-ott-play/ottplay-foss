@@ -818,6 +818,7 @@ for (const [operation, start, expected, number] of [
     assert.deepEqual(f.run("capabilities").result.data.playback, [
         "previous_channel",
         "next_channel",
+        "step_channel",
     ]);
     assert.deepEqual(
         f.effects,
@@ -884,23 +885,26 @@ for (const [name, mutate] of Object.entries({
     "text editor": (f) => (f.owner = { kind: "editor", model: {} }),
     "unready catalogue": (f) => (f.w.commandChannelsReady = false),
 })) {
-    const f = channelStepFixture();
-    mutate(f);
-    assert.ok(
-        !f.run("capabilities").result.data.playback.includes("next_channel"),
-        name + " is not advertised"
-    );
-    assert.equal(
-        f.run("playback", { operation: "next_channel" }).result.status,
-        "rejected",
-        name
-    );
-    assert.deepEqual(f.effects, [], name + " has no UI/playback effects");
-    assert.equal(
-        f.pinCalls,
-        0,
-        name + " does not queue a delayed PIN continuation"
-    );
+    for (const params of [
+        { operation: "next_channel" },
+        { operation: "step_channel", offset: 1 },
+    ]) {
+        const f = channelStepFixture();
+        mutate(f);
+        assert.ok(
+            !f
+                .run("capabilities")
+                .result.data.playback.includes("next_channel"),
+            name + " is not advertised"
+        );
+        assert.equal(f.run("playback", params).result.status, "rejected", name);
+        assert.deepEqual(f.effects, [], name + " has no UI/playback effects");
+        assert.equal(
+            f.pinCalls,
+            0,
+            name + " does not queue a delayed PIN continuation"
+        );
+    }
 }
 
 for (const mutate of [
@@ -918,22 +922,24 @@ for (const mutate of [
         f.w.parentalArray = [1];
     },
 ]) {
-    const f = channelStepFixture();
-    f.w.isListVisible = true;
-    f.owner = { kind: "list", model: {} };
-    f.w.previewChan = { ch_id: 3 };
-    f.onClose = () => mutate(f);
-    assert.equal(
-        f.run("playback", { operation: "next_channel" }).result.status,
-        "rejected"
-    );
-    assert.deepEqual(
-        f.played(),
-        [],
-        "UI cleanup cannot redirect a bound channel step"
-    );
-    assert.equal(f.pinCalls, 0);
-    assert.equal(f.pinContinuation, undefined);
+    for (const params of [
+        { operation: "next_channel" },
+        { operation: "step_channel", offset: -2 },
+    ]) {
+        const f = channelStepFixture();
+        f.w.isListVisible = true;
+        f.owner = { kind: "list", model: {} };
+        f.w.previewChan = { ch_id: 3 };
+        f.onClose = () => mutate(f);
+        assert.equal(f.run("playback", params).result.status, "rejected");
+        assert.deepEqual(
+            f.played(),
+            [],
+            "UI cleanup cannot redirect a bound channel step"
+        );
+        assert.equal(f.pinCalls, 0);
+        assert.equal(f.pinContinuation, undefined);
+    }
 }
 
 {
@@ -955,6 +961,8 @@ for (const mutate of [
         { operation: "next_channel", position: 0 },
         { operation: "previous_channel", position: undefined },
         { count: 2, operation: "next_channel" },
+        { operation: "next_channel", offset: 1 },
+        { operation: "previous_channel", offset: undefined },
     ])
         assert.equal(f.run("playback", params).result.status, "rejected");
     assert.deepEqual(f.effects, []);
@@ -972,4 +980,157 @@ for (const mutate of [
 }
 console.log(
     "PASS adjacent channels: real playback admission, category order/wrap, list/preview close, modal/PIN/kiosk guards and stale cleanup fencing"
+);
+
+function hundredChannelFixture(start) {
+    const f = channelStepFixture();
+    const list = Array.from({ length: 100 }, (_, index) => index + 1);
+    f.w.channels = {};
+    for (const id of [...list, 101])
+        f.w.channels[id] = {
+            channel_name: "Channel " + id,
+            url: "https://private.example/" + id,
+        };
+    f.w.cList = [...list, 101];
+    f.w.cats = { All: f.w.cList, Favourites: list, Other: [101] };
+    f.w.curList = list;
+    f.w.primaryIndex = start - 1;
+    return f;
+}
+
+// Exact numeric expectations also catch precision loss before the modulo.
+for (const [start, offset, id] of [
+    [100, 15, 15],
+    [1, -15, 86],
+    [5, -15, 90],
+    [100, 115, 15],
+    [1, -115, 86],
+    [100, 9007199254740991, 91],
+    [100, -9007199254740991, 9],
+    [5, 100, 5],
+    [5, -100, 5],
+]) {
+    const f = hundredChannelFixture(start);
+    f.w.isListVisible = true;
+    f.owner = { kind: "list", model: {} };
+    f.w.listCatIndex = 2;
+    f.w.listArray = [101];
+    f.w.previewChan = { ch_id: 101 };
+    const pending = f.run("playback", { operation: "step_channel", offset });
+    assert.deepEqual(pending.result, {
+        status: "ok",
+        data: {
+            operation: "step_channel",
+            offset,
+            dispatched: true,
+            channel: { id, number: id, name: "Channel " + id },
+        },
+    });
+    assert.equal(pending.effect, undefined);
+    assert.equal(f.w.catIndex, 1);
+    assert.equal(f.w.primaryIndex, id - 1);
+    assert.equal(f.w.isListVisible, false);
+    assert.equal(f.w.previewChan, null);
+    assert.deepEqual(f.played(), [["play", "https://private.example/" + id]]);
+    assert.equal(
+        f.effects.filter((effect) => effect[0] === "select").length,
+        1
+    );
+    assert.equal(f.pinCalls, 0);
+    assert.ok(!JSON.stringify(pending.result).includes("private.example"));
+}
+
+// Favourites order differs from global catalogue numbering.
+{
+    const f = channelStepFixture();
+    const result = f.run("playback", { operation: "step_channel", offset: 2 });
+    assert.deepEqual(result.result.data.channel, {
+        id: 4,
+        number: 3,
+        name: "Четвёртый",
+    });
+    assert.deepEqual(f.played(), [["play", "https://private.example/4"]]);
+}
+
+// A generic capability promises valid selection state, not a PIN-free neighbour.
+{
+    const f = hundredChannelFixture(5);
+    f.channelLocked = true;
+    f.w.parentalArray = [4, 5, 6];
+    assert.deepEqual(f.run("capabilities").result.data.playback, [
+        "step_channel",
+    ]);
+    assert.deepEqual(f.effects, []);
+    assert.equal(
+        f.run("playback", { operation: "step_channel", offset: 15 }).result
+            .status,
+        "ok"
+    );
+    assert.deepEqual(f.played(), [["play", "https://private.example/20"]]);
+    assert.equal(f.pinCalls, 0);
+}
+{
+    const f = hundredChannelFixture(5);
+    f.channelLocked = true;
+    f.w.parentalArray = [20];
+    assert.ok(
+        f.run("capabilities").result.data.playback.includes("step_channel")
+    );
+    assert.equal(
+        f.run("playback", { operation: "step_channel", offset: 15 }).result
+            .status,
+        "rejected"
+    );
+    assert.deepEqual(f.effects, []);
+    assert.equal(f.pinCalls, 0);
+}
+{
+    const f = channelStepFixture();
+    f.w.curList.splice(1);
+    assert.equal(
+        f.run("playback", {
+            operation: "step_channel",
+            offset: -9007199254740991,
+        }).result.status,
+        "ok"
+    );
+    assert.deepEqual(f.played(), [["play", "https://private.example/2"]]);
+}
+{
+    const f = channelStepFixture();
+    for (const offset of [
+        undefined,
+        null,
+        true,
+        false,
+        "15",
+        0,
+        -0,
+        0.5,
+        -1.5,
+        NaN,
+        Infinity,
+        -Infinity,
+        9007199254740992,
+        -9007199254740992,
+    ])
+        assert.equal(
+            f.run("playback", { operation: "step_channel", offset }).result
+                .status,
+            "rejected"
+        );
+    for (const params of [
+        { operation: "step_channel" },
+        { operation: "step_channel", offset: 15, position: 0 },
+        { operation: "step_channel", offset: 15, count: 1 },
+        { operation: "pause", offset: 15 },
+        { operation: "resume", offset: undefined },
+        { operation: "seek", position: 1, offset: 1 },
+    ])
+        assert.equal(f.run("playback", params).result.status, "rejected");
+    assert.deepEqual(f.effects, []);
+    assert.equal(f.pinCalls, 0);
+}
+console.log(
+    "PASS channel offsets: exact safe integers, positive/negative wrap, one selection, bounded receipt, target PIN and shared stale-state guards"
 );

@@ -225,7 +225,7 @@ function remoteChannelStepAllowed(w: any): boolean {
 }
 
 /** Bind relative movement to the playing category, never the browsing cursor. */
-function remoteChannelStep(w: any, direction: number): any {
+function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
     try {
         var list = w.curList;
         var category = w.catIndex;
@@ -266,7 +266,12 @@ function remoteChannelStep(w: any, direction: number): any {
             typeof play !== "function"
         )
             return null;
-        var index = (position + direction + list.length) % list.length;
+        // Capabilities inspect only shared selection readiness. No destination
+        // or full-catalogue scan is needed for an arbitrary future offset.
+        if (probe) return true;
+        // Reduce first: adding a safe-integer offset to the cursor can overflow.
+        var index =
+            (position + (offset % list.length) + list.length) % list.length;
         var id = list[index];
         var row = channels[id];
         var validId =
@@ -406,7 +411,7 @@ export function executeRemoteControl(
             : action === "input"
               ? ["key"]
               : action === "playback"
-                ? ["operation", "position"]
+                ? ["operation", "position", "offset"]
                 : [];
     if (
         !params ||
@@ -449,6 +454,9 @@ export function executeRemoteControl(
     if (action === "capabilities") {
         if (remoteChannelStep(w, -1)) playback.push("previous_channel");
         if (remoteChannelStep(w, 1)) playback.push("next_channel");
+        // Generic availability describes the selection state, not the PIN
+        // policy of either neighbour. Every requested destination is checked.
+        if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
         reply({
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
@@ -470,19 +478,42 @@ export function executeRemoteControl(
     }
     if (action === "playback") {
         var operation = params.operation;
-        if (operation === "previous_channel" || operation === "next_channel") {
-            if (Object.keys(params).length !== 1) {
-                fail("rejected", "Channel movement accepts only an operation.");
+        var relative = operation === "step_channel";
+        if (
+            operation === "previous_channel" ||
+            operation === "next_channel" ||
+            relative
+        ) {
+            if (
+                relative
+                    ? Object.keys(params).length !== 2 ||
+                      typeof params.offset !== "number" ||
+                      !isFinite(params.offset) ||
+                      params.offset % 1 !== 0 ||
+                      params.offset === 0 ||
+                      Math.abs(params.offset) > 9007199254740991
+                    : Object.keys(params).length !== 1
+            ) {
+                fail(
+                    "rejected",
+                    relative
+                        ? "Use step_channel with a nonzero safe integer offset."
+                        : "Channel movement accepts only an operation."
+                );
                 return;
             }
             var selected = remoteChannelStep(
                 w,
-                operation === "previous_channel" ? -1 : 1
+                relative
+                    ? params.offset
+                    : operation === "previous_channel"
+                      ? -1
+                      : 1
             );
             if (!selected) {
                 fail(
                     "rejected",
-                    "The adjacent channel is unavailable or requires local input."
+                    "The requested channel is unavailable or requires local input."
                 );
                 return;
             }
@@ -502,15 +533,18 @@ export function executeRemoteControl(
                 );
                 return;
             }
-            reply({
+            var selection: any = {
                 channel: selected.channel,
                 dispatched: true,
                 operation: operation,
-            });
+            };
+            if (relative) selection.offset = params.offset;
+            reply(selection);
             return;
         }
         if (
             ["pause", "resume", "seek"].indexOf(operation) < 0 ||
+            Object.prototype.hasOwnProperty.call(params, "offset") ||
             (operation === "seek"
                 ? typeof params.position !== "number" ||
                   !isFinite(params.position) ||
