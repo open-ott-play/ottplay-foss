@@ -17,7 +17,10 @@ function load(file, globals = {}) {
     return context.exports;
 }
 const casing = load("src/utils/caseless.ts");
-const { createKiosk } = load("src/plugins/kiosk.ts", { require: () => casing });
+const strictInput = load("src/plugins/strict-kiosk-input.ts");
+const { createKiosk } = load("src/plugins/kiosk.ts", {
+    require: (name) => (name.includes("strict-kiosk") ? strictInput : casing),
+});
 function rig(storage = {}) {
     let time = 0,
         position = 0,
@@ -782,4 +785,174 @@ console.log(
 }
 console.log(
     "VPortal kiosk persistence, episode admission, startup grace and cancellation passed"
+);
+
+// Strict is durable and cannot be accidentally relaxed by an idempotent on/set.
+{
+    const r = rig();
+    assert.equal(
+        r.request({ mode: "on", query: "2", strict: true }).data.strict,
+        true
+    );
+    assert.equal(r.kiosk.strict(), true);
+    assert.equal(r.request({ mode: "on" }).data.strict, true);
+    assert.equal(r.request({ mode: "set", query: "1" }).data.strict, true);
+    const restored = rig(r.storage);
+    assert.equal(restored.kiosk.strict(), true);
+    assert.equal(restored.request({ mode: "off" }).data.strict, false);
+    assert.equal(restored.kiosk.strict(), false);
+    for (const strict of [null, 1, "true", {}, []]) {
+        assert.equal(r.request({ mode: "on", strict }).status, "rejected");
+    }
+    for (const mode of ["status", "off"]) {
+        assert.equal(r.request({ mode, strict: true }).status, "rejected");
+    }
+}
+{
+    const r = rig();
+    assert.equal(r.request({ mode: "on", strict: true }).data.state, "waiting");
+    assert.equal(
+        r.kiosk.strict(),
+        false,
+        "armed kiosk must still admit its first selection"
+    );
+    r.w.playChannel(0, 0);
+    assert.equal(r.kiosk.strict(), true);
+    r.request({ mode: "off" });
+    r.request({ mode: "on", query: "2" });
+    r.request({ mode: "on", strict: true });
+    assert.equal(
+        r.kiosk.snapshot().channel.id,
+        "b",
+        "upgrade retains the pinned target"
+    );
+    assert.equal(r.kiosk.strict(), true);
+    r.request({ mode: "on", strict: false });
+    assert.equal(r.kiosk.strict(), false);
+    assert.equal(r.kiosk.locked(), true);
+}
+{
+    const dom = new JSDOM(
+        '<body><button id="target">Play</button><input id="editor"><button id="remoteDiagnosticsIndicator">Stop support</button></body>'
+    );
+    const w = dom.window;
+    let active = true,
+        time = 1000,
+        info = 0,
+        leaked = 0,
+        revoked = 0;
+    w.showChannelInfo = (seconds) => {
+        assert.equal(seconds, 5);
+        info++;
+    };
+    Object.defineProperty(w.performance, "now", { value: () => time });
+    w.__ottKiosk = { stopDiagnostics: () => revoked++ };
+    w.keys = { INFO: 457, STOP: 413 };
+    const input = strictInput.createStrictKioskInput(w, () => active);
+    const target = w.document.getElementById("target");
+    const editor = w.document.getElementById("editor");
+    editor.focus();
+    input.sync();
+    assert.equal(w.document.activeElement, w.document.body);
+    assert(w.document.documentElement.classList.contains("ott-kiosk-strict"));
+    const names = [
+        "click",
+        "dblclick",
+        "contextmenu",
+        "pointerdown",
+        "pointermove",
+        "pointerup",
+        "pointercancel",
+        "mousedown",
+        "mousemove",
+        "mouseup",
+        "touchstart",
+        "touchmove",
+        "touchend",
+        "touchcancel",
+        "wheel",
+        "keydown",
+        "keyup",
+        "keypress",
+        "dragstart",
+        "selectstart",
+    ];
+    for (const name of names) w.document.addEventListener(name, () => leaked++);
+    function event(type, props = {}, node = target) {
+        const e = new w.Event(type, { bubbles: true, cancelable: true });
+        Object.assign(e, props);
+        node.dispatchEvent(e);
+        assert(e.defaultPrevented, type + " consumes its native default");
+    }
+    const point = (x, id = 1) => ({ clientX: x, clientY: 100, identifier: id });
+    const touch = (type, touches, changedTouches = touches) =>
+        event(type, { changedTouches, touches });
+    touch("touchstart", [point(100)]);
+    touch("touchend", [], [point(100)]);
+    assert.equal(info, 1);
+    event("click", { detail: 1 });
+    assert.equal(info, 1, "compatibility click cannot duplicate a touch");
+    time += 1000;
+    touch("touchstart", [point(100)]);
+    touch("touchmove", [point(160)]);
+    touch("touchmove", [point(100)]);
+    touch("touchend", [], [point(100)]);
+    assert.equal(info, 1, "returning swipe is not a tap");
+    touch("touchstart", [point(100)]);
+    touch("touchstart", [point(100), point(150, 2)]);
+    touch("touchend", [point(100)], [point(150, 2)]);
+    touch("touchend", [], [point(100)]);
+    assert.equal(info, 1, "two fingers never activate a control");
+    touch("touchstart", [point(100)]);
+    time += 1000;
+    event("contextmenu");
+    touch("touchend", [], [point(100)]);
+    assert.equal(info, 1, "long press never activates a control");
+    time += 1000;
+    event("pointerdown", {
+        button: 0,
+        clientX: 10,
+        clientY: 10,
+        pointerId: 3,
+        pointerType: "mouse",
+    });
+    event("pointerup", {
+        clientX: 10,
+        clientY: 10,
+        pointerId: 3,
+        pointerType: "mouse",
+    });
+    assert.equal(info, 2);
+    event("click", { detail: 1 });
+    assert.equal(info, 2);
+    for (const keyCode of [13, 27, 32, 37, 38, 39, 40, 175, 176]) {
+        event("keydown", { keyCode }, editor);
+        event("keyup", { keyCode }, editor);
+    }
+    event("keydown", { keyCode: 457 });
+    assert.equal(info, 3, "INFO has only the read-only footer action");
+    event("keydown", { keyCode: 413 });
+    assert.equal(revoked, 1, "local diagnostic revocation remains available");
+    for (const type of [
+        "dblclick",
+        "wheel",
+        "dragstart",
+        "selectstart",
+        "touchcancel",
+        "pointercancel",
+        "keypress",
+    ])
+        event(type);
+    assert.equal(leaked, 0, "legacy handlers never receive strict input");
+    active = false;
+    input.sync();
+    assert(!w.document.documentElement.classList.contains("ott-kiosk-strict"));
+    target.dispatchEvent(
+        new w.MouseEvent("click", { bubbles: true, cancelable: true })
+    );
+    assert.equal(leaked, 1, "remote unlock restores local controls");
+    dom.window.close();
+}
+console.log(
+    "Strict kiosk persistence, gesture isolation and read-only input tests passed"
 );

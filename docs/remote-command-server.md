@@ -422,6 +422,25 @@ queries, notifications, volume and explicit remote restarts remain available.
 Use `kiosk off` before changing provider/profile or unlocking parental access,
 then enable kiosk again on the intended channel. Parental restrictions still apply.
 
+Add `--strict` for a child-facing player: `ott tv kiosk on --strict "Новости"`
+locks the channel and permits only a short tap or the Info key to show the
+read-only video footer for five seconds. Swipes, long presses, multiple fingers,
+double-click actions, pause, seeking, menus, player exit and local volume/mute
+controls are blocked. Repeated taps never expand the description. Remote
+volume/mute, status and recovery remain available; local diagnostic-access
+revocation is also retained.
+
+`ott tv kiosk on --strict` upgrades an existing lock without changing its target.
+For an unarmed TV player it waits for the first admitted UI selection, then blocks
+input. `kiosk set CHANNEL` preserves strictness. Only the configured remote
+controller can change or disable the policy, using `kiosk off` to release it.
+The strict flag persists across reloads. The CLI requires an explicit strict
+receipt and will not report success if an older player ignores this flag.
+
+On Android, a website (including here.now) cannot disable Home, Recents or browser
+navigation outside its page. Use Android app pinning with a PIN to protect exit
+from the browser, or managed-device Lock Task for a dedicated kiosk.
+
 The client samples playback once per second. Ten seconds without playback position
 advancing causes a fresh launch of the retained channel through the normal provider
 resolver; unsuccessful attempts repeat at ten-second intervals. Healthy playback
@@ -438,5 +457,9 @@ playback, not visible video. Updating only the command server cannot enforce thi
 policy on older clients.
 
 The protocol-1 action is `kiosk`, with `params: {"mode":"status|on|set|off"}`;
-`on` optionally accepts `query`, and `set` requires it. `query` is a channel number
+`on` optionally accepts `query`, and `set` requires it. Both accept an optional
+boolean `strict`; omission preserves the existing mode (ordinary for a new lock),
+and an explicit `false` downgrades to ordinary kiosk without releasing the target.
+`status` and `off` reject extra fields. Results include boolean `strict`.
+`query` is a channel number
 or name substring, limited to 1024 UTF-8 bytes. Read results expose metadata only.

@@ -38,6 +38,21 @@ queue, then lock again. `kiosk set CHANNEL` remains the live-TV command.
 This requires the updated player and CLI. Actual provider access and device
 codec support remain separate from profile/kiosk configuration.
 
+For child-facing playback on a web player, use the same active VPortal profile
+and add the strict kiosk flag:
+
+```sh
+ott l provider vportal
+ott l profile 2
+ott l vp "три кота"
+ott l kiosk on --strict
+```
+
+The matched episode queue repeats automatically. Local taps only show a read-only
+video footer for five seconds; playback, seeking, menus and player exit are
+blocked. `ott l kiosk off` releases the lock remotely. A website cannot block
+Android system navigation; app pinning with a PIN is separate.
+
 ## VPortal alongside television
 
 The M3U provider can use a VPortal media library independently of its TV

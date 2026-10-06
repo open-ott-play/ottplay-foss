@@ -119,7 +119,9 @@ const { gzipSync } = require("node:zlib");
 // Remote screenshots add a bounded capture adapter, local permission UI and
 // expiring image delivery. Reserve 13 KB raw / 4 KB gzip for this feature;
 // external dictionaries and native capture implementations remain separate.
-const BUDGET = Object.freeze({ bytes: 749450, gzipBytes: 229800 });
+// Strict kiosk adds a capture-phase gesture gate, persisted mode and timed
+// read-only footer. Reserve 4 KB raw / 1.3 KB gzip for this input policy.
+const BUDGET = Object.freeze({ bytes: 753450, gzipBytes: 231100 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -179,7 +181,7 @@ const BUDGET = Object.freeze({ bytes: 749450, gzipBytes: 229800 });
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
 // Include the same screenshot feature once in the complete payload bound.
-const TOTAL_BUDGET = Object.freeze({ bytes: 855550, gzipBytes: 269000 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 859550, gzipBytes: 270300 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

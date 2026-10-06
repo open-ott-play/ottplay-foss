@@ -604,6 +604,19 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
 }
+.ott-kiosk-strict #info1 {
+    pointer-events: none;
+    user-select: none;
+}
+.ott-kiosk-strict #audio_badge,
+.ott-kiosk-strict #descr,
+.ott-kiosk-strict #progress_span,
+.ott-kiosk-strict #volume_div {
+    display: none !important;
+}
+.ott-kiosk-strict video::-webkit-media-controls {
+    display: none !important;
+}
 #picon {
     float: left;
     box-sizing: border-box;
