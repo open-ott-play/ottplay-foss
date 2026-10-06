@@ -98,7 +98,7 @@ const { gzipSync } = require("node:zlib");
 // for native. Retain bounded Node 22 and release-version suffix headroom.
 // Language-switch recovery, generated-label provenance and native dialog labels
 // add bounded interface logic; all 28 dictionaries remain external assets.
-// Node 26.8.2 measures 718786 raw / 218901 gzip (native 718744 / 218956).
+// Node 26.8.2 measures 719165 raw / 218878 gzip (native 719123 / 218931).
 // Include native transforms, Node 22 compression and release suffix headroom.
 const BUDGET = Object.freeze({ bytes: 719500, gzipBytes: 219500 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -152,7 +152,7 @@ const BUDGET = Object.freeze({ bytes: 719500, gzipBytes: 219500 });
 // The same diagnostic implementation is counted once; providers are unchanged.
 // Kiosk changes only the entry; count the same measured cost in total payloads.
 // Count the same localization logic and optional-provider provenance markers:
-// Node 26.8.2 measures 816281 raw / 255221 gzip (native 816239 / 255276).
+// Node 26.8.2 measures 816660 raw / 255198 gzip (native 816618 / 255251).
 const TOTAL_BUDGET = Object.freeze({ bytes: 817000, gzipBytes: 256000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
