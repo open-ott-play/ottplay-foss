@@ -161,7 +161,9 @@ function fixture({
         checkMedia() {},
         cList: [101, 202],
         clearBootHide() {},
-        clearTimeout() {},
+        clearTimeout(id) {
+            if (timers[id - 1]) timers[id - 1].cancelled = true;
+        },
         console: { error: (error) => errors.push(String(error)), log() {} },
         curList: [],
         getChannelUrl: (id) => `https://example.invalid/channel/${id}`,
@@ -282,6 +284,13 @@ function fixture({
         notices,
         played,
         prompts: () => prompts,
+        runResume: () => {
+            const pending = timers.filter(
+                (timer) => timer.delay === 10000 && !timer.cancelled
+            );
+            assert.equal(pending.length, 1, "Resume has one ten-second timer");
+            pending[0].callback();
+        },
         runSeek: () => {
             const pending = timers.filter((timer) => timer.delay === 500);
             assert.equal(
@@ -626,6 +635,38 @@ for (const change of ["provider", "playlist", "channel"]) {
             "normal unprotected archive retains the saved position"
         );
         assert.deepEqual(f.played, []);
+    } finally {
+        f.close();
+    }
+}
+for (const protectedChannel of [false, true]) {
+    const f = fixture({ archive: true, protectedChannel });
+    try {
+        f.start();
+        assert.deepEqual(
+            f.archives,
+            [],
+            "Archive waits while the question is open"
+        );
+        f.runResume();
+        if (protectedChannel) {
+            assert.deepEqual(
+                f.archives,
+                [],
+                "Timeout must still require the PIN"
+            );
+            assert.equal(f.prompts(), 1);
+            f.enter("2468");
+        }
+        assert.deepEqual(f.archives, [1700000000]);
+        f.runSeek();
+        assert.deepEqual(
+            f.seeks,
+            [25],
+            "Timeout restores the saved archive position"
+        );
+        assert.deepEqual(f.played, []);
+        assert.equal(f.w.$("#dialogbox").is(":visible"), false);
     } finally {
         f.close();
     }

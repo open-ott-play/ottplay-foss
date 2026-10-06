@@ -1262,13 +1262,15 @@ export function infoBox(message: string): void {
  * @param message - Text with newlines or attribute-free `<br>` tags for line breaks.
  * @param onYes - Callback invoked when ENTER is pressed.
  * @param onNo - Optional callback invoked for any non-ENTER key, including No/RETURN.
+ * @param acceptAfterMs - Optional delay before accepting an unanswered dialog.
  * @returns void
  * @sideeffect Shows `#dialogbox`. Registers a one-shot `dialogBoxKeyHandler` that hides the box and calls the callback.
  */
 export function confirmBox(
     message: string,
     onYes: () => void,
-    onNo?: () => void
+    onNo?: () => void,
+    acceptAfterMs?: number
 ): void {
     var w = window as any;
     var wasPlaying =
@@ -1288,7 +1290,7 @@ export function confirmBox(
                 "</center>"
         )
         .show();
-    (window as any).__ottClassicScreenPort.setOwnedCallback(
+    var handler = w.__ottClassicScreenPort.setOwnedCallback(
         "dialog",
         function (e: number): void {
             $("#dialogbox").hide();
@@ -1308,6 +1310,14 @@ export function confirmBox(
             }
         }
     );
+    if (acceptAfterMs && acceptAfterMs > 0 && isFinite(acceptAfterMs)) {
+        var timer = setTimeout(function () {
+            handler(keys.ENTER);
+        }, acceptAfterMs);
+        handler.owner.own(function () {
+            clearTimeout(timer);
+        });
+    }
 }
 
 export function showSelectBox(

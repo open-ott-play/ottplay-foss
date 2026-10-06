@@ -2569,7 +2569,9 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
                     state.target.channelId === media.ref.itemId
                 )
                     stbSetPosTime(resumePos);
-            }
+            },
+            undefined,
+            10000
         );
 }
 

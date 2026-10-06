@@ -1427,7 +1427,7 @@ export function selectProviderByIndex(index: number): boolean {
         recent = JSON.parse(stbGetItem("ottplayprovs") || "[]");
     } catch (_error) {}
     if (!Array.isArray(recent)) recent = [];
-    if (index > 2) {
+    if (index > providerIds.indexOf("")) {
         var previous = recent.indexOf(id);
         if (previous !== -1) recent.splice(previous, 1);
         recent.push(id);
@@ -1583,7 +1583,7 @@ export function showProviderSelection(): void {
             return;
         }
         stbSetItem("ottplayprov", id);
-        if (providerIds.indexOf(id) > recentCount - 1) {
+        if (providerIds.indexOf(id) > recentCount) {
             var recent = recentProviders.slice();
             var idx = recent.indexOf(id);
             if (idx !== -1) recent.splice(idx, 1);
@@ -1597,7 +1597,7 @@ export function showProviderSelection(): void {
         );
     }
 
-    var recentCount = 3;
+    var recentCount = providerIds.indexOf("");
     var savedProvId = stbGetItem("ottplayprov") || "no";
     var recentProviders: string[] = [];
     try {
@@ -1619,7 +1619,7 @@ export function showProviderSelection(): void {
         if (!cbkey && prov === "cbilling") return;
         // OTTPLAY_FULL_ONLY_END
         var idx = providerIds.indexOf(prov);
-        if (idx === -1) return;
+        if (idx <= recentCount) return;
         providerIds.splice(idx, 1);
         providerIds.splice(recentCount + 1, 0, prov);
         var name = providerLabels![idx];
