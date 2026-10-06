@@ -897,6 +897,20 @@ for (const [name, mutate] of Object.entries({
                 .result.data.playback.includes("next_channel"),
             name + " is not advertised"
         );
+        // Arbitrary offsets share readiness guards, but a bad adjacent target
+        // cannot hide the operation: another requested destination may be valid.
+        assert.equal(
+            f.run("capabilities").result.data.playback.includes("step_channel"),
+            [
+                "empty channel name",
+                "invalid target ID",
+                "invalid Unicode name",
+                "missing full catalogue target",
+                "missing target channel",
+                "protected target",
+            ].includes(name),
+            name + " has the expected arbitrary-offset capability"
+        );
         assert.equal(f.run("playback", params).result.status, "rejected", name);
         assert.deepEqual(f.effects, [], name + " has no UI/playback effects");
         assert.equal(
