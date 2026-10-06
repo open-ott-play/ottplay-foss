@@ -40,37 +40,26 @@ Object.assign(w, require("./load-wire.cjs")());
 w.eval(compatibilitySource);
 w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
 const stored = new Map();
-let diagnosticEnabled = false;
-let diagnosticTrusted = false;
-let diagnosticStorageError = false;
 let diagnosticSession;
 let diagnosticListener = null;
-const diagnosticChanges = [];
 let screenshotEnabled = false;
+let screenshotConnected = false;
+let screenshotBrowser = true;
 let screenshotListener = null;
 const screenshotChanges = [];
 Object.assign(w, {
     _: (text) => text,
     __ottRemoteDiagnostics: {
-        setEnabled: (enabled) => {
-            diagnosticEnabled = enabled;
-            if (!enabled) diagnosticTrusted = false;
-            diagnosticChanges.push(enabled);
-            if (diagnosticListener) diagnosticListener();
-        },
-        setTrusted: (trusted) => {
-            diagnosticTrusted = trusted;
-            diagnosticEnabled = trusted;
-            if (diagnosticListener) diagnosticListener();
-        },
+        setEnabled: () =>
+            assert.fail("Connection authorization needs no diagnostic toggle"),
+        setTrusted: () =>
+            assert.fail("Connection authorization needs no trust toggle"),
         status: () => ({
-            enabled: diagnosticEnabled,
-            message: diagnosticEnabled
-                ? "Ready for diagnostics"
-                : "Diagnostics are off",
+            enabled: true,
+            message: "Remote diagnostics is ready for an authorized operator.",
             sessionId: diagnosticSession,
-            state: diagnosticStorageError ? "storage-error" : "disabled",
-            trusted: diagnosticTrusted,
+            state: "ready",
+            trusted: true,
         }),
         stopSession: () => {
             diagnosticSession = undefined;
@@ -81,17 +70,20 @@ Object.assign(w, {
         },
     },
     __ottRemoteScreenshot: {
-        grant: (local) => {
+        selectSource: (local) => {
             assert.equal(local, true);
             screenshotEnabled = true;
             screenshotChanges.push(true);
             if (screenshotListener) screenshotListener();
         },
         status: () => ({
+            browserSelectionSupported: screenshotBrowser,
+            connected: screenshotConnected,
             enabled: screenshotEnabled,
             message: screenshotEnabled
-                ? "Remote screenshots are allowed for 10 minutes. Close settings to capture."
-                : "Remote screenshots are off.",
+                ? "The browser screenshot source is ready."
+                : "Select the player tab or window in the browser sharing dialog.",
+            needsSourceSelection: screenshotConnected && !screenshotEnabled,
             pending: false,
             state: screenshotEnabled ? "ready" : "permission_required",
         }),
@@ -481,29 +473,12 @@ assert.equal(
     w.document.getElementById("commandServerDiscoveryCancel").disabled,
     true
 );
-remoteKey(w.keys.RIGHT);
-assert.equal(w.document.activeElement.id, "remoteDiagnosticsToggle");
-assert.deepEqual(
-    diagnosticChanges,
-    [],
-    "Opening settings never grants diagnostics"
-);
-remoteKey(w.keys.ENTER);
-assert.deepEqual(diagnosticChanges, [true]);
-assert.equal(w.document.activeElement.textContent, "Stop diagnostics");
-remoteKey(w.keys.ENTER);
-assert.deepEqual(diagnosticChanges, [true, false]);
-assert.equal(
-    w.document.activeElement.textContent,
-    "Allow diagnostics for 10 minutes"
-);
-remoteKey(w.keys.RIGHT);
-assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
-remoteKey(w.keys.ENTER);
-assert.equal(diagnosticTrusted, true, "Trust has its own explicit action");
-assert.equal(
-    w.document.activeElement.textContent,
-    "Disable trusted remote support"
+assert.equal(w.document.getElementById("remoteDiagnosticsToggle"), null);
+assert.equal(w.document.getElementById("remoteDiagnosticsTrust"), null);
+assert(
+    !w.document
+        .getElementById("remoteSettingsContent")
+        .textContent.includes("Allow screenshots for 10 minutes")
 );
 diagnosticSession = "session-under-test";
 diagnosticListener();
@@ -513,36 +488,34 @@ remoteKey(w.keys.ENTER);
 assert.equal(
     diagnosticSession,
     undefined,
-    "Stop capture ends the current session"
+    "Stop capture ends only the current session"
 );
-assert.equal(
-    diagnosticTrusted,
-    true,
-    "Stopping capture retains explicit server trust"
-);
+assert.equal(w.__ottRemoteDiagnostics.status().enabled, true);
+screenshotConnected = true;
+screenshotListener();
 remoteKey(w.keys.RIGHT);
 assert.equal(w.document.activeElement.id, "remoteScreenshotToggle");
 assert.deepEqual(
     screenshotChanges,
     [],
-    "Opening settings and navigation never grant screenshots"
+    "No browser source is selected by navigating settings"
 );
 w.__ottRemoteInputActive = true;
 remoteKey(w.keys.ENTER);
 assert.deepEqual(
     screenshotChanges,
     [],
-    "Remote input cannot grant screenshot permission through the settings button"
+    "Remote input cannot open the browser OS picker"
 );
 w.__ottRemoteInputActive = false;
 remoteKey(w.keys.ENTER);
 assert.deepEqual(screenshotChanges, [true]);
-assert.equal(w.document.activeElement.textContent, "Stop screenshots");
+assert.equal(w.document.activeElement.textContent, "Stop browser sharing");
 remoteKey(w.keys.ENTER);
 assert.deepEqual(screenshotChanges, [true, false]);
 assert.equal(
     w.document.activeElement.textContent,
-    "Allow screenshots for 10 minutes"
+    "Select screenshot source in browser"
 );
 remoteKey(w.keys.RIGHT);
 assert.equal(
@@ -552,28 +525,15 @@ assert.equal(
 );
 remoteKey(w.keys.LEFT);
 assert.equal(w.document.activeElement.id, "remoteScreenshotToggle");
-remoteKey(w.keys.LEFT);
-assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
-remoteKey(w.keys.ENTER);
-assert.equal(diagnosticTrusted, false);
-remoteKey(w.keys.LEFT);
-assert.equal(w.document.activeElement.id, "remoteDiagnosticsToggle");
-diagnosticStorageError = true;
-diagnosticListener();
-assert.equal(w.document.activeElement.textContent, "Retry");
-const retryStart = diagnosticChanges.length;
-remoteKey(w.keys.ENTER);
-assert.deepEqual(diagnosticChanges.slice(retryStart), [false]);
-assert.equal(diagnosticEnabled, false, "Retry must revoke, never grant");
-remoteKey(w.keys.RIGHT);
-assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
-assert.equal(w.document.activeElement.textContent, "Retry");
-remoteKey(w.keys.ENTER);
-assert.deepEqual(diagnosticChanges.slice(retryStart), [false, false]);
-assert.equal(diagnosticTrusted, false);
-diagnosticStorageError = false;
-diagnosticListener();
-remoteKey(w.keys.LEFT);
+// Native snapshots use connection authorization without a local source action.
+screenshotBrowser = false;
+screenshotEnabled = true;
+screenshotListener();
+assert.equal(w.document.getElementById("remoteScreenshotToggle").hidden, true);
+assert.equal(
+    w.document.getElementById("remoteScreenshotToggle").disabled,
+    true
+);
 remoteKey(w.keys.LEFT);
 assert.match(w.document.activeElement.textContent, /Close/);
 remoteKey(w.keys.ENTER);

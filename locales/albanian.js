@@ -260,11 +260,19 @@ var keyStrings = {
     Connect: "Lidhu",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Lidheni fillimisht këtë luajtës me një server komanda.",
     Connected: "Lidhur",
     "Connected. Waiting for the channel list...":
         "Lidhur. Në pritje të listës së kanaleve...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Lidhja e diagnostifikimit në distancë për këtë faqe.",
     "Connecting to Plex…": "Po lidhet me Plex…",
@@ -735,7 +743,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Telekomanda (pa butona me ngjyra)",
     "Remote (number buttons N/A)": "Telekomanda (pa butona me numra)",
     "Remote control": "Telekomanda",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Diagnostifikimi në distancë",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Diagnostifikimi në distancë po mbledh të dhëna për këtë faqe.",
     "Remote diagnostics is off.": "Diagnostifikimi në distancë është joaktiv.",
@@ -805,6 +821,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Skenari",
@@ -826,6 +844,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Zgjidhni burimin e shabllonit të listës së luajtjes për EPG dhe logot",
     "Select Stalker portal": "Zgjidhni portalin Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Dërgo kërkesë",
@@ -910,6 +930,7 @@ var keyStrings = {
     "Starting...": "Duke filluar…",
     Status: "Statusi",
     Stop: "Ndalo",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Ndalo mbledhjen aktuale të të dhënave",
     "Stop diagnostics": "Ndalo diagnostikimin",
     "Stop playback and return to live":
@@ -934,6 +955,8 @@ var keyStrings = {
     "Tabox settings": "Cilësimet Tabox",
     "Text is too long for remote input.":
         "Teksti është shumë i gjatë për futje në distancë.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL-ja e kërkimit të serverit të komandave është e pavlefshme.",
     "The device ID in the address is invalid.":

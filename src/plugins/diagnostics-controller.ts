@@ -4,11 +4,7 @@ import {
     type CommandServerResponse,
     normalizeCommandServerAddress,
 } from "./command-server";
-import {
-    createDiagnosticsPermissionStore,
-    type DiagnosticsPermissionBinding,
-    type DiagnosticsPermissionStore,
-} from "./diagnostics-permission";
+import type { DiagnosticsPermissionStore } from "./diagnostics-permission";
 import {
     createRemoteDiagnostics,
     type RemoteDiagnosticsOptions,
@@ -35,6 +31,7 @@ interface ControllerDependencies {
     clientFactory?: typeof createRemoteDiagnostics;
     getConfig: () => ControllerConfig;
     onStatus?: (status: DiagnosticsControllerStatus) => void;
+    /** Legacy injection retained for callers; connection policy never reads or writes it. */
     permissionStore?: DiagnosticsPermissionStore;
     runtimeLabel?: string;
     send: (
@@ -43,31 +40,18 @@ interface ControllerDependencies {
     ) => () => void;
 }
 
-const MAX_GRANT_MS = 600000;
 const MAX_NUMBER = 9007199254740991;
 
-/** Temporary consent and explicitly saved device-local trust have separate lifetimes. */
+/** The enabled command-server connection authorizes diagnostics; captures retain bounded leases. */
 export function installDiagnosticsController(
     w: any,
     deps: ControllerDependencies
 ): any {
     var enabled = false;
-    var trusted = false;
-    var permissionPending = true;
-    var revocationFailed = false;
-    var revocationPending = false;
-    var permissionGeneration = 0;
-    var binding: DiagnosticsPermissionBinding | null = null;
-    var permissionStore =
-        deps.permissionStore || createDiagnosticsPermissionStore(w);
-    var mayHaveDurableAuthority = storageAvailable();
+    var authority: ControllerConfig | null = null;
+    var connectionGeneration = 0;
     var retry: any = null;
     var failures = 0;
-    var policyReadPending = false;
-    var resumeAfterPolicy = false;
-    var nextPolicyCheck = 0;
-    var removePermissionListener: (() => void) | null = null;
-    var removeTrustListeners: (() => void) | null = null;
     var pageSuspended = false;
     var generation = 0;
     var client: any = null;
@@ -78,43 +62,28 @@ export function installDiagnosticsController(
         null;
     var saved: ControllerConfig | null = null;
     var lastNow = 0;
-    var deadline = 0;
     var sequence = 0;
     var view: Omit<
         DiagnosticsControllerStatus,
         "enabled" | "trusted" | "pending"
-    > = disabledView();
-
-    function disabledView() {
-        return {
-            message: "Remote diagnostics is off.",
-            state: "disabled",
-        };
-    }
+    > = {
+        message: "Connect remote control to enable diagnostics.",
+        state: "disabled",
+    };
 
     function status(): DiagnosticsControllerStatus {
         var result: DiagnosticsControllerStatus = {
             enabled: enabled,
-            message: revocationFailed
-                ? "Trusted access could not be removed from device storage."
-                : view.message,
-            pending: permissionPending || (trusted && !enabled),
-            state: revocationFailed ? "storage-error" : view.state,
-            trusted: trusted,
+            message: view.message,
+            pending: false,
+            state: view.state,
+            trusted: !!authority,
         };
         if (view.runtimeId) result.runtimeId = view.runtimeId;
         if (view.sessionId) result.sessionId = view.sessionId;
         if (view.remainingMs !== undefined)
             result.remainingMs = view.remainingMs;
         return result;
-    }
-
-    function storageAvailable(): boolean {
-        try {
-            return !permissionStore.available || permissionStore.available();
-        } catch (_) {
-            return true;
-        }
     }
 
     function notify(): void {
@@ -149,13 +118,8 @@ export function installDiagnosticsController(
         return value;
     }
 
-    function foreground(): boolean {
-        var doc = w.document;
-        return !!(
-            doc &&
-            (doc.visibilityState === "visible" ||
-                (doc.visibilityState === undefined && doc.hidden === false))
-        );
+    function online(): boolean {
+        return !w.navigator || w.navigator.onLine !== false;
     }
 
     function config(value?: ControllerConfig): ControllerConfig | null {
@@ -179,13 +143,16 @@ export function installDiagnosticsController(
         }
     }
 
-    function sameConfig(next: ControllerConfig | null): boolean {
+    function same(
+        a: ControllerConfig | null,
+        b: ControllerConfig | null
+    ): boolean {
         return !!(
-            next &&
-            saved &&
-            next.address === saved.address &&
-            next.token === saved.token &&
-            next.enabled === saved.enabled
+            a &&
+            b &&
+            a.address === b.address &&
+            a.token === b.token &&
+            a.enabled === b.enabled
         );
     }
 
@@ -213,6 +180,11 @@ export function installDiagnosticsController(
         }
     }
 
+    function clearRetry(): void {
+        if (retry !== null) w.clearTimeout(retry);
+        retry = null;
+    }
+
     function detachCapture(): void {
         var release = releaseCapture;
         releaseCapture = null;
@@ -223,36 +195,24 @@ export function installDiagnosticsController(
         }
     }
 
-    function stopRuntime(reason?: string): void {
-        var wasEnabled = enabled;
+    function stopRuntime(reason = "local_stop"): void {
         enabled = false;
         var current = ++generation;
         var oldTimer = timer;
-        var oldListeners = removeListeners;
         var oldCapture = releaseCapture;
         var oldClient = client;
-        // Detach ownership before invoking callbacks which may grant access again.
+        // Detach ownership before callbacks can establish another connection/runtime.
         timer = null;
-        removeListeners = null;
         releaseCapture = null;
         client = null;
         saved = null;
         view = {
-            message:
-                reason === "unsupported"
-                    ? "Remote diagnostics is unavailable on this player."
-                    : reason && reason !== "local_stop" && wasEnabled
-                      ? "Remote diagnostics stopped. Enable it again to grant access."
-                      : "Remote diagnostics is off.",
-            state:
-                reason === "unsupported"
-                    ? "unavailable"
-                    : reason && reason !== "local_stop" && wasEnabled
-                      ? "regrant-needed"
-                      : "disabled",
+            message: authority
+                ? "Remote control authorizes diagnostics. Waiting to reconnect."
+                : "Connect remote control to enable diagnostics.",
+            state: authority ? "suspended" : "disabled",
         };
         if (oldTimer !== null) w.clearTimeout(oldTimer);
-        if (oldListeners) oldListeners();
         if (oldCapture) {
             try {
                 oldCapture();
@@ -260,309 +220,175 @@ export function installDiagnosticsController(
         }
         if (oldClient) {
             try {
-                oldClient.stop(reason || "local_stop");
+                oldClient.stop(reason);
             } catch (_error) {}
         }
         if (current === generation) notify();
     }
 
-    function online(): boolean {
-        return !w.navigator || w.navigator.onLine !== false;
-    }
-
-    function bindingMatches(next: ControllerConfig | null): boolean {
-        return !!(
-            binding &&
-            next &&
-            binding.address === next.address &&
-            binding.token === next.token
-        );
-    }
-
-    function clearRetry(): void {
-        if (retry !== null) w.clearTimeout(retry);
-        retry = null;
-    }
-
-    function stop(reason?: string, persist = true): void {
-        var hadAuthority =
-            trusted ||
-            permissionPending ||
-            revocationFailed ||
-            mayHaveDurableAuthority;
-        var current = ++permissionGeneration;
-        trusted = false;
-        permissionPending = hadAuthority;
-        revocationPending = persist && hadAuthority;
-        binding = null;
-        policyReadPending = false;
-        resumeAfterPolicy = false;
-        if (removePermissionListener) removePermissionListener();
-        removePermissionListener = null;
+    /** Controller teardown, not a persisted permission preference. */
+    function stop(reason = "local_stop"): void {
+        connectionGeneration++;
+        authority = null;
         clearRetry();
-        if (removeTrustListeners) removeTrustListeners();
-        removeTrustListeners = null;
-        var cleaned = false;
-        var settled = false;
-        var failed = false;
-        function finished(): void {
-            if (!cleaned || !settled || current !== permissionGeneration)
-                return;
-            permissionPending = false;
-            revocationPending = false;
-            if (failed && hadAuthority) {
-                revocationFailed = true;
-            } else if (!failed && persist) {
-                mayHaveDurableAuthority = false;
-                revocationFailed = false;
-                if (view.state === "storage-error") view = disabledView();
-            }
-            notify();
-        }
-        // Queue revocation before user callbacks can request another grant.
-        try {
-            if (!persist) {
-                settled = true;
-            } else
-                permissionStore.write(null, function (error) {
-                    settled = true;
-                    failed = error;
-                    finished();
-                });
-        } catch (_) {
-            settled = true;
-            failed = true;
-        }
+        var remove = removeListeners;
+        removeListeners = null;
+        if (remove) remove();
         stopRuntime(reason);
-        cleaned = true;
-        finished();
     }
 
-    function scheduleTrusted(delay: number): void {
+    function unavailable(): void {
+        var current = connectionGeneration;
         clearRetry();
-        if (!trusted || permissionPending) return;
-        var current = permissionGeneration;
-        retry = w.setTimeout(function () {
+        stopRuntime("unsupported");
+        if (current !== connectionGeneration || enabled) return;
+        view = {
+            message: "Remote diagnostics is unavailable on this player.",
+            state: "unavailable",
+        };
+        notify();
+    }
+
+    function schedule(delay: number): void {
+        clearRetry();
+        if (!authority || enabled || pageSuspended || !online()) return;
+        var current = connectionGeneration;
+        var owned = w.setTimeout(function () {
+            if (
+                current !== connectionGeneration ||
+                !authority ||
+                retry !== owned
+            )
+                return;
             retry = null;
-            if (current !== permissionGeneration || !trusted) return;
-            resumeTrusted();
+            if (!same(authority, config())) configurationChanged();
+            else startRuntime();
         }, delay);
+        retry = owned;
     }
 
     function suspend(reason: string, retryAllowed = true): void {
-        if (!trusted) {
-            stop(reason);
-            return;
-        }
+        var current = connectionGeneration;
         clearRetry();
-        resumeAfterPolicy = false;
         stopRuntime(reason);
-        if (!trusted) return;
-        view = {
-            message:
-                "Trusted diagnostics is waiting for this player to reconnect.",
-            state: "suspended",
-        };
-        notify();
-        if (retryAllowed && foreground() && online() && !pageSuspended)
-            scheduleTrusted(
+        if (current !== connectionGeneration || !authority || enabled) return;
+        if (retryAllowed)
+            schedule(
                 Math.min(30000, 1000 * Math.pow(2, Math.min(5, failures++)))
             );
     }
 
-    function verifyPolicy(resume = false): void {
-        if (!trusted || !binding) return;
-        if (resume) resumeAfterPolicy = true;
-        if (policyReadPending) return;
-        policyReadPending = true;
-        var current = permissionGeneration;
-        var readRuntime = generation;
-        var expected = binding;
-        try {
-            permissionStore.read(function (error, value) {
-                if (current !== permissionGeneration || !trusted) return;
-                policyReadPending = false;
-                if (!error) mayHaveDurableAuthority = !!value;
-                if (
-                    error ||
-                    !value ||
-                    value.address !== expected!.address ||
-                    value.token !== expected!.token ||
-                    value.revision !== expected!.revision
-                ) {
-                    // Another page owns the durable policy; never erase its new grant.
-                    stop("consent_revoked", false);
-                    return;
-                }
-                nextPolicyCheck = lastNow + 5000;
-                var resumeNow = resumeAfterPolicy;
-                resumeAfterPolicy = false;
-                if (!bindingMatches(config())) {
-                    stop("consent_revoked");
-                    return;
-                }
-                if (resumeNow && readRuntime !== generation) {
-                    verifyPolicy(true);
-                    return;
-                }
-                if (
-                    resumeNow &&
-                    !enabled &&
-                    foreground() &&
-                    online() &&
-                    !pageSuspended
-                )
-                    startRuntime();
-            });
-        } catch (_) {
-            stop("consent_revoked", false);
-        }
+    function stopSession(): void {
+        var current = connectionGeneration;
+        clearRetry();
+        stopRuntime("local_stop");
+        if (current === connectionGeneration && !enabled) schedule(0);
     }
 
-    function resumeTrusted(): void {
-        if (!trusted || enabled || permissionPending) return;
-        if (!bindingMatches(config())) {
-            stop("consent_revoked");
-            return;
-        }
-        if (!foreground() || !online() || pageSuspended) return;
-        verifyPolicy(true);
-    }
-
-    function installTrustListeners(): void {
-        if (removeTrustListeners) return;
-        if (permissionStore.subscribe && !removePermissionListener)
-            removePermissionListener = permissionStore.subscribe(function () {
-                verifyPolicy();
-            });
+    function installListeners(): boolean {
+        if (removeListeners) return true;
         if (
             !w.document ||
             typeof w.document.addEventListener !== "function" ||
             typeof w.document.removeEventListener !== "function" ||
             typeof w.addEventListener !== "function" ||
             typeof w.removeEventListener !== "function"
-        ) {
-            stop("unsupported");
-            return;
-        }
-        function changed(): void {
-            if (!trusted) return;
-            if (!foreground() || !online() || pageSuspended)
-                suspend("suspended", false);
-            else scheduleTrusted(0);
-        }
+        )
+            return false;
+        var current = connectionGeneration;
         function hidden(): void {
+            if (current !== connectionGeneration) return;
             pageSuspended = true;
-            changed();
+            suspend("suspended", false);
         }
         function shown(): void {
+            if (current !== connectionGeneration) return;
             pageSuspended = false;
-            changed();
+            schedule(0);
         }
-        w.document.addEventListener("visibilitychange", changed, false);
+        function offline(): void {
+            if (current === connectionGeneration)
+                suspend("disconnected", false);
+        }
+        function onlineAgain(): void {
+            if (current === connectionGeneration) schedule(0);
+        }
+        // Background counters remain available; actual OS/page suspension retires the runtime.
         w.document.addEventListener("freeze", hidden, false);
         w.document.addEventListener("resume", shown, false);
         w.addEventListener("pagehide", hidden, false);
         w.addEventListener("pageshow", shown, false);
-        w.addEventListener("offline", changed, false);
-        w.addEventListener("online", changed, false);
-        removeTrustListeners = function () {
-            w.document.removeEventListener("visibilitychange", changed, false);
+        w.addEventListener("offline", offline, false);
+        w.addEventListener("online", onlineAgain, false);
+        removeListeners = function () {
             w.document.removeEventListener("freeze", hidden, false);
             w.document.removeEventListener("resume", shown, false);
             w.removeEventListener("pagehide", hidden, false);
             w.removeEventListener("pageshow", shown, false);
-            w.removeEventListener("offline", changed, false);
-            w.removeEventListener("online", changed, false);
+            w.removeEventListener("offline", offline, false);
+            w.removeEventListener("online", onlineAgain, false);
         };
+        return true;
     }
 
-    function setTrusted(value: boolean): void {
-        if (value !== true) {
-            stop("local_stop");
+    function configurationChanged(value?: ControllerConfig): void {
+        var next = config(value);
+        if (next && next.address.slice(0, 8) !== "https://") next = null;
+        if (same(authority, next)) {
+            if (!enabled) schedule(0);
             return;
         }
-        if (revocationFailed || revocationPending) {
-            notify();
-            return;
-        }
-        if (permissionPending || trusted) return;
-        var next = config();
-        if (!next || next.address.slice(0, 8) !== "https://") {
-            view = {
-                message: "Use an HTTPS command server for remote diagnostics.",
-                state: "unavailable",
-            };
-            notify();
-            return;
-        }
-        var current = ++permissionGeneration;
-        var granted = {
-            address: next.address,
-            revision: identifier(),
-            token: next.token,
-        };
-        if (storageAvailable()) mayHaveDurableAuthority = true;
-        permissionPending = true;
-        notify();
-        if (current !== permissionGeneration) return;
-        permissionStore.write(granted, function (error) {
-            if (current !== permissionGeneration) return;
-            permissionPending = false;
-            var latest = config();
-            if (
-                error ||
-                !latest ||
-                latest.address !== granted.address ||
-                latest.token !== granted.token
-            ) {
-                // Failed storage cannot rule out an older or ambiguously committed grant.
-                // Only a successful clear can resolve mayHaveDurableAuthority.
-                permissionPending = !error;
-                stop("consent_revoked");
+        var current = ++connectionGeneration;
+        authority = next;
+        failures = 0;
+        clearRetry();
+        var remove = removeListeners;
+        removeListeners = null;
+        if (remove) remove();
+        stopRuntime("consent_revoked");
+        if (current !== connectionGeneration) return;
+        if (!next) {
+            if (config(value))
                 view = {
                     message:
-                        "Trusted diagnostics is unavailable because device storage could not be updated.",
-                    state: "storage-error",
+                        "Use an HTTPS command server for remote diagnostics.",
+                    state: "unavailable",
                 };
-                notify();
-                return;
-            }
-            binding = granted;
-            trusted = true;
-            failures = 0;
-            installTrustListeners();
-            stopRuntime("local_stop");
-            nextPolicyCheck = lastNow + 5000;
-            if (trusted && foreground() && online() && !pageSuspended)
-                startRuntime();
-            if (trusted && !enabled) suspend("suspended", false);
             notify();
-        });
+            return;
+        }
+        if (!installListeners()) {
+            unavailable();
+            return;
+        }
+        // The command-server save callback may still be committing its settings.
+        schedule(0);
+    }
+
+    /** Historical setters no longer change connection authority; false stops the current capture only. */
+    function setEnabled(value: boolean): void {
+        if (value === true) configurationChanged();
+        else stopSession();
     }
 
     function validGrant(current: number): boolean {
         if (!enabled || current !== generation) return false;
-        if (!foreground() || !online() || pageSuspended) {
+        if (!same(saved, config()) || !same(saved, authority)) {
+            configurationChanged();
+            return false;
+        }
+        if (!online() || pageSuspended) {
             suspend("suspended", false);
             return false;
         }
-        if (!sameConfig(config())) {
-            stop("consent_revoked");
-            return false;
-        }
         try {
-            if (clock() >= deadline && !trusted) {
-                stop("lease_expired");
-                return false;
-            }
+            clock();
         } catch (_error) {
-            stop("unsupported");
+            unavailable();
             return false;
         }
         return true;
     }
-
     function field(value: any, key: string): any {
         try {
             return value &&
@@ -697,7 +523,7 @@ export function installDiagnosticsController(
             },
             function () {
                 if (!enabled || current !== generation) return;
-                stop("local_stop");
+                stopSession();
                 if (stopped) stopped();
             }
         );
@@ -719,8 +545,8 @@ export function installDiagnosticsController(
     }
 
     function update(current: number, next: any): void {
-        if (!enabled || current !== generation || !next) return;
-        if (!validGrant(current)) return;
+        if (!enabled || current !== generation || !next || !validGrant(current))
+            return;
         if (
             next.state === "disabled" ||
             next.state === "unavailable" ||
@@ -733,26 +559,16 @@ export function installDiagnosticsController(
             var reason =
                 next.reason ||
                 (next.state === "unavailable" ? "unsupported" : "disconnected");
-            if (
-                trusted &&
-                (reason === "disconnected" ||
-                    reason === "server_restarted" ||
-                    reason === "lease_expired")
-            )
-                suspend(reason);
-            else
-                stop(
-                    reason === "unsupported" ? "unsupported" : "consent_revoked"
-                );
+            if (reason === "unsupported") unavailable();
+            else suspend(reason);
             return;
         }
         var active = next.state === "active";
         if (next.runtimeId) failures = 0;
         view = {
             message: active
-                ? "Remote diagnostics is collecting for this page."
-                : "Remote diagnostics is ready for an authorized operator.",
-            remainingMs: trusted ? undefined : Math.max(0, deadline - lastNow),
+                ? "Remote diagnostics is collecting for this connection (up to 10 minutes per session)."
+                : "Remote control authorizes diagnostics. Ready for an operator.",
             state: active ? "active" : "ready",
         };
         if (
@@ -761,6 +577,7 @@ export function installDiagnosticsController(
         )
             view.runtimeId = next.runtimeId;
         if (
+            active &&
             typeof next.sessionId === "string" &&
             /^[A-Za-z0-9_.:-]{1,80}$/.test(next.sessionId)
         )
@@ -770,13 +587,6 @@ export function installDiagnosticsController(
 
     function watch(current: number): void {
         if (!validGrant(current)) return;
-        if (trusted && lastNow >= nextPolicyCheck) verifyPolicy();
-        if (!enabled || current !== generation) return;
-        view.remainingMs = trusted
-            ? undefined
-            : Math.max(0, deadline - lastNow);
-        notify();
-        if (!enabled || current !== generation) return;
         timer = w.setTimeout(function () {
             if (!enabled || current !== generation) return;
             timer = null;
@@ -784,94 +594,34 @@ export function installDiagnosticsController(
         }, 1000);
     }
 
-    function setEnabled(value: boolean): void {
-        if (value !== true) {
-            stop("local_stop");
-            return;
-        }
-        if (revocationFailed || revocationPending) {
-            notify();
-            return;
-        }
-        if (trusted) {
-            resumeTrusted();
-            return;
-        }
-        if (enabled) return;
-        if (permissionPending) stop("local_stop");
-        if (revocationFailed || revocationPending) return;
-        startRuntime();
-    }
-
     function startRuntime(): void {
-        if (enabled) return;
+        if (enabled || !authority || pageSuspended || !online()) return;
         var next = config();
-        if (!next) {
-            view = {
-                message: "Connect this player to a command server first.",
-                state: "unavailable",
-            };
-            notify();
-            return;
-        }
-        if (next.address.slice(0, 8) !== "https://") {
-            view = {
-                message: "Use an HTTPS command server for remote diagnostics.",
-                state: "unavailable",
-            };
-            notify();
+        if (!same(authority, next)) {
+            configurationChanged();
             return;
         }
         var logger = w.__ottDebug;
         if (
-            !foreground() ||
-            (w.navigator && w.navigator.onLine === false) ||
             !logger ||
             typeof logger.capture !== "function" ||
-            typeof logger.snapshot !== "function" ||
-            !w.document.addEventListener ||
-            !w.document.removeEventListener ||
-            !w.addEventListener ||
-            !w.removeEventListener
+            typeof logger.snapshot !== "function"
         ) {
-            stop("unsupported");
+            unavailable();
             return;
         }
         try {
             lastNow = clock();
-            if (lastNow > MAX_NUMBER - MAX_GRANT_MS)
-                throw new Error("Clock overflow");
         } catch (_error) {
-            stop("unsupported");
+            unavailable();
             return;
         }
         enabled = true;
         saved = next;
         var current = ++generation;
-        deadline = lastNow + MAX_GRANT_MS;
-        function hidden(): void {
-            if (current === generation && !foreground())
-                suspend("suspended", false);
-        }
-        function pagehide(): void {
-            if (current === generation) suspend("suspended", false);
-        }
-        function offline(): void {
-            if (current === generation) suspend("disconnected", false);
-        }
-        w.document.addEventListener("visibilitychange", hidden, false);
-        w.document.addEventListener("freeze", pagehide, false);
-        w.addEventListener("pagehide", pagehide, false);
-        w.addEventListener("offline", offline, false);
-        removeListeners = function () {
-            w.document.removeEventListener("visibilitychange", hidden, false);
-            w.document.removeEventListener("freeze", pagehide, false);
-            w.removeEventListener("pagehide", pagehide, false);
-            w.removeEventListener("offline", offline, false);
-        };
         view = {
-            message: "Connecting remote diagnostics for this page.",
-            remainingMs: trusted ? undefined : MAX_GRANT_MS,
+            message:
+                "Connecting remote diagnostics for the enabled remote control connection.",
             state: "ready",
         };
         notify();
@@ -932,8 +682,7 @@ export function installDiagnosticsController(
                 send: function (request, complete) {
                     if (!validGrant(current)) return function () {};
                     return deps.send(request, function (response) {
-                        if (enabled && current === generation)
-                            complete(response);
+                        if (validGrant(current)) complete(response);
                     });
                 },
                 sendRevocation: deps.send,
@@ -980,7 +729,7 @@ export function installDiagnosticsController(
             }
             client = created;
             client.configure({
-                address: next.address,
+                address: next!.address,
                 bootId: identifier(),
                 consentEpoch: identifier(),
                 enabled: true,
@@ -989,75 +738,25 @@ export function installDiagnosticsController(
                     /^[A-Za-z0-9_.:-]{1,40}$/.test(deps.runtimeLabel)
                         ? deps.runtimeLabel + "."
                         : "") + identifier().slice(0, 39),
-                token: next.token,
+                token: next!.token,
             });
             watch(current);
         } catch (_error) {
-            if (current === generation) stop("unsupported");
+            if (current === generation) unavailable();
         }
     }
 
-    var reading = permissionGeneration;
-    permissionStore.read(function (error, value) {
-        if (reading !== permissionGeneration) return;
-        permissionPending = false;
-        if (!error) mayHaveDurableAuthority = !!value;
-        if (error || !value) {
-            notify();
-            return;
-        }
-        var next = config();
-        if (
-            !next ||
-            next.address !== value.address ||
-            next.token !== value.token ||
-            next.address.slice(0, 8) !== "https://"
-        ) {
-            permissionPending = true;
-            stop("consent_revoked");
-            return;
-        }
-        if (
-            typeof value.revision !== "string" ||
-            !/^[A-Za-z0-9_.:-]{1,80}$/.test(value.revision)
-        )
-            return;
-        binding = {
-            address: value.address,
-            revision: value.revision,
-            token: value.token,
-        };
-        trusted = true;
-        installTrustListeners();
-        nextPolicyCheck = lastNow + 5000;
-        if (trusted && foreground() && online() && !pageSuspended)
-            startRuntime();
-        if (trusted && !enabled) suspend("suspended", false);
-        notify();
-    });
+    // Ignore legacy diagnostics-permission storage entirely: a stored grant or denial
+    // cannot override the active connection, and no user profile migration is needed.
+    configurationChanged();
 
     return {
-        configurationChanged: function (next: ControllerConfig): void {
-            var normalized = config(next);
-            if (
-                (enabled && !sameConfig(normalized)) ||
-                (trusted && !bindingMatches(normalized)) ||
-                permissionPending
-            )
-                stop("consent_revoked");
-        },
+        configurationChanged: configurationChanged,
         setEnabled: setEnabled,
-        setTrusted: setTrusted,
+        setTrusted: setEnabled,
         status: status,
         stop: stop,
-        stopSession: function () {
-            if (!trusted) {
-                stop("local_stop");
-                return;
-            }
-            stopRuntime("local_stop");
-            scheduleTrusted(0);
-        },
+        stopSession: stopSession,
         subscribe: function (listener: any): void {
             subscriber = typeof listener === "function" ? listener : null;
             if (subscriber) {

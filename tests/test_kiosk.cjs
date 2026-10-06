@@ -327,33 +327,27 @@ function diagnosticKiosk(
     });
     let stopped = 0;
     let bubbled = 0;
-    let revokeFails = false;
     let statusListener;
     const authority = {
         enabled: true,
         pending: false,
-        state: "ready",
+        sessionId: "capture-one",
+        state: "active",
         trusted: true,
     };
     w.stbGetItem = () => storedPolicy;
     w.__ottSourceIdentity = { current: () => "fixture" };
     w.setInterval = () => 1;
     w.__ottRemoteDiagnostics = {
-        setEnabled(value) {
-            assert.equal(
-                value,
-                false,
-                "kiosk's sole exception must revoke, never grant"
-            );
+        status: () => ({ ...authority }),
+        stopSession() {
             stopped++;
-            authority.enabled = authority.trusted = authority.pending = false;
-            authority.state = revokeFails ? "storage-error" : "disabled";
-            authority.message = revokeFails
-                ? "Trusted access could not be removed from device storage."
-                : "Remote diagnostics is off.";
+            delete authority.sessionId;
+            authority.state = "ready";
+            authority.message =
+                "Remote control authorizes diagnostics. Ready for an operator.";
             if (statusListener) statusListener({ ...authority });
         },
-        status: () => ({ ...authority }),
     };
     const kiosk = createKiosk(w);
     w.__ottKiosk = kiosk;
@@ -378,9 +372,6 @@ function diagnosticKiosk(
         authority,
         bubbled: () => bubbled,
         dom,
-        failRevocation(value) {
-            revokeFails = value;
-        },
         kiosk,
         onStatus(listener) {
             statusListener = listener;
@@ -418,61 +409,60 @@ function diagnosticKiosk(
     render({ enabled: false, state: "disabled" });
     render({
         enabled: true,
-        message: "Remote diagnostics is ready for an authorized operator.",
+        message:
+            "Remote control authorizes diagnostics. Ready for an operator.",
         state: "ready",
+        trusted: true,
+    });
+    assert.equal(
+        r.w.document.getElementById("remoteDiagnosticsIndicator"),
+        null,
+        "an idle authorized connection must not show a capture stop control"
+    );
+    render({
+        ...r.authority,
+        message: "Remote diagnostics is collecting for this connection.",
     });
     const button = r.w.document.getElementById("remoteDiagnosticsIndicator");
     button.addEventListener("click", () =>
-        assert.fail("kiosk cannot leak a retry click")
+        assert.fail("kiosk cannot leak a stop click")
     );
-    r.failRevocation(true);
-    for (let attempt = 1; attempt <= 2; attempt++) {
-        const event = new r.w.Event("click", {
-            bubbles: true,
-            cancelable: true,
-        });
-        button.dispatchEvent(event);
-        assert.equal(
-            r.stopped(),
-            attempt,
-            "failed revoke remains retryable in kiosk"
-        );
-        assert.equal(
-            r.w.document.getElementById("remoteDiagnosticsIndicator"),
-            button
-        );
-        assert.match(
-            button.textContent,
-            /could not be removed from device storage/
-        );
-        assert.match(button.textContent, / · Retry$/);
-        assert.equal(event.defaultPrevented, true);
-        assert.equal(r.bubbled(), 0);
-        assert.equal(r.kiosk.locked(), true);
-    }
-    render({ ...r.authority, pending: true });
-    assert.equal(
-        r.w.document.getElementById("remoteDiagnosticsIndicator"),
-        button,
-        "pending retry must keep the same visible control"
-    );
-    r.failRevocation(false);
-    button.dispatchEvent(
-        new r.w.KeyboardEvent("keydown", {
-            bubbles: true,
-            cancelable: true,
-            key: "Enter",
-        })
-    );
-    assert.equal(r.stopped(), 3);
+    const event = new r.w.Event("click", { bubbles: true, cancelable: true });
+    button.dispatchEvent(event);
+    assert.equal(r.stopped(), 1);
+    assert.equal(event.defaultPrevented, true);
     assert.equal(
         r.w.document.getElementById("remoteDiagnosticsIndicator"),
         null
     );
+    assert.equal(r.authority.enabled, true);
+    assert.equal(r.authority.trusted, true);
+    assert.equal(r.authority.sessionId, undefined);
     assert.equal(r.bubbled(), 0);
     assert.equal(r.kiosk.locked(), true);
     assert.equal(r.kiosk.snapshot().channel.id, "one");
     assert.equal(r.w.stbGetItem("__ottKioskV1"), r.storedPolicy);
+    r.dom.window.close();
+}
+for (const state of [
+    { sessionId: undefined, state: "ready" },
+    { sessionId: undefined, state: "suspended" },
+    { pending: true, sessionId: undefined, state: "storage-error" },
+    { sessionId: "stale-capture", state: "ready" },
+    { sessionId: "", state: "active" },
+    { sessionId: "invalid id", state: "active" },
+    { sessionId: 42, state: "active" },
+]) {
+    const r = diagnosticKiosk();
+    Object.assign(r.authority, state);
+    assert.equal(
+        r.kiosk.stopDiagnostics(),
+        false,
+        "no active session means STOP must not restart an idle authorized runtime"
+    );
+    assert.equal(r.stopped(), 0);
+    assert.equal(r.authority.trusted, true);
+    assert.equal(r.kiosk.locked(), true);
     r.dom.window.close();
 }
 for (const type of ["click", "pointerdown", "mousedown", "touchstart"]) {
@@ -483,13 +473,13 @@ for (const type of ["click", "pointerdown", "mousedown", "touchstart"]) {
     assert.equal(
         r.stopped(),
         1,
-        type + " must revoke through the live controller"
+        type + " must stop capture through the live controller"
     );
     assert.equal(event.defaultPrevented, true);
     assert.equal(
         r.bubbled(),
         0,
-        "revocation cannot invoke onclick, settings or delegated handlers"
+        "capture stop cannot invoke onclick, settings or delegated handlers"
     );
     assert.equal(r.kiosk.locked(), true);
     assert.equal(r.kiosk.snapshot().channel.id, "one");
@@ -500,7 +490,7 @@ for (const type of ["click", "pointerdown", "mousedown", "touchstart"]) {
     assert.equal(
         r.stopped(),
         1,
-        "compatibility mouse/click events cannot revoke twice"
+        "compatibility mouse/click events cannot stop the same capture twice"
     );
     r.dom.window.close();
 }
@@ -613,7 +603,7 @@ for (const key of ["Enter", " "]) {
     assert.equal(
         r.stopped(),
         1,
-        "device-mapped STOP revokes support without requiring DOM focus"
+        "device-mapped STOP stops capture without requiring DOM focus"
     );
     assert.equal(stop.defaultPrevented, true);
     assert.equal(r.kiosk.locked(), true);

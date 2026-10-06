@@ -259,11 +259,19 @@ var keyStrings = {
     Connect: "Холбох",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Эхлээд энэ тоглуулагчийг тушаалын серверт холбоно уу.",
     Connected: "Холбогдсон",
     "Connected. Waiting for the channel list...":
         "Холбогдсон. Сувгийн жагсаалтыг хүлээж байна...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Энэ хуудсанд алсын оношилгоог холбож байна.",
     "Connecting to Plex…": "Plex-т холбогдож байна…",
@@ -730,7 +738,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Удирдлага (өнгөт товчгүй)",
     "Remote (number buttons N/A)": "Удирдлага (тоон товчгүй)",
     "Remote control": "Алсын удирдлага",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Алсын оношилгоо",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Алсын оношилгоо энэ хуудасны мэдээллийг цуглуулж байна.",
     "Remote diagnostics is off.": "Алсын оношилгоо унтраалттай.",
@@ -799,6 +815,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Кино зохиол",
@@ -819,6 +837,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG болон логонд тоглуулах жагсаалтын загвар эх сурвалж сонгох",
     "Select Stalker portal": "Stalker портал сонгох",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Хүсэлт илгээх",
@@ -903,6 +923,7 @@ var keyStrings = {
     "Starting...": "Эхэлж байна…",
     Status: "Төлөв",
     Stop: "Зогсоох",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Одоогийн цуглуулалтыг зогсоох",
     "Stop diagnostics": "Оношилгоог зогсоох",
     "Stop playback and return to live":
@@ -927,6 +948,8 @@ var keyStrings = {
     "Tabox settings": "Tabox-ийн тохиргоо",
     "Text is too long for remote input.":
         "Текст алсаас оруулахад хэт урт байна.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Тушаалын сервер хайх URL буруу байна.",
     "The device ID in the address is invalid.":

@@ -260,11 +260,19 @@ var keyStrings = {
     Connect: "Ikkonnettja",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "L-ewwel qabbad dan il-plejer ma’ server tal-kmandi.",
     Connected: "Konness",
     "Connected. Waiting for the channel list...":
         "Konness. Qed tistenna l-lista tal-kanali...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Qed tiġi konnessa d-dijanjostika remota għal din il-paġna.",
     "Connecting to Plex…": "Qed issir konnessjoni ma’ Plex…",
@@ -734,7 +742,15 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Kontroll mill-bogħod (mingħajr buttuni bin-numri)",
     "Remote control": "Kontroll mill-bogħod",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Dijanjostika remota",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Id-dijanjostika remota qed tiġbor data għal din il-paġna.",
     "Remote diagnostics is off.": "Id-dijanjostika remota hija mitfija.",
@@ -805,6 +821,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Xenarju",
@@ -825,6 +843,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Agħżel sors tal-mudell tal-lista tad-daqq għal EPG u logos",
     "Select Stalker portal": "Agħżel portal Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Ibgħat talba",
@@ -909,6 +929,7 @@ var keyStrings = {
     "Starting...": "Qed jibda…",
     Status: "Stat",
     Stop: "Waqqaf",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Waqqaf il-ġbir attwali",
     "Stop diagnostics": "Waqqaf id-dijanjostika",
     "Stop playback and return to live":
@@ -933,6 +954,8 @@ var keyStrings = {
     "Tabox settings": "Issettjar ta’ Tabox",
     "Text is too long for remote input.":
         "It-test huwa twil wisq għad-dħul remot.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Il-URL tat-tfittxija tas-server tal-kmandi mhuwiex validu.",
     "The device ID in the address is invalid.":

@@ -255,11 +255,19 @@ var keyStrings = {
     Connect: "இணைக்கவும்",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "இந்த பிளேயரை முதலில் கட்டளை சேவையகத்துடன் இணைக்கவும்.",
     Connected: "இணைக்கப்பட்டது",
     "Connected. Waiting for the channel list...":
         "இணைக்கப்பட்டது. சேனல் பட்டியலுக்காக காத்திருக்கிறது...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "இந்தப் பக்கத்திற்கான தொலைநிலை கண்டறிதல்களை இணைக்கிறது.",
     "Connecting to Plex…": "Plex உடன் இணைக்கிறது…",
@@ -716,7 +724,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ரிமோட் (வண்ண பொத்தான்கள் இல்லை)",
     "Remote (number buttons N/A)": "ரிமோட் (எண் பொத்தான்கள் இல்லை)",
     "Remote control": "ரிமோட் கண்ட்ரோல்",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "தொலைநிலை கண்டறிதல்",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "இந்தப் பக்கத்திற்கான தொலைநிலை கண்டறிதல் சேகரிக்கப்படுகிறது.",
     "Remote diagnostics is off.": "தொலைநிலை கண்டறிதல் முடக்கப்பட்டுள்ளது.",
@@ -786,6 +802,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "திரைக்கதை",
@@ -806,6 +824,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG மற்றும் லோகோக்களுக்கான பிளேலிஸ்ட் டெம்ப்ளேட் மூலத்தைத் தேர்ந்தெடுக்கவும்",
     "Select Stalker portal": "Stalker போர்ட்டலைத் தேர்ந்தெடுக்கவும்",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "கோரிக்கையை அனுப்பவும்",
@@ -888,6 +908,7 @@ var keyStrings = {
     "Starting...": "தொடங்குகிறது…",
     Status: "நிலை",
     Stop: "நிறுத்து",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "தற்போதைய பிடிப்பை நிறுத்தவும்",
     "Stop diagnostics": "நோயறிதலை நிறுத்து",
     "Stop playback and return to live":
@@ -912,6 +933,8 @@ var keyStrings = {
     "Tabox settings": "Tabox அமைப்புகள்",
     "Text is too long for remote input.":
         "தொலைநிலை உள்ளீட்டிற்கு உரை மிக நீளமாக உள்ளது.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "கட்டளை சர்வர் கண்டுபிடிப்பு URL தவறானது.",
     "The device ID in the address is invalid.": "முகவரியில் உள்ள ID சாதனம் தவறானது.",

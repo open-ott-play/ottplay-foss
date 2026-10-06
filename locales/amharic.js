@@ -247,11 +247,19 @@ var keyStrings = {
     Connect: "አገናኝ",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ይህን ማጫወቻ መጀመሪያ ከትእዛዝ አገልጋይ ጋር ያገናኙ።",
     Connected: "ተገናኝቷል",
     "Connected. Waiting for the channel list...":
         "ተገናኝቷል። የሰርጥ ዝርዝሩን በመጠበቅ ላይ…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ለዚህ ገጽ የርቀት ምርመራን በማገናኘት ላይ።",
     "Connecting to Plex…": "ከPlex ጋር በመገናኘት ላይ…",
@@ -694,7 +702,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "የርቀት መቆጣጠሪያ (የቀለም አዝራሮች የሉም)",
     "Remote (number buttons N/A)": "የርቀት መቆጣጠሪያ (የቁጥር አዝራሮች የሉም)",
     "Remote control": "የርቀት መቆጣጠሪያ",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "የርቀት ምርመራ",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "የርቀት ምርመራ ለዚህ ገጽ መረጃ እየሰበሰበ ነው።",
     "Remote diagnostics is off.": "የርቀት ምርመራ ጠፍቷል።",
@@ -760,6 +776,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "የፊልም ጽሑፍ",
@@ -780,6 +798,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ለEPG እና አርማዎች የአጫዋች ዝርዝር አብነት ምንጭ ይምረጡ",
     "Select Stalker portal": "የStalker ፖርታል ምረጥ",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ጥያቄ ላክ",
@@ -861,6 +881,7 @@ var keyStrings = {
     "Starting...": "በመጀመር ላይ…",
     Status: "ሁኔታ",
     Stop: "አቁም",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "የአሁኑን መረጃ መሰብሰብ አቁም",
     "Stop diagnostics": "ምርመራን አቁም",
     "Stop playback and return to live": "መልሶ ማጫወትን አቁም እና ወደ ቀጥታ ስርጭት ተመለስ",
@@ -883,6 +904,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "የTabox ቅንብሮች",
     "Text is too long for remote input.": "ጽሑፉ ለርቀት ግቤት በጣም ረጅም ነው።",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "የትእዛዝ አገልጋይ ፍለጋ URL ልክ አይደለም።",
     "The device ID in the address is invalid.": "በአድራሻው ያለው የመሣሪያ ID ልክ አይደለም።",

@@ -249,11 +249,19 @@ var keyStrings = {
     Connect: "కనెక్ట్ చేయండి",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ముందుగా ఈ ప్లేయర్‌ని కమాండ్ సర్వర్‌కి కనెక్ట్ చేయండి.",
     Connected: "కనెక్ట్ చేయబడింది",
     "Connected. Waiting for the channel list...":
         "కనెక్ట్ చేయబడింది. ఛానెల్ జాబితా కోసం వేచి ఉంది...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ఈ పేజీ కోసం రిమోట్ డయాగ్నస్టిక్‌లను కనెక్ట్ చేస్తోంది.",
     "Connecting to Plex…": "Plexకి కనెక్ట్ అవుతోంది…",
@@ -702,7 +710,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "రిమోట్ (రంగు బటన్లు లేవు)",
     "Remote (number buttons N/A)": "రిమోట్ (నంబర్ బటన్‌లు లేవు)",
     "Remote control": "రిమోట్ కంట్రోల్",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "రిమోట్ డయాగ్నస్టిక్స్",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ఈ పేజీ కోసం రిమోట్ డయాగ్నస్టిక్స్ సేకరిస్తోంది.",
     "Remote diagnostics is off.": "రిమోట్ డయాగ్నస్టిక్స్ ఆఫ్‌లో ఉంది.",
@@ -770,6 +786,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "స్క్రీన్ ప్లే",
@@ -790,6 +808,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG మరియు లోగోల కోసం ప్లేజాబితా టెంప్లేట్ మూలాన్ని ఎంచుకోండి",
     "Select Stalker portal": "Stalker పోర్టల్‌ని ఎంచుకోండి",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "అభ్యర్థన పంపండి",
@@ -872,6 +892,7 @@ var keyStrings = {
     "Starting...": "ప్రారంభం…",
     Status: "స్థితి",
     Stop: "ఆపు",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "ప్రస్తుత సంగ్రహాన్ని ఆపివేయండి",
     "Stop diagnostics": "విశ్లేషణలను ఆపండి",
     "Stop playback and return to live": "ప్లేబ్యాక్‌ని ఆపివేసి, ప్రత్యక్ష ప్రసారానికి తిరిగి వెళ్లండి",
@@ -894,6 +915,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox సెట్టింగ్‌లు",
     "Text is too long for remote input.": "రిమోట్ ఇన్‌పుట్ కోసం వచనం చాలా పొడవుగా ఉంది.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "కమాండ్ సర్వర్ ఆవిష్కరణ URL చెల్లదు.",
     "The device ID in the address is invalid.": "చిరునామాలోని ID పరికరం చెల్లదు.",

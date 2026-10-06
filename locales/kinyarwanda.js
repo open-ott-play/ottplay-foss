@@ -260,11 +260,19 @@ var keyStrings = {
     Connect: "Huza",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Banza uhuze iyi porogaramu yo gukina na seriveri y'amategeko.",
     Connected: "Byahujwe",
     "Connected. Waiting for the channel list...":
         "Byahujwe. Dutegereje urutonde rwa shene...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Isuzuma ryo kure ry'iyi paji ririmo guhuzwa.",
     "Connecting to Plex…": "Birimo guhuza na Plex…",
@@ -736,7 +744,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Igenzurakure (ridafite buto z'amabara)",
     "Remote (number buttons N/A)": "Igenzurakure (ridafite buto z'imibare)",
     "Remote control": "Igenzura ryo kure",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Isuzuma ryo kure",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Isuzuma ryo kure rirakusanya amakuru y'iyi paji.",
     "Remote diagnostics is off.": "Isuzuma ryo kure rirazimye.",
@@ -806,6 +822,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Inyandiko ya filimi",
@@ -826,6 +844,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Hitamo isoko y'icyitegererezo cy'urutonde rwo gukina rwa EPG n'ibirango",
     "Select Stalker portal": "Hitamo urubuga rwa Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Ohereza ubusabe",
@@ -913,6 +933,7 @@ var keyStrings = {
     "Starting...": "Biratangiye…",
     Status: "Imimerere",
     Stop: "Hagarika",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Hagarika ikusanya ririmo gukorwa",
     "Stop diagnostics": "Hagarika isuzuma",
     "Stop playback and return to live":
@@ -937,6 +958,8 @@ var keyStrings = {
     "Tabox settings": "Igenamiterere rya Tabox",
     "Text is too long for remote input.":
         "Inyandiko ni ndende cyane ku iyinjiza rya kure.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL yo gushakisha seriveri y'amategeko ntiyemewe.",
     "The device ID in the address is invalid.":
