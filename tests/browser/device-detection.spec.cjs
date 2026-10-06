@@ -1527,3 +1527,114 @@ test.describe("LG Magic Remote pointer and button transitions", () => {
         expect(errors).toEqual([]);
     });
 });
+
+// Real HTML/bootstrap/bundle with a fresh browser profile. Native arrays emulate
+// only the document-start locale contract, not a native shell or hardware device.
+for (const scenario of [
+    { expected: "_rus", languages: ["ru-RU"], name: "browser Russian" },
+    {
+        expected: "_rus",
+        languages: ["en-US"],
+        name: "native ordered preferences",
+        native: ["qaa", "ru-RU", "en-US"],
+    },
+    {
+        expected: "_eng",
+        languages: ["ru-RU"],
+        name: "saved choice wins",
+        native: ["ru-RU"],
+        saved: "_eng",
+    },
+    {
+        expected: "",
+        languages: ["en-US"],
+        name: "unsupported native preference",
+        native: ["qaa"],
+    },
+    {
+        expected: "",
+        fallback: "zh",
+        languages: ["zh-Hant-TW"],
+        name: "unsupported writing system",
+    },
+    {
+        expected: "",
+        failedDictionary: true,
+        languages: ["ru-RU"],
+        name: "unavailable automatic dictionary",
+    },
+    {
+        expected: "_rus",
+        languages: ["ru-RU"],
+        name: "cookie fallback after storage quota",
+        storageQuota: true,
+    },
+]) {
+    test(
+        "startup language: " + scenario.name,
+        async ({ page, context, baseURL }) => {
+            const errors = [];
+            const dictionaries = [];
+            const origin = new URL(baseURL).origin;
+            page.on("pageerror", (error) => errors.push(error.message));
+            await context.route("**/*", async (route) => {
+                const url = new URL(route.request().url());
+                if (url.origin !== origin)
+                    return route.abort("blockedbyclient");
+                if (url.pathname.startsWith("/locales/")) {
+                    dictionaries.push(url.pathname);
+                    if (scenario.failedDictionary) return route.abort("failed");
+                }
+                return route.continue();
+            });
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.addInitScript((choice) => {
+                Object.defineProperty(navigator, "languages", {
+                    value: choice.languages,
+                });
+                Object.defineProperty(navigator, "language", {
+                    value: choice.fallback || choice.languages[0],
+                });
+                if (choice.native)
+                    window.__ottPreferredLanguages = choice.native;
+                if (choice.saved)
+                    localStorage.setItem("ottplaylang", choice.saved);
+                if (choice.storageQuota)
+                    Storage.prototype.setItem = function () {
+                        throw new DOMException(
+                            "Quota exceeded",
+                            "QuotaExceededError"
+                        );
+                    };
+            }, scenario);
+            await page.goto("/f/pc/", { waitUntil: "load" });
+            const caption =
+                scenario.expected === "_rus"
+                    ? "Первоначальная настройка"
+                    : scenario.expected
+                      ? "First-run setup"
+                      : "Choose language";
+            await expect(page.locator("#listCaption")).toHaveText(caption);
+            await expect(page.locator("#list")).toBeVisible();
+            expect(
+                await page.evaluate(() => stbGetItem("ottplaylang") || "")
+            ).toBe(scenario.expected);
+            if (scenario.expected) {
+                expect(dictionaries).toEqual([
+                    scenario.expected === "_rus"
+                        ? "/locales/russian.js"
+                        : "/locales/english.js",
+                ]);
+                expect(
+                    await page.evaluate(() => window.__ottBootLanguage)
+                ).toBeNull();
+                await page.reload({ waitUntil: "load" });
+                await expect(page.locator("#listCaption")).toHaveText(caption);
+                expect(
+                    await page.evaluate(() => stbGetItem("ottplaylang"))
+                ).toBe(scenario.expected);
+            }
+            expect(errors).toEqual([]);
+        }
+    );
+}

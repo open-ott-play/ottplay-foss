@@ -1,6 +1,7 @@
 import UIKit
 import Capacitor
 import CapApp_SPM
+import WebKit
 
 class MainViewController: CAPBridgeViewController {
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -12,6 +13,17 @@ class MainViewController: CAPBridgeViewController {
     }
 
     override func capacitorDidLoad() {
+        // This hook runs before Capacitor's first loadWebView(). WebKit exposes
+        // only its primary language to JS; retain the full native preference order.
+        if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
+           let json = String(data: data, encoding: .utf8) {
+            let script = WKUserScript(
+                source: "window.__ottPreferredLanguages=\(json);",
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+            webView?.configuration.userContentController.addUserScript(script)
+        }
         bridge?.registerPluginInstance(AccessMediaPlugin())
         MobileXmltvEpg.requestHandler = { request, completion in
             AccessMedia.fetch(request, discoverOnFailure: false, completion: completion)

@@ -41,9 +41,32 @@ PLi-HD and Studio, list densities 10/25/30, and 640×360 through 3840×2160.
 ## Generated labels and original content
 
 Bootstrap loads the saved language's existing catalog before showing startup
-messages. Its filename allowlist is checked against the canonical asset map.
-A missing preference, unavailable catalog or preload timeout falls back to
-English so translation failures cannot prevent startup. The language picker
+messages. Without a saved choice, it selects the first supported language from
+the native preference list (Tauri and Capacitor iOS), or `navigator.languages`
+in browsers. Older engines fall back to `language`, `userLanguage`, then
+`browserLanguage` when no preference list is available. A nonempty list is
+authoritative: unsupported entries do not trigger a different browser fallback.
+Native preferences are injected at document start, before the HTML loader;
+this avoids WebKit's reduced browser-language list. The archived Android bridge
+fixtures are not a shipped Capacitor target in this repository.
+
+BCP 47 tags are matched case-insensitively, accepting underscore separators and
+region variants. The matcher retains explicit writing systems and the regional
+script defaults from pinned CLDR 48 `likelySubtags.xml` (recorded in
+`tests/fixtures/startup-locales.json`). It does not select a dictionary written
+in another script: for example, `zh-Hant`, `pa-PK` and `sd-Deva` remain
+unsupported unless a later preference has a matching pack. Legacy aliases
+`iw`, `in`, `tl`, `nb`, `mo` and Kurmanji `kmr` map to their shipped catalogs.
+The resolver needs neither `Intl` nor a network service.
+
+Automatic selection is saved through the normal storage adapter only after a
+successful preload and device initialization. A newly saved manual choice takes
+precedence, and a successfully preloaded dictionary is reused without another
+download. Without a matching preference or after a preload failure/timeout,
+startup continues to the manual language picker without saving a guessed
+language. Existing saved preferences are never replaced by system settings.
+The filename allowlist is checked against the canonical asset map; English
+startup labels remain the fallback when no dictionary can load. The language picker
 serializes downloads and preserves the current dictionary on cancellation or
 failure. Tauri and Capacitor dialogs receive the player's translated labels.
 

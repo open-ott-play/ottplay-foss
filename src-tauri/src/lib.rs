@@ -1,5 +1,6 @@
 mod commands;
 mod instance;
+mod preferred_languages;
 
 use commands::media_session::MediaSessionState;
 use commands::tauri_commands::{PipState, TauriState};
@@ -130,6 +131,7 @@ pub fn run() {
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
+            .initialization_script(preferred_languages::initialization_script())
             .title("OttPlay FOSS")
             .inner_size(1280.0, 720.0)
             .center()
