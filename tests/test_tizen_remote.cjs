@@ -50,7 +50,7 @@ let handlers =
         "handleMainKey",
         "toggleMainPlayback",
     ]) +
-    source("src/index.ts", ["selectLang"]) +
+    source("src/index.ts", ["selectLang", "checkTauriUpdatesAfterLanguage"]) +
     source("src/provider/index.ts", ["firstRun"]);
 const useBundle = process.argv.includes("--bundle");
 if (useBundle) {
@@ -95,6 +95,7 @@ if (useBundle) {
         "handleMainKey",
         "toggleMainPlayback",
         "selectLang",
+        "checkTauriUpdatesAfterLanguage",
         "languageNames",
         "languageAssetPath",
         "firstRun",

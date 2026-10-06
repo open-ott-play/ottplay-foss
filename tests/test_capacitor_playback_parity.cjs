@@ -465,6 +465,8 @@ function fixture(platform = "android") {
         return Promise.resolve();
     };
     const w = {
+        _: (key) =>
+            key === "Picture in Picture" ? "Картинка в картинке" : key,
         $: (selector) => {
             const el = element(selector.slice(1));
             return {
@@ -682,6 +684,7 @@ async function run() {
         w.stbPlayPip("https://example.invalid/second.m3u8");
         await settle();
         assert.equal(nativeCalls[0][0], "playPip");
+        assert.equal(nativeCalls[0][1].subtitle, "Картинка в картинке");
         assert.equal(
             nativeCalls[0][1].url,
             "https://example.invalid/second.m3u8"

@@ -413,6 +413,12 @@ test("catalog labels stay nonblank without exposing filesystem parents or changi
         ]
     );
     assert.equal(f.host.mediaRecords.at(-1).playlist_url.offset, 8);
+    assert.equal(f.host.mediaRecords[0].__ottMediaLabel.key, "Browse folders");
+    assert.equal(f.host.mediaRecords[6].__ottMediaLabel.key, "Untitled");
+    assert.equal(f.host.mediaRecords[7].__ottMediaLabel.key, "Untitled folder");
+    assert(
+        f.host.mediaRecords.slice(1, 6).every((item) => !item.__ottMediaLabel)
+    );
     assert.equal(
         f.host.mediaRecords[7].playlist_url.path,
         "/library/sections/1/folder?parent=2"
@@ -421,7 +427,10 @@ test("catalog labels stay nonblank without exposing filesystem parents or changi
     f.client.load("", () => {});
     last(f).reply({
         MediaContainer: {
-            Directory: [{ key: "1", title: "  ", type: "movie" }],
+            Directory: [
+                { key: "1", title: "  ", type: "movie" },
+                { key: "2", title: "Untitled folder" },
+            ],
         },
     });
     assert.equal(
@@ -429,6 +438,8 @@ test("catalog labels stay nonblank without exposing filesystem parents or changi
         "Untitled folder",
         "an unnamed movie library is a directory, not a playable movie"
     );
+    assert.equal(f.host.mediaRecords[1].__ottMediaLabel, undefined);
+    assert.equal(f.host.mediaRecords[1].title, "Untitled folder");
 });
 
 test("collection capability uses the same flat route contract as collection", () => {

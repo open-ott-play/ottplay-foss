@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP tanpa port menggunakan port HTTP 8081. Kosongkan alamat atau pilih Putuskan untuk berhenti.",
+    "Another source sign-in is already open":
+        "Jendela masuk ke sumber lain sudah terbuka",
     "API failed, trying M3U...": "API gagal, mencoba M3U…",
     "API Server": "Server API",
     "API server URL": "URL server API",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Mundur / maju 1 menit",
     "Background color": "Warna latar",
     "Background color of selected item": "Warna latar item terpilih",
+    "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Pengaturan BEST LiST IPTV [HLS Playlist]",
@@ -174,6 +177,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Pencarian server perintah kehabisan waktu.",
     "Command server found.": "Server perintah ditemukan.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Komponen kompatibilitas tidak dapat dimuat. Buka kembali pemutar untuk mencoba lagi.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurasikan All4you.tv di Pengaturan -> Pengaturan penyedia",
@@ -259,6 +264,10 @@ var keyStrings = {
     "Continue watching?": "Lanjutkan menonton?",
     "Copy category": "Salin kategori",
     "Copy JSON": "Salin JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Salin JSON untuk menyimpan cadangan. Gunakan impor pengaturan untuk memulihkannya.",
+    "Copy the selected JSON with your device's copy command":
+        "Salin JSON yang dipilih dengan perintah salin perangkat Anda",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Tidak dapat terhubung ke server.",
@@ -273,6 +282,8 @@ var keyStrings = {
     Country: "Negara",
     "Create category": "Buat kategori",
     current: "saat ini",
+    "Debug enabled. Restart to apply.":
+        "Debug diaktifkan. Mulai ulang pemutar untuk menerapkannya.",
     "Debug HUD": "Panel debug",
     "Debug HUD is not available": "Panel debug tidak tersedia",
     Delete: "Hapus",
@@ -303,6 +314,7 @@ var keyStrings = {
     "Download! Wait ...": "Mengunduh… harap tunggu…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Pengaturan DRVAO",
+    "Drag window": "Pindahkan jendela",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Pengaturan Dragon Media PRO",
     Duration: "Durasi",
@@ -318,6 +330,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Masukkan kata sandi (8 karakter).",
     "Enter a playlist URL to access this service.":
         "Masukkan URL daftar putar untuk mengakses layanan ini.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Masukkan URL daftar putar. Pemutar akan dimulai ulang setelah disimpan.",
     "Enter a server address without spaces or a fragment.":
         "Masukkan alamat server tanpa spasi atau fragmen.",
     "Enter a username (8 characters).": "Masukkan nama pengguna (8 karakter).",
@@ -328,6 +342,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Masukkan alamat server yang valid, misalnya 192.168.1.20:8081.",
     "Enter access key for": "Masukkan kunci akses untuk",
+    "Enter an application access key (%1–%2 characters).":
+        "Masukkan kunci akses aplikasi (%1–%2 karakter).",
     "Enter an application access key (8 characters).":
         "Masukkan kunci akses aplikasi (8 karakter).",
     "Enter an ID and PIN to access this service.":
@@ -355,6 +371,7 @@ var keyStrings = {
         "Masukkan URL portal Stalker (mis. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Masukkan URL portal Stalker (mis. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Masukkan nomor server (%1).",
     "Enter the access code separately, not in the server address.":
         "Masukkan kode akses secara terpisah, bukan di alamat server.",
     "Enter the command server IP or address.":
@@ -456,11 +473,13 @@ var keyStrings = {
     Favorites: "Favorit",
     "File selection is not supported on this device":
         "Pemilihan file tidak didukung di perangkat ini",
+    "Fill screen": "Isi layar",
     Filter: "Filter",
     Filters: "Filter",
     "Find command server": "Cari server perintah",
     "Finding command servers...": "Mencari server perintah...",
     "First Run Setup": "Pengaturan awal",
+    "Fit to screen": "Sesuaikan dengan layar",
     Folders: "Folders",
     "Font type": "Jenis font",
     "For download settings file open": "Untuk mengunduh file pengaturan, buka",
@@ -468,6 +487,8 @@ var keyStrings = {
     "For upload settings file open": "Untuk mengunggah file pengaturan, buka",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Pengaturan Fox-TV",
+    "Full history, sources and license terms":
+        "Riwayat lengkap, sumber, dan ketentuan lisensi",
     FXML: "FXML",
     "FXML settings": "Pengaturan FXML",
     Genre: "Genre",
@@ -486,6 +507,7 @@ var keyStrings = {
     "HTTP port": "Port HTTP",
     "HTTP remote control is unavailable on this device.":
         "Kendali jarak jauh HTTP tidak tersedia di perangkat ini.",
+    "HTTPS support": "Dukungan HTTPS",
     ID: "ID",
     "Import settings": "Impor pengaturan",
     "In live mode: <br/>": "Dalam mode langsung:<br/>",
@@ -499,6 +521,8 @@ var keyStrings = {
     "Interface transparency": "Transparansi antarmuka",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Tautan saluran tidak valid! Masukkan host lengkap seperti dalam URL aliran di akun pelanggan (mis. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Konfigurasi sumber yang dilindungi tidak valid",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Pengaturan IpStream.one",
@@ -521,10 +545,14 @@ var keyStrings = {
     "Load:": "Muat:",
     "Loading channels from Xtream API...": "Memuat saluran dari API Xtream…",
     "Loading channels...": "Memuat saluran…",
+    "Loading device...": "Memuat komponen perangkat…",
     "Loading from API...": "Memuat dari API…",
     "Loading from Edem API...": "Memuat dari API Edem…",
+    "Loading interface...": "Memuat antarmuka…",
     "Loading M3U playlist...": "Memuat daftar putar M3U…",
     "Loading M3U...": "Memuat M3U…",
+    "Loading media libraries...": "Memuat pustaka media…",
+    "Loading player...": "Memuat pemutar…",
     "Loading via proxy...": "Memuat melalui proksi…",
     "Loading. Please wait...": "Memuat… harap tunggu…",
     "Loading...": "Memuat…",
@@ -595,6 +623,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Teks asli: %1",
+    "OTT / APP host": "Server OTT / aplikasi",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Pengaturan OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -604,6 +634,7 @@ var keyStrings = {
     on: "aktif",
     "on ": "aktif ",
     "or scan": "atau pindai",
+    Packages: "Paket",
     "Pairing approved. Command server configured.":
         "Pemasangan disetujui. Server perintah telah dikonfigurasi.",
     "Pairing expired. Find the server again to retry.":
@@ -614,16 +645,20 @@ var keyStrings = {
         "Pemasangan ditolak atau persetujuan yang diterima tidak valid. Cari server lagi untuk mencoba kembali.",
     "Parental control": "Kontrol orang tua",
     Password: "Kata sandi",
+    "Paste settings JSON": "Tempel pengaturan dalam format JSON",
     Pause: "Jeda",
     "Pause/Play": "Jeda / putar",
+    "Payment method": "Metode pembayaran",
     "Permanent clock on screen": "Selalu tampilkan jam di layar",
     PIN: "PIN",
+    "Picture in Picture": "Gambar dalam gambar",
     "PiP exchange": "Tukar PiP",
     "PiP window position": "Posisi jendela PiP",
     "PiP window size": "Ukuran jendela PiP",
     Play: "Putar",
     Playback: "Playback",
     "Player and device info": "Informasi pemutar dan perangkat",
+    "Player could not start": "Pemutar tidak dapat dimulai",
     "Player info:": "Informasi pemutar:",
     Playlist: "Daftar putar",
     "Playlist file": "File daftar putar",
@@ -641,17 +676,22 @@ var keyStrings = {
     "POLMEDIA settings": "Pengaturan POLMEDIA",
     "Portal URL": "URL portal",
     "Position shift -10 seconds after pause": "Mundur 10 detik setelah jeda",
+    Postpaid: "Pascabayar",
     PROST: "PROST",
     "PROST settings": "Pengaturan PROST",
+    Prepaid: "Prabayar",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Sebelumnya",
     "Preview in channel list": "Pratinjau dalam daftar saluran",
     Previous: "Sebelumnya",
     "Privacy policy": "Kebijakan privasi",
+    "Privacy policy unavailable. Contact: %1":
+        "Kebijakan privasi tidak tersedia. Kontak: %1",
     "Profile name": "Nama profil",
     "Protect Adult Channels": "Lindungi saluran dewasa",
     "Protect Change Provider": "Lindungi pergantian penyedia",
     "Protect Settings": "Lindungi pengaturan",
+    "Protected source is unavailable": "Sumber yang dilindungi tidak tersedia",
     "p...": "p...",
     paging: "per halaman",
     Quality: "Kualitas",
@@ -768,7 +808,12 @@ var keyStrings = {
     Settings: "Pengaturan",
     "Settings changed. Discovery was canceled.":
         "Pengaturan berubah. Pencarian dibatalkan.",
+    "Settings copied": "Pengaturan disalin",
+    "Settings could not be exported": "Pengaturan tidak dapat diekspor",
     "Settings could not be saved": "Pengaturan tidak dapat disimpan",
+    "Settings download requested": "Unduhan pengaturan diminta",
+    "Settings imported": "Pengaturan diimpor",
+    "Settings JSON": "Pengaturan dalam format JSON",
     "Settings loaded from storage": "Pengaturan dimuat dari penyimpanan",
     "Settings STB": "Pengaturan STB",
     "Settings saved": "Pengaturan disimpan",
@@ -807,25 +852,35 @@ var keyStrings = {
     "Shuffle: Loading...": "Acak: memuat…",
     "Shuffle: Off": "Acak: nonaktif",
     "Shuffle: On": "Acak: aktif",
+    "Sign in to the protected source again":
+        "Masuk kembali ke sumber yang dilindungi",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Masuk: %1",
+    "Sign out of all sources": "Keluar dari semua sumber",
+    "Sign-in opens when you load a protected playlist.":
+        "Jendela masuk terbuka saat Anda memuat daftar putar yang dilindungi.",
     "Sleep timer": "Pengatur waktu tidur",
     "Sort channels": "Urutkan saluran",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Proses masuk ke sumber dibatalkan",
     "Stalker Portal Provider": "Penyedia portal Stalker",
     "Stalker portal settings": "Pengaturan portal Stalker",
     "Stalker portals": "Portal Stalker",
+    "Starting...": "Memulai…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Hentikan pemutaran dan kembali ke siaran langsung",
+    "Stream could not be played": "Aliran tidak dapat diputar",
     "Stream type: %1": "Jenis aliran: %1",
     "String for search": "Kata pencarian",
     "Su Mo Tu We Th Fr Sa": "Min Sen Sel Rab Kam Jum Sab",
+    "Subscription information": "Informasi langganan",
     Subtitle: "Subtitel",
     Switch: "Ganti",
     "Switch sound track": "Ganti trek audio",
@@ -901,11 +956,14 @@ var keyStrings = {
         "Gunakan HTTP atau HTTPS tanpa nama pengguna atau kata sandi dalam alamat.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gunakan KIRI/KANAN untuk memilih kontrol, OK untuk mengaktifkannya, dan ATAS/BAWAH untuk menggulir.",
+    "Use Up / Down to scroll. Back to close.":
+        "Gunakan Atas / Bawah untuk menggulir. Kembali untuk menutup.",
     Username: "Nama pengguna",
     "Username or password is missing.":
         "Nama pengguna atau kata sandi belum diisi.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versi",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Pengaturan VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

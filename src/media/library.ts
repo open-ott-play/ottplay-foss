@@ -10,6 +10,7 @@ interface MediaLibraryItem {
 }
 interface MediaRoute {
     kind: "catalog" | "history" | "favorites" | "variants";
+    label?: { key: string; value: string };
     target?: any;
     title: string;
 }

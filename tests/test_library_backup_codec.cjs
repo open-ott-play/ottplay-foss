@@ -91,6 +91,37 @@ check("strict documents preserve missing stable and raw references", () => {
     assert.equal(codec.validate(document(), "another-account"), false);
 });
 check(
+    "default-list provenance is optional, validated and retained by legacy restore",
+    () => {
+        const d = document();
+        d.favorites.lists = {
+            active: "Favorites",
+            lists: { Favorites: [] },
+            order: ["Favorites"],
+            v: 1,
+        };
+        d.favorites.defaultList = "Favorites";
+        assert.equal(codec.validate(d, source), true);
+        const restored = codec.legacy(
+            source,
+            [],
+            [],
+            {},
+            {},
+            d,
+            referenceFactory
+        );
+        assert.equal(restored.favorites.defaultList, "Favorites");
+        for (const marker of [true, "Unknown", "Main"]) {
+            d.favorites.defaultList = marker;
+            assert.equal(codec.validate(d, source), false);
+        }
+        d.favorites.defaultList = "Favorites";
+        delete d.favorites.lists.lists.Favorites;
+        assert.equal(codec.validate(d, source), false);
+    }
+);
+check(
     "schema rejects unsupported fields, versions, nonfinite values and prototype map keys",
     () => {
         const mutations = [

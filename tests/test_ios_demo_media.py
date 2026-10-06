@@ -116,6 +116,11 @@ class Harness {
 
 TESTS = r'''
     func run() {
+        assert(pipSubtitle("Картинка в картинке") == "Картинка в картинке")
+        assert(pipSubtitle("Image dans l’image") == "Image dans l’image")
+        assert(pipSubtitle(nil) == "Picture in Picture")
+        assert(pipSubtitle("  ") == "Picture in Picture")
+        assert(pipSubtitle(String(repeating: "x", count: 513)) == "Picture in Picture")
         let remoteDemo = URL(string: "https://media.example.invalid/demo/pattern.mp4?cache=1#preview")!
         for text in [
             remoteDemo.absoluteString,
@@ -211,6 +216,7 @@ Harness().run()
 def main():
     source = SOURCE.read_text()
     helpers = [
+        method(source, "private func pipSubtitle("),
         method(source, "private func makePipPlayer("),
         method(source, "private func releasePipPlayer("),
         method(source, "private func observePipPlayerItem("),
@@ -225,6 +231,8 @@ def main():
     play = method(source, "@objc func playPip(")
     teardown = method(source, "private func teardownPip(")
     assert 'let loop = call.getBool("loop", false)' in play
+    assert 'let subtitle = pipSubtitle(call.getString("subtitle"))' in play
+    assert 'artist: subtitle, rate: 1.0, seekable: false' in play
     assert "self.makePipPlayer(url: url, loop: loop)" in play
     assert "bundledDemoURL" not in source
     assert "bridge.config.appLocation" not in play

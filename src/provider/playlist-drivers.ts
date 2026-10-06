@@ -492,11 +492,41 @@ function mountOwnedPlaylistDriver(
         if (isNaN(parseInt(host.providerGetItem("sShowArchive"), 10)))
             host.providerSetItem("sShowArchive", "1");
     }
+    editSlot.menuTitle = function () {
+        return host._("Built-in playlist:") + " " + lists[slot];
+    };
+    editSlot.menuDetail = function () {
+        return host._("Built-in playlists");
+    };
+    editKey.menuTitle = function () {
+        return host._("Access key");
+    };
+    editKey.menuDetail = function () {
+        return host._("Enter an application access key (8 characters).");
+    };
+    info.menuTitle = info.menuDetail = function () {
+        return host._("KBC (Kinoboom) access data");
+    };
+    loadSlot.menuTitle = function () {
+        return host._("Load:") + " " + lists[slot];
+    };
+    loadSlot.menuDetail = function () {
+        return host._("Load built-in playlist:") + " " + lists[slot];
+    };
+    editMode.menuTitle = function () {
+        return host._(
+            "Stream type: %1",
+            driver.credentials().mode ? "MPEGTS" : "HLS"
+        );
+    };
+    editMode.menuDetail = function () {
+        return host._("Select a stream type:<br>%1", "HLS, MPEGTS");
+    };
     function labels(): void {
         host.popupArray[host.popupActions.indexOf(editSlot)] =
-            host._("Built-in playlist:") + " " + lists[slot];
+            editSlot.menuTitle();
         host.popupArray[host.popupActions.indexOf(loadSlot)] =
-            host._("Load:") + " " + lists[slot];
+            loadSlot.menuTitle();
     }
     function editKey(): void {
         if (!owner.active()) return;
@@ -535,10 +565,8 @@ function mountOwnedPlaylistDriver(
         driver.saveCredentials(config);
         if (!owner.active() || driver.credentials().mode !== config.mode)
             return;
-        host.popupArray[host.popupActions.indexOf(editMode)] = host._(
-            "Stream type: %1",
-            config.mode ? "MPEGTS" : "HLS"
-        );
+        host.popupArray[host.popupActions.indexOf(editMode)] =
+            editMode.menuTitle();
         host.popupList(editMode);
         if (!owner.active()) return;
         if (!host.playType) host.playChannel(host.catIndex, host.primaryIndex);
@@ -638,17 +666,14 @@ function mountOwnedPlaylistDriver(
             host.popupArray.splice(
                 index,
                 0,
-                host._("Access key"),
-                host._(
-                    "Stream type: %1",
-                    driver.credentials().mode ? "MPEGTS" : "HLS"
-                )
+                editKey.menuTitle(),
+                editMode.menuTitle()
             );
             host.popupDetail.splice(
                 index,
                 0,
-                host._("Enter an application access key (8 characters)."),
-                host._("Select a stream type:<br>%1", "HLS, MPEGTS")
+                editKey.menuDetail(),
+                editMode.menuDetail()
             );
             host.popupActions.splice(index, 0, editKey, editMode);
         } else {
@@ -656,19 +681,13 @@ function mountOwnedPlaylistDriver(
                 host.stbSetItem("sNoSmall", "1");
                 host.sNoSmall = 1;
             }
-            host.popupArray.splice(
-                index,
-                1,
-                "",
-                "",
-                host._("KBC (Kinoboom) access data")
-            );
+            host.popupArray.splice(index, 1, "", "", info.menuTitle());
             host.popupDetail.splice(
                 index,
                 1,
-                host._("Built-in playlists"),
-                host._("Load built-in playlist:") + " " + lists[slot],
-                host._("KBC (Kinoboom) access data")
+                editSlot.menuDetail(),
+                loadSlot.menuDetail(),
+                info.menuDetail()
             );
             host.popupActions.splice(index, 1, editSlot, loadSlot, info);
             labels();
@@ -768,7 +787,12 @@ function mountOwnedPlaylistDriver(
                 result.error !== "network" &&
                 result.error !== "catalog"
             )
-                host.alert("Error " + result.error.toUpperCase() + " !!!");
+                host.alert(
+                    host._("Unable to load playlist") +
+                        " (" +
+                        result.error.toUpperCase() +
+                        ")"
+                );
             if (!current()) return;
             callback();
         });

@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Địa chỉ IP không có cổng sẽ dùng cổng HTTP 8081. Xóa địa chỉ hoặc chọn Ngắt kết nối để dừng.",
+    "Another source sign-in is already open":
+        "Cửa sổ đăng nhập vào nguồn khác đã mở",
     "API failed, trying M3U...": "API thất bại, đang thử M3U…",
     "API Server": "Máy chủ API",
     "API server URL": "URL máy chủ API",
@@ -96,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Tua lùi / tiến 1 phút",
     "Background color": "Màu nền",
     "Background color of selected item": "Màu nền mục được chọn",
+    "Balance, $": "Số dư, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Cài đặt BEST LiST IPTV [HLS Playlist]",
@@ -173,6 +176,8 @@ var keyStrings = {
         "Không thể tìm máy chủ lệnh. Chọn Tìm máy chủ lệnh để thử lại.",
     "Command server discovery timed out.": "Đã hết thời gian tìm máy chủ lệnh.",
     "Command server found.": "Đã tìm thấy máy chủ lệnh.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Không thể tải các thành phần tương thích. Hãy mở lại trình phát để thử lại.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Cấu hình All4you.tv trong Cài đặt -> Cài đặt nhà cung cấp",
@@ -258,6 +263,10 @@ var keyStrings = {
     "Continue watching?": "Tiếp tục xem?",
     "Copy category": "Sao chép danh mục",
     "Copy JSON": "Sao chép JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Sao chép JSON để lưu bản sao lưu. Dùng chức năng nhập cài đặt để khôi phục.",
+    "Copy the selected JSON with your device's copy command":
+        "Sao chép JSON đã chọn bằng lệnh sao chép trên thiết bị",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
@@ -271,6 +280,8 @@ var keyStrings = {
     Country: "Quốc gia",
     "Create category": "Tạo danh mục",
     current: "hiện tại",
+    "Debug enabled. Restart to apply.":
+        "Đã bật gỡ lỗi. Khởi động lại trình phát để áp dụng.",
     "Debug HUD": "Bảng gỡ lỗi",
     "Debug HUD is not available": "Bảng gỡ lỗi không khả dụng",
     Delete: "Xóa",
@@ -300,6 +311,7 @@ var keyStrings = {
     "Download! Wait ...": "Đang tải xuống… vui lòng đợi…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Cài đặt DRVAO",
+    "Drag window": "Di chuyển cửa sổ",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Cài đặt Dragon Media PRO",
     Duration: "Thời lượng",
@@ -315,6 +327,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Nhập mật khẩu (8 ký tự).",
     "Enter a playlist URL to access this service.":
         "Nhập URL danh sách phát để truy cập dịch vụ này.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Nhập URL danh sách phát. Trình phát sẽ khởi động lại sau khi lưu.",
     "Enter a server address without spaces or a fragment.":
         "Nhập địa chỉ máy chủ không có khoảng trắng hoặc phần neo.",
     "Enter a username (8 characters).": "Nhập tên người dùng (8 ký tự).",
@@ -325,6 +339,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Nhập địa chỉ máy chủ hợp lệ, ví dụ: 192.168.1.20:8081.",
     "Enter access key for": "Nhập khóa truy cập cho",
+    "Enter an application access key (%1–%2 characters).":
+        "Nhập khóa truy cập ứng dụng (%1–%2 ký tự).",
     "Enter an application access key (8 characters).":
         "Nhập khóa truy cập ứng dụng (8 ký tự).",
     "Enter an ID and PIN to access this service.":
@@ -351,6 +367,7 @@ var keyStrings = {
         "Nhập URL cổng Stalker (ví dụ: http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Nhập URL cổng Stalker (ví dụ: http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Nhập số máy chủ (%1).",
     "Enter the access code separately, not in the server address.":
         "Nhập mã truy cập riêng, không nhập trong địa chỉ máy chủ.",
     "Enter the command server IP or address.":
@@ -452,11 +469,13 @@ var keyStrings = {
     Favorites: "Yêu thích",
     "File selection is not supported on this device":
         "Thiết bị này không hỗ trợ chọn tệp",
+    "Fill screen": "Lấp đầy màn hình",
     Filter: "Bộ lọc",
     Filters: "Bộ lọc",
     "Find command server": "Tìm máy chủ lệnh",
     "Finding command servers...": "Đang tìm máy chủ lệnh...",
     "First Run Setup": "Thiết lập lần đầu",
+    "Fit to screen": "Vừa màn hình",
     Folders: "Folders",
     "Font type": "Kiểu chữ",
     "For download settings file open": "Để tải tệp cài đặt xuống, mở",
@@ -464,6 +483,8 @@ var keyStrings = {
     "For upload settings file open": "Để tải tệp cài đặt lên, mở",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Cài đặt Fox-TV",
+    "Full history, sources and license terms":
+        "Lịch sử đầy đủ, nguồn và điều khoản giấy phép",
     FXML: "FXML",
     "FXML settings": "Cài đặt FXML",
     Genre: "Thể loại",
@@ -482,6 +503,7 @@ var keyStrings = {
     "HTTP port": "Cổng HTTP",
     "HTTP remote control is unavailable on this device.":
         "Điều khiển từ xa HTTP không khả dụng trên thiết bị này.",
+    "HTTPS support": "Hỗ trợ HTTPS",
     ID: "ID",
     "Import settings": "Nhập cài đặt",
     "In live mode: <br/>": "Trong chế độ trực tiếp:<br/>",
@@ -495,6 +517,8 @@ var keyStrings = {
     "Interface transparency": "Độ trong suốt giao diện",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Liên kết kênh không hợp lệ! Nhập tên máy chủ đầy đủ như trong URL luồng ở trang tài khoản (ví dụ: subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Cấu hình nguồn được bảo vệ không hợp lệ",
     "IPTV token": "Mã token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Cài đặt IpStream.one",
@@ -517,10 +541,14 @@ var keyStrings = {
     "Load:": "Tải:",
     "Loading channels from Xtream API...": "Đang tải kênh từ API Xtream…",
     "Loading channels...": "Đang tải kênh…",
+    "Loading device...": "Đang tải thành phần thiết bị…",
     "Loading from API...": "Đang tải từ API…",
     "Loading from Edem API...": "Đang tải từ API Edem…",
+    "Loading interface...": "Đang tải giao diện…",
     "Loading M3U playlist...": "Đang tải danh sách phát M3U…",
     "Loading M3U...": "Đang tải M3U…",
+    "Loading media libraries...": "Đang tải thư viện đa phương tiện…",
+    "Loading player...": "Đang tải trình phát…",
     "Loading via proxy...": "Đang tải qua proxy…",
     "Loading. Please wait...": "Đang tải… vui lòng đợi…",
     "Loading...": "Đang tải…",
@@ -592,6 +620,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Văn bản gốc: %1",
+    "OTT / APP host": "Máy chủ OTT / ứng dụng",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cài đặt OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -601,6 +631,7 @@ var keyStrings = {
     on: "bật",
     "on ": "bật ",
     "or scan": "hoặc quét",
+    Packages: "Gói dịch vụ",
     "Pairing approved. Command server configured.":
         "Ghép nối đã được phê duyệt. Máy chủ lệnh đã được cấu hình.",
     "Pairing expired. Find the server again to retry.":
@@ -611,16 +642,20 @@ var keyStrings = {
         "Ghép nối bị từ chối hoặc nhận được phê duyệt không hợp lệ. Hãy tìm lại máy chủ để thử lại.",
     "Parental control": "Kiểm soát của phụ huynh",
     Password: "Mật khẩu",
+    "Paste settings JSON": "Dán cài đặt ở định dạng JSON",
     Pause: "Tạm dừng",
     "Pause/Play": "Tạm dừng / phát",
+    "Payment method": "Phương thức thanh toán",
     "Permanent clock on screen": "Luôn hiển thị đồng hồ trên màn hình",
     PIN: "PIN",
+    "Picture in Picture": "Hình trong hình",
     "PiP exchange": "Đổi PiP",
     "PiP window position": "Vị trí cửa sổ PiP",
     "PiP window size": "Kích thước cửa sổ PiP",
     Play: "Phát",
     Playback: "Playback",
     "Player and device info": "Thông tin trình phát và thiết bị",
+    "Player could not start": "Không thể khởi động trình phát",
     "Player info:": "Thông tin trình phát:",
     Playlist: "Danh sách phát",
     "Playlist file": "Tệp danh sách phát",
@@ -639,17 +674,22 @@ var keyStrings = {
     "Portal URL": "URL cổng",
     "Position shift -10 seconds after pause":
         "Tua lùi 10 giây sau khi tạm dừng",
+    Postpaid: "Trả sau",
     PROST: "PROST",
     "PROST settings": "Cài đặt PROST",
+    Prepaid: "Trả trước",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Trước",
     "Preview in channel list": "Xem trước trong danh sách kênh",
     Previous: "Trước",
     "Privacy policy": "Chính sách quyền riêng tư",
+    "Privacy policy unavailable. Contact: %1":
+        "Không có chính sách quyền riêng tư. Liên hệ: %1",
     "Profile name": "Tên hồ sơ",
     "Protect Adult Channels": "Bảo vệ kênh người lớn",
     "Protect Change Provider": "Bảo vệ thay đổi nhà cung cấp",
     "Protect Settings": "Bảo vệ cài đặt",
+    "Protected source is unavailable": "Nguồn được bảo vệ không khả dụng",
     "p...": "p...",
     paging: "theo trang",
     Quality: "Chất lượng",
@@ -762,7 +802,12 @@ var keyStrings = {
     Settings: "Cài đặt",
     "Settings changed. Discovery was canceled.":
         "Cài đặt đã thay đổi. Đã hủy tìm kiếm.",
+    "Settings copied": "Đã sao chép cài đặt",
+    "Settings could not be exported": "Không thể xuất cài đặt",
     "Settings could not be saved": "Không thể lưu cài đặt",
+    "Settings download requested": "Đã yêu cầu tải xuống cài đặt",
+    "Settings imported": "Đã nhập cài đặt",
+    "Settings JSON": "Cài đặt ở định dạng JSON",
     "Settings loaded from storage": "Đã tải cài đặt từ bộ nhớ",
     "Settings STB": "Cài đặt STB",
     "Settings saved": "Đã lưu cài đặt",
@@ -801,24 +846,34 @@ var keyStrings = {
     "Shuffle: Loading...": "Xáo trộn: đang tải…",
     "Shuffle: Off": "Xáo trộn: tắt",
     "Shuffle: On": "Xáo trộn: bật",
+    "Sign in to the protected source again":
+        "Đăng nhập lại vào nguồn được bảo vệ",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Đăng nhập: %1",
+    "Sign out of all sources": "Đăng xuất khỏi tất cả nguồn",
+    "Sign-in opens when you load a protected playlist.":
+        "Cửa sổ đăng nhập mở ra khi bạn tải danh sách phát được bảo vệ.",
     "Sleep timer": "Hẹn giờ ngủ",
     "Sort channels": "Sắp xếp kênh",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Đăng nhập vào nguồn đã bị hủy",
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
     "Stalker portal settings": "Cài đặt cổng Stalker",
     "Stalker portals": "Cổng Stalker",
+    "Starting...": "Đang khởi động…",
     Status: "Trạng thái",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "Dừng phát và quay lại trực tiếp",
+    "Stream could not be played": "Không thể phát luồng",
     "Stream type: %1": "Loại luồng: %1",
     "String for search": "Nội dung tìm kiếm",
     "Su Mo Tu We Th Fr Sa": "CN T2 T3 T4 T5 T6 T7",
+    "Subscription information": "Thông tin đăng ký",
     Subtitle: "Phụ đề",
     Switch: "Chuyển",
     "Switch sound track": "Đổi luồng âm thanh",
@@ -893,10 +948,13 @@ var keyStrings = {
         "Dùng HTTP hoặc HTTPS mà không có tên người dùng hay mật khẩu trong địa chỉ.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Dùng TRÁI/PHẢI để chọn điều khiển, OK để kích hoạt và LÊN/XUỐNG để cuộn.",
+    "Use Up / Down to scroll. Back to close.":
+        "Dùng Lên / Xuống để cuộn. Quay lại để đóng.",
     Username: "Tên người dùng",
     "Username or password is missing.": "Thiếu tên người dùng hoặc mật khẩu.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Phiên bản",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Cài đặt VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

@@ -13,7 +13,7 @@
     },
     {
       "file": "src/channels/index.ts",
-      "expression": "(w._ ? w._(\"Delete list\") : \"Delete list\") + \": \" + listName + \"?\"",
+      "expression": "(w._ ? w._(\"Delete list\") : \"Delete list\") + \": \" + favoritesListLabel(listName) + \"?\"",
       "reason": "Already-translated constituent labels plus runtime data or markup; nested literal calls are scanned independently."
     },
     {
@@ -255,6 +255,16 @@
       "file": "src/plugins/plex.ts",
       "expression": "value",
       "reason": "Plex translation wrapper forwards finite literal labels; translate() callers are scanned for catalog keys."
+    },
+    {
+      "file": "src/index.ts",
+      "expression": "key",
+      "reason": "Local label/notice helpers forward their literal key argument; label calls and transfer-ui notice calls are explicitly scanned by localization-catalog.cjs."
+    },
+    {
+      "file": "src/settings/transfer-ui.ts",
+      "expression": "key",
+      "reason": "Local label/notice helpers forward their literal key argument; label calls and transfer-ui notice calls are explicitly scanned by localization-catalog.cjs."
     }
   ]
 }

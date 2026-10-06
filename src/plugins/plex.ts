@@ -326,7 +326,7 @@ function createPlexClient(
         });
         return rows;
     }
-    function itemTitle(item: any, playable: boolean): string {
+    function itemTitle(item: any): string {
         function text(value: any): string {
             return typeof value === "string" || typeof value === "number"
                 ? String(value)
@@ -359,7 +359,7 @@ function createPlexClient(
                     return filename;
             }
         }
-        return translate(playable ? "Untitled" : "Untitled folder");
+        return "";
     }
     function records(
         container: any,
@@ -373,6 +373,10 @@ function createPlexClient(
         var section = /^\/library\/sections\/(\d+)\/all(?:\?|$)/.exec(path);
         if (navigation && section && !Number(params["X-Plex-Container-Start"]))
             result.push({
+                __ottMediaLabel: {
+                    key: "Browse folders",
+                    value: translate("Browse folders"),
+                },
                 playlist_url: target(
                     "/library/sections/" + section[1] + "/folder",
                     translate("Browse folders")
@@ -388,9 +392,13 @@ function createPlexClient(
                 /^(?:movie|episode|clip|track)$/.test(item.type) ||
                 plexRows(item.Media).length > 0;
             var id = String(item.ratingKey || "");
-            var title = itemTitle(item, playable && /^\d+$/.test(id));
+            var suppliedTitle = itemTitle(item);
+            var titleKey =
+                playable && /^\d+$/.test(id) ? "Untitled" : "Untitled folder";
+            var title = suppliedTitle || translate(titleKey);
+            var record: any = null;
             if (playable && /^\d+$/.test(id)) {
-                result.push({
+                record = {
                     __ottMediaSequence:
                         item.type === "episode" || item.type === "track",
                     description: escaped(item.summary),
@@ -398,14 +406,19 @@ function createPlexClient(
                     request: { path: "/library/metadata/" + id },
                     stream_url: "plex:request",
                     title: title,
-                });
+                };
             } else if (key) {
                 if (/^\/library\/metadata\/\d+$/.test(key)) key += "/children";
-                result.push({
+                record = {
                     description: escaped(item.summary),
                     playlist_url: target(key, title),
                     title: title,
-                });
+                };
+            }
+            if (record) {
+                if (!suppliedTitle)
+                    record.__ottMediaLabel = { key: titleKey, value: title };
+                result.push(record);
             }
         });
         var offset =
@@ -419,6 +432,7 @@ function createPlexClient(
             Number(container.totalSize) > offset + count
         )
             result.push({
+                __ottMediaLabel: { key: "Next", value: translate("Next") },
                 __ottMediaNext: true,
                 playlist_url: {
                     offset: offset + count,
@@ -437,6 +451,7 @@ function createPlexClient(
             });
         if (navigation && root)
             result.push({
+                __ottMediaLabel: { key: "Search", value: translate("Search") },
                 playlist_url: "plexsearch",
                 search_on: 1,
                 title: translate("Search"),

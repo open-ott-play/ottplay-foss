@@ -113,14 +113,17 @@ class UIViewController: NSObject {
 class UIAlertController: UIViewController {
     enum Style { case alert }
     var actions: [UIAlertAction] = []
-    init(title: String?, message: String?, preferredStyle: Style) {}
+    let title: String?
+    let message: String?
+    init(title: String?, message: String?, preferredStyle: Style) { self.title = title; self.message = message }
     func addAction(_ action: UIAlertAction) { actions.append(action) }
 }
 class UIAlertAction {
     enum Style: Equatable { case `default`, destructive, cancel }
     let style: Style
+    let title: String
     let handler: ((UIAlertAction) -> Void)?
-    init(title: String, style: Style, handler: ((UIAlertAction) -> Void)? = nil) { self.style = style; self.handler = handler }
+    init(title: String, style: Style, handler: ((UIAlertAction) -> Void)? = nil) { self.title = title; self.style = style; self.handler = handler }
     func invoke() { handler?(self) }
 }
 class UIApplication {
@@ -854,8 +857,22 @@ Task { @MainActor in
             Task { @MainActor in callbackCount += 1; downloadError = error }
         }
         await until { downloadGate != nil }
-        AccessMedia.shared.manage()
+        let playerLabels = AccessMediaLabels([
+            "title": "Доступ к источникам", "signIn": "Войти: %1", "signOut": "Выйти из всех источников",
+            "close": "Закрыть", "login": "Войдите в защищённый источник снова",
+            "unavailable": "Защищённый источник недоступен", "unknown": "ignored",
+        ])
+        AccessMedia.shared.manage(labels: playerLabels)
         let settings = bridgeFixture.presenter.presented as! UIAlertController
+        assert(settings.title == "Доступ к источникам", "Player language overrides the system locale")
+        assert(settings.actions.contains { $0.title.hasPrefix("Войти: ") })
+        assert(settings.actions.last!.title == "Закрыть")
+        assert(playerLabels.error(AccessMediaFailure.login) == "Войдите в защищённый источник снова")
+        assert(playerLabels.error(URLError(.cannotConnectToHost)) == "Защищённый источник недоступен",
+            "Untrusted transport errors must not enter the localized native dialog")
+        assert(playerLabels["unknown"] == "")
+        assert(AccessMediaLabels(["title": String(repeating: "x", count: 513)])["title"] == "Source access")
+        assert(AccessMediaLabels(["close": "Fermer"])["close"] == "Fermer", "Labels support every player locale")
         settings.actions.first(where: { $0.style == .destructive })!.invoke()
         await until { downloadCancelled && callbackCount == 1 }
         await download.value

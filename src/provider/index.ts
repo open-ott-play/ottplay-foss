@@ -1,3 +1,4 @@
+import { favoritesListLabel } from "../channels/favorites-lists";
 import { loadProviderSettings } from "../settings";
 import { metadataCssUrl, metadataHtml, metadataText } from "../utils/helpers";
 /**
@@ -952,10 +953,10 @@ export function loadProv(providerId?: string): void {
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             (window as any)._pendingProvId = "";
             if (s !== "no") {
-                alert(s + ": load error!!!");
+                alert(_("Failed to load!") + " (" + s + ")");
             }
             $(launch_id)
-                .append("<br/><b>Failed to load provider script !!!</b>")
+                .append("<br/><b>" + _("Failed to load!") + "</b>")
                 .hide();
             firstRun();
         }
@@ -2255,8 +2256,8 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     // Step 3 FCC: show active favorites list name in caption when on Favorites
     var catName = catsArray[listCatIndex] || "";
     if (catName === "Favorites" || catName === _("Favorites")) {
-        var favListName = getActiveFavoritesListName();
-        if (favListName && favListName !== "Favorites") {
+        var favListName = favoritesListLabel(getActiveFavoritesListName());
+        if (favListName && favListName !== _("Favorites")) {
             catName = catName + " - " + favListName;
         }
     }

@@ -14,17 +14,39 @@ const ast = ts.createSourceFile(
     ts.ScriptTarget.Latest,
     true
 );
-const statement = ast.statements.find(
+const statements = ast.statements.filter(
     (node) =>
-        ts.isFunctionDeclaration(node) && node.name?.text === "exportSettingsUI"
+        ts.isFunctionDeclaration(node) &&
+        ["exportSettingsUI", "importSettingsUI", "editSettingsText"].includes(
+            node.name?.text
+        )
 );
 const code = ts.transpileModule(
-    statement.getText(ast).replace(/^export /, "") +
-        "\nwindow.exportSettingsUI = exportSettingsUI;",
+    statements
+        .map((node) => node.getText(ast).replace(/^export /, ""))
+        .join("\n") +
+        "\nwindow.exportSettingsUI = exportSettingsUI; window.importSettingsUI = importSettingsUI;",
     {
         compilerOptions: { target: ts.ScriptTarget.ES2018 },
     }
 ).outputText;
+const localization = ts
+    .transpileModule(
+        fs.readFileSync(path.join(root, "src/localization/index.ts"), "utf8"),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.ES2015,
+                target: ts.ScriptTarget.ES2018,
+            },
+        }
+    )
+    .outputText.replace(/^export /gm, "");
+function loadLanguage(w, language) {
+    w.eval(localization);
+    w.eval(
+        fs.readFileSync(path.join(root, "locales", language + ".js"), "utf8")
+    );
+}
 const backup = JSON.stringify(
     {
         settings: {
@@ -38,7 +60,7 @@ const backup = JSON.stringify(
 );
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
-async function testNative(profile, clipboardMode) {
+async function testNative(profile, clipboardMode, language) {
     const dom = new JSDOM(
         '<div id="listCaption"></div><div id="listDetail"></div><div id="listPodval"></div><div id="listAbout"></div>',
         { runScripts: "outside-only", url: "https://example.invalid/" }
@@ -55,7 +77,7 @@ async function testNative(profile, clipboardMode) {
         aboutKeyHandler: previous,
         exportSettings: () => backup,
         keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
-        renderButtonHint: (_key, _icon, title) => title,
+        renderButtonHint: (_key, _icon, title) => w._(title),
         restoreListPanelState() {
             restored++;
         },
@@ -66,6 +88,7 @@ async function testNative(profile, clipboardMode) {
             notices.push(message);
         },
     });
+    loadLanguage(w, language);
     if (profile === "tauri") w.__TAURI__ = {};
     else w.Capacitor = { getPlatform: () => profile };
     w.URL.createObjectURL = () =>
@@ -87,11 +110,25 @@ async function testNative(profile, clipboardMode) {
     const output = w.document.getElementById("settingsExportText");
     assert.equal(output.value, backup);
     assert.equal(output.readOnly, true);
+    assert.equal(
+        output.getAttribute("aria-label"),
+        w.keyStrings["Settings JSON"]
+    );
+    assert.equal(
+        w.document.getElementById("listDetail").textContent,
+        w.keyStrings[
+            "Copy the JSON to keep a backup. Use Import settings to restore it."
+        ]
+    );
+    assert.equal(
+        w.document.getElementById("listCaption").textContent,
+        w.keyStrings["Export settings"]
+    );
     assert.equal(output.selectionEnd, backup.length);
     assert.equal(w.document.querySelector("script"), null);
-    assert.match(
+    assert.equal(
         w.document.getElementById("listPodval").textContent,
-        /Close.*Copy JSON/
+        w.keyStrings.Close + w.keyStrings["Copy JSON"]
     );
     assert.deepEqual(
         notices,
@@ -103,11 +140,13 @@ async function testNative(profile, clipboardMode) {
     await settle();
     if (clipboardMode === "success") {
         assert.deepEqual(copies, [backup]);
-        assert.deepEqual(notices, ["Settings copied"]);
+        assert.deepEqual(notices, [w.keyStrings["Settings copied"]]);
     } else {
         assert.deepEqual(copies, []);
         assert.deepEqual(notices, [
-            "Copy the selected JSON with your device's copy command",
+            w.keyStrings[
+                "Copy the selected JSON with your device's copy command"
+            ],
         ]);
         assert.equal(output.selectionEnd, backup.length);
     }
@@ -179,7 +218,8 @@ async function testClosedBackup(complete) {
     await testClosedBackup(false);
     for (const profile of ["tauri", "ios", "android"])
         for (const clipboard of ["success", "denied", "missing"])
-            await testNative(profile, clipboard);
+            for (const language of ["english", "russian"])
+                await testNative(profile, clipboard, language);
     const dom = new JSDOM("<body></body>", { runScripts: "outside-only" });
     const w = dom.window;
     const downloads = [],
@@ -189,6 +229,7 @@ async function testClosedBackup(complete) {
         exportSettings: () => backup,
         showShift: (message) => notices.push(message),
     });
+    loadLanguage(w, "russian");
     w.URL.createObjectURL = () => "blob:backup-fixture";
     w.URL.revokeObjectURL = (value) => revoked.push(value);
     w.HTMLAnchorElement.prototype.click = function () {
@@ -200,8 +241,24 @@ async function testClosedBackup(complete) {
         ["ottplay-settings-v2.json", "blob:backup-fixture"],
     ]);
     assert.deepEqual(revoked, ["blob:backup-fixture"]);
-    assert.deepEqual(notices, ["Settings download requested"]);
+    assert.deepEqual(notices, ["Запрошено скачивание настроек"]);
     assert.equal(w.document.querySelector("a"), null);
+    w.exportSettings = () => {
+        throw new Error("Fixture export failure");
+    };
+    w.exportSettingsUI();
+    assert.equal(notices.pop(), "Не удалось экспортировать настройки");
+    let promptCaption, imported;
+    w.prompt = (caption) => {
+        promptCaption = caption;
+        return "  " + backup + "  ";
+    };
+    w.importSettings = (value) => {
+        imported = value;
+    };
+    w.importSettingsUI();
+    assert.equal(promptCaption, "Вставьте настройки в формате JSON:");
+    assert.equal(imported, backup);
     dom.window.close();
     console.log(
         "OK: native backup copy/manual fallback and browser download contract"

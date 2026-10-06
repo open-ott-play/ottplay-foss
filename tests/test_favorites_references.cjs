@@ -418,6 +418,144 @@ test("future or malformed envelopes remain untouched and unwritable", (f) => {
         assert.deepEqual([...f.saved], before);
     }
 });
+function language(w, name) {
+    vm.runInContext(compile("src/localization/index.ts"), w);
+    vm.runInContext(
+        fs.readFileSync(path.join(root, "locales", name + ".js"), "utf8"),
+        w
+    );
+}
+test("generated default names follow the live language without changing stable list keys", (f) => {
+    language(f.w, "russian");
+    f.raw("favoritesArray", [100]);
+    f.load();
+    assert.equal(f.read().defaultList, "Favorites");
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Избранные");
+    assert.equal(f.w.getActiveFavoritesListName(), "Favorites");
+    assert.deepEqual(f.view(), [10]);
+    language(f.w, "english");
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Favorites");
+    language(f.w, "russian");
+    f.load();
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Избранные");
+    assert.deepEqual(f.view(), [10]);
+});
+test("unmarked legacy and scoped names remain user text, including literal Favorites", (f) => {
+    language(f.w, "russian");
+    for (const name of ["Favorites", "Избранные", "My favorites"]) {
+        f.saved.clear();
+        f.raw("favoritesLists", blob([100], name));
+        f.load();
+        assert.equal(f.w.favoritesListLabel(name), name);
+        assert.equal(f.read().defaultList, undefined);
+        f.load();
+        assert.equal(f.w.favoritesListLabel(name), name);
+        assert.deepEqual(f.view(), [10]);
+        f.envelope({
+            lists: blob([{ itemId: "stream:A" }], name),
+            sourceId: "a",
+            version: 2,
+        });
+        f.load();
+        assert.equal(f.w.favoritesListLabel(name), name);
+    }
+});
+test("rename and deletion retire default-name provenance without affecting custom names", (f) => {
+    language(f.w, "russian");
+    f.load();
+    assert(f.w.renameFavoritesList("Favorites", "Mine"));
+    assert(f.w.addFavoritesList("Favorites"));
+    assert(f.w.saveFavoritesLists());
+    f.load();
+    assert.equal(f.read().defaultList, undefined);
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Favorites");
+    f.saved.clear();
+    f.load();
+    assert(f.w.renameFavoritesList("Favorites", "Favorites"));
+    assert(f.w.saveFavoritesLists());
+    f.load();
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Favorites");
+    f.saved.clear();
+    f.load();
+    assert(f.w.addFavoritesList("Keep"));
+    assert(f.w.deleteFavoritesList("Favorites"));
+    assert(f.w.addFavoritesList("Favorites"));
+    assert(f.w.saveFavoritesLists());
+    f.load();
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Favorites");
+});
+test("default provenance is source scoped and invalid markers do not overwrite stored libraries", (f) => {
+    language(f.w, "russian");
+    f.load();
+    f.w.p_pref = "stale";
+    assert.equal(f.w.renameFavoritesList("Favorites", "Favorites"), false);
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Избранные");
+    f.w.p_pref = "a";
+    f.w.p_pref = "b";
+    f.raw("favoritesLists", blob([100], "Favorites"));
+    f.load();
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Favorites");
+    f.w.p_pref = "a";
+    f.load();
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Избранные");
+    for (const marker of [true, "Main", "Unknown"]) {
+        f.envelope({
+            defaultList: marker,
+            lists: blob([]),
+            sourceId: "a",
+            version: 2,
+        });
+        const before = [...f.saved];
+        f.load();
+        assert.equal(f.w.saveFavoritesLists(), false);
+        assert.equal(f.w.renameFavoritesList("Favorites", "Favorites"), false);
+        assert.deepEqual([...f.saved], before);
+    }
+});
+test("list manager renders the default label and unchanged rename leaves its provenance intact", (f) => {
+    language(f.w, "russian");
+    f.load();
+    const source = ts.createSourceFile(
+        "channels.ts",
+        fs.readFileSync(path.join(root, "src/channels/index.ts"), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const node = source.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) && node.name?.text === "popFavLists"
+    );
+    const elements = {};
+    Object.assign(f.w, {
+        document: {
+            getElementById: (id) =>
+                elements[id] || (elements[id] = { style: {} }),
+        },
+        keys: { ENTER: 13, RETURN: 8 },
+        refreshFavoritesViewIfActive() {},
+        saveChannelsCats: () => f.w.saveFavoritesLists(),
+        showEditKey() {},
+        showShift() {},
+    });
+    vm.runInContext(
+        ts.transpileModule(node.getText(source).replace(/^export /, ""), {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText,
+        f.w
+    );
+    f.w.popFavLists();
+    assert.equal(f.w.listArray[0], "✓ Избранные");
+    f.w.selIndex = 1;
+    f.w.listKeyHandlerFn(13); // Manage lists
+    assert.match(f.w.listArray[0], /^✓ Избранные/);
+    f.w.selIndex = 0;
+    f.w.listKeyHandlerFn(13); // Default list actions
+    f.w.listKeyHandlerFn(13); // Rename
+    assert.equal(f.w.editvar, "Избранные");
+    f.w.setEdit();
+    assert.equal(f.w.favoritesListLabel("Favorites"), "Избранные");
+    assert.equal(f.read().defaultList, "Favorites");
+});
 console.log(
     "PASS " +
         passed +

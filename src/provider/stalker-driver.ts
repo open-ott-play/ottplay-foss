@@ -702,17 +702,21 @@ function mountStalkerProviderSettings(
         updateLabel();
         host.loadChannels();
     }
-    function updateLabel(): void {
-        if (!owner.active()) return;
-        var index = host.popupActions.indexOf(edit);
-        if (index < 0) return;
+    function menuTitle(): string {
         var config: StalkerConfiguration = driver.configuration!();
-        host.popupArray[index] =
+        return (
             host._("Stalker portal settings") +
             ": " +
             (config.active + 1) +
             " - " +
-            profileLabel(config.portals[config.active]);
+            profileLabel(config.portals[config.active])
+        );
+    }
+    function updateLabel(): void {
+        if (!owner.active()) return;
+        var index = host.popupActions.indexOf(edit);
+        if (index < 0) return;
+        host.popupArray[index] = menuTitle();
     }
     function edit(selected?: number): boolean {
         if (!owner.active()) return false;
@@ -885,17 +889,17 @@ function mountStalkerProviderSettings(
         };
         openList(host._("Stalker Portal Provider"));
     }
+    edit.menuTitle = menuTitle;
+    edit.menuDetail = function () {
+        return host._("Stalker portal settings");
+    };
     return {
         edit: edit,
         mount: function (index: number) {
             if (!owner.active()) return;
             host.popupActions.splice(index, 1, edit);
             host.popupArray.splice(index, 1, "");
-            host.popupDetail.splice(
-                index,
-                1,
-                host._("Stalker portal settings")
-            );
+            host.popupDetail.splice(index, 1, edit.menuDetail());
             updateLabel();
         },
         updateLabel: updateLabel,

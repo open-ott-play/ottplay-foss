@@ -169,6 +169,12 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    private func pipSubtitle(_ value: String?) -> String {
+        guard let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              value.utf16.count <= 512 else { return "Picture in Picture" }
+        return value
+    }
+
     @objc func playPip(_ call: CAPPluginCall) {
         guard let urlString = call.getString("url"), !urlString.isEmpty else {
             call.resolve([
@@ -194,6 +200,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             return
         }
         let loop = call.getBool("loop", false)
+        let subtitle = pipSubtitle(call.getString("subtitle"))
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -261,7 +268,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             self.pipController = pipController
 
             self.configureRemoteCommandsIfNeeded()
-            self.updateNowPlaying(title: "OTT-play FOSS", artist: "Picture in Picture", rate: 1.0, seekable: false)
+            self.updateNowPlaying(title: "OTT-play FOSS", artist: subtitle, rate: 1.0, seekable: false)
             self.backgroundAudioActive = true
 
             player.play()

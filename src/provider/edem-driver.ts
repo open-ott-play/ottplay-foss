@@ -1280,9 +1280,12 @@ function mountEdemProvider(
         host.$("#listPopUp").hide();
         host.showPage();
     }
+    settingsMenu.menuTitle = function () {
+        return host._("Access settings") + " " + title;
+    };
     host.duneAddSettings = function (index: number) {
         if (!active()) return;
-        var caption = host._("Access settings") + " " + title;
+        var caption = settingsMenu.menuTitle();
         if (!active()) return;
         host.popupArray.splice(index, 1, caption);
         host.popupDetail.splice(index, 1, "");

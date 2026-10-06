@@ -5,6 +5,38 @@ import Network
 import Security
 import UIKit
 
+// The player's selected language, not the system locale, owns these app dialogs.
+struct AccessMediaLabels {
+    private static let defaults = [
+        "title": "Source access",
+        "empty": "Sign-in opens when you load a protected playlist.",
+        "signIn": "Sign in: %1",
+        "signOut": "Sign out of all sources",
+        "close": "Close",
+        "ok": "OK",
+        "invalid": "Invalid protected source configuration",
+        "login": "Sign in to the protected source again",
+        "cancelled": "Source sign-in was cancelled",
+        "unavailable": "Protected source is unavailable",
+        "busy": "Another source sign-in is already open",
+    ]
+    private let values: [String: String]
+    init(_ values: [String: String] = [:]) {
+        self.values = values.filter { Self.defaults[$0.key] != nil &&
+            !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.value.utf16.count <= 512 }
+    }
+    subscript(_ key: String) -> String { values[key] ?? Self.defaults[key] ?? "" }
+    func error(_ error: Error) -> String {
+        switch error as? AccessMediaFailure ?? .unavailable {
+        case .invalid: return self["invalid"]
+        case .login: return self["login"]
+        case .cancelled: return self["cancelled"]
+        case .unavailable: return self["unavailable"]
+        case .busy: return self["busy"]
+        }
+    }
+}
+
 private struct SavedAccessMedia: Codable {
     let config: AccessMediaConfig
     var session: AccessMediaSession?
@@ -583,36 +615,33 @@ final class AccessMedia: NSObject, ASWebAuthenticationPresentationContextProvidi
         return task
     }
 
-    func manage() {
+    func manage(labels: AccessMediaLabels = AccessMediaLabels()) {
         guard let presenter else { return }
-        let russian = Locale.preferredLanguages.first?.hasPrefix("ru") == true
-        let alert = UIAlertController(title: russian ? "Доступ к источникам" : "Source access",
-            message: entries.isEmpty ? (russian ? "Вход появится при загрузке защищённого плейлиста." :
-                "Sign-in opens when you load a protected playlist.") : nil, preferredStyle: .alert)
+        let alert = UIAlertController(title: labels["title"],
+            message: entries.isEmpty ? labels["empty"] : nil, preferredStyle: .alert)
         for origin in entries.keys.sorted() {
             let host = URL(string: origin)?.host ?? origin
-            alert.addAction(UIAlertAction(title: (russian ? "Войти: " : "Sign in: ") + host, style: .default) { _ in
+            alert.addAction(UIAlertAction(title: labels["signIn"].replacingOccurrences(of: "%1", with: host), style: .default) { _ in
                 Task { @MainActor in
                     guard let config = self.entries[origin]?.config else { return }
                     self.entries[origin]?.session = nil
                     do { _ = try await self.authenticate(config) }
-                    catch { self.showError(error) }
+                    catch { self.showError(error, labels: labels) }
                 }
             })
         }
         if !entries.isEmpty {
-            alert.addAction(UIAlertAction(title: russian ? "Выйти из всех источников" : "Sign out of all sources", style: .destructive) { _ in
-                do { try self.signOut() } catch { self.showError(error) }
+            alert.addAction(UIAlertAction(title: labels["signOut"], style: .destructive) { _ in
+                do { try self.signOut() } catch { self.showError(error, labels: labels) }
             })
         }
-        alert.addAction(UIAlertAction(title: russian ? "Закрыть" : "Close", style: .cancel))
+        alert.addAction(UIAlertAction(title: labels["close"], style: .cancel))
         presenter.present(alert, animated: true)
     }
 
-    private func showError(_ error: Error) {
-        let alert = UIAlertController(title: "Source access", message: (error as? AccessMediaFailure)?.rawValue ?? AccessMediaFailure.unavailable.rawValue,
-                                      preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
+    private func showError(_ error: Error, labels: AccessMediaLabels) {
+        let alert = UIAlertController(title: labels["title"], message: labels.error(error), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: labels["ok"], style: .default))
         presenter?.present(alert, animated: true)
     }
 }
@@ -678,6 +707,7 @@ public class AccessMediaPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
     @objc func manage(_ call: CAPPluginCall) {
-        Task { @MainActor in AccessMedia.shared.manage(); call.resolve() }
+        let labels = AccessMediaLabels(call.getObject("labels") as? [String: String] ?? [:])
+        Task { @MainActor in AccessMedia.shared.manage(labels: labels); call.resolve() }
     }
 }

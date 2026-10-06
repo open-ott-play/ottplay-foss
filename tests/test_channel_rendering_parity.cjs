@@ -355,6 +355,28 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         ],
     ]) {
         w.eval(read(localeRoot + "/locales/" + locale + ".js"));
+        w.stbToggleAspectRatio();
+        assert.deepEqual(
+            [...w.document.querySelectorAll("#numprog [role=button]")].map(
+                (row) => row.textContent.trim()
+            ),
+            [w._("Fit to screen"), w._("Fill screen")],
+            profile + ": aspect picker uses the current " + locale + " catalog"
+        );
+        assert.ok(
+            ["contain", "cover"].includes(playback.style.objectFit),
+            "Localized labels retain CSS fit values"
+        );
+        w.__ottClassicScreenPort.close("picker");
+        if (profile === "tauri") {
+            const strip = w.document.getElementById("ott-tauri-drag-strip");
+            strip.dispatchEvent(new w.MouseEvent("mouseenter"));
+            assert.equal(
+                strip.title,
+                w._("Drag window"),
+                "Tooltip follows language changes after native chrome was created"
+            );
+        }
         for (const entrypoint of ["_playChannel", "_channelsList"]) {
             for (const category of [0, 42]) {
                 const dialog = w.document.getElementById("dialogbox");

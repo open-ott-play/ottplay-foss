@@ -1017,7 +1017,7 @@ function applyImport(
 ): boolean {
     var w = window as any;
     if (!request.commit(writes, admitted)) {
-        if (w.showShift) w.showShift("Settings could not be saved");
+        if (w.showShift) w.showShift(w._("Settings could not be saved"));
         return false;
     }
     if (!admitted()) return false;
@@ -1034,7 +1034,7 @@ function applyImport(
     if (!admitted()) return false;
     loadSettings();
     if (!admitted()) return false;
-    if (w.showShift) w.showShift("Settings imported");
+    if (w.showShift) w.showShift(w._("Settings imported"));
     if (!admitted()) return false;
     if (w.restart) w.restart();
     return true;

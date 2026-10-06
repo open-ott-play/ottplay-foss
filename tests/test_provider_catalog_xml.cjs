@@ -104,8 +104,17 @@ for (const profile of profiles) {
                 expected
             )
         );
+        for (const item of expected.channels)
+            if (item.title === "<Без названия>") item.title = "";
         assert.deepEqual(plain(decode(text)), plain(expected));
     }
+    assert.equal(
+        decode(
+            "<items><channel><title>&lt;Без названия&gt;</title></channel></items>"
+        ).channels[0].title,
+        "<Без названия>",
+        "Explicit provider titles stay intact even when they resemble the retired fallback"
+    );
     assert.equal(
         decode("<items><channel><title>A&nbsp;B</title></channel></items>")
             .channels[0].title,

@@ -1523,7 +1523,7 @@ function onPlayerStart(): void {
  *   navigates to optionsList instead of loadProv / stbExit.
  * - If no language was previously selected, the launch element is hidden.
  */
-function selectLang(): void {
+function selectLang(forceReload?: boolean): void {
     var langCodes = [
         "_eng",
         "_arm",
@@ -1556,6 +1556,9 @@ function selectLang(): void {
     ];
     selIndex = langCodes.indexOf(stbGetItem("ottplaylang") || "");
     var prevSelIndex = selIndex;
+    var languageHost = window as any;
+    var cancelled = false;
+    var cancelLanguageLoad: (() => void) | undefined;
     if (selIndex === -1) selIndex = 0;
     listDataArray = langCodes.map(function (code) {
         return languageNames[code];
@@ -1565,9 +1568,14 @@ function selectLang(): void {
             if (exit === true) {
                 closeList();
                 stbExit();
-            } else loadProv();
-        } else if (typeof (window as any).optionsList === "function")
+            } else {
+                loadProv();
+                checkTauriUpdatesAfterLanguage();
+            }
+        } else if (typeof (window as any).optionsList === "function") {
             (window as any).optionsList(selectLang);
+            checkTauriUpdatesAfterLanguage();
+        }
     }
     getListItemFn = function (item: any, _idx: number) {
         return "&nbsp;&nbsp;" + item;
@@ -1576,19 +1584,52 @@ function selectLang(): void {
     listKeyHandlerFn = function (key: number): boolean {
         switch (key) {
             case keys.ENTER:
-                if (prevSelIndex === selIndex) {
+                // Only one active choice owns the dictionary. Timed-out or
+                // cancelled scripts may still execute and must restore it.
+                if (languageHost.__ottLanguagePending) return true;
+                if (prevSelIndex === selIndex && forceReload !== true) {
                     resumeAfterLanguage();
                 } else {
-                    stbSetItem("ottplaylang", langCodes[selIndex]);
-                    (window as any).keyStrings = {};
+                    var selectedLanguage = langCodes[selIndex];
+                    var request = {};
+                    languageHost.__ottLanguagePending = request;
+                    languageHost.__ottBootDictionary = languageHost.keyStrings;
+                    var finish = function (loaded: boolean): void {
+                        if (languageHost.__ottLanguagePending !== request) {
+                            if (loaded)
+                                languageHost.keyStrings =
+                                    languageHost.__ottBootDictionary;
+                            return;
+                        }
+                        clearTimeout(timer);
+                        languageHost.__ottLanguagePending = null;
+                        if (!loaded || cancelled) {
+                            languageHost.keyStrings =
+                                languageHost.__ottBootDictionary;
+                            if (!cancelled) infoBox(_("Failed to load!"));
+                            return;
+                        }
+                        languageHost.__ottBootDictionary =
+                            languageHost.keyStrings;
+                        stbSetItem("ottplaylang", selectedLanguage);
+                        resumeAfterLanguage();
+                    };
+                    var timer = setTimeout(function () {
+                        finish(false);
+                    }, 10000);
+                    cancelLanguageLoad = function () {
+                        finish(false);
+                    };
                     getScriptDOM(
                         hostUrl +
-                            languageAssetPath(langCodes[selIndex]) +
+                            languageAssetPath(selectedLanguage) +
                             "?" +
                             PLAYER_VERSION,
-                        resumeAfterLanguage,
                         function () {
-                            infoBox("Error: failed to load language.");
+                            finish(true);
+                        },
+                        function () {
+                            finish(false);
                         }
                     );
                 }
@@ -1596,6 +1637,8 @@ function selectLang(): void {
             case keys.EXIT:
                 if (typeof duneAddSettings === "function") return false;
             case keys.RETURN:
+                cancelled = true;
+                if (cancelLanguageLoad) cancelLanguageLoad();
                 resumeAfterLanguage(true);
                 return true;
         }
@@ -1624,14 +1667,17 @@ function startupError(
     if (launch) {
         launch.appendChild(document.createElement("br"));
         launch.appendChild(document.createElement("br"));
-        launch.appendChild(document.createElement("b")).textContent = label;
+        launch.appendChild(document.createElement("b")).textContent = _(
+            "Player could not start"
+        );
         launch.appendChild(
             document.createTextNode(
-                " name " +
+                label +
+                    " " +
                     (error != null && error.name != null
                         ? error.name
                         : "Error") +
-                    ", message " +
+                    ": " +
                     (error != null && error.message != null
                         ? error.message
                         : String(error))
@@ -1663,7 +1709,7 @@ export function startPlayer(): void {
             var locHost =
                 (typeof (window as any).host === "string" &&
                     (window as any).host) ||
-                (window.location && window.location.origin) ||
+                ((window as any).location && (window as any).location.origin) ||
                 "";
             if (locHost && locHost !== "null" && locHost !== "file://") {
                 hostUrl = locHost;
@@ -1702,33 +1748,37 @@ export function startPlayer(): void {
             capabilities: function () {
                 return {
                     audio:
-                        typeof window.stbAudioTracksExists === "function" &&
-                        window.stbAudioTracksExists(),
-                    pip: typeof window.stbPlayPip === "function",
+                        typeof (window as any).stbAudioTracksExists ===
+                            "function" &&
+                        (window as any).stbAudioTracksExists(),
+                    pip: typeof (window as any).stbPlayPip === "function",
                     subtitles:
-                        typeof window.stbSubtitleExists === "function" &&
-                        !!window.stbSubtitleExists(),
+                        typeof (window as any).stbSubtitleExists ===
+                            "function" && !!(window as any).stbSubtitleExists(),
                 };
             },
             clearInterval: function (id: number) {
-                window.clearInterval(id);
+                (window as any).clearInterval(id);
             },
             command: function (command: any) {
                 deviceHost.__ottClassicPlayback.command(command);
             },
             duration: function () {
-                return typeof window.stbGetLen === "function"
-                    ? window.stbGetLen()
+                return typeof (window as any).stbGetLen === "function"
+                    ? (window as any).stbGetLen()
                     : NaN;
             },
             importLegacy: function () {
                 return deviceHost.__ottClassicPlayback.importLegacy();
             },
             isManaged: function () {
-                return window.stbPlay === deviceHost.__ottCoreTransport.play;
+                return (
+                    (window as any).stbPlay ===
+                    deviceHost.__ottCoreTransport.play
+                );
             },
             key: function (event: any) {
-                return window.stbEventToKeyCode(event);
+                return (window as any).stbEventToKeyCode(event);
             },
             keys: function () {
                 return deviceHost.keys;
@@ -1737,18 +1787,18 @@ export function startPlayer(): void {
                 return Date.now();
             },
             playing: function () {
-                return window.stbIsPlaying();
+                return (window as any).stbIsPlaying();
             },
             position: function () {
-                return typeof window.stbGetPosTime === "function"
-                    ? window.stbGetPosTime()
+                return typeof (window as any).stbGetPosTime === "function"
+                    ? (window as any).stbGetPosTime()
                     : NaN;
             },
             route: function () {
                 return deviceHost.ott_device;
             },
             setInterval: function (callback: () => void, delay: number) {
-                return window.setInterval(callback, delay);
+                return (window as any).setInterval(callback, delay);
             },
         });
         deviceHost.__ottDevice.start();
@@ -1757,7 +1807,7 @@ export function startPlayer(): void {
             onStbReady();
         }
     } catch (e) {
-        startupError(launchEl, "Exception:", e);
+        startupError(launchEl, "startPlayer", e);
     }
 }
 
@@ -1843,7 +1893,6 @@ function onStbReady(): void {
         if (!lang) {
             console.log("TRACE no lang, calling selectLang()");
             if (launchEl) {
-                launchEl.innerHTML += "<br/><b>No language selected !!!</b>";
                 launchEl.style.display = "none";
                 if (typeof (window as any).clearBootHide === "function")
                     (window as any).clearBootHide();
@@ -1856,26 +1905,29 @@ function onStbReady(): void {
         getScriptDOM(
             hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
             function () {
+                (window as any).__ottBootDictionary = (
+                    window as any
+                ).keyStrings;
                 if (typeof duneAddSettings !== "function") loadProv();
                 else if (typeof (window as any).optionsList === "function")
                     (window as any).optionsList(selectLang);
+                checkTauriUpdatesAfterLanguage();
             },
             function () {
                 var el = document.getElementById("launch");
                 if (el) {
-                    el.innerHTML += "<br/><b>No language selected !!!</b>";
                     el.style.display = "none";
                 }
                 if (typeof (window as any).clearBootHide === "function")
                     (window as any).clearBootHide();
-                selectLang();
+                selectLang(true);
             }
         );
 
         // Re-apply Tauri IPC override after provider script loads.
         // This ensures the getChannelEpg override persists even when provider scripts
         // attempt to reset window.getChannelEpg (as they do in loadProv → getScriptDOM callback).
-        if (typeof window.__TAURI__ !== "undefined") {
+        if (typeof (window as any).__TAURI__ !== "undefined") {
             setupTauriEpgOverride();
             setupTauriEpgCacheReady();
             setupTauriCompanionShim();
@@ -1889,11 +1941,7 @@ function onStbReady(): void {
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
     } catch (e) {
-        startupError(
-            document.getElementById("launch"),
-            "Exception.StbReady:",
-            e
-        );
+        startupError(document.getElementById("launch"), "onStbReady", e);
     }
 }
 
@@ -2482,7 +2530,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
         'url("' + metadataCssUrl(item.logo_30x30) + '")'
     );
     $("#channel_number").text(" ");
-    $("#channel_name").text(item.title);
+    $("#channel_name").text((window as any).__ottMedia.title(item));
     $("#nprogramm_name").html("&nbsp; ");
     $("#nbegin_time").text("");
     $("#nend_time").text("");
@@ -2736,6 +2784,7 @@ if (typeof (window as any).Capacitor !== "undefined" && MobileNativeMedia) {
                       request: function (url: string) {
                           return {
                               loop: (window as any).ottplayDemoActive === true,
+                              subtitle: _("Picture in Picture"),
                               url: url,
                           };
                       },
@@ -2882,7 +2931,10 @@ if (typeof window.__TAURI__ !== "undefined") {
             strip = document.createElement("div");
             strip.id = STRIP_ID;
             strip.setAttribute("aria-hidden", "true");
-            strip.title = "Drag window";
+            // Created before the language script; resolve the tooltip on hover.
+            strip.addEventListener("mouseenter", function () {
+                if (strip) strip.title = _("Drag window");
+            });
             document.body.appendChild(strip);
             return strip;
         };
@@ -3696,8 +3748,9 @@ window._setSetup = function (
     saveCallback: () => void,
     cancelCallback: () => void
 ): void {
-    (window as any).selIndex = 0;
-    (window as any).getListItem = function (item: any, _idx: number): string {
+    var w = window as any;
+    w.selIndex = 0;
+    w.getListItem = function (item: any, _idx: number): string {
         // Name|value must be flex children with INLINE styles. Class-only
         // .item-label/.item-value fails in Tauri/WKWebView when player.css is
         // late/missing/stale; :8443 looked "formatted" because the old markup
@@ -3725,15 +3778,15 @@ window._setSetup = function (
     };
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
-    (window as any).detailListAction = function (): void {
-        var item = (window as any).listArray[(window as any).selIndex];
+    w.detailListAction = function (): void {
+        var item = w.listArray[w.selIndex];
         var dEl = document.getElementById("listDetail");
         if (dEl) {
             dEl.innerHTML =
                 (Array.isArray(item.values)
                     ? item.name +
                       "<br/><br/>" +
-                      ((window as any)._("Choose from") || "Choose from") +
+                      (w._("Choose from") || "Choose from") +
                       ":<br/>" +
                       item.values
                           .filter(function (v: any) {
@@ -3746,72 +3799,65 @@ window._setSetup = function (
     var footerElement = document.getElementById("listPodval");
     if (footerElement) {
         footerElement.innerHTML =
-            (window as any).renderButtonHint(
-                (window as any).keys.RETURN,
-                (window as any).strRETURN,
-                "Close"
-            ) +
-            (window as any).renderButtonHint(
-                (window as any).keys.ENTER,
-                (window as any).strENTER,
+            w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close") +
+            w.renderButtonHint(
+                w.keys.ENTER,
+                w.strENTER,
                 "Change value",
-                (window as any).strLEFT,
-                (window as any).strRIGHT
+                w.strLEFT,
+                w.strRIGHT
             ) +
-            (window as any).renderButtonHint(
-                (window as any).keys.GREEN,
+            w.renderButtonHint(
+                w.keys.GREEN,
                 "",
                 "Save Settings",
-                (window as any).strPlayPause,
+                w.strPlayPause,
                 "0"
             );
     }
-    (window as any).listKeyHandlerFn = function (e: number): boolean {
-        var item = (window as any).listArray[(window as any).selIndex];
+    w.listKeyHandlerFn = function (e: number): boolean {
+        var item = w.listArray[w.selIndex];
         switch (e) {
-            case (window as any).keys.ENTER:
+            case w.keys.ENTER:
                 if (typeof item.values === "function") {
                     item.values();
                 }
                 if (Array.isArray(item.values) && item.values.length > 2) {
-                    (window as any).selectValue(item);
+                    w.selectValue(item);
                     return true;
                 }
-            case (window as any).keys.RIGHT:
+            case w.keys.RIGHT:
                 if (Array.isArray(item.values)) {
                     item.val =
                         item.val > item.values.length - 2 ? 0 : item.val + 1;
                     if (item.values[item.val] === "@@@") {
-                        (window as any).listKeyHandlerFn(e);
-                    } else if (typeof (window as any).showPage === "function")
-                        (window as any).showPage();
+                        w.listKeyHandlerFn(e);
+                    } else if (typeof w.showPage === "function") w.showPage();
                 }
                 return true;
-            case (window as any).keys.LEFT:
+            case w.keys.LEFT:
                 if (Array.isArray(item.values)) {
                     item.val =
                         item.val === 0 ? item.values.length - 1 : item.val - 1;
                     if (item.values[item.val] === "@@@") {
-                        (window as any).listKeyHandlerFn(e);
-                    } else if (typeof (window as any).showPage === "function")
-                        (window as any).showPage();
+                        w.listKeyHandlerFn(e);
+                    } else if (typeof w.showPage === "function") w.showPage();
                 }
                 return true;
-            case (window as any).keys.N0:
-            case (window as any).keys.PLAY:
-            case (window as any).keys.PAUSE:
-            case (window as any).keys.GREEN:
+            case w.keys.N0:
+            case w.keys.PLAY:
+            case w.keys.PAUSE:
+            case w.keys.GREEN:
                 saveCallback();
                 return true;
-            case (window as any).keys.RETURN:
+            case w.keys.RETURN:
                 cancelCallback();
                 return true;
         }
         return false;
     };
-    (window as any).listDataArray = (window as any).listArray;
-    if (typeof (window as any).showPage === "function")
-        (window as any).showPage();
+    w.listDataArray = w.listArray;
+    if (typeof w.showPage === "function") w.showPage();
 };
 
 /**
@@ -3890,6 +3936,9 @@ function createSettingsPage(
     reopenStb: boolean
 ) {
     var editor: any;
+    function label(text: string): string {
+        return w._(text) || text;
+    }
     function back() {
         if (reopenStb) w.stbOptions();
         else w.optionsList(w[menu]);
@@ -3897,7 +3946,7 @@ function createSettingsPage(
     function save() {
         if (!editor.save()) return;
         if (typeof w.showShift === "function")
-            w.showShift(w._("Settings saved") || "Settings saved");
+            w.showShift(label("Settings saved"));
         if (closeAfterSave && typeof w.closeList === "function") w.closeList();
         back();
     }
@@ -3909,7 +3958,7 @@ function createSettingsPage(
         attach: function () {
             editor = createSettingsEditor(w, w.listArray);
             var cap = document.getElementById("listCaption");
-            if (cap) cap.innerHTML = w._(caption) || caption;
+            if (cap) cap.innerHTML = label(caption);
             if (typeof w._setSetup === "function")
                 w._setSetup(saveCallback, function () {
                     editor.cancel();
@@ -3922,18 +3971,14 @@ function createSettingsPage(
                 ? { name: name, settingId: id, values: value }
                 : { name: name, settingId: id, val: value, values: values };
         },
-        label: function (text: string): string {
-            return w._(text) || text;
-        },
+        label: label,
         rows: function (rows: any[]): any[] {
             rows.push(
                 { cur: "", name: "", val: 0, values: w.noop || [] },
                 {
                     cur: "",
                     name:
-                        '<div class="btn">' +
-                        (w._("Save Settings") || "Save Settings") +
-                        "</div>",
+                        '<div class="btn">' + label("Save Settings") + "</div>",
                     val: 0,
                     values: saveCallback,
                 }
@@ -4657,6 +4702,9 @@ window.importSettingsUI = importSettingsUI;
  */
 window.settingsManage = function (): void {
     var w = window as any;
+    function label(key: string): string {
+        return w._(key) || key;
+    }
     /**
      * Prompt the user to confirm, then clear all stb storage items and
      * restart the player.
@@ -4684,39 +4732,38 @@ window.settingsManage = function (): void {
             });
         }
     }
+    var gap = { action: w.noop || function () {}, name: "" };
     w.listArray = [
         {
             action: w.cloudSendSettings,
-            name: w._("Save settings") || "Save settings",
+            name: label("Save settings"),
         },
         {
             action: w.cloudLoadSettings,
-            name: w._("Load settings") || "Load settings",
+            name: label("Load settings"),
         },
-        { action: w.noop || function () {}, name: "" },
+        gap,
         {
             action: w.exportSettingsUI,
-            name: w._("Export settings") || "Export settings",
+            name: label("Export settings"),
         },
         {
             action: w.importSettingsUI,
-            name: w._("Import settings") || "Import settings",
+            name: label("Import settings"),
         },
-        { action: w.noop || function () {}, name: "" },
+        gap,
         {
             action: clearSettings,
-            name: w._("Clear settings") || "Clear settings",
+            name: label("Clear settings"),
         },
-        { action: w.noop || function () {}, name: "" },
+        gap,
         {
             action: w.edit_dealer,
-            name: w._("Enter Provider Code") || "Enter Provider Code",
+            name: label("Enter Provider Code"),
         },
         {
             action: w.edit_dealer_remote,
-            name:
-                w._("Enter Provider Code on PC or Phone") ||
-                "Enter Provider Code on PC or Phone",
+            name: label("Enter Provider Code on PC or Phone"),
         },
         {
             action: function () {
@@ -4734,12 +4781,12 @@ window.settingsManage = function (): void {
                     } catch (_e) {}
                     if (typeof (window as any).infoBox === "function") {
                         (window as any).infoBox(
-                            "Debug enabled. Restart to apply."
+                            _("Debug enabled. Restart to apply.")
                         );
                     }
                 }
             },
-            name: "Debug HUD",
+            name: label("Debug HUD"),
         },
     ];
     if (typeof w.stbClearAllItems !== "function") w.listArray.splice(6, 1);
@@ -4757,20 +4804,34 @@ window.settingsManage = function (): void {
     if (!isPlayDistribution() && typeof w.loadOpt === "function")
         w.listArray.splice(0, 0, {
             action: w.loadOpt,
-            name:
-                w._("Load settings from storage") ||
-                "Load settings from storage",
+            name: label("Load settings from storage"),
         });
     if (typeof w.saveOpt === "function")
         w.listArray.splice(0, 0, {
             action: w.saveOpt,
-            name: w._("Save settings to storage") || "Save settings to storage",
+            name: label("Save settings to storage"),
         });
     var sourceAccess = accessMediaPlugin();
     if (sourceAccess)
         w.listArray.push({
             action: function () {
-                sourceAccess.manage();
+                sourceAccess.manage({
+                    labels: {
+                        busy: _("Another source sign-in is already open"),
+                        cancelled: _("Source sign-in was cancelled"),
+                        close: _("Close"),
+                        empty: _(
+                            "Sign-in opens when you load a protected playlist."
+                        ),
+                        invalid: _("Invalid protected source configuration"),
+                        login: _("Sign in to the protected source again"),
+                        ok: _("Ok"),
+                        signIn: _("Sign in: %1"),
+                        signOut: _("Sign out of all sources"),
+                        title: _("Source access"),
+                        unavailable: _("Protected source is unavailable"),
+                    },
+                });
             },
             name: w._("Source access"),
         });
@@ -4801,7 +4862,7 @@ window.settingsManage = function (): void {
         return false;
     };
     var capEl = document.getElementById("listCaption");
-    if (capEl) capEl.innerHTML = w._("Manage settings") || "Manage settings";
+    if (capEl) capEl.innerHTML = label("Manage settings");
     var footerElement = document.getElementById("listPodval");
     if (footerElement)
         footerElement.innerHTML = w.renderButtonHint(
@@ -5230,6 +5291,14 @@ if (typeof window.__TAURI__ !== "undefined") {
                                 : typeof playerMode === "number"
                                   ? playerMode
                                   : 0,
+                        labels: {
+                            loading: _("Loading..."),
+                            playback: _("Stream could not be played"),
+                            runtime: _(
+                                "Compatibility runtime could not load. Reopen the player to retry."
+                            ),
+                            startup: _("Player could not start"),
+                        },
                         loop: demo,
                         requestId: id,
                         url: absoluteUrl,
@@ -5385,17 +5454,25 @@ window.exitPortal = exitPortal;
  */
 function pluginInfo(): void {
     var v = (window as any).version || "<br/>Version: " + PLAYER_VERSION;
+    v = v.replace(
+        /(^|<br\s*\/?>)Version: /g,
+        function (_match: string, prefix: string) {
+            return prefix + _("Version") + ": ";
+        }
+    );
     var host = (window as any).host || "-";
-    var canHttps = (window as any).client_can_https ? "Yes" : "No";
+    var canHttps = _((window as any).client_can_https ? "Yes" : "No");
     var html =
         _("Player info:") +
         "<br/>" +
         v +
         "<br/>" +
-        "HTTPS support: " +
+        _("HTTPS support") +
+        ": " +
         canHttps +
         "<br/>" +
-        "OTT / APP host: " +
+        _("OTT / APP host") +
+        ": " +
         host +
         " / " +
         window.location.host +
@@ -5415,8 +5492,18 @@ function pluginInfo(): void {
 function interfaceCredits(): void {
     var w = window as any;
     w.saveListPanelState();
-    $("#listCaption").text("Interface credits");
+    $("#listCaption").text(_("Interface credits"));
     $("#listAbout").html($("#interfaceCreditsSource").html()).show();
+    $("#listAbout .credits-title").text(_("Interface credits"));
+    $("#listAbout .credits-navigation").text(
+        _("Use Up / Down to scroll. Back to close.")
+    );
+    $("#listAbout .credits-language").text(
+        _("Original text: %1", _("English"))
+    );
+    $("#listAbout .credits-history").text(
+        _("Full history, sources and license terms")
+    );
     $("#listPodval").html(renderButtonHint(keys.RETURN, strRETURN, "Close"));
     w.aboutKeyHandler = function (key: number): boolean {
         if (key === w.keys.RETURN || key === w.keys.EXIT) {
@@ -5455,7 +5542,11 @@ function privacyPolicy(onClose?: () => void): void {
             close();
         })
         .appendTo(panel);
+    $("<p>")
+        .text(_("Original text: %1", _("English")))
+        .appendTo(panel);
     var content = $("<pre>")
+        .attr("lang", "en")
         .css({
             fontFamily: "inherit",
             fontSize: "0.75em",
@@ -5488,7 +5579,10 @@ function privacyPolicy(onClose?: () => void): void {
     ).fail(function () {
         if (!closed)
             content.text(
-                "Privacy policy unavailable. Contact: alvit.work@gmail.com"
+                _(
+                    "Privacy policy unavailable. Contact: %1",
+                    "alvit.work@gmail.com"
+                )
             );
     });
 }
@@ -6740,7 +6834,10 @@ optionsArr.push({ action: selectLang, name: "Change interface language" });
 // Match other @tauri-apps usage: window.__TAURI__ / tauriInvoke — not import().
 // Dynamic import hits TS1323 (module:ES2015); static import is stripped by concat
 // and cannot resolve bare specifiers in the Mode A/B player.js bundle.
-if (typeof window.__TAURI__ !== "undefined") {
+var tauriUpdaterStarted = false;
+function checkTauriUpdatesAfterLanguage(): void {
+    if (typeof window.__TAURI__ === "undefined" || tauriUpdaterStarted) return;
+    tauriUpdaterStarted = true;
     void (async () => {
         try {
             type UpdaterMeta = {

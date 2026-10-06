@@ -69,6 +69,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Een IP-adres zonder poort gebruikt HTTP-poort 8081. Wis het adres of kies Verbinding verbreken om te stoppen.",
+    "Another source sign-in is already open":
+        "Er is al een aanmeldvenster voor een andere bron geopend",
     "API failed, trying M3U...": "API mislukt, M3U proberen…",
     "API Server": "API-server",
     "API server URL": "URL van API-server",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Background color": "Achtergrondkleur",
     "Background color of selected item":
         "Achtergrondkleur van geselecteerd item",
+    "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "Instellingen voor BEST LiST IPTV [HLS Playlist]",
@@ -175,6 +178,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "De wachttijd voor het zoeken naar een opdrachtserver is verstreken.",
     "Command server found.": "Opdrachtserver gevonden.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "De compatibiliteitscomponenten konden niet worden geladen. Open de speler opnieuw.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configureer All4you.tv via Instellingen -> Providerinstellingen",
@@ -260,6 +265,10 @@ var keyStrings = {
     "Continue watching?": "Verder kijken?",
     "Copy category": "Categorie kopiëren",
     "Copy JSON": "JSON kopiëren",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Kopieer de JSON om een back-up te bewaren. Gebruik de importfunctie voor instellingen om deze te herstellen.",
+    "Copy the selected JSON with your device's copy command":
+        "Kopieer de geselecteerde JSON met de kopieeropdracht van uw apparaat",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.":
@@ -275,6 +284,8 @@ var keyStrings = {
     Country: "Land",
     "Create category": "Categorie maken",
     current: "huidig",
+    "Debug enabled. Restart to apply.":
+        "Foutopsporing is ingeschakeld. Start de speler opnieuw om dit toe te passen.",
     "Debug HUD": "Debugpaneel",
     "Debug HUD is not available": "Debugpaneel niet beschikbaar",
     Delete: "Verwijderen",
@@ -305,6 +316,7 @@ var keyStrings = {
     "Download! Wait ...": "Downloaden… even geduld…",
     DRVAO: "DRVAO",
     "DRVAO settings": "Instellingen voor DRVAO",
+    "Drag window": "Venster verplaatsen",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Instellingen voor Dragon Media PRO",
     Duration: "Duur",
@@ -320,6 +332,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Voer een wachtwoord in (8 tekens).",
     "Enter a playlist URL to access this service.":
         "Voer een afspeellijst-URL in om deze dienst te gebruiken.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Voer een afspeellijst-URL in. De speler wordt na het opslaan opnieuw gestart.",
     "Enter a server address without spaces or a fragment.":
         "Voer een serveradres zonder spaties of fragment in.",
     "Enter a username (8 characters).":
@@ -331,6 +345,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Voer een geldig serveradres in, bijvoorbeeld 192.168.1.20:8081.",
     "Enter access key for": "Toegangssleutel invoeren voor",
+    "Enter an application access key (%1–%2 characters).":
+        "Voer een toegangssleutel voor de app in (%1–%2 tekens).",
     "Enter an application access key (8 characters).":
         "Voer een toegangssleutel voor toepassingen in (8 tekens).",
     "Enter an ID and PIN to access this service.":
@@ -358,6 +374,7 @@ var keyStrings = {
         "URL van Stalker-portaal invoeren (bijv. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "URL van Stalker-portaal invoeren (bijv. http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Voer het servernummer in (%1).",
     "Enter the access code separately, not in the server address.":
         "Voer de toegangscode apart in, niet in het serveradres.",
     "Enter the command server IP or address.":
@@ -460,11 +477,13 @@ var keyStrings = {
     Favorites: "Favorieten",
     "File selection is not supported on this device":
         "Bestandsselectie wordt niet ondersteund op dit apparaat",
+    "Fill screen": "Scherm vullen",
     Filter: "Filter",
     Filters: "Filters",
     "Find command server": "Opdrachtserver zoeken",
     "Finding command servers...": "Opdrachtservers zoeken...",
     "First Run Setup": "Eerste configuratie",
+    "Fit to screen": "Passend op scherm",
     Folders: "Folders",
     "Font type": "Lettertype",
     "For download settings file open":
@@ -474,6 +493,8 @@ var keyStrings = {
         "Open voor het uploaden van het instellingenbestand",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Instellingen voor Fox-TV",
+    "Full history, sources and license terms":
+        "Volledige geschiedenis, bronnen en licentievoorwaarden",
     FXML: "FXML",
     "FXML settings": "Instellingen voor FXML",
     Genre: "Genre",
@@ -492,6 +513,7 @@ var keyStrings = {
     "HTTP port": "HTTP-poort",
     "HTTP remote control is unavailable on this device.":
         "HTTP-afstandsbediening is niet beschikbaar op dit apparaat.",
+    "HTTPS support": "HTTPS-ondersteuning",
     ID: "ID",
     "Import settings": "Instellingen importeren",
     "In live mode: <br/>": "In livemodus:<br/>",
@@ -505,6 +527,8 @@ var keyStrings = {
     "Interface transparency": "Transparantie van interface",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ongeldige zenderlink! Voer de volledige host uit de stream-URL in het klantportaal in (bijv. subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Ongeldige configuratie van beveiligde bron",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Instellingen voor IpStream.one",
@@ -527,10 +551,14 @@ var keyStrings = {
     "Load:": "Laden:",
     "Loading channels from Xtream API...": "Zenders laden via Xtream-API…",
     "Loading channels...": "Zenders laden…",
+    "Loading device...": "Apparaatcomponenten laden…",
     "Loading from API...": "Laden via API…",
     "Loading from Edem API...": "Laden via Edem-API…",
+    "Loading interface...": "Interface laden…",
     "Loading M3U playlist...": "M3U-afspeellijst laden…",
     "Loading M3U...": "M3U laden…",
+    "Loading media libraries...": "Mediabibliotheken laden…",
+    "Loading player...": "Speler laden…",
     "Loading via proxy...": "Laden via proxy…",
     "Loading. Please wait...": "Laden… even geduld…",
     "Loading...": "Laden…",
@@ -601,6 +629,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Oorspronkelijke tekst: %1",
+    "OTT / APP host": "OTT- / app-server",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Instellingen voor OTT Prime ONLINE",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -610,6 +640,7 @@ var keyStrings = {
     on: "aan",
     "on ": "aan ",
     "or scan": "of scan",
+    Packages: "Pakketten",
     "Pairing approved. Command server configured.":
         "Koppeling goedgekeurd. Opdrachtserver geconfigureerd.",
     "Pairing expired. Find the server again to retry.":
@@ -620,16 +651,20 @@ var keyStrings = {
         "De koppeling is geweigerd of er is een ongeldige goedkeuring ontvangen. Zoek de server opnieuw om het nogmaals te proberen.",
     "Parental control": "Ouderlijk toezicht",
     Password: "Wachtwoord",
+    "Paste settings JSON": "Plak de instellingen in JSON-formaat",
     Pause: "Pauze",
     "Pause/Play": "Pauze / afspelen",
+    "Payment method": "Betaalmethode",
     "Permanent clock on screen": "Klok altijd op scherm tonen",
     PIN: "PIN",
+    "Picture in Picture": "Beeld in beeld",
     "PiP exchange": "PiP wisselen",
     "PiP window position": "Positie van PiP-venster",
     "PiP window size": "Grootte van PiP-venster",
     Play: "Afspelen",
     Playback: "Playback",
     "Player and device info": "Speler- en apparaatgegevens",
+    "Player could not start": "De speler kon niet worden gestart",
     "Player info:": "Spelergegevens:",
     Playlist: "Afspeellijst",
     "Playlist file": "Afspeellijstbestand",
@@ -648,17 +683,22 @@ var keyStrings = {
     "Portal URL": "Portaal-URL",
     "Position shift -10 seconds after pause":
         "Na pauze 10 seconden terugspringen",
+    Postpaid: "Achteraf betaald",
     PROST: "PROST",
     "PROST settings": "Instellingen voor PROST",
+    Prepaid: "Vooraf betaald",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Vorige",
     "Preview in channel list": "Voorbeeld in zenderlijst",
     Previous: "Vorige",
     "Privacy policy": "Privacybeleid",
+    "Privacy policy unavailable. Contact: %1":
+        "Privacybeleid niet beschikbaar. Contact: %1",
     "Profile name": "Profielnaam",
     "Protect Adult Channels": "Volwassenenzenders beveiligen",
     "Protect Change Provider": "Providerwijziging beveiligen",
     "Protect Settings": "Instellingen beveiligen",
+    "Protected source is unavailable": "De beveiligde bron is niet beschikbaar",
     "p...": "p...",
     paging: "paginagewijs",
     Quality: "Kwaliteit",
@@ -775,7 +815,13 @@ var keyStrings = {
     Settings: "Instellingen",
     "Settings changed. Discovery was canceled.":
         "Instellingen gewijzigd. Het zoeken is geannuleerd.",
+    "Settings copied": "Instellingen gekopieerd",
+    "Settings could not be exported":
+        "Instellingen konden niet worden geëxporteerd",
     "Settings could not be saved": "Instellingen konden niet worden opgeslagen",
+    "Settings download requested": "Download van instellingen aangevraagd",
+    "Settings imported": "Instellingen geïmporteerd",
+    "Settings JSON": "Instellingen in JSON-formaat",
     "Settings loaded from storage": "Instellingen geladen uit opslag",
     "Settings STB": "STB-instellingen",
     "Settings saved": "Instellingen opgeslagen",
@@ -815,25 +861,35 @@ var keyStrings = {
     "Shuffle: Loading...": "Willekeurig afspelen: laden…",
     "Shuffle: Off": "Willekeurig afspelen: uit",
     "Shuffle: On": "Willekeurig afspelen: aan",
+    "Sign in to the protected source again":
+        "Meld u opnieuw aan bij de beveiligde bron",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Aanmelden: %1",
+    "Sign out of all sources": "Bij alle bronnen afmelden",
+    "Sign-in opens when you load a protected playlist.":
+        "Het aanmelden wordt geopend wanneer u een beveiligde afspeellijst laadt.",
     "Sleep timer": "Slaaptimer",
     "Sort channels": "Zenders sorteren",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Aanmelden bij de bron geannuleerd",
     "Stalker Portal Provider": "Stalker-portaalprovider",
     "Stalker portal settings": "Instellingen van Stalker-portaal",
     "Stalker portals": "Stalker-portalen",
+    "Starting...": "Starten…",
     Status: "Status",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Afspelen stoppen en terugkeren naar live",
+    "Stream could not be played": "De stream kon niet worden afgespeeld",
     "Stream type: %1": "Streamtype: %1",
     "String for search": "Zoektekst",
     "Su Mo Tu We Th Fr Sa": "Zo Ma Di Wo Do Vr Za",
+    "Subscription information": "Abonnementsinformatie",
     Subtitle: "Ondertitels",
     Switch: "Wisselen",
     "Switch sound track": "Audiospoor wisselen",
@@ -909,11 +965,14 @@ var keyStrings = {
         "Gebruik HTTP of HTTPS zonder gebruikersnaam of wachtwoord in het adres.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gebruik LINKS/RECHTS om een bedieningselement te kiezen, OK om het te activeren en OMHOOG/OMLAAG om te scrollen.",
+    "Use Up / Down to scroll. Back to close.":
+        "Gebruik Omhoog / Omlaag om te scrollen. Terug om te sluiten.",
     Username: "Gebruikersnaam",
     "Username or password is missing.":
         "Gebruikersnaam of wachtwoord ontbreekt.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versie",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Instellingen voor VIP-IP.COM",
     "Vidok.TV": "Vidok.TV",

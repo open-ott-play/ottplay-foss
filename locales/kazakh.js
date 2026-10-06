@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Портсыз IP үшін HTTP 8081 порты қолданылады. Тоқтату үшін мекенжайды тазалаңыз немесе Ажырату түймесін таңдаңыз.",
+    "Another source sign-in is already open":
+        "Басқа дереккөзге кіру терезесі әлдеқашан ашық",
     "API failed, trying M3U...": "API қатесі, M3U қолданылуда…",
     "API Server": "API сервері",
     "API server URL": "API серверінің URL мекенжайы",
@@ -94,6 +96,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 минут артқа / алға",
     "Background color": "Фон түсі",
     "Background color of selected item": "Таңдалған элементтің фон түсі",
+    "Balance, $": "Баланс, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] баптаулары",
@@ -173,6 +176,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Пәрмен серверін іздеу уақыты аяқталды.",
     "Command server found.": "Пәрмен сервері табылды.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Үйлесімділік компоненттерін жүктеу мүмкін болмады. Ойнатқышты қайта ашыңыз.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv қызметін Баптаулар -> Провайдер баптаулары бөлімінде баптаңыз",
@@ -258,6 +263,10 @@ var keyStrings = {
     "Continue watching?": "Көруді жалғастыру керек пе?",
     "Copy category": "Санатты көшіру",
     "Copy JSON": "JSON көшіру",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Сақтық көшірмені сақтау үшін JSON мәтінін көшіріңіз. Қалпына келтіру үшін параметрлерді импорттауды пайдаланыңыз.",
+    "Copy the selected JSON with your device's copy command":
+        "Таңдалған JSON мәтінін құрылғының көшіру пәрменімен көшіріңіз",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Серверге қосылу мүмкін болмады.",
@@ -272,6 +281,8 @@ var keyStrings = {
     Country: "Ел",
     "Create category": "Санат жасау",
     current: "ағымдағы",
+    "Debug enabled. Restart to apply.":
+        "Жөндеу режимі қосылды. Өзгерісті қолдану үшін ойнатқышты қайта іске қосыңыз.",
     "Debug HUD": "Жөндеу тақтасы",
     "Debug HUD is not available": "Жөндеу тақтасы қолжетімсіз",
     Delete: "Жою",
@@ -302,6 +313,7 @@ var keyStrings = {
     "Download! Wait ...": "Жүктелуде… күтіңіз…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO баптаулары",
+    "Drag window": "Терезені жылжыту",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO баптаулары",
     Duration: "Ұзақтығы",
@@ -317,6 +329,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Құпиясөзді енгізіңіз (8 таңба).",
     "Enter a playlist URL to access this service.":
         "Бұл қызметке кіру үшін ойнату тізімінің URL мекенжайын енгізіңіз.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Ойнату тізімінің URL мекенжайын енгізіңіз. Сақтағаннан кейін ойнатқыш қайта іске қосылады.",
     "Enter a server address without spaces or a fragment.":
         "Сервер мекенжайын бос орынсыз және # таңбасынан кейінгі үзіндісіз енгізіңіз.",
     "Enter a username (8 characters).": "Пайдаланушы атын енгізіңіз (8 таңба).",
@@ -327,6 +341,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Жарамды сервер мекенжайын енгізіңіз, мысалы, 192.168.1.20:8081.",
     "Enter access key for": "Мынау үшін кіру кілтін енгізіңіз:",
+    "Enter an application access key (%1–%2 characters).":
+        "Қолданбаның кіру кілтін енгізіңіз (%1–%2 таңба).",
     "Enter an application access key (8 characters).":
         "Қолданбаның кіру кілтін енгізіңіз (8 таңба).",
     "Enter an ID and PIN to access this service.":
@@ -355,6 +371,7 @@ var keyStrings = {
         "Stalker порталының URL мекенжайын енгізіңіз (мысалы, http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker порталының URL мекенжайын енгізіңіз (мысалы, http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Сервер нөмірін енгізіңіз (%1).",
     "Enter the access code separately, not in the server address.":
         "Кіру кодын сервер мекенжайынан бөлек енгізіңіз.",
     "Enter the command server IP or address.":
@@ -457,11 +474,13 @@ var keyStrings = {
     Favorites: "Таңдаулылар",
     "File selection is not supported on this device":
         "Бұл құрылғыда файл таңдау қолдау көрсетілмейді",
+    "Fill screen": "Экранды толтыру",
     Filter: "Сүзгі",
     Filters: "Сүзгілер",
     "Find command server": "Пәрмен серверін табу",
     "Finding command servers...": "Пәрмен серверлері ізделуде…",
     "First Run Setup": "Алғашқы іске қосу баптауы",
+    "Fit to screen": "Экранға сыйдыру",
     Folders: "Folders",
     "Font type": "Қаріп түрі",
     "For download settings file open":
@@ -470,6 +489,8 @@ var keyStrings = {
     "For upload settings file open": "Баптаулар файлын жіберу үшін ашыңыз",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV баптаулары",
+    "Full history, sources and license terms":
+        "Толық тарих, дереккөздер және лицензия шарттары",
     FXML: "FXML",
     "FXML settings": "FXML баптаулары",
     Genre: "Жанр",
@@ -488,6 +509,7 @@ var keyStrings = {
     "HTTP port": "HTTP порты",
     "HTTP remote control is unavailable on this device.":
         "Бұл құрылғыда HTTP қашықтан басқару қолжетімсіз.",
+    "HTTPS support": "HTTPS қолдауы",
     ID: "ID",
     "Import settings": "Баптауларды импорттау",
     "In live mode: <br/>": "Тікелей эфир режимінде:<br/>",
@@ -501,6 +523,8 @@ var keyStrings = {
     "Interface transparency": "Интерфейс мөлдірлігі",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Арна сілтемесі жарамсыз! Жеке кабинеттегі ағын URL мекенжайының толық хост атауын енгізіңіз (мысалы, subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Қорғалған дереккөздің конфигурациясы жарамсыз",
     "IPTV token": "IPTV токені",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one баптаулары",
@@ -524,10 +548,14 @@ var keyStrings = {
     "Loading channels from Xtream API...":
         "Xtream API арқылы арналар жүктелуде…",
     "Loading channels...": "Арналар жүктелуде…",
+    "Loading device...": "Құрылғы компоненттері жүктелуде…",
     "Loading from API...": "API арқылы жүктелуде…",
     "Loading from Edem API...": "Edem API арқылы жүктелуде…",
+    "Loading interface...": "Интерфейс жүктелуде…",
     "Loading M3U playlist...": "M3U ойнату тізімі жүктелуде…",
     "Loading M3U...": "M3U жүктелуде…",
+    "Loading media libraries...": "Медиакітапханалар жүктелуде…",
+    "Loading player...": "Ойнатқыш жүктелуде…",
     "Loading via proxy...": "Прокси арқылы жүктелуде…",
     "Loading. Please wait...": "Жүктелуде. Күтіңіз…",
     "Loading...": "Жүктелуде…",
@@ -598,6 +626,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Түпнұсқа мәтін: %1",
+    "OTT / APP host": "OTT / қолданба сервері",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE баптаулары",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -607,6 +637,7 @@ var keyStrings = {
     on: "қосулы",
     "on ": "мына түймемен ",
     "or scan": "немесе сканерлеңіз",
+    Packages: "Топтамалар",
     "Pairing approved. Command server configured.":
         "Жұптастыру расталды. Пәрмен сервері бапталды.",
     "Pairing expired. Find the server again to retry.":
@@ -617,16 +648,20 @@ var keyStrings = {
         "Жұптастыру қабылданбады немесе жарамсыз растау алынды. Қайта әрекет ету үшін серверді қайта іздеңіз.",
     "Parental control": "Ата-ана бақылауы",
     Password: "Құпиясөз",
+    "Paste settings JSON": "JSON пішіміндегі параметрлерді қойыңыз",
     Pause: "Кідірту",
     "Pause/Play": "Кідірту / ойнату",
+    "Payment method": "Төлем әдісі",
     "Permanent clock on screen": "Экрандағы тұрақты сағат",
     PIN: "PIN",
+    "Picture in Picture": "Сурет ішіндегі сурет",
     "PiP exchange": "PiP терезелерін ауыстыру",
     "PiP window position": "PiP терезесінің орны",
     "PiP window size": "PiP терезесінің өлшемі",
     Play: "Ойнату",
     Playback: "Playback",
     "Player and device info": "Ойнатқыш және құрылғы туралы ақпарат",
+    "Player could not start": "Ойнатқышты іске қосу мүмкін болмады",
     "Player info:": "Ойнатқыш туралы ақпарат:",
     Playlist: "Ойнату тізімі",
     "Playlist file": "Ойнату тізімінің файлы",
@@ -645,17 +680,22 @@ var keyStrings = {
     "Portal URL": "Порталдың URL мекенжайы",
     "Position shift -10 seconds after pause":
         "Кідіртуден кейін 10 секунд артқа қайту",
+    Postpaid: "Кейінгі төлем",
     PROST: "PROST",
     "PROST settings": "PROST баптаулары",
+    Prepaid: "Алдын ала төлем",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Алдыңғы",
     "Preview in channel list": "Арналар тізіміндегі алдын ала қарау",
     Previous: "Алдыңғы арна",
     "Privacy policy": "Құпиялық саясаты",
+    "Privacy policy unavailable. Contact: %1":
+        "Құпиялық саясаты қолжетімсіз. Байланыс: %1",
     "Profile name": "Профиль атауы",
     "Protect Adult Channels": "Ересектерге арналған арналарды қорғау",
     "Protect Change Provider": "Провайдерді ауыстыруды қорғау",
     "Protect Settings": "Баптауларды қорғау",
+    "Protected source is unavailable": "Қорғалған дереккөз қолжетімсіз",
     "p...": "т…",
     paging: "беттерді ауыстыру",
     Quality: "Сапа",
@@ -769,7 +809,12 @@ var keyStrings = {
     Settings: "Баптаулар",
     "Settings changed. Discovery was canceled.":
         "Баптаулар өзгерді. Іздеу тоқтатылды.",
+    "Settings copied": "Параметрлер көшірілді",
+    "Settings could not be exported": "Параметрлерді экспорттау мүмкін болмады",
     "Settings could not be saved": "Баптауларды сақтау мүмкін болмады",
+    "Settings download requested": "Параметрлерді жүктеп алу сұралды",
+    "Settings imported": "Параметрлер импортталды",
+    "Settings JSON": "JSON пішіміндегі параметрлер",
     "Settings loaded from storage": "Баптаулар жадтан жүктелді",
     "Settings STB": "Құрылғы баптаулары",
     "Settings saved": "Баптаулар сақталды",
@@ -810,25 +855,35 @@ var keyStrings = {
     "Shuffle: Loading...": "Араластыру: жүктелуде…",
     "Shuffle: Off": "Араластыру: өшірулі",
     "Shuffle: On": "Араластыру: қосулы",
+    "Sign in to the protected source again":
+        "Қорғалған дереккөзге қайта кіріңіз",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Кіру: %1",
+    "Sign out of all sources": "Барлық дереккөздерден шығу",
+    "Sign-in opens when you load a protected playlist.":
+        "Қорғалған ойнату тізімін жүктегенде кіру терезесі ашылады.",
     "Sleep timer": "Ұйқы таймері",
     "Sort channels": "Арналарды сұрыптау",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Дереккөзге кіру тоқтатылды",
     "Stalker Portal Provider": "Stalker порталының провайдері",
     "Stalker portal settings": "Stalker порталының баптаулары",
     "Stalker portals": "Stalker порталдары",
+    "Starting...": "Іске қосылуда…",
     Status: "Күй",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Ойнатуды тоқтатып, тікелей эфирге қайту",
+    "Stream could not be played": "Ағынды ойнату мүмкін болмады",
     "Stream type: %1": "Ағын түрі: %1",
     "String for search": "Іздеу мәтіні",
     "Su Mo Tu We Th Fr Sa": "Жс Дс Сс Ср Бс Жм Сб",
+    "Subscription information": "Жазылым туралы ақпарат",
     Subtitle: "Субтитрлер",
     Switch: "Ауыстыру",
     "Switch sound track": "Дыбыс жолын ауыстыру",
@@ -904,10 +959,13 @@ var keyStrings = {
         "Мекенжайда пайдаланушы аты мен құпиясөзі жоқ HTTP немесе HTTPS қолданыңыз.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Элементті таңдау үшін СОЛ/ОҢ, іске қосу үшін OK, айналдыру үшін ЖОҒАРЫ/ТӨМЕН түймелерін пайдаланыңыз.",
+    "Use Up / Down to scroll. Back to close.":
+        "Айналдыру үшін Жоғары / Төмен басыңыз. Жабу үшін Артқа басыңыз.",
     Username: "Пайдаланушы аты",
     "Username or password is missing.": "Пайдаланушы аты немесе құпиясөз жоқ.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Нұсқа",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM баптаулары",
     "Vidok.TV": "Vidok.TV",

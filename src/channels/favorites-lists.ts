@@ -28,6 +28,8 @@ export let favoritesLists: FavoritesListsBlob = {
 
 /** Active-list alias for existing cats["Favorites"] / single-list readers. */
 export let favoritesArray: number[] = favoritesLists.lists.Favorites;
+// Display provenance is separate from stable list keys and user-authored names.
+var favoritesDefaultList: string | undefined = "Favorites";
 
 /** Optional view refresh (bound from channels/index — avoids circular import). */
 var favoritesViewRefresh: (() => void) | null = null;
@@ -65,6 +67,12 @@ export function getActiveFavoritesListName(): string {
     return favoritesLists.active;
 }
 
+export function favoritesListLabel(name: string): string {
+    return name === favoritesDefaultList
+        ? (window as any)._("Favorites")
+        : name;
+}
+
 /** Switch the active list. Updates `favoritesArray` alias and cats["Favorites"]. */
 export function setActiveFavoritesList(name: string): boolean {
     return applyFavoriteListChange("activate", name);
@@ -82,6 +90,13 @@ export function addFavoritesList(name: string): boolean {
 }
 
 export function renameFavoritesList(oldName: string, newName: string): boolean {
+    // Explicitly naming the generated list "Favorites" makes it user text too.
+    if (oldName === favoritesDefaultList && oldName === newName) {
+        if (!favoritesWritable || !favoritesOwner || !favoritesOwner())
+            return false;
+        favoritesDefaultList = undefined;
+        return true;
+    }
     return applyFavoriteListChange("rename", oldName, newName);
 }
 
@@ -247,6 +262,7 @@ function favoriteLibrarySnapshot(index: any): any {
     });
     return {
         document: {
+            defaultList: favoritesDefaultList,
             lists: {
                 active: favoritesLists.active,
                 lists: lists,
@@ -350,6 +366,7 @@ export function loadFavoritesLists(): void {
     var prior: any[] = [];
     var scoped: any;
     var origin: "raw" | "canonical" | "reference" = "raw";
+    var defaultList: string | undefined;
     try {
         scoped = get.call(w, "favoritesLibrary:" + source);
         if (scoped) {
@@ -361,10 +378,17 @@ export function loadFavoritesLists(): void {
                     envelope.sourceId === source &&
                     envelope.lists &&
                     envelope.lists.v === 1 &&
+                    (envelope.defaultList === undefined ||
+                        (envelope.defaultList === "Favorites" &&
+                            Object.prototype.hasOwnProperty.call(
+                                envelope.lists.lists,
+                                "Favorites"
+                            ))) &&
                     (envelope.version !== 2 ||
                         isFavoriteReferenceBlob(envelope.lists))
                 ) {
                     raw = envelope.lists;
+                    defaultList = envelope.defaultList;
                     origin = envelope.version === 2 ? "reference" : "canonical";
                     writable = true;
                 }
@@ -390,6 +414,7 @@ export function loadFavoritesLists(): void {
     }
     if (!current()) return;
     var loaded = w.OttPlayCore.loadClassicFavoriteLists(raw, prior);
+    if (!raw) defaultList = "Favorites";
     var index = favoritesReferenceIndex();
     var records: FavoriteReferenceList[] = [];
     Object.keys(loaded.lists).forEach(function (name) {
@@ -409,6 +434,7 @@ export function loadFavoritesLists(): void {
     favoritesWritable = writable;
     favoritesOwner = current;
     favoritesLists = loaded;
+    favoritesDefaultList = defaultList;
     favoritesReferences = records;
     saveFavoritesLists();
     if (current()) syncFavoritesArrayFromActive();
@@ -426,6 +452,12 @@ function applyFavoriteListChange(
         name,
         replacement
     );
+    if (
+        result.accepted &&
+        name === favoritesDefaultList &&
+        (operation === "rename" || operation === "delete")
+    )
+        favoritesDefaultList = undefined;
     if (result.synchronize) syncFavoritesArrayFromActive();
     return result.accepted;
 }

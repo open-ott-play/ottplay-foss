@@ -70,6 +70,8 @@ var keyStrings = {
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP adrese bez porta izmanto HTTP portu 8081. Lai apturētu, notīriet adresi vai izvēlieties Atvienot.",
+    "Another source sign-in is already open":
+        "Cita avota pierakstīšanās logs jau ir atvērts",
     "API failed, trying M3U...": "API kļūme, mēģina M3U…",
     "API Server": "API serveris",
     "API server URL": "API servera URL",
@@ -95,6 +97,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 minūti atpakaļ / uz priekšu",
     "Background color": "Fona krāsa",
     "Background color of selected item": "Atlasītā vienuma fona krāsa",
+    "Balance, $": "Atlikums, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
         "BEST LiST IPTV [HLS Playlist] iestatījumi",
@@ -174,6 +177,8 @@ var keyStrings = {
     "Command server discovery timed out.":
         "Komandu servera meklēšanas laiks ir beidzies.",
     "Command server found.": "Komandu serveris ir atrasts.",
+    "Compatibility runtime could not load. Reopen the player to retry.":
+        "Neizdevās ielādēt saderības komponentus. Atveriet atskaņotāju vēlreiz.",
     "Compatible HLS": "Compatible HLS",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurējiet All4you.tv sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
@@ -259,6 +264,10 @@ var keyStrings = {
     "Continue watching?": "Turpināt skatīties?",
     "Copy category": "Kopēt kategoriju",
     "Copy JSON": "Kopēt JSON",
+    "Copy the JSON to keep a backup. Use Import settings to restore it.":
+        "Nokopējiet JSON, lai saglabātu rezerves kopiju. Atjaunojiet to, izmantojot iestatījumu importēšanu.",
+    "Copy the selected JSON with your device's copy command":
+        "Nokopējiet atlasīto JSON ar ierīces kopēšanas komandu",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Neizdevās savienoties ar serveri.",
@@ -273,6 +282,8 @@ var keyStrings = {
     Country: "Valsts",
     "Create category": "Izveidot kategoriju",
     current: "pašreizējais",
+    "Debug enabled. Restart to apply.":
+        "Atkļūdošana ir ieslēgta. Lai lietotu izmaiņas, restartējiet atskaņotāju.",
     "Debug HUD": "Atkļūdošanas panelis",
     "Debug HUD is not available": "Atkļūdošanas panelis nav pieejams",
     Delete: "Dzēst",
@@ -302,6 +313,7 @@ var keyStrings = {
     "Download! Wait ...": "Lejupielādē… lūdzu, uzgaidiet…",
     DRVAO: "DRVAO",
     "DRVAO settings": "DRVAO iestatījumi",
+    "Drag window": "Pārvietot logu",
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Dragon Media PRO iestatījumi",
     Duration: "Ilgums",
@@ -317,6 +329,8 @@ var keyStrings = {
     "Enter a password (8 characters).": "Ievadiet paroli (8 rakstzīmes).",
     "Enter a playlist URL to access this service.":
         "Lai piekļūtu šim pakalpojumam, ievadiet atskaņošanas saraksta URL.",
+    "Enter a playlist URL. The player will restart after saving.":
+        "Ievadiet atskaņošanas saraksta URL. Pēc saglabāšanas atskaņotājs tiks restartēts.",
     "Enter a server address without spaces or a fragment.":
         "Ievadiet servera adresi bez atstarpēm un fragmenta aiz #.",
     "Enter a username (8 characters).":
@@ -328,6 +342,8 @@ var keyStrings = {
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Ievadiet derīgu servera adresi, piemēram, 192.168.1.20:8081.",
     "Enter access key for": "Ievadiet piekļuves atslēgu:",
+    "Enter an application access key (%1–%2 characters).":
+        "Ievadiet lietotnes piekļuves atslēgu (%1–%2 rakstzīmes).",
     "Enter an application access key (8 characters).":
         "Ievadiet lietotnes piekļuves atslēgu (8 rakstzīmes).",
     "Enter an ID and PIN to access this service.":
@@ -356,6 +372,7 @@ var keyStrings = {
         "Ievadiet Stalker portāla URL (piem., http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Ievadiet Stalker portāla URL (piem., http://your-portal/stalker_portal/c/)",
+    "Enter server number (%1).": "Ievadiet servera numuru (%1).",
     "Enter the access code separately, not in the server address.":
         "Piekļuves kodu ievadiet atsevišķi, nevis servera adresē.",
     "Enter the command server IP or address.":
@@ -458,11 +475,13 @@ var keyStrings = {
     Favorites: "Izlase",
     "File selection is not supported on this device":
         "Šajā ierīcē failu izvēle netiek atbalstīta",
+    "Fill screen": "Aizpildīt ekrānu",
     Filter: "Filtrs",
     Filters: "Filtri",
     "Find command server": "Atrast komandu serveri",
     "Finding command servers...": "Notiek komandu serveru meklēšana...",
     "First Run Setup": "Pirmās palaišanas iestatīšana",
+    "Fit to screen": "Ietilpināt ekrānā",
     Folders: "Folders",
     "Font type": "Fonta veids",
     "For download settings file open":
@@ -472,6 +491,8 @@ var keyStrings = {
         "Lai augšupielādētu iestatījumu failu, atveriet",
     "Fox-TV": "Fox-TV",
     "Fox-TV settings": "Fox-TV iestatījumi",
+    "Full history, sources and license terms":
+        "Pilna vēsture, avoti un licences noteikumi",
     FXML: "FXML",
     "FXML settings": "FXML iestatījumi",
     Genre: "Žanrs",
@@ -490,6 +511,7 @@ var keyStrings = {
     "HTTP port": "HTTP ports",
     "HTTP remote control is unavailable on this device.":
         "HTTP tālvadība šajā ierīcē nav pieejama.",
+    "HTTPS support": "HTTPS atbalsts",
     ID: "ID",
     "Import settings": "Importēt iestatījumus",
     "In live mode: <br/>": "Tiešraides režīmā:<br/>",
@@ -503,6 +525,8 @@ var keyStrings = {
     "Interface transparency": "Saskarnes caurspīdīgums",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Nederīga kanāla saite! Ievadiet pilnu resursdatora nosaukumu kā konta straumes URL (piem., subdomain.cdn-domain.tld)",
+    "Invalid protected source configuration":
+        "Nederīga aizsargātā avota konfigurācija",
     "IPTV token": "IPTV piekļuves pilnvara",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one iestatījumi",
@@ -525,10 +549,14 @@ var keyStrings = {
     "Load:": "Ielādēt:",
     "Loading channels from Xtream API...": "Ielādē kanālus no Xtream API…",
     "Loading channels...": "Ielādē kanālus…",
+    "Loading device...": "Ielādē ierīces komponentus…",
     "Loading from API...": "Ielādē no API…",
     "Loading from Edem API...": "Ielādē no Edem API…",
+    "Loading interface...": "Ielādē saskarni…",
     "Loading M3U playlist...": "Ielādē M3U atskaņošanas sarakstu…",
     "Loading M3U...": "Ielādē M3U…",
+    "Loading media libraries...": "Ielādē multivides bibliotēkas…",
+    "Loading player...": "Ielādē atskaņotāju…",
     "Loading via proxy...": "Ielādē caur starpniekserveri…",
     "Loading. Please wait...": "Ielādē… lūdzu, uzgaidiet…",
     "Loading...": "Ielādē…",
@@ -600,6 +628,8 @@ var keyStrings = {
     "Or open this complete private link on another device:":
         "Or open this complete private link on another device:",
     "Original file": "Original file",
+    "Original text: %1": "Oriģinālais teksts: %1",
+    "OTT / APP host": "OTT / lietotnes serveris",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE iestatījumi",
     "OttPlay FOSS %1 is available. Download and install now?":
@@ -609,6 +639,7 @@ var keyStrings = {
     on: "ieslēgta",
     "on ": "ieslēgts ",
     "or scan": "vai skenējiet",
+    Packages: "Pakotnes",
     "Pairing approved. Command server configured.":
         "Pārošana apstiprināta. Komandu serveris ir konfigurēts.",
     "Pairing expired. Find the server again to retry.":
@@ -619,16 +650,20 @@ var keyStrings = {
         "Pārošana tika noraidīta vai saņemts nederīgs apstiprinājums. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
     "Parental control": "Vecāku kontrole",
     Password: "Parole",
+    "Paste settings JSON": "Ielīmējiet iestatījumus JSON formātā",
     Pause: "Pauze",
     "Pause/Play": "Pauze / atskaņot",
+    "Payment method": "Maksājuma veids",
     "Permanent clock on screen": "Vienmēr rādīt pulksteni ekrānā",
     PIN: "PIN",
+    "Picture in Picture": "Attēls attēlā",
     "PiP exchange": "Samainīt PiP",
     "PiP window position": "PiP loga novietojums",
     "PiP window size": "PiP loga izmērs",
     Play: "Atskaņot",
     Playback: "Playback",
     "Player and device info": "Atskaņotāja un ierīces informācija",
+    "Player could not start": "Neizdevās palaist atskaņotāju",
     "Player info:": "Atskaņotāja informācija:",
     Playlist: "Atskaņošanas saraksts",
     "Playlist file": "Atskaņošanas saraksta fails",
@@ -647,17 +682,22 @@ var keyStrings = {
     "Portal URL": "Portāla URL",
     "Position shift -10 seconds after pause":
         "Pēc pauzes pāriet 10 sekundes atpakaļ",
+    Postpaid: "Pēcapmaksa",
     PROST: "PROST",
     "PROST settings": "PROST iestatījumi",
+    Prepaid: "Priekšapmaksa",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Iepriekšējais",
     "Preview in channel list": "Priekšskatījums kanālu sarakstā",
     Previous: "Iepriekšējais",
     "Privacy policy": "Privātuma politika",
+    "Privacy policy unavailable. Contact: %1":
+        "Privātuma politika nav pieejama. Kontaktinformācija: %1",
     "Profile name": "Profila nosaukums",
     "Protect Adult Channels": "Aizsargāt pieaugušo kanālus",
     "Protect Change Provider": "Aizsargāt pakalpojuma sniedzēja maiņu",
     "Protect Settings": "Aizsargāt iestatījumus",
+    "Protected source is unavailable": "Aizsargātais avots nav pieejams",
     "p...": "p...",
     paging: "pa lapām",
     Quality: "Kvalitāte",
@@ -774,7 +814,12 @@ var keyStrings = {
     Settings: "Iestatījumi",
     "Settings changed. Discovery was canceled.":
         "Iestatījumi ir mainīti. Meklēšana tika atcelta.",
+    "Settings copied": "Iestatījumi nokopēti",
+    "Settings could not be exported": "Neizdevās eksportēt iestatījumus",
     "Settings could not be saved": "Iestatījumus neizdevās saglabāt",
+    "Settings download requested": "Pieprasīta iestatījumu lejupielāde",
+    "Settings imported": "Iestatījumi importēti",
+    "Settings JSON": "Iestatījumi JSON formātā",
     "Settings loaded from storage": "Iestatījumi ielādēti no krātuves",
     "Settings STB": "STB iestatījumi",
     "Settings saved": "Iestatījumi saglabāti",
@@ -812,25 +857,35 @@ var keyStrings = {
     "Shuffle: Loading...": "Nejaušā secība: ielādē…",
     "Shuffle: Off": "Nejaušā secība: izslēgta",
     "Shuffle: On": "Nejaušā secība: ieslēgta",
+    "Sign in to the protected source again":
+        "Pierakstieties aizsargātajā avotā vēlreiz",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
         "Sign in to your Plex account and choose a server. No password is entered in this player.",
     "Sign in with Plex": "Sign in with Plex",
+    "Sign in: %1": "Pierakstīties: %1",
+    "Sign out of all sources": "Izrakstīties no visiem avotiem",
+    "Sign-in opens when you load a protected playlist.":
+        "Pierakstīšanās logs tiek atvērts, ielādējot aizsargātu atskaņošanas sarakstu.",
     "Sleep timer": "Miega taimeris",
     "Sort channels": "Kārtot kanālus",
     "Source access": "Source access",
     "Source sign-in required": "Source sign-in required",
+    "Source sign-in was cancelled": "Pierakstīšanās avotā atcelta",
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
     "Stalker portal settings": "Stalker portāla iestatījumi",
     "Stalker portals": "Stalker portāli",
+    "Starting...": "Palaiž…",
     Status: "Statuss",
     Stop: "Stop",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Apturēt atskaņošanu un atgriezties tiešraidē",
+    "Stream could not be played": "Neizdevās atskaņot straumi",
     "Stream type: %1": "Straumes veids: %1",
     "String for search": "Meklēšanas vaicājums",
     "Su Mo Tu We Th Fr Sa": "Sv Pr Ot Tr Ce Pk Se",
+    "Subscription information": "Abonementa informācija",
     Subtitle: "Subtitri",
     Switch: "Pārslēgt",
     "Switch sound track": "Mainīt skaņas celiņu",
@@ -904,10 +959,13 @@ var keyStrings = {
         "Izmantojiet HTTP vai HTTPS bez lietotājvārda vai paroles adresē.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Ar PA KREISI/PA LABI izvēlieties vadīklu, ar OK aktivizējiet to, ar UZ AUGŠU/UZ LEJU ritiniet.",
+    "Use Up / Down to scroll. Back to close.":
+        "Ritiniet ar Augšup / Lejup. Atpakaļ, lai aizvērtu.",
     Username: "Lietotājvārds",
     "Username or password is missing.": "Trūkst lietotājvārda vai paroles.",
     "Valid for 10 minutes. Back closes this session.":
         "Valid for 10 minutes. Back closes this session.",
+    Version: "Versija",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM iestatījumi",
     "Vidok.TV": "Vidok.TV",

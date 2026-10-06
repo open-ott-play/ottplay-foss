@@ -24,7 +24,7 @@ function fixture(script, options = {}) {
             "<!doctype html><html><head></head><body></body></html>",
         {
             runScripts: "outside-only",
-            url: "http://tauri.localhost/pip.html#73",
+            url: options.url || "http://tauri.localhost/pip.html#73",
         }
     );
     const w = dom.window;
@@ -270,6 +270,69 @@ async function run() {
     );
     const cases = [];
     const test = (name, options, check) => cases.push({ check, name, options });
+    const russianLabels = {
+        loading: "Загрузка…",
+        playback: "Не удалось воспроизвести поток",
+        runtime:
+            "Не удалось загрузить компоненты совместимости. Откройте плеер заново.",
+        startup: "Не удалось запустить плеер",
+    };
+    const localizedUrl =
+        "http://tauri.localhost/pip.html?labels=" +
+        encodeURIComponent(JSON.stringify(russianLabels)) +
+        "#73";
+    test("chosen language labels are available before compatibility runtime readiness", {
+        noRuntime: true,
+        url: localizedUrl,
+    }, async (f) => {
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            russianLabels.runtime
+        );
+    });
+    test("reused native document switches to the current player's language and renders text safely", {
+        url: localizedUrl,
+    }, async (f) => {
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            russianLabels.loading
+        );
+        f.requests
+            .find((request) => request.args.event === "ready")
+            .reject(new Error("bridge error"));
+        await settle();
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            russianLabels.startup
+        );
+        const labels = {
+            ...russianLabels,
+            playback: "<img src=x> Не удалось воспроизвести поток",
+        };
+        f.w.__ottplayPip.play({
+            instance: 73,
+            labels,
+            session: 1,
+            url: "https://fixture.invalid/one.mp4",
+        });
+        f.plays[0].reject(new Error("secret stream URL"));
+        await settle();
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            labels.playback
+        );
+        assert.equal(f.w.document.querySelector("img"), null);
+        f.w.__ottplayPip.play({
+            instance: 73,
+            labels: { loading: "Chargement…", runtime: "x".repeat(513) },
+            session: 2,
+            url: "https://fixture.invalid/two.mp4",
+        });
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            "Chargement…"
+        );
+    });
     test("missing compatibility bootstrap shows an error before native readiness", {
         noRuntime: true,
     }, async (f) => {
