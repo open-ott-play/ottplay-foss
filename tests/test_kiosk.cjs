@@ -922,7 +922,11 @@ console.log(
     event("keydown", { keyCode: 457 });
     assert.equal(info, 3, "INFO has only the read-only footer action");
     event("keydown", { keyCode: 413 });
-    assert.equal(revoked, 1, "local diagnostic revocation remains available");
+    assert.equal(
+        revoked,
+        1,
+        "stopping the current diagnostic capture remains available"
+    );
     for (const type of [
         "dblclick",
         "wheel",

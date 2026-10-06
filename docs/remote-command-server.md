@@ -435,8 +435,8 @@ locks the channel and permits only a short tap or the Info key to show the
 read-only video footer for five seconds. Swipes, long presses, multiple fingers,
 double-click actions, pause, seeking, menus, player exit and local volume/mute
 controls are blocked. Repeated taps never expand the description. Remote
-volume/mute, status and recovery remain available; local diagnostic-access
-revocation is also retained.
+volume/mute, status and recovery remain available; stopping the current diagnostic
+capture remains available locally without disconnecting the remote controller.
 
 `ott tv kiosk on --strict` upgrades an existing lock without changing its target.
 For an unarmed TV player it waits for the first admitted UI selection, then blocks

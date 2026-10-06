@@ -15,12 +15,12 @@ export function createStrictKioskInput(w: any, active: () => boolean): any {
     function info(): void {
         if (typeof w.showChannelInfo === "function") w.showChannelInfo(5);
     }
-    function revoke(event: any): boolean {
+    function stopCapture(event: any): boolean {
         if (!w.document || !w.document.getElementById) return false;
         var button = w.document.getElementById("remoteDiagnosticsIndicator");
         if (!button || button.nodeName !== "BUTTON" || event.target !== button)
             return false;
-        // Retain the local right to revoke diagnostic access, never to grant it.
+        // Stop only the active diagnostic capture, preserving controller access.
         w.__ottKiosk.stopDiagnostics();
         return true;
     }
@@ -38,7 +38,7 @@ export function createStrictKioskInput(w: any, active: () => boolean): any {
         }
         if (code && code === keys.INFO) info();
         else if (code && code === keys.STOP) w.__ottKiosk.stopDiagnostics();
-        else if (event.key === "Enter" || event.key === " ") revoke(event);
+        else if (event.key === "Enter" || event.key === " ") stopCapture(event);
     }
     function start(point: any, kind: string, id: any): void {
         gesture = {
@@ -75,7 +75,7 @@ export function createStrictKioskInput(w: any, active: () => boolean): any {
         }
         if (type === "touchstart") {
             lastTouch = time;
-            if (revoke(event)) gesture = null;
+            if (stopCapture(event)) gesture = null;
             else if (event.touches.length === 1 && !gesture)
                 start(event.touches[0], "touch", event.touches[0].identifier);
             else gesture = null;
@@ -94,7 +94,7 @@ export function createStrictKioskInput(w: any, active: () => boolean): any {
         } else if (type === "pointerdown" || type === "mousedown") {
             if (event.pointerType === "touch" || time - lastTouch < 800) return;
             if (type === "mousedown" && w.PointerEvent) return;
-            if (revoke(event)) gesture = null;
+            if (stopCapture(event)) gesture = null;
             else if (
                 (event.button === undefined || event.button === 0) &&
                 !gesture
@@ -120,7 +120,7 @@ export function createStrictKioskInput(w: any, active: () => boolean): any {
                 time - lastTouch >= 800 &&
                 time - lastPointer >= 800 &&
                 event.detail <= 1 &&
-                !revoke(event)
+                !stopCapture(event)
             )
                 info();
         } else if (
