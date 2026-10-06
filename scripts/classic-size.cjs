@@ -108,8 +108,9 @@ const { gzipSync } = require("node:zlib");
 // Independent VPortal profiles load in an optional family. Persisted VOD kiosk
 // admission/recovery adds about 6 KB to the entry. Keep both feature reserves
 // and bounded native/Node/release-suffix room in the combined cap.
-// Combined Node 26.8.2: web 728871/221705, native 728829/221765 raw/gzip.
-const BUDGET = Object.freeze({ bytes: 729350, gzipBytes: 223000 });
+// Preserve the additional 2100 raw / 700 gzip allowance for Tauri native
+// frame-loss recovery from main; it does not change optional provider assets.
+const BUDGET = Object.freeze({ bytes: 731450, gzipBytes: 223700 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -167,8 +168,8 @@ const BUDGET = Object.freeze({ bytes: 729350, gzipBytes: 223000 });
 // increment to the localization complete-payload cap.
 // Include the optional VPortal family and VOD kiosk entry logic, plus the
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
-// Combined Node 26.8.2: web 833623/260903, native 833581/260963 raw/gzip.
-const TOTAL_BUDGET = Object.freeze({ bytes: 835450, gzipBytes: 262200 });
+// Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
+const TOTAL_BUDGET = Object.freeze({ bytes: 837550, gzipBytes: 262900 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

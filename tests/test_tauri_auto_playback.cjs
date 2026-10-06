@@ -58,6 +58,7 @@ function media(nativeHls) {
             this.playCalls++;
             this.paused = false;
         },
+        playbackRate: 1,
         playCalls: 0,
         readyState: 0,
         removeAttribute(name) {
@@ -95,6 +96,7 @@ function fixture(options = {}) {
         players = [],
         shakaPlayers = [];
     const preferences = {};
+    const documentListeners = {};
     if (options.savedPlayerMode !== undefined)
         preferences.sPlayers = String(options.savedPlayerMode);
     function Hls(config) {
@@ -173,7 +175,23 @@ function fixture(options = {}) {
             timers.delete(timer);
         },
         console: { error() {}, log() {}, warn() {} },
-        document: { body: { style: {} } },
+        Date: { now: () => now },
+        document: {
+            addEventListener(event, callback) {
+                (documentListeners[event] ||= []).push(callback);
+            },
+            body: { style: {} },
+            emit(event) {
+                for (const callback of [...(documentListeners[event] || [])])
+                    callback();
+            },
+            removeEventListener(event, callback) {
+                documentListeners[event] = (
+                    documentListeners[event] || []
+                ).filter((fn) => fn !== callback);
+            },
+            visibilityState: "visible",
+        },
         Hls,
         innerHeight: 720,
         innerWidth: 1280,
@@ -261,6 +279,359 @@ const cases = [];
 function test(name, callback) {
     cases.push([name, callback]);
 }
+
+function frameFixture(options = {}) {
+    const f = fixture({ savedPlayerMode: 3, ...options });
+    const target = f.w.video;
+    f.quality = { droppedVideoFrames: 0, totalVideoFrames: 0 };
+    target.getVideoPlaybackQuality = () => f.quality;
+    f.bufferAhead = 30;
+    target.buffered = {
+        end: () => target.currentTime + f.bufferAhead,
+        length: 1,
+        start: () => 0,
+    };
+    f.w.stbPlay("frame-drops.m3u8");
+    ready(target, true);
+    return f;
+}
+
+function advanceFrames(f, seconds, total = 25, dropped = 24) {
+    for (let i = 0; i < seconds; i++) {
+        if (f.w.video.readyState) f.w.video.currentTime++;
+        f.quality.totalVideoFrames += total;
+        f.quality.droppedVideoFrames += dropped;
+        f.advance(1000);
+    }
+}
+
+test("Tauri Auto switches sustained native frame loss directly to HLS once", () => {
+    const f = frameFixture();
+    advanceFrames(f, 12);
+    assert.equal(
+        f.players.length,
+        0,
+        "Startup and two full windows are required"
+    );
+    advanceFrames(f, 1);
+    assert.equal(f.players.length, 1);
+    const hls = f.players[0];
+    assert.equal(hls.media, f.w.video);
+    assert.equal(hls.url, "frame-drops.m3u8");
+    assert.equal(
+        hls.config.startFragPrefetch,
+        undefined,
+        "No parallel stream probe"
+    );
+    hls.emit("manifest");
+    ready(f.w.video, true);
+    advanceFrames(f, 30);
+    assert.equal(
+        f.players.length,
+        1,
+        "A bad HLS decoder cannot start a fallback loop"
+    );
+    assert.equal(f.w.playerMode, 3);
+    assert.equal(f.preferences.sPlayers, "3");
+    assert.equal(
+        f.timers.size,
+        0,
+        "Native monitoring is disposed after fallback"
+    );
+});
+
+test("native frame monitoring keeps smooth, low-FPS and transient startup playback", () => {
+    for (const [total, dropped] of [
+        [25, 0],
+        [1, 0],
+        [25, 5],
+    ]) {
+        const f = frameFixture();
+        advanceFrames(f, 30, total, dropped);
+        assert.equal(f.players.length, 0, total + "/" + dropped);
+    }
+    const f = frameFixture();
+    advanceFrames(f, 8);
+    advanceFrames(f, 30, 25, 0);
+    assert.equal(
+        f.players.length,
+        0,
+        "Startup losses are not sustained failure"
+    );
+});
+
+test("pause, seek, hidden, waiting, rate and buffer interruptions reset frame evidence", () => {
+    const interruptions = [
+        [
+            "pause",
+            (f) => {
+                f.w.video.paused = true;
+            },
+            (f) => {
+                f.w.video.paused = false;
+            },
+        ],
+        [
+            "seeking",
+            (f) => {
+                f.w.video.seeking = true;
+            },
+            (f) => {
+                f.w.video.seeking = false;
+            },
+        ],
+        [
+            "visibilitychange",
+            (f) => {
+                f.w.document.visibilityState = "hidden";
+            },
+            (f) => {
+                f.w.document.visibilityState = "visible";
+            },
+        ],
+        [
+            "waiting",
+            (f) => {
+                f.w.video.readyState = 2;
+            },
+            (f) => {
+                f.w.video.readyState = 3;
+            },
+        ],
+        [
+            "ratechange",
+            (f) => {
+                f.w.video.playbackRate = 2;
+            },
+            (f) => {
+                f.w.video.playbackRate = 1;
+            },
+        ],
+        [
+            null,
+            (f) => {
+                f.bufferAhead = 1;
+            },
+            (f) => {
+                f.bufferAhead = 30;
+            },
+        ],
+    ];
+    for (const [event, interrupt, resume] of interruptions) {
+        const f = frameFixture();
+        advanceFrames(f, 9);
+        interrupt(f);
+        if (event)
+            (event === "visibilitychange" ? f.w.document : f.w.video).emit(
+                event
+            );
+        advanceFrames(f, 20);
+        assert.equal(f.players.length, 0, event || "buffer");
+        resume(f);
+        advanceFrames(f, 12);
+        assert.equal(
+            f.players.length,
+            0,
+            "A fresh complete observation is required"
+        );
+        advanceFrames(f, 1);
+        assert.equal(f.players.length, 1, event || "buffer");
+    }
+});
+
+test("brief between-sample interruptions cannot combine two bad frame windows", () => {
+    for (const event of ["pause", "seeking", "waiting", "visibilitychange"]) {
+        const f = frameFixture();
+        advanceFrames(f, 9);
+        (event === "visibilitychange" ? f.w.document : f.w.video).emit(event);
+        advanceFrames(f, 12);
+        assert.equal(f.players.length, 0, event);
+        advanceFrames(f, 1);
+        assert.equal(f.players.length, 1, event);
+    }
+});
+
+test("counter resets and timeline jumps require fresh frame evidence", () => {
+    for (const reset of [
+        (f) => {
+            f.quality.totalVideoFrames = f.quality.droppedVideoFrames = 0;
+        },
+        (f) => {
+            f.w.video.currentTime += 100;
+        },
+        (f) => {
+            f.w.video.currentTime = 0;
+        },
+    ]) {
+        const f = frameFixture();
+        advanceFrames(f, 9);
+        reset(f);
+        advanceFrames(f, 13);
+        assert.equal(f.players.length, 0);
+        advanceFrames(f, 1);
+        assert.equal(f.players.length, 1);
+    }
+});
+
+test("unknown, invalid and throwing frame counters cannot force an engine switch", () => {
+    for (const value of [undefined, NaN, Infinity, -1, "250"]) {
+        const f = frameFixture();
+        f.w.video.getVideoPlaybackQuality = () => ({
+            droppedVideoFrames: value,
+            totalVideoFrames: value,
+        });
+        advanceFrames(f, 30);
+        assert.equal(f.players.length, 0, String(value));
+    }
+    const f = frameFixture();
+    f.w.video.getVideoPlaybackQuality = () => {
+        throw new Error("unavailable");
+    };
+    advanceFrames(f, 30);
+    assert.equal(f.players.length, 0);
+    const unknownVisibility = frameFixture();
+    delete unknownVisibility.w.document.visibilityState;
+    advanceFrames(unknownVisibility, 30);
+    assert.equal(unknownVisibility.players.length, 0);
+});
+
+test("a pause or cancellation after frame recovery is queued keeps user intent", () => {
+    for (const action of ["pause", "stop", "mode", "channel"]) {
+        const f = frameFixture();
+        const schedule = f.w.setTimeout;
+        let acted = false;
+        f.w.setTimeout = function (callback, delay) {
+            const id = schedule(callback, delay);
+            if (delay === 0 && !acted) {
+                acted = true;
+                if (action === "pause") f.w.stbPause();
+                if (action === "stop") f.w.stbStop();
+                if (action === "mode") f.w.setPlayerMode(0);
+                if (action === "channel") f.w.stbPlay("new.mp4");
+            }
+            return id;
+        };
+        advanceFrames(f, 13);
+        assert.equal(acted, true);
+        assert.equal(f.players.length, action === "pause" ? 1 : 0, action);
+        if (action === "pause") {
+            f.players[0].emit("manifest");
+            assert.equal(f.w.video.paused, true);
+            assert.equal(f.w.forcePlay, false);
+        }
+        assert.equal(f.timers.size, 0);
+    }
+});
+
+test("legacy WebKit frame counters support the same guarded fallback", () => {
+    const f = frameFixture();
+    delete f.w.video.getVideoPlaybackQuality;
+    Object.defineProperties(f.w.video, {
+        webkitDecodedFrameCount: { get: () => f.quality.totalVideoFrames },
+        webkitDroppedFrameCount: { get: () => f.quality.droppedVideoFrames },
+    });
+    advanceFrames(f, 13);
+    assert.equal(f.players.length, 1);
+});
+
+test("native frame recovery is limited to Tauri Auto main video", () => {
+    for (const options of [
+        { savedPlayerMode: 0 },
+        { device: "lg/webos", tauri: false },
+        { hlsSupported: false },
+    ]) {
+        const f = frameFixture(options);
+        advanceFrames(f, 30);
+        assert.equal(f.players.length, 0);
+    }
+    const f = frameFixture();
+    let pipReads = 0;
+    f.w.videoPip.getVideoPlaybackQuality = () => {
+        pipReads++;
+        return f.quality;
+    };
+    f.w.videoPip.buffered = f.w.video.buffered;
+    f.w.stbPlayPip("pip-frame-drops.m3u8");
+    ready(f.w.videoPip, true);
+    advanceFrames(f, 13);
+    assert.equal(f.players.length, 1);
+    assert.equal(f.w.videoPip.src, "pip-frame-drops.m3u8");
+    assert.equal(pipReads, 0, "PiP never starts frame-drop monitoring");
+});
+
+test("stop, channel change and explicit mode dispose frame recovery", () => {
+    for (const dispose of [
+        (f) => f.w.stbStop(),
+        (f) => {
+            f.w.stbPlay("next.mp4");
+            ready(f.w.video, true);
+        },
+        (f) => f.w.setPlayerMode(0),
+    ]) {
+        const f = frameFixture();
+        advanceFrames(f, 9);
+        dispose(f);
+        advanceFrames(f, 30);
+        assert.equal(f.players.length, 0);
+        assert.equal(f.timers.size, 0);
+    }
+});
+
+test("a real radio track keeps the existing native probe outcome despite old video counters", () => {
+    const f = frameFixture();
+    ready(f.w.video, false);
+    advanceFrames(f, 2);
+    assert.equal(f.players.length, 1);
+    f.players[0].emit("tracks", {
+        id: "main",
+        tracks: { audio: { codec: "mp4a.40.2" } },
+    });
+    f.advance(0);
+    ready(f.w.video, false);
+    advanceFrames(f, 30);
+    assert.equal(
+        f.players.length,
+        1,
+        "No HLS playback engine is attached for radio"
+    );
+    assert.equal(f.players[0].media, undefined);
+    assert.equal(f.w.video.src, "frame-drops.m3u8");
+    f.w.stbStop();
+    assert.equal(f.timers.size, 0);
+});
+
+test("late native video after an audio-only probe still recovers severe frame loss", () => {
+    for (const action of ["recover", "pause", "stop", "mode", "channel"]) {
+        const f = frameFixture();
+        ready(f.w.video, false);
+        f.advance(1500);
+        const probePlayer = f.players[0];
+        ready(f.w.video, true);
+        hevc(probePlayer);
+        f.advance(0);
+        assert.equal(probePlayer.destroyCalls, 1);
+        assert.equal(f.w.video.src, "frame-drops.m3u8");
+        ready(f.w.video, true);
+        if (action === "pause") f.w.stbPause();
+        if (action === "stop") f.w.stbStop();
+        if (action === "mode") f.w.setPlayerMode(0);
+        if (action === "channel") {
+            f.w.stbPlay("next.mp4");
+            ready(f.w.video, true);
+        }
+        // Stale events from the destroyed probe must not renew playback.
+        hevc(probePlayer);
+        advanceFrames(f, 30);
+        assert.equal(f.players.length, action === "recover" ? 2 : 1, action);
+        if (action === "recover") {
+            assert.equal(f.players[1].media, f.w.video);
+            assert.equal(f.players[1].config.startFragPrefetch, undefined);
+        }
+        if (action === "pause") assert.equal(f.w.video.paused, true);
+        f.w.stbStop();
+        assert.equal(f.timers.size, 0, action);
+    }
+});
 
 test("Tauri Auto preserves working native H264 and explicit HTML5/hls.js choices", () => {
     const f = fixture();
