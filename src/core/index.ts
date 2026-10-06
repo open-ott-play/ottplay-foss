@@ -1462,8 +1462,11 @@ function startCorePlayback(
                                 originalUrl
                             );
                         },
+                        monitorDroppedFrames: !!(
+                            (window as any).__TAURI__ ||
+                            (window as any).__TAURI_INTERNALS__
+                        ),
                         restore: function () {
-                            _coreAutoCancel = null;
                             var nextPosition = resumePosition();
                             cancelCoreSeek();
                             // A codec probe may replace the upstream session.

@@ -103,7 +103,10 @@ const { gzipSync } = require("node:zlib");
 // bytes over be969d6 on Node 22.23.3: combined web 722437/220327 and native
 // 722395/220390. Allocate the reviewed 3300 raw/950 gzip increment in addition
 // to the localization budget, preserving both feature reserves.
-const BUDGET = Object.freeze({ bytes: 722800, gzipBytes: 220450 });
+// Tauri's severe native frame-loss recovery adds a bounded quality monitor;
+// it reads counters once per second without opening another stream. Reserve
+// 2100 raw / 700 gzip bytes for its lifecycle guards and release suffix room.
+const BUDGET = Object.freeze({ bytes: 724900, gzipBytes: 221150 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -159,7 +162,8 @@ const BUDGET = Object.freeze({ bytes: 722800, gzipBytes: 220450 });
 // totals are web 819932/256711 and native 819890/256774. Provider assets are
 // unchanged by adjacent-channel admission; add its reviewed 3300 raw/950 gzip
 // increment to the localization complete-payload cap.
-const TOTAL_BUDGET = Object.freeze({ bytes: 820300, gzipBytes: 256950 });
+// Count the same frame-loss monitor once; optional providers are unchanged.
+const TOTAL_BUDGET = Object.freeze({ bytes: 822400, gzipBytes: 257650 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

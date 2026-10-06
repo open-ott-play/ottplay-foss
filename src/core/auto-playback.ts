@@ -2,6 +2,7 @@
  * Watch a native HLS attempt without changing working video playback.
  * WKWebView can accept HEVC in MPEG-TS as audio-only without raising an error.
  * A single prefetched HLS fragment distinguishes that case from actual radio.
+ * Tauri also recovers sustained native frame loss without fetching a probe.
  */
 export function watchAutoNativePlayback(
     media: HTMLVideoElement,
@@ -10,6 +11,7 @@ export function watchAutoNativePlayback(
     options: {
         active: () => boolean;
         fallback: () => void;
+        monitorDroppedFrames?: boolean;
         restore: () => void;
     }
 ): (restoreNative?: boolean) => void {
@@ -20,6 +22,7 @@ export function watchAutoNativePlayback(
     var checkTimer: ReturnType<typeof setTimeout> | null = null;
     var probeTimer: ReturnType<typeof setTimeout> | null = null;
     var actionTimer: ReturnType<typeof setTimeout> | null = null;
+    var cancelFrameWatch: (() => void) | null = null;
     var events = [
         "playing",
         "timeupdate",
@@ -41,6 +44,17 @@ export function watchAutoNativePlayback(
         probeTimer = null;
     }
 
+    function stopProbe(): void {
+        var previous = probe;
+        probe = null;
+        probing = false;
+        if (previous) {
+            try {
+                previous.destroy();
+            } catch (_destroyError) {}
+        }
+    }
+
     function cancel(restoreNative?: boolean): void {
         if (disposed) return;
         // Changing engine preference can cancel a probe without replacing the
@@ -48,17 +62,13 @@ export function watchAutoNativePlayback(
         // was already queued; stop/channel-switch cancellation never renews it.
         var renewNative = restoreNative === true && probing && options.active();
         disposed = true;
+        if (cancelFrameWatch) cancelFrameWatch();
+        cancelFrameWatch = null;
         removeListeners();
         clearWaits();
         if (actionTimer !== null) clearTimeout(actionTimer);
         actionTimer = null;
-        var previous = probe;
-        probe = null;
-        if (previous) {
-            try {
-                previous.destroy();
-            } catch (_destroyError) {}
-        }
+        stopProbe();
         if (renewNative) options.restore();
     }
 
@@ -98,10 +108,19 @@ export function watchAutoNativePlayback(
                     : media.videoWidth > 0)
             )
                 useFallback = false;
-            cancel();
+            if (stillCurrent && !useFallback && options.monitorDroppedFrames) {
+                // A late video track only resolves the audio-only probe. It
+                // does not prove that the native decoder displays its frames.
+                stopProbe();
+                if (cancelFrameWatch) cancelFrameWatch();
+                cancelFrameWatch = null;
+            } else cancel();
             if (!stillCurrent) return;
             if (useFallback) options.fallback();
-            else options.restore();
+            else {
+                options.restore();
+                if (current()) startFrameWatch();
+            }
         }, 0);
     }
 
@@ -195,12 +214,173 @@ export function watchAutoNativePlayback(
         if (error && (error.code === 3 || error.code === 4)) finish(true);
     }
 
+    function startFrameWatch(): void {
+        if (options.monitorDroppedFrames)
+            cancelFrameWatch = watchNativeFrameDrops(media, function (): void {
+                if (!current() || probing || actionTimer !== null) return;
+                decided = false;
+                finish(true);
+            });
+    }
+
     for (var i = 0; i < events.length; i++)
         media.addEventListener(events[i], inspect);
     media.addEventListener("error", onNativeError);
+    startFrameWatch();
     // PiP can load the HLS library after native playback has already emitted
     // metadata or failed. Inspect that state as well as subsequent events.
     onNativeError();
     inspect();
+    return cancel;
+}
+
+/** Detect sustained decoder failure, never infer failure from a low frame rate. */
+function watchNativeFrameDrops(
+    media: HTMLVideoElement,
+    failed: () => void
+): () => void {
+    var target = media as any;
+    if (
+        typeof target.getVideoPlaybackQuality !== "function" &&
+        typeof target.webkitDecodedFrameCount !== "number"
+    )
+        return function (): void {};
+    var doc = media.ownerDocument || document;
+    var disposed = false;
+    var timer: ReturnType<typeof setTimeout> | null = null;
+    var baseline: {
+        time: number;
+        position: number;
+        total: number;
+        dropped: number;
+    } | null = null;
+    var warmup = true;
+    var badWindows = 0;
+    var resetEvents = ["pause", "seeking", "waiting", "emptied", "ratechange"];
+
+    function reset(): void {
+        baseline = null;
+        warmup = true;
+        badWindows = 0;
+    }
+
+    function cancel(): void {
+        disposed = true;
+        if (timer !== null) clearTimeout(timer);
+        timer = null;
+        for (var i = 0; i < resetEvents.length; i++)
+            media.removeEventListener(resetEvents[i], reset);
+        doc.removeEventListener("visibilitychange", reset);
+    }
+
+    function check(): void {
+        if (disposed) return;
+        timer = setTimeout(check, 1000);
+        try {
+            if (
+                media.paused ||
+                media.seeking ||
+                media.ended ||
+                media.error ||
+                media.readyState < 3 ||
+                media.playbackRate !== 1 ||
+                !media.videoWidth ||
+                !media.videoHeight ||
+                (target.videoTracks && !target.videoTracks.length) ||
+                doc.visibilityState !== "visible"
+            ) {
+                reset();
+                return;
+            }
+            var position = media.currentTime;
+            var buffered = media.buffered;
+            var ahead = 0;
+            for (var i = 0; i < buffered.length; i++)
+                if (
+                    buffered.start(i) <= position &&
+                    buffered.end(i) >= position
+                )
+                    ahead = buffered.end(i) - position;
+            if (ahead < 2) {
+                reset();
+                return;
+            }
+            var quality =
+                typeof target.getVideoPlaybackQuality === "function"
+                    ? target.getVideoPlaybackQuality()
+                    : null;
+            var total = quality
+                ? quality.totalVideoFrames
+                : target.webkitDecodedFrameCount;
+            var dropped = quality
+                ? quality.droppedVideoFrames
+                : target.webkitDroppedFrameCount;
+            if (
+                typeof total !== "number" ||
+                typeof dropped !== "number" ||
+                !isFinite(total) ||
+                !isFinite(dropped) ||
+                dropped < 0 ||
+                total < dropped
+            ) {
+                reset();
+                return;
+            }
+            var sample = {
+                dropped: dropped,
+                position: position,
+                time: Date.now(),
+                total: total,
+            };
+            if (!baseline) {
+                baseline = sample;
+                return;
+            }
+            var elapsed = (sample.time - baseline.time) / 1000;
+            var played = position - baseline.position;
+            var decoded = total - baseline.total;
+            var lost = dropped - baseline.dropped;
+            // A throttled timer, seek or reset counter starts a fresh warmup.
+            if (
+                elapsed <= 0 ||
+                elapsed > 6 ||
+                decoded < 0 ||
+                lost < 0 ||
+                lost > decoded ||
+                played < elapsed * 0.75 ||
+                played > elapsed * 1.25
+            ) {
+                reset();
+                return;
+            }
+            // Ignore the first four seconds of uninterrupted playback, then
+            // evaluate complete four-second windows rather than timer ticks.
+            if (elapsed < 4) return;
+            baseline = sample;
+            if (warmup) {
+                warmup = false;
+                return;
+            }
+            // Two four-second windows must contain video-rate input, >=80%
+            // lost frames and <=3 displayed fps. Real 1fps video is healthy.
+            badWindows =
+                decoded >= played * 10 &&
+                lost >= decoded * 0.8 &&
+                decoded - lost <= played * 3
+                    ? badWindows + 1
+                    : 0;
+            if (badWindows >= 2) {
+                cancel();
+                failed();
+            }
+        } catch (_qualityError) {
+            reset();
+        }
+    }
+
+    for (var i = 0; i < resetEvents.length; i++)
+        media.addEventListener(resetEvents[i], reset);
+    doc.addEventListener("visibilitychange", reset);
+    timer = setTimeout(check, 1000);
     return cancel;
 }
