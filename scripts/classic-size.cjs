@@ -103,10 +103,13 @@ const { gzipSync } = require("node:zlib");
 // bytes over be969d6 on Node 22.23.3: combined web 722437/220327 and native
 // 722395/220390. Allocate the reviewed 3300 raw/950 gzip increment in addition
 // to the localization budget, preserving both feature reserves.
+// Atomic signed channel offsets add 426 raw / at most 186 gzip bytes over
+// a845242 on Node 22.23.3. Preserve its 450 raw / 200 gzip feature allowance.
 // Independent VPortal profiles load in an optional family. Persisted VOD kiosk
-// admission/recovery adds about 6 KB to the entry. Node 26.8.2 measures web
-// 728429/221540 and native 728387/221600 raw/gzip bytes; retain bounded room.
-const BUDGET = Object.freeze({ bytes: 728900, gzipBytes: 222800 });
+// admission/recovery adds about 6 KB to the entry. Keep both feature reserves
+// and bounded native/Node/release-suffix room in the combined cap.
+// Combined Node 26.8.2: web 728871/221705, native 728829/221765 raw/gzip.
+const BUDGET = Object.freeze({ bytes: 729350, gzipBytes: 223000 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -162,9 +165,10 @@ const BUDGET = Object.freeze({ bytes: 728900, gzipBytes: 222800 });
 // totals are web 819932/256711 and native 819890/256774. Provider assets are
 // unchanged by adjacent-channel admission; add its reviewed 3300 raw/950 gzip
 // increment to the localization complete-payload cap.
-// Include the optional VPortal family as well as VOD kiosk entry logic.
-// Node 26.8.2 totals: web 833181/260738 and native 833139/260798 raw/gzip.
-const TOTAL_BUDGET = Object.freeze({ bytes: 835000, gzipBytes: 262000 });
+// Include the optional VPortal family and VOD kiosk entry logic, plus the
+// 450 raw / 200 gzip allowance for signed channel offsets from main.
+// Combined Node 26.8.2: web 833623/260903, native 833581/260963 raw/gzip.
+const TOTAL_BUDGET = Object.freeze({ bytes: 835450, gzipBytes: 262200 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
