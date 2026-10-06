@@ -33,7 +33,8 @@ public class CAPPluginCall: NSObject {
     init(_ options: [String: Any]) { self.options = options }
     func getString(_ key: String) -> String? { options[key] as? String }
     func getDouble(_ key: String) -> Double? { options[key] as? Double }
-    func getObject(_ key: String) -> Any? { options[key] }
+    func getBool(_ key: String) -> Bool? { options[key] as? Bool }
+    func getObject(_ key: String) -> [String: Any]? { options[key] as? [String: Any] }
     func resolve(_ result: [String: Any] = [:]) { self.result = result; settlements += 1 }
     func reject(_ error: String, _ code: String? = nil) { self.error = error; errorCode = code; settlements += 1 }
 }

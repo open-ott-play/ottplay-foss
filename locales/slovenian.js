@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "nastavitve All4you.tv",
     "Allow diagnostics for 10 minutes": "Pustite diagnostiko 10 minut",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Dovolite temu strežniku zbiranje diagnostičnih števcev in znova zaženite ta tok ali predstavnostni predvajalnik. Začasni dostop traja 10 minut. Zaupanja vredna podpora ostane na voljo po ponovnem povezovanju ali ponovnem zagonu; vsak zajem še vedno poteče po 10 minutah. Zbiranje se zaustavi, ko je skrito ali brez povezave.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Dovoli temu strežniku zbiranje števcev predvajanja, omrežja in vnosa za to sejo v ospredju. Zahteva HTTPS in dovoljenje strežnika. Ustavi se po 10 minutah, ko je skrit ali ko je povezava prekinjena.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Dodaj ID te naprave na seznam dovoljenih",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Medijski predvajalnik HTTPS ne more prenesti vira HTTP EPG. Uporabite vir HTTPS.",
@@ -250,11 +255,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Konfigurirajte Шаравоз v Nastavitve -> Nastavitve ponudnika",
     Connect: "Povežite se",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Najprej povežite ta medijski predvajalnik z ukaznim strežnikom.",
     Connected: "Povezan",
     "Connected. Waiting for the channel list...":
         "Povezan. Čakanje na seznam kanalov ...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Povezovanje oddaljene diagnostike za to stran.",
     "Connecting to Plex…": "Povezovanje z Plex ...",
@@ -725,7 +740,15 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Daljinski upravljalnik (brez številskih gumbov)",
     "Remote control": "Daljinski upravljalnik",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Diagnostika na daljavo",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Za to stran se zbira oddaljena diagnostika.",
     "Remote diagnostics is off.": "Daljinska diagnostika je izklopljena.",
@@ -739,6 +762,10 @@ var keyStrings = {
         "Oddaljeni vnos je potekel. Odprite novo sejo in poskusite znova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Seja oddaljenega vnosa ni na voljo. Odprite novo sejo in poskusite znova.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Oddaljena seja je potekla",
     "Remote text entry": "Oddaljeni vnos besedila",
     "Remote text entry denied": "Oddaljeni vnos besedila zavrnjen",
@@ -785,6 +812,15 @@ var keyStrings = {
     "Save settings to storage": "Shranite nastavitve v shrambo",
     "Scan this QR code with your phone to enter text.":
         "Preberite to kodo QR s telefonom, da vnesete besedilo.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Scenarij",
     Search: "Iskanje",
     "Search programme": "Poišči oddajo",
@@ -803,6 +839,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Izberite vir predloge seznama predvajanja za EPG in logotipe",
     "Select Stalker portal": "Izberite portal Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Pošlji zahtevo",
     "Send settings": "Nastavitve pošiljanja",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -885,10 +925,12 @@ var keyStrings = {
     "Starting...": "Začetek ...",
     Status: "Stanje",
     Stop: "Ustavi",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Ustavi trenutni zajem",
     "Stop diagnostics": "Ustavi diagnostiko",
     "Stop playback and return to live":
         "Ustavi predvajanje in se vrni na prenos v živo",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Toka ni bilo mogoče predvajati",
     "Stream type: %1": "Vrsta toka: %1",
     "String for search": "Iskalna poizvedba",
@@ -908,11 +950,15 @@ var keyStrings = {
     "Tabox settings": "nastavitve Tabox",
     "Text is too long for remote input.":
         "Besedilo je predolgo za daljinski vnos.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Odkritje ukaznega strežnika URL ni veljavno.",
     "The device ID in the address is invalid.":
         "Naprava ID v naslovu ni veljavna.",
     "The discovery response is invalid.": "Odgovor odkritja je neveljaven.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ta brskalnik se ne more varno samodejno seznaniti. Posodobite ga ali ročno vnesite nastavitve ukaznega strežnika.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

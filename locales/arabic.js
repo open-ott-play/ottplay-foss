@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "إعدادات All4you.tv",
     "Allow diagnostics for 10 minutes": "السماح بالتشخيص لمدة 10 دقائق",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "السماح لهذا الخادم بتجميع عدادات التشخيص وإعادة تشغيل هذا الدفق أو المشغل. الوصول المؤقت يستمر 10 دقائق. ويظل الدعم الموثوق متاحًا بعد إعادة الاتصال أو إعادة التشغيل؛ لا تزال صلاحية كل التقاط تنتهي بعد 10 دقائق. تتوقف المجموعة مؤقتًا عندما تكون مخفية أو غير متصلة بالإنترنت.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "السماح لهذا الخادم بتجميع عدادات التشغيل والشبكة والإدخال لهذه الجلسة الأمامية. يتطلب إذن HTTPS والخادم. يتوقف بعد 10 دقائق، عندما يكون مخفيًا، أو عند قطع الاتصال.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "إدراج هذا الجهاز في القائمة المسموح بها ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "لا يستطيع مشغل HTTPS تنزيل مصدر HTTP EPG. استخدم مصدر HTTPS.",
@@ -245,11 +250,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "قم بتكوين Шаравоз في الإعدادات -> إعدادات الموفر",
     Connect: "الاتصال",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "قم بتوصيل هذا المشغل بخادم الأوامر أولاً.",
     Connected: "متصل",
     "Connected. Waiting for the channel list...":
         "متصل. في انتظار قائمة القنوات...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "توصيل التشخيص عن بعد لهذه الصفحة.",
     "Connecting to Plex…": "الاتصال بـ Plex...",
@@ -699,7 +714,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "جهاز التحكم عن بعد (بدون أزرار ملونة)",
     "Remote (number buttons N/A)": "جهاز التحكم عن بعد (بدون أزرار الأرقام)",
     "Remote control": "جهاز التحكم عن بعد",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "التشخيص عن بعد",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "يتم جمع التشخيص عن بعد لهذه الصفحة.",
     "Remote diagnostics is off.": "تم إيقاف التشخيص عن بعد.",
@@ -713,6 +736,10 @@ var keyStrings = {
         "انتهت صلاحية الإدخال عن بعد. افتح جلسة جديدة للمحاولة مرة أخرى.",
     "Remote input session is unavailable. Open a new session to try again.":
         "جلسة الإدخال عن بعد غير متاحة. افتح جلسة جديدة للمحاولة مرة أخرى.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "انتهت صلاحية الجلسة البعيدة",
     "Remote text entry": "إدخال النص عن بعد",
     "Remote text entry denied": "تم رفض إدخال النص عن بعد",
@@ -758,6 +785,15 @@ var keyStrings = {
     "Save settings to storage": "حفظ الإعدادات للتخزين",
     "Scan this QR code with your phone to enter text.":
         "قم بمسح رمز QR هذا ضوئيًا بهاتفك لإدخال النص.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "السيناريو",
     Search: "البحث",
     "Search programme": "ابحث عن برنامج",
@@ -776,6 +812,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "حدد مصدر قالب قائمة التشغيل لـ EPG والشعارات",
     "Select Stalker portal": "حدد بوابة Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "إرسال الطلب",
     "Send settings": "إعدادات الإرسال",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -860,10 +900,12 @@ var keyStrings = {
     "Starting...": "البدء…",
     Status: "الحالة",
     Stop: "توقف",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "إيقاف الالتقاط الحالي",
     "Stop diagnostics": "إيقاف التشخيص",
     "Stop playback and return to live":
         "إيقاف التشغيل والعودة إلى البث المباشر",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "تعذر تشغيل الدفق",
     "Stream type: %1": "نوع الدفق: %1",
     "String for search": "استعلام البحث",
@@ -883,11 +925,15 @@ var keyStrings = {
     "Tabox settings": "إعدادات Tabox",
     "Text is too long for remote input.":
         "النص طويل جدًا بحيث لا يمكن إدخاله عن بعد.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "اكتشاف خادم الأوامر URL غير صالح.",
     "The device ID in the address is invalid.":
         "الجهاز ID الموجود في العنوان غير صالح.",
     "The discovery response is invalid.": "استجابة الاكتشاف غير صالحة.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "لا يمكن لهذا المتصفح أن يقترن تلقائيًا بشكل آمن. قم بتحديثه أو أدخل إعدادات خادم الأوامر يدويًا.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

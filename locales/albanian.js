@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Cilësimet All4you.tv",
     "Allow diagnostics for 10 minutes": "Lejoni diagnostikimin për 10 minuta",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Lejoni që ky server të mbledhë të dhëna diagnostikuese dhe të rinisë transmetimin ose luajtësin. Qasja e përkohshme zgjat 10 minuta. Mbështetja e besuar mbetet e disponueshme pas rilidhjes ose rinisjes; çdo sesion i mbledhjes së të dhënave përfundon pas 10 minutash. Mbledhja pezullohet kur aplikacioni është i fshehur ose jashtë linje.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Lejoni që ky server të mbledhë numërues të riprodhimit, rrjetit dhe hyrjes gjatë këtij sesioni aktiv. Kërkohen HTTPS dhe leja e serverit. Mbledhja ndalon pas 10 minutash, kur faqja fshihet ose kur shkëputet lidhja.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Shto këtë ID të pajisjes në listën e lejuar",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Një luajtës HTTPS nuk mund të shkarkojë një burim HTTP EPG. Përdorni një burim HTTPS.",
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Konfiguro Шаравоз te Cilësimet -> Cilësimet e ofruesit",
     Connect: "Lidhu",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Lidheni fillimisht këtë luajtës me një server komanda.",
     Connected: "Lidhur",
     "Connected. Waiting for the channel list...":
         "Lidhur. Në pritje të listës së kanaleve...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Lidhja e diagnostifikimit në distancë për këtë faqe.",
     "Connecting to Plex…": "Po lidhet me Plex…",
@@ -728,7 +743,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Telekomanda (pa butona me ngjyra)",
     "Remote (number buttons N/A)": "Telekomanda (pa butona me numra)",
     "Remote control": "Telekomanda",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Diagnostifikimi në distancë",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Diagnostifikimi në distancë po mbledh të dhëna për këtë faqe.",
     "Remote diagnostics is off.": "Diagnostifikimi në distancë është joaktiv.",
@@ -742,6 +765,10 @@ var keyStrings = {
         "Hyrja në distancë ka skaduar. Hap një sesion të ri për të provuar sërish.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesioni i hyrjes në distancë është i padisponueshëm. Hap një sesion të ri për të provuar sërish.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Sesioni në distancë ka skaduar",
     "Remote text entry": "Futja e tekstit në distancë",
     "Remote text entry denied": "Refuzohet futja e tekstit në distancë",
@@ -789,6 +816,15 @@ var keyStrings = {
     "Save settings to storage": "Ruani cilësimet në ruajtje",
     "Scan this QR code with your phone to enter text.":
         "Skanoni këtë kod QR me telefonin tuaj për të futur tekst.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Skenari",
     Search: "Kërko",
     "Search programme": "Kërko program",
@@ -808,6 +844,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Zgjidhni burimin e shabllonit të listës së luajtjes për EPG dhe logot",
     "Select Stalker portal": "Zgjidhni portalin Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Dërgo kërkesë",
     "Send settings": "Dërgo cilësimet",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -890,10 +930,12 @@ var keyStrings = {
     "Starting...": "Duke filluar…",
     Status: "Statusi",
     Stop: "Ndalo",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Ndalo mbledhjen aktuale të të dhënave",
     "Stop diagnostics": "Ndalo diagnostikimin",
     "Stop playback and return to live":
         "Ndalo riprodhimin dhe kthehu në transmetimin e drejtpërdrejtë",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Transmetimi nuk mund të luhej",
     "Stream type: %1": "Lloji i rrjedhës: %1",
     "String for search": "Pyetja e kërkimit",
@@ -913,12 +955,16 @@ var keyStrings = {
     "Tabox settings": "Cilësimet Tabox",
     "Text is too long for remote input.":
         "Teksti është shumë i gjatë për futje në distancë.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL-ja e kërkimit të serverit të komandave është e pavlefshme.",
     "The device ID in the address is invalid.":
         "ID-ja e pajisjes në adresë është e pavlefshme.",
     "The discovery response is invalid.":
         "Përgjigja e zbulimit është e pavlefshme.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ky shfletues nuk mund të çiftohet automatikisht në mënyrë të sigurt. Përditësoni atë ose futni manualisht cilësimet e serverit të komandës.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

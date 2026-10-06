@@ -3,6 +3,7 @@
 const { test, expect } = require("@playwright/test");
 
 const CONTROLLER = "https://diagnostics.fixture.invalid";
+const OTHER_CONTROLLER = "https://other-diagnostics.fixture.invalid";
 const HTTP_CONTROLLER = "http://diagnostics.fixture.invalid";
 const DEVICE_TOKEN = "synthetic_browser_device_" + "d".repeat(32);
 const RUNTIME_TOKEN = "synthetic_browser_runtime_" + "r".repeat(32);
@@ -30,7 +31,11 @@ async function fixture(page, context, baseURL) {
                 observed.localDebug.push(url.pathname);
             return route.continue();
         }
-        if (![CONTROLLER, HTTP_CONTROLLER].includes(url.origin)) {
+        if (
+            ![CONTROLLER, OTHER_CONTROLLER, HTTP_CONTROLLER].includes(
+                url.origin
+            )
+        ) {
             observed.blocked.push(url.origin + url.pathname);
             return route.abort("blockedbyclient");
         }
@@ -50,6 +55,7 @@ async function fixture(page, context, baseURL) {
         observed.calls.push({
             authorization: request.headers().authorization,
             body,
+            origin: url.origin,
             path,
         });
         const envelope = { diagnostics_protocol: 2, server_epoch: EPOCH };
@@ -188,12 +194,12 @@ async function fixture(page, context, baseURL) {
     );
     return {
         ...observed,
-        start(session) {
+        start(session, lease = 600000) {
             revision += 1;
             control = {
                 action: "start",
                 consent_epoch: consentEpoch,
-                lease_ms: 600000,
+                lease_ms: lease,
                 profile: "standard",
                 request_id: "request-" + revision,
                 session_id: session,
@@ -217,12 +223,12 @@ async function openRemoteSettings(page) {
     await expect(page.locator("#listCaption")).toHaveText("Settings");
     await page.keyboard.press("Enter");
     await expect(page.locator("#listCaption")).toHaveText("Remote control");
-    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveText(
-        "Allow diagnostics for 10 minutes"
-    );
+    await expect(page.locator("#remoteDiagnosticsStatus")).toBeVisible();
+    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveCount(0);
+    await expect(page.locator("#remoteDiagnosticsTrust")).toHaveCount(0);
 }
 
-async function configure(page, address) {
+async function configure(page, address, token = DEVICE_TOKEN) {
     // This is the production save callback and settings store, not a mocked controller.
     await page.evaluate(
         ({ address, token }) => {
@@ -232,11 +238,11 @@ async function configure(page, address) {
                 token,
             });
         },
-        { address, token: DEVICE_TOKEN }
+        { address, token }
     );
 }
 
-test("remote named input cannot grant local diagnostic consent or cross an ACK UI transition", async ({
+test("remote named input cannot edit connection credentials or cross an ACK UI transition", async ({
     page,
     context,
     baseURL,
@@ -270,9 +276,9 @@ test("remote named input cannot grant local diagnostic consent or cross an ACK U
         data: { accepted: true, dispatched: false, effect: "input-after-ack" },
         status: "ok",
     });
-    // A real local key opens the consent-bearing screen before the remote ACK.
+    // A real local key opens the credential-bearing screen before the remote ACK.
     await page.keyboard.press("Enter");
-    await expect(page.locator("#remoteDiagnosticsToggle")).toBeVisible();
+    await expect(page.locator("#remoteDiagnosticsStatus")).toBeVisible();
     await page.evaluate(() => window.__pendingRemoteInput());
     for (const key of ["down", "right", "ok", "back"]) {
         expect((await request("input", { key })).status).toBe("rejected");
@@ -281,9 +287,9 @@ test("remote named input cannot grant local diagnostic consent or cross an ACK U
         ).toBeNull();
     }
     expect((await request("capabilities")).data.input).toEqual([]);
-    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveText(
-        "Allow diagnostics for 10 minutes"
-    );
+    await expect(page.locator("#remoteDiagnosticsStatus")).toBeVisible();
+    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveCount(0);
+    await expect(page.locator("#remoteDiagnosticsTrust")).toHaveCount(0);
     expect(
         await page.evaluate(
             () => window.__ottRemoteDiagnostics.status().trusted
@@ -660,209 +666,19 @@ test("remote navigation cannot enter or confirm legacy exit while local controls
     expect(server.errors).toEqual([]);
 });
 
-for (const trusted of [false, true]) {
-    test(`locked kiosk permits local ${trusted ? "STOP-key trusted" : "indicator temporary"} support revocation`, async ({
-        page,
-        context,
-        baseURL,
-    }) => {
-        const server = await fixture(page, context, baseURL);
-        await configure(page, CONTROLLER);
-        await openRemoteSettings(page);
-        await page
-            .locator(
-                trusted ? "#remoteDiagnosticsTrust" : "#remoteDiagnosticsToggle"
-            )
-            .click();
-        await expect
-            .poll(
-                () =>
-                    server.calls.filter((call) => call.path === "/runtimes")
-                        .length
-            )
-            .toBe(1);
-        server.start("kiosk-local-stop");
-        await expect
-            .poll(() => page.evaluate(() => window.__ottDebug.enabled))
-            .toBe(true);
-        // Restore a real persisted policy without requiring a provider or decoder.
-        // The production kiosk capture listeners and key dispatcher remain intact.
-        await page.evaluate(() => {
-            window.stbSetItem(
-                "__ottKioskV1",
-                JSON.stringify({
-                    channel: { id: "fixture-channel", name: "Fixture channel" },
-                    provider: "fixture",
-                    source: "fixture-source",
-                })
-            );
-            window.__ottKiosk.init();
-            window.closeList();
-        });
-        expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(
-            true
-        );
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("Escape");
-        expect(
-            await page.evaluate(
-                () => window.__ottRemoteDiagnostics.status().enabled
-            )
-        ).toBe(true);
-        if (trusted) {
-            // The desktop adapter's S key maps to the logical TV STOP action.
-            await page.keyboard.press("s");
-        } else {
-            await page.locator("#remoteDiagnosticsIndicator").click();
-        }
-        await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(
-            0
-        );
-        await expect
-            .poll(() =>
-                page.evaluate(
-                    () => window.__ottRemoteDiagnostics.status().pending
-                )
-            )
-            .toBe(false);
-        expect(
-            await page.evaluate(() => ({
-                collecting: window.__ottDebug.enabled,
-                enabled: window.__ottRemoteDiagnostics.status().enabled,
-                locked: window.__ottKiosk.locked(),
-                trusted: window.__ottRemoteDiagnostics.status().trusted,
-            }))
-        ).toEqual({
-            collecting: false,
-            enabled: false,
-            locked: true,
-            trusted: false,
-        });
-        await expect
-            .poll(() =>
-                server.calls.some(
-                    (call) =>
-                        call.path === "/poll" &&
-                        call.body.consent.granted === false
-                )
-            )
-            .toBe(true);
-        expect(server.errors).toEqual([]);
-    });
+async function registrationCount(server) {
+    return server.calls.filter((call) => call.path === "/runtimes").length;
 }
-
-test("offline locked kiosk keeps trusted support locally revocable", async ({
-    page,
-    context,
-    baseURL,
-}) => {
-    const server = await fixture(page, context, baseURL);
-    await configure(page, CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    const registrations = () =>
-        server.calls.filter((call) => call.path === "/runtimes");
-    await expect.poll(() => registrations().length).toBe(1);
-    server.start("offline-kiosk-revoke");
-    await expect
-        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
-        .toBe(true);
-    const policy = await page.evaluate(() => {
-        const saved = JSON.stringify({
-            channel: { id: "fixture-channel", name: "Fixture channel" },
-            provider: "fixture",
-            source: "fixture-source",
-        });
-        window.stbSetItem("__ottKioskV1", saved);
-        window.__ottKiosk.init();
-        window.closeList();
-        return saved;
-    });
-    await context.setOffline(true);
-    await expect
-        .poll(() =>
-            page.evaluate(() => {
-                const status = window.__ottRemoteDiagnostics.status();
-                return {
-                    collecting: window.__ottDebug.enabled,
-                    enabled: status.enabled,
-                    locked: window.__ottKiosk.locked(),
-                    pending: status.pending,
-                    state: status.state,
-                    trusted: status.trusted,
-                };
-            })
-        )
-        .toEqual({
-            collecting: false,
+async function disconnect(page) {
+    await page.evaluate(() =>
+        window.__ottCommandServer.configure({
+            address: window.commandServerAddress,
             enabled: false,
-            locked: true,
-            pending: true,
-            state: "suspended",
-            trusted: true,
-        });
-    const indicator = page.locator("#remoteDiagnosticsIndicator");
-    await expect(indicator).toBeVisible();
-    await indicator.click();
-    await expect
-        .poll(() =>
-            page.evaluate(() => {
-                const status = window.__ottRemoteDiagnostics.status();
-                return {
-                    enabled: status.enabled,
-                    pending: status.pending,
-                    trusted: status.trusted,
-                };
-            })
-        )
-        .toEqual({ enabled: false, pending: false, trusted: false });
-    await expect(indicator).toHaveCount(0);
-    expect(
-        await page.evaluate(() => ({
-            collecting: window.__ottDebug.enabled,
-            locked: window.__ottKiosk.locked(),
-            policy: window.stbGetItem("__ottKioskV1"),
-        }))
-    ).toEqual({ collecting: false, locked: true, policy });
-    await context.setOffline(false);
-    await page.waitForTimeout(1200);
-    expect(registrations()).toHaveLength(1);
-    // Remove only this synthetic policy so the normal first-run boot can resume.
-    await page.evaluate(() => window.stbSetItem("__ottKioskV1", "null"));
-    await page.reload();
-    await page.waitForFunction(
-        () =>
-            window.__ottRemoteDiagnostics &&
-            !window.__ottRemoteDiagnostics.status().pending
+            token: window.commandServerToken,
+        })
     );
-    await page.waitForTimeout(1200);
-    expect(registrations()).toHaveLength(1);
-    expect(
-        await page.evaluate(() => ({
-            collecting: window.__ottDebug.enabled,
-            enabled: window.__ottRemoteDiagnostics.status().enabled,
-            trusted: window.__ottRemoteDiagnostics.status().trusted,
-        }))
-    ).toEqual({ collecting: false, enabled: false, trusted: false });
-    expect(server.errors).toEqual([]);
-});
-
-test("failed durable revocation stays visible and retryable in a locked kiosk", async ({
-    page,
-    context,
-    baseURL,
-}) => {
-    const server = await fixture(page, context, baseURL);
-    await configure(page, CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    const registrations = () =>
-        server.calls.filter((call) => call.path === "/runtimes");
-    await expect.poll(() => registrations().length).toBe(1);
-    server.start("durable-revoke-failure");
-    await expect
-        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
-        .toBe(true);
+}
+async function lockSyntheticKiosk(page) {
     await page.evaluate(() => {
         window.stbSetItem(
             "__ottKioskV1",
@@ -874,175 +690,192 @@ test("failed durable revocation stays visible and retryable in a locked kiosk", 
         );
         window.__ottKiosk.init();
         window.closeList();
-        const transaction = IDBDatabase.prototype.transaction;
-        const erase = IDBFactory.prototype.deleteDatabase;
-        IDBDatabase.prototype.transaction = function (stores, mode, ...rest) {
-            if (
-                this.name === "ottplay-diagnostics-permission-v1" &&
-                mode === "readwrite"
-            )
-                throw new DOMException(
-                    "Synthetic device storage failure",
-                    "UnknownError"
-                );
-            return transaction.call(this, stores, mode, ...rest);
-        };
-        IDBFactory.prototype.deleteDatabase = function (name) {
-            if (name === "ottplay-diagnostics-permission-v1")
-                throw new DOMException(
-                    "Synthetic deletion failure",
-                    "UnknownError"
-                );
-            return erase.call(this, name);
-        };
-        window.__restoreDiagnosticStorage = () => {
-            IDBDatabase.prototype.transaction = transaction;
-            IDBFactory.prototype.deleteDatabase = erase;
-        };
     });
-    const indicator = page.locator("#remoteDiagnosticsIndicator");
-    for (let attempt = 0; attempt < 2; attempt++) {
-        await indicator.click();
+    expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(true);
+}
+
+for (const stopKey of [false, true]) {
+    test(`locked kiosk permits local ${stopKey ? "STOP key" : "indicator"} capture stop without disconnecting`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const server = await fixture(page, context, baseURL);
+        await configure(page, CONTROLLER);
+        await openRemoteSettings(page);
+        await expect.poll(() => registrationCount(server)).toBe(1);
+        server.start("kiosk-local-stop");
         await expect
-            .poll(() =>
-                page.evaluate(() => {
-                    const status = window.__ottRemoteDiagnostics.status();
-                    return { pending: status.pending, state: status.state };
-                })
+            .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+            .toBe(true);
+        await lockSyntheticKiosk(page);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Escape");
+        expect(
+            await page.evaluate(
+                () => window.__ottRemoteDiagnostics.status().enabled
             )
-            .toEqual({ pending: false, state: "storage-error" });
-        await expect(indicator).toBeVisible();
-        await expect(indicator).toContainText("could not be removed");
-        await expect(indicator).toContainText("Retry");
-        await page.evaluate(() => {
-            window.__ottRemoteDiagnostics.setEnabled(true);
-            window.__ottRemoteDiagnostics.setTrusted(true);
-        });
+        ).toBe(true);
+        if (stopKey) await page.keyboard.press("s");
+        else await page.locator("#remoteDiagnosticsIndicator").click();
+        await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(
+            0
+        );
+        await expect.poll(() => registrationCount(server)).toBe(2);
         expect(
             await page.evaluate(() => ({
-                capture: window.__ottDebug.enabled,
+                collecting: window.__ottDebug.enabled,
                 enabled: window.__ottRemoteDiagnostics.status().enabled,
                 locked: window.__ottKiosk.locked(),
+                trusted: window.__ottRemoteDiagnostics.status().trusted,
             }))
-        ).toEqual({ capture: false, enabled: false, locked: true });
-    }
-    await page.evaluate(() => window.__restoreDiagnosticStorage());
-    await indicator.click();
-    await expect(indicator).toHaveCount(0);
-    await expect
-        .poll(() =>
-            page.evaluate(() => window.__ottRemoteDiagnostics.status().pending)
-        )
-        .toBe(false);
-    expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(true);
-    // Remove only this synthetic kiosk fixture so boot can resume normally.
-    await page.evaluate(() => window.stbSetItem("__ottKioskV1", "null"));
-    await page.reload();
-    await page.waitForFunction(
-        () =>
-            window.__ottRemoteDiagnostics &&
-            !window.__ottRemoteDiagnostics.status().pending
-    );
-    await page.waitForTimeout(1200);
-    expect(registrations()).toHaveLength(1);
-    expect(
-        await page.evaluate(
-            () => window.__ottRemoteDiagnostics.status().trusted
-        )
-    ).toBe(false);
-    expect(server.errors).toEqual([]);
-});
+        ).toEqual({
+            collecting: false,
+            enabled: true,
+            locked: true,
+            trusted: true,
+        });
+        expect(
+            server.calls.some(
+                (c) => c.path === "/poll" && c.body.consent.granted === false
+            )
+        ).toBe(true);
+        await page.keyboard.press("s");
+        await page.waitForTimeout(250);
+        expect(await registrationCount(server)).toBe(2);
+        expect(
+            await page.evaluate(
+                () => window.__ottRemoteDiagnostics.status().trusted
+            )
+        ).toBe(true);
+        expect(server.errors).toEqual([]);
+    });
+}
 
-test("unreadable saved permission is not forgotten during temporary support revocation", async ({
+test("offline kiosk retires capture and resumes an idle authorized runtime without a prompt", async ({
     page,
     context,
     baseURL,
 }) => {
     const server = await fixture(page, context, baseURL);
     await configure(page, CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    const registrations = () =>
-        server.calls.filter((call) => call.path === "/runtimes");
-    await expect.poll(() => registrations().length).toBe(1);
-    await page.evaluate(() =>
-        sessionStorage.setItem("permission-fault-once", "1")
-    );
-    await page.addInitScript(() => {
-        if (sessionStorage.getItem("permission-fault-once") !== "1") return;
-        sessionStorage.removeItem("permission-fault-once");
-        const transaction = IDBDatabase.prototype.transaction;
-        const erase = IDBFactory.prototype.deleteDatabase;
-        IDBDatabase.prototype.transaction = function (...args) {
-            if (this.name === "ottplay-diagnostics-permission-v1")
-                throw new DOMException(
-                    "Synthetic unreadable storage",
-                    "UnknownError"
-                );
-            return transaction.apply(this, args);
-        };
-        IDBFactory.prototype.deleteDatabase = function (name) {
-            if (name === "ottplay-diagnostics-permission-v1")
-                throw new DOMException(
-                    "Synthetic deletion failure",
-                    "UnknownError"
-                );
-            return erase.call(this, name);
-        };
-        window.__restoreDiagnosticStorage = () => {
-            IDBDatabase.prototype.transaction = transaction;
-            IDBFactory.prototype.deleteDatabase = erase;
-        };
-    });
-    await page.reload();
-    await page.waitForFunction(
-        () =>
-            window.__ottRemoteDiagnostics &&
-            !window.__ottRemoteDiagnostics.status().pending
-    );
-    expect(
-        await page.evaluate(
-            () => window.__ottRemoteDiagnostics.status().trusted
-        )
-    ).toBe(false);
-    expect(registrations()).toHaveLength(1);
-    // Explicit temporary support does not prove absence of the unreadable old grant.
-    await page.evaluate(() => window.__ottRemoteDiagnostics.setEnabled(true));
-    await expect.poll(() => registrations().length).toBe(2);
-    await page.evaluate(() => window.__ottRemoteDiagnostics.setEnabled(false));
-    const indicator = page.locator("#remoteDiagnosticsIndicator");
-    await expect(indicator).toContainText("could not be removed");
-    await expect(indicator).toContainText("Retry");
-    expect(
-        await page.evaluate(
-            () => window.__ottRemoteDiagnostics.status().enabled
-        )
-    ).toBe(false);
-    await page.evaluate(() => window.__restoreDiagnosticStorage());
-    await indicator.click();
-    await expect(indicator).toHaveCount(0);
+    await expect.poll(() => registrationCount(server)).toBe(1);
+    server.start("offline-kiosk");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    await lockSyntheticKiosk(page);
+    await context.setOffline(true);
     await expect
         .poll(() =>
-            page.evaluate(() => window.__ottRemoteDiagnostics.status().pending)
+            page.evaluate(() => ({
+                collecting: window.__ottDebug.enabled,
+                enabled: window.__ottRemoteDiagnostics.status().enabled,
+                locked: window.__ottKiosk.locked(),
+                pending: window.__ottRemoteDiagnostics.status().pending,
+                trusted: window.__ottRemoteDiagnostics.status().trusted,
+            }))
         )
-        .toBe(false);
+        .toEqual({
+            collecting: false,
+            enabled: false,
+            locked: true,
+            pending: false,
+            trusted: true,
+        });
+    await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
+    await context.setOffline(false);
+    await expect.poll(() => registrationCount(server)).toBe(2);
+    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
+    expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(true);
+    await disconnect(page);
+    await page.evaluate(() => window.stbSetItem("__ottKioskV1", "null"));
     await page.reload();
-    await page.waitForFunction(
-        () =>
-            window.__ottRemoteDiagnostics &&
-            !window.__ottRemoteDiagnostics.status().pending
-    );
-    await page.waitForTimeout(1200);
-    expect(registrations()).toHaveLength(2);
+    await page.waitForFunction(() => window.__ottRemoteDiagnostics);
     expect(
         await page.evaluate(
             () => window.__ottRemoteDiagnostics.status().trusted
         )
     ).toBe(false);
+    expect(await registrationCount(server)).toBe(2);
     expect(server.errors).toEqual([]);
 });
 
-test("remote diagnostics is opt-in, captures only an authorized runtime and stops cleanly", async ({
+test("legacy saved grant and failing permission database cannot block connected diagnostics", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, CONTROLLER);
+    await expect.poll(() => registrationCount(server)).toBe(1);
+    await page.evaluate(
+        () =>
+            new Promise((resolve, reject) => {
+                const r = indexedDB.open(
+                    "ottplay-diagnostics-permission-v1",
+                    1
+                );
+                r.onupgradeneeded = () =>
+                    r.result.createObjectStore("permission");
+                r.onerror = () => reject(r.error);
+                r.onsuccess = () => {
+                    const db = r.result;
+                    const tx = db.transaction("permission", "readwrite");
+                    tx.objectStore("permission").put(
+                        {
+                            address: "https://obsolete.invalid",
+                            revision: "old",
+                            token: "old_" + "x".repeat(40),
+                        },
+                        "trusted-controller"
+                    );
+                    tx.oncomplete = () => {
+                        db.close();
+                        resolve();
+                    };
+                    tx.onerror = () => reject(tx.error);
+                };
+            })
+    );
+    await context.addInitScript(() => {
+        window.__legacyPermissionAccesses = 0;
+        for (const name of ["open", "deleteDatabase"]) {
+            const original = IDBFactory.prototype[name];
+            IDBFactory.prototype[name] = function (db, ...args) {
+                if (db === "ottplay-diagnostics-permission-v1") {
+                    window.__legacyPermissionAccesses++;
+                    throw new Error("Legacy permission is unavailable");
+                }
+                return original.call(this, db, ...args);
+            };
+        }
+    });
+    await page.reload();
+    await expect.poll(() => registrationCount(server)).toBe(2);
+    expect(await page.evaluate(() => window.__legacyPermissionAccesses)).toBe(
+        0
+    );
+    await openRemoteSettings(page);
+    await expect(page.locator("#remoteDiagnosticsTrust")).toHaveCount(0);
+    server.start("legacy-is-ignored");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    await page.locator("#remoteDiagnosticsStopSession").click();
+    await expect.poll(() => registrationCount(server)).toBe(3);
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(true);
+    expect(await page.evaluate(() => window.__legacyPermissionAccesses)).toBe(
+        0
+    );
+    expect(server.errors).toEqual([]);
+});
+
+test("connection authorizes bounded diagnostics; capture starts only on operator request and stops cleanly", async ({
     page,
     context,
     baseURL,
@@ -1054,40 +887,27 @@ test("remote diagnostics is opt-in, captures only an authorized runtime and stop
     expect(server.calls).toEqual([]);
     await openRemoteSettings(page);
     await expect(page.locator("#remoteDiagnosticsStatus")).toHaveText(
-        "Remote diagnostics is off."
+        "Connect remote control to enable diagnostics."
+    );
+    await configure(page, CONTROLLER);
+    await expect.poll(() => registrationCount(server)).toBe(1);
+    await expect(page.locator("#remoteDiagnosticsStatus")).toContainText(
+        "Remote control authorizes diagnostics"
     );
     await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
-    await configure(page, CONTROLLER);
-    await expect.poll(() => server.legacy.length).toBeGreaterThan(0);
-    expect(server.calls).toEqual([]);
     const baseline = await page.evaluate(() =>
         window.__diagnosticBrowserProbe()
-    );
-    await page.locator("#remoteDiagnosticsToggle").click();
-    await expect
-        .poll(
-            () =>
-                server.calls.filter((call) => call.path === "/runtimes").length
-        )
-        .toBe(1);
-    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveText(
-        "Stop diagnostics"
-    );
-    await expect(page.locator("#remoteDiagnosticsStatus")).toContainText(
-        "ready for an authorized operator"
     );
     expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
     server.start("session-one");
     await expect(page.locator("#remoteDiagnosticsIndicator")).toContainText(
-        "collecting for this page"
+        "collecting"
     );
     await expect
         .poll(() => page.evaluate(() => window.__ottDebug.enabled))
         .toBe(true);
     await expect
-        .poll(
-            () => server.calls.filter((call) => call.path === "/events").length
-        )
+        .poll(() => server.calls.filter((c) => c.path === "/events").length)
         .toBeGreaterThan(0);
     const active = await page.evaluate(() => window.__diagnosticBrowserProbe());
     expect(active.intervals).toBeGreaterThan(baseline.intervals);
@@ -1098,32 +918,27 @@ test("remote diagnostics is opt-in, captures only an authorized runtime and stop
         contentType: "image/png",
         path: screenshot,
     });
-
     server.stop("session-one");
     await expect
         .poll(() =>
             server.calls.some(
-                (call) =>
-                    call.path === "/results" &&
-                    call.body.request_id === "request-2" &&
-                    call.body.status === "applied"
+                (c) =>
+                    c.path === "/results" &&
+                    c.body.request_id === "request-2" &&
+                    c.body.status === "applied"
             )
         )
         .toBe(true);
     await expect
         .poll(() => page.evaluate(() => window.__ottDebug.enabled))
         .toBe(false);
-    await expect(page.locator("#remoteDiagnosticsIndicator")).toContainText(
-        "ready for an authorized operator"
-    );
+    await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
     server.start("session-two");
     await expect
         .poll(() => page.evaluate(() => window.__ottDebug.enabled))
         .toBe(true);
-    await page.locator("#remoteDiagnosticsToggle").click();
-    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveText(
-        "Allow diagnostics for 10 minutes"
-    );
+    await page.locator("#remoteDiagnosticsStopSession").click();
+    await expect.poll(() => registrationCount(server)).toBe(2);
     await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
     expect(
         await page.evaluate(() => window.__ottDebug.snapshot().enabled)
@@ -1132,127 +947,82 @@ test("remote diagnostics is opt-in, captures only an authorized runtime and stop
         window.__diagnosticBrowserProbe()
     );
     expect(stopped.listeners).toEqual(baseline.listeners);
-    // An unrelated boot interval may finish during capture. Every surviving
-    // interval must still be from before capture; no new handle may leak.
     expect(
-        stopped.intervalHandles.every((handle) =>
-            baseline.intervalHandles.includes(handle)
+        stopped.intervalHandles.every((h) =>
+            baseline.intervalHandles.includes(h)
         )
     ).toBe(true);
-    await expect
-        .poll(() =>
-            server.calls.some(
-                (call) =>
-                    call.path === "/poll" && call.body.consent.granted === false
-            )
+    expect(
+        server.calls.some(
+            (c) => c.path === "/poll" && c.body.consent.granted === false
         )
-        .toBe(true);
-    const stoppedUploads = server.calls.filter(
-        (call) => call.path === "/events"
-    ).length;
+    ).toBe(true);
+    const uploads = server.calls.filter((c) => c.path === "/events").length;
     await page.waitForTimeout(1200);
-    expect(server.calls.filter((call) => call.path === "/events").length).toBe(
-        stoppedUploads
+    expect(server.calls.filter((c) => c.path === "/events").length).toBe(
+        uploads
     );
     expect(
-        server.calls.filter((call) => call.path === "/runtimes")[0]
-            .authorization
+        server.calls.filter((c) => c.path === "/runtimes")[0].authorization
     ).toBe("Bearer " + DEVICE_TOKEN);
     expect(
         server.calls
-            .filter((call) => call.path !== "/runtimes")
-            .every((call) => call.authorization === "Bearer " + RUNTIME_TOKEN)
+            .filter((c) => c.path !== "/runtimes")
+            .every((c) => c.authorization === "Bearer " + RUNTIME_TOKEN)
     ).toBe(true);
     expect(server.errors).toEqual([]);
     expect(server.localDebug).toEqual([]);
 });
 
-test("a saved controller connection never restores diagnostic consent after reload", async ({
+test("session lease expiry stops collection and restores readiness without a new local grant", async ({
     page,
     context,
     baseURL,
 }) => {
     const server = await fixture(page, context, baseURL);
     await configure(page, CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsToggle").click();
-    await expect(page.locator("#remoteDiagnosticsIndicator")).toContainText(
-        "ready for an authorized operator"
-    );
+    await expect.poll(() => registrationCount(server)).toBe(1);
+    server.start("short-capture", 1000);
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    await expect
+        .poll(() => registrationCount(server), { timeout: 15000 })
+        .toBe(2);
+    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(true);
+    server.start("next-capture");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    await disconnect(page);
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(false);
+    expect(server.errors).toEqual([]);
+});
+
+test("saved connection restores an idle runtime across reload and offline recovery", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, CONTROLLER);
+    await expect.poll(() => registrationCount(server)).toBe(1);
     server.start("before-reload");
     await expect
         .poll(() => page.evaluate(() => window.__ottDebug.enabled))
         .toBe(true);
     await page.reload();
-    await expect(page.locator("#listCaption")).toHaveText("First-run setup");
-    await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
-    expect(
-        await page.evaluate(
-            () => window.__ottRemoteDiagnostics.status().enabled
-        )
-    ).toBe(false);
-    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
-    await openRemoteSettings(page);
-    await expect(page.locator("#commandServerTokenPresence")).toHaveText(
-        "saved on this device"
-    );
-    const registrations = server.calls.filter(
-        (call) => call.path === "/runtimes"
-    ).length;
-    await page.waitForTimeout(1200);
-    expect(
-        server.calls.filter((call) => call.path === "/runtimes").length
-    ).toBe(registrations);
-    expect(server.errors).toEqual([]);
-});
-
-test("remote diagnostics rejects an HTTP controller without enabling capture", async ({
-    page,
-    context,
-    baseURL,
-}) => {
-    const server = await fixture(page, context, baseURL);
-    await configure(page, HTTP_CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsToggle").click();
-    await expect(page.locator("#remoteDiagnosticsStatus")).toHaveText(
-        "Use an HTTPS command server for remote diagnostics."
-    );
-    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveText(
-        "Allow diagnostics for 10 minutes"
-    );
-    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
-    await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
-    expect(server.calls).toEqual([]);
-    expect(server.errors).toEqual([]);
-});
-
-test("trusted support survives reload and network recovery, but never restores a capture", async ({
-    page,
-    context,
-    baseURL,
-}) => {
-    const server = await fixture(page, context, baseURL);
-    await configure(page, CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    await expect
-        .poll(() =>
-            page.evaluate(() => window.__ottRemoteDiagnostics.status().trusted)
-        )
-        .toBe(true);
-    const registrations = () =>
-        server.calls.filter((call) => call.path === "/runtimes");
-    await expect.poll(() => registrations().length).toBe(1);
-    expect(registrations()[0].body.capabilities).toContain("repairs");
-    server.start("trusted-before-reload");
-    await expect
-        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
-        .toBe(true);
-    await page.reload();
-    await expect.poll(() => registrations().length).toBe(2);
-    expect(registrations()[1].body.consent.epoch).not.toBe(
-        registrations()[0].body.consent.epoch
+    await expect.poll(() => registrationCount(server)).toBe(2);
+    let registrations = server.calls.filter((c) => c.path === "/runtimes");
+    expect(registrations[1].body.consent.epoch).not.toBe(
+        registrations[0].body.consent.epoch
     );
     expect(
         await page.evaluate(
@@ -1260,6 +1030,7 @@ test("trusted support survives reload and network recovery, but never restores a
         )
     ).toBe(true);
     expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
+    await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(0);
     await context.setOffline(true);
     await expect
         .poll(() =>
@@ -1267,47 +1038,23 @@ test("trusted support survives reload and network recovery, but never restores a
         )
         .toBe(false);
     await context.setOffline(false);
-    await expect.poll(() => registrations().length, { timeout: 15000 }).toBe(3);
-    expect(registrations()[2].body.consent.epoch).not.toBe(
-        registrations()[1].body.consent.epoch
+    await expect
+        .poll(() => registrationCount(server), { timeout: 15000 })
+        .toBe(3);
+    registrations = server.calls.filter((c) => c.path === "/runtimes");
+    expect(registrations[2].body.consent.epoch).not.toBe(
+        registrations[1].body.consent.epoch
     );
     expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
-    await page.evaluate(() => window.optionsList(window.settingsCommands));
-    await page.keyboard.press("Enter");
-    await expect(page.locator("#remoteDiagnosticsTrust")).toHaveText(
-        "Disable trusted remote support"
+    await openRemoteSettings(page);
+    await expect(page.locator("#commandServerTokenPresence")).toHaveText(
+        "saved on this device"
     );
-    server.start("trusted-second-capture");
-    await expect
-        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
-        .toBe(true);
-    await page.locator("#remoteDiagnosticsStopSession").click();
-    await expect.poll(() => registrations().length).toBe(4);
-    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
-    expect(
-        await page.evaluate(
-            () => window.__ottRemoteDiagnostics.status().trusted
-        )
-    ).toBe(true);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    await expect
-        .poll(() =>
-            page.evaluate(() => window.__ottRemoteDiagnostics.status().pending)
-        )
-        .toBe(false);
-    expect(
-        await page.evaluate(
-            () => window.__ottRemoteDiagnostics.status().trusted
-        )
-    ).toBe(false);
+    await disconnect(page);
     await page.reload();
-    await page.waitForFunction(
-        () =>
-            window.__ottRemoteDiagnostics &&
-            !window.__ottRemoteDiagnostics.status().pending
-    );
+    await page.waitForFunction(() => window.__ottRemoteDiagnostics);
     await page.waitForTimeout(1200);
-    expect(registrations()).toHaveLength(4);
+    expect(await registrationCount(server)).toBe(3);
     expect(
         await page.evaluate(
             () => window.__ottRemoteDiagnostics.status().enabled
@@ -1316,56 +1063,126 @@ test("trusted support survives reload and network recovery, but never restores a
     expect(server.errors).toEqual([]);
 });
 
-test("revoking installation trust stops another already connected tab", async ({
+test("HTTP controller remains unsupported without a separate approval option", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, HTTP_CONTROLLER);
+    await openRemoteSettings(page);
+    await expect(page.locator("#remoteDiagnosticsStatus")).toHaveText(
+        "Use an HTTPS command server for remote diagnostics."
+    );
+    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveCount(0);
+    await expect(page.locator("#remoteDiagnosticsTrust")).toHaveCount(0);
+    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
+    expect(server.calls).toEqual([]);
+    expect(server.errors).toEqual([]);
+});
+
+test("legacy permission revocation cannot stop another tab's enabled connection", async ({
     page,
     context,
     baseURL,
 }) => {
     const server = await fixture(page, context, baseURL);
     await configure(page, CONTROLLER);
-    await openRemoteSettings(page);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    await expect
-        .poll(() =>
-            page.evaluate(() => window.__ottRemoteDiagnostics.status().trusted)
-        )
-        .toBe(true);
+    await expect.poll(() => registrationCount(server)).toBe(1);
     const other = await context.newPage();
     await other.goto("/f/pc/");
     await other.waitForFunction(
-        () => window.__ottRemoteDiagnostics?.status().trusted
+        () => window.__ottRemoteDiagnostics?.status().enabled
     );
-    await expect
-        .poll(() =>
-            other.evaluate(() => window.__ottRemoteDiagnostics.status().enabled)
-        )
-        .toBe(true);
-    const registrations = () =>
-        server.calls.filter((call) => call.path === "/runtimes").length;
-    await expect.poll(registrations).toBe(2);
-    await page.locator("#remoteDiagnosticsTrust").click();
-    await expect
-        .poll(
-            () =>
-                other.evaluate(
-                    () => window.__ottRemoteDiagnostics.status().trusted
-                ),
-            { timeout: 10000 }
-        )
-        .toBe(false);
+    await expect.poll(() => registrationCount(server)).toBe(2);
+    await page.evaluate(
+        () =>
+            new Promise((resolve, reject) => {
+                const r = indexedDB.deleteDatabase(
+                    "ottplay-diagnostics-permission-v1"
+                );
+                r.onsuccess = () => resolve();
+                r.onerror = () => reject(r.error);
+            })
+    );
+    await page.waitForTimeout(1200);
     expect(
         await other.evaluate(
             () => window.__ottRemoteDiagnostics.status().enabled
         )
-    ).toBe(false);
+    ).toBe(true);
+    expect(await other.evaluate(() => window.__ottDebug.enabled)).toBe(false);
     await other.reload();
-    await other.waitForFunction(
-        () =>
-            window.__ottRemoteDiagnostics &&
-            !window.__ottRemoteDiagnostics.status().pending
-    );
-    await other.waitForTimeout(1200);
-    expect(registrations()).toBe(2);
+    await expect.poll(() => registrationCount(server)).toBe(3);
+    expect(
+        await other.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(true);
     await other.close();
+    expect(server.errors).toEqual([]);
+});
+
+test("token and controller address changes retire capture and isolate new runtime traffic", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    await configure(page, CONTROLLER);
+    await expect.poll(() => registrationCount(server)).toBe(1);
+    server.start("before-token-rotation");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    const replacement = "replacement_device_" + "z".repeat(40);
+    await configure(page, CONTROLLER, replacement);
+    await expect.poll(() => registrationCount(server)).toBe(2);
+    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
+    let registrations = server.calls.filter(
+        (call) => call.path === "/runtimes"
+    );
+    expect(registrations[1].authorization).toBe("Bearer " + replacement);
+    expect(registrations[1].body.consent.epoch).not.toBe(
+        registrations[0].body.consent.epoch
+    );
+    server.start("before-address-rotation");
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(true);
+    await configure(page, OTHER_CONTROLLER, replacement);
+    await expect.poll(() => registrationCount(server)).toBe(3);
+    expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(false);
+    registrations = server.calls.filter((call) => call.path === "/runtimes");
+    expect(registrations[2].origin).toBe(OTHER_CONTROLLER);
+    expect(registrations[2].body.consent.epoch).not.toBe(
+        registrations[1].body.consent.epoch
+    );
+    const oldUploads = server.calls.filter(
+        (call) => call.origin === CONTROLLER && call.path === "/events"
+    ).length;
+    server.start("new-controller-only");
+    await expect
+        .poll(() =>
+            server.calls.some(
+                (call) =>
+                    call.origin === OTHER_CONTROLLER && call.path === "/events"
+            )
+        )
+        .toBe(true);
+    expect(
+        server.calls.filter(
+            (call) => call.origin === CONTROLLER && call.path === "/events"
+        ).length
+    ).toBe(oldUploads);
+    await disconnect(page);
+    await expect
+        .poll(() => page.evaluate(() => window.__ottDebug.enabled))
+        .toBe(false);
+    expect(
+        await page.evaluate(
+            () => window.__ottRemoteDiagnostics.status().trusted
+        )
+    ).toBe(false);
     expect(server.errors).toEqual([]);
 });

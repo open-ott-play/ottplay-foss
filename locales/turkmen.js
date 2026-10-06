@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv sazlamalary",
     "Allow diagnostics for 10 minutes": "10 minutlyk anyklaýşa rugsat ber",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Bu serwere anyklaýyş hasaplaýjylaryny ýygnamaga we bu ýaýlymy ýa-da pleýeri täzeden işletmäge rugsat beriň. Wagtlaýyn giriş 10 minut dowam edýär. Ynamdar goldaw gaýtadan birikdirilenden ýa-da işledilenden soň hem elýeterli bolýar; her ýygnamagyň möhleti şonda-da 10 minutdan gutarýar. Sahypa gizlenende ýa-da tora birikmedik wagty ýygnamak saklanýar.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Bu serwere şu işjeň sahypa sessiýasynda görkezilişiň, toruň we girişiň hasaplaýjylaryny ýygnamaga rugsat beriň. HTTPS we serweriň rugsady gerek. 10 minutdan, sahypa gizlenende ýa-da birikme kesilende saklanýar.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Bu enjam ID-sini rugsat berlen sanawa goşuň",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS pleýeri HTTP EPG çeşmesini ýükläp bilmeýär. HTTPS çeşmesini ulanyň.",
@@ -249,11 +254,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     Connect: "Birikdir",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Ilki bu pleýeri buýruk serwerine birikdiriň.",
     Connected: "Birikdirildi",
     "Connected. Waiting for the channel list...":
         "Birikdirildi. Kanallar sanawyna garaşylýar...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Bu sahypa üçin uzakdan anyklaýyş birikdirilýär.",
     "Connecting to Plex…": "Plex-e birikdirilýär…",
@@ -711,7 +726,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pult (reňkli düwmeler ýok)",
     "Remote (number buttons N/A)": "Pult (sanly düwmeler ýok)",
     "Remote control": "Uzakdan dolandyryş",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Uzakdan anyklaýyş",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Uzakdan anyklaýyş bu sahypa üçin maglumat ýygnaýar.",
     "Remote diagnostics is off.": "Uzakdan anyklaýyş öçürilen.",
@@ -725,6 +748,10 @@ var keyStrings = {
         "Uzakdan girizmegiň möhleti gutardy. Gaýtadan synanyşmak üçin täze sessiýa açyň.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Uzakdan girizmek sessiýasy elýeterli däl. Gaýtadan synanyşmak üçin täze sessiýa açyň.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Uzakdaky sessiýanyň möhleti gutardy",
     "Remote text entry": "Uzakdan tekst girizmek",
     "Remote text entry denied": "Uzakdan tekst girizmek ret edildi",
@@ -771,6 +798,15 @@ var keyStrings = {
     "Save settings to storage": "Sazlamalary ammara sakla",
     "Scan this QR code with your phone to enter text.":
         "Tekst girizmek üçin şu QR kody telefonyňyz bilen skanirläň.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Ssenariý",
     Search: "Gözle",
     "Search programme": "Gepleşigi gözle",
@@ -789,6 +825,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG we logotipler üçin oýnatma sanawynyň nusga çeşmesini saýlaň",
     "Select Stalker portal": "Stalker portalyny saýlaň",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Haýyş iber",
     "Send settings": "Sazlamalary iber",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -870,9 +910,11 @@ var keyStrings = {
     "Starting...": "Başlaýar…",
     Status: "Ýagdaý",
     Stop: "Duruz",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Häzirki maglumat ýygnamagy duruz",
     "Stop diagnostics": "Anyklaýşy duruz",
     "Stop playback and return to live": "Oýnatmagy duruz we göni ýaýlyma gaýt",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Ýaýlymy oýnadyp bolmady",
     "Stream type: %1": "Ýaýlymyň görnüşi: %1",
     "String for search": "Gözleg soragy",
@@ -892,11 +934,15 @@ var keyStrings = {
     "Tabox settings": "Tabox sazlamalary",
     "Text is too long for remote input.":
         "Tekst uzakdan girizmek üçin juda uzyn.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Buýruk serwerini gözlemegiň URL salgysy nädogry.",
     "The device ID in the address is invalid.":
         "Salgydaky enjam ID-si nädogry.",
     "The discovery response is invalid.": "Gözlegiň jogaby nädogry.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Bu brauzer howpsuz awtomatiki jübütleşdirip bilmeýär. Ony täzeläň ýa-da buýruk serweriniň sazlamalaryny el bilen giriziň.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

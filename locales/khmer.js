@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "ការកំណត់ All4you.tv",
     "Allow diagnostics for 10 minutes": "អនុញ្ញាតការធ្វើរោគវិនិច្ឆ័យរយៈពេល 10 នាទី។",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "អនុញ្ញាតឱ្យម៉ាស៊ីនមេនេះប្រមូលបញ្ជរវិភាគ ហើយចាប់ផ្តើមការផ្សាយ ឬកម្មវិធីចាក់នេះឡើងវិញ។ ការចូលប្រើបណ្តោះអាសន្នមានរយៈពេល 10 នាទី។ ការគាំទ្រដែលអាចទុកចិត្តបាននៅតែមានបន្ទាប់ពីភ្ជាប់ឡើងវិញ ឬចាប់ផ្តើមឡើងវិញ។ ការចាប់យកនីមួយៗនៅតែផុតកំណត់បន្ទាប់ពី 10 នាទី។ ការប្រមូលផ្អាកខណៈពេលដែលលាក់ ឬគ្មានអ៊ីនធឺណិត។",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "អនុញ្ញាតឱ្យម៉ាស៊ីនមេនេះប្រមូលការចាក់សារថ្មី បណ្តាញ និងបញ្ជរបញ្ចូលសម្រាប់វគ្គខាងមុខនេះ។ ទាមទារ HTTPS និងការអនុញ្ញាតពីម៉ាស៊ីនមេ។ ឈប់បន្ទាប់ពី 10 នាទី នៅពេលលាក់ ឬនៅពេលផ្តាច់។",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "បញ្ជីអនុញ្ញាតឧបករណ៍នេះ ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "កម្មវិធីចាក់ HTTPS មិនអាចទាញយកប្រភព HTTP EPG បានទេ។ ប្រើប្រភព HTTPS ។",
@@ -245,11 +250,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "កំណត់រចនាសម្ព័ន្ធ Шаравоз នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     Connect: "ភ្ជាប់",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ភ្ជាប់កម្មវិធីចាក់នេះទៅម៉ាស៊ីនមេពាក្យបញ្ជាជាមុនសិន។",
     Connected: "បានភ្ជាប់",
     "Connected. Waiting for the channel list...":
         "បានភ្ជាប់។ កំពុងរង់ចាំបញ្ជីឈ្មោះឆានែល...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ការភ្ជាប់ការវិនិច្ឆ័យពីចម្ងាយសម្រាប់ទំព័រនេះ។",
     "Connecting to Plex…": "កំពុងភ្ជាប់ទៅ Plex…",
@@ -702,7 +717,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ពីចម្ងាយ (គ្មានប៊ូតុងពណ៌)",
     "Remote (number buttons N/A)": "ពីចម្ងាយ (គ្មានប៊ូតុងលេខ)",
     "Remote control": "ការបញ្ជាពីចម្ងាយ",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយ",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយកំពុងប្រមូលសម្រាប់ទំព័រនេះ។",
     "Remote diagnostics is off.": "ការវិនិច្ឆ័យពីចម្ងាយត្រូវបានបិទ។",
@@ -716,6 +739,10 @@ var keyStrings = {
         "ការបញ្ចូលពីចម្ងាយបានផុតកំណត់ហើយ។ បើកវគ្គថ្មីដើម្បីព្យាយាមម្តងទៀត។",
     "Remote input session is unavailable. Open a new session to try again.":
         "សម័យបញ្ចូលពីចម្ងាយមិនអាចប្រើបានទេ។ បើកវគ្គថ្មីដើម្បីព្យាយាមម្តងទៀត។",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "សម័យពីចម្ងាយបានផុតកំណត់",
     "Remote text entry": "ការបញ្ចូលអត្ថបទពីចម្ងាយ",
     "Remote text entry denied": "ការបញ្ចូលអត្ថបទពីចម្ងាយត្រូវបានបដិសេធ",
@@ -762,6 +789,15 @@ var keyStrings = {
     "Save settings to storage": "រក្សាទុកការកំណត់ទៅកន្លែងផ្ទុក",
     "Scan this QR code with your phone to enter text.":
         "ស្កេនលេខកូដ QR នេះជាមួយទូរសព្ទរបស់អ្នកដើម្បីបញ្ចូលអត្ថបទ។",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "សាច់រឿង",
     Search: "ស្វែងរក",
     "Search programme": "ស្វែងរកកម្មវិធីទូរទស្សន៍",
@@ -780,6 +816,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ជ្រើសរើសប្រភពគំរូបញ្ជីចាក់សម្រាប់ EPG និងឡូហ្គោ",
     "Select Stalker portal": "ជ្រើសរើសវិបផតថល Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ផ្ញើសំណើ",
     "Send settings": "ផ្ញើការកំណត់",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -863,10 +903,12 @@ var keyStrings = {
     "Starting...": "ចាប់ផ្តើម...",
     Status: "ស្ថានភាព",
     Stop: "ឈប់",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "បញ្ឈប់ការចាប់យកបច្ចុប្បន្ន",
     "Stop diagnostics": "បញ្ឈប់ការធ្វើរោគវិនិច្ឆ័យ",
     "Stop playback and return to live":
         "បញ្ឈប់ការចាក់សារថ្មី ហើយត្រលប់ទៅការផ្សាយបន្តផ្ទាល់",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ការស្ទ្រីមមិនអាចលេងបានទេ។",
     "Stream type: %1": "ប្រភេទស្ទ្រីម៖ %1",
     "String for search": "សំណួរស្វែងរក",
@@ -885,11 +927,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "ការកំណត់ Tabox",
     "Text is too long for remote input.": "អត្ថបទវែងពេកសម្រាប់ការបញ្ចូលពីចម្ងាយ។",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "ការរកឃើញម៉ាស៊ីនមេពាក្យបញ្ជា URL មិនត្រឹមត្រូវទេ។",
     "The device ID in the address is invalid.":
         "ឧបករណ៍ ID នៅក្នុងអាសយដ្ឋានមិនត្រឹមត្រូវទេ។",
     "The discovery response is invalid.": "ការឆ្លើយតបនៃការរកឃើញមិនត្រឹមត្រូវទេ។",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "កម្មវិធីរុករកនេះមិនអាចផ្គូផ្គងដោយស្វ័យប្រវត្តិដោយសុវត្ថិភាពទេ។ ធ្វើបច្ចុប្បន្នភាពវា ឬបញ្ចូលការកំណត់ម៉ាស៊ីនមេបញ្ជាដោយដៃ។",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv жөндөөлөрү",
     "Allow diagnostics for 10 minutes":
         "Диагностикага 10 мүнөткө уруксат берүү",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Бул серверге диагностикалык көрсөткүчтөрдү чогултууга жана агымды же ойноткучту кайра иштетүүгө уруксат бериңиз. Убактылуу кирүү 10 мүнөткө созулат. Ишенимдүү колдоо кайра туташкандан же кайра иштеткенден кийин жеткиликтүү бойдон калат; ар бир чогултуу 10 мүнөттөн кийин аяктайт. Барак жашырылганда же тармак өчкөндө чогултуу токтойт.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Бул серверге ушул көрүнүп турган сеанс үчүн ойнотуу, тармак жана киргизүү көрсөткүчтөрүн чогултууга уруксат бериңиз. HTTPS жана сервердин уруксаты талап кылынат. 10 мүнөттөн кийин, барак жашырылганда же байланыш үзүлгөндө токтойт.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Бул түзмөктүн ID-син уруксат берилген тизмеге кошуу",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз кызматын Жөндөөлөр -> Провайдердин жөндөөлөрү бөлүмүнөн жөндөңүз",
     Connect: "Туташуу",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Адегенде ойноткучту буйрук серверине туташтырыңыз.",
     Connected: "Туташты",
     "Connected. Waiting for the channel list...":
         "Туташты. Каналдардын тизмеси күтүлүүдө…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Бул барак үчүн алыстан диагностика туташтырылууда.",
     "Connecting to Plex…": "Plex менен туташууда…",
@@ -726,7 +741,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт (түстүү баскычтарсыз)",
     "Remote (number buttons N/A)": "Пульт (сан баскычтарсыз)",
     "Remote control": "Алыстан башкаруу",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Алыстан диагностика",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Бул барак үчүн алыстан диагностика маалымат чогултууда.",
     "Remote diagnostics is off.": "Алыстан диагностика өчүрүлгөн.",
@@ -740,6 +763,10 @@ var keyStrings = {
         "Алыстан киргизүүнүн мөөнөтү бүттү. Кайра аракет кылуу үчүн жаңы сеанс ачыңыз.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Алыстан киргизүү сеансы жеткиликсиз. Кайра аракет кылуу үчүн жаңы сеанс ачыңыз.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Алыстан сеанстын мөөнөтү бүттү",
     "Remote text entry": "Текстти алыстан киргизүү",
     "Remote text entry denied":
@@ -788,6 +815,15 @@ var keyStrings = {
     "Save settings to storage": "Жөндөөлөрдү сактагычка сактоо",
     "Scan this QR code with your phone to enter text.":
         "Текст киргизүү үчүн бул QR кодду телефонуңуз менен сканерлеңиз.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Сценарий",
     Search: "Издөө",
     "Search programme": "Берүүнү издөө",
@@ -806,6 +842,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG жана логотиптер үчүн ойнотуу тизмесинин үлгү булагын тандаңыз",
     "Select Stalker portal": "Stalker порталын тандаңыз",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Сурам жөнөтүү",
     "Send settings": "Жөндөөлөрдү жөнөтүү",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -887,9 +927,11 @@ var keyStrings = {
     "Starting...": "Ишке кирүүдө…",
     Status: "Абал",
     Stop: "Токтотуу",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Учурдагы маалымат чогултууну токтотуу",
     "Stop diagnostics": "Диагностиканы токтотуу",
     "Stop playback and return to live": "Ойнотууну токтотуп түз эфирге кайтуу",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Агым ойнотулган жок",
     "Stream type: %1": "Агымдын түрү: %1",
     "String for search": "Издөө сурамы",
@@ -909,11 +951,15 @@ var keyStrings = {
     "Tabox settings": "Tabox жөндөөлөрү",
     "Text is too long for remote input.":
         "Текст алыстан киргизүү үчүн өтө узун.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Буйрук серверин издөө URL дареги жараксыз.",
     "The device ID in the address is invalid.":
         "Даректеги түзмөктүн ID коду жараксыз.",
     "The discovery response is invalid.": "Издөө жообу жараксыз.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Бул браузер коопсуз автоматтык жупташтырууну колдобойт. Аны жаңыртыңыз же буйрук серверинин жөндөөлөрүн кол менен киргизиңиз.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv-instellings",
     "Allow diagnostics for 10 minutes": "Laat diagnostiek vir 10 minute toe",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Laat hierdie bediener toe om diagnostiese tellers te versamel en hierdie stroom of mediaspeler te herbegin. Tydelike toegang duur 10 minute. Vertroude ondersteuning bly beskikbaar na herkoppeling of herbegin; elke dataversameling verval steeds na 10 minute. Dataversameling word onderbreek wanneer die bladsy versteek of vanlyn is.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Laat hierdie bediener toe om afspeel-, netwerk- en invoertellers vir hierdie voorgrondsessie te versamel. Vereis HTTPS en bedienertoestemming. Stop na 10 minute, wanneer versteek, of wanneer ontkoppel.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Voeg hierdie toestel-ID by die toegelate lys",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "'n HTTPS-mediaspeler kan nie 'n HTTP EPG-bron aflaai nie. Gebruik 'n HTTPS-bron.",
@@ -252,11 +257,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Stel Шаравоз op by Instellings -> Verskafferinstellings",
     Connect: "Verbind",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Verbind hierdie speler eers met 'n opdragbediener.",
     Connected: "Verbind",
     "Connected. Waiting for the channel list...":
         "Verbind. Wag vir die kanaallys…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Verbind afstanddiagnostiek vir hierdie bladsy.",
     "Connecting to Plex…": "Verbind met Plex…",
@@ -719,7 +734,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Afstandbeheer (geen kleurknoppies)",
     "Remote (number buttons N/A)": "Afstandbeheer (geen syferknoppies)",
     "Remote control": "Afstandbeheer",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Afstanddiagnostiek",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Afstanddiagnostiek versamel data vir hierdie bladsy.",
     "Remote diagnostics is off.": "Afstanddiagnostiek is af.",
@@ -733,6 +756,10 @@ var keyStrings = {
         "Afstandinvoer het verval. Maak 'n nuwe sessie oop om weer te probeer.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Afstandinvoersessie is nie beskikbaar nie. Maak 'n nuwe sessie oop om weer te probeer.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Afstandsessie het verval",
     "Remote text entry": "Teksinvoer op afstand",
     "Remote text entry denied": "Teksinvoer op afstand geweier",
@@ -780,6 +807,15 @@ var keyStrings = {
     "Save settings to storage": "Stoor instellings in berging",
     "Scan this QR code with your phone to enter text.":
         "Skandeer hierdie QR-kode met jou foon om teks in te voer.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Draaiboek",
     Search: "Soek",
     "Search programme": "Soek program",
@@ -799,6 +835,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Kies die snitlyssjabloonbron vir EPG en logo's",
     "Select Stalker portal": "Kies Stalker-portaal",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Stuur versoek",
     "Send settings": "Stuur instellings",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -880,10 +920,12 @@ var keyStrings = {
     "Starting...": "Begin…",
     Status: "Status",
     Stop: "Stop",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Stop huidige dataversameling",
     "Stop diagnostics": "Stop diagnostiek",
     "Stop playback and return to live":
         "Stop afspeel en keer terug na regstreekse uitsending",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Stroom kon nie afgespeel word nie",
     "Stream type: %1": "Stroomtipe: %1",
     "String for search": "Soeknavraag",
@@ -902,11 +944,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox-instellings",
     "Text is too long for remote input.": "Teks is te lank vir afstandinvoer.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Die URL vir opdragbedienersoektog is ongeldig.",
     "The device ID in the address is invalid.":
         "Die toestel-ID in die adres is ongeldig.",
     "The discovery response is invalid.": "Die soekantwoord is ongeldig.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Hierdie blaaier kan nie veilig outomaties koppel nie. Werk dit by of voer die opdragbedienerinstellings handmatig in.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Dejinta All4you.tv",
     "Allow diagnostics for 10 minutes":
         "Oggolow baaritaanka cilladaha muddo 10 daqiiqo ah",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "U oggolow seerfarkan inuu ururiyo tiriyeyaasha baaritaanka cilladaha oo uu dib u bilaabo baahintan ama daaraha. Gelitaanka ku-meelgaarka ahi wuxuu socdaa 10 daqiiqo. Taageerada la aaminay way sii jiraysaa ka dib dib u xidhidda ama dib u bilaabidda; ururin kastana way dhammaanaysaa 10 daqiiqo ka dib. Ururintu way hakataa marka barnaamijku qarsoon yahay ama aanu khadka ku jirin.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "U oggolow seerfarkan inuu ururiyo tiriyeyaasha daarista, shabakadda iyo gelinta ee fadhigan muuqda. Waxay u baahan tahay HTTPS iyo oggolaanshaha seerfarka. Waxay joogsanaysaa 10 daqiiqo ka dib, marka la qariyo ama la gooyo xidhiidhka.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Aqoonsiga qalabkan ku dar liiska la oggol yahay",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Ku deji Шаравоз gudaha Dejinta -> Dejinta bixiyaha",
     Connect: "Ku xidh",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Marka hore daarahan ku xidh seerfar amarro.",
     Connected: "Waa la isku xidhay",
     "Connected. Waiting for the channel list...":
         "Waa la isku xidhay. Liiska kanaallada ayaa la sugayaa...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Baaritaanka cilladaha fog ee boggan ayaa la isku xidhayaa.",
     "Connecting to Plex…": "Plex ayaa lagu xidhayaa…",
@@ -729,7 +744,15 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Kontoroolka fog (aan lahayn badhamo tiro leh)",
     "Remote control": "Kontoroolka fog",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Baaritaanka fog ee cilladaha",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Baaritaanka fog ee cilladuhu wuxuu ururinayaa xogta boggan.",
     "Remote diagnostics is off.":
@@ -744,6 +767,10 @@ var keyStrings = {
         "Waqtigii gelinta fog wuu dhacay. Fur kalfadhi cusub si aad mar kale u tijaabiso.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kalfadhiga gelinta fog lama heli karo. Fur kalfadhi cusub si aad mar kale u tijaabiso.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Waqtigii kalfadhiga fog wuu dhacay",
     "Remote text entry": "Gelinta qoraalka ee fog",
     "Remote text entry denied": "Gelinta qoraalka ee fog waa la diiday",
@@ -791,6 +818,15 @@ var keyStrings = {
     "Save settings to storage": "Dejinta ku kaydi kaydinta",
     "Scan this QR code with your phone to enter text.":
         "Ku sawir koodhkan QR taleefankaaga si aad qoraal u geliso.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Qoraalka filimka",
     Search: "Raadi",
     "Search programme": "Raadi barnaamij",
@@ -809,6 +845,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Dooro isha qaabka liiska daarista ee EPG iyo astaamaha",
     "Select Stalker portal": "Dooro bogga adeegga Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Dir codsi",
     "Send settings": "Dir dejinta",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -890,10 +930,12 @@ var keyStrings = {
     "Starting...": "Waxaa la bilaabayaa…",
     Status: "Xaaladda",
     Stop: "Jooji",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Jooji ururinta hadda socota",
     "Stop diagnostics": "Jooji baaritaanka cilladaha",
     "Stop playback and return to live":
         "Jooji daarista oo ku noqo baahinta tooska ah",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Baahinta waa la daari waayey",
     "Stream type: %1": "Nooca baahinta: %1",
     "String for search": "Ereyga raadinta",
@@ -913,11 +955,15 @@ var keyStrings = {
     "Tabox settings": "Dejinta Tabox",
     "Text is too long for remote input.":
         "Qoraalku aad buu ugu dheer yahay gelinta fog.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL-ka raadinta seerfarka amarradu sax ma aha.",
     "The device ID in the address is invalid.":
         "Aqoonsiga qalabka ee cinwaanka ku jira sax ma aha.",
     "The discovery response is invalid.": "Jawaabta raadintu sax ma aha.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Biraawsarkani si sugan iskuma lammaanayn karo. Cusboonaysii ama gacanta ku geli dejinta seerfarka amarrada.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

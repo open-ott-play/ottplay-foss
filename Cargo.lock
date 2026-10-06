@@ -3290,18 +3290,25 @@ version = "1.1.53"
 dependencies = [
  "anyhow",
  "axum",
+ "base64 0.22.1",
+ "block2",
  "chrono",
  "dispatch2",
  "futures-util",
  "hyper",
  "hyper-util",
  "md5",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-web-kit",
  "ottplay-core",
  "raw-window-handle",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
  "souvlaki",
+ "sys-locale",
  "tauri",
  "tauri-build",
  "tauri-plugin-updater",
@@ -4868,6 +4875,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "sys-locale"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eab9a99a024a169fe8a903cf9d4a3b3601109bcc13bd9e3c6fff259138626c4"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

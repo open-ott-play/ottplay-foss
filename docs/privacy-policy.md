@@ -1,6 +1,6 @@
 # Privacy Policy — OTT-play FOSS
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-10-06
 
 Published by **alvit**. For privacy or support questions, contact [alvit.work@gmail.com](mailto:alvit.work@gmail.com).
 
@@ -25,6 +25,8 @@ Connections use your configured services or the optional hosted Demo described b
 **Local HTTP control.** The Capacitor Android and iOS apps' inbound HTTP command listener is disabled by default. Enabling **Local HTTP remote control** in player Settings creates a random device code required for authenticated command requests on the local device interface. The code persists on this device across normal restarts. Disabling HTTP control revokes access; enabling it again creates a new code. Settings exports do not include the code or consent, and imports cannot grant HTTP access. Command integrations can process playback commands and routing identifiers. If you configure remote command polling, requests go to that configured endpoint.
 
 **Diagnostics and support.** Technical messages may describe playback or connection failures. Optional companion-host debug and feedback functions depend on the host and features you configure. If you share diagnostics, screenshots or settings for support, remove credentials, private URLs and other sensitive information first. GitHub issues are public. In the Android Play distribution, opening About displays local diagnostic information and does not request your public IP address from an external lookup service.
+
+**Remote troubleshooting and screenshots.** Enabling a connection to a command server authorizes that configured controller to diagnose and repair the player and request screenshots on supported platforms. There is no additional screenshot permission switch or ten-minute approval limit, and native support remains authorized after a restart. Disconnecting revokes access; changing the controller invalidates pending work. Screenshots can include player settings, text fields, credentials and other private information. Browsers additionally require their own local source selection, which can include other applications if you choose another window or a display; that browser selection ends on reload or when sharing stops. Transfers require HTTPS except for loopback. Diagnostic collection sessions retain bounded duration and volume. The player and reference controller expire cached screenshot responses within sixty seconds; saved PNG files remain until deleted. Disconnecting cannot retract bytes already delivered or delete another party's saved images. See [remote screenshot controls and platform support](remote-command-server.md#remote-screenshots).
 
 There is no baked-in analytics, advertising, crash-reporting or tracking SDK deliberately configured in this client. Network requests still disclose connection information to the receiving service. Store Data safety declarations must reflect the actual distribution and hosting arrangements; the absence of analytics does not mean that no data is transmitted.
 

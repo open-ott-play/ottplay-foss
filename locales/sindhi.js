@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv جون سيٽنگون",
     "Allow diagnostics for 10 minutes": "10 منٽن لاءِ تشخيص جي اجازت ڏيو",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "هن سرور کي تشخيصي ڳڻپون گڏ ڪرڻ ۽ هن اسٽريم يا پليئر کي ٻيهر شروع ڪرڻ جي اجازت ڏيو. عارضي رسائي 10 منٽ رهي ٿي. ڀروسي واري مدد ٻيهر ڳنڍڻ يا شروع ڪرڻ کان پوءِ به موجود رهي ٿي؛ هر ڊيٽا گڏ ڪرڻ جو مدو 10 منٽن کان پوءِ ختم ٿئي ٿو. صفحو لڪل يا آف لائن هجي ته گڏ ڪرڻ رڪجي ٿو.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "هن سرور کي سامهون کليل صفحي جي هن سيشن لاءِ پلي بيڪ، نيٽ ورڪ ۽ ان پٽ جون ڳڻپون گڏ ڪرڻ جي اجازت ڏيو. HTTPS ۽ سرور جي اجازت گهربل آهي. 10 منٽن کان پوءِ، صفحو لڪل هجي يا رابطو ٽٽي ته روڪي ٿو.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "هن ڊوائيس ID کي اجازت ڏنل فهرست ۾ شامل ڪريو",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS پليئر HTTP EPG ذريعو ڊائون لوڊ نٿو ڪري سگهي. HTTPS ذريعو استعمال ڪريو.",
@@ -245,11 +250,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "سيٽنگون -> فراهم ڪندڙ جون سيٽنگون ۾ Шаравоз ترتيب ڏيو",
     Connect: "ڳنڍيو",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "پهريان هن پليئر کي حڪم سرور سان ڳنڍيو.",
     Connected: "ڳنڍيل",
     "Connected. Waiting for the channel list...":
         "ڳنڍيل. چينل فهرست جو انتظار...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "هن صفحي لاءِ پري کان تشخيص ڳنڍجي رهي آهي.",
     "Connecting to Plex…": "Plex سان ڳنڍجي رهيو آهي…",
@@ -705,7 +720,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ريموٽ (رنگين بٽڻن کان سواءِ)",
     "Remote (number buttons N/A)": "ريموٽ (انگن وارن بٽڻن کان سواءِ)",
     "Remote control": "ريموٽ ڪنٽرول",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "پري کان تشخيص",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "پري کان تشخيص هن صفحي لاءِ ڊيٽا گڏ ڪري رهي آهي.",
     "Remote diagnostics is off.": "پري کان تشخيص بند آهي.",
@@ -719,6 +742,10 @@ var keyStrings = {
         "پري کان ان پٽ جو مدو ختم ٿيو. ٻيهر ڪوشش لاءِ نئون سيشن کوليو.",
     "Remote input session is unavailable. Open a new session to try again.":
         "پري کان ان پٽ سيشن موجود ناهي. ٻيهر ڪوشش لاءِ نئون سيشن کوليو.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "ريموٽ سيشن جو مدو ختم ٿيو",
     "Remote text entry": "پري کان متن داخل ڪرڻ",
     "Remote text entry denied": "پري کان متن داخل ڪرڻ رد ٿيو",
@@ -765,6 +792,15 @@ var keyStrings = {
     "Save settings to storage": "سيٽنگون اسٽوريج ۾ محفوظ ڪريو",
     "Scan this QR code with your phone to enter text.":
         "متن داخل ڪرڻ لاءِ پنهنجي فون سان هي QR ڪوڊ اسڪين ڪريو.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "فلمي اسڪرپٽ",
     Search: "ڳوليو",
     "Search programme": "پروگرام ڳوليو",
@@ -783,6 +819,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ۽ لوگو لاءِ پلي لسٽ نموني جو ذريعو چونڊيو",
     "Select Stalker portal": "Stalker پورٽل چونڊيو",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "درخواست موڪليو",
     "Send settings": "سيٽنگون موڪليو",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -863,9 +903,11 @@ var keyStrings = {
     "Starting...": "شروع ٿي رهيو آهي…",
     Status: "حالت",
     Stop: "روڪيو",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "هاڻوڪو ڊيٽا گڏ ڪرڻ روڪيو",
     "Stop diagnostics": "تشخيص روڪيو",
     "Stop playback and return to live": "پلي بيڪ روڪي سڌي نشريات ڏانهن موٽو",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "اسٽريم هلائي نه سگهيو",
     "Stream type: %1": "اسٽريم جو قسم: %1",
     "String for search": "ڳولا جو متن",
@@ -885,10 +927,14 @@ var keyStrings = {
     "Tabox settings": "Tabox جون سيٽنگون",
     "Text is too long for remote input.":
         "پري کان ان پٽ لاءِ متن تمام ڊگهو آهي.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "حڪم سرور ڳولڻ جو URL صحيح ناهي.",
     "The device ID in the address is invalid.": "پتي ۾ ڊوائيس ID صحيح ناهي.",
     "The discovery response is invalid.": "ڳولا جو جواب صحيح ناهي.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "هي برائوزر محفوظ نموني پاڻمرادو جوڙي نٿو سگهي. ان کي اپڊيٽ ڪريو يا حڪم سرور جون سيٽنگون هٿ سان داخل ڪريو.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

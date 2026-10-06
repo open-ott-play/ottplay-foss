@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Allow diagnostics for 10 minutes": "10 ನಿಮಿಷಗಳ ಕಾಲ ರೋಗನಿರ್ಣಯವನ್ನು ಅನುಮತಿಸಿ",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಕೌಂಟರ್‌ಗಳನ್ನು ಸಂಗ್ರಹಿಸಲು ಮತ್ತು ಈ ಸ್ಟ್ರೀಮ್ ಅಥವಾ ಪ್ಲೇಯರ್ ಅನ್ನು ಮರುಪ್ರಾರಂಭಿಸಲು ಈ ಸರ್ವರ್ ಅನ್ನು ಅನುಮತಿಸಿ. ತಾತ್ಕಾಲಿಕ ಪ್ರವೇಶವು 10 ನಿಮಿಷಗಳವರೆಗೆ ಇರುತ್ತದೆ. ಮರುಸಂಪರ್ಕಿಸಿದ ನಂತರ ಅಥವಾ ಮರುಪ್ರಾರಂಭಿಸಿದ ನಂತರ ವಿಶ್ವಾಸಾರ್ಹ ಬೆಂಬಲ ಲಭ್ಯವಿರುತ್ತದೆ; ಪ್ರತಿ ಕ್ಯಾಪ್ಚರ್ ಇನ್ನೂ 10 ನಿಮಿಷಗಳ ನಂತರ ಮುಕ್ತಾಯಗೊಳ್ಳುತ್ತದೆ. ಮರೆಮಾಡಿದಾಗ ಅಥವಾ ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿ ಸಂಗ್ರಹಣೆಯು ವಿರಾಮಗೊಳ್ಳುತ್ತದೆ.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ಈ ಮುಂಭಾಗದ ಸೆಶನ್‌ಗಾಗಿ ಪ್ಲೇಬ್ಯಾಕ್, ನೆಟ್‌ವರ್ಕ್ ಮತ್ತು ಇನ್‌ಪುಟ್ ಕೌಂಟರ್‌ಗಳನ್ನು ಸಂಗ್ರಹಿಸಲು ಈ ಸರ್ವರ್ ಅನ್ನು ಅನುಮತಿಸಿ. HTTPS ಮತ್ತು ಸರ್ವರ್ ಅನುಮತಿಯ ಅಗತ್ಯವಿದೆ. 10 ನಿಮಿಷಗಳ ನಂತರ, ಮರೆಮಾಡಿದಾಗ ಅಥವಾ ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಾಗ ನಿಲ್ಲುತ್ತದೆ.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ಈ ಸಾಧನವನ್ನು ಅನುಮತಿಸಿ ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ಪ್ಲೇಯರ್ HTTP EPG ಮೂಲವನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. HTTPS ಮೂಲವನ್ನು ಬಳಸಿ.",
@@ -244,11 +249,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "ಸೆಟ್ಟಿಂಗ್‌ಗಳು -> ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ Шаравоз ಅನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಿ",
     Connect: "ಸಂಪರ್ಕಿಸಿ",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ಈ ಪ್ಲೇಯರ್ ಅನ್ನು ಮೊದಲು ಕಮಾಂಡ್ ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.",
     Connected: "ಸಂಪರ್ಕಗೊಂಡಿದೆ",
     "Connected. Waiting for the channel list...":
         "ಸಂಪರ್ಕಗೊಂಡಿದೆ. ಚಾನಲ್ ಪಟ್ಟಿಗಾಗಿ ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ಈ ಪುಟಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.",
     "Connecting to Plex…": "Plex ಗೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…",
@@ -700,7 +715,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ರಿಮೋಟ್ (ಬಣ್ಣದ ಬಟನ್‌ಗಳಿಲ್ಲ)",
     "Remote (number buttons N/A)": "ರಿಮೋಟ್ (ಸಂಖ್ಯೆಯ ಬಟನ್‌ಗಳಿಲ್ಲ)",
     "Remote control": "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ಈ ಪುಟಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಸಂಗ್ರಹಿಸುತ್ತಿದೆ.",
     "Remote diagnostics is off.": "ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಆಫ್ ಆಗಿದೆ.",
@@ -714,6 +737,10 @@ var keyStrings = {
         "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಅವಧಿ ಮೀರಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಸೆಷನ್ ಲಭ್ಯವಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "ರಿಮೋಟ್ ಸೆಷನ್ ಅವಧಿ ಮುಗಿದಿದೆ",
     "Remote text entry": "ರಿಮೋಟ್ ಪಠ್ಯ ನಮೂದು",
     "Remote text entry denied": "ರಿಮೋಟ್ ಪಠ್ಯ ಪ್ರವೇಶವನ್ನು ನಿರಾಕರಿಸಲಾಗಿದೆ",
@@ -759,6 +786,15 @@ var keyStrings = {
     "Save settings to storage": "ಸಂಗ್ರಹಣೆಗೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಿ",
     "Scan this QR code with your phone to enter text.":
         "ಪಠ್ಯವನ್ನು ನಮೂದಿಸಲು ನಿಮ್ಮ ಫೋನ್‌ನೊಂದಿಗೆ ಈ QR ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "ಚಿತ್ರಕಥೆ",
     Search: "ಹುಡುಕಾಟ",
     "Search programme": "ಕಾರ್ಯಕ್ರಮ ಹುಡುಕಿ",
@@ -777,6 +813,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ಮತ್ತು ಲೋಗೋಗಳಿಗಾಗಿ ಪ್ಲೇಪಟ್ಟಿ ಟೆಂಪ್ಲೇಟ್ ಮೂಲವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Select Stalker portal": "Stalker ಪೋರ್ಟಲ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ವಿನಂತಿಯನ್ನು ಕಳುಹಿಸಿ",
     "Send settings": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಕಳುಹಿಸಿ",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -857,9 +897,11 @@ var keyStrings = {
     "Starting...": "ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…",
     Status: "ಸ್ಥಿತಿ",
     Stop: "ನಿಲ್ಲಿಸಿ",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "ಪ್ರಸ್ತುತ ಕ್ಯಾಪ್ಚರ್ ಅನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stop diagnostics": "ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ನಿಲ್ಲಿಸಿ",
     "Stop playback and return to live": "ಪ್ಲೇಬ್ಯಾಕ್ ನಿಲ್ಲಿಸಿ ಮತ್ತು ಲೈವ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ",
     "Stream type: %1": "ಸ್ಟ್ರೀಮ್ ಪ್ರಕಾರ: %1",
     "String for search": "ಹುಡುಕಾಟ ಪ್ರಶ್ನೆ",
@@ -878,11 +920,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Text is too long for remote input.": "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್‌ಗಾಗಿ ಪಠ್ಯವು ತುಂಬಾ ಉದ್ದವಾಗಿದೆ.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "ಕಮಾಂಡ್ ಸರ್ವರ್ ಡಿಸ್ಕವರಿ URL ಅಮಾನ್ಯವಾಗಿದೆ.",
     "The device ID in the address is invalid.":
         "ವಿಳಾಸದಲ್ಲಿರುವ ID ಸಾಧನವು ಅಮಾನ್ಯವಾಗಿದೆ.",
     "The discovery response is invalid.": "ಅನ್ವೇಷಣೆಯ ಪ್ರತಿಕ್ರಿಯೆಯು ಅಮಾನ್ಯವಾಗಿದೆ.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ಈ ಬ್ರೌಸರ್ ಸುರಕ್ಷಿತವಾಗಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಜೋಡಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ಅದನ್ನು ನವೀಕರಿಸಿ ಅಥವಾ ಕಮಾಂಡ್ ಸರ್ವರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಹಸ್ತಚಾಲಿತವಾಗಿ ನಮೂದಿಸಿ.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

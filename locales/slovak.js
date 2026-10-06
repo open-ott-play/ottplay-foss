@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv nastavenia",
     "Allow diagnostics for 10 minutes": "Nechajte diagnostiku 10 minút",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Povoliť tomuto serveru zhromažďovať diagnostické počítadlá a reštartovať tento stream alebo prehrávač médií. Dočasný prístup trvá 10 minút. Dôveryhodná podpora zostáva dostupná aj po opätovnom pripojení alebo reštartovaní; platnosť každého záberu stále vyprší po 10 minútach. Zbierka sa pozastaví, keď je skrytá alebo offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Povoliť tomuto serveru zhromažďovať počítadlá prehrávania, siete a vstupov pre túto reláciu v popredí. Vyžaduje HTTPS a povolenie servera. Zastaví sa po 10 minútach, keď je skrytý alebo keď je odpojený.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Pridať ID tohto zariadenia do zoznamu povolených",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Nakonfigurujte Шаравоз v Nastaveniach -> Nastavenia poskytovateľa",
     Connect: "Pripojte sa",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Najprv pripojte tento prehrávač médií k príkazovému serveru.",
     Connected: "Pripojené",
     "Connected. Waiting for the channel list...":
         "Pripojené. Čaká sa na zoznam kanálov...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Pripája sa vzdialená diagnostika pre túto stránku.",
     "Connecting to Plex…": "Pripája sa k Plex…",
@@ -727,7 +742,15 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Diaľkové ovládanie (bez číselných tlačidiel)",
     "Remote control": "Diaľkové ovládanie",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Diaľková diagnostika",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Pre túto stránku sa zhromažďuje vzdialená diagnostika.",
     "Remote diagnostics is off.": "Diaľková diagnostika je vypnutá.",
@@ -741,6 +764,10 @@ var keyStrings = {
         "Platnosť vzdialeného vstupu vypršala. Otvorte novú reláciu a skúste to znova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Relácia vzdialeného vstupu je nedostupná. Otvorte novú reláciu a skúste to znova.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Platnosť vzdialenej relácie vypršala",
     "Remote text entry": "Vzdialené zadávanie textu",
     "Remote text entry denied": "Vzdialené zadávanie textu bolo odmietnuté",
@@ -788,6 +815,15 @@ var keyStrings = {
     "Save settings to storage": "Uložte nastavenia do úložiska",
     "Scan this QR code with your phone to enter text.":
         "Naskenujte tento QR kód pomocou telefónu a zadajte text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Scenár",
     Search: "Hľadať",
     "Search programme": "Vyhľadať reláciu",
@@ -806,6 +842,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Vyberte zdroj šablóny zoznamu videí pre EPG a logá",
     "Select Stalker portal": "Vyberte Stalker portál",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Odoslať žiadosť",
     "Send settings": "Odoslať nastavenia",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -888,10 +928,12 @@ var keyStrings = {
     "Starting...": "Začína sa…",
     Status: "Stav",
     Stop: "Zastaviť",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Zastaviť aktuálne snímanie",
     "Stop diagnostics": "Zastavte diagnostiku",
     "Stop playback and return to live":
         "Zastaviť prehrávanie a vrátiť sa k živému vysielaniu",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Stream sa nepodarilo prehrať",
     "Stream type: %1": "Typ streamu: %1",
     "String for search": "Vyhľadávací dopyt",
@@ -911,11 +953,15 @@ var keyStrings = {
     "Tabox settings": "Tabox nastavenia",
     "Text is too long for remote input.":
         "Text je príliš dlhý na diaľkový vstup.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Zistenie príkazového servera URL je neplatné.",
     "The device ID in the address is invalid.":
         "Zariadenie ID v adrese je neplatné.",
     "The discovery response is invalid.": "Odpoveď na zistenie je neplatná.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tento prehliadač sa nemôže bezpečne automaticky spárovať. Aktualizujte ho alebo zadajte nastavenia príkazového servera manuálne.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

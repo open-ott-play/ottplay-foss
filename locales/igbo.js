@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Ntọala All4you.tv",
     "Allow diagnostics for 10 minutes":
         "Kwe ka nchọpụta nsogbu rụọ ọrụ nkeji 10",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Kwe ka sava a chịkọta ọnụ ọgụgụ nchọpụta nsogbu ma malitegharịa iyi a ma ọ bụ ihe ọkpụkpọ. Nnweta nwa oge na-adị nkeji 10. Nkwado a tụkwasịrị obi ka dị mgbe ejikọrọ ọzọ ma ọ bụ malitegharịa; nchịkọta ọ bụla ka na-agwụ mgbe nkeji 10 gachara. Nchịkọta na-akwụsị mgbe e zoro ngwa ahụ ma ọ bụ mgbe enweghị njikọ.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Kwe ka sava a chịkọta ọnụ ọgụgụ ọkpụkpọ, netwọk na ntinye maka oge a ngwa dị n'ihu. Achọrọ HTTPS na ikike sava. Ọ na-akwụsị mgbe nkeji 10 gachara, mgbe e zoro ya ma ọ bụ mgbe njikọ kwụsịrị.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Tinye ID ngwaọrụ a na ndepụta ndị a kwadoro",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Ihe ọkpụkpọ HTTPS enweghị ike ibudata isi iyi EPG HTTP. Jiri isi iyi HTTPS.",
@@ -247,11 +252,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Hazie Шаравоз na Ntọala -> Ntọala onye na-eweta ọrụ",
     Connect: "Jikọọ",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Buru ụzọ jikọọ ihe ọkpụkpọ a na sava iwu.",
     Connected: "Ejikọrọ",
     "Connected. Waiting for the channel list...":
         "Ejikọrọ. Ana eche ndepụta ọwa…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Ana ejikọ nchọpụta nsogbu dị anya maka ibe a.",
     "Connecting to Plex…": "Ana ejikọ na Plex…",
@@ -709,7 +724,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Njikwa dị anya (enweghị bọtịnụ agba)",
     "Remote (number buttons N/A)": "Njikwa dị anya (enweghị bọtịnụ nọmba)",
     "Remote control": "Njikwa dị anya",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Nchọpụta nsogbu dị anya",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Nchọpụta nsogbu dị anya na-achịkọta data maka ibe a.",
     "Remote diagnostics is off.": "Nchọpụta nsogbu dị anya gbanyụrụ.",
@@ -723,6 +746,10 @@ var keyStrings = {
         "Oge ntinye dị anya agwụla. Mepee nnọkọ ọhụrụ ka ị nwaa ọzọ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Nnọkọ ntinye dị anya adịghị. Mepee nnọkọ ọhụrụ ka ị nwaa ọzọ.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Oge nnọkọ dị anya agwụla",
     "Remote text entry": "Ntinye ederede dị anya",
     "Remote text entry denied": "Ajụrụ ntinye ederede dị anya",
@@ -768,6 +795,15 @@ var keyStrings = {
     "Save settings to storage": "Chekwaa ntọala na nchekwa",
     "Scan this QR code with your phone to enter text.":
         "Nyochaa koodu QR a na ekwentị gị ka ị tinye ederede.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Edemede ihe nkiri",
     Search: "Chọọ",
     "Search programme": "Chọọ mmemme",
@@ -786,6 +822,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Họrọ isi iyi ndebiri ndepụta ọkpụkpọ maka EPG na akara ngosi",
     "Select Stalker portal": "Họrọ ọdụ Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Zipụ arịrịọ",
     "Send settings": "Zipụ ntọala",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -867,10 +907,12 @@ var keyStrings = {
     "Starting...": "Ana amalite…",
     Status: "Ọnọdụ",
     Stop: "Kwụsị",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Kwụsị nchịkọta ugbu a",
     "Stop diagnostics": "Kwụsị nchọpụta nsogbu",
     "Stop playback and return to live":
         "Kwụsị ọkpụkpọ ma laghachi na mgbasa ozugbo",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Enweghị ike ịkpọ iyi",
     "Stream type: %1": "Ụdị iyi: %1",
     "String for search": "Ajụjụ ọchụchọ",
@@ -890,11 +932,15 @@ var keyStrings = {
     "Tabox settings": "Ntọala Tabox",
     "Text is too long for remote input.":
         "Ederede toro oke maka ntinye dị anya.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL ọchụchọ sava iwu ezighi ezi.",
     "The device ID in the address is invalid.":
         "ID ngwaọrụ n'adreesị ezighi ezi.",
     "The discovery response is invalid.": "Nzaghachi ọchụchọ ezighi ezi.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ihe nchọgharị a enweghị ike ijikọ ngwaọrụ na akpaaka n'ụzọ echekwara. Melite ya ma ọ bụ tinye ntọala sava iwu n'aka.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -46,6 +46,7 @@ function boot(options = {}) {
     const requests = [];
     const styles = [];
     const storage = options.storage || {};
+    const storageWrites = [];
     const elements = {};
     const stoppedTimers = [];
     const timers = new Map();
@@ -210,6 +211,7 @@ function boot(options = {}) {
                 return storage[key] || null;
             },
             setItem(key, value) {
+                storageWrites.push([key, value]);
                 if (options.storageError === "write")
                     throw new Error("QuotaExceededError");
                 storage[key] = value;
@@ -237,7 +239,14 @@ function boot(options = {}) {
     });
     context.window = context;
     context.self = context;
-    Object.assign(context, options.globals || {});
+    Object.defineProperties(
+        context,
+        Object.getOwnPropertyDescriptors(options.globals || {})
+    );
+    Object.defineProperties(
+        context.navigator,
+        Object.getOwnPropertyDescriptors(options.navigator || {})
+    );
     const blobURLApi = {
         createObjectURL() {
             assert.equal(this.marker, "native-blob-provider");
@@ -360,6 +369,7 @@ function boot(options = {}) {
         requests,
         stoppedTimers,
         storage,
+        storageWrites,
         styles,
     };
 }
@@ -682,6 +692,12 @@ for (const [code, asset] of Object.entries(languageAssets)) {
         result.elements["boot-status"].textContent,
         dictionary["Starting..."]
     );
+    assert.equal(result.context.__ottBootLanguage.code, code);
+    assert.equal(result.context.__ottBootLanguage.automatic, false);
+    assert.equal(
+        result.context.__ottBootLanguage.dictionary,
+        result.context.keyStrings
+    );
     assert.deepEqual(
         result.messages
             .filter((entry) => entry.id === "boot-status")
@@ -752,6 +768,333 @@ assert.equal(
     laterDictionary,
     "Late bootstrap locale cannot replace the player's newer dictionary"
 );
+assert.equal(missingLocale.context.__ottBootLanguage, undefined);
+assert.equal(stalledLocale.context.__ottBootLanguage, undefined);
+
+// Exercise the production detector and the real dictionaries, without Intl or
+// modern runtime helpers. The pinned CLDR fixture is independent of its maps.
+const startupLocales = JSON.parse(
+    fs.readFileSync(
+        path.join(__dirname, "fixtures/startup-locales.json"),
+        "utf8"
+    )
+);
+assert.deepEqual(
+    Object.values(startupLocales.languages)
+        .map((entry) => entry.code)
+        .sort(),
+    Object.keys(languageAssets).sort(),
+    "Automatic detection covers every shipped interface language"
+);
+const profiles = [
+    {},
+    { __ottNativeRuntime: true, __TAURI__: {} },
+    { __ottNativeRuntime: true, Capacitor: {} },
+];
+function detectedLanguage(options, code, automatic = true) {
+    const result = boot(options);
+    const languageRequests = result.requests.filter((url) =>
+        new URL(url).pathname.startsWith("/locales/")
+    );
+    assert.deepEqual(
+        languageRequests.map((url) => new URL(url).pathname),
+        [languageAssets[code]],
+        "Only the selected canonical dictionary loads: " + code
+    );
+    const selected = result.context.__ottBootLanguage;
+    assert.equal(selected.code, code);
+    assert.equal(selected.automatic, automatic);
+    assert.equal(selected.dictionary, result.context.keyStrings);
+    assert.equal(selected.dictionary, result.context.__ottBootDictionary);
+    assert.equal(
+        result.elements["boot-status"].textContent,
+        readDictionary(path.join(__dirname, "..", languageAssets[code]))[
+            options.polyfillsFailure
+                ? "Compatibility runtime could not load. Reopen the player to retry."
+                : "Starting..."
+        ]
+    );
+    assert.deepEqual(
+        result.storageWrites.filter(([key]) => key === "ottplaylang"),
+        [],
+        "Early preloading never commits a language preference"
+    );
+    if (automatic) assert.equal(result.storage.ottplaylang || "", "");
+    return result;
+}
+function undetectedLanguage(options) {
+    const result = boot(options);
+    assert.equal(result.context.__ottBootLanguage, undefined);
+    assert(
+        !result.requests.some((url) =>
+            new URL(url).pathname.startsWith("/locales/")
+        ),
+        "Unsupported preferences stay unselected instead of loading English"
+    );
+    assert.deepEqual(
+        result.storageWrites.filter(([key]) => key === "ottplaylang"),
+        []
+    );
+    return result;
+}
+for (const globals of profiles) {
+    for (const [tag, { code, script }] of Object.entries(
+        startupLocales.languages
+    )) {
+        for (const language of [
+            tag,
+            tag + "-001",
+            tag.toUpperCase() + "_" + script + "_001",
+        ])
+            detectedLanguage(
+                { globals, navigator: { languages: [language] } },
+                code
+            );
+    }
+    detectedLanguage(
+        { globals, navigator: { languages: ["zz-ZZ", "pt-BR", "ru-RU"] } },
+        "_por"
+    );
+    detectedLanguage(
+        {
+            globals: { ...globals, __ottPreferredLanguages: ["en-US"] },
+            navigator: { languages: ["fr-FR"] },
+            storage: { ottplaylang: "_rus" },
+        },
+        "_rus",
+        false
+    );
+    detectedLanguage(
+        {
+            globals: {
+                ...globals,
+                __ottPreferredLanguages: ["ckb-IQ", "ru-RU", "fr-FR"],
+            },
+            navigator: { languages: ["en-US"] },
+        },
+        "_rus"
+    );
+    undetectedLanguage({
+        globals,
+        navigator: { language: "en-US", languages: ["ckb-IQ", "nn-NO"] },
+    });
+    undetectedLanguage({
+        globals: { ...globals, __ottPreferredLanguages: ["ckb-IQ", "nn-NO"] },
+        navigator: { language: "en-US", languages: ["en-US"] },
+    });
+}
+for (const [tag, regionalScript] of Object.entries(
+    startupLocales.regionalScripts
+)) {
+    const [base] = tag.split("-");
+    const { code, script } = startupLocales.languages[base];
+    assert.notEqual(regionalScript, script.toLowerCase());
+    undetectedLanguage({ navigator: { language: "en-US", languages: [tag] } });
+    detectedLanguage(
+        {
+            navigator: {
+                languages: [base + "-" + script + "-" + tag.split("-")[1]],
+            },
+        },
+        code
+    );
+}
+for (const language of [
+    "zh-Hant",
+    "zh-TW",
+    "pa-Arab",
+    "pa-PK",
+    "sr-Latn",
+    "uz-Cyrl",
+    "ckb",
+    "nn",
+])
+    undetectedLanguage({
+        navigator: { language: "en-US", languages: [language] },
+    });
+for (const [language, code] of Object.entries({
+    in: "_ind",
+    iw: "_heb",
+    kmr: "_kur",
+    mo: "_rou",
+    nb: "_nor",
+    tl: "_fil",
+}))
+    detectedLanguage({ navigator: { languages: [language] } }, code);
+detectedLanguage({ navigator: { languages: ["ru-RU-u-nu-latn"] } }, "_rus");
+undetectedLanguage({
+    navigator: { language: "zh", languages: ["zh-TW-u-ca-chinese"] },
+});
+
+// Only a nonempty array is authoritative; older devices may expose only one
+// legacy property. An unsupported preferred list must not silently use English.
+for (const languages of [
+    undefined,
+    null,
+    [],
+    "fr-FR",
+    { 0: "fr-FR", length: 1 },
+])
+    detectedLanguage({ navigator: { language: "RU_ru", languages } }, "_rus");
+detectedLanguage(
+    {
+        navigator: {
+            browserLanguage: "fr-FR",
+            language: "zz",
+            userLanguage: "uk-UA",
+        },
+    },
+    "_ukr"
+);
+detectedLanguage(
+    {
+        navigator: {
+            browserLanguage: "fr-FR",
+            language: "zz",
+            userLanguage: "zz",
+        },
+    },
+    "_fra"
+);
+detectedLanguage(
+    { navigator: { language: "ru-RU", languages: ["fr-FR"] } },
+    "_fra"
+);
+for (const preferred of [
+    undefined,
+    null,
+    [],
+    "fr-FR",
+    { 0: "fr-FR", length: 1 },
+])
+    detectedLanguage(
+        {
+            globals: { __ottPreferredLanguages: preferred },
+            navigator: { languages: ["ru-RU"] },
+        },
+        "_rus"
+    );
+undetectedLanguage({});
+undetectedLanguage({
+    navigator: {
+        languages: [
+            "constructor",
+            "__proto__",
+            "../../private",
+            "en/US",
+            "en--US",
+            "",
+            42,
+            {},
+            null,
+        ],
+    },
+});
+detectedLanguage({ navigator: { languages: [null, 42, {}, "ru-RU"] } }, "_rus");
+detectedLanguage(
+    {
+        globals: {
+            get __ottPreferredLanguages() {
+                throw new Error("Unavailable native preferences");
+            },
+        },
+        navigator: {
+            language: "ru-RU",
+            get languages() {
+                throw new Error("Unavailable language list");
+            },
+        },
+    },
+    "_rus"
+);
+detectedLanguage(
+    {
+        navigator: {
+            browserLanguage: "fr-FR",
+            get language() {
+                throw new Error("Unavailable language");
+            },
+            get userLanguage() {
+                throw new Error("Unavailable user language");
+            },
+        },
+    },
+    "_fra"
+);
+
+for (const storageError of ["access", "read"])
+    detectedLanguage(
+        {
+            cookie: "ottplaylang=_rus",
+            navigator: { languages: ["fr-FR"] },
+            storageError,
+        },
+        "_rus",
+        false
+    );
+detectedLanguage(
+    { cookie: "ottplaylang=_rus", navigator: { languages: ["fr-FR"] } },
+    "_fra"
+);
+detectedLanguage(
+    {
+        cookie: "ottplaylang=%E0%A4%A",
+        navigator: { languages: ["fr-FR"] },
+        storageError: "read",
+    },
+    "_fra"
+);
+detectedLanguage(
+    { navigator: { languages: ["fr-FR"] }, storageError: "write" },
+    "_fra"
+);
+for (const code of [
+    "constructor",
+    "__proto__",
+    "../../private",
+    "_not_a_language",
+])
+    undetectedLanguage({
+        navigator: { languages: ["en-US"] },
+        storage: { ottplaylang: code },
+    });
+
+for (const globals of profiles) {
+    detectedLanguage(
+        {
+            globals,
+            navigator: { languages: ["ru-RU"] },
+            polyfillsFailure: "network",
+        },
+        "_rus"
+    );
+    for (const options of [
+        { languageFailure: true },
+        { stalledLanguage: true },
+    ]) {
+        const result = boot({
+            ...options,
+            globals,
+            navigator: { languages: ["ru-RU"] },
+        });
+        assert.equal(result.context.__ottBootLanguage, undefined);
+        assert.equal(result.storage.ottplaylang, undefined);
+        assert.deepEqual(
+            result.storageWrites.filter(([key]) => key === "ottplaylang"),
+            []
+        );
+        if (options.stalledLanguage) {
+            const committed = { "Starting...": "Démarrage…" };
+            result.context.keyStrings = result.context.__ottBootDictionary =
+                committed;
+            result.storage.ottplaylang = "_fra";
+            result.finishLanguage();
+            assert.equal(result.context.keyStrings, committed);
+            assert.equal(result.context.__ottBootLanguage, undefined);
+            assert.equal(result.storage.ottplaylang, "_fra");
+        }
+    }
+}
 console.log(
-    "OK: all 28 boot locales, native/runtime failures, cookie fallback and safe timeout settlement"
+    "OK: all 88 boot locales, first-run language/script matching, preference precedence, native/runtime failures, cookie fallback and safe timeout settlement"
 );

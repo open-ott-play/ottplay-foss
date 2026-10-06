@@ -37,7 +37,7 @@ export interface RemoteDiagnosticsOptions {
         request: CommandServerRequest,
         complete: (response?: CommandServerResponse) => void
     ) => () => void;
-    /** Only the final bounded consent=false poll may bypass an expired local grant. */
+    /** Only the final bounded consent=false poll may retire an inactive runtime. */
     sendRevocation?: RemoteDiagnosticsOptions["send"];
     setTimeout: (callback: () => void, delay: number) => any;
     snapshot: () => any;

@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv सेटिंग्ज",
     "Allow diagnostics for 10 minutes": "10 मिनिटांसाठी निदानास अनुमती द्या",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "या सर्व्हरला डायग्नोस्टिक काउंटर गोळा करण्याची आणि हा प्रवाह किंवा प्लेअर रीस्टार्ट करण्याची अनुमती द्या. तात्पुरता प्रवेश 10 मिनिटे टिकतो. पुन्हा कनेक्ट केल्यानंतर किंवा रीस्टार्ट केल्यानंतर विश्वसनीय समर्थन उपलब्ध राहते; प्रत्येक कॅप्चर अजूनही 10 मिनिटांनंतर कालबाह्य होईल. लपवलेले किंवा ऑफलाइन असताना संकलन थांबते.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "या फोरग्राउंड सत्रासाठी या सर्व्हरला प्लेबॅक, नेटवर्क आणि इनपुट काउंटर गोळा करण्यास अनुमती द्या. HTTPS आणि सर्व्हर परवानगी आवश्यक आहे. 10 मिनिटांनंतर, लपवल्यावर किंवा डिस्कनेक्ट केल्यावर थांबते.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "या डिव्हाइसला परवानगी द्या ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS प्लेअर HTTP EPG स्रोत डाउनलोड करू शकत नाही. HTTPS स्त्रोत वापरा.",
@@ -242,11 +247,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "सेटिंग्ज -> प्रदाता सेटिंग्जमध्ये Шаравоз कॉन्फिगर करा",
     Connect: "कनेक्ट करा",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "हा प्लेअर प्रथम कमांड सर्व्हरशी कनेक्ट करा.",
     Connected: "कनेक्ट केलेले",
     "Connected. Waiting for the channel list...":
         "कनेक्ट केले. चॅनल सूचीची प्रतीक्षा करत आहे...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "या पेजसाठी रिमोट डायग्नोस्टिक्स कनेक्ट करत आहे.",
     "Connecting to Plex…": "Plex शी कनेक्ट करत आहे…",
@@ -698,7 +713,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "रिमोट (कोणतीही रंगाची बटणे नाहीत)",
     "Remote (number buttons N/A)": "रिमोट (नंबर बटणे नाहीत)",
     "Remote control": "रिमोट कंट्रोल",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "रिमोट डायग्नोस्टिक्स",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "या पेजसाठी रिमोट डायग्नोस्टिक्स गोळा करत आहे.",
     "Remote diagnostics is off.": "रिमोट डायग्नोस्टिक्स बंद आहे.",
@@ -712,6 +735,10 @@ var keyStrings = {
         "रिमोट इनपुट कालबाह्य झाले. पुन्हा प्रयत्न करण्यासाठी नवीन सत्र उघडा.",
     "Remote input session is unavailable. Open a new session to try again.":
         "रिमोट इनपुट सत्र अनुपलब्ध आहे. पुन्हा प्रयत्न करण्यासाठी नवीन सत्र उघडा.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "दूरस्थ सत्र कालबाह्य झाले",
     "Remote text entry": "दूरस्थ मजकूर एंट्री",
     "Remote text entry denied": "दूरस्थ मजकूर एंट्री नाकारली",
@@ -757,6 +784,15 @@ var keyStrings = {
     "Save settings to storage": "स्टोरेजमध्ये सेटिंग्ज सेव्ह करा",
     "Scan this QR code with your phone to enter text.":
         "मजकूर एंटर करण्यासाठी हा QR कोड तुमच्या फोनने स्कॅन करा.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "पटकथा",
     Search: "शोधा",
     "Search programme": "कार्यक्रम शोधा",
@@ -775,6 +811,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG आणि लोगोसाठी प्लेलिस्ट टेम्पलेट स्रोत निवडा",
     "Select Stalker portal": "Stalker पोर्टल निवडा",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "विनंती पाठवा",
     "Send settings": "सेटिंग्ज पाठवा",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -856,9 +896,11 @@ var keyStrings = {
     "Starting...": "सुरू करत आहे...",
     Status: "स्थिती",
     Stop: "थांबा",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "वर्तमान कॅप्चर थांबवा",
     "Stop diagnostics": "निदान थांबवा",
     "Stop playback and return to live": "प्लेबॅक थांबवा आणि थेट वर परत या",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "प्रवाह प्ले केला जाऊ शकला नाही",
     "Stream type: %1": "प्रवाह प्रकार: %1",
     "String for search": "शोध क्वेरी",
@@ -877,10 +919,14 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox सेटिंग्ज",
     "Text is too long for remote input.": "दूरस्थ इनपुटसाठी मजकूर खूप मोठा आहे.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "कमांड सर्व्हर शोध URL अवैध आहे.",
     "The device ID in the address is invalid.": "पत्त्यातील ID डिव्हाइस अवैध आहे.",
     "The discovery response is invalid.": "शोध प्रतिसाद अवैध आहे.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "हा ब्राउझर सुरक्षितपणे स्वयंचलितपणे जोडू शकत नाही. ते अद्यतनित करा किंवा कमांड सर्व्हर सेटिंग्ज व्यक्तिचलितपणे प्रविष्ट करा.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -289,6 +289,11 @@ function collectSourceKeys(repository = root) {
                 )
                     collect(node.arguments[1]);
                 if (
+                    relative === "src/plugins/remote-screenshot.ts" &&
+                    method === "failSelection"
+                )
+                    collect(node.arguments[0], true);
+                if (
                     relative.startsWith("src/provider/") &&
                     method === "progress" &&
                     ts.isPropertyAccessExpression(node.expression) &&
@@ -363,15 +368,22 @@ function collectSourceKeys(repository = root) {
                     [
                         "src/plugins/command-server.ts",
                         "src/plugins/control-discovery.ts",
+                        "src/plugins/remote-screenshot.ts",
                     ].includes(relative) &&
-                    id === "message"
+                    (id === "message" ||
+                        (relative === "src/plugins/remote-screenshot.ts" &&
+                            id === "text"))
                 )
                     collect(node.initializer);
             }
             if (
-                relative === "src/index.ts" &&
+                ["src/index.ts", "src/plugins/remote-screenshot.ts"].includes(
+                    relative
+                ) &&
                 ts.isBinaryExpression(node) &&
-                name(node.left) === "message" &&
+                (name(node.left) === "message" ||
+                    (relative === "src/plugins/remote-screenshot.ts" &&
+                        name(node.left) === "text")) &&
                 node.operatorToken.kind === ts.SyntaxKind.EqualsToken
             )
                 collect(node.right);

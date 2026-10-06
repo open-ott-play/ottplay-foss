@@ -249,35 +249,43 @@ function test(name, body) {
     console.log("PASS " + name);
 }
 
-test("off boot is inert and status/subscription are detached", () => {
+test("enabled connection auto-registers without separate permission or collection", () => {
     const h = harness();
-    assert.deepEqual(plain(h.controller.status()), {
-        enabled: false,
-        message: "Remote diagnostics is off.",
-        pending: false,
-        state: "disabled",
-        trusted: false,
-    });
-    assert.equal(h.getConfigCalls, 0);
-    assert.equal(h.clients.length, 0);
-    assert.equal(h.requests.length, 0);
+    assert.equal(
+        h.clients.length,
+        0,
+        "registration waits until settings commit returns"
+    );
+    h.advance(0);
+    assert.equal(h.clients.length, 1);
+    assert.equal(h.controller.status().enabled, true);
+    assert.equal(h.controller.status().trusted, true);
+    assert.equal(h.controller.status().pending, false);
+    assert.match(
+        h.controller.status().message,
+        /Remote control authorizes diagnostics/
+    );
+    assert.equal(h.captures.length, 0);
     assert.equal(h.snapshotCalls, 0);
-    stopped(h);
-    let status;
-    h.controller.subscribe((value) => {
-        status = value;
-        value.enabled = true;
-        value.message = token;
+    assert.equal(h.clients[0].configs[0].token, token);
+    assert.equal(
+        h.clients[0].configs[0].address,
+        "https://control.example/ottplay/api/webhook/commands"
+    );
+    assert.equal(h.controller.status().remainingMs, undefined);
+    h.controller.subscribe((status) => {
+        status.enabled = false;
+        status.message = token;
     });
-    assert.equal(status.enabled, true);
-    assert.equal(h.controller.status().enabled, false);
+    assert.equal(h.controller.status().enabled, true);
+    assert.ok(!JSON.stringify(h.statuses).includes(token));
     h.controller.subscribe(null);
     h.controller.stop();
-    assert.ok(!JSON.stringify(h.statuses).includes(token));
+    stopped(h);
 });
 
-test("invalid configuration and unsupported environment cannot opt in", () => {
-    for (const config of [
+test("disconnected or invalid connection cannot start diagnostics; HTTPS remains required", () => {
+    for (const patch of [
         { enabled: false },
         { token: "short" },
         { address: "http://control.example" },
@@ -285,225 +293,352 @@ test("invalid configuration and unsupported environment cannot opt in", () => {
         { address: "https://control.example?token=secret" },
     ]) {
         const h = harness();
-        Object.assign(h.config, config);
-        h.controller.setEnabled(true);
-        stopped(h);
+        Object.assign(h.config, patch);
+        h.controller.configurationChanged(h.config);
+        h.advance(0);
         assert.equal(h.clients.length, 0);
+        assert.equal(h.controller.status().trusted, false);
         assert.ok(!JSON.stringify(h.statuses).includes("secret"));
+        stopped(h);
     }
     for (const mutate of [
+        (h) => delete h.w.__ottDebug.capture,
+        (h) => delete h.w.__ottDebug.snapshot,
+        (h) => delete h.w.performance,
         (h) => {
-            delete h.w.__ottDebug.capture;
+            h.w.performance.now = () => NaN;
         },
-        (h) => {
-            delete h.w.__ottDebug.snapshot;
-        },
-        (h) => {
-            delete h.w.performance;
-        },
-        (h) => {
-            h.w.document.visibilityState = "hidden";
-        },
-        (h) => {
-            h.w.navigator.onLine = false;
-        },
-        (h) => h.setNow(Number.MAX_SAFE_INTEGER),
     ]) {
         const h = harness();
         mutate(h);
-        h.controller.setEnabled(true);
-        stopped(h);
+        h.advance(0);
         assert.equal(h.clients.length, 0);
+        assert.equal(h.controller.status().state, "unavailable");
+        h.controller.stop();
+        stopped(h);
     }
 });
 
-test("explicit opt-in bounds the grant and cleans capture once", () => {
-    const h = harness();
-    h.controller.setEnabled(true);
-    const current = h.clients[0];
-    assert.equal(
-        current.configs[0].address,
-        "https://control.example/ottplay/api/webhook/commands"
-    );
-    assert.equal(current.configs[0].token, token);
-    assert.equal(h.controller.status().remainingMs, 600000);
-    assert.deepEqual(plain(current.options.capabilities), [
-        "playback",
-        "network",
-    ]);
-    h.controller.setEnabled(true);
-    assert.equal(
-        h.clients.length,
-        1,
-        "a repeated opt-in cannot extend consent"
-    );
-    h.startCapture();
-    current.options.onStatus({
-        message: token,
-        runtimeId: "runtime-1",
-        sessionId: "session-1",
-        state: "active",
-        token,
-    });
-    assert.equal(h.controller.status().state, "active");
-    assert.ok(!JSON.stringify(h.controller.status()).includes(token));
-    h.controller.setEnabled(false);
-    stopped(h);
-    assert.equal(
-        h.releaseCalls,
-        1,
-        "client release and wrapper release are idempotent"
-    );
-    assert.deepEqual(current.stops, ["local_stop"]);
-    const before = h.snapshotCalls;
-    assert.deepEqual(plain(current.options.snapshot()), {});
-    assert.equal(
-        h.snapshotCalls,
-        before,
-        "stale transports cannot observe the logger"
-    );
-    current.options.onStatus({ runtimeId: "stale", state: "active" });
-    assert.equal(h.controller.status().state, "disabled");
-    h.controller.setEnabled(true);
-    const next = h.clients[1].configs[0];
-    for (const key of ["consentEpoch", "instanceId", "bootId"])
-        assert.notEqual(next[key], current.configs[0][key]);
-    h.controller.stop();
+test("legacy permissions, absent storage and storage failures cannot override connection authority", () => {
+    for (const value of [
+        null,
+        {
+            address: "https://old.example",
+            revision: "old",
+            token: "z".repeat(40),
+        },
+    ]) {
+        const store = {
+            available() {
+                assert.fail("legacy availability must not be consulted");
+            },
+            read() {
+                assert.fail("legacy grant or denial must not be read");
+            },
+            subscribe() {
+                assert.fail("legacy notifications cannot control connection");
+            },
+            value,
+            write() {
+                assert.fail("no legacy profile mutation");
+            },
+        };
+        const first = harness(false, store, "webos.1.2.3");
+        first.advance(0);
+        assert.equal(first.controller.status().trusted, true);
+        assert.match(
+            first.clients[0].configs[0].instanceId,
+            /^webos\.1\.2\.3\./
+        );
+        first.advance(600001);
+        assert.equal(
+            first.controller.status().enabled,
+            true,
+            "connection authorization has no ten-minute expiry"
+        );
+        assert.equal(first.captures.length, 0);
+        const reopened = harness(false, store);
+        reopened.advance(0);
+        assert.equal(
+            reopened.clients.length,
+            1,
+            "reload restores only an idle runtime from connection config"
+        );
+        assert.equal(reopened.captures.length, 0);
+        first.config.enabled = false;
+        first.controller.configurationChanged(first.config);
+        assert.equal(first.controller.status().trusted, false);
+        first.controller.stop();
+        reopened.controller.stop();
+        stopped(first);
+        stopped(reopened);
+    }
 });
 
-test("grant expires at ten minutes and never resumes itself", () => {
-    const h = harness();
-    h.controller.setEnabled(true);
-    h.startCapture();
-    h.advance(599999);
-    assert.equal(h.controller.status().enabled, true);
-    h.advance(1);
-    stopped(h);
-    assert.equal(h.controller.status().state, "regrant-needed");
-    assert.equal(h.clients[0].stops[0], "lease_expired");
-    h.advance(600000);
-    assert.equal(h.clients.length, 1);
-});
-
-test("network boundary rechecks foreground consent and rejects stale responses", () => {
-    const h = harness();
-    h.controller.setEnabled(true);
-    const options = h.clients[0].options;
-    const request = {
-        headers: {},
-        method: "POST",
-        timeoutMs: 4000,
-        url: "https://control.example/diagnostics",
-    };
-    let replies = 0;
-    const cancel = options.send(request, () => replies++);
-    assert.equal(h.requests.length, 1);
-    h.requests[0].complete({ body: "{}", status: 200 });
-    assert.equal(replies, 1);
-    cancel();
-    assert.equal(h.requests[0].canceled, true);
-    h.w.document.visibilityState = "hidden";
-    options.send(request, () => replies++);
-    stopped(h);
-    assert.equal(
-        h.requests.length,
-        1,
-        "no request before visibilitychange has fired"
-    );
-    h.requests[0].complete({ body: "{}", status: 200 });
-    assert.equal(replies, 1);
-    h.w.document.visibilityState = "visible";
-    h.controller.setEnabled(true);
-    options.send(request, () => replies++);
-    assert.equal(
-        h.requests.length,
-        1,
-        "old transport cannot use fresh consent"
-    );
-    h.controller.stop();
-});
-
-test("background, page freeze, navigation and offline revoke consent", () => {
-    for (const type of ["visibilitychange", "freeze", "pagehide", "offline"]) {
+test("local capture stop and legacy setters retain connection authority without reopening capture", () => {
+    for (const method of ["stopSession", "setEnabled", "setTrusted"]) {
         const h = harness();
-        h.controller.setEnabled(true);
-        h.startCapture();
-        if (type === "visibilitychange")
-            h.w.document.visibilityState = "hidden";
-        const target = ["visibilitychange", "freeze"].includes(type)
-            ? h.w.document
-            : h.w;
-        target.dispatch(type);
-        stopped(h, type);
-        h.w.document.visibilityState = "visible";
-        h.w.document.dispatch("visibilitychange");
-        h.w.dispatch("online");
-        assert.equal(h.clients.length, 1);
+        h.advance(0);
+        const current = h.clients[0];
+        const capture = h.startCapture();
+        current.options.onStatus({
+            runtimeId: "rt-1",
+            sessionId: "capture-1",
+            state: "active",
+            token,
+        });
+        assert.equal(h.controller.status().sessionId, "capture-1");
+        h.controller[method](false);
+        assert.equal(capture.active, false);
+        assert.equal(h.releaseCalls, 1);
+        assert.equal(h.controller.status().trusted, true);
+        assert.equal(h.controller.status().sessionId, undefined);
+        h.advance(0);
+        assert.equal(h.clients.length, 2);
+        assert.equal(h.captures.length, 1);
+        assert.equal(h.controller.status().enabled, true);
+        for (const key of ["consentEpoch", "instanceId", "bootId"])
+            assert.notEqual(
+                h.clients[1].configs[0][key],
+                current.configs[0][key]
+            );
+        current.options.onStatus({ sessionId: "stale", state: "active" });
+        assert.equal(h.controller.status().sessionId, undefined);
+        assert.deepEqual(plain(current.options.snapshot()), {});
+        h.controller.stop();
+        stopped(h);
     }
 });
 
-test("config edits revoke immediately and silent edits revoke at next observation", () => {
+test("background diagnostics remains available; OS suspension and offline retire and resume automatically", () => {
+    const background = harness();
+    background.advance(0);
+    background.startCapture();
+    background.w.document.visibilityState = "hidden";
+    background.w.document.hidden = true;
+    background.w.document.dispatch("visibilitychange");
+    background.advance(1000);
+    assert.equal(background.controller.status().enabled, true);
+    assert.equal(background.captures[0].active, true);
+    assert.equal(
+        plain(background.clients[0].options.snapshot()).available,
+        true
+    );
+    background.controller.stop();
+    stopped(background);
+    for (const [event, resume, target] of [
+        ["freeze", "resume", "document"],
+        ["pagehide", "pageshow", "window"],
+        ["offline", "online", "window"],
+    ]) {
+        const h = harness();
+        h.advance(0);
+        const first = h.clients[0];
+        const capture = h.startCapture();
+        if (event === "offline") h.w.navigator.onLine = false;
+        (target === "document" ? h.w.document : h.w).dispatch(event);
+        assert.equal(h.controller.status().enabled, false);
+        assert.equal(h.controller.status().trusted, true);
+        assert.equal(capture.active, false);
+        assert.equal(h.timers.size, 0);
+        h.w.navigator.onLine = true;
+        (target === "document" ? h.w.document : h.w).dispatch(resume);
+        h.advance(0);
+        assert.equal(h.clients.length, 2);
+        assert.equal(h.captures.length, 1);
+        assert.notEqual(
+            first.configs[0].consentEpoch,
+            h.clients[1].configs[0].consentEpoch
+        );
+        first.options.onStatus({ sessionId: "old", state: "active" });
+        assert.equal(h.controller.status().sessionId, undefined);
+        h.controller.stop();
+        stopped(h);
+    }
+});
+
+test("config rotation retires old capture and stale requests before starting new authority", () => {
+    for (const patch of [
+        { address: "https://other.example" },
+        { token: "z".repeat(40) },
+        { enabled: false },
+    ]) {
+        const h = harness();
+        h.advance(0);
+        h.startCapture();
+        const old = h.clients[0];
+        const request = {
+            headers: {},
+            method: "POST",
+            timeoutMs: 4000,
+            url: "https://control.example/diagnostics",
+        };
+        let replies = 0;
+        old.options.send(request, () => replies++);
+        Object.assign(h.config, patch);
+        h.controller.configurationChanged(h.config);
+        assert.equal(h.captures[0].active, false);
+        h.requests[0].complete({ body: "{}", status: 200 });
+        assert.equal(replies, 0);
+        old.options.send(request, () => replies++);
+        assert.equal(h.requests.length, 1);
+        old.options.capture(() => assert.fail("stale events"));
+        assert.deepEqual(plain(old.options.snapshot()), {});
+        h.advance(0);
+        assert.equal(h.clients.length, patch.enabled === false ? 1 : 2);
+        if (patch.enabled !== false)
+            assert.equal(h.clients[1].configs[0].token, h.config.token);
+        h.controller.stop();
+        stopped(h);
+    }
+});
+
+test("silent config change invalidates response, event, repair and timer boundaries", () => {
+    for (const trigger of ["response", "event", "repair", "timer"]) {
+        const h = harness();
+        h.advance(0);
+        const old = h.clients[0];
+        const capture = h.startCapture();
+        let replies = 0;
+        old.options.send(
+            {
+                headers: {},
+                method: "POST",
+                timeoutMs: 4000,
+                url: "https://control.example/diagnostics",
+            },
+            () => replies++
+        );
+        let reloads = 0;
+        let effect;
+        h.w.restart = () => reloads++;
+        old.options.executeRepair(
+            "reload_player",
+            () => {},
+            (fn) => (effect = fn)
+        );
+        h.config.token = "n".repeat(40);
+        if (trigger === "response")
+            h.requests[0].complete({ body: "{}", status: 200 });
+        if (trigger === "event")
+            capture.event({ cat: "video", msg: "playing" });
+        if (trigger === "repair") effect();
+        if (trigger === "timer") h.advance(1000);
+        assert.equal(replies, 0);
+        assert.equal(reloads, 0);
+        assert.equal(capture.active, false);
+        assert.equal(old.events.length, 0);
+        h.advance(0);
+        assert.equal(h.clients.length, 2);
+        assert.equal(h.clients[1].configs[0].token, h.config.token);
+        h.controller.stop();
+        stopped(h);
+    }
+});
+
+test("equivalent config is stable and disconnect cancels a pending startup or reconnect", () => {
     const h = harness();
-    h.controller.setEnabled(true);
+    h.advance(0);
     h.controller.configurationChanged({
         ...h.config,
         address: "https://control.example/ottplay/api/webhook/commands",
     });
-    assert.equal(
-        h.controller.status().enabled,
-        true,
-        "equivalent normalized address retains consent"
-    );
-    h.controller.configurationChanged({ ...h.config, token: "y".repeat(40) });
+    h.advance(0);
+    assert.equal(h.clients.length, 1);
+    h.clients[0].options.onStatus({
+        reason: "disconnected",
+        state: "regrant_required",
+    });
+    assert.equal(h.controller.status().trusted, true);
+    h.advance(999);
+    assert.equal(h.clients.length, 1);
+    h.advance(1);
+    assert.equal(h.clients.length, 2);
+    h.clients[1].options.onStatus({
+        reason: "server_restarted",
+        state: "regrant_required",
+    });
+    h.config.enabled = false;
+    h.controller.configurationChanged(h.config);
+    h.advance(600000);
+    assert.equal(h.clients.length, 2);
     stopped(h);
-    assert.equal(h.clients[0].stops[0], "consent_revoked");
-    h.controller.setEnabled(true);
-    h.config.token = "z".repeat(40);
-    h.advance(1000);
-    stopped(h);
-    h.controller.setEnabled(true);
-    h.controller.configurationChanged(null);
-    stopped(h);
+    const pending = harness();
+    pending.config.enabled = false;
+    pending.controller.configurationChanged(pending.config);
+    pending.advance(0);
+    assert.equal(pending.clients.length, 0);
+    stopped(pending);
 });
 
-test("clock failure, transport revoke and local logger stop release everything", () => {
+test("stale startup and reconnect timers cannot steal a newer connection's cancellation", () => {
+    const h = harness();
+    const stale = h.timerHistory[0].callback;
+    h.config.token = "j".repeat(40);
+    h.controller.configurationChanged(h.config);
+    stale();
+    h.config.enabled = false;
+    h.controller.configurationChanged(h.config);
+    assert.equal(h.timers.size, 0);
+    h.advance(0);
+    assert.equal(h.clients.length, 0);
+    stopped(h);
+    const ready = harness();
+    ready.advance(0);
+    ready.clients[0].options.onStatus({
+        reason: "disconnected",
+        state: "error",
+    });
+    const old = ready.timerHistory[ready.timerHistory.length - 1].callback;
+    ready.controller.setEnabled(true);
+    old();
+    assert.equal(
+        ready.clients.length,
+        1,
+        "canceled backoff cannot start runtime early"
+    );
+    ready.advance(0);
+    assert.equal(ready.clients.length, 2);
+    ready.controller.stop();
+    stopped(ready);
+});
+
+test("clock failure and unsupported environment stop capture without reflecting arbitrary server errors", () => {
     for (const value of [0, NaN, Infinity]) {
         const h = harness();
-        h.controller.setEnabled(true);
+        h.advance(0);
         h.startCapture();
         h.setNow(value);
         h.clients[0].options.snapshot();
-        stopped(h);
+        assert.equal(h.controller.status().state, "unavailable");
+        assert.equal(h.captures[0].active, false);
         assert.equal(h.clients[0].stops[0], "unsupported");
-    }
-    for (const state of [
-        "unavailable",
-        "regrant_required",
-        "stopped",
-        "error",
-    ]) {
-        const h = harness();
-        h.controller.setEnabled(true);
-        h.startCapture();
-        h.clients[0].options.onStatus({
-            reason: "do not render arbitrary error text " + token,
-            state,
-        });
+        h.controller.stop();
         stopped(h);
-        assert.ok(!JSON.stringify(h.statuses).includes(token));
     }
     const h = harness();
-    h.controller.setEnabled(true);
-    const capture = h.startCapture();
-    capture.stopped();
+    h.advance(0);
+    h.startCapture();
+    h.clients[0].options.onStatus({ reason: token, state: "error" });
+    assert.ok(!JSON.stringify(h.statuses).includes(token));
+    assert.equal(h.captures[0].active, false);
+    h.controller.stop();
     stopped(h);
-    assert.equal(h.releaseCalls, 1);
-    assert.equal(h.clients[0].captureStops, 1);
+    const local = harness();
+    local.advance(0);
+    local.startCapture().stopped();
+    assert.equal(local.releaseCalls, 1);
+    assert.equal(local.clients[0].captureStops, 1);
+    assert.equal(local.controller.status().trusted, true);
+    local.advance(0);
+    assert.equal(local.clients.length, 2);
+    local.controller.stop();
+    stopped(local);
 });
-
 test("event and snapshot allowlists copy each field once without raw data", () => {
     const h = harness();
     h.controller.setEnabled(true);
+    h.advance(0);
     const capture = h.startCapture();
     let reads = 0;
     const data = {
@@ -586,6 +721,7 @@ test("available platform adapters only report observed safe metrics", () => {
         },
     };
     h.controller.setEnabled(true);
+    h.advance(0);
     const options = h.clients[0].options;
     assert.deepEqual(plain(options.capabilities), [
         "playback",
@@ -634,6 +770,7 @@ test("available platform adapters only report observed safe metrics", () => {
 test("cleanup reentry and stale callbacks cannot destroy a fresh grant", () => {
     const h = harness();
     h.controller.setEnabled(true);
+    h.advance(0);
     h.startCapture();
     const oldTimer = h.timerHistory[0].callback;
     const oldHandlers = [...h.w.listeners, ...h.w.document.listeners].map(
@@ -644,6 +781,7 @@ test("cleanup reentry and stale callbacks cannot destroy a fresh grant", () => {
         if (!reentered) {
             reentered = true;
             h.controller.setEnabled(true);
+            h.advance(0);
         }
     };
     h.controller.stop();
@@ -666,6 +804,7 @@ test("synchronous factory and capture callbacks cannot leave an orphan client", 
     const h = harness();
     h.onFactory = () => h.controller.stop();
     h.controller.setEnabled(true);
+    h.advance(0);
     stopped(h);
     assert.equal(h.clients.length, 1);
     assert.deepEqual(h.clients[0].stops, ["consent_revoked"]);
@@ -674,8 +813,15 @@ test("synchronous factory and capture callbacks cannot leave an orphan client", 
         stop();
         return () => next.releaseCalls++;
     };
-    next.onConfigure = () => next.startCapture();
+    next.onConfigure = (client) => {
+        if (client === next.clients[0]) next.startCapture();
+    };
     next.controller.setEnabled(true);
+    next.advance(0);
+    assert.equal(next.controller.status().enabled, true);
+    assert.equal(next.controller.status().trusted, true);
+    assert.equal(next.clients.length, 2);
+    next.controller.stop();
     stopped(next);
     assert.equal(next.releaseCalls, 1);
     const reentrant = harness();
@@ -683,9 +829,11 @@ test("synchronous factory and capture callbacks cannot leave an orphan client", 
         if (current !== reentrant.clients[0]) return;
         reentrant.controller.stop();
         reentrant.controller.setEnabled(true);
+        reentrant.advance(0);
         throw new Error("Old configure failed after a fresh grant");
     };
     reentrant.controller.setEnabled(true);
+    reentrant.advance(0);
     assert.equal(reentrant.controller.status().enabled, true);
     assert.equal(reentrant.clients.length, 2);
     assert.equal(reentrant.clients[1].stops.length, 0);
@@ -702,10 +850,11 @@ test("real transport sends only bounded consent revocation after wrapper cleanup
         server_epoch: serverEpoch,
         ...value,
     });
-    for (const reason of ["stop", "background", "configuration"]) {
+    for (const reason of ["stop", "configuration"]) {
         const h = harness(true);
         assert.equal(h.requests.length, 0);
         h.controller.setEnabled(true);
+        h.advance(0);
         const registration = h.requests[0];
         const consent = JSON.parse(registration.request.body).consent;
         assert.equal(
@@ -762,15 +911,10 @@ test("real transport sends only bounded consent revocation after wrapper cleanup
         assert.equal(h.captures.length, 1);
         const count = h.requests.length;
         if (reason === "stop") h.controller.stop();
-        if (reason === "background") {
-            h.w.document.visibilityState = "hidden";
-            h.w.document.dispatch("visibilitychange");
+        if (reason === "configuration") {
+            h.config.enabled = false;
+            h.controller.configurationChanged(h.config);
         }
-        if (reason === "configuration")
-            h.controller.configurationChanged({
-                ...h.config,
-                address: "https://new.example",
-            });
         assert.equal(h.controller.status().enabled, false);
         assert.equal(h.captures[0].active, false);
         assert.equal(h.releaseCalls, 1);
@@ -826,476 +970,9 @@ test("real transport sends only bounded consent revocation after wrapper cleanup
     }
 });
 
-function permissionMemory(initial = null) {
-    return {
-        finishRead(error = false) {
-            this.reads.shift()(error, plain(this.value));
-        },
-        finishWrite(error = false) {
-            const operation = this.writes.shift();
-            if (!error) this.value = plain(operation.value);
-            operation.done(error);
-        },
-        read(done) {
-            this.reads.push(done);
-        },
-        reads: [],
-        value: initial,
-        write(value, done) {
-            this.writes.push({ done, value: plain(value) });
-        },
-        writes: [],
-    };
-}
-function trustHarness(store = permissionMemory()) {
-    const h = harness(false, store, "webos.1.2.3");
-    store.finishRead();
-    h.controller.setTrusted(true);
-    assert.equal(h.controller.status().trusted, false);
-    assert.equal(h.controller.status().pending, true);
-    assert.equal(
-        h.clients.length,
-        0,
-        "registration must wait for durable permission"
-    );
-    store.finishWrite();
-    assert.equal(h.controller.status().trusted, true);
-    assert.equal(h.controller.status().enabled, true);
-    return { h, store };
-}
-
-test("trusted policy is persisted separately, bound exactly and survives a page reopen", () => {
-    const { h, store } = trustHarness();
-    assert.deepEqual(store.value, {
-        address: "https://control.example/ottplay/api/webhook/commands",
-        revision: store.value.revision,
-        token,
-    });
-    assert.match(h.clients[0].configs[0].instanceId, /^webos\.1\.2\.3\./);
-    h.advance(600001);
-    store.finishRead();
-    assert.equal(
-        h.controller.status().enabled,
-        true,
-        "trusted authority outlives a temporary grant"
-    );
-    assert.equal(h.controller.status().remainingMs, undefined);
-    assert.equal(
-        h.captures.length,
-        0,
-        "saved trust never starts a capture itself"
-    );
-    const reopened = harness(false, store);
-    assert.equal(reopened.controller.status().pending, true);
-    store.finishRead();
-    assert.equal(reopened.controller.status().trusted, true);
-    assert.equal(reopened.clients.length, 1);
-    h.controller.stop();
-    store.finishWrite();
-    reopened.controller.stop();
-    store.finishWrite();
-    stopped(h);
-    stopped(reopened);
-});
-
-test("trusted hide/offline/resume retires runtime and needs a new server command", () => {
-    const { h, store } = trustHarness();
-    const first = h.clients[0];
-    const capture = h.startCapture();
-    h.w.document.visibilityState = "hidden";
-    h.w.document.dispatch("visibilitychange");
-    assert.equal(h.controller.status().enabled, false);
-    assert.equal(h.controller.status().trusted, true);
-    assert.equal(capture.active, false);
-    assert.equal(h.timers.size, 0);
-    assert.equal(store.writes.length, 0);
-    h.w.document.visibilityState = "visible";
-    h.w.document.dispatch("visibilitychange");
-    h.advance(0);
-    store.finishRead();
-    assert.equal(h.clients.length, 2);
-    assert.notEqual(
-        h.clients[1].configs[0].consentEpoch,
-        first.configs[0].consentEpoch
-    );
-    assert.equal(
-        h.captures.length,
-        1,
-        "resuming does not reopen the old capture"
-    );
-    first.options.onStatus({ sessionId: "old-session", state: "active" });
-    assert.equal(h.controller.status().sessionId, undefined);
-    h.w.navigator.onLine = false;
-    h.w.dispatch("offline");
-    assert.equal(h.controller.status().trusted, true);
-    assert.equal(h.controller.status().enabled, false);
-    h.w.navigator.onLine = true;
-    h.w.dispatch("online");
-    h.advance(0);
-    store.finishRead();
-    assert.equal(h.clients.length, 3);
-    h.controller.stop();
-    store.finishWrite();
-    stopped(h);
-});
-
-test("trusted session stop preserves permission but global/local off revokes it", () => {
-    const { h, store } = trustHarness();
-    h.startCapture();
-    const previous = h.clients[0].configs[0];
-    h.controller.stopSession();
-    assert.equal(h.releaseCalls, 1);
-    assert.equal(h.controller.status().trusted, true);
-    h.advance(0);
-    store.finishRead();
-    assert.equal(h.clients.length, 2);
-    assert.notEqual(
-        h.clients[1].configs[0].consentEpoch,
-        previous.consentEpoch
-    );
-    h.startCapture().stopped();
-    assert.equal(h.controller.status().trusted, false);
-    store.finishWrite();
-    assert.equal(store.value, null);
-    stopped(h);
-    const reloaded = harness(false, store);
-    store.finishRead();
-    assert.equal(reloaded.clients.length, 0);
-});
-
-test("trusted reconnect backs off and permanent authorization failure revokes", () => {
-    const { h, store } = trustHarness();
-    h.clients[0].options.onStatus({
-        reason: "disconnected",
-        state: "regrant_required",
-    });
-    assert.equal(h.controller.status().trusted, true);
-    assert.equal(h.controller.status().enabled, false);
-    h.advance(999);
-    assert.equal(h.clients.length, 1);
-    h.advance(1);
-    store.finishRead();
-    assert.equal(h.clients.length, 2);
-    h.clients[1].options.onStatus({
-        reason: "consent_revoked",
-        state: "regrant_required",
-    });
-    store.finishWrite();
-    stopped(h);
-    h.advance(600000);
-    assert.equal(h.clients.length, 2);
-    assert.equal(store.value, null);
-});
-
-test("failed durable revocation stays visible until a successful retry", () => {
-    const { h, store } = trustHarness();
-    const grant = plain(store.value);
-    const capture = h.startCapture();
-    h.controller.setEnabled(false);
-    stopped(h);
-    assert.equal(capture.active, false, "storage cannot delay local cleanup");
-    assert.equal(h.controller.status().trusted, false);
-    assert.equal(h.controller.status().pending, true);
-    h.controller.setEnabled(true);
-    h.controller.setTrusted(true);
-    assert.equal(
-        h.clients.length,
-        1,
-        "pending durable revoke blocks new grants"
-    );
-    assert.equal(
-        store.writes.length,
-        1,
-        "new grant cannot supersede a pending revoke"
-    );
-    store.finishWrite(true);
-    const message = "Trusted access could not be removed from device storage.";
-    assert.equal(h.controller.status().state, "storage-error");
-    assert.equal(h.controller.status().message, message);
-    assert.deepEqual(store.value, grant);
-    const observed = h.statuses.length;
-    h.controller.setEnabled(true);
-    h.controller.setTrusted(true);
-    h.controller.configurationChanged({ ...h.config, enabled: false });
-    assert.equal(
-        h.clients.length,
-        1,
-        "unresolved revocation blocks new grants"
-    );
-    h.controller.setEnabled(false);
-    assert.equal(h.controller.status().pending, true);
-    store.finishWrite(true);
-    assert.equal(h.controller.status().pending, false);
-    assert.ok(
-        h.statuses
-            .slice(observed)
-            .every(
-                (value) =>
-                    !value.enabled &&
-                    !value.trusted &&
-                    value.state === "storage-error" &&
-                    value.message === message
-            ),
-        "attempts and their pending state cannot hide the durable failure"
-    );
-    assert.deepEqual(store.value, grant);
-    h.controller.setEnabled(false);
-    store.finishWrite();
-    assert.equal(h.controller.status().state, "disabled");
-    assert.equal(h.controller.status().pending, false);
-    assert.equal(store.value, null);
-    stopped(h);
-    const reopened = harness(false, store);
-    store.finishRead();
-    assert.equal(reopened.controller.status().trusted, false);
-    assert.equal(
-        reopened.clients.length,
-        0,
-        "cleared grant cannot return on reload"
-    );
-    h.controller.setEnabled(true);
-    assert.equal(
-        h.clients.length,
-        2,
-        "new consent works after successful cleanup"
-    );
-    h.controller.stop();
-    store.finishWrite();
-});
-
-test("temporary opt-in cannot skip revocation of an unresolved startup grant", () => {
-    const store = permissionMemory({
-        address: "https://control.example/ottplay/api/webhook/commands",
-        revision: "previous-grant",
-        token,
-    });
-    const h = harness(false, store);
-    h.controller.setEnabled(true);
-    assert.equal(h.clients.length, 0);
-    assert.equal(h.controller.status().pending, true);
-    store.finishRead();
-    assert.equal(
-        h.clients.length,
-        0,
-        "canceled startup read cannot grant trust"
-    );
-    store.finishWrite(true);
-    assert.equal(h.controller.status().state, "storage-error");
-    stopped(h);
-    h.controller.setEnabled(false);
-    store.finishWrite();
-    h.controller.setEnabled(true);
-    assert.equal(h.clients.length, 1);
-    h.controller.stop();
-    store.finishWrite();
-});
-
-test("unavailable storage is distinct from a failed revoke of possible trust", () => {
-    const store = permissionMemory();
-    store.available = () => false;
-    const h = harness(false, store);
-    store.finishRead(true);
-    h.controller.setTrusted(true);
-    store.finishWrite(true);
-    store.finishWrite(true);
-    assert.equal(h.controller.status().state, "storage-error");
-    assert.equal(
-        h.controller.status().message,
-        "Trusted diagnostics is unavailable because device storage could not be updated."
-    );
-    assert.equal(store.value, null);
-    h.controller.setEnabled(true);
-    assert.equal(
-        h.clients.length,
-        1,
-        "temporary mode needs no durable permission"
-    );
-    h.controller.stop();
-    store.finishWrite(true);
-    stopped(h);
-});
-
-test("failed startup reads retain possible durable authority through temporary and failed trusted grants", () => {
-    for (const mode of ["temporary", "trusted-write", "idle-stop"]) {
-        const initial = {
-            address: "https://control.example/ottplay/api/webhook/commands",
-            revision: "unread-old-grant",
-            token,
-        };
-        const store = permissionMemory(initial);
-        const h = harness(false, store);
-        store.finishRead(true);
-        assert.equal(h.controller.status().trusted, false);
-        assert.equal(h.clients.length, 0);
-        if (mode === "temporary") {
-            h.controller.setEnabled(true);
-            h.startCapture();
-            h.controller.setEnabled(false);
-            assert.equal(h.releaseCalls, 1);
-        } else if (mode === "trusted-write") {
-            h.controller.setTrusted(true);
-            store.finishWrite(true);
-        } else h.controller.setEnabled(false);
-        store.finishWrite(true);
-        stopped(h, mode);
-        assert.equal(h.controller.status().state, "storage-error", mode);
-        assert.equal(
-            h.controller.status().message,
-            "Trusted access could not be removed from device storage.",
-            mode
-        );
-        assert.deepEqual(store.value, initial);
-        const count = h.clients.length;
-        h.controller.setEnabled(true);
-        h.controller.setTrusted(true);
-        assert.equal(h.clients.length, count);
-        assert.equal(store.writes.length, 0);
-        h.controller.setEnabled(false);
-        store.finishWrite(true);
-        assert.equal(h.controller.status().state, "storage-error");
-        h.controller.setEnabled(false);
-        store.finishWrite();
-        assert.equal(h.controller.status().state, "disabled");
-        const reopened = harness(false, store);
-        store.finishRead();
-        assert.equal(reopened.clients.length, 0);
-    }
-});
-
-test("failed policy reread preserves durable authority for later local revocation", () => {
-    const { h, store } = trustHarness();
-    const capture = h.startCapture();
-    h.advance(5000);
-    store.finishRead(true);
-    stopped(h);
-    assert.equal(capture.active, false);
-    assert.equal(
-        store.writes.length,
-        0,
-        "read failure does not erase another page's grant"
-    );
-    h.controller.setEnabled(false);
-    store.finishWrite(true);
-    assert.equal(h.controller.status().state, "storage-error");
-    assert.notEqual(store.value, null);
-    h.controller.setEnabled(false);
-    store.finishWrite();
-    assert.equal(h.controller.status().state, "disabled");
-    assert.equal(store.value, null);
-});
-
-test("only successful empty reads or clear resolve possible persisted authority", () => {
-    for (const periodic of [false, true]) {
-        let h, store;
-        if (periodic) {
-            ({ h, store } = trustHarness());
-            h.advance(5000);
-            store.value = null;
-            store.finishRead();
-        } else {
-            store = permissionMemory();
-            h = harness(false, store);
-            store.finishRead();
-        }
-        h.controller.setEnabled(true);
-        h.controller.setEnabled(false);
-        store.finishWrite(true);
-        assert.notEqual(h.controller.status().state, "storage-error");
-        stopped(h);
-    }
-    const store = permissionMemory();
-    const h = harness(false, store);
-    store.finishRead();
-    h.controller.setTrusted(true);
-    // A failed callback cannot exclude a committed write whose completion was lost.
-    store.value = plain(store.writes[0].value);
-    store.finishWrite(true);
-    store.finishWrite(true);
-    assert.equal(h.controller.status().state, "storage-error");
-    h.controller.setEnabled(false);
-    store.finishWrite();
-    assert.equal(store.value, null);
-});
-
-test("startup and pending writes cannot restore authority after local stop or config rotation", () => {
-    const initial = {
-        address: "https://control.example/ottplay/api/webhook/commands",
-        revision: "grant-1",
-        token,
-    };
-    const store = permissionMemory(initial);
-    const h = harness(false, store);
-    h.controller.setEnabled(false);
-    store.finishRead();
-    assert.equal(h.clients.length, 0);
-    store.finishWrite();
-    assert.equal(store.value, null);
-    h.controller.setTrusted(true);
-    h.controller.configurationChanged({ ...h.config, token: "z".repeat(40) });
-    store.finishWrite();
-    assert.equal(
-        h.clients.length,
-        0,
-        "stale completed write cannot start a runtime"
-    );
-    store.finishWrite();
-    assert.equal(store.value, null);
-    stopped(h);
-    const granted = trustHarness();
-    granted.h.controller.configurationChanged({
-        ...granted.h.config,
-        enabled: false,
-    });
-    granted.store.finishWrite();
-    stopped(granted.h);
-    assert.equal(granted.store.value, null);
-});
-
-test("revoking synchronously during grant preparation cannot write authority after cleanup", () => {
-    const store = permissionMemory();
-    const h = harness(false, store);
-    store.finishRead();
-    let revoked = false;
-    h.onStatus = (status) => {
-        if (status.pending && !revoked) {
-            revoked = true;
-            h.controller.setEnabled(false);
-        }
-    };
-    h.controller.setTrusted(true);
-    assert.equal(store.writes.length, 1);
-    assert.equal(store.writes[0].value, null, "only revocation is queued");
-    store.finishWrite();
-    assert.equal(store.value, null);
-    assert.equal(h.clients.length, 0);
-    stopped(h);
-});
-
-test("failed or absent IndexedDB disables persistent trust while temporary access works", () => {
-    const h = harness();
-    h.controller.setTrusted(true);
-    assert.equal(h.controller.status().trusted, false);
-    assert.equal(h.clients.length, 0);
-    h.controller.setEnabled(true);
-    assert.equal(h.clients.length, 1);
-    h.controller.stop();
-    const store = permissionMemory();
-    const failed = harness(false, store);
-    store.finishRead();
-    failed.controller.setTrusted(true);
-    store.finishWrite(true);
-    assert.equal(failed.clients.length, 0);
-    assert.equal(failed.controller.status().trusted, false);
-    store.finishWrite();
-    assert.equal(store.value, null);
-    failed.controller.setEnabled(true);
-    assert.equal(failed.clients.length, 1);
-    failed.controller.stop();
-});
-
 test("repair adapter preserves backend ownership, ACK and local cancellation guards", () => {
     const h = harness();
-    h.controller.setEnabled(true);
+    h.advance(0);
     const options = h.clients[0].options;
     const replies = [];
     options.executeRepair(
@@ -1355,94 +1032,6 @@ test("repair adapter preserves backend ownership, ACK and local cancellation gua
     h.controller.stop();
     effect();
     assert.equal(reloads, 1, "old runtime may not reload after local stop");
-});
-
-test("another page's revocation stops cached trust and preserves a newer grant", () => {
-    const { h: first, store } = trustHarness();
-    const second = harness(false, store);
-    store.finishRead();
-    second.startCapture();
-    const previousRevision = store.value.revision;
-    first.controller.stop();
-    store.finishWrite();
-    first.controller.setTrusted(true);
-    store.finishWrite();
-    assert.notEqual(store.value.revision, previousRevision);
-    second.advance(5000);
-    assert.equal(store.reads.length, 1);
-    store.finishRead();
-    assert.equal(second.controller.status().trusted, false);
-    assert.equal(second.captures[0].active, false);
-    assert.equal(
-        store.writes.length,
-        0,
-        "a stale page must not delete another page's newer authorization"
-    );
-    assert.equal(first.controller.status().trusted, true);
-    first.controller.stop();
-    store.finishWrite();
-    stopped(first);
-    stopped(second);
-});
-
-test("notification prompts an authoritative reread and resume cannot bypass revoked policy", () => {
-    const { h, store } = trustHarness();
-    h.w.document.visibilityState = "hidden";
-    h.w.document.dispatch("visibilitychange");
-    store.value = null;
-    h.w.document.visibilityState = "visible";
-    h.w.document.dispatch("visibilitychange");
-    h.advance(0);
-    assert.equal(
-        h.clients.length,
-        1,
-        "resume must wait for the durable grant reread"
-    );
-    store.finishRead();
-    stopped(h);
-    assert.equal(h.controller.status().trusted, false);
-    const fresh = permissionMemory();
-    let changed;
-    fresh.subscribe = (listener) => {
-        changed = listener;
-        return () => {
-            changed = null;
-        };
-    };
-    const watched = trustHarness(fresh).h;
-    fresh.value = null;
-    changed();
-    assert.equal(fresh.reads.length, 1);
-    fresh.finishRead();
-    stopped(watched);
-    assert.equal(changed, null);
-});
-
-test("a pre-suspension permission read cannot authorize resumed registration", () => {
-    const { h, store } = trustHarness();
-    const oldGrant = plain(store.value);
-    h.advance(5000);
-    const staleRead = store.reads.shift();
-    h.w.document.visibilityState = "hidden";
-    h.w.document.dispatch("visibilitychange");
-    store.value = null;
-    h.w.document.visibilityState = "visible";
-    h.w.document.dispatch("visibilitychange");
-    h.advance(0);
-    staleRead(false, oldGrant);
-    assert.equal(
-        h.clients.length,
-        1,
-        "old read snapshot cannot start the next runtime"
-    );
-    assert.equal(
-        store.reads.length,
-        1,
-        "resume requires a new authoritative read"
-    );
-    store.finishRead();
-    assert.equal(h.controller.status().trusted, false);
-    stopped(h);
 });
 
 console.log("diagnostics controller tests passed");

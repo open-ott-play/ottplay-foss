@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Ustawienia All4you.tv",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Dodaj ten identyfikator urządzenia do dozwolonych",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Skonfiguruj Шаравоз w Ustawienia -> Ustawienia dostawcy",
     Connect: "Połącz",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Połączono",
     "Connected. Waiting for the channel list...":
         "Połączono. Oczekiwanie na listę kanałów…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Connecting remote diagnostics for this page.",
     "Connecting to Plex…": "Connecting to Plex…",
@@ -714,7 +729,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Pilot bez kolorowych przycisków",
     "Remote (number buttons N/A)": "Pilot bez przycisków numerycznych",
     "Remote control": "Zdalne sterowanie",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Remote diagnostics",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Remote diagnostics is collecting for this page.",
     "Remote diagnostics is off.": "Remote diagnostics is off.",
@@ -728,6 +751,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Sesja zdalna wygasła",
     "Remote text entry": "Zdalne wpisywanie tekstu",
     "Remote text entry denied": "Odmowa zdalnego wpisywania tekstu",
@@ -775,6 +802,15 @@ var keyStrings = {
     "Save settings to storage": "Zapisz ustawienia w pamięci",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Scenariusz",
     Search: "Szukaj",
     "Search programme": "Szukaj programu",
@@ -793,6 +829,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Wybierz szablon playlisty dla EPG i logo",
     "Select Stalker portal": "Wybierz portal Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Wyślij żądanie",
     "Send settings": "Wyślij ustawienia",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -875,10 +915,12 @@ var keyStrings = {
     "Starting...": "Uruchamianie…",
     Status: "Stan",
     Stop: "Stop",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Zatrzymaj odtwarzanie i wróć do transmisji na żywo",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Nie udało się odtworzyć strumienia",
     "Stream type: %1": "Typ strumienia: %1",
     "String for search": "Szukany tekst",
@@ -897,12 +939,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Ustawienia Tabox",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Nieprawidłowy adres URL wyszukiwania serwera poleceń.",
     "The device ID in the address is invalid.":
         "Identyfikator urządzenia w adresie jest nieprawidłowy.",
     "The discovery response is invalid.":
         "Otrzymano nieprawidłową odpowiedź na żądanie wyszukiwania.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ta przeglądarka nie obsługuje bezpiecznego automatycznego parowania. Zaktualizuj ją lub wprowadź ustawienia serwera poleceń ręcznie.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

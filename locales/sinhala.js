@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv සැකසුම්",
     "Allow diagnostics for 10 minutes": "විනාඩි 10 ක් රෝග විනිශ්චයට ඉඩ දෙන්න",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "මෙම සේවාදායකයට රෝග විනිශ්චය කවුන්ටර එකතු කර මෙම ප්‍රවාහය හෝ වාදකය නැවත ආරම්භ කිරීමට ඉඩ දෙන්න. තාවකාලික ප්රවේශය විනාඩි 10 ක් පවතී. නැවත සම්බන්ධ වීමෙන් හෝ නැවත ආරම්භ කිරීමෙන් පසු විශ්වාසනීය සහාය පවතී; සෑම ග්‍රහණයක්ම තවමත් විනාඩි 10කට පසුව කල් ඉකුත් වේ. සැඟවුණු හෝ නොබැඳි විට එකතුව විරාම කරයි.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "මෙම පෙරබිම් සැසිය සඳහා නැවත ධාවනය, ජාල සහ ආදාන කවුන්ටර එකතු කිරීමට මෙම සේවාදායකයට ඉඩ දෙන්න. HTTPS සහ සේවාදායක අවසරය අවශ්‍ය වේ. මිනිත්තු 10 කට පසු, සැඟවුණු විට හෝ විසන්ධි වූ විට නතර වේ.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "මෙම උපාංගය ID සඳහා අවසර දෙන්න",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ධාවකයකට HTTP EPG මූලාශ්‍රයක් බාගත නොහැක. HTTPS මූලාශ්‍රයක් භාවිතා කරන්න.",
@@ -246,11 +251,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз සැකසීම් -> සැපයුම්කරු සැකසීම් තුළ වින්‍යාස කරන්න",
     Connect: "සම්බන්ධ කරන්න",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "මෙම ප්ලේයරය පළමුව විධාන සේවාදායකයකට සම්බන්ධ කරන්න.",
     Connected: "සම්බන්ධයි",
     "Connected. Waiting for the channel list...":
         "සම්බන්ධයි. නාලිකා ලැයිස්තුව සඳහා රැඳී සිටිමින්...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "මෙම පිටුව සඳහා දුරස්ථ රෝග විනිශ්චය සම්බන්ධ කිරීම.",
     "Connecting to Plex…": "Plex වෙත සම්බන්ධ වෙමින්...",
@@ -701,7 +716,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "දුරස්ථ (වර්ණ බොත්තම් නැත)",
     "Remote (number buttons N/A)": "දුරස්ථ (අංක බොත්තම් නැත)",
     "Remote control": "දුරස්ථ පාලකය",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "දුරස්ථ රෝග විනිශ්චය",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "මෙම පිටුව සඳහා දුරස්ථ රෝග නිර්ණය එකතු කරයි.",
     "Remote diagnostics is off.": "දුරස්ථ රෝග විනිශ්චය අක්‍රියයි.",
@@ -715,6 +738,10 @@ var keyStrings = {
         "දුරස්ථ ආදානය කල් ඉකුත් විය. නැවත උත්සාහ කිරීමට නව සැසියක් විවෘත කරන්න.",
     "Remote input session is unavailable. Open a new session to try again.":
         "දුරස්ථ ආදාන සැසිය නොමැත. නැවත උත්සාහ කිරීමට නව සැසියක් විවෘත කරන්න.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "දුරස්ථ සැසිය කල් ඉකුත් විය",
     "Remote text entry": "දුරස්ථ පෙළ ඇතුළත් කිරීම",
     "Remote text entry denied": "දුරස්ථ පෙළ ඇතුළත් කිරීම ප්‍රතික්ෂේප කරන ලදී",
@@ -761,6 +788,15 @@ var keyStrings = {
     "Save settings to storage": "සැකසුම් ගබඩාවට සුරකින්න",
     "Scan this QR code with your phone to enter text.":
         "පෙළ ඇතුළු කිරීමට මෙම QR කේතය ඔබගේ දුරකථනයෙන් පරිලෝකනය කරන්න.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "තිර රචනය",
     Search: "සොයන්න",
     "Search programme": "වැඩසටහන සොයන්න",
@@ -779,6 +815,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG සහ ලාංඡන සඳහා ධාවන ලැයිස්තු අච්චු මූලාශ්‍රය තෝරන්න",
     "Select Stalker portal": "Stalker ද්වාරය තෝරන්න",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ඉල්ලීම යවන්න",
     "Send settings": "සැකසුම් යවන්න",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -862,9 +902,11 @@ var keyStrings = {
     "Starting...": "ආරම්භ…",
     Status: "තත්ත්වය",
     Stop: "නවත්වන්න",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "වත්මන් ග්‍රහණය නවත්වන්න",
     "Stop diagnostics": "රෝග විනිශ්චය නතර කරන්න",
     "Stop playback and return to live": "නැවත ධාවනය නවත්වා සජීවීව වෙත ආපසු යන්න",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ප්‍රවාහය වාදනය කළ නොහැකි විය",
     "Stream type: %1": "ප්‍රවාහ වර්ගය: %1",
     "String for search": "සෙවුම් විමසුම",
@@ -883,10 +925,14 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox සැකසුම්",
     "Text is too long for remote input.": "දුරස්ථ ආදානය සඳහා පෙළ දිග වැඩිය.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "විධාන සේවාදායක සොයාගැනීම URL වලංගු නොවේ.",
     "The device ID in the address is invalid.": "ලිපිනයෙහි ඇති ID උපාංගය වලංගු නොවේ.",
     "The discovery response is invalid.": "සොයාගැනීමේ ප්‍රතිචාරය වලංගු නැත.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "මෙම බ්‍රවුසරයට ආරක්ෂිතව ස්වයංක්‍රීයව යුගල කළ නොහැක. එය යාවත්කාලීන කරන්න හෝ විධාන සේවාදායක සැකසුම් අතින් ඇතුල් කරන්න.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

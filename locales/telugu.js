@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv సెట్టింగ్‌లు",
     "Allow diagnostics for 10 minutes": "10 నిమిషాల పాటు డయాగ్నోస్టిక్‌లను అనుమతించండి",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "డయాగ్నస్టిక్ కౌంటర్‌లను సేకరించి, ఈ స్ట్రీమ్ లేదా ప్లేయర్‌ని రీస్టార్ట్ చేయడానికి ఈ సర్వర్‌ని అనుమతించండి. తాత్కాలిక యాక్సెస్ 10 నిమిషాలు ఉంటుంది. తిరిగి కనెక్ట్ చేసిన తర్వాత లేదా పునఃప్రారంభించిన తర్వాత విశ్వసనీయ మద్దతు అందుబాటులో ఉంటుంది; ప్రతి క్యాప్చర్ ఇప్పటికీ 10 నిమిషాల తర్వాత గడువు ముగుస్తుంది. దాచినప్పుడు లేదా ఆఫ్‌లైన్‌లో ఉన్నప్పుడు సేకరణ పాజ్ అవుతుంది.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ఈ ముందుభాగం సెషన్ కోసం ప్లేబ్యాక్, నెట్‌వర్క్ మరియు ఇన్‌పుట్ కౌంటర్‌లను సేకరించడానికి ఈ సర్వర్‌ని అనుమతించండి. HTTPS మరియు సర్వర్ అనుమతి అవసరం. 10 నిమిషాల తర్వాత, దాచినప్పుడు లేదా డిస్‌కనెక్ట్ అయినప్పుడు ఆగిపోతుంది.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ఈ పరికరాన్ని అనుమతించండి ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ప్లేయర్ HTTP EPG మూలాన్ని డౌన్‌లోడ్ చేయలేరు. HTTPS మూలాన్ని ఉపయోగించండి.",
@@ -242,11 +247,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "సెట్టింగ్‌లు -> ప్రొవైడర్ సెట్టింగ్‌లలో Шаравозని కాన్ఫిగర్ చేయండి",
     Connect: "కనెక్ట్ చేయండి",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ముందుగా ఈ ప్లేయర్‌ని కమాండ్ సర్వర్‌కి కనెక్ట్ చేయండి.",
     Connected: "కనెక్ట్ చేయబడింది",
     "Connected. Waiting for the channel list...":
         "కనెక్ట్ చేయబడింది. ఛానెల్ జాబితా కోసం వేచి ఉంది...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ఈ పేజీ కోసం రిమోట్ డయాగ్నస్టిక్‌లను కనెక్ట్ చేస్తోంది.",
     "Connecting to Plex…": "Plexకి కనెక్ట్ అవుతోంది…",
@@ -695,7 +710,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "రిమోట్ (రంగు బటన్లు లేవు)",
     "Remote (number buttons N/A)": "రిమోట్ (నంబర్ బటన్‌లు లేవు)",
     "Remote control": "రిమోట్ కంట్రోల్",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "రిమోట్ డయాగ్నస్టిక్స్",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ఈ పేజీ కోసం రిమోట్ డయాగ్నస్టిక్స్ సేకరిస్తోంది.",
     "Remote diagnostics is off.": "రిమోట్ డయాగ్నస్టిక్స్ ఆఫ్‌లో ఉంది.",
@@ -709,6 +732,10 @@ var keyStrings = {
         "రిమోట్ ఇన్‌పుట్ గడువు ముగిసింది. మళ్లీ ప్రయత్నించడానికి కొత్త సెషన్‌ను తెరవండి.",
     "Remote input session is unavailable. Open a new session to try again.":
         "రిమోట్ ఇన్‌పుట్ సెషన్ అందుబాటులో లేదు. మళ్లీ ప్రయత్నించడానికి కొత్త సెషన్‌ను తెరవండి.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "రిమోట్ సెషన్ గడువు ముగిసింది",
     "Remote text entry": "రిమోట్ టెక్స్ట్ ఎంట్రీ",
     "Remote text entry denied": "రిమోట్ టెక్స్ట్ ఎంట్రీ తిరస్కరించబడింది",
@@ -754,6 +781,15 @@ var keyStrings = {
     "Save settings to storage": "సెట్టింగ్‌లను నిల్వకు సేవ్ చేయండి",
     "Scan this QR code with your phone to enter text.":
         "వచనాన్ని నమోదు చేయడానికి మీ ఫోన్‌తో ఈ QR కోడ్‌ని స్కాన్ చేయండి.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "స్క్రీన్ ప్లే",
     Search: "శోధన",
     "Search programme": "కార్యక్రమాన్ని వెతకండి",
@@ -772,6 +808,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG మరియు లోగోల కోసం ప్లేజాబితా టెంప్లేట్ మూలాన్ని ఎంచుకోండి",
     "Select Stalker portal": "Stalker పోర్టల్‌ని ఎంచుకోండి",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "అభ్యర్థన పంపండి",
     "Send settings": "సెట్టింగ్‌లను పంపండి",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -852,9 +892,11 @@ var keyStrings = {
     "Starting...": "ప్రారంభం…",
     Status: "స్థితి",
     Stop: "ఆపు",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "ప్రస్తుత సంగ్రహాన్ని ఆపివేయండి",
     "Stop diagnostics": "విశ్లేషణలను ఆపండి",
     "Stop playback and return to live": "ప్లేబ్యాక్‌ని ఆపివేసి, ప్రత్యక్ష ప్రసారానికి తిరిగి వెళ్లండి",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "స్ట్రీమ్ ప్లే చేయడం సాధ్యపడలేదు",
     "Stream type: %1": "స్ట్రీమ్ రకం: %1",
     "String for search": "శోధన ప్రశ్న",
@@ -873,10 +915,14 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox సెట్టింగ్‌లు",
     "Text is too long for remote input.": "రిమోట్ ఇన్‌పుట్ కోసం వచనం చాలా పొడవుగా ఉంది.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "కమాండ్ సర్వర్ ఆవిష్కరణ URL చెల్లదు.",
     "The device ID in the address is invalid.": "చిరునామాలోని ID పరికరం చెల్లదు.",
     "The discovery response is invalid.": "ఆవిష్కరణ ప్రతిస్పందన చెల్లదు.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ఈ బ్రౌజర్ సురక్షితంగా స్వయంచాలకంగా జత చేయబడదు. దీన్ని నవీకరించండి లేదా కమాండ్ సర్వర్ సెట్టింగ్‌లను మాన్యువల్‌గా నమోదు చేయండి.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

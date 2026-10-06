@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "تنظیمات All4you.tv",
     "Allow diagnostics for 10 minutes": "به تشخیص برای 10 دقیقه اجازه دهید",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "به این سرور اجازه دهید شمارنده های تشخیصی را جمع آوری کند و این جریان یا پخش کننده را دوباره راه اندازی کند. دسترسی موقت 10 دقیقه طول می کشد. پشتیبانی قابل اعتماد پس از اتصال مجدد یا راه اندازی مجدد در دسترس باقی می ماند. هر ضبط هنوز پس از 10 دقیقه منقضی می شود. مجموعه در حالت پنهان یا آفلاین متوقف می شود.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "به این سرور اجازه دهید تا شمارنده های پخش، شبکه و ورودی را برای این جلسه پیش زمینه جمع آوری کند. به HTTPS و مجوز سرور نیاز دارد. پس از 10 دقیقه، در صورت مخفی بودن یا قطع شدن، متوقف می شود.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "لیست مجاز این دستگاه ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "پخش کننده HTTPS نمی تواند منبع HTTP EPG را دانلود کند. از یک منبع HTTPS استفاده کنید.",
@@ -247,11 +252,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "پیکربندی Шаравоз در تنظیمات -> تنظیمات ارائه دهنده",
     Connect: "اتصال",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ابتدا این پخش کننده را به یک سرور فرمان وصل کنید.",
     Connected: "متصل",
     "Connected. Waiting for the channel list...":
         "متصل. منتظر لیست کانال هستیم...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "اتصال عیب یابی از راه دور برای این صفحه.",
     "Connecting to Plex…": "در حال اتصال به Plex…",
@@ -709,7 +724,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "کنترل از راه دور (بدون دکمه های رنگی)",
     "Remote (number buttons N/A)": "کنترل از راه دور (بدون دکمه شماره)",
     "Remote control": "کنترل از راه دور",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "تشخیص از راه دور",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "عیب یابی از راه دور برای این صفحه جمع آوری می شود.",
     "Remote diagnostics is off.": "تشخیص از راه دور خاموش است.",
@@ -723,6 +746,10 @@ var keyStrings = {
         "ورودی از راه دور منقضی شده است. یک جلسه جدید باز کنید تا دوباره امتحان کنید.",
     "Remote input session is unavailable. Open a new session to try again.":
         "جلسه ورودی از راه دور در دسترس نیست. یک جلسه جدید باز کنید تا دوباره امتحان کنید.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "جلسه راه دور منقضی شد",
     "Remote text entry": "ورود متن از راه دور",
     "Remote text entry denied": "ورود متن از راه دور رد شد",
@@ -770,6 +797,15 @@ var keyStrings = {
     "Save settings to storage": "تنظیمات را در حافظه ذخیره کنید",
     "Scan this QR code with your phone to enter text.":
         "این کد QR را با تلفن خود اسکن کنید تا متن را وارد کنید.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "فیلم‌نامه",
     Search: "جستجو",
     "Search programme": "جستجوی برنامهٔ تلویزیونی",
@@ -789,6 +825,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "منبع قالب لیست پخش را برای EPG و لوگوها انتخاب کنید",
     "Select Stalker portal": "پورتال Stalker را انتخاب کنید",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ارسال درخواست",
     "Send settings": "تنظیمات ارسال",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -873,9 +913,11 @@ var keyStrings = {
     "Starting...": "شروع…",
     Status: "وضعیت",
     Stop: "توقف کنید",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "ضبط جریان را متوقف کنید",
     "Stop diagnostics": "تشخیص را متوقف کنید",
     "Stop playback and return to live": "پخش را متوقف کنید و به زندگی بازگردید",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "جریان پخش نشد",
     "Stream type: %1": "نوع جریان: %1",
     "String for search": "پرس و جو جستجو",
@@ -895,11 +937,15 @@ var keyStrings = {
     "Tabox settings": "تنظیمات Tabox",
     "Text is too long for remote input.":
         "متن برای ورودی از راه دور خیلی طولانی است.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "کشف سرور فرمان URL نامعتبر است.",
     "The device ID in the address is invalid.":
         "دستگاه ID در آدرس نامعتبر است.",
     "The discovery response is invalid.": "پاسخ کشف نامعتبر است.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "این مرورگر نمی تواند به طور ایمن به طور خودکار جفت شود. آن را به روز کنید یا تنظیمات سرور فرمان را به صورت دستی وارد کنید.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

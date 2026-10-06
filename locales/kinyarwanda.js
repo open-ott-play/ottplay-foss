@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Igenamiterere rya All4you.tv",
     "Allow diagnostics for 10 minutes": "Emera isuzuma mu minota 10",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Emera iyi seriveri gukusanya imibare y'isuzuma no kongera gutangiza iri sakaza cyangwa porogaramu yo gukina. Uburenganzira bw'agateganyo bumara iminota 10. Ubufasha bwizewe bukomeza kuboneka nyuma yo kongera guhuza cyangwa gutangiza; buri kusanya rirangira nyuma y'iminota 10. Ikusanya rirahagarara iyo porogaramu itagaragara cyangwa itari kuri interineti.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Emera iyi seriveri gukusanya imibare yo gukina, y'urusobe n'ibyinjijwe muri iki gihe porogaramu igaragara. Bisaba HTTPS n'uburenganzira bwa seriveri. Bihagarara nyuma y'iminota 10, iyo porogaramu itagaragara cyangwa yahagaritse ihuza.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Emera iyi ndangamuntu y'igikoresho",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Porogaramu yo gukina ya HTTPS ntishobora gukuramo isoko ya EPG ikoresha HTTP. Koresha isoko ya HTTPS.",
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Gena Шаравоз mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
     Connect: "Huza",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Banza uhuze iyi porogaramu yo gukina na seriveri y'amategeko.",
     Connected: "Byahujwe",
     "Connected. Waiting for the channel list...":
         "Byahujwe. Dutegereje urutonde rwa shene...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Isuzuma ryo kure ry'iyi paji ririmo guhuzwa.",
     "Connecting to Plex…": "Birimo guhuza na Plex…",
@@ -729,7 +744,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Igenzurakure (ridafite buto z'amabara)",
     "Remote (number buttons N/A)": "Igenzurakure (ridafite buto z'imibare)",
     "Remote control": "Igenzura ryo kure",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Isuzuma ryo kure",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Isuzuma ryo kure rirakusanya amakuru y'iyi paji.",
     "Remote diagnostics is off.": "Isuzuma ryo kure rirazimye.",
@@ -743,6 +766,10 @@ var keyStrings = {
         "Igihe cyo kwinjiza uri kure cyarangiye. Fungura igihe gishya cyo gukoresha wongere ugerageze.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Igihe cyo kwinjiza uri kure ntikiboneka. Fungura igihe gishya cyo gukoresha wongere ugerageze.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Igihe cyo gukoresha uri kure cyarangiye",
     "Remote text entry": "Kwinjiza inyandiko uri kure",
     "Remote text entry denied": "Kwinjiza inyandiko uri kure byanzwe",
@@ -790,6 +817,15 @@ var keyStrings = {
     "Save settings to storage": "Bika igenamiterere mu bubiko",
     "Scan this QR code with your phone to enter text.":
         "Sikana iyi kode ya QR na telefoni yawe kugira ngo winjize inyandiko.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Inyandiko ya filimi",
     Search: "Shakisha",
     "Search programme": "Shakisha ikiganiro",
@@ -808,6 +844,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Hitamo isoko y'icyitegererezo cy'urutonde rwo gukina rwa EPG n'ibirango",
     "Select Stalker portal": "Hitamo urubuga rwa Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Ohereza ubusabe",
     "Send settings": "Ohereza igenamiterere",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -893,10 +933,12 @@ var keyStrings = {
     "Starting...": "Biratangiye…",
     Status: "Imimerere",
     Stop: "Hagarika",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Hagarika ikusanya ririmo gukorwa",
     "Stop diagnostics": "Hagarika isuzuma",
     "Stop playback and return to live":
         "Hagarika gukina usubire ku mbonankubone",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Gukina isakaza byanze",
     "Stream type: %1": "Ubwoko bw'isakaza: %1",
     "String for search": "Ibyo ushakisha",
@@ -916,12 +958,16 @@ var keyStrings = {
     "Tabox settings": "Igenamiterere rya Tabox",
     "Text is too long for remote input.":
         "Inyandiko ni ndende cyane ku iyinjiza rya kure.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL yo gushakisha seriveri y'amategeko ntiyemewe.",
     "The device ID in the address is invalid.":
         "Indangamuntu y'igikoresho iri muri aderesi ntiyemewe.",
     "The discovery response is invalid.":
         "Igisubizo cyo gushakisha nticyemewe.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Iyi mushakisha ntishobora guhuza ibikoresho byikora mu mutekano. Yivugurure cyangwa winjize igenamiterere rya seriveri y'amategeko n'intoki.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -1,5 +1,6 @@
 mod commands;
 mod instance;
+mod preferred_languages;
 
 use commands::media_session::MediaSessionState;
 use commands::tauri_commands::{PipState, TauriState};
@@ -81,6 +82,8 @@ pub fn run() {
             commands::tauri_commands::exit_app,
             commands::lifecycle::lifecycle_capabilities,
             commands::lifecycle::restart_app,
+            commands::screenshot::screenshot_capabilities,
+            commands::screenshot::capture_screenshot,
             commands::media_session::start_media_session,
             commands::media_session::pause_media_session,
             commands::media_session::resume_media_session,
@@ -125,11 +128,30 @@ pub fn run() {
                 );
             }
 
+            let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
+            let web_url = if raw.trim().is_empty() {
+                None
+            } else {
+                Some(tauri::Url::parse(&raw).map_err(|e| {
+                    Box::<dyn std::error::Error>::from(format!(
+                        "invalid OTTPLAY_WEB_URL {raw:?}: {e}"
+                    ))
+                })?)
+            };
+            #[cfg(dev)]
+            let dev_url = app.config().build.dev_url.as_ref();
+            #[cfg(not(dev))]
+            let dev_url = None;
+
             let mut builder = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
+            .initialization_script(preferred_languages::initialization_script(
+                web_url.as_ref(),
+                dev_url,
+            ))
             .title("OttPlay FOSS")
             .inner_size(1280.0, 720.0)
             .center()
@@ -140,18 +162,12 @@ pub fn run() {
             }
             builder.build()?;
 
-            let raw = std::env::var("OTTPLAY_WEB_URL").unwrap_or_else(|_| DEFAULT_WEB_URL.into());
             if let Some(window) = app.get_webview_window("main") {
-                if raw.trim().is_empty() {
-                    tracing::info!("OTTPLAY_WEB_URL empty — using embedded frontendDist");
-                } else {
-                    let url = tauri::Url::parse(&raw).map_err(|e| {
-                        Box::<dyn std::error::Error>::from(format!(
-                            "invalid OTTPLAY_WEB_URL {raw:?}: {e}"
-                        ))
-                    })?;
+                if let Some(url) = web_url {
                     tracing::info!("navigating main webview to {url}");
                     window.navigate(url)?;
+                } else {
+                    tracing::info!("OTTPLAY_WEB_URL empty — using embedded frontendDist");
                 }
             }
 

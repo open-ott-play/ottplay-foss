@@ -152,7 +152,7 @@ then recheck current restrictions and ownership. An accepted reply is not proof
 that the effect completed. Repeated result delivery does not replay the effect;
 an expired acknowledgement, changed screen or revoked permission may cancel it.
 Named keys follow the existing player UI; unmapped keys and hardware collisions
-are unavailable. PIN entry, local diagnostic consent/trust, exit confirmations
+are unavailable. PIN entry, browser capture-source selection, exit confirmations
 and private settings import/export/reset screens require local interaction.
 Use explicit typed lifecycle commands for remote exit or reload.
 
@@ -191,7 +191,7 @@ overview. A lost response is never retried as a new mutation. Existing
 uses the VOD timeline only. Live playback and archive seeking retain their existing
 domain-specific controls. Capability availability can change between reading it
 and issuing a command. These administrator controls do not expand scoped diagnostic
-operator permissions or grant local diagnostic consent.
+operator permissions. The enabled controller connection already authorizes diagnostics.
 
 Updated clients additionally support `resolve_archive` and `play_archive_catalog`
 for the CLI's channel → current programme → available archive search. Archive
@@ -293,9 +293,106 @@ OTTClub's `server` is a bare host with an optional port, such as `club.example:8
 its existing driver supplies the URL scheme. Other supported providers accept
 HTTP(S) URLs. Changing an OTTClub key preserves the stored host.
 
+## Remote screenshots
+
+Connecting and enabling remote control authorizes the configured controller to
+troubleshoot the player, including screenshots. There is no separate screenshot
+permission switch or ten-minute authorization limit. Update the player, command
+server and `ott` CLI together; older players can still require their legacy local
+grant. A platform without a capture adapter reports screenshots as unavailable.
+
+1. Connect the player to the command server as usual. Screenshots require HTTPS;
+   HTTP is accepted only for a controller on `localhost`, `127.0.0.1` or `::1`.
+2. On supported native players, screenshots are immediately available and remain
+   authorized after a restart while remote control stays enabled.
+3. In a supported browser, choose the source in the browser's own sharing dialog.
+   A local Connect action opens it when possible. For an already configured or
+   reloaded page, use **Settings → Remote control → Select screenshot source in
+   browser**. This selects a source; it does not grant additional player trust.
+   The browser requires a local gesture and does not persist screen-sharing
+   permission across reloads. See the [Screen Capture specification](https://www.w3.org/TR/screen-capture/#dom-mediadevices-getdisplaymedia).
+4. Request one image:
+
+   ```sh
+   ott tv                         # shows operations and browser-source guidance
+   ott tv caps                    # inspect screenshot readiness and capture source
+   ott tv screenshot              # save one PNG under a unique local filename
+   ott tv shot -o living-room.png  # short alias; an existing file is not overwritten
+   ```
+
+**Disconnect** in Remote control revokes the controller's access. Changing its
+address or device credential invalidates pending images and browser selection.
+Native capture automatically uses the newly configured connection. Browser
+sharing lasts until it is stopped, its source ends, the controller changes or the
+page reloads; it has no application-imposed ten-minute limit. **Stop browser
+sharing** ends that source without disconnecting ordinary remote control.
+
+The configured controller can capture the player's settings and text/PIN screens;
+images can contain credentials and private information. Choose a browser source
+carefully: another window or an entire display can include other applications.
+Actual capture availability still depends on the OS, current source and adapter.
+The player does not impose a foreground-only or protected-settings consent gate.
+
+The response identifies the captured surface. Supported implementations differ:
+
+- A browser with `getDisplayMedia` and `ImageCapture.grabFrame` captures the source
+  selected locally. It reports
+  `browser-tab`, `window` or `display`. A browser unable to identify its source,
+  or without both working sharing and fresh-frame APIs, cannot provide this
+  feature. Each request obtains a fresh frame from the live shared track; cached
+  video-element frames and reconstructed DOM images are never substituted.
+  Android browsers
+  and a page hosted on here.now gain no native capability merely by connecting.
+- macOS Tauri captures the player web view (`player-view`), not the desktop or
+  other applications. Native overlays can be omitted; video inclusion is unknown.
+- iOS Capacitor captures its visible WKWebView (`player-view`). Native video and
+  native overlays are excluded. It rejects background capture and capture behind
+  a native modal. There is no full-device recording or screen-recording prompt.
+  The adapter passed an unsigned simulator-target build; screenshot capture has
+  not yet been accepted on an iOS simulator or physical device.
+- The archived Android Capacitor bridge includes an Android 8+ own-window adapter
+  (`player-window`) using PixelCopy. It rejects protected, unfocused and inactive
+  windows; protected video and separately composed surfaces may be absent. This
+  repository does **not** build an Android APK. A compatible shell must integrate
+  and package the adapter; the separate `ottplay-android` native app is not given
+  remote screenshot support by this change.
+- LG/webOS and other shells without a working capture adapter report
+  `unsupported`; no simulated screenshot is substituted.
+
+Images are PNG, at most 1280 × 720 pixels and 1 MiB before base64 encoding.
+Downscaling may reduce the dimensions further. `video: "unknown"` does not promise
+that video is included; `"excluded"` identifies an adapter that omits native video.
+An image proves neither continuous decoding nor a healthy stream.
+
+The player drops a result if its runtime or controller changes while capture is
+pending. Native adapters allow one capture at a time and bound completion time;
+a delayed platform callback cannot return an image after cancellation. The
+image travels only in the authenticated command response. See the control
+server's [CLI screenshot guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/cli.md#remote-screenshots)
+for private local file creation and result-retention limits.
+Screenshot uploads reject every HTTP redirect; configure the final HTTPS
+controller URL directly. Disconnecting attempts to cancel an outstanding upload,
+but cannot retract bytes already received by the controller.
+
+If `ott tv` reports `permission_required` on an updated browser player, select a
+source in the browser sharing dialog. Native players need an enabled secure
+controller connection, not another approval. On an older player, update it or use
+its previous permission flow. If a request is rejected, check the same runtime is
+still running and the browser source is live. OS suspension, native modals or an
+unavailable capture surface can still prevent capture. A timeout does not trigger
+an automatic repeated capture. If a native adapter stays busy after a timeout,
+restart the player: an outstanding platform capture retains its slot until its
+callback returns. Native screenshots are authorized again automatically after
+restart. Black or missing video can be a capture limitation; inspect playback
+diagnostics separately. `unsupported` requires a supported browser or a newly
+packaged native adapter.
+
+New screenshot UI messages have English and Russian translations. Other language
+catalogs currently use explicit English fallback for these new messages.
+
 ## Remote diagnostics and support
 
-See [Remote diagnostics](remote-diagnostics.md) for temporary or trusted support, exact runtime selection, bounded telemetry, acknowledged repairs, CLI/MCP access and platform limits. Diagnostics uses independent protocol 2 routes; existing command delivery remains compatible.
+See [Remote diagnostics](remote-diagnostics.md) for connection-authorized support, exact runtime selection, bounded telemetry, acknowledged repairs, CLI/MCP access and platform limits. Diagnostics uses independent protocol 2 routes; existing command delivery remains compatible.
 
 ### Kiosk mode
 

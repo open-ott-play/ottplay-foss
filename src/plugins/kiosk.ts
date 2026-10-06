@@ -523,20 +523,19 @@ export function createKiosk(w: any): any {
             if (
                 !controller ||
                 typeof controller.status !== "function" ||
-                typeof controller.setEnabled !== "function"
+                typeof controller.stopSession !== "function"
             )
                 return false;
             var state = controller.status();
             if (
                 !state ||
-                (state.enabled !== true &&
-                    state.trusted !== true &&
-                    state.pending !== true &&
-                    state.state !== "storage-error")
+                state.state !== "active" ||
+                typeof state.sessionId !== "string" ||
+                !/^[A-Za-z0-9_.:-]{1,80}$/.test(state.sessionId)
             )
                 return false;
-            // Only revoke support. Kiosk playback and its stored policy stay locked.
-            controller.setEnabled(false);
+            // Stop only this capture; connection authority and kiosk playback stay intact.
+            controller.stopSession();
             return true;
         } catch (_) {
             return false;

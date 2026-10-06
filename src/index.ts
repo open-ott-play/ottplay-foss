@@ -50,8 +50,9 @@ import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
-import { tauriInvoke } from "./plugins/native-bridge";
+import { resolveNativePlugin, tauriInvoke } from "./plugins/native-bridge";
 import { installRemoteLifecycle } from "./plugins/remote-lifecycle";
+import { installRemoteScreenshot } from "./plugins/remote-screenshot";
 import "./plugins/native-http";
 import {
     StalkerPortal,
@@ -1873,6 +1874,64 @@ export function startPlayer(): void {
 
 // Post-STB-init setup
 
+/** Reuse the successful early dictionary and commit first-run auto selection. */
+function loadStartupLanguage(): boolean {
+    var lang = stbGetItem("ottplaylang");
+    var bootLanguage = (window as any).__ottBootLanguage;
+    (window as any).__ottBootLanguage = null;
+    var preloaded =
+        bootLanguage &&
+        Object.prototype.hasOwnProperty.call(
+            languageNames,
+            bootLanguage.code
+        ) &&
+        bootLanguage.dictionary === (window as any).keyStrings;
+    if (!lang && preloaded && bootLanguage.automatic) {
+        lang = String(bootLanguage.code);
+        stbSetItem("ottplaylang", lang);
+    }
+    var launchEl = document.getElementById("launch");
+    if (!lang) {
+        console.log("TRACE no lang, calling selectLang()");
+        if (launchEl) {
+            launchEl.style.display = "none";
+            if (typeof (window as any).clearBootHide === "function")
+                (window as any).clearBootHide();
+        }
+        selectLang();
+        return false;
+    }
+
+    function ready(): void {
+        (window as any).__ottBootDictionary = (window as any).keyStrings;
+        if (typeof duneAddSettings !== "function") loadProv();
+        else if (typeof (window as any).optionsList === "function")
+            (window as any).optionsList(selectLang);
+        checkTauriUpdatesAfterLanguage();
+    }
+    if (preloaded && bootLanguage.code === lang) {
+        // Keep the script-load callback's ordering: onStbReady must install
+        // native HTTP/EPG shims before a saved provider starts its first request.
+        setTimeout(ready, 0);
+        return true;
+    }
+    console.log("TRACE lang=" + lang + ", loading langJS");
+    getScriptDOM(
+        hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
+        ready,
+        function () {
+            var el = document.getElementById("launch");
+            if (el) {
+                el.style.display = "none";
+            }
+            if (typeof (window as any).clearBootHide === "function")
+                (window as any).clearBootHide();
+            selectLang(true);
+        }
+    );
+    return true;
+}
+
 /**
  * Called after stbInit() completes. Responsible for:
  * - Merging device-specific key mappings
@@ -1908,8 +1967,8 @@ function onStbReady(): void {
             enabled: settings.commandServerEnabled === 1,
             token: settings.commandServerToken,
         });
-        // Read device-local support permission only after saved settings and
-        // the controller's initial configure callback have completed.
+        // Start connection-authorized diagnostics after saved settings and the
+        // controller's initial configure callback have completed.
         if (!(window as any).__ottRemoteDiagnostics) initRemoteDiagnostics();
         // Device UUID for remote control / swop allowlist; optional /local/swop.json
         if (typeof (window as any).ensureDeviceClientId === "function")
@@ -1947,42 +2006,7 @@ function onStbReady(): void {
         savedPopup.popupDetail = popupDetail.slice();
         savedPopup.ver = version;
 
-        // Load language
-        var lang = stbGetItem("ottplaylang");
-        var launchEl = document.getElementById("launch");
-        if (!lang) {
-            console.log("TRACE no lang, calling selectLang()");
-            if (launchEl) {
-                launchEl.style.display = "none";
-                if (typeof (window as any).clearBootHide === "function")
-                    (window as any).clearBootHide();
-            }
-            selectLang();
-            return;
-        }
-
-        console.log("TRACE lang=" + lang + ", loading langJS");
-        getScriptDOM(
-            hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
-            function () {
-                (window as any).__ottBootDictionary = (
-                    window as any
-                ).keyStrings;
-                if (typeof duneAddSettings !== "function") loadProv();
-                else if (typeof (window as any).optionsList === "function")
-                    (window as any).optionsList(selectLang);
-                checkTauriUpdatesAfterLanguage();
-            },
-            function () {
-                var el = document.getElementById("launch");
-                if (el) {
-                    el.style.display = "none";
-                }
-                if (typeof (window as any).clearBootHide === "function")
-                    (window as any).clearBootHide();
-                selectLang(true);
-            }
-        );
+        if (!loadStartupLanguage()) return;
 
         // Re-apply Tauri IPC override after provider script loads.
         // This ensures the getChannelEpg override persists even when provider scripts
@@ -5928,6 +5952,28 @@ window.showPopup = showPopup;
 
 (window as any).__ottKiosk = createKiosk(window);
 
+// Runtime authority follows the actual connection, even when saved preferences cannot be updated.
+var remoteControlConnection: {
+    address: string;
+    enabled: boolean;
+    token: string;
+} = {
+    address: "",
+    enabled: false,
+    token: "",
+};
+function remoteControlConfig(): {
+    address: string;
+    enabled: boolean;
+    token: string;
+} {
+    return {
+        address: remoteControlConnection.address,
+        enabled: remoteControlConnection.enabled,
+        token: remoteControlConnection.token,
+    };
+}
+
 // Outbound server credentials are entered on this installation, never generated by a listener.
 (window as any).__ottCommandServer = createCommandServer(
     window,
@@ -5943,20 +5989,45 @@ window.showPopup = showPopup;
               ? function (request: any): Promise<any> {
                     return StalkerPortal.httpRequest(request);
                 }
-              : undefined
+              : undefined,
+        typeof window.__TAURI__ === "undefined" &&
+            (window as any).Capacitor &&
+            (!(window as any).Capacitor.isNativePlatform ||
+                (window as any).Capacitor.isNativePlatform()) &&
+            typeof StalkerPortal.cancelHttpRequest === "function"
+            ? function (requestId: string): void {
+                  StalkerPortal.cancelHttpRequest!({
+                      requestId: requestId,
+                  }).catch(function () {});
+              }
+            : undefined
     ),
     function (config: any): void {
-        if ((window as any).__ottRemoteDiagnostics)
-            (window as any).__ottRemoteDiagnostics.configurationChanged(config);
-        if (
-            !saveSettings({ commandServerEnabled: 0 }) ||
-            !saveSettings({
-                commandServerAddress: config.address,
-                commandServerEnabled: config.enabled ? 1 : 0,
-                commandServerToken: config.token,
-            })
-        )
-            throw new Error("Command server settings could not be saved");
+        remoteControlConnection = {
+            address: config.address,
+            enabled: false,
+            token: config.token,
+        };
+        try {
+            if (
+                !saveSettings({ commandServerEnabled: 0 }) ||
+                !saveSettings({
+                    commandServerAddress: config.address,
+                    commandServerEnabled: config.enabled ? 1 : 0,
+                    commandServerToken: config.token,
+                })
+            )
+                throw new Error("Command server settings could not be saved");
+            remoteControlConnection.enabled = config.enabled === true;
+        } finally {
+            // A failed first write may leave enabled saved preferences; runtime authority still stays off.
+            if ((window as any).__ottRemoteDiagnostics)
+                (window as any).__ottRemoteDiagnostics.configurationChanged(
+                    remoteControlConfig()
+                );
+            if ((window as any).__ottRemoteScreenshot)
+                (window as any).__ottRemoteScreenshot.configurationChanged();
+        }
     },
     handleCommand,
     function (request, done, afterReply) {
@@ -5969,27 +6040,62 @@ window.showPopup = showPopup;
     }
 );
 
+installRemoteScreenshot(window, {
+    getConfig: function () {
+        return remoteControlConfig();
+    },
+    mobile: resolveNativePlugin<any>("RemoteScreenshot", function () {
+        return {
+            capabilities: function () {
+                return Promise.resolve({ source: null, supported: false });
+            },
+            capture: function () {
+                return Promise.reject(new Error("Screenshots unavailable"));
+            },
+        };
+    }),
+    onStatus: function (status: any): void {
+        var badge = document.getElementById("remoteScreenshotIndicator");
+        if (!status.enabled && !status.pending) {
+            var controller = (window as any).__ottCommandServer;
+            if (controller && controller.discardScreenshots)
+                controller.discardScreenshots();
+            if (badge && badge.parentNode) badge.parentNode.removeChild(badge);
+            return;
+        }
+        if (!status.browserSelectionSupported) {
+            if (badge && badge.parentNode) badge.parentNode.removeChild(badge);
+            return;
+        }
+        if (!badge) {
+            badge = document.createElement("button");
+            badge.id = "remoteScreenshotIndicator";
+            badge.style.cssText =
+                "position:fixed;right:8px;bottom:8px;z-index:99999;" +
+                "background:#532900;color:white;border:1px solid white;padding:6px;";
+            badge.onclick = function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                (window as any).__ottRemoteScreenshot.stop();
+            };
+            (document.body || document.documentElement).appendChild(badge);
+        }
+        badge.textContent = (window as any)._("Stop browser sharing");
+    },
+});
+
 function initRemoteDiagnostics(): void {
     (window as any).__ottRemoteDiagnostics = installDiagnosticsController(
         window,
         {
             getConfig: function () {
-                return {
-                    address: settings.commandServerAddress,
-                    enabled: settings.commandServerEnabled === 1,
-                    token: settings.commandServerToken,
-                };
+                return remoteControlConfig();
             },
             onStatus: function (status: any): void {
                 var badge = document.getElementById(
                     "remoteDiagnosticsIndicator"
                 );
-                if (
-                    !status.enabled &&
-                    !status.trusted &&
-                    !status.pending &&
-                    status.state !== "storage-error"
-                ) {
+                if (!status.sessionId) {
                     if (badge && badge.parentNode)
                         badge.parentNode.removeChild(badge);
                     return;
@@ -6003,9 +6109,7 @@ function initRemoteDiagnostics(): void {
                     badge.onclick = function (event) {
                         event.preventDefault();
                         event.stopPropagation();
-                        (window as any).__ottRemoteDiagnostics.setEnabled(
-                            false
-                        );
+                        (window as any).__ottRemoteDiagnostics.stopSession();
                     };
                     (document.body || document.documentElement).appendChild(
                         badge
@@ -6016,9 +6120,7 @@ function initRemoteDiagnostics(): void {
                     ": " +
                     (window as any)._(status.message) +
                     " · " +
-                    (status.state === "storage-error"
-                        ? (window as any)._("Retry")
-                        : (window as any)._("Stop"));
+                    (window as any)._("Stop current capture");
             },
             runtimeLabel:
                 (typeof window.__TAURI__ !== "undefined"
@@ -6228,33 +6330,38 @@ window.settingsCommands = function (): void {
     var commandServer = w.__ottCommandServer;
     var discovery = w.__ottControlDiscovery;
     var diagnostics = w.__ottRemoteDiagnostics;
+    var screenshots = w.__ottRemoteScreenshot;
+    function refreshScreenshots(): void {
+        if (!screenshots || closed) return;
+        var view = screenshots.status();
+        var label = document.getElementById("remoteScreenshotStatus");
+        if (label)
+            label.textContent =
+                view.state === "unsupported"
+                    ? w._("Screenshots are unavailable on this platform.")
+                    : w._(view.message);
+        var button = document.getElementById(
+            "remoteScreenshotToggle"
+        ) as HTMLButtonElement | null;
+        if (button) {
+            button.hidden = !view.browserSelectionSupported;
+            button.disabled =
+                !view.browserSelectionSupported || !view.connected;
+            button.textContent = w._(
+                view.enabled || view.pending
+                    ? "Stop browser sharing"
+                    : "Select screenshot source in browser"
+            );
+        }
+    }
     function refreshDiagnostics(): void {
         if (!diagnostics || closed) return;
         var status = diagnostics.status();
-        var storageError = status.state === "storage-error";
         var label = document.getElementById("remoteDiagnosticsStatus");
         if (label)
             label.textContent =
                 w._(status.message) +
                 (status.runtimeId ? " · " + status.runtimeId : "");
-        var button = document.getElementById("remoteDiagnosticsToggle");
-        if (button)
-            button.textContent = w._(
-                storageError
-                    ? "Retry"
-                    : status.enabled || status.trusted || status.pending
-                      ? "Stop diagnostics"
-                      : "Allow diagnostics for 10 minutes"
-            );
-        var trust = document.getElementById("remoteDiagnosticsTrust");
-        if (trust)
-            trust.textContent = w._(
-                storageError
-                    ? "Retry"
-                    : status.trusted
-                      ? "Disable trusted remote support"
-                      : "Trust this server for remote support"
-            );
         var stopSession = document.getElementById(
             "remoteDiagnosticsStopSession"
         ) as HTMLButtonElement | null;
@@ -6278,8 +6385,8 @@ window.settingsCommands = function (): void {
         var choices = document.getElementById("commandServerDiscoveryChoices");
         if (!choices) return;
         choices.textContent = "";
-        controls.length = Math.min(controls.length, 12);
-        controlActions.length = Math.min(controlActions.length, 12);
+        controls.length = Math.min(controls.length, 11);
+        controlActions.length = Math.min(controlActions.length, 11);
         status.servers.forEach(function (server: any, index: number) {
             var button = document.createElement("button");
             button.textContent =
@@ -6352,32 +6459,17 @@ window.settingsCommands = function (): void {
             if (discovery) discovery.cancel();
         },
         function (): void {
-            if (diagnostics) {
-                var status = diagnostics.status();
-                diagnostics.setEnabled(
-                    !(
-                        status.enabled ||
-                        status.trusted ||
-                        status.pending ||
-                        status.state === "storage-error"
-                    )
-                );
-            }
-            refreshDiagnostics();
-        },
-        function (): void {
-            if (diagnostics && diagnostics.setTrusted) {
-                var status = diagnostics.status();
-                if (status.state === "storage-error")
-                    diagnostics.setEnabled(false);
-                else diagnostics.setTrusted(!status.trusted);
-            }
-            refreshDiagnostics();
-        },
-        function (): void {
             if (diagnostics && diagnostics.status().sessionId)
                 diagnostics.stopSession();
             refreshDiagnostics();
+        },
+        function (): void {
+            if (screenshots && !w.__ottRemoteInputActive) {
+                var view = screenshots.status();
+                if (view.enabled || view.pending) screenshots.stop();
+                else screenshots.selectSource(true);
+            }
+            refreshScreenshots();
         },
     ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
@@ -6447,6 +6539,7 @@ window.settingsCommands = function (): void {
         if (commandServer) commandServer.subscribe(null);
         if (discovery) discovery.subscribe(null);
         if (diagnostics) diagnostics.subscribe(null);
+        if (screenshots) screenshots.subscribe(null);
         $("#listAbout").hide().text("");
         ["listCaption", "listDetail", "listPodval"].forEach(
             function (id, index) {
@@ -6548,18 +6641,25 @@ window.settingsCommands = function (): void {
             "</b><br/>" +
             text(
                 w._(
-                    "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline."
+                    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes."
                 )
             ) +
             '<br/><span id="remoteDiagnosticsStatus" role="status"></span><br/>' +
-            '<button id="remoteDiagnosticsToggle">' +
-            text(w._("Allow diagnostics for 10 minutes")) +
-            '</button> <button id="remoteDiagnosticsTrust">' +
-            text(w._("Trust this server for remote support")) +
-            '</button> <button id="remoteDiagnosticsStopSession" disabled>' +
+            '<button id="remoteDiagnosticsStopSession" disabled>' +
             text(w._("Stop current capture")) +
             "</button><br/><br/>" +
             "<b>" +
+            text(w._("Remote screenshots")) +
+            "</b><br/>" +
+            text(
+                w._(
+                    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source."
+                )
+            ) +
+            '<br/><span id="remoteScreenshotStatus" role="status"></span><br/>' +
+            '<button id="remoteScreenshotToggle">' +
+            text(w._("Select screenshot source in browser")) +
+            "</button><br/><br/><b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
             text(w._(remoteStatus.enabled ? "on" : "off")) +
@@ -6651,13 +6751,14 @@ window.settingsCommands = function (): void {
             document.getElementById("commandServerDiscoveryCancel")!,
             8
         );
-        bindControl(document.getElementById("remoteDiagnosticsToggle")!, 9);
-        bindControl(document.getElementById("remoteDiagnosticsTrust")!, 10);
         bindControl(
             document.getElementById("remoteDiagnosticsStopSession")!,
-            11
+            9
         );
         refreshDiagnostics();
+        bindControl(document.getElementById("remoteScreenshotToggle")!, 10);
+        refreshScreenshots();
+        if (screenshots) screenshots.subscribe(refreshScreenshots);
         var footerControls = footer
             ? footer.querySelectorAll("span[onclick]")
             : [];
@@ -6743,6 +6844,7 @@ window.settingsCommands = function (): void {
                         token: token,
                     });
                 draft.cancel();
+                selectBrowserSourceAfterConnect();
                 render();
             },
             function (saved) {
@@ -6760,7 +6862,18 @@ window.settingsCommands = function (): void {
                 enabled: !commandServer.status().enabled,
                 token: settings.commandServerToken,
             });
+        selectBrowserSourceAfterConnect();
         render();
+    }
+    function selectBrowserSourceAfterConnect(): void {
+        if (!screenshots || w.__ottRemoteInputActive) return;
+        var view = screenshots.status();
+        if (
+            view.connected &&
+            view.browserSelectionSupported &&
+            view.needsSourceSelection
+        )
+            screenshots.selectSource(true);
     }
     function toggleHttpRemote(): void {
         if (changingHttpRemote) return;

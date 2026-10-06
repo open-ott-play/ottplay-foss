@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv 设置",
     "Allow diagnostics for 10 minutes": "允许诊断 10 分钟",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "允许该服务器收集诊断计数器并重新启动该流或播放器。临时访问持续 10 分钟。重新连接或重新启动后，可信支持仍然可用；每次捕获仍会在 10 分钟后过期。隐藏或离线时收集会暂停。",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "允许该服务器收集该前台会话的播放、网络和输入计数器。需要 HTTPS 和服务器权限。当隐藏或断开连接时，10 分钟后停止。",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "将此设备列入白名单 ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS 播放器无法下载HTTP EPG 源。使用 HTTPS 源。",
@@ -241,10 +246,20 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "在“设置”->“提供商设置”中配置 Шаравоз",
     Connect: "连接",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "首先将此播放器连接到命令服务器。",
     Connected: "已连接",
     "Connected. Waiting for the channel list...": "已连接。等待频道列表...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.": "连接此页面的远程诊断。",
     "Connecting to Plex…": "连接到Plex…",
     "Connecting to Stalker portal...": "正在连接Stalker门户…",
@@ -681,7 +696,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "遥控器（无彩色按钮）",
     "Remote (number buttons N/A)": "遥控器（无数字按钮）",
     "Remote control": "远程控制",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "远程诊断",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "正在收集此页面的远程诊断信息。",
     "Remote diagnostics is off.": "远程诊断已关闭。",
@@ -695,6 +718,10 @@ var keyStrings = {
         "远程输入已过期。打开一个新会话重试。",
     "Remote input session is unavailable. Open a new session to try again.":
         "远程输入会话不可用。打开一个新会话重试。",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "远程会话已过期",
     "Remote text entry": "远程文本输入",
     "Remote text entry denied": "远程文本输入被拒绝",
@@ -738,6 +765,15 @@ var keyStrings = {
     "Save settings to storage": "将设置保存到存储器",
     "Scan this QR code with your phone to enter text.":
         "用手机扫描此QR 代码以输入文本。",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "编剧",
     Search: "搜索",
     "Search programme": "搜索节目",
@@ -756,6 +792,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "选择EPG和徽标的播放列表模板源",
     "Select Stalker portal": "选择Stalker 门户",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "发送请求",
     "Send settings": "发送设置",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -835,9 +875,11 @@ var keyStrings = {
     "Starting...": "开始……",
     Status: "状态",
     Stop: "停止",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "停止电流捕捉",
     "Stop diagnostics": "停止诊断",
     "Stop playback and return to live": "停止播放并返回直播",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "无法播放流",
     "Stream type: %1": "流类型：%1",
     "String for search": "搜索查询",
@@ -856,9 +898,13 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox设定",
     "Text is too long for remote input.": "文本对于远程输入来说太长。",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.": "命令服务器发现URL 无效。",
     "The device ID in the address is invalid.": "地址中的设备ID 无效。",
     "The discovery response is invalid.": "发现响应无效。",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "此浏览器无法安全地自动配对。更新它或手动输入命令服务器设置。",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

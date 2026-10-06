@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Танзимоти All4you.tv",
     "Allow diagnostics for 10 minutes":
         "Ба ташхис барои 10 дақиқа иҷозат диҳед",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ба ин сервер иҷозат диҳед, ки нишондиҳандаҳои ташхисиро ҷамъ кунад ва пахш ё плеерро аз нав оғоз намояд. Дастрасии муваққатӣ 10 дақиқа давом мекунад. Дастгирии боэътимод пас аз пайвастшавӣ ё оғози дубора дастрас мемонад; ҳар ҷамъоварӣ пас аз 10 дақиқа анҷом меёбад. Ҳангоми пинҳон будан ё қатъи шабака ҷамъоварӣ таваққуф мекунад.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ба ин сервер иҷозат диҳед, ки нишондиҳандаҳои пахш, шабака ва вурудро дар ин нишасти намоён ҷамъ кунад. HTTPS ва иҷозати сервер заруранд. Пас аз 10 дақиқа, ҳангоми пинҳоншавӣ ё қатъи пайвастшавӣ қатъ мешавад.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Ин ID-и дастгоҳро ба рӯйхати иҷозатшуда илова кунед",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -253,11 +258,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     Connect: "Пайваст шавед",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Аввал ин плеерро ба сервери фармонҳо пайваст кунед.",
     Connected: "Пайваст шуд",
     "Connected. Waiting for the channel list...":
         "Пайваст шуд. Интизори рӯйхати каналҳо…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Ташхиси дурдаст барои ин саҳифа пайваст мешавад.",
     "Connecting to Plex…": "Пайвастшавӣ ба Plex…",
@@ -719,7 +734,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пулт (бе тугмаҳои ранга)",
     "Remote (number buttons N/A)": "Пулт (бе тугмаҳои рақамӣ)",
     "Remote control": "Идоракунии дурдаст",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Ташхиси дурдаст",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Ташхиси дурдаст барои ин саҳифа маълумот ҷамъ мекунад.",
     "Remote diagnostics is off.": "Ташхиси дурдаст хомӯш аст.",
@@ -733,6 +756,10 @@ var keyStrings = {
         "Муҳлати вуруди дурдаст гузашт. Барои кӯшиши дубора нишасти нав кушоед.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Нишасти вуруди дурдаст дастрас нест. Барои кӯшиши дубора нишасти нав кушоед.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Муҳлати нишасти дурдаст гузашт",
     "Remote text entry": "Вуруди дурдасти матн",
     "Remote text entry denied": "Вуруди дурдасти матн рад шуд",
@@ -779,6 +806,15 @@ var keyStrings = {
     "Save settings to storage": "Танзимотро ба захира сабт кунед",
     "Scan this QR code with your phone to enter text.":
         "Барои ворид кардани матн ин QR-кодро бо телефон скан кунед.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Сенария",
     Search: "Ҷустуҷӯ",
     "Search programme": "Барномаро ҷустуҷӯ кунед",
@@ -798,6 +834,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Манбаи қолаби рӯйхати пахшро барои EPG ва нишонаҳо интихоб кунед",
     "Select Stalker portal": "Портали Stalker-ро интихоб кунед",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Дархост фиристед",
     "Send settings": "Танзимотро фиристед",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -881,10 +921,12 @@ var keyStrings = {
     "Starting...": "Оғоз…",
     Status: "Ҳолат",
     Stop: "Қатъ кунед",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Ҷамъоварии ҷориро қатъ кунед",
     "Stop diagnostics": "Ташхисро қатъ кунед",
     "Stop playback and return to live":
         "Пахшро қатъ кунед ва ба пахши зинда баргардед",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Пахш иҷро нашуд",
     "Stream type: %1": "Навъи пахш: %1",
     "String for search": "Ибораи ҷустуҷӯ",
@@ -904,11 +946,15 @@ var keyStrings = {
     "Tabox settings": "Танзимоти Tabox",
     "Text is too long for remote input.":
         "Матн барои вуруди дурдаст хеле дароз аст.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL-и ҷустуҷӯи сервери фармонҳо нодуруст аст.",
     "The device ID in the address is invalid.":
         "ID-и дастгоҳ дар суроға нодуруст аст.",
     "The discovery response is invalid.": "Ҷавоби ҷустуҷӯ нодуруст аст.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ин браузер ҷуфткунии худкори бехатарро иҷро карда наметавонад. Онро нав кунед ё танзимоти сервери фармонҳоро дастӣ ворид намоед.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

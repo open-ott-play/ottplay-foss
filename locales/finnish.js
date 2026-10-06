@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv asetukset",
     "Allow diagnostics for 10 minutes": "Salli diagnostiikka 10 minuutiksi",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Salli tämän palvelimen kerätä diagnostisia laskureita ja käynnistää tämä stream tai mediasoitin uudelleen. Väliaikainen pääsy kestää 10 minuuttia. Luotettu tuki on saatavilla uudelleen yhdistämisen tai uudelleenkäynnistyksen jälkeen; jokainen sieppaus vanhenee edelleen 10 minuutin kuluttua. Kokoelma keskeytyy piilotettuna tai offline-tilassa.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Salli tämän palvelimen kerätä toisto-, verkko- ja tulolaskurit tälle etualalla. Vaatii HTTPS ja palvelimen luvan. Pysähtyy 10 minuutin kuluttua, piilotettuna tai irrotettuna.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Lisää tämän laitteen ID sallittujen luetteloon",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -251,11 +256,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Määritä Шаравоз kohdassa Asetukset -> Palveluntarjoajan asetukset",
     Connect: "Yhdistä",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Liitä tämä mediasoitin ensin komentopalvelimeen.",
     Connected: "Yhdistetty",
     "Connected. Waiting for the channel list...":
         "Yhdistetty. Kanavalistaa odotellessa...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Yhdistetään tämän sivun etädiagnostiikkaa.",
     "Connecting to Plex…": "Yhdistetään verkkoon Plex…",
@@ -715,7 +730,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Kaukosäädin (ei väripainikkeita)",
     "Remote (number buttons N/A)": "Kaukosäädin (ei numeropainikkeita)",
     "Remote control": "Kaukosäädin",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Etädiagnostiikka",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Etädiagnostiikkaa kerätään tälle sivulle.",
     "Remote diagnostics is off.": "Etädiagnostiikka on pois päältä.",
@@ -729,6 +752,10 @@ var keyStrings = {
         "Kaukosyöte on vanhentunut. Avaa uusi istunto ja yritä uudelleen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Etäsyöttöistunto ei ole käytettävissä. Avaa uusi istunto ja yritä uudelleen.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Etäistunto vanhentunut",
     "Remote text entry": "Tekstin etäsyöttö",
     "Remote text entry denied": "Tekstin etäsyöttö kielletty",
@@ -775,6 +802,15 @@ var keyStrings = {
     "Save settings to storage": "Tallenna asetukset tallennustilaan",
     "Scan this QR code with your phone to enter text.":
         "Skannaa tämä QR-koodi puhelimellasi kirjoittaaksesi tekstiä.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Käsikirjoitus",
     Search: "Etsi",
     "Search programme": "Etsi ohjelma",
@@ -793,6 +829,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Valitse soittolistamallin lähde EPG:lle ja logoille",
     "Select Stalker portal": "Valitse Stalker-portaali",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Lähetä pyyntö",
     "Send settings": "Lähetä asetukset",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -874,10 +914,12 @@ var keyStrings = {
     "Starting...": "Alkaen…",
     Status: "Tila",
     Stop: "Pysäytä",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Pysäytä nykyinen sieppaus",
     "Stop diagnostics": "Lopeta diagnostiikka",
     "Stop playback and return to live":
         "Pysäytä toisto ja palaa suoraan lähetykseen",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Striimiä ei voitu toistaa",
     "Stream type: %1": "Striimin tyyppi: %1",
     "String for search": "Hakukysely",
@@ -897,11 +939,15 @@ var keyStrings = {
     "Tabox settings": "Tabox asetukset",
     "Text is too long for remote input.":
         "Teksti on liian pitkä etäsyöttöä varten.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Komentopalvelimen etsintä URL on virheellinen.",
     "The device ID in the address is invalid.":
         "Osoitteessa oleva laite ID on virheellinen.",
     "The discovery response is invalid.": "Etsintävastaus on virheellinen.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tämä selain ei voi muodostaa pariliitosta turvallisesti automaattisesti. Päivitä se tai syötä komentopalvelimen asetukset manuaalisesti.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

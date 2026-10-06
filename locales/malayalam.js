@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ക്രമീകരണങ്ങൾ",
     "Allow diagnostics for 10 minutes": "10 മിനിറ്റ് ഡയഗ്നോസ്റ്റിക്സ് അനുവദിക്കുക",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ഡയഗ്നോസ്റ്റിക് കൗണ്ടറുകൾ ശേഖരിക്കാനും ഈ സ്ട്രീം അല്ലെങ്കിൽ പ്ലേയർ പുനരാരംഭിക്കാനും ഈ സെർവറിനെ അനുവദിക്കുക. താൽക്കാലിക പ്രവേശനം 10 മിനിറ്റ് നീണ്ടുനിൽക്കും. വീണ്ടും കണക്‌റ്റുചെയ്യുകയോ പുനരാരംഭിക്കുകയോ ചെയ്‌തതിന് ശേഷവും വിശ്വസനീയമായ പിന്തുണ ലഭ്യമാകും; ഓരോ ക്യാപ്‌ചറും 10 മിനിറ്റിനുശേഷവും കാലഹരണപ്പെടും. മറച്ചിരിക്കുമ്പോഴോ ഓഫ്‌ലൈനിലായിരിക്കുമ്പോഴോ ശേഖരം താൽക്കാലികമായി നിർത്തുന്നു.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ഈ ഫോർഗ്രൗണ്ട് സെഷനായി പ്ലേബാക്ക്, നെറ്റ്‌വർക്ക്, ഇൻപുട്ട് കൗണ്ടറുകൾ എന്നിവ ശേഖരിക്കാൻ ഈ സെർവറിനെ അനുവദിക്കുക. HTTPS, സെർവർ അനുമതി എന്നിവ ആവശ്യമാണ്. 10 മിനിറ്റിന് ശേഷം, മറച്ചിരിക്കുമ്പോഴോ അല്ലെങ്കിൽ വിച്ഛേദിക്കുമ്പോഴോ നിർത്തുന്നു.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ഈ ഉപകരണം ID അനുവദിക്കുക",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "ഒരു HTTPS പ്ലേയറിന് HTTP EPG ഉറവിടം ഡൗൺലോഡ് ചെയ്യാൻ കഴിയില്ല. ഒരു HTTPS ഉറവിടം ഉപയോഗിക്കുക.",
@@ -245,11 +250,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "ക്രമീകരണങ്ങൾ -> ദാതാവിൻ്റെ ക്രമീകരണങ്ങളിൽ Шаравоз കോൺഫിഗർ ചെയ്യുക",
     Connect: "ബന്ധിപ്പിക്കുക",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ആദ്യം ഒരു കമാൻഡ് സെർവറിലേക്ക് ഈ പ്ലെയറിനെ ബന്ധിപ്പിക്കുക.",
     Connected: "ബന്ധിപ്പിച്ചു",
     "Connected. Waiting for the channel list...":
         "ബന്ധിപ്പിച്ചു. ചാനൽ ലിസ്റ്റിനായി കാത്തിരിക്കുന്നു...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ഈ പേജിനായി റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ബന്ധിപ്പിക്കുന്നു.",
     "Connecting to Plex…": "Plex-ലേക്ക് ബന്ധിപ്പിക്കുന്നു...",
@@ -703,7 +718,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "റിമോട്ട് (വർണ്ണ ബട്ടണുകൾ ഇല്ല)",
     "Remote (number buttons N/A)": "റിമോട്ട് (നമ്പർ ബട്ടണുകൾ ഇല്ല)",
     "Remote control": "റിമോട്ട് കൺട്രോൾ",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ്",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ഈ പേജിനായി റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ശേഖരിക്കുന്നു.",
     "Remote diagnostics is off.": "റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ഓഫാണ്.",
@@ -717,6 +740,10 @@ var keyStrings = {
         "റിമോട്ട് ഇൻപുട്ട് കാലഹരണപ്പെട്ടു. വീണ്ടും ശ്രമിക്കാൻ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
     "Remote input session is unavailable. Open a new session to try again.":
         "റിമോട്ട് ഇൻപുട്ട് സെഷൻ ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാൻ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "റിമോട്ട് സെഷൻ കാലഹരണപ്പെട്ടു",
     "Remote text entry": "റിമോട്ട് ടെക്സ്റ്റ് എൻട്രി",
     "Remote text entry denied": "റിമോട്ട് ടെക്സ്റ്റ് എൻട്രി നിരസിച്ചു",
@@ -765,6 +792,15 @@ var keyStrings = {
     "Save settings to storage": "സ്റ്റോറേജിലേക്ക് ക്രമീകരണങ്ങൾ സംരക്ഷിക്കുക",
     "Scan this QR code with your phone to enter text.":
         "ടെക്സ്റ്റ് നൽകുന്നതിന് നിങ്ങളുടെ ഫോൺ ഉപയോഗിച്ച് ഈ QR കോഡ് സ്കാൻ ചെയ്യുക.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "തിരക്കഥ",
     Search: "തിരയുക",
     "Search programme": "പരിപാടി തിരയുക",
@@ -783,6 +819,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG, ലോഗോകൾ എന്നിവയ്‌ക്കായി പ്ലേലിസ്റ്റ് ടെംപ്ലേറ്റ് ഉറവിടം തിരഞ്ഞെടുക്കുക",
     "Select Stalker portal": "Stalker പോർട്ടൽ തിരഞ്ഞെടുക്കുക",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "അഭ്യർത്ഥന അയയ്ക്കുക",
     "Send settings": "ക്രമീകരണങ്ങൾ അയയ്ക്കുക",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -864,9 +904,11 @@ var keyStrings = {
     "Starting...": "ആരംഭിക്കുന്നു...",
     Status: "നില",
     Stop: "നിർത്തുക",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "നിലവിലെ ക്യാപ്‌ചർ നിർത്തുക",
     "Stop diagnostics": "ഡയഗ്നോസ്റ്റിക്സ് നിർത്തുക",
     "Stop playback and return to live": "പ്ലേബാക്ക് നിർത്തി ലൈവിലേക്ക് മടങ്ങുക",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല",
     "Stream type: %1": "സ്ട്രീം തരം: %1",
     "String for search": "തിരയൽ അന്വേഷണം",
@@ -885,10 +927,14 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ക്രമീകരണങ്ങൾ",
     "Text is too long for remote input.": "ടെക്‌സ്‌റ്റ് വിദൂര ഇൻപുട്ടിന് ദൈർഘ്യമേറിയതാണ്.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "കമാൻഡ് സെർവർ കണ്ടെത്തൽ URL അസാധുവാണ്.",
     "The device ID in the address is invalid.": "വിലാസത്തിലെ ID ഉപകരണം അസാധുവാണ്.",
     "The discovery response is invalid.": "കണ്ടെത്തൽ പ്രതികരണം അസാധുവാണ്.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ഈ ബ്രൗസറിന് സ്വയമേവ സുരക്ഷിതമായി ജോടിയാക്കാൻ കഴിയില്ല. ഇത് അപ്ഡേറ്റ് ചെയ്യുക അല്ലെങ്കിൽ കമാൻഡ് സെർവർ ക്രമീകരണങ്ങൾ സ്വമേധയാ നൽകുക.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

@@ -63,6 +63,16 @@ try {
     `
     );
     write("providers/example/provider.js", 'translate("Provider message");');
+    write(
+        "src/plugins/remote-screenshot.ts",
+        `
+        var message = "Screenshots initially disabled";
+        message = "Screenshots permission active";
+        failSelection("Screenshot source unavailable");
+        var text = ready ? "Native screenshots connected" : "Select browser source";
+        console.log("Not a screenshot UI message");
+    `
+    );
     write("src/settings/transfer-ui.ts", 'notice("New settings notice");');
     write(
         "index.html",
@@ -101,12 +111,18 @@ try {
         "Discovery initial status",
         "Approve at %1",
         "Discovery failed",
+        "Screenshots initially disabled",
+        "Screenshots permission active",
+        "Screenshot source unavailable",
+        "Native screenshots connected",
+        "Select browser source",
     ])
         assert(
             fixtureKeys.keys.has(key),
             `New source key must be discovered: ${key}`
         );
     assert(!fixtureKeys.keys.has("Not a translated message"));
+    assert(!fixtureKeys.keys.has("Not a screenshot UI message"));
     assert(!fixtureKeys.keys.has("privateId"));
     assert(
         fixtureKeys.dynamic.some(
@@ -416,6 +432,130 @@ try {
     assert.equal(savedLanguage, "_eng");
     assert.equal(resumed, afterCancel + 1);
 
+    const startupFunction = selectionSource.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            node.name.text === "loadStartupLanguage"
+    );
+    function startupLanguage(options = {}) {
+        let saved = options.saved || "";
+        const deferred = [];
+        const writes = [],
+            requests = [],
+            picker = [];
+        let providers = 0,
+            updates = 0,
+            hidden = 0;
+        const dictionary = { lang: "fixture" };
+        const window = {
+            clearBootHide: () => hidden++,
+            keyStrings: dictionary,
+        };
+        if (options.boot)
+            window.__ottBootLanguage = {
+                ...options.boot,
+                dictionary: options.changedDictionary ? {} : dictionary,
+            };
+        const launch = { style: {} };
+        const context = {
+            checkTauriUpdatesAfterLanguage: () => updates++,
+            console: { log() {} },
+            document: { getElementById: () => launch },
+            getScriptDOM: (url, success, error) =>
+                requests.push({ error, success, url }),
+            hostUrl: "https://player.example",
+            languageAssetPath,
+            languageNames: Object.fromEntries(
+                Object.keys(languageAssets).map((code) => [code, code])
+            ),
+            loadProv: () => providers++,
+            PLAYER_VERSION: "test",
+            selectLang: (force) => picker.push(force),
+            setTimeout: (callback, delay) => {
+                assert.equal(delay, 0);
+                deferred.push(callback);
+            },
+            stbGetItem: () => saved,
+            stbSetItem: (key, value) => {
+                writes.push({ key, value });
+                saved = value;
+            },
+            window,
+        };
+        vm.runInNewContext(
+            ts.transpileModule(startupFunction.getText(selectionSource), {})
+                .outputText,
+            context
+        );
+        const proceeded = context.loadStartupLanguage();
+        return {
+            deferred,
+            launch,
+            picker,
+            proceeded,
+            requests,
+            snapshot: () => ({ hidden, providers, saved, updates }),
+            window,
+            writes,
+        };
+    }
+    const auto = startupLanguage({ boot: { automatic: true, code: "_rus" } });
+    assert.equal(auto.proceeded, true);
+    assert.deepEqual(auto.writes, [{ key: "ottplaylang", value: "_rus" }]);
+    assert.deepEqual(auto.requests, [], "Reuse the verified boot dictionary");
+    assert.equal(auto.snapshot().providers, 0, "Native shims initialize first");
+    assert.equal(auto.deferred.length, 1);
+    auto.deferred[0]();
+    assert.deepEqual(auto.snapshot(), {
+        hidden: 0,
+        providers: 1,
+        saved: "_rus",
+        updates: 1,
+    });
+    assert.equal(
+        auto.window.__ottBootLanguage,
+        null,
+        "Consume the boot result"
+    );
+    for (const options of [
+        {}, // Unsupported language, failed download or timeout: no boot result.
+        { boot: { automatic: false, code: "_rus" } }, // Saved preference cleared.
+        { boot: { automatic: true, code: "constructor" } },
+        { boot: { automatic: true, code: "_rus" }, changedDictionary: true },
+    ]) {
+        const result = startupLanguage(options);
+        assert.equal(result.proceeded, false);
+        assert.deepEqual(result.writes, []);
+        assert.deepEqual(result.requests, []);
+        assert.deepEqual(result.picker, [undefined]);
+        assert.equal(result.launch.style.display, "none");
+        assert.equal(result.snapshot().providers, 0);
+    }
+    const savedBoot = startupLanguage({
+        boot: { automatic: false, code: "_rus" },
+        saved: "_rus",
+    });
+    assert.deepEqual(savedBoot.writes, []);
+    assert.deepEqual(savedBoot.requests, []);
+    assert.equal(savedBoot.snapshot().providers, 0);
+    savedBoot.deferred[0]();
+    assert.equal(savedBoot.snapshot().providers, 1);
+    const changedPreference = startupLanguage({
+        boot: { automatic: true, code: "_rus" },
+        saved: "_fra",
+    });
+    assert.deepEqual(changedPreference.writes, []);
+    assert.equal(changedPreference.snapshot().providers, 0);
+    assert.match(changedPreference.requests[0].url, /\/locales\/french\.js\?/);
+    changedPreference.requests[0].success();
+    assert.equal(changedPreference.snapshot().providers, 1);
+    assert.equal(changedPreference.snapshot().saved, "_fra");
+    const failedSaved = startupLanguage({ saved: "_rus" });
+    failedSaved.requests[0].error();
+    assert.deepEqual(failedSaved.picker, [true]);
+    assert.deepEqual(failedSaved.writes, []);
+    assert.equal(failedSaved.snapshot().saved, "_rus");
+
     const reference = readDictionary(
         path.join(root, languageAssetPath("_eng"))
     );
@@ -434,6 +574,10 @@ try {
         "Could not save provider settings.",
         "Remote text entry",
         "Find command server",
+        "Remote screenshots",
+        "Select screenshot source in browser",
+        "Screenshots are available while remote control is connected.",
+        "Screen sharing could not start.",
         "Cancel pairing",
         "Enter the command server IP or address.",
         "OttPlay FOSS %1 is available. Download and install now?",
@@ -446,7 +590,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 88);
-    assert.equal(result.keyCount, 806);
+    assert.equal(result.keyCount, 831);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Настройки All4you.tv",
     "Allow diagnostics for 10 minutes": "Разрешить диагностику на 10 минут",
+
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Разрешить снимки экрана на 10 минут",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Разрешить серверу собирать диагностические показатели и перезапускать поток или плеер. Временный доступ действует 10 минут. Доверенная поддержка сохраняется после переподключения и перезапуска; каждый сеанс сбора ограничен 10 минутами. Сбор приостанавливается в фоне и без сети.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Разрешить этому серверу собирать показатели воспроизведения, сети и ввода, пока плеер открыт. Требуются HTTPS и разрешение на сервере. Диагностика остановится через 10 минут, при скрытии плеера или отключении.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Разрешить этому серверу запрашивать снимки экрана в течение 10 минут. Снимки могут содержать личные данные. В браузере выберите вкладку или окно плеера. Разрешение отменяется при перезагрузке или отключении.",
     "Allowlist this Device ID": "Разрешите этот ID устройства",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Плеер по HTTPS не может скачать EPG по HTTP. Укажите источник HTTPS.",
@@ -248,11 +253,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Настройте Шаравоз в разделе Настройки -> Настройки провайдера",
     Connect: "Подключить",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Перед разрешением снимков экрана подключитесь к серверу команд по HTTPS.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Для снимков экрана подключите сервер удалённого управления по HTTPS.",
+    "Connect remote control to enable diagnostics.":
+        "Подключите удалённое управление, чтобы включить диагностику.",
     "Connect this player to a command server first.":
         "Сначала подключите плеер к серверу управления.",
     Connected: "Подключено",
     "Connected. Waiting for the channel list...":
         "Подключено. Ожидание списка каналов…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Подключение удалённого управления разрешает этому серверу диагностику и восстановление плеера. Доступ сохраняется после перезапуска и прекращается при отключении. Каждая сессия сбора диагностики ограничена 10 минутами.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Подключение диагностики к серверу удалённого управления.",
     "Connecting remote diagnostics for this page.":
         "Подключение удалённой диагностики для этой страницы.",
     "Connecting to Plex…": "Подключение к Plex…",
@@ -712,7 +727,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт без цветных кнопок",
     "Remote (number buttons N/A)": "Пульт без цифровых кнопок",
     "Remote control": "Удалённое управление",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Удалённое управление разрешает диагностику. Готово к запросам оператора.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Удалённое управление разрешает диагностику. Ожидание восстановления связи.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Удалённое управление включает снимки плеера, в том числе настроек. На снимках могут быть личные данные. В приложении дополнительное разрешение не требуется. В браузере нужно выбрать источник захвата.",
     "Remote diagnostics": "Удалённая диагностика",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Идёт сбор диагностики для этого подключения (до 10 минут на сессию).",
     "Remote diagnostics is collecting for this page.":
         "Для этой страницы идёт сбор диагностических данных.",
     "Remote diagnostics is off.": "Удалённая диагностика выключена.",
@@ -726,6 +749,10 @@ var keyStrings = {
         "Время удалённого ввода истекло. Откройте новый сеанс.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сеанс удалённого ввода недоступен. Откройте новый сеанс.",
+    "Remote screenshots": "Удалённые снимки экрана",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Удалённые снимки экрана разрешены на 10 минут. Закройте настройки для съёмки.",
+    "Remote screenshots are off.": "Удалённые снимки экрана отключены.",
     "Remote session expired": "Сеанс удалённого доступа истёк",
     "Remote text entry": "Удалённый ввод текста",
     "Remote text entry denied": "Удалённый ввод текста запрещён",
@@ -772,6 +799,15 @@ var keyStrings = {
     "Save settings to storage": "Сохранить настройки в хранилище",
     "Scan this QR code with your phone to enter text.":
         "Отсканируйте QR-код телефоном, чтобы ввести текст.",
+    "Screen sharing could not start.": "Не удалось начать показ экрана.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Показ экрана отменён или недоступен.",
+    "Screenshot permission could not be enabled.":
+        "Не удалось разрешить снимки экрана.",
+    "Screenshots are available while remote control is connected.":
+        "Снимки экрана доступны, пока подключено удалённое управление.",
+    "Screenshots are unavailable on this platform.":
+        "На этой платформе снимки экрана недоступны.",
     Script: "Сценарий",
     Search: "Поиск",
     "Search programme": "Поиск передачи",
@@ -790,6 +826,9 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Выберите источник шаблона плейлиста, EPG и логотипов",
     "Select Stalker portal": "Выбор портала Stalker",
+    "Select screenshot source in browser": "Выбрать источник снимка в браузере",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Выберите вкладку или окно плеера в диалоге показа экрана браузера.",
     "Send request": "Отправить запрос",
     "Send settings": "Отправить настройки",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -871,10 +910,12 @@ var keyStrings = {
     "Starting...": "Запуск…",
     Status: "Состояние",
     Stop: "Остановить",
+    "Stop browser sharing": "Остановить захват в браузере",
     "Stop current capture": "Завершить текущий сбор",
     "Stop diagnostics": "Остановить диагностику",
     "Stop playback and return to live":
         "Остановить воспроизведение и вернуться в эфир",
+    "Stop screenshots": "Запретить снимки экрана",
     "Stream could not be played": "Не удалось воспроизвести поток",
     "Stream type: %1": "Тип потока: %1",
     "String for search": "Поисковый запрос",
@@ -894,12 +935,16 @@ var keyStrings = {
     "Tabox settings": "Настройки Tabox",
     "Text is too long for remote input.":
         "Текст слишком длинный для удалённого ввода.",
+    "The browser screenshot source is ready.":
+        "Источник снимков в браузере готов.",
     "The command server discovery URL is invalid.":
         "Неверный URL для поиска сервера команд.",
     "The device ID in the address is invalid.":
         "В адресе указан неверный ID устройства.",
     "The discovery response is invalid.":
         "Получен неверный ответ на запрос поиска.",
+    "This browser cannot identify the selected screenshot source.":
+        "Браузер не может определить выбранный источник снимка экрана.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Этот браузер не поддерживает безопасное автоматическое сопряжение. Обновите его или введите настройки сервера команд вручную.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

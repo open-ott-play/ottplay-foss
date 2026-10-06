@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv indstillinger",
     "Allow diagnostics for 10 minutes": "Tillad diagnostik i 10 minutter",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Tillad denne server at indsamle diagnostiske tællere og genstart denne stream eller medieafspiller. Midlertidig adgang varer 10 minutter. Pålidelig support forbliver tilgængelig efter genforbindelse eller genstart; hver optagelse udløber stadig efter 10 minutter. Samlingen sættes på pause, mens den er skjult eller offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Tillad denne server at indsamle afspilnings-, netværks- og inputtællere for denne forgrundssession. Kræver HTTPS og servertilladelse. Stopper efter 10 minutter, når den er skjult, eller når forbindelsen afbrydes.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Føj dette enheds-ID til listen over tilladte",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "En HTTPS medieafspiller kan ikke downloade en HTTP EPG kilde. Brug en HTTPS-kilde.",
@@ -252,11 +257,21 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Konfigurer Шаравоз i Indstillinger -> Udbyderindstillinger",
     Connect: "Forbind",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Tilslut først denne medieafspiller til en kommandoserver.",
     Connected: "Forbundet",
     "Connected. Waiting for the channel list...":
         "Forbundet. Venter på kanallisten...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Tilslutning af fjerndiagnostik for denne side.",
     "Connecting to Plex…": "Opretter forbindelse til Plex...",
@@ -719,7 +734,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Fjernbetjening (ingen farveknapper)",
     "Remote (number buttons N/A)": "Fjernbetjening (ingen talknapper)",
     "Remote control": "Fjernbetjening",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Fjerndiagnostik",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Fjerndiagnostik indsamler til denne side.",
     "Remote diagnostics is off.": "Fjerndiagnostik er slået fra.",
@@ -733,6 +756,10 @@ var keyStrings = {
         "Fjernindgang er udløbet. Åbn en ny session for at prøve igen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Fjerninputsession er ikke tilgængelig. Åbn en ny session for at prøve igen.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Fjernsession udløb",
     "Remote text entry": "Fjernindtastning af tekst",
     "Remote text entry denied": "Fjernindtastning af tekst nægtet",
@@ -780,6 +807,15 @@ var keyStrings = {
     "Save settings to storage": "Gem indstillinger til lager",
     "Scan this QR code with your phone to enter text.":
         "Scan denne QR-kode med din telefon for at indtaste tekst.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Manuskript",
     Search: "Søg",
     "Search programme": "Søg program",
@@ -798,6 +834,10 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Vælg kilde til afspilningslisteskabelon for EPG og logoer",
     "Select Stalker portal": "Vælg Stalker-portal",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Send anmodning",
     "Send settings": "Send indstillinger",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -879,10 +919,12 @@ var keyStrings = {
     "Starting...": "Starter...",
     Status: "Status",
     Stop: "Stop",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Stop aktuel optagelse",
     "Stop diagnostics": "Stop diagnosticering",
     "Stop playback and return to live":
         "Stop afspilning, og vend tilbage til direkte tv",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Stream kunne ikke afspilles",
     "Stream type: %1": "Strømtype: %1",
     "String for search": "Søgeforespørgsel",
@@ -901,11 +943,15 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox indstillinger",
     "Text is too long for remote input.": "Teksten er for lang til fjerninput.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Kommandoserveropdagelsen URL er ugyldig.",
     "The device ID in the address is invalid.":
         "Enheden ID i adressen er ugyldig.",
     "The discovery response is invalid.": "Opdagelsessvaret er ugyldigt.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Denne browser kan ikke sikkert parre automatisk. Opdater den, eller indtast kommandoserverindstillingerne manuelt.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
