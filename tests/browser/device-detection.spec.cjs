@@ -228,36 +228,67 @@ for (const fixture of fixtures.concat(routeFixtures)) {
     });
 }
 
-test("a failed runtime download shows a retry message before loading libraries", async ({
-    page,
-    context,
-    baseURL,
-}) => {
-    const requestedScripts = [];
-    page.on("request", (request) => {
-        if (request.resourceType() === "script")
-            requestedScripts.push(new URL(request.url()).pathname);
-    });
-    const localOrigin = new URL(baseURL).origin;
-    await context.route("**/*", async (route) => {
-        const url = new URL(route.request().url());
-        if (
-            url.origin !== localOrigin ||
-            url.pathname === "/js/runtime-polyfills.js"
-        )
-            await route.abort("blockedbyclient");
-        else await route.continue();
-    });
-    await page.goto("/f/lg/webos/", { waitUntil: "load" });
-    await expect(page.locator("#boot-status")).toHaveText(
-        "Compatibility runtime could not load. Reopen the player to retry."
+for (const locale of [
+    {
+        asset: "/locales/english.js",
+        message:
+            "Compatibility runtime could not load. Reopen the player to retry.",
+        tag: "en-US",
+    },
+    {
+        asset: "/locales/russian.js",
+        message:
+            "Не удалось загрузить компоненты совместимости. Откройте плеер заново.",
+        tag: "ru-RU",
+    },
+    {
+        asset: null,
+        message:
+            "Compatibility runtime could not load. Reopen the player to retry.",
+        tag: "qaa",
+    },
+]) {
+    test(
+        "a failed runtime download shows a retry message before loading libraries: " +
+            locale.tag,
+        async ({ page, context, baseURL }) => {
+            const requestedScripts = [];
+            page.on("request", (request) => {
+                if (request.resourceType() === "script")
+                    requestedScripts.push(new URL(request.url()).pathname);
+            });
+            const localOrigin = new URL(baseURL).origin;
+            await page.addInitScript((tag) => {
+                Object.defineProperty(navigator, "languages", {
+                    get: () => [tag],
+                });
+            }, locale.tag);
+            await context.route("**/*", async (route) => {
+                const url = new URL(route.request().url());
+                if (
+                    url.origin !== localOrigin ||
+                    url.pathname === "/js/runtime-polyfills.js"
+                )
+                    await route.abort("blockedbyclient");
+                else await route.continue();
+            });
+            await page.goto("/f/lg/webos/", { waitUntil: "load" });
+            await expect(page.locator("#boot-status")).toHaveText(
+                locale.message
+            );
+            await expect(page.locator("#boot-log")).toContainText(
+                "js/runtime-polyfills.js"
+            );
+            await expect(page.locator("body")).not.toHaveClass(/\bbooting\b/);
+            // The ES5 catalog localizes the failure before any runtime-dependent
+            // libraries or player code may load. Unsupported locales need no catalog.
+            expect(requestedScripts).toEqual([
+                "/js/runtime-polyfills.js",
+                ...(locale.asset ? [locale.asset] : []),
+            ]);
+        }
     );
-    await expect(page.locator("#boot-log")).toContainText(
-        "js/runtime-polyfills.js"
-    );
-    await expect(page.locator("body")).not.toHaveClass(/\bbooting\b/);
-    expect(requestedScripts).toEqual(["/js/runtime-polyfills.js"]);
-});
+}
 
 async function enterViewingMode(page) {
     await expect(page.locator("#listCaption")).toHaveText("First-run setup");
