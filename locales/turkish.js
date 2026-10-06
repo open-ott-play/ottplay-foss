@@ -559,7 +559,7 @@ var keyStrings = {
     "Loading...": "Yükleniyor…",
     "Local HTTP remote control": "Yerel HTTP uzaktan kumandası",
     "Local URL": "Yerel URL",
-    Login: "Giriş",
+    Login: "Kullanıcı adı",
     lang: "Türkçe",
     large: "büyük",
     left: "sol",
@@ -634,7 +634,7 @@ var keyStrings = {
     "Overwrite current settings?": "Geçerli ayarların üzerine yazılsın mı?",
     off: "kapalı",
     on: "açık",
-    "on ": "açık ",
+    "on ": "şu tuşa basınca: ",
     "or scan": "veya tarayın",
     Packages: "Paketler",
     "Pairing approved. Command server configured.":

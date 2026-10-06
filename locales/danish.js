@@ -564,7 +564,7 @@ var keyStrings = {
     "Loading...": "Indlæser...",
     "Local HTTP remote control": "Lokal HTTP fjernbetjening",
     "Local URL": "Lokal URL",
-    Login: "Log ind",
+    Login: "Brugernavn",
     lang: "Dansk",
     large: "store",
     left: "venstre",

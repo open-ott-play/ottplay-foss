@@ -364,11 +364,11 @@ var keyStrings = {
         "چند ساعت پخش قبلی برای این لیست پخش در دسترس است را وارد کنید",
     "Enter playlist Name": "نام لیست پخش را وارد کنید",
     "Enter playlist URL": "وارد لیست پخش URL شوید",
-    "Enter Stalker portal URL": "وارد پورتال Stalker URL شوید",
+    "Enter Stalker portal URL": "نشانی URL پورتال Stalker را وارد کنید",
     "Enter Stalker portal URL (e.g. http://your-portal:8800)":
-        "وارد پورتال Stalker URL شوید (به عنوان مثال http://your-portal:8800)",
+        "نشانی URL پورتال Stalker را وارد کنید (مثلاً http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
-        "وارد پورتال Stalker URL شوید (به عنوان مثال http://your-portal/stalker_portal/c/)",
+        "نشانی URL پورتال Stalker را وارد کنید (مثلاً http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "شماره سرور (%1) را وارد کنید.",
     "Enter the access code separately, not in the server address.":
         "کد دسترسی را جداگانه وارد کنید، نه در آدرس سرور.",
@@ -510,7 +510,7 @@ var keyStrings = {
     "Infobar display timeout, s": "وقفه نمایش نوار اطلاعات، s",
     "Infobar settings": "تنظیمات نوار اطلاعات",
     Information: "اطلاعات",
-    "Interface credits": "اعتبارات رابط",
+    "Interface credits": "سازندگان رابط کاربری",
     "Interface settings": "تنظیمات رابط",
     "Interface theme": "تم رابط",
     "Interface transparency": "شفافیت رابط",
@@ -553,7 +553,7 @@ var keyStrings = {
     "Loading...": "در حال بارگیری…",
     "Local HTTP remote control": "کنترل از راه دور HTTP محلی",
     "Local URL": "محلی URL",
-    Login: "ورود",
+    Login: "نام کاربری",
     lang: "فارسی",
     large: "بزرگ",
     left: "سمت چپ",
@@ -611,7 +611,7 @@ var keyStrings = {
     "not set": "تنظیم نشده است",
     Off: "خاموش",
     Ok: "تأیید",
-    Open: "باز",
+    Open: "باز کردن",
     "Open in PiP": "در PiP باز کنید",
     "Open Plex sign-in page": "صفحه ورود به سیستم Plex را باز کنید",
     "Open plex.tv/link on your phone or computer and enter this code.":
@@ -672,7 +672,7 @@ var keyStrings = {
     "POLMEDIA settings": "تنظیمات POLMEDIA",
     "Portal URL": "پورتال URL",
     "Position shift -10 seconds after pause":
-        "10 ثانیه پس از مکث به عقب برگردید",
+        "پس از مکث، پخش را 10 ثانیه به عقب ببرید",
     Postpaid: "پس پرداخت",
     PROST: "PROST",
     "PROST settings": "تنظیمات PROST",
@@ -772,7 +772,7 @@ var keyStrings = {
         "این کد QR را با تلفن خود اسکن کنید تا متن را وارد کنید.",
     Script: "فیلم‌نامه",
     Search: "جستجو",
-    "Search programme": "برنامه جستجو",
+    "Search programme": "جستجوی برنامهٔ تلویزیونی",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ورودی از راه دور ایمن شروع نشد. لطفاً دوباره امتحان کنید یا از صفحه کلید روی صفحه استفاده کنید.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

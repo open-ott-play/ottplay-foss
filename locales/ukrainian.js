@@ -560,7 +560,7 @@ var keyStrings = {
     "Loading...": "Завантаження…",
     "Local HTTP remote control": "Локальний HTTP-пульт",
     "Local URL": "Локальна адреса",
-    Login: "Логін",
+    Login: "Ім’я користувача",
     lang: "Українська",
     large: "великий",
     left: "ліворуч",

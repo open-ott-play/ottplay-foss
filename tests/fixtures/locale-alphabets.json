@@ -487,6 +487,309 @@
       "requiredCharacters": "абвгдђежзијклљмнњопрстћуфхцчџш",
       "mainExemplar": "[а б в г д ђ е ж з и ј к л љ м н њ о п р с т ћ у ф х ц ч џ ш]",
       "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/sr.xml"
+    },
+    "_geo": {
+      "locale": "ka",
+      "alphabet": "აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ",
+      "requiredCharacters": "აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ",
+      "mainExemplar": "[ა ბ გ დ ე ვ ზ თ ი კ ლ მ ნ ო პ ჟ რ ს ტ უ ფ ქ ღ ყ შ ჩ ც ძ წ ჭ ხ ჯ ჰ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ka.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "ᲐᲑᲒᲓᲔᲕᲖᲗᲘᲙᲚᲛᲜᲝᲞᲟᲠᲡᲢᲣᲤᲥᲦᲧᲨᲩᲪᲫᲬᲭᲮᲯᲰ"
+    },
+    "_alb": {
+      "locale": "sq",
+      "alphabet": "abcçdheëfgjiklmnopqrstuvxyz",
+      "requiredCharacters": "abcçdheëfgjiklmnopqrstuvxyz",
+      "mainExemplar": "[a b c ç d {dh} e ë f g {gj} h i j k l {ll} m n {nj} o p q r {rr} s {sh} t {th} u v x {xh} y z {zh}]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/sq.xml",
+      "extraCharacters": "dhgjlnrstxz",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "ABCÇDHEËFGJIKLMNOPQRSTUVXYZ"
+    },
+    "_bos": {
+      "locale": "bs",
+      "alphabet": "abcčćdžđefghijklmnoprsštuvz",
+      "requiredCharacters": "abcčćdžđefghijklmnoprsštuvz",
+      "mainExemplar": "[a b c č ć d {dž} đ e f g h i j k l {lj} m n {nj} o p r s š t u v z ž]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/bs.xml",
+      "extraCharacters": "džljn",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "ABCČĆDŽĐEFGHIJKLMNOPRSŠTUVZ"
+    },
+    "_mac": {
+      "locale": "mk",
+      "alphabet": "абвгдѓежзѕијклљмнњопрстќуфхцчџшѐѝ̀",
+      "requiredCharacters": "абвгдѓежзѕијклљмнњопрстќуфхцчџш",
+      "mainExemplar": "[а б в г д ѓ е ж з ѕ и ј к л љ м н њ о п р с т ќ у ф х ц ч џ ш]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/mk.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes auxiliary stressed vowels ѐ/ѝ and combining grave for decomposed spelling.",
+      "requiredUppercase": "АБВГДЃЕЖЗЅИЈКЛЉМНЊОПРСТЌУФХЦЧЏШЀЍ",
+      "auxiliaryExemplar": "[ѐ ѝ]",
+      "extraCharacters": "ѐѝ̀"
+    },
+    "_ice": {
+      "locale": "is",
+      "alphabet": "aábdðeéfghiíjklmnoóprstuúvxyýþæö",
+      "requiredCharacters": "aábdðeéfghiíjklmnoóprstuúvxyýþæö",
+      "mainExemplar": "[a á b d ð e é f g h i í j k l m n o ó p r s t u ú v x y ý þ æ ö]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/is.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "AÁBDÐEÉFGHIÍJKLMNOÓPRSTUÚVXYÝÞÆÖ"
+    },
+    "_cat": {
+      "locale": "ca",
+      "alphabet": "·aàbcçdeéèfghiíïjklmnoóòpqrstuúüvwxyz",
+      "requiredCharacters": "·aàbcçdeéèfghiíïjklmnoóòpqrstuúüvwxyz",
+      "mainExemplar": "[· aà b cç d eéè f g h iíï j k l m n oóò p q r s t uúü v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ca.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "AÀBCÇDEÉÈFGHIÍÏJKLMNOÓÒPQRSTUÚÜVWXYZ"
+    },
+    "_baq": {
+      "locale": "eu",
+      "alphabet": "abcçdefghijklmnñopqrstuvwxyz",
+      "requiredCharacters": "abcçdefghijklmnñopqrstuvwxyz",
+      "mainExemplar": "[a b cç d e f g h i j k l m nñ o p q r s t u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/eu.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "ABCÇDEFGHIJKLMNÑOPQRSTUVWXYZ"
+    },
+    "_glg": {
+      "locale": "gl",
+      "alphabet": "aábcdeéfghiíïjklmnñoópqrstuúüvwxyz",
+      "requiredCharacters": "aábcdeéfghiíïjklmnñoópqrstuúüvwxyz",
+      "mainExemplar": "[aá b c d eé f g h iíï j k l m n ñ oó p q r s t uúü v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/gl.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "AÁBCDEÉFGHIÍÏJKLMNÑOÓPQRSTUÚÜVWXYZ"
+    },
+    "_gle": {
+      "locale": "ga",
+      "alphabet": "aábcdeéfghiílmnoóprstuú",
+      "requiredCharacters": "aábcdeéfghiílmnoóprstuú",
+      "mainExemplar": "[aá b c d eé f g h ií l m n oó p r s t uú]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ga.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "AÁBCDEÉFGHIÍLMNOÓPRSTUÚ"
+    },
+    "_mlt": {
+      "locale": "mt",
+      "alphabet": "aàbċdeèfġgħhiìjklmnoòpqrstuùvwxżz",
+      "requiredCharacters": "aàbċdeèfġgħhiìjklmnoòpqrstuùvwxżz",
+      "mainExemplar": "[aà b ċ d eè f ġ g {għ} h ħ iì j k l m n oò p q r s t uù v w x ż z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/mt.xml",
+      "extraCharacters": "għ",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "AÀBĊDEÈFĠGĦHIÌJKLMNOÒPQRSTUÙVWXŻZ"
+    },
+    "_pus": {
+      "locale": "ps",
+      "alphabet": "آاأءبپتټثجځچڅحخدډذرړزژږسشښصضطظعغفقکګگلمنڼهةوؤیيېۍئ۰۱۲۳۴۵۶۷۸۹،؛؟‌‍ۓًٌٍَُِّْٰ",
+      "requiredCharacters": "ًٌٍَُِّْٰٔآاأءبپتټثجځچڅحخدډذرړزژږسشښصضطظعغفقکګگلمنڼهةوؤیيېۍئ",
+      "mainExemplar": "[َ ِ ُ ً ٍ ٌ ّ ْ ٔ ٰ آ اأ ء ب پ ت ټ ث ج ځ چ څ ح خ د ډ ذ ر ړ ز ژ ږ س ش ښ ص ض ط ظ ع غ ف ق ک ګگ ل م ن ڼ هة وؤ یيېۍئ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ps.xml",
+      "extraCharacters": "۰۱۲۳۴۵۶۷۸۹،؛؟‌‍ے",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Adds script digits, punctuation and customary dependent signs; inserted Unicode text is preserved.",
+      "requiredUppercase": ""
+    },
+    "_kur": {
+      "locale": "ku",
+      "alphabet": "abcçdeêfghiîjklmnopqrsştuûvwxyz",
+      "requiredCharacters": "abcçdeêfghiîjklmnopqrsştuûvwxyz",
+      "mainExemplar": "[a b c ç d e ê f g h i î j k l m n o p q r s ş t u û v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ku.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Kurmanji Latin; this pack does not represent Sorani.",
+      "requiredUppercase": "ABCÇDEÊFGHIÎJKLMNOPQRSŞTUÛVWXYZ"
+    },
+    "_tgk": {
+      "locale": "tg",
+      "alphabet": "абвгғдеёжзиӣйкқлмнопрстуӯфхҳчҷшъэюяцщыь",
+      "requiredCharacters": "абвгғдеёжзиӣйкқлмнопрстуӯфхҳчҷшъэюя",
+      "mainExemplar": "[а б в г ғ д её ж з иӣ й к қ л м н о п р с т уӯ ф х ҳ ч ҷ ш ъ э ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/tg.xml",
+      "extraCharacters": "цщыь",
+      "auxiliaryExemplar": "[ц щ ы ь]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Uses the contemporary Cyrillic alphabet.",
+      "requiredUppercase": "АБВГҒДЕЁЖЗИӢЙКҚЛМНОПРСТУӮФХҲЧҶШЪЭЮЯЦЩЫЬ"
+    },
+    "_kir": {
+      "locale": "ky",
+      "alphabet": "абгдеёжзийклмнңоөпрстуүхчшъыэюявфцщь",
+      "requiredCharacters": "абгдеёжзийклмнңоөпрстуүхчшъыэюя",
+      "mainExemplar": "[а б г д е ё ж з и й к л м н ң о ө п р с т у ү х ч ш ъ ы э ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ky.xml",
+      "extraCharacters": "вфцщь",
+      "auxiliaryExemplar": "[в ф ц щ ь]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Uses the contemporary Cyrillic alphabet.",
+      "requiredUppercase": "АБГДЕЁЖЗИЙКЛМНҢОӨПРСТУҮХЧШЪЫЭЮЯВФЦЩЬ"
+    },
+    "_tuk": {
+      "locale": "tk",
+      "alphabet": "abçdeäfghijžklmnňoöprsştuüwyýz",
+      "requiredCharacters": "abçdeäfghijžklmnňoöprsştuüwyýz",
+      "mainExemplar": "[a b ç d e ä f g h i j ž k l m n ň o ö p r s ş t u ü w y ý z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/tk.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Uses the contemporary Latin alphabet.",
+      "requiredUppercase": "ABÇDEÄFGHIJŽKLMNŇOÖPRSŞTUÜWYÝZ"
+    },
+    "_mon": {
+      "locale": "mn",
+      "alphabet": "абвгдеёжзийклмноөпрстуүфхцчшщъыьэюя",
+      "requiredCharacters": "абвгдеёжзийклмноөпрстуүфхцчшщъыьэюя",
+      "mainExemplar": "[а б в г д её ж з и й к л м н о ө п р с т у ү ф х ц ч ш щ ъ ы ь э ю я]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/mn.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Uses the contemporary Cyrillic alphabet.",
+      "requiredUppercase": "АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ"
+    },
+    "_lao": {
+      "locale": "lo",
+      "alphabet": "ໆກຂຄງຈສຊຍດຕຖທນບປຜຝພຟມຢຣລວຫໜໝອຮຯະາຳຽເແໂໃໄ​໐໑໒໓໔໕໖໗໘໙່້໊໋໌ໍັິີຶືຸູົຼ",
+      "requiredCharacters": "່້໊໋໌ໍໆກຂຄງຈສຊຍດຕຖທນບປຜຝພຟມຢຣລວຫໜໝອຮຯະັາຳິີຶືຸູົຼຽເແໂໃໄ",
+      "mainExemplar": "[່ ້ ໊ ໋ ໌ ໍ ໆ ກ ຂ ຄ ງ ຈ ສ ຊ ຍ ດ ຕ ຖ ທ ນ ບ ປ ຜ ຝ ພ ຟ ມ ຢ ຣ ລ ວ ຫ ໜ ໝ ອ ຮ ຯ ະ ັ າ ຳ ິ ີ ຶ ື ຸ ູ ົ ຼ ຽ ເ ແ ໂ ໃ ໄ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/lo.xml",
+      "extraCharacters": "​໐໑໒໓໔໕໖໗໘໙",
+      "auxiliaryExemplar": "[\\u200B ໐ ໑ ໒ ໓ ໔ ໕ ໖ ໗ ໘ ໙]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Adds script digits, punctuation and customary dependent signs; inserted Unicode text is preserved.",
+      "requiredUppercase": ""
+    },
+    "_ori": {
+      "locale": "or",
+      "alphabet": "ଅଆଇଈଉଊଋଏଐଓଔକଖଗଘଙଚଛଜଝଞଟଠଡଢଣତଥଦଧନପଫବଭମଯୟରଲଳଵୱଶଷସହ‌‍ଡ଼ଢ଼ଌୠୡ୦୧୨୩୪୫୬୭୮୯।॥଼ଁଂଃ୍ାିୀୁୂୃେୈୋୌୄୢୣୖୗ",
+      "requiredCharacters": "଼ଅଆଇଈଉଊଋଏଐଓଔଁଂଃକଖଗଘଙଚଛଜଝଞଟଠଡଢଣତଥଦଧନପଫବଭମଯୟରଲଳଵୱଶଷସହ୍ାିୀୁୂୃେୈୋୌ",
+      "mainExemplar": "[଼ ଅ ଆ ଇ ଈ ଉ ଊ ଋ ଏ ଐ ଓ ଔ ଁ ଂ ଃ କ ଖ ଗ ଘ ଙ ଚ ଛ ଜ ଝ ଞ ଟ ଠ ଡ{ଡ଼} ଢ{ଢ଼} ଣ ତ ଥ ଦ ଧ ନ ପ ଫ ବ ଭ ମ ଯୟ ର ଲ ଳ ଵ ୱ ଶ ଷ ସ ହ {କ୍ଷ} ା ି ୀ ୁ ୂ ୃ େ ୈ ୋ ୌ ୍]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/or.xml",
+      "extraCharacters": "‌‍ଡ଼ଢ଼ଌୠୡୄୢୣୖୗ୦୧୨୩୪୫୬୭୮୯।॥ଡ଼ଢକ୍ଷ",
+      "auxiliaryExemplar": "[\\u200C\\u200D]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Adds script digits, punctuation and customary dependent signs; inserted Unicode text is preserved.",
+      "requiredUppercase": ""
+    },
+    "_asm": {
+      "locale": "as",
+      "alphabet": "অআইঈউঊঋএঐওঔকখগঘঙচছজঝঞটঠডঢণতথদধনপফবভমযৰলৱশষসহ‌‍৲ৎরঌৠৡ০১২৩৪৫৬৭৮৯।॥়ংঁঃ্ািীুূৃেৈোৌৄৗৢৣড়ঢ়য়",
+      "requiredCharacters": "়অআইঈউঊঋএঐওঔংঁঃকখগঘঙচছজঝঞটঠডঢণতথদধনপফবভমযৰলৱশষসহ্ািীুূৃেৈোৌ",
+      "mainExemplar": "[় অ আ ই ঈ উ ঊ ঋ এ ঐ ও ঔ ং ঁ ঃ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড{ড়} ঢ{ঢ়} ণ ত থ দ ধ ন প ফ ব ভ ম য{য়} ৰ ল ৱ শ ষ স হ {ক্ষ} া ি ী ু ূ ৃ ে ৈ ো ৌ ্]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/as.xml",
+      "extraCharacters": "‌‍৲ৎরড়ঢযঌৠৡৄৗৢৣ০১২৩৪৫৬৭৮৯।॥ক্ষড়ঢ়য়",
+      "auxiliaryExemplar": "[\\u200C\\u200D ৲ ৎ র]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Adds script digits, punctuation and customary dependent signs; inserted Unicode text is preserved.",
+      "requiredUppercase": ""
+    },
+    "_snd": {
+      "locale": "sd",
+      "alphabet": "ءآابٻپڀتثٺٽٿجھڃڄچڇحخدذڊڌڍڏرزڙسشصضطظعغفڦقکڪگڱڳلمنڻهويئ۰۱۲۳۴۵۶۷۸۹،؛؟۔‌‍ًٌٍَُِّْٰٔ٠١٢٣٤٥٦٧٨٩",
+      "requiredCharacters": "ءآابٻپڀتثٺٽٿجھڃڄچڇحخدذڊڌڍڏرزڙسشصضطظعغفڦقکڪگڱڳلمنڻهوي",
+      "mainExemplar": "[ء آ ا ب ٻ پ ڀ ت ث ٺ ٽ ٿ ج {جھ} ڃ ڄ چ ڇ ح خ د ذ ڊ ڌ ڍ ڏ ر ز ڙ س ش ص ض ط ظ ع غ ف ڦ ق ک ڪ گ {گھ} ڱ ڳ ل م ن ڻ ه ھ و ي]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/sd.xml",
+      "extraCharacters": "َُِئ۰۱۲۳۴۵۶۷۸۹،؛؟۔ًٌٍّْٰٔ‌‍جھگ٠١٢٣٤٥٦٧٨٩",
+      "auxiliaryExemplar": "[َ ُ ِ ئ]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Adds script digits, punctuation and customary dependent signs; inserted Unicode text is preserved. Arabic script; Devanagari is not this pack’s selected script. Includes both CLDR arab default digits and arabext Persian digits.",
+      "requiredUppercase": ""
+    },
+    "_afr": {
+      "locale": "af",
+      "alphabet": "aáâbcdeéèêëfghiîïjklmnoôöpqrstuûvwxyź̂̀̈",
+      "requiredCharacters": "aáâbcdeéèêëfghiîïjklmnoôöpqrstuûvwxyz",
+      "mainExemplar": "[aáâ b c d eéèêë f g h iîï j k l m n oôö p q r s t uû v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/af.xml",
+      "extraCharacters": "́̂̀̈",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "AÁÂBCDEÉÈÊËFGHIÎÏJKLMNOÔÖPQRSTUÛVWXYZ"
+    },
+    "_amh": {
+      "locale": "am",
+      "alphabet": "ሀሁሂሃሄህሆለሉሊላሌልሎሏሐሑሒሓሔሕሖሗመሙሚማሜምሞሟሠሡሢሣሤሥሦሧረሩሪራሬርሮሯሰሱሲሳሴስሶሷሸሹሺሻሼሽሾሿቀቁቂቃቄቅቆቈቊቋቌቍበቡቢባቤብቦቧቨቩቪቫቬቭቮቯተቱቲታቴትቶቷቸቹቺቻቼችቾቿኀኁኂኃኄኅኆኈኊኋኌኍነኑኒናኔንኖኗኘኙኚኛኜኝኞኟአኡኢኣኤእኦኧከኩኪካኬክኮኰኲኳኴኵኸኹኺኻኼኽኾወዉዊዋዌውዎዐዑዒዓዔዕዖዘዙዚዛዜዝዞዟዠዡዢዣዤዥዦዧየዩዪያዬይዮደዱዲዳዴድዶዷጀጁጂጃጄጅጆጇገጉጊጋጌግጎጐጒጓጔጕጠጡጢጣጤጥጦጧጨጩጪጫጬጭጮጯጰጱጲጳጴጵጶጷጸጹጺጻጼጽጾጿፀፁፂፃፄፅፆፈፉፊፋፌፍፎፏፐፑፒፓፔፕፖፗ፡።፣፤፥፦፧፨፩፪፫፬፭፮፯፰፱፲፳፴፵፶፷፸፹፺፻፼",
+      "requiredCharacters": "ሀሁሂሃሄህሆለሉሊላሌልሎሏሐሑሒሓሔሕሖሗመሙሚማሜምሞሟሠሡሢሣሤሥሦሧረሩሪራሬርሮሯሰሱሲሳሴስሶሷሸሹሺሻሼሽሾሿቀቁቂቃቄቅቆቈቊቋቌቍበቡቢባቤብቦቧቨቩቪቫቬቭቮቯተቱቲታቴትቶቷቸቹቺቻቼችቾቿኀኁኂኃኄኅኆኈኊኋኌኍነኑኒናኔንኖኗኘኙኚኛኜኝኞኟአኡኢኣኤእኦኧከኩኪካኬክኮኰኲኳኴኵኸኹኺኻኼኽኾወዉዊዋዌውዎዐዑዒዓዔዕዖዘዙዚዛዜዝዞዟዠዡዢዣዤዥዦዧየዩዪያዬይዮደዱዲዳዴድዶዷጀጁጂጃጄጅጆጇገጉጊጋጌግጎጐጒጓጔጕጠጡጢጣጤጥጦጧጨጩጪጫጬጭጮጯጰጱጲጳጴጵጶጷጸጹጺጻጼጽጾጿፀፁፂፃፄፅፆፈፉፊፋፌፍፎፏፐፑፒፓፔፕፖፗ",
+      "mainExemplar": "[ሀ ሁ ሂ ሃ ሄ ህ ሆ ለ ሉ ሊ ላ ሌ ል ሎ ሏ ሐ ሑ ሒ ሓ ሔ ሕ ሖ ሗ መ ሙ ሚ ማ ሜ ም ሞ ሟ ሠ ሡ ሢ ሣ ሤ ሥ ሦ ሧ ረ ሩ ሪ ራ ሬ ር ሮ ሯ ሰ ሱ ሲ ሳ ሴ ስ ሶ ሷ ሸ ሹ ሺ ሻ ሼ ሽ ሾ ሿ ቀ ቁ ቂ ቃ ቄ ቅ ቆ ቈ ቊ ቋ ቌ ቍ በ ቡ ቢ ባ ቤ ብ ቦ ቧ ቨ ቩ ቪ ቫ ቬ ቭ ቮ ቯ ተ ቱ ቲ ታ ቴ ት ቶ ቷ ቸ ቹ ቺ ቻ ቼ ች ቾ ቿ ኀ ኁ ኂ ኃ ኄ ኅ ኆ ኈ ኊ ኋ ኌ ኍ ነ ኑ ኒ ና ኔ ን ኖ ኗ ኘ ኙ ኚ ኛ ኜ ኝ ኞ ኟ አ ኡ ኢ ኣ ኤ እ ኦ ኧ ከ ኩ ኪ ካ ኬ ክ ኮ ኰ ኲ ኳ ኴ ኵ ኸ ኹ ኺ ኻ ኼ ኽ ኾ ወ ዉ ዊ ዋ ዌ ው ዎ ዐ ዑ ዒ ዓ ዔ ዕ ዖ ዘ ዙ ዚ ዛ ዜ ዝ ዞ ዟ ዠ ዡ ዢ ዣ ዤ ዥ ዦ ዧ የ ዩ ዪ ያ ዬ ይ ዮ ደ ዱ ዲ ዳ ዴ ድ ዶ ዷ ጀ ጁ ጂ ጃ ጄ ጅ ጆ ጇ ገ ጉ ጊ ጋ ጌ ግ ጎ ጐ ጒ ጓ ጔ ጕ ጠ ጡ ጢ ጣ ጤ ጥ ጦ ጧ ጨ ጩ ጪ ጫ ጬ ጭ ጮ ጯ ጰ ጱ ጲ ጳ ጴ ጵ ጶ ጷ ጸ ጹ ጺ ጻ ጼ ጽ ጾ ጿ ፀ ፁ ፂ ፃ ፄ ፅ ፆ ፈ ፉ ፊ ፋ ፌ ፍ ፎ ፏ ፐ ፑ ፒ ፓ ፔ ፕ ፖ ፗ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/am.xml",
+      "extraCharacters": "፡።፣፤፥፦፧፨፩፪፫፬፭፮፯፰፱፲፳፴፵፶፷፸፹፺፻፼",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Adds script digits, punctuation and customary dependent signs; inserted Unicode text is preserved. The 282 CLDR main-exemplar Ethiopic syllables are literal paged keys; no phonetic transliterator is bundled. The inherited auxiliary resolves to the empty root exemplar; Ethiopic numerals and punctuation are explicit additions.",
+      "requiredUppercase": "",
+      "auxiliaryExemplar": "[]",
+      "auxiliarySource": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/root.xml"
+    },
+    "_hau": {
+      "locale": "ha",
+      "alphabet": "abɓcdɗefghijkƙlmnorstuwyƴzʼáàâéèêíìîóòôpqúùûvx̃́̀̂",
+      "requiredCharacters": "abɓcdɗefghijkƙlmnorstuwyƴzʼ",
+      "mainExemplar": "[a b ɓ c d ɗ e f g h i j k ƙ l m n o r s {sh} t {ts} u w y ƴ z ʼ]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ha.xml",
+      "extraCharacters": "áàâéèêíìîóòôpqr̃úùûvxsht́̀̂",
+      "auxiliaryExemplar": "[áàâ éèê íìî óòô p q {r̃} úùû v x]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls.",
+      "requiredUppercase": "ABƁCDƊEFGHIJKƘLMNORSTUWYƳZÁÀÂÉÈÊÍÌÎÓÒÔPQÚÙÛVX"
+    },
+    "_yor": {
+      "locale": "yo",
+      "alphabet": "aáàbdeéèẹfghiíìjklmḿnńǹoóòọprsṣtuúùwycqvxẓ́̀̄",
+      "requiredCharacters": "aáàbdeéèẹ́̀fghiíìjklmḿ̄nńǹoóòọprsṣtuúùwy",
+      "mainExemplar": "[aáà b d eéè ẹ{ẹ́}{ẹ̀} f g {gb} h iíì j k l mḿ{m̀}{m̄} nńǹ{n̄} oóò ọ{ọ́}{ọ̀} p r s ṣ t uúù w y]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/yo.xml",
+      "extraCharacters": "cqvxzẹ́̀gbm̄nọ̣",
+      "auxiliaryExemplar": "[c q v x z]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls.",
+      "requiredUppercase": "AÁÀBDEÉÈẸFGHIÍÌJKLMḾNŃǸOÓÒỌPRSṢTUÚÙWYCQVXZ"
+    },
+    "_ibo": {
+      "locale": "ig",
+      "alphabet": "abchdefgwiịjkplmnṅyoọrstuụvzáàāéèēíìīḿńǹóòōqúùūx̣́̀̇̄",
+      "requiredCharacters": "abchdefgwiịjkplmnṅyoọrstuụvz",
+      "mainExemplar": "[a b {ch} d e f g {gb} {gh} {gw} h i ị j k {kp} {kw} l m n ṅ {nw} {ny} o ọ p r s {sh} t u ụ v w y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/ig.xml",
+      "extraCharacters": "áàācéèēíìīị́̀ḿmńǹóòōọqúùūụxhgbwkpnyṩ̄",
+      "auxiliaryExemplar": "[áàā c éèē íìī {ị́}{ị̀} ḿ{m̀} ńǹ óòō {ọ́}{ọ̀} q úùū {ụ́}{ụ̀} x]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls.",
+      "requiredUppercase": "ABCHDEFGWIỊJKPLMNṄYOỌRSTUỤVZÁÀĀÉÈĒÍÌĪḾŃǸÓÒŌQÚÙŪX"
+    },
+    "_som": {
+      "locale": "so",
+      "alphabet": "abcdefghijklmnopqrstuvwxyz",
+      "requiredCharacters": "bcdfghjklmnqrstwxy",
+      "mainExemplar": "[b c d f g h j k l m n q r s t w x y]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/so.xml",
+      "extraCharacters": "aeiopuvz",
+      "auxiliaryExemplar": "[a e i o p u v z]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls. Single-letter keys use the ordinary Latin alphabetical order; multigraphs are entered sequentially.",
+      "requiredUppercase": "BCDFGHJKLMNQRSTWXYAEIOPUVZ"
+    },
+    "_zul": {
+      "locale": "zu",
+      "alphabet": "abcdefghijklmnopqrstuvwxyz",
+      "requiredCharacters": "abhcdlyefgqxijkpmntsoruvwz",
+      "mainExemplar": "[a b {bh} c {ch} d {dl} {dy} e f g {gc} {gq} {gx} h {hh} {hl} i j k {kh} {kl} {kp} l m n {nc} {ngc} {ngq} {ngx} {nhl} {nk} {nkc} {nkq} {nkx} {nq} {ntsh} {nx} {ny} o p {ph} q {qh} r {rh} s {sh} t {th} {tl} {ts} {tsh} u v w x {xh} y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/zu.xml",
+      "extraCharacters": "bhcdlygqxkpntsr",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Single-letter keys use the ordinary Latin alphabetical order; multigraphs are entered sequentially.",
+      "requiredUppercase": "ABHCDLYEFGQXIJKPMNTSORUVWZ"
+    },
+    "_xho": {
+      "locale": "xh",
+      "alphabet": "abcdefghijklmnopqrstuvwxyz",
+      "requiredCharacters": "abcdefghijklmnopqrstuvwxyz",
+      "mainExemplar": "[a b c d e f g h i j k l m n o p q r s t u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/xh.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    },
+    "_mlg": {
+      "locale": "mg",
+      "alphabet": "aàbdeèfghiìjklmnoòôprstvyỳzáâãcéêëîïñóöquwxýÿ̂̈̀́̃",
+      "requiredCharacters": "aàbdeèfghiìjklmnoòôprstvyỳz",
+      "mainExemplar": "[aà b d eè f g h iì j k l m n oòô p r s t v yỳ z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/mg.xml",
+      "extraCharacters": "áâãcéêëîïn̂̈ñóöquwxýÿ̀́̃",
+      "auxiliaryExemplar": "[áâã c éêë îï {n̂}{n̈}ñ óö q u w x ýÿ]",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence. Includes the auxiliary exemplar for loan letters, tones, vowels or shaping controls.",
+      "requiredUppercase": "AÀBDEÈFGHIÌJKLMNOÒÔPRSTVYỲZÁÂÃCÉÊËÎÏÑÓÖQUWXÝŸ"
+    },
+    "_kin": {
+      "locale": "rw",
+      "alphabet": "abcdefghijklmnopqrstuvwxyz",
+      "requiredCharacters": "abcdefghijklmnopqrstuvwxyz",
+      "mainExemplar": "[a b c d e f g h i j k l m n o p q r s t u v w x y z]",
+      "source": "https://raw.githubusercontent.com/unicode-org/cldr/acd6d88ae493633240e19a87a721076a8a75c310/common/main/rw.xml",
+      "notes": "All CLDR main-exemplar characters, with direct NFC variants for literal search. Multi-letter units are entered in sequence.",
+      "requiredUppercase": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     }
   }
 }

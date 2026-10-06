@@ -575,7 +575,7 @@ var keyStrings = {
     "Loading...": "Chargement…",
     "Local HTTP remote control": "Télécommande HTTP locale",
     "Local URL": "URL locale",
-    Login: "Identifiant",
+    Login: "Nom d'utilisateur",
     lang: "Français",
     large: "grand",
     left: "gauche",
@@ -650,7 +650,7 @@ var keyStrings = {
     "Overwrite current settings?": "Remplacer les paramètres actuels ?",
     off: "désactivé",
     on: "activée",
-    "on ": "activé ",
+    "on ": "avec ",
     "or scan": "ou scannez",
     Packages: "Bouquets",
     "Pairing approved. Command server configured.":

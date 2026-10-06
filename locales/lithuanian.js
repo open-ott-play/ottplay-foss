@@ -562,7 +562,7 @@ var keyStrings = {
     "Loading...": "Įkeliama…",
     "Local HTTP remote control": "Vietinis HTTP valdymas",
     "Local URL": "Vietinis URL",
-    Login: "Prisijungimas",
+    Login: "Naudotojo vardas",
     lang: "Lietuvių",
     large: "didelis",
     left: "kairėje",
@@ -637,7 +637,7 @@ var keyStrings = {
     "Overwrite current settings?": "Perrašyti dabartinius nustatymus?",
     off: "išjungta",
     on: "įjungta",
-    "on ": "įjungta ",
+    "on ": "paspaudus ",
     "or scan": "arba nuskaitykite",
     Packages: "Paketai",
     "Pairing approved. Command server configured.":

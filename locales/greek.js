@@ -570,7 +570,7 @@ var keyStrings = {
     "Loading...": "Φόρτωση…",
     "Local HTTP remote control": "Τοπικός τηλεχειρισμός HTTP",
     "Local URL": "Τοπικό URL",
-    Login: "Σύνδεση",
+    Login: "Όνομα χρήστη",
     lang: "Ελληνικά",
     large: "μεγάλο",
     left: "αριστερά",
@@ -646,7 +646,7 @@ var keyStrings = {
     "Overwrite current settings?": "Αντικατάσταση των τρεχουσών ρυθμίσεων;",
     off: "απενεργοποιημένο",
     on: "ενεργός",
-    "on ": "ενεργό ",
+    "on ": "πατώντας ",
     "or scan": "ή σαρώστε",
     Packages: "Πακέτα",
     "Pairing approved. Command server configured.":

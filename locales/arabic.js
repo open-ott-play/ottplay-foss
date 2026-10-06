@@ -504,7 +504,7 @@ var keyStrings = {
     "Infobar display timeout, s": "مهلة عرض شريط المعلومات، s",
     "Infobar settings": "إعدادات شريط المعلومات",
     Information: "المعلومات",
-    "Interface credits": "اعتمادات الواجهة",
+    "Interface credits": "المساهمون في الواجهة",
     "Interface settings": "إعدادات الواجهة",
     "Interface theme": "موضوع الواجهة",
     "Interface transparency": "شفافية الواجهة",
@@ -546,7 +546,7 @@ var keyStrings = {
     "Loading...": "جاري التحميل...",
     "Local HTTP remote control": "جهاز التحكم عن بعد HTTP المحلي",
     "Local URL": "URL المحلي",
-    Login: "تسجيل الدخول",
+    Login: "اسم المستخدم",
     lang: "العربية",
     large: "كبيرة",
     left: "اليسار",
@@ -604,8 +604,8 @@ var keyStrings = {
     "not set": "غير محدد",
     Off: "إيقاف",
     Ok: "موافق",
-    Open: "مفتوح",
-    "Open in PiP": "مفتوح في PiP",
+    Open: "افتح",
+    "Open in PiP": "افتح في PiP",
     "Open Plex sign-in page": "افتح صفحة تسجيل الدخول Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "افتح plex.tv/link على هاتفك أو جهاز الكمبيوتر الخاص بك وأدخل هذا الرمز.",
@@ -665,7 +665,7 @@ var keyStrings = {
     "POLMEDIA settings": "إعدادات POLMEDIA",
     "Portal URL": "بوابة URL",
     "Position shift -10 seconds after pause":
-        "الرجوع إلى الخلف بعد 10 ثوانٍ من التوقف المؤقت",
+        "الرجوع 10 ثوانٍ إلى الخلف بعد الإيقاف المؤقت",
     Postpaid: "الدفع الآجل",
     PROST: "PROST",
     "PROST settings": "إعدادات PROST",
@@ -760,7 +760,7 @@ var keyStrings = {
         "قم بمسح رمز QR هذا ضوئيًا بهاتفك لإدخال النص.",
     Script: "السيناريو",
     Search: "البحث",
-    "Search programme": "برنامج البحث",
+    "Search programme": "ابحث عن برنامج",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "تعذر بدء الإدخال الآمن عن بعد. الرجاء المحاولة مرة أخرى أو استخدام لوحة المفاتيح التي تظهر على الشاشة.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

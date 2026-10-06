@@ -557,7 +557,7 @@ var keyStrings = {
     "Loading...": "Memuatkan…",
     "Local HTTP remote control": "Kawalan jauh HTTP setempat",
     "Local URL": "URL setempat",
-    Login: "Log masuk",
+    Login: "Nama pengguna",
     lang: "Bahasa Melayu",
     large: "besar",
     left: "kiri",
@@ -632,7 +632,7 @@ var keyStrings = {
     "Overwrite current settings?": "Tulis ganti tetapan semasa?",
     off: "mati",
     on: "hidup",
-    "on ": "hidup ",
+    "on ": "dengan butang ",
     "or scan": "atau imbas",
     Packages: "Pakej",
     "Pairing approved. Command server configured.":

@@ -566,7 +566,7 @@ var keyStrings = {
     "Loading...": "A carregar…",
     "Local HTTP remote control": "Controlo remoto HTTP local",
     "Local URL": "URL local",
-    Login: "Início de sessão",
+    Login: "Nome de utilizador",
     lang: "Português",
     large: "grande",
     left: "esquerda",
@@ -642,7 +642,7 @@ var keyStrings = {
     "Overwrite current settings?": "Substituir as configurações atuais?",
     off: "desligado",
     on: "ativado",
-    "on ": "ativado ",
+    "on ": "ao pressionar ",
     "or scan": "ou leia o código",
     Packages: "Pacotes",
     "Pairing approved. Command server configured.":

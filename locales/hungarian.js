@@ -565,7 +565,7 @@ var keyStrings = {
     "Loading...": "Betöltés…",
     "Local HTTP remote control": "Helyi HTTP-távirányítás",
     "Local URL": "Helyi URL-cím",
-    Login: "Bejelentkezés",
+    Login: "Felhasználónév",
     lang: "Magyar",
     large: "nagy",
     left: "bal",
@@ -640,7 +640,7 @@ var keyStrings = {
     "Overwrite current settings?": "Felülírja a jelenlegi beállításokat?",
     off: "kikapcsolva",
     on: "bekapcsolva",
-    "on ": "be ",
+    "on ": "ezzel: ",
     "or scan": "vagy olvassa be",
     Packages: "Csomagok",
     "Pairing approved. Command server configured.":

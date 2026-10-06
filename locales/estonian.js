@@ -558,7 +558,7 @@ var keyStrings = {
     "Loading...": "Laadimine…",
     "Local HTTP remote control": "Kohalik HTTP kaugjuhtimispult",
     "Local URL": "Kohalik URL",
-    Login: "Logi sisse",
+    Login: "Kasutajanimi",
     lang: "Eesti",
     large: "suur",
     left: "vasakule",
@@ -616,8 +616,8 @@ var keyStrings = {
     "not set": "pole seatud",
     Off: "Väljas",
     Ok: "OK",
-    Open: "Avatud",
-    "Open in PiP": "Avatud PiP",
+    Open: "Ava",
+    "Open in PiP": "Ava PiP-režiimis",
     "Open Plex sign-in page": "Avage Plex sisselogimisleht",
     "Open plex.tv/link on your phone or computer and enter this code.":
         "Avage oma telefonis või arvutis plex.tv/link ja sisestage see kood.",
@@ -776,7 +776,7 @@ var keyStrings = {
         "Teksti sisestamiseks skannige oma telefoniga see QR kood.",
     Script: "Stsenaarium",
     Search: "Otsi",
-    "Search programme": "Otsi programm",
+    "Search programme": "Otsi saadet",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Turvalist kaugsisendit ei saanud käivitada. Proovige uuesti või kasutage ekraanil kuvatavat klaviatuuri.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

@@ -561,7 +561,7 @@ var keyStrings = {
     "Loading...": "Yüklənir…",
     "Local HTTP remote control": "Yerli HTTP uzaqdan idarəetməsi",
     "Local URL": "Yerli URL",
-    Login: "Giriş adı",
+    Login: "İstifadəçi adı",
     lang: "Azərbaycanca",
     large: "böyük",
     left: "sol",

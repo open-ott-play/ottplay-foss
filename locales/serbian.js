@@ -563,7 +563,7 @@ var keyStrings = {
     "Loading...": "Учитавање…",
     "Local HTTP remote control": "Локални HTTP даљински управљач",
     "Local URL": "Локални URL",
-    Login: "Логин",
+    Login: "Корисничко име",
     lang: "Српски",
     large: "велики",
     left: "лево",
@@ -779,7 +779,7 @@ var keyStrings = {
         "Скенирајте овај QR код телефоном да бисте унели текст.",
     Script: "Сценарио",
     Search: "Тражи",
-    "Search programme": "Програм за претрагу",
+    "Search programme": "Пронађи емисију",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Безбедни даљински унос није могао да се покрене. Покушајте поново или користите тастатуру на екрану.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

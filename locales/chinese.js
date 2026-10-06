@@ -531,7 +531,7 @@ var keyStrings = {
     "Loading...": "加载中...",
     "Local HTTP remote control": "本地HTTP远程控制",
     "Local URL": "本地URL",
-    Login: "登录",
+    Login: "用户名",
     lang: "简体中文",
     large: "大",
     left: "左",
@@ -648,7 +648,7 @@ var keyStrings = {
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA 设置",
     "Portal URL": "传送门 URL",
-    "Position shift -10 seconds after pause": "暂停后向后查找 10 秒",
+    "Position shift -10 seconds after pause": "暂停后回退10秒",
     Postpaid: "后付费",
     PROST: "PROST",
     "PROST settings": "PROST设定",
@@ -740,7 +740,7 @@ var keyStrings = {
         "用手机扫描此QR 代码以输入文本。",
     Script: "编剧",
     Search: "搜索",
-    "Search programme": "搜索程序",
+    "Search programme": "搜索节目",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "安全远程输入无法启动。请重试或使用屏幕键盘。",
     "Secure remote input could not start. Please use the on-screen keyboard.":

@@ -569,7 +569,7 @@ var keyStrings = {
     "Loading...": "Načítava sa...",
     "Local HTTP remote control": "Miestne diaľkové ovládanie HTTP",
     "Local URL": "Miestne URL",
-    Login: "Prihláste sa",
+    Login: "Používateľské meno",
     lang: "Slovenčina",
     large: "veľký",
     left: "vľavo",
@@ -790,7 +790,7 @@ var keyStrings = {
         "Naskenujte tento QR kód pomocou telefónu a zadajte text.",
     Script: "Scenár",
     Search: "Hľadať",
-    "Search programme": "Vyhľadávací program",
+    "Search programme": "Vyhľadať reláciu",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Zabezpečený vzdialený vstup sa nepodarilo spustiť. Skúste to znova alebo použite klávesnicu na obrazovke.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

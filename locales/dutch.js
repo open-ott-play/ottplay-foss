@@ -566,7 +566,7 @@ var keyStrings = {
     "Loading...": "Laden…",
     "Local HTTP remote control": "Lokale HTTP-afstandsbediening",
     "Local URL": "Lokale URL",
-    Login: "Aanmelding",
+    Login: "Gebruikersnaam",
     lang: "Nederlands",
     large: "groot",
     left: "links",
@@ -641,7 +641,7 @@ var keyStrings = {
     "Overwrite current settings?": "Huidige instellingen overschrijven?",
     off: "uit",
     on: "aan",
-    "on ": "aan ",
+    "on ": "met ",
     "or scan": "of scan",
     Packages: "Pakketten",
     "Pairing approved. Command server configured.":

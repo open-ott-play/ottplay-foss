@@ -556,7 +556,7 @@ var keyStrings = {
     "Loading...": "Načítání…",
     "Local HTTP remote control": "Místní ovládání přes HTTP",
     "Local URL": "Místní URL",
-    Login: "Přihlašovací jméno",
+    Login: "Uživatelské jméno",
     lang: "Čeština",
     large: "velký",
     left: "vlevo",
