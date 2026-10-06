@@ -1,4 +1,4 @@
-/** Bounded, device-local screenshot permission. No image is captured on discovery. */
+/** Connected-controller screenshots. Discovery never captures an image. */
 export interface ScreenshotImage {
     height: number;
     image: string;
@@ -20,48 +20,7 @@ interface ScreenshotDependencies {
     onStatus?: (status: any) => void;
 }
 
-export function screenshotSurfaceBlocked(w: any): boolean {
-    try {
-        var doc = w.document;
-        if (!doc || doc.hidden === true) return true;
-        if (
-            w.__ottParental &&
-            (w.__ottParental.needs("settings") ||
-                w.__ottParental.needs("providers"))
-        )
-            return true;
-        if (
-            !w.__ottParental &&
-            (w.sPSoptions || w.sPSprovs) &&
-            w.parentPIN !== "*" &&
-            !w.parentAccess
-        )
-            return true;
-        var port = w.__ottClassicScreenPort;
-        var owner = port && port.screens && port.screens.current();
-        var list = port && port.listOwner && port.listOwner();
-        if (
-            (owner && owner.model && owner.model.localOnlyInput) ||
-            (list && list.model && list.model.localOnlyInput)
-        )
-            return true;
-        var nodes = doc.querySelectorAll(
-            '#pin, #remoteSettingsContent, input:not([type="button"]):not([type="hidden"]), textarea'
-        );
-        for (var i = 0; i < nodes.length; i++) {
-            if (
-                nodes[i].getClientRects().length &&
-                w.getComputedStyle(nodes[i]).visibility !== "hidden"
-            )
-                return true;
-        }
-        return false;
-    } catch (_) {
-        return true;
-    }
-}
-
-/** Only the active application view or an explicitly selected browser source. */
+/** Only this application's native view or a browser source chosen through the OS. */
 export function installRemoteScreenshot(
     w: any,
     deps: ScreenshotDependencies
@@ -69,31 +28,28 @@ export function installRemoteScreenshot(
     var maxBytes = 1048576;
     var maxWidth = 1280;
     var maxHeight = 720;
-    var grantMs = 600000;
     var supported = false;
     var source: string | null = null;
     var nativeCapture: (() => Promise<any>) | null = null;
     var nativeCurrent: (() => boolean) | null = null;
+    var activeConfig: ScreenshotConfig | null = null;
     var binding: ScreenshotConfig | null = null;
-    var deadline = 0;
-    var lastClock = 0;
-    var lastWallClock = 0;
-    var wallDeadline = 0;
     var generation = 0;
     var pending = false;
     var capturing = false;
+    var disposed = false;
     var cancelBrowser: (() => void) | null = null;
-    var timer: any = null;
     var stream: any = null;
     var frameCapture: any = null;
     var subscriber: ((status: any) => void) | null = null;
-    var message = "Remote screenshots are off.";
+    var message = "";
     var hook: any;
 
     function currentConfig(): ScreenshotConfig | null {
         try {
             var config = deps.getConfig();
             if (
+                disposed ||
                 !config ||
                 config.enabled !== true ||
                 typeof config.address !== "string" ||
@@ -101,14 +57,16 @@ export function installRemoteScreenshot(
                 !/^[A-Za-z0-9_-]{32,256}$/.test(config.token)
             )
                 return null;
-            // Images must not cross an unencrypted LAN connection.
             var url = new URL(config.address);
             if (
-                url.protocol !== "https:" &&
-                !(
-                    url.protocol === "http:" &&
-                    /^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)
-                )
+                url.username ||
+                url.password ||
+                url.hash ||
+                (url.protocol !== "https:" &&
+                    !(
+                        url.protocol === "http:" &&
+                        /^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)
+                    ))
             )
                 return null;
             return {
@@ -120,49 +78,87 @@ export function installRemoteScreenshot(
             return null;
         }
     }
-    function clock(): number {
-        var now = w.performance && w.performance.now();
-        if (typeof now !== "number" || !isFinite(now) || now < lastClock)
-            return -1;
-        lastClock = now;
-        return now;
-    }
-    function sameConfig(config: ScreenshotConfig | null): boolean {
-        return !!(
-            binding &&
-            config &&
-            binding.address === config.address &&
-            binding.token === config.token &&
-            config.enabled
+    function sameConfig(
+        first: ScreenshotConfig | null,
+        second: ScreenshotConfig | null
+    ): boolean {
+        return (
+            first === second ||
+            !!(
+                first &&
+                second &&
+                first.address === second.address &&
+                first.token === second.token &&
+                first.enabled === second.enabled
+            )
         );
     }
-    function validGrant(): boolean {
-        var now = clock();
-        var wall = Date.now();
-        var wallValid = isFinite(wall) && wall >= lastWallClock;
-        lastWallClock = wall;
+    function stopTracks(value: any): void {
+        if (!value || typeof value.getTracks !== "function") return;
+        value.getTracks().forEach(function (track: any) {
+            track.stop();
+        });
+    }
+    function invalidate(): void {
+        if (cancelBrowser) cancelBrowser();
+        generation++;
+        binding = null;
+        pending = false;
+        var old = stream;
+        stream = null;
+        frameCapture = null;
+        if (!nativeCapture) source = null;
+        message = "";
+        stopTracks(old);
+    }
+    function syncConfig(): ScreenshotConfig | null {
+        var config = currentConfig();
+        if (!sameConfig(activeConfig, config)) {
+            invalidate();
+            activeConfig = config;
+        }
+        return config;
+    }
+    function ready(config: ScreenshotConfig | null): boolean {
+        if (!config || !supported || w.__ottRemoteScreenshot !== hook)
+            return false;
+        if (nativeCapture) return !!(nativeCurrent && nativeCurrent());
         return !!(
-            wallValid &&
-            wall < wallDeadline &&
-            deadline &&
-            now >= 0 &&
-            now < deadline &&
-            sameConfig(currentConfig()) &&
-            (!nativeCurrent || nativeCurrent()) &&
-            w.__ottRemoteScreenshot === hook
+            sameConfig(binding, config) &&
+            stream &&
+            stream.active &&
+            frameCapture &&
+            stream.getVideoTracks().length === 1 &&
+            stream.getVideoTracks()[0].readyState === "live" &&
+            !stream.getVideoTracks()[0].muted
         );
     }
     function status(): any {
-        var ready = validGrant();
-        if (deadline && !ready) stop();
+        var config = syncConfig();
+        var available = ready(config);
+        var browserSelectionSupported = supported && !nativeCapture;
+        var text = message;
+        if (!config)
+            text = "Connect an HTTPS command server to use screenshots.";
+        else if (available)
+            text = nativeCapture
+                ? "Screenshots are available while remote control is connected."
+                : "The browser screenshot source is ready.";
+        else if (!text)
+            text =
+                "Select the player tab or window in the browser sharing dialog.";
         return {
-            enabled: ready,
-            message: message,
+            browserSelectionSupported: browserSelectionSupported,
+            connected: !!config,
+            enabled: available,
+            message: text,
+            needsSourceSelection:
+                browserSelectionSupported && !!config && !available,
             pending: pending,
             source: source,
             state: !supported
                 ? "unsupported"
-                : ready
+                : available
                   ? "ready"
                   : "permission_required",
         };
@@ -172,83 +168,35 @@ export function installRemoteScreenshot(
         if (deps.onStatus) deps.onStatus(view);
         if (subscriber) subscriber(view);
     }
-    function stopTracks(value: any): void {
-        if (!value || typeof value.getTracks !== "function") return;
-        value.getTracks().forEach(function (track: any) {
-            track.stop();
-        });
-    }
     function stop(): void {
-        if (cancelBrowser) cancelBrowser();
-        generation++;
-        deadline = 0;
-        wallDeadline = 0;
-        binding = null;
-        pending = false;
-        if (timer !== null) w.clearTimeout(timer);
-        timer = null;
-        var old = stream;
-        stream = null;
-        frameCapture = null;
-        stopTracks(old);
-        if (!nativeCapture) source = null;
-        message = "Remote screenshots are off.";
+        invalidate();
         notify();
     }
-    function failGrant(text: string): void {
-        stop();
+    function failSelection(text: string): void {
+        invalidate();
         message = text;
         notify();
     }
-    function arm(config: ScreenshotConfig, epoch: number): boolean {
-        if (
-            epoch !== generation ||
-            !sameConfig(config) ||
-            !sameConfig(currentConfig())
-        )
-            return false;
-        var now = clock();
-        if (now < 0) return false;
-        if (timer !== null) w.clearTimeout(timer);
-        deadline = now + grantMs;
-        lastWallClock = Date.now();
-        wallDeadline = lastWallClock + grantMs;
-        pending = false;
-        message =
-            "Remote screenshots are allowed for 10 minutes. Close settings to capture.";
-        timer = w.setTimeout(stop, grantMs);
-        notify();
-        return true;
-    }
-    function grant(local: boolean): void {
+    function selectSource(local: boolean): void {
+        var config = syncConfig();
         if (
             local !== true ||
             w.__ottRemoteInputActive ||
             pending ||
             !supported ||
+            nativeCapture ||
+            !config ||
             w.__ottRemoteScreenshot !== hook
         )
             return;
-        var config = currentConfig();
-        if (!config) {
-            failGrant(
-                "Connect an HTTPS command server before allowing screenshots."
-            );
-            return;
-        }
-        stop();
+        invalidate();
         binding = config;
         var epoch = generation;
-        if (nativeCapture && nativeCurrent && nativeCurrent()) {
-            if (!arm(config, epoch))
-                failGrant("Screenshot permission could not be enabled.");
-            return;
-        }
         pending = true;
         message =
             "Select the player tab or window in the browser sharing dialog.";
         notify();
-        // Keep getDisplayMedia in the local gesture call stack. Never call it from RPC.
+        // Keep the mandatory OS picker in the local gesture stack, never an RPC.
         var selection: any;
         try {
             selection = w.navigator.mediaDevices.getDisplayMedia({
@@ -262,61 +210,63 @@ export function installRemoteScreenshot(
                 },
             });
         } catch (_) {
-            failGrant("Screen sharing was cancelled or is unavailable.");
+            failSelection("Screen sharing was cancelled or is unavailable.");
             return;
         }
-        // A dismissed/unanswered picker must not retain controller authority indefinitely.
-        timer = w.setTimeout(function () {
-            if (generation === epoch && pending) stop();
-        }, 60000);
         selection.then(
             function (selected: any) {
+                var current = syncConfig();
                 if (
                     generation !== epoch ||
                     !pending ||
-                    !sameConfig(currentConfig())
+                    !sameConfig(config, current) ||
+                    w.__ottRemoteScreenshot !== hook
                 ) {
                     stopTracks(selected);
                     return;
                 }
-                var tracks = selected.getVideoTracks();
-                var surface =
-                    tracks.length === 1 &&
-                    tracks[0].getSettings().displaySurface;
-                var kind =
-                    surface === "browser"
-                        ? "browser-tab"
-                        : surface === "window"
-                          ? "window"
-                          : surface === "monitor"
-                            ? "display"
-                            : null;
-                if (
-                    !kind ||
-                    tracks[0].readyState !== "live" ||
-                    selected.getAudioTracks().length
-                ) {
-                    stopTracks(selected);
-                    failGrant(
-                        "This browser cannot identify the selected screenshot source."
-                    );
-                    return;
-                }
-                stream = selected;
-                source = kind;
-                tracks[0].addEventListener("ended", function () {
-                    if (stream === selected) stop();
-                });
                 try {
+                    var tracks = selected.getVideoTracks();
+                    var surface =
+                        tracks.length === 1 &&
+                        tracks[0].getSettings().displaySurface;
+                    var kind =
+                        surface === "browser"
+                            ? "browser-tab"
+                            : surface === "window"
+                              ? "window"
+                              : surface === "monitor"
+                                ? "display"
+                                : null;
+                    if (
+                        !kind ||
+                        !selected.active ||
+                        tracks[0].readyState !== "live" ||
+                        selected.getAudioTracks().length
+                    ) {
+                        stopTracks(selected);
+                        failSelection(
+                            "This browser cannot identify the selected screenshot source."
+                        );
+                        return;
+                    }
+                    stream = selected;
+                    source = kind;
+                    tracks[0].addEventListener("ended", function () {
+                        if (stream === selected) stop();
+                    });
                     frameCapture = new w.ImageCapture(tracks[0]);
-                    if (!arm(config!, epoch)) stop();
+                    pending = false;
+                    message = "";
+                    notify();
                 } catch (_) {
-                    failGrant("Screen sharing could not start.");
+                    if (stream !== selected) stopTracks(selected);
+                    failSelection("Screen sharing could not start.");
                 }
             },
             function () {
                 if (generation === epoch)
-                    failGrant(
+                    failSelection(
                         "Screen sharing was cancelled or is unavailable."
                     );
             }
@@ -403,28 +353,33 @@ export function installRemoteScreenshot(
     }
     function capture(done: (result: any) => void): () => void {
         var cancelled = false;
-        if (!validGrant() || screenshotSurfaceBlocked(w) || capturing) {
+        var config = syncConfig();
+        if (!ready(config) || capturing) {
             done({
                 data: {
-                    error: "Allow screenshots locally, close protected settings and keep the player visible.",
+                    error: "Screenshot source is unavailable. Check the controller connection or browser sharing.",
                 },
                 status: "rejected",
             });
             return function () {};
         }
         var epoch = generation;
-        var port = w.__ottClassicScreenPort;
-        var revision =
-            port && typeof port.revision === "function"
-                ? port.revision()
-                : null;
         var timeout: any;
-        var observer: any;
-        var protectedTransition = false;
+        var renderTimeout: any;
+        var renderFrame: any = null;
         capturing = true;
+        function clearRenderWait(): void {
+            w.clearTimeout(renderTimeout);
+            if (
+                renderFrame !== null &&
+                typeof w.cancelAnimationFrame === "function"
+            )
+                w.cancelAnimationFrame(renderFrame);
+            renderFrame = null;
+        }
         function cleanup(): void {
             w.clearTimeout(timeout);
-            if (observer) observer.disconnect();
+            clearRenderWait();
         }
         var cancel = function (): void {
             cancelled = true;
@@ -437,33 +392,20 @@ export function installRemoteScreenshot(
             cancelled = true;
             if (
                 !value ||
+                !sameConfig(config, syncConfig()) ||
                 epoch !== generation ||
-                !validGrant() ||
-                protectedTransition ||
-                screenshotSurfaceBlocked(w) ||
-                w.__ottClassicScreenPort !== port ||
-                (revision !== null && port.revision() !== revision) ||
+                !ready(config) ||
                 !validImage(value)
             ) {
                 done({
                     data: {
-                        error: "Screenshot unavailable, permission changed, or the player view changed. No image was returned.",
+                        error: "Screenshot unavailable or the controller connection changed. No image was returned.",
                     },
                     status: "rejected",
                 });
                 return;
             }
             done({ data: value, status: "ok" });
-        }
-        if (w.MutationObserver) {
-            observer = new w.MutationObserver(function () {
-                if (screenshotSurfaceBlocked(w)) protectedTransition = true;
-            });
-            observer.observe(w.document.documentElement, {
-                attributes: true,
-                childList: true,
-                subtree: true,
-            });
         }
         timeout = w.setTimeout(function () {
             if (!cancelled) {
@@ -487,59 +429,74 @@ export function installRemoteScreenshot(
                 });
             else {
                 // grabFrame requests a new snapshot from the live source. Never use
-                // a cached <video> frame that could predate closing a protected view.
+                // a cached <video> frame that could predate the current player UI.
                 var browserCapture = frameCapture;
-                var browserFrame: any = null;
                 var baseCancel = cancel;
                 cancel = function () {
-                    if (browserFrame !== null)
-                        w.cancelAnimationFrame(browserFrame);
                     baseCancel();
                     capturing = false;
                     if (cancelBrowser === cancel) cancelBrowser = null;
                 };
                 cancelBrowser = cancel;
+                var grabbed = false;
                 var grab = function (): void {
-                    if (cancelled) return;
-                    if (!validGrant() || screenshotSurfaceBlocked(w)) {
+                    if (cancelled || grabbed) return;
+                    grabbed = true;
+                    clearRenderWait();
+                    if (
+                        !sameConfig(config, syncConfig()) ||
+                        epoch !== generation ||
+                        !ready(config)
+                    ) {
                         finish();
                         return;
                     }
-                    browserCapture.grabFrame().then(
-                        function (bitmap: any) {
-                            if (cancelled) {
-                                if (bitmap && bitmap.close) bitmap.close();
-                                return;
-                            }
-                            if (cancelBrowser === cancel) cancelBrowser = null;
-                            try {
-                                finish(browserImage(bitmap));
-                            } catch (_) {
+                    try {
+                        browserCapture.grabFrame().then(
+                            function (bitmap: any) {
+                                if (cancelled) {
+                                    if (bitmap && bitmap.close) bitmap.close();
+                                    return;
+                                }
+                                if (cancelBrowser === cancel)
+                                    cancelBrowser = null;
+                                try {
+                                    finish(browserImage(bitmap));
+                                } catch (_) {
+                                    finish();
+                                } finally {
+                                    if (bitmap && bitmap.close) bitmap.close();
+                                }
+                            },
+                            function () {
+                                if (cancelled) return;
+                                if (cancelBrowser === cancel)
+                                    cancelBrowser = null;
                                 finish();
-                            } finally {
-                                if (bitmap && bitmap.close) bitmap.close();
                             }
-                        },
-                        function () {
-                            if (cancelled) return;
-                            if (cancelBrowser === cancel) cancelBrowser = null;
-                            finish();
-                        }
-                    );
+                        );
+                    } catch (_) {
+                        if (cancelBrowser === cancel) cancelBrowser = null;
+                        finish();
+                    }
                 };
-                // Wait until the current DOM has actually painted. A capture requested
-                // in the same task that closed a PIN/settings panel must not see it.
-                browserFrame = w.requestAnimationFrame(function () {
-                    if (cancelled) return;
-                    browserFrame = w.requestAnimationFrame(function () {
-                        browserFrame = null;
-                        try {
-                            grab();
-                        } catch (_) {
-                            finish();
-                        }
-                    });
-                });
+                // Let a visible page's latest DOM updates reach the compositor.
+                // Background capture stays valid even when animation frames pause.
+                if (
+                    !w.document.hidden &&
+                    typeof w.requestAnimationFrame === "function"
+                ) {
+                    renderTimeout = w.setTimeout(grab, 100);
+                    try {
+                        renderFrame = w.requestAnimationFrame(function () {
+                            if (cancelled || grabbed) return;
+                            if (w.document.hidden) grab();
+                            else renderFrame = w.requestAnimationFrame(grab);
+                        });
+                    } catch (_) {
+                        grab();
+                    }
+                } else grab();
             }
         } catch (_) {
             finish();
@@ -551,7 +508,7 @@ export function installRemoteScreenshot(
         configurationChanged: function () {
             stop();
         },
-        grant: grant,
+        selectSource: selectSource,
         snapshot: function () {
             var view = status();
             return { source: view.source, state: view.state };
@@ -573,6 +530,8 @@ export function installRemoteScreenshot(
         try {
             probe().then(
                 function (caps: any) {
+                    // Discovery is read-only and can settle while this page is
+                    // suspended; connection authority stays disabled until resume.
                     if (w.__ottRemoteScreenshot !== hook || !current()) return;
                     if (
                         caps &&
@@ -648,11 +607,19 @@ export function installRemoteScreenshot(
             w.navigator.mediaDevices &&
             typeof w.navigator.mediaDevices.getDisplayMedia === "function" &&
             typeof w.ImageCapture === "function" &&
-            typeof w.ImageCapture.prototype.grabFrame === "function" &&
-            typeof w.requestAnimationFrame === "function" &&
-            typeof w.cancelAnimationFrame === "function"
+            typeof w.ImageCapture.prototype.grabFrame === "function"
         );
-    if (w.addEventListener) w.addEventListener("pagehide", stop);
+    if (w.addEventListener) {
+        w.addEventListener("pagehide", function () {
+            disposed = true;
+            stop();
+        });
+        w.addEventListener("pageshow", function () {
+            if (w.__ottRemoteScreenshot !== hook || !disposed) return;
+            disposed = false;
+            notify();
+        });
+    }
     notify();
     return hook;
 }

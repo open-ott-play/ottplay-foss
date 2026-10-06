@@ -252,11 +252,19 @@ var keyStrings = {
     Connect: "الاتصال",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "قم بتوصيل هذا المشغل بخادم الأوامر أولاً.",
     Connected: "متصل",
     "Connected. Waiting for the channel list...":
         "متصل. في انتظار قائمة القنوات...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "توصيل التشخيص عن بعد لهذه الصفحة.",
     "Connecting to Plex…": "الاتصال بـ Plex...",
@@ -706,7 +714,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "جهاز التحكم عن بعد (بدون أزرار ملونة)",
     "Remote (number buttons N/A)": "جهاز التحكم عن بعد (بدون أزرار الأرقام)",
     "Remote control": "جهاز التحكم عن بعد",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "التشخيص عن بعد",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "يتم جمع التشخيص عن بعد لهذه الصفحة.",
     "Remote diagnostics is off.": "تم إيقاف التشخيص عن بعد.",
@@ -774,6 +790,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "السيناريو",
@@ -794,6 +812,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "حدد مصدر قالب قائمة التشغيل لـ EPG والشعارات",
     "Select Stalker portal": "حدد بوابة Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "إرسال الطلب",
@@ -880,6 +900,7 @@ var keyStrings = {
     "Starting...": "البدء…",
     Status: "الحالة",
     Stop: "توقف",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "إيقاف الالتقاط الحالي",
     "Stop diagnostics": "إيقاف التشخيص",
     "Stop playback and return to live":
@@ -904,6 +925,8 @@ var keyStrings = {
     "Tabox settings": "إعدادات Tabox",
     "Text is too long for remote input.":
         "النص طويل جدًا بحيث لا يمكن إدخاله عن بعد.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "اكتشاف خادم الأوامر URL غير صالح.",
     "The device ID in the address is invalid.":

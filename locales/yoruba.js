@@ -252,11 +252,19 @@ var keyStrings = {
     Connect: "Sopọ̀",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Kọ́kọ́ so ẹ̀rọ ìṣeré yìí pọ̀ mọ́ sáfà àṣẹ kan.",
     Connected: "Ti sopọ̀",
     "Connected. Waiting for the channel list...":
         "Ti sopọ̀. Ń dúró de àkójọ ìkànnì...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Ń so àyẹ̀wò ìṣòro láti ọ̀nà jíjìn pọ̀ fún ojú ìwé yìí.",
     "Connecting to Plex…": "Ń sopọ̀ mọ́ Plex…",
@@ -711,7 +719,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Rímóòtù (láìsí bọ́tìnì àwọ̀)",
     "Remote (number buttons N/A)": "Rímóòtù (láìsí bọ́tìnì nọ́ńbà)",
     "Remote control": "Ìṣàkóso láti ọ̀nà jíjìn",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Àyẹ̀wò ìṣòro láti ọ̀nà jíjìn",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Àyẹ̀wò ìṣòro láti ọ̀nà jíjìn ń gba dátà fún ojú ìwé yìí.",
     "Remote diagnostics is off.": "Àyẹ̀wò ìṣòro láti ọ̀nà jíjìn kò ṣiṣẹ́.",
@@ -780,6 +796,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Ìwé ìtàn fíìmù",
@@ -800,6 +818,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Yan orísun àwòṣe àkójọ ìṣeré fún EPG àti àwọn àmì ìdánimọ̀",
     "Select Stalker portal": "Yan ojú-ọ̀nà Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Fi ìbéèrè ránṣẹ́",
@@ -882,6 +902,7 @@ var keyStrings = {
     "Starting...": "Ń bẹ̀rẹ̀…",
     Status: "Ipò",
     Stop: "Dúró",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Dá gbígba dátà lọ́wọ́lọ́wọ́ dúró",
     "Stop diagnostics": "Dá àyẹ̀wò ìṣòro dúró",
     "Stop playback and return to live":
@@ -906,6 +927,8 @@ var keyStrings = {
     "Tabox settings": "Ètò Tabox",
     "Text is too long for remote input.":
         "Ọ̀rọ̀ náà gùn jù fún títẹ láti ọ̀nà jíjìn.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL wíwá sáfà àṣẹ kò péye.",
     "The device ID in the address is invalid.": "ID ẹ̀rọ inú àdírẹ́sì kò péye.",

@@ -252,11 +252,19 @@ var keyStrings = {
     Connect: "ബന്ധിപ്പിക്കുക",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ആദ്യം ഒരു കമാൻഡ് സെർവറിലേക്ക് ഈ പ്ലെയറിനെ ബന്ധിപ്പിക്കുക.",
     Connected: "ബന്ധിപ്പിച്ചു",
     "Connected. Waiting for the channel list...":
         "ബന്ധിപ്പിച്ചു. ചാനൽ ലിസ്റ്റിനായി കാത്തിരിക്കുന്നു...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ഈ പേജിനായി റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ബന്ധിപ്പിക്കുന്നു.",
     "Connecting to Plex…": "Plex-ലേക്ക് ബന്ധിപ്പിക്കുന്നു...",
@@ -710,7 +718,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "റിമോട്ട് (വർണ്ണ ബട്ടണുകൾ ഇല്ല)",
     "Remote (number buttons N/A)": "റിമോട്ട് (നമ്പർ ബട്ടണുകൾ ഇല്ല)",
     "Remote control": "റിമോട്ട് കൺട്രോൾ",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ്",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ഈ പേജിനായി റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ശേഖരിക്കുന്നു.",
     "Remote diagnostics is off.": "റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ഓഫാണ്.",
@@ -781,6 +797,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "തിരക്കഥ",
@@ -801,6 +819,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG, ലോഗോകൾ എന്നിവയ്‌ക്കായി പ്ലേലിസ്റ്റ് ടെംപ്ലേറ്റ് ഉറവിടം തിരഞ്ഞെടുക്കുക",
     "Select Stalker portal": "Stalker പോർട്ടൽ തിരഞ്ഞെടുക്കുക",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "അഭ്യർത്ഥന അയയ്ക്കുക",
@@ -884,6 +904,7 @@ var keyStrings = {
     "Starting...": "ആരംഭിക്കുന്നു...",
     Status: "നില",
     Stop: "നിർത്തുക",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "നിലവിലെ ക്യാപ്‌ചർ നിർത്തുക",
     "Stop diagnostics": "ഡയഗ്നോസ്റ്റിക്സ് നിർത്തുക",
     "Stop playback and return to live": "പ്ലേബാക്ക് നിർത്തി ലൈവിലേക്ക് മടങ്ങുക",
@@ -906,6 +927,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ക്രമീകരണങ്ങൾ",
     "Text is too long for remote input.": "ടെക്‌സ്‌റ്റ് വിദൂര ഇൻപുട്ടിന് ദൈർഘ്യമേറിയതാണ്.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "കമാൻഡ് സെർവർ കണ്ടെത്തൽ URL അസാധുവാണ്.",
     "The device ID in the address is invalid.": "വിലാസത്തിലെ ID ഉപകരണം അസാധുവാണ്.",

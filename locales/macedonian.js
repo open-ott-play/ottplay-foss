@@ -260,11 +260,19 @@ var keyStrings = {
     Connect: "Поврзи",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Прво поврзете го овој плеер со команден сервер.",
     Connected: "Поврзано",
     "Connected. Waiting for the channel list...":
         "Поврзано. Се чека листата на канали…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Се поврзува далечинска дијагностика за оваа страница.",
     "Connecting to Plex…": "Се поврзува со Plex…",
@@ -731,7 +739,15 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Далечински управувач (без бројчени копчиња)",
     "Remote control": "Далечински управувач",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Далечинска дијагностика",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Далечинската дијагностика собира податоци за оваа страница.",
     "Remote diagnostics is off.": "Далечинската дијагностика е исклучена.",
@@ -801,6 +817,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Сценарио",
@@ -822,6 +840,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Изберете извор за EPG и логоа од шаблонот на плејлистата",
     "Select Stalker portal": "Изберете Stalker портал",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Испрати барање",
@@ -906,6 +926,7 @@ var keyStrings = {
     "Starting...": "Се стартува…",
     Status: "Состојба",
     Stop: "Запри",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Запри го тековното собирање",
     "Stop diagnostics": "Запри дијагностика",
     "Stop playback and return to live": "Запри репродукција и врати се во живо",
@@ -929,6 +950,8 @@ var keyStrings = {
     "Tabox settings": "Поставки за Tabox",
     "Text is too long for remote input.":
         "Текстот е предолг за далечински внес.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL за откривање на командниот сервер е неважечки.",
     "The device ID in the address is invalid.":

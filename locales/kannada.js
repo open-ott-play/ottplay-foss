@@ -251,11 +251,19 @@ var keyStrings = {
     Connect: "ಸಂಪರ್ಕಿಸಿ",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ಈ ಪ್ಲೇಯರ್ ಅನ್ನು ಮೊದಲು ಕಮಾಂಡ್ ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.",
     Connected: "ಸಂಪರ್ಕಗೊಂಡಿದೆ",
     "Connected. Waiting for the channel list...":
         "ಸಂಪರ್ಕಗೊಂಡಿದೆ. ಚಾನಲ್ ಪಟ್ಟಿಗಾಗಿ ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ಈ ಪುಟಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.",
     "Connecting to Plex…": "Plex ಗೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…",
@@ -707,7 +715,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ರಿಮೋಟ್ (ಬಣ್ಣದ ಬಟನ್‌ಗಳಿಲ್ಲ)",
     "Remote (number buttons N/A)": "ರಿಮೋಟ್ (ಸಂಖ್ಯೆಯ ಬಟನ್‌ಗಳಿಲ್ಲ)",
     "Remote control": "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ಈ ಪುಟಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಸಂಗ್ರಹಿಸುತ್ತಿದೆ.",
     "Remote diagnostics is off.": "ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಆಫ್ ಆಗಿದೆ.",
@@ -775,6 +791,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "ಚಿತ್ರಕಥೆ",
@@ -795,6 +813,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ಮತ್ತು ಲೋಗೋಗಳಿಗಾಗಿ ಪ್ಲೇಪಟ್ಟಿ ಟೆಂಪ್ಲೇಟ್ ಮೂಲವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Select Stalker portal": "Stalker ಪೋರ್ಟಲ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ವಿನಂತಿಯನ್ನು ಕಳುಹಿಸಿ",
@@ -877,6 +897,7 @@ var keyStrings = {
     "Starting...": "ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…",
     Status: "ಸ್ಥಿತಿ",
     Stop: "ನಿಲ್ಲಿಸಿ",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "ಪ್ರಸ್ತುತ ಕ್ಯಾಪ್ಚರ್ ಅನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stop diagnostics": "ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ನಿಲ್ಲಿಸಿ",
     "Stop playback and return to live": "ಪ್ಲೇಬ್ಯಾಕ್ ನಿಲ್ಲಿಸಿ ಮತ್ತು ಲೈವ್‌ಗೆ ಹಿಂತಿರುಗಿ",
@@ -899,6 +920,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Text is too long for remote input.": "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್‌ಗಾಗಿ ಪಠ್ಯವು ತುಂಬಾ ಉದ್ದವಾಗಿದೆ.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "ಕಮಾಂಡ್ ಸರ್ವರ್ ಡಿಸ್ಕವರಿ URL ಅಮಾನ್ಯವಾಗಿದೆ.",
     "The device ID in the address is invalid.":

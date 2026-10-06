@@ -102,7 +102,7 @@ public class RemoteScreenshot: CAPPlugin, CAPBridgedPlugin {
             let size = Self.outputSize(webView.bounds.size)
             let screenScale = max(1, webView.window?.screen.scale ?? 1)
             config.snapshotWidth = NSNumber(value: Double(size.width / screenScale))
-            // Wait for the close of protected settings/PIN UI to reach pixels.
+            // Wait for the current web view updates to reach pixels.
             config.afterScreenUpdates = true
             webView.takeSnapshot(with: config) { [weak self, request] image, error in
                 guard let self = self else {

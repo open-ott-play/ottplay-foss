@@ -254,11 +254,19 @@ var keyStrings = {
     Connect: "ချိတ်ဆက်ပါ။",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ဤမီဒီယာဖွင့်စက်ကို အမိန့်ပေးဆာဗာတစ်ခုသို့ ဦးစွာချိတ်ဆက်ပါ။",
     Connected: "ချိတ်ဆက်ထားသည်။",
     "Connected. Waiting for the channel list...":
         "ချိတ်ဆက်ထားသည်။ ချန်နယ်စာရင်းကို စောင့်နေသည်...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ဤစာမျက်နှာအတွက် အဝေးထိန်းရောဂါရှာဖွေမှုများကို ချိတ်ဆက်ခြင်း။",
     "Connecting to Plex…": "Plex သို့ ချိတ်ဆက်နေသည်...",
@@ -707,7 +715,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "အဝေးထိန်း (အရောင်ခလုတ်များမပါ)",
     "Remote (number buttons N/A)": "အဝေးထိန်း (နံပါတ်ခလုတ်များမပါ)",
     "Remote control": "အဝေးထိန်းခလုတ်",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "အဝေးထိန်းရောဂါရှာဖွေရေး",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "အဝေးထိန်းရောဂါရှာဖွေခြင်းများကို ဤစာမျက်နှာအတွက် စုဆောင်းနေပါသည်။",
     "Remote diagnostics is off.": "အဝေးထိန်းရောဂါရှာဖွေခြင်းများကို ပိတ်ထားသည်။",
@@ -776,6 +792,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "ဇာတ်ညွှန်း",
@@ -796,6 +814,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG နှင့် လိုဂိုများအတွက် အစီအစဉ်ပုံစံ နမူနာအရင်းအမြစ်ကို ရွေးပါ။",
     "Select Stalker portal": "Stalker ပေါ်တယ်ကို ရွေးပါ။",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "တောင်းဆိုချက်ကို ပေးပို့ပါ။",
@@ -881,6 +901,7 @@ var keyStrings = {
     "Starting...": "စတင်နေသည်...",
     Status: "အဆင့်အတန်း",
     Stop: "ရပ်ပါ။",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "လက်ရှိရိုက်ကူးမှုကို ရပ်ပါ။",
     "Stop diagnostics": "ရောဂါရှာဖွေမှုများကို ရပ်ပါ။",
     "Stop playback and return to live": "ပြန်ဖွင့်ခြင်းကို ရပ်ပြီး တိုက်ရိုက်ပြန်သွားပါ။",
@@ -903,6 +924,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ဆက်တင်များ",
     "Text is too long for remote input.": "စာသားသည် အဝေးထိန်းထည့်သွင်းမှုအတွက် ရှည်လွန်းသည်။",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "အမိန့်ဆာဗာ ရှာဖွေတွေ့ရှိမှု URL သည် မမှန်ကန်ပါ။",
     "The device ID in the address is invalid.": "လိပ်စာရှိ စက် ID သည် မမှန်ကန်ပါ။",

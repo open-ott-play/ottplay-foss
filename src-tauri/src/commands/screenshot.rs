@@ -1,6 +1,6 @@
 //! Snapshot this player's main webview, never the desktop or another window.
 //!
-//! The frontend owns the short-lived local screenshot grant and controller checks.
+//! The frontend authorizes the configured remote-control connection and checks its owner.
 //! macOS uses WKWebView.takeSnapshot; GPU/protected video may not appear in it.
 
 #[derive(serde::Serialize)]

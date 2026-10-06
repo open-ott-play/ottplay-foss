@@ -64,7 +64,7 @@ async function setup(page, context, baseURL) {
         { address: CONTROLLER, token: TOKEN }
     );
     await page.keyboard.press("Enter");
-    await expect(page.locator("#remoteScreenshotToggle")).toBeVisible();
+    await expect(page.locator("#remoteSettingsContent")).toBeVisible();
     return errors;
 }
 async function rpc(page, action, params = {}) {
@@ -76,7 +76,7 @@ async function rpc(page, action, params = {}) {
         { action, params }
     );
 }
-test("real tab capture, source metadata, protected settings, revoke and reload", async ({
+test("real tab capture includes settings, fresh pixels, browser stop and reload", async ({
     page,
     context,
     baseURL,
@@ -102,10 +102,11 @@ test("real tab capture, source metadata, protected settings, revoke and reload",
             )
         )
         .toBe(JSON.stringify({ state: "ready" }));
+    // The configured controller is allowed to inspect the settings screen too.
     expect(
         (await rpc(page, "screenshot", { runtime: initial.player.runtime }))
             .status
-    ).toBe("rejected");
+    ).toBe("ok");
     await page.keyboard.press("Escape");
     await expect(page.locator("#remoteSettingsContent")).toHaveCount(0);
     // A new marker verifies the screenshot did not reuse the permission-dialog frame.
@@ -163,7 +164,7 @@ test("real tab capture, source metadata, protected settings, revoke and reload",
     );
     expect(errors).toEqual([]);
 });
-test("unsupported browser has no screenshot permission action or image fallback", async ({
+test("unsupported browser has no capture source action or image fallback", async ({
     page,
     context,
     baseURL,
@@ -172,11 +173,45 @@ test("unsupported browser has no screenshot permission action or image fallback"
         Object.defineProperty(window, "ImageCapture", { value: undefined });
     });
     const errors = await setup(page, context, baseURL);
+    await expect(page.locator("#remoteScreenshotToggle")).toBeHidden();
     await expect(page.locator("#remoteScreenshotToggle")).toBeDisabled();
     const caps = (await rpc(page, "capabilities")).data;
     expect(caps.screenshot.state).toBe("unsupported");
     expect(
         (await rpc(page, "screenshot", { runtime: caps.player.runtime })).status
     ).toBe("unsupported");
+    expect(errors).toEqual([]);
+});
+
+test("local Connect selects a browser source and Disconnect revokes capture", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const errors = await setup(page, context, baseURL);
+    await expect(page.locator("#remoteDiagnosticsToggle")).toHaveCount(0);
+    await expect(page.locator("#remoteDiagnosticsTrust")).toHaveCount(0);
+    await page.locator("#commandServerConnect").click();
+    await expect(page.locator("#commandServerConnectLabel")).toHaveText(
+        "Connect"
+    );
+    await page.locator("#commandServerConnect").click();
+    await expect
+        .poll(
+            async () => (await rpc(page, "capabilities")).data.screenshot.state
+        )
+        .toBe("ready");
+    const caps = (await rpc(page, "capabilities")).data;
+    expect(
+        (await rpc(page, "screenshot", { runtime: caps.player.runtime })).status
+    ).toBe("ok");
+    await page.locator("#commandServerConnect").click();
+    expect((await rpc(page, "capabilities")).data.screenshot.state).toBe(
+        "permission_required"
+    );
+    expect(
+        (await rpc(page, "screenshot", { runtime: caps.player.runtime })).status
+    ).toBe("rejected");
+    await expect(page.locator("#remoteScreenshotIndicator")).toHaveCount(0);
     expect(errors).toEqual([]);
 });

@@ -252,11 +252,19 @@ var keyStrings = {
     Connect: "ភ្ជាប់",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ភ្ជាប់កម្មវិធីចាក់នេះទៅម៉ាស៊ីនមេពាក្យបញ្ជាជាមុនសិន។",
     Connected: "បានភ្ជាប់",
     "Connected. Waiting for the channel list...":
         "បានភ្ជាប់។ កំពុងរង់ចាំបញ្ជីឈ្មោះឆានែល...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "ការភ្ជាប់ការវិនិច្ឆ័យពីចម្ងាយសម្រាប់ទំព័រនេះ។",
     "Connecting to Plex…": "កំពុងភ្ជាប់ទៅ Plex…",
@@ -709,7 +717,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ពីចម្ងាយ (គ្មានប៊ូតុងពណ៌)",
     "Remote (number buttons N/A)": "ពីចម្ងាយ (គ្មានប៊ូតុងលេខ)",
     "Remote control": "ការបញ្ជាពីចម្ងាយ",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយ",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយកំពុងប្រមូលសម្រាប់ទំព័រនេះ។",
     "Remote diagnostics is off.": "ការវិនិច្ឆ័យពីចម្ងាយត្រូវបានបិទ។",
@@ -778,6 +794,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "សាច់រឿង",
@@ -798,6 +816,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ជ្រើសរើសប្រភពគំរូបញ្ជីចាក់សម្រាប់ EPG និងឡូហ្គោ",
     "Select Stalker portal": "ជ្រើសរើសវិបផតថល Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ផ្ញើសំណើ",
@@ -883,6 +903,7 @@ var keyStrings = {
     "Starting...": "ចាប់ផ្តើម...",
     Status: "ស្ថានភាព",
     Stop: "ឈប់",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "បញ្ឈប់ការចាប់យកបច្ចុប្បន្ន",
     "Stop diagnostics": "បញ្ឈប់ការធ្វើរោគវិនិច្ឆ័យ",
     "Stop playback and return to live":
@@ -906,6 +927,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "ការកំណត់ Tabox",
     "Text is too long for remote input.": "អត្ថបទវែងពេកសម្រាប់ការបញ្ចូលពីចម្ងាយ។",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "ការរកឃើញម៉ាស៊ីនមេពាក្យបញ្ជា URL មិនត្រឹមត្រូវទេ។",
     "The device ID in the address is invalid.":

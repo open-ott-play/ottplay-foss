@@ -256,11 +256,19 @@ var keyStrings = {
     Connect: "つながる",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "まず、このプレーヤーをコマンドサーバーに接続します。",
     Connected: "つながった",
     "Connected. Waiting for the channel list...":
         "つながった。チャンネルリストを待っています...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "このページのリモート診断を接続しています。",
     "Connecting to Plex…": "Plexに接続中…",
@@ -720,7 +728,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "リモコン（カラーボタンなし）",
     "Remote (number buttons N/A)": "リモコン（数字ボタンなし）",
     "Remote control": "リモコン",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "遠隔診断",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "このページではリモート診断を募集しています。",
     "Remote diagnostics is off.": "リモート診断がオフになっています。",
@@ -790,6 +806,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "脚本",
@@ -811,6 +829,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPGとロゴのプレイリストテンプレートソースを選択",
     "Select Stalker portal": "Stalkerポータルを選択",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "送信リクエスト",
@@ -897,6 +917,7 @@ var keyStrings = {
     "Starting...": "始まります…",
     Status: "ステータス",
     Stop: "ストップ",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "現在のキャプチャを停止します",
     "Stop diagnostics": "診断停止",
     "Stop playback and return to live": "再生を停止してライブに戻ります",
@@ -920,6 +941,8 @@ var keyStrings = {
     "Tabox settings": "Taboxの設定",
     "Text is too long for remote input.":
         "リモート入力するにはテキストが長すぎます。",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "コマンドサーバーディスカバリ URL が無効です。",
     "The device ID in the address is invalid.":

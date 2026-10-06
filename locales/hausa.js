@@ -257,11 +257,19 @@ var keyStrings = {
     Connect: "Haɗa",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Da farko haɗa wannan manhajar kunnawa zuwa sabar umarni.",
     Connected: "An haɗa",
     "Connected. Waiting for the channel list...":
         "An haɗa. Ana jiran jerin tashoshi…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Ana haɗa binciken matsala daga nesa don wannan shafi.",
     "Connecting to Plex…": "Ana haɗawa da Plex…",
@@ -725,7 +733,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Na'urar sarrafawa (babu maɓallan launi)",
     "Remote (number buttons N/A)": "Na'urar sarrafawa (babu maɓallan lamba)",
     "Remote control": "Na'urar sarrafawa daga nesa",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Binciken matsala daga nesa",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Binciken matsala daga nesa yana tattara bayanai don wannan shafi.",
     "Remote diagnostics is off.": "Binciken matsala daga nesa yana kashe.",
@@ -795,6 +811,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Rubutun fim",
@@ -815,6 +833,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Zaɓi tushen samfurin jerin kunnawa don EPG da tambura",
     "Select Stalker portal": "Zaɓi tashar Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Aika buƙata",
@@ -897,6 +917,7 @@ var keyStrings = {
     "Starting...": "Ana farawa…",
     Status: "Matsayi",
     Stop: "Dakatar",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Dakatar da tattarawar yanzu",
     "Stop diagnostics": "Dakatar da binciken matsala",
     "Stop playback and return to live":
@@ -921,6 +942,8 @@ var keyStrings = {
     "Tabox settings": "Saitunan Tabox",
     "Text is too long for remote input.":
         "Rubutun ya yi tsawo sosai don shigarwa daga nesa.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL na neman sabar umarni ba ya inganta.",
     "The device ID in the address is invalid.":

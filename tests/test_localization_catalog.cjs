@@ -68,7 +68,8 @@ try {
         `
         var message = "Screenshots initially disabled";
         message = "Screenshots permission active";
-        failGrant("Screenshot grant denied");
+        failSelection("Screenshot source unavailable");
+        var text = ready ? "Native screenshots connected" : "Select browser source";
         console.log("Not a screenshot UI message");
     `
     );
@@ -112,7 +113,9 @@ try {
         "Discovery failed",
         "Screenshots initially disabled",
         "Screenshots permission active",
-        "Screenshot grant denied",
+        "Screenshot source unavailable",
+        "Native screenshots connected",
+        "Select browser source",
     ])
         assert(
             fixtureKeys.keys.has(key),
@@ -572,7 +575,8 @@ try {
         "Remote text entry",
         "Find command server",
         "Remote screenshots",
-        "Allow screenshots for 10 minutes",
+        "Select screenshot source in browser",
+        "Screenshots are available while remote control is connected.",
         "Screen sharing could not start.",
         "Cancel pairing",
         "Enter the command server IP or address.",
@@ -586,7 +590,7 @@ try {
     });
     assert.deepEqual(result.errors, [], result.errors.join("\n"));
     assert.equal(result.localeCount, 88);
-    assert.equal(result.keyCount, 819);
+    assert.equal(result.keyCount, 831);
     console.log(
         `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
     );

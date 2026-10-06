@@ -256,11 +256,19 @@ var keyStrings = {
     Connect: "დაკავშირება",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "ჯერ დაუკავშირეთ ეს მედია ფლეერი ბრძანების სერვერს.",
     Connected: "დაკავშირებულია",
     "Connected. Waiting for the channel list...":
         "დაკავშირებულია. ველოდები არხების სიას...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "დისტანციური დიაგნოსტიკის დაკავშირება ამ გვერდისთვის.",
     "Connecting to Plex…": "დაკავშირება Plex…",
@@ -726,7 +734,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "დისტანციური (ფერადი ღილაკების გარეშე)",
     "Remote (number buttons N/A)": "დისტანციური (ნომრის ღილაკების გარეშე)",
     "Remote control": "დისტანციური მართვა",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "დისტანციური დიაგნოსტიკა",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "დისტანციური დიაგნოსტიკა ამ გვერდის მონაცემებს აგროვებს.",
     "Remote diagnostics is off.": "დისტანციური დიაგნოსტიკა გამორთულია.",
@@ -796,6 +812,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "სცენარი",
@@ -816,6 +834,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "აირჩიეთ დასაკრავი სიის შაბლონის წყარო EPG და ლოგოებისთვის",
     "Select Stalker portal": "აირჩიეთ Stalker პორტალი",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "მოთხოვნის გაგზავნა",
@@ -900,6 +920,7 @@ var keyStrings = {
     "Starting...": "იწყება…",
     Status: "სტატუსი",
     Stop: "გაჩერება",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "მონაცემთა მიმდინარე შეგროვების შეჩერება",
     "Stop diagnostics": "შეაჩერე დიაგნოსტიკა",
     "Stop playback and return to live":
@@ -924,6 +945,8 @@ var keyStrings = {
     "Tabox settings": "Tabox პარამეტრები",
     "Text is too long for remote input.":
         "ტექსტი ძალიან გრძელია დისტანციური შეყვანისთვის.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "ბრძანების სერვერის ძებნის URL არასწორია.",
     "The device ID in the address is invalid.":

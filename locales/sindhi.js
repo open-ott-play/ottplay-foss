@@ -252,11 +252,19 @@ var keyStrings = {
     Connect: "ڳنڍيو",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "پهريان هن پليئر کي حڪم سرور سان ڳنڍيو.",
     Connected: "ڳنڍيل",
     "Connected. Waiting for the channel list...":
         "ڳنڍيل. چينل فهرست جو انتظار...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "هن صفحي لاءِ پري کان تشخيص ڳنڍجي رهي آهي.",
     "Connecting to Plex…": "Plex سان ڳنڍجي رهيو آهي…",
@@ -712,7 +720,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ريموٽ (رنگين بٽڻن کان سواءِ)",
     "Remote (number buttons N/A)": "ريموٽ (انگن وارن بٽڻن کان سواءِ)",
     "Remote control": "ريموٽ ڪنٽرول",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "پري کان تشخيص",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "پري کان تشخيص هن صفحي لاءِ ڊيٽا گڏ ڪري رهي آهي.",
     "Remote diagnostics is off.": "پري کان تشخيص بند آهي.",
@@ -781,6 +797,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "فلمي اسڪرپٽ",
@@ -801,6 +819,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ۽ لوگو لاءِ پلي لسٽ نموني جو ذريعو چونڊيو",
     "Select Stalker portal": "Stalker پورٽل چونڊيو",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "درخواست موڪليو",
@@ -883,6 +903,7 @@ var keyStrings = {
     "Starting...": "شروع ٿي رهيو آهي…",
     Status: "حالت",
     Stop: "روڪيو",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "هاڻوڪو ڊيٽا گڏ ڪرڻ روڪيو",
     "Stop diagnostics": "تشخيص روڪيو",
     "Stop playback and return to live": "پلي بيڪ روڪي سڌي نشريات ڏانهن موٽو",
@@ -906,6 +927,8 @@ var keyStrings = {
     "Tabox settings": "Tabox جون سيٽنگون",
     "Text is too long for remote input.":
         "پري کان ان پٽ لاءِ متن تمام ڊگهو آهي.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "حڪم سرور ڳولڻ جو URL صحيح ناهي.",
     "The device ID in the address is invalid.": "پتي ۾ ڊوائيس ID صحيح ناهي.",
