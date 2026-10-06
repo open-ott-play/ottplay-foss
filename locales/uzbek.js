@@ -276,6 +276,8 @@ var keyStrings = {
         "Juftlash soʻrovini yaratib boʻlmadi. Qayta urinish uchun serverni yana toping.",
     "Could not load. Select to retry.":
         "Yuklab bo‘lmadi. Qayta urinish uchun tanlang.",
+    "Could not save provider settings.":
+        "Provayder sozlamalarini saqlab bo‘lmadi.",
     "Could not save the approved command server settings.":
         "Buyruqlar serverining tasdiqlangan sozlamalarini saqlab boʻlmadi.",
     "Could not update HTTP remote control.":
@@ -606,6 +608,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Saqlangan sozlamalar topilmadi",
+    "Not configured": "Sozlanmagan",
     "Not found": "Topilmadi",
     "Not reduce video when showing the list (bugfix)":
         "Roʻyxat koʻrsatilganda videoni kichraytirmaslik (xatoni tuzatish)",
@@ -978,6 +981,7 @@ var keyStrings = {
         "Bu provayder VODʼni qoʻllab-quvvatlamaydi",
     "Volume step, %": "Ovoz balandligi qadami, %",
     "VPortal link": "VPortal havolasi",
+    "VPortal profiles": "VPortal profillari",
     "VPortal request failed":
         "VPortalʼni yuklab boʻlmadi. Havola, kirish kaliti va portalning mavjudligini tekshiring.",
     volume: "ovoz balandligi",

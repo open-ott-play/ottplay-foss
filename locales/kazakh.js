@@ -274,6 +274,8 @@ var keyStrings = {
         "Жұптастыру сұрауын жасау мүмкін болмады. Қайта әрекет ету үшін серверді қайта іздеңіз.",
     "Could not load. Select to retry.":
         "Жүктеу мүмкін болмады. Қайталау үшін таңдаңыз.",
+    "Could not save provider settings.":
+        "Провайдер баптауларын сақтау мүмкін болмады.",
     "Could not save the approved command server settings.":
         "Пәрмен серверінің расталған баптауларын сақтау мүмкін болмады.",
     "Could not update HTTP remote control.":
@@ -604,6 +606,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Сақталған баптаулар табылмады",
+    "Not configured": "Бапталмаған",
     "Not found": "Табылмады",
     "Not reduce video when showing the list (bugfix)":
         "Тізімді көрсеткенде бейнені кішірейтпеу (қатені түзету)",
@@ -974,6 +977,7 @@ var keyStrings = {
         "Провайдер сұраныс бойынша бейнені қолдамайды",
     "Volume step, %": "Дыбыс деңгейінің қадамы, %",
     "VPortal link": "VPortal сілтемесі",
+    "VPortal profiles": "VPortal профильдері",
     "VPortal request failed":
         "VPortal жүктелмеді. Сілтемені, кіру кілтін және порталдың қолжетімділігін тексеріңіз.",
     volume: "дыбыс деңгейі",

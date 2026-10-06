@@ -277,6 +277,8 @@ var keyStrings = {
         "Nu s-a putut crea o cerere de asociere. Căutați din nou serverul pentru a reîncerca.",
     "Could not load. Select to retry.":
         "Încărcarea a eșuat. Selectați pentru a reîncerca.",
+    "Could not save provider settings.":
+        "Nu s-au putut salva setările furnizorului.",
     "Could not save the approved command server settings.":
         "Nu s-au putut salva setările aprobate ale serverului de comenzi.",
     "Could not update HTTP remote control.":
@@ -610,6 +612,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nu au fost găsite setări salvate",
+    "Not configured": "Neconfigurat",
     "Not found": "Nu a fost găsit",
     "Not reduce video when showing the list (bugfix)":
         "Nu micșora imaginea video când este afișată lista (remediere)",
@@ -982,6 +985,7 @@ var keyStrings = {
     "VOD not supported by provider": "Acest furnizor nu acceptă VOD",
     "Volume step, %": "Pasul volumului, %",
     "VPortal link": "Link VPortal",
+    "VPortal profiles": "Profiluri VPortal",
     "VPortal request failed":
         "VPortal nu a putut fi încărcat. Verificați linkul, cheia de acces și disponibilitatea portalului.",
     volume: "volum",

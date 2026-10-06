@@ -271,6 +271,8 @@ var keyStrings = {
         "Не ўдалося стварыць запыт на спалучэнне. Паўтарыце пошук сервера, каб паспрабаваць зноў.",
     "Could not load. Select to retry.":
         "Не ўдалося загрузіць. Націсніце для паўтору.",
+    "Could not save provider settings.":
+        "Не ўдалося захаваць налады правайдара.",
     "Could not save the approved command server settings.":
         "Не ўдалося захаваць пацверджаныя налады сервера каманд.",
     "Could not update HTTP remote control.":
@@ -599,6 +601,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Захаваныя налады не знойдзены",
+    "Not configured": "Не наладжана",
     "Not found": "Не знойдзена",
     "Not reduce video when showing the list (bugfix)":
         "Не памяншаць відэа пры паказе спіса (выпраўленне)",
@@ -966,6 +969,7 @@ var keyStrings = {
     "VOD not supported by provider": "Правайдар не падтрымлівае відэа на запыт",
     "Volume step, %": "Крок гучнасці, %",
     "VPortal link": "Спасылка VPortal",
+    "VPortal profiles": "Профілі VPortal",
     "VPortal request failed":
         "Не ўдалося загрузіць VPortal. Праверце спасылку, ключ доступу і даступнасць партала.",
     volume: "гучнасць",

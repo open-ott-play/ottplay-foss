@@ -277,6 +277,8 @@ var keyStrings = {
         "Nie udało się utworzyć żądania parowania. Wyszukaj serwer ponownie, aby spróbować jeszcze raz.",
     "Could not load. Select to retry.":
         "Nie udało się wczytać. Wybierz, aby ponowić.",
+    "Could not save provider settings.":
+        "Nie udało się zapisać ustawień dostawcy.",
     "Could not save the approved command server settings.":
         "Nie udało się zapisać zatwierdzonych ustawień serwera poleceń.",
     "Could not update HTTP remote control.":
@@ -603,6 +605,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nie znaleziono zapisanych ustawień",
+    "Not configured": "Nie skonfigurowano",
     "Not found": "Nie znaleziono",
     "Not reduce video when showing the list (bugfix)":
         "Nie zmniejszaj obrazu podczas wyświetlania listy (poprawka)",
@@ -971,6 +974,7 @@ var keyStrings = {
     "VOD not supported by provider": "Dostawca nie obsługuje wideo na żądanie",
     "Volume step, %": "Krok głośności, %",
     "VPortal link": "Link VPortal",
+    "VPortal profiles": "Profile VPortal",
     "VPortal request failed":
         "Nie udało się wczytać VPortal. Sprawdź link, klucz dostępu i dostępność portalu.",
     volume: "głośność",

@@ -1146,15 +1146,15 @@ providerDriverProfiles.forEach(function (profile) {
                             owner,
                             helpers
                         );
-                    if (profile.kind === "plex")
-                        return (window as any).__ottPlexDriver.create(
-                            ports,
-                            owner,
-                            {
-                                credentials: createCredentialOperations,
-                                emptyCatalog: emptyDriverCatalog,
-                            }
-                        );
+                    if (profile.kind === "plex" || profile.kind === "vportal")
+                        return (window as any)[
+                            profile.kind === "plex"
+                                ? "__ottPlexDriver"
+                                : "__ottVPortalDriver"
+                        ].create(ports, owner, {
+                            credentials: createCredentialOperations,
+                            emptyCatalog: emptyDriverCatalog,
+                        });
                     // OTTPLAY_FULL_ONLY_BEGIN
                     if (profile.kind === "catalog")
                         return (window as any).__ottCatalogDrivers.create(
@@ -1997,7 +1997,9 @@ function mountProviderDriver(
             ? host.__ottM3uDriver
             : profile.kind === "plex"
               ? host.__ottPlexDriver
-              : null;
+              : profile.kind === "vportal"
+                ? host.__ottVPortalDriver
+                : null;
     // OTTPLAY_FULL_ONLY_BEGIN
     if (catalogProtocol)
         host.__ottCatalogDrivers.mountSettings(host, driver, owner, store);

@@ -276,6 +276,8 @@ var keyStrings = {
         "Неуспешно създаване на заявка за сдвояване. Потърсете сървъра отново, за да опитате пак.",
     "Could not load. Select to retry.":
         "Зареждането е неуспешно. Изберете за нов опит.",
+    "Could not save provider settings.":
+        "Настройките на доставчика не могат да бъдат запазени.",
     "Could not save the approved command server settings.":
         "Неуспешно запазване на одобрените настройки на сървъра за команди.",
     "Could not update HTTP remote control.":
@@ -605,6 +607,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Няма намерени запазени настройки",
+    "Not configured": "Не е настроено",
     "Not found": "Не е намерено",
     "Not reduce video when showing the list (bugfix)":
         "Без намаляване на видеото при показване на списъка (корекция)",
@@ -978,6 +981,7 @@ var keyStrings = {
     "VOD not supported by provider": "Доставчикът не поддържа видео по заявка",
     "Volume step, %": "Стъпка на силата на звука, %",
     "VPortal link": "Връзка VPortal",
+    "VPortal profiles": "Профили VPortal",
     "VPortal request failed":
         "Неуспешно зареждане на VPortal. Проверете връзката, ключа за достъп и достъпността на портала.",
     volume: "сила на звука",

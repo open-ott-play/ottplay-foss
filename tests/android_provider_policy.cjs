@@ -103,6 +103,7 @@ const privateModules = [
     "m3u-settings",
     "m3u-driver",
     "plex-driver",
+    "vportal-driver",
     "drivers",
 ];
 const privateProfiles = {};
@@ -415,7 +416,7 @@ function test(name, run) {
     cases++;
     console.log("PASS Android provider policy: " + name);
 }
-const permitted = ["m3u", "stalker", "xtream", "plex", "demo"];
+const permitted = ["m3u", "stalker", "xtream", "plex", "vportal", "demo"];
 const fullIds = Array.from(fixture("full").w.arrayProvaiders).filter(Boolean);
 const excluded = fullIds.filter((id) => !permitted.includes(id));
 
@@ -688,7 +689,7 @@ test("completed provider loads omit unavailable logos but preserve Full logo and
                         image.attrs.src,
                         "https://player.invalid/providers/" +
                             id +
-                            (id === "plex"
+                            (id === "plex" || id === "vportal"
                                 ? "/logo.svg?fixture"
                                 : "/logo.png?fixture")
                     );
@@ -781,6 +782,7 @@ test("settings restored after startup still pass policy at the script boundary",
         "stalker",
         "xtream",
         "plex",
+        "vportal",
         "",
         "demo",
     ]);

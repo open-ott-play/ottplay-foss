@@ -17,6 +17,7 @@ var providerAssetGroups: { [kind: string]: string[][] } = {
         ["__ottPlexDriver", "create", "mount", "reportLoad"],
     ],
     stalker: [["__ottStalkerDriver", "create", "mountSettings"]],
+    vportal: [["__ottVPortalDriver", "create", "mount", "reportLoad"]],
 };
 
 interface ProviderAssetOwner {

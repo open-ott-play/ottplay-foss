@@ -209,7 +209,7 @@ allocation optimization into a shared mutable snapshot or a second state owner.
 ## Provider contract and release boundary
 
 [driver-profiles.ts](../src/provider/driver-profiles.ts) is the single managed
-inventory: 48 Full profiles, including nested IDs such as `bestlist/stalker`.
+inventory: 50 Full profiles, including nested IDs such as `bestlist/stalker`.
 Profiles declare `id`, factory family, legacy storage prefix and title. Runtime
 capabilities (`archive`, `guide`, `media`, `settings`) belong to driver instances;
 they describe available operations, not successful networking, available EPG

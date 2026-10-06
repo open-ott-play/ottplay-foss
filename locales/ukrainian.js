@@ -272,6 +272,8 @@ var keyStrings = {
         "Не вдалося створити запит на сполучення. Повторіть пошук сервера, щоб спробувати знову.",
     "Could not load. Select to retry.":
         "Не вдалося завантажити. Натисніть для повтору.",
+    "Could not save provider settings.":
+        "Не вдалося зберегти налаштування провайдера.",
     "Could not save the approved command server settings.":
         "Не вдалося зберегти підтверджені налаштування сервера команд.",
     "Could not update HTTP remote control.":
@@ -601,6 +603,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Збережені налаштування не знайдено",
+    "Not configured": "Не налаштовано",
     "Not found": "Не знайдено",
     "Not reduce video when showing the list (bugfix)":
         "Не зменшувати відео під час показу списку (виправлення)",
@@ -969,6 +972,7 @@ var keyStrings = {
     "VOD not supported by provider": "Провайдер не підтримує відео на запит",
     "Volume step, %": "Крок гучності, %",
     "VPortal link": "Посилання VPortal",
+    "VPortal profiles": "Профілі VPortal",
     "VPortal request failed":
         "Не вдалося завантажити VPortal. Перевірте посилання, ключ доступу й доступність порталу.",
     volume: "гучність",

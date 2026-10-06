@@ -273,6 +273,8 @@ var keyStrings = {
         "Nepavyko sukurti susiejimo užklausos. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
     "Could not load. Select to retry.":
         "Įkelti nepavyko. Pasirinkite ir bandykite dar kartą.",
+    "Could not save provider settings.":
+        "Nepavyko išsaugoti tiekėjo nustatymų.",
     "Could not save the approved command server settings.":
         "Nepavyko išsaugoti patvirtintų komandų serverio nustatymų.",
     "Could not update HTTP remote control.":
@@ -603,6 +605,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Išsaugotų nustatymų nerasta",
+    "Not configured": "Nesukonfigūruota",
     "Not found": "Nerasta",
     "Not reduce video when showing the list (bugfix)":
         "Nemažinti vaizdo rodant sąrašą (klaidos pataisa)",
@@ -969,6 +972,7 @@ var keyStrings = {
     "VOD not supported by provider": "Šis teikėjas nepalaiko VOD",
     "Volume step, %": "Garsumo žingsnis, %",
     "VPortal link": "VPortal nuoroda",
+    "VPortal profiles": "VPortal profiliai",
     "VPortal request failed":
         "Nepavyko įkelti VPortal. Patikrinkite nuorodą, prieigos raktą ir portalo prieinamumą.",
     volume: "garsumas",

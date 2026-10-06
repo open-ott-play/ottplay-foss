@@ -277,6 +277,8 @@ var keyStrings = {
         "Kopplungsanfrage konnte nicht erstellt werden. Suchen Sie den Server erneut, um es noch einmal zu versuchen.",
     "Could not load. Select to retry.":
         "Laden fehlgeschlagen. Zum Wiederholen auswählen.",
+    "Could not save provider settings.":
+        "Die Anbietereinstellungen konnten nicht gespeichert werden.",
     "Could not save the approved command server settings.":
         "Die genehmigten Befehlsserver-Einstellungen konnten nicht gespeichert werden.",
     "Could not update HTTP remote control.":
@@ -611,6 +613,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Keine gespeicherten Einstellungen gefunden",
+    "Not configured": "Nicht eingerichtet",
     "Not found": "Nicht gefunden",
     "Not reduce video when showing the list (bugfix)":
         "Video beim Anzeigen der Liste nicht verkleinern (Fehlerbehebung)",
@@ -986,6 +989,7 @@ var keyStrings = {
         "VOD wird von diesem Anbieter nicht unterstützt",
     "Volume step, %": "Lautstärkeschritt, %",
     "VPortal link": "VPortal-Link",
+    "VPortal profiles": "VPortal-Profile",
     "VPortal request failed":
         "VPortal konnte nicht geladen werden. Prüfen Sie Link, Zugangsschlüssel und Verfügbarkeit des Portals.",
     volume: "Lautstärke",

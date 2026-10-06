@@ -277,6 +277,8 @@ var keyStrings = {
         "Δεν ήταν δυνατή η δημιουργία αιτήματος σύζευξης. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
     "Could not load. Select to retry.":
         "Αποτυχία φόρτωσης. Επιλέξτε για νέα προσπάθεια.",
+    "Could not save provider settings.":
+        "Δεν ήταν δυνατή η αποθήκευση των ρυθμίσεων παρόχου.",
     "Could not save the approved command server settings.":
         "Δεν ήταν δυνατή η αποθήκευση των εγκεκριμένων ρυθμίσεων του διακομιστή εντολών.",
     "Could not update HTTP remote control.":
@@ -612,6 +614,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Δεν βρέθηκαν αποθηκευμένες ρυθμίσεις",
+    "Not configured": "Δεν έχει ρυθμιστεί",
     "Not found": "Δεν βρέθηκε",
     "Not reduce video when showing the list (bugfix)":
         "Να μη μικραίνει το βίντεο κατά την εμφάνιση της λίστας (διόρθωση σφάλματος)",
@@ -992,6 +995,7 @@ var keyStrings = {
         "Το VOD δεν υποστηρίζεται από αυτόν τον πάροχο",
     "Volume step, %": "Βήμα έντασης, %",
     "VPortal link": "Σύνδεσμος VPortal",
+    "VPortal profiles": "Προφίλ VPortal",
     "VPortal request failed":
         "Αδυναμία φόρτωσης VPortal. Ελέγξτε τον σύνδεσμο, το κλειδί πρόσβασης και τη διαθεσιμότητα της πύλης.",
     volume: "ένταση",
