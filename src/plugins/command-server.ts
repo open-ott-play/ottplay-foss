@@ -17,6 +17,8 @@ export interface CommandServerRequest {
     body?: string;
     headers: Record<string, string>;
     method: string;
+    requestId?: string;
+    screenshotControl?: boolean;
     secureControl?: boolean;
     timeoutMs: number;
     url: string;
@@ -133,6 +135,16 @@ export function createCommandServer(
     var responseHistory: Record<string, string> = Object.create(null);
     var responseOrder: string[] = [];
     var historySize = 0;
+    // Images have a shorter lifetime than ordinary receipts. Small tombstones
+    // prevent cache eviction or revocation from turning delivery replay into capture.
+    var screenshotSeen: Record<string, string> = Object.create(null);
+    var screenshotOrder: string[] = [];
+    var screenshotImages: Record<
+        string,
+        { body: string; deadline: number; timer: any }
+    > = Object.create(null);
+    var activeScreenshotBody: string | null = null;
+    var cancelScreenshotPost: (() => void) | null = null;
     var moreRequests = false;
     var cancelExecution: (() => void) | null = null;
     // Delivery effects are local capabilities, never part of JSON or replay history.
@@ -142,6 +154,48 @@ export function createCommandServer(
         run: () => void;
     } | null = null;
 
+    function screenshotTombstone(id: string): string {
+        return JSON.stringify({
+            data: {
+                error: "Screenshot result expired or was revoked; request a new screenshot explicitly.",
+            },
+            id: id,
+            status: "rejected",
+        });
+    }
+    function retireScreenshot(id: string): boolean {
+        var record = screenshotImages[id];
+        if (!record) return false;
+        w.clearTimeout(record.timer);
+        delete screenshotImages[id];
+        var replacement = screenshotSeen[id] || screenshotTombstone(id);
+        if (responseHistory[id] === record.body) {
+            historySize += replacement.length - record.body.length;
+            responseHistory[id] = replacement;
+        }
+        responses = responses.map(function (body) {
+            return body === record.body ? replacement : body;
+        });
+        if (activeScreenshotBody === record.body && cancelScreenshotPost) {
+            cancelScreenshotPost();
+            return true;
+        }
+        return false;
+    }
+    function purgeScreenshots(all: boolean, through: number): boolean {
+        var aborted = false;
+        Object.keys(screenshotImages).forEach(function (id) {
+            if (
+                all ||
+                screenshotImages[id].deadline <= Math.max(through, Date.now())
+            )
+                aborted = retireScreenshot(id) || aborted;
+        });
+        return aborted;
+    }
+    function discardScreenshots(): void {
+        if (purgeScreenshots(true, Date.now())) schedule(0);
+    }
     function status(): any {
         return {
             address: config.address,
@@ -162,6 +216,8 @@ export function createCommandServer(
         timer = null;
         var abort = cancel;
         cancel = null;
+        activeScreenshotBody = null;
+        cancelScreenshotPost = null;
         active = false;
         var abortWork = cancelExecution;
         cancelExecution = null;
@@ -171,6 +227,7 @@ export function createCommandServer(
             } catch (_error) {}
         }
         responses = [];
+        purgeScreenshots(true, Date.now());
         pendingEffect = null;
         moreRequests = false;
         if (abort) {
@@ -239,6 +296,8 @@ export function createCommandServer(
             finished = true;
             active = false;
             cancel = null;
+            activeScreenshotBody = null;
+            cancelScreenshotPost = null;
             // The server may have restarted or expired a request during execution.
             if (responseToSend && response && response.status === 404) {
                 responses.shift();
@@ -372,10 +431,28 @@ export function createCommandServer(
                         // A replay does not prove the server made queue progress.
                         moreRequests =
                             data.requests.length > 1 &&
-                            !responseHistory[item.id];
-                        if (responseHistory[item.id])
-                            responses.push(responseHistory[item.id]);
+                            !responseHistory[item.id] &&
+                            !screenshotSeen[item.id];
+                        if (responseHistory[item.id] || screenshotSeen[item.id])
+                            responses.push(
+                                responseHistory[item.id] ||
+                                    screenshotSeen[item.id]
+                            );
                         else {
+                            if (item.action === "screenshot") {
+                                screenshotSeen[item.id] = screenshotTombstone(
+                                    item.id
+                                );
+                                screenshotOrder.push(item.id);
+                                while (screenshotOrder.length > 2048)
+                                    delete screenshotSeen[
+                                        screenshotOrder.shift()!
+                                    ];
+                            }
+                            var requestDeadline =
+                                requestStarted +
+                                (item.expires_at - data.server_time) * 1000;
+
                             active = true;
                             var completed = false;
                             var afterReplyEffect: (() => void) | null = null;
@@ -479,16 +556,43 @@ export function createCommandServer(
                                 responseHistory[item.id] = serialized;
                                 historySize += serialized.length;
                                 responseOrder.push(item.id);
+                                if (
+                                    item.action === "screenshot" &&
+                                    resultStatus === "ok"
+                                ) {
+                                    var imageDeadline = Math.min(
+                                        requestDeadline,
+                                        Date.now() + 60000
+                                    );
+                                    screenshotImages[item.id] = {
+                                        body: serialized,
+                                        deadline: imageDeadline,
+                                        // An independent timer also bounds lifetime when wall
+                                        // time moves backward; polling never renews this lease.
+                                        timer: w.setTimeout(
+                                            function () {
+                                                if (retireScreenshot(item.id))
+                                                    schedule(0);
+                                            },
+                                            Math.max(
+                                                0,
+                                                imageDeadline - Date.now()
+                                            )
+                                        ),
+                                    };
+                                }
                                 while (
                                     responseOrder.length > 50 ||
                                     historySize > 2 * 1024 * 1024
                                 ) {
                                     var oldest = responseOrder.shift()!;
+                                    retireScreenshot(oldest);
                                     historySize -=
                                         responseHistory[oldest].length;
                                     delete responseHistory[oldest];
                                 }
                                 responses.push(serialized);
+                                purgeScreenshots(false, Date.now());
                                 failures = 0;
                                 schedule(0);
                             };
@@ -544,6 +648,12 @@ export function createCommandServer(
             );
         }
         try {
+            var screenshotResponse = !!(
+                responseToSend &&
+                Object.keys(screenshotImages).some(function (id) {
+                    return screenshotImages[id].body === responseToSend;
+                })
+            );
             var abort = send(
                 {
                     body: responseToSend
@@ -553,17 +663,37 @@ export function createCommandServer(
                           : undefined,
                     headers: headers,
                     method: method,
+                    screenshotControl: screenshotResponse,
                     timeoutMs: 8000,
                     url: url,
                 },
                 complete
             );
-            if (!finished && current === generation) cancel = abort;
+            if (!finished && current === generation) {
+                cancel = abort;
+                if (screenshotResponse) {
+                    activeScreenshotBody = responseToSend!;
+                    cancelScreenshotPost = function () {
+                        // Ignore a late native/XHR completion without resetting the
+                        // connection or clearing unrelated command acknowledgements.
+                        finished = true;
+                        active = false;
+                        cancel = null;
+                        activeScreenshotBody = null;
+                        cancelScreenshotPost = null;
+                        responseToSend = undefined;
+                        try {
+                            abort();
+                        } catch (_error) {}
+                    };
+                }
+            }
         } catch (_error) {
             complete();
         }
     }
     function poll(): void {
+        purgeScreenshots(false, Date.now());
         if (pending.length) request("POST", pending.slice(0, wire.ackBatchMax));
         else if (responses.length) request("POST", undefined, responses[0]);
         else request("GET");
@@ -591,6 +721,8 @@ export function createCommandServer(
             responseHistory = Object.create(null);
             responseOrder = [];
             historySize = 0;
+            screenshotSeen = Object.create(null);
+            screenshotOrder = [];
         }
         seenAddress = normalizedAddress;
         seenToken = config.token;
@@ -639,6 +771,7 @@ export function createCommandServer(
     }
     return {
         configure: configure,
+        discardScreenshots: discardScreenshots,
         poll: poll,
         status: status,
         subscribe: function (next: (() => void) | null): void {
@@ -652,17 +785,33 @@ export function createCommandServerTransport(
     w: any,
     nativeRequest?: (
         request: CommandServerRequest
-    ) => Promise<CommandServerResponse>
+    ) => Promise<CommandServerResponse>,
+    nativeCancel?: (requestId: string) => void
 ): any {
+    var sequence = 0;
     return function (
         request: CommandServerRequest,
         complete: (response?: CommandServerResponse) => void
     ): () => void {
         var done = false;
         var xhr: any = null;
+        var requestId =
+            nativeRequest && request.screenshotControl && nativeCancel
+                ? "ott_shot_" + Date.now() + "_" + ++sequence
+                : null;
+        function abortRequest(): void {
+            if (xhr) xhr.abort();
+            if (requestId && nativeCancel) {
+                var id = requestId;
+                requestId = null;
+                try {
+                    nativeCancel(id);
+                } catch (_error) {}
+            }
+        }
         var timer = w.setTimeout(function () {
             finish();
-            if (xhr) xhr.abort();
+            abortRequest();
         }, request.timeoutMs);
         function finish(response?: CommandServerResponse): void {
             if (done) return;
@@ -672,17 +821,26 @@ export function createCommandServerTransport(
         }
         if (nativeRequest) {
             try {
+                if (requestId) request.requestId = requestId;
                 nativeRequest(request).then(finish, function () {
                     finish();
                 });
             } catch (_error) {
                 finish();
             }
-        } else if (request.secureControl) {
+        } else if (request.secureControl || request.screenshotControl) {
             try {
                 var target = new URL(request.url);
                 if (
-                    target.protocol !== "https:" ||
+                    (target.protocol !== "https:" &&
+                        !(
+                            request.screenshotControl &&
+                            !request.secureControl &&
+                            target.protocol === "http:" &&
+                            /^(localhost|127\.0\.0\.1|\[::1\])$/.test(
+                                target.hostname
+                            )
+                        )) ||
                     target.username ||
                     target.password ||
                     target.hash
@@ -766,7 +924,7 @@ export function createCommandServerTransport(
             if (done) return;
             done = true;
             w.clearTimeout(timer);
-            if (xhr) xhr.abort();
+            abortRequest();
         };
     };
 }

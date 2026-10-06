@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DEADB0000000000000000002 /* RemoteScreenshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADB0000000000000000001 /* RemoteScreenshot.swift */; };
 		E6D5F40AFEDC1B000F3C39F /* ottplay-core.LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = E6D5F409FEDC1B000F3C39F /* ottplay-core.LICENSE.txt */; };
 		E6D5F408FEDC1B000F3C39F /* ottplay-core.manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = E6D5F407FEDC1B000F3C39F /* ottplay-core.manifest.json */; };
 		E6D5F406FEDC1B000F3C39F /* ottplay-core.js in Resources */ = {isa = PBXBuildFile; fileRef = E6D5F405FEDC1B000F3C39F /* ottplay-core.js */; };
@@ -32,6 +33,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		DEADB0000000000000000001 /* RemoteScreenshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteScreenshot.swift; sourceTree = "<group>"; };
 		E6D5F409FEDC1B000F3C39F /* ottplay-core.LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "ottplay-core.LICENSE.txt"; path = "../../../vendor/ottplay-core.LICENSE.txt"; sourceTree = "<group>"; };
 		E6D5F407FEDC1B000F3C39F /* ottplay-core.manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "ottplay-core.manifest.json"; path = "../../../vendor/ottplay-core.manifest.json"; sourceTree = "<group>"; };
 		E6D5F405FEDC1B000F3C39F /* ottplay-core.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "ottplay-core.js"; path = "../../../vendor/ottplay-core.js"; sourceTree = "<group>"; };
@@ -90,6 +92,7 @@
 		6A7B8C9D0E1F2A3B4C5D6E9 /* Plugins */ = {
 			isa = PBXGroup;
 			children = (
+				DEADB0000000000000000001 /* RemoteScreenshot.swift */,
 				DAACC0000000000000000011 /* AccessMediaPolicy.swift */,
 				DAACC0000000000000000021 /* AccessMedia.swift */,
 				DAACC0000000000000000031 /* AccessMediaProxy.swift */,
@@ -208,6 +211,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DEADB0000000000000000002 /* RemoteScreenshot.swift in Sources */,
 				E6D5F404FEDC1B000F3C39F /* MobileXmltvEpg.swift in Sources */,
 				A3B2C1D2FEDC1B000F3C39C /* M3UProxy.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,

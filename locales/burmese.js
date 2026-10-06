@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ဆက်တင်များ",
     "Allow diagnostics for 10 minutes": "ရောဂါရှာဖွေမှုများကို 10 မိနစ်ခွင့်ပြုပါ။",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ဤဆာဗာအား ရောဂါရှာဖွေရေးကောင်တာများစုဆောင်းပြီး ဤထုတ်လွှင့်မှု သို့မဟုတ် ပလေယာကို ပြန်လည်စတင်ခွင့်ပြုပါ။ ယာယီဝင်ရောက်ခွင့်သည် ၁၀ မိနစ်ဖြစ်သည်။ ပြန်လည်ချိတ်ဆက်ခြင်း သို့မဟုတ် ပြန်လည်စတင်ပြီးနောက် ယုံကြည်စိတ်ချရသော ပံ့ပိုးကူညီမှုကို ဆက်လက်ရရှိနိုင်မည်ဖြစ်သည်။ ဖမ်းယူမှုတစ်ခုစီသည် 10 မိနစ်အကြာတွင်သက်တမ်းကုန်ဆုံးဆဲဖြစ်သည်။ ဝှက်ထားစဉ် သို့မဟုတ် အော့ဖ်လိုင်းတွင် စုဆောင်းမှု ခေတ္တရပ်သည်။",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ဤရှေ့မျက်နှာစာစက်ရှင်အတွက် ပြန်ဖွင့်ခြင်း၊ ကွန်ရက်နှင့် ထည့်သွင်းခြင်းကောင်တာများကို စုဆောင်းရန် ဤဆာဗာအား ခွင့်ပြုပါ။ HTTPS နှင့် ဆာဗာခွင့်ပြုချက် လိုအပ်သည်။ 10 မိနစ်အကြာတွင်၊ ဝှက်ထားသည့်အခါ သို့မဟုတ် ချိတ်ဆက်မှုပြတ်တောက်သွားသည့်အခါ ရပ်သည်။",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ဤစက်ပစ္စည်း ID အား စာရင်းခွင့်ပြုပါ။",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS မီဒီယာဖွင့်စက်တစ်ဦးသည် HTTP EPG အရင်းအမြစ်ကို ဒေါင်းလုဒ်လုပ်၍မရပါ။ HTTPS အရင်းအမြစ်ကို အသုံးပြုပါ။",
@@ -247,6 +252,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် Шаравоз ကို စီစဉ်သတ်မှတ်ပါ။",
     Connect: "ချိတ်ဆက်ပါ။",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "ဤမီဒီယာဖွင့်စက်ကို အမိန့်ပေးဆာဗာတစ်ခုသို့ ဦးစွာချိတ်ဆက်ပါ။",
     Connected: "ချိတ်ဆက်ထားသည်။",
@@ -714,6 +721,10 @@ var keyStrings = {
         "အဝေးထိန်းထည့်သွင်းမှု သက်တမ်းကုန်သွားပါပြီ။ ထပ်စမ်းကြည့်ရန် စက်ရှင်အသစ်တစ်ခုကို ဖွင့်ပါ။",
     "Remote input session is unavailable. Open a new session to try again.":
         "အဝေးထိန်းစနစ်ထည့်သွင်းခြင်း စက်ရှင်ကို မရနိုင်ပါ။ ထပ်စမ်းကြည့်ရန် စက်ရှင်အသစ်တစ်ခုကို ဖွင့်ပါ။",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "အဝေးထိန်းစက်ရှင် သက်တမ်းကုန်သွားပါပြီ။",
     "Remote text entry": "အဝေးမှ စာသားထည့်သွင်းမှု",
     "Remote text entry denied": "အဝေးထိန်းစာသားထည့်သွင်းမှုကို ငြင်းဆိုထားသည်။",
@@ -760,6 +771,13 @@ var keyStrings = {
     "Save settings to storage": "ဆက်တင်များကို သိုလှောင်မှုတွင် သိမ်းဆည်းပါ။",
     "Scan this QR code with your phone to enter text.":
         "စာသားရိုက်ထည့်ရန် ဤ QR ကုဒ်ကို သင့်ဖုန်းဖြင့် စကန်ဖတ်ပါ။",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "ဇာတ်ညွှန်း",
     Search: "ရှာရန်",
     "Search programme": "အစီအစဉ်ကို ရှာဖွေပါ",
@@ -778,6 +796,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG နှင့် လိုဂိုများအတွက် အစီအစဉ်ပုံစံ နမူနာအရင်းအမြစ်ကို ရွေးပါ။",
     "Select Stalker portal": "Stalker ပေါ်တယ်ကို ရွေးပါ။",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "တောင်းဆိုချက်ကို ပေးပို့ပါ။",
     "Send settings": "ဆက်တင်များကို ပို့ပါ။",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -864,6 +884,7 @@ var keyStrings = {
     "Stop current capture": "လက်ရှိရိုက်ကူးမှုကို ရပ်ပါ။",
     "Stop diagnostics": "ရောဂါရှာဖွေမှုများကို ရပ်ပါ။",
     "Stop playback and return to live": "ပြန်ဖွင့်ခြင်းကို ရပ်ပြီး တိုက်ရိုက်ပြန်သွားပါ။",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "တိုက်ရိုက်ထုတ်လွှင့်မှုကို မကစားနိုင်ပါ။",
     "Stream type: %1": "တိုက်ရိုက်ထုတ်လွှင့်မှု အမျိုးအစား- %1",
     "String for search": "ရှာဖွေမှု",
@@ -886,6 +907,8 @@ var keyStrings = {
         "အမိန့်ဆာဗာ ရှာဖွေတွေ့ရှိမှု URL သည် မမှန်ကန်ပါ။",
     "The device ID in the address is invalid.": "လိပ်စာရှိ စက် ID သည် မမှန်ကန်ပါ။",
     "The discovery response is invalid.": "ရှာဖွေတွေ့ရှိမှု တုံ့ပြန်မှုသည် မမှန်ကန်ပါ။",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ဤဘရောက်ဆာသည် အလိုအလျောက် လုံခြုံစွာတွဲချိတ်၍မရပါ။ ၎င်းကို အပ်ဒိတ်လုပ်ပါ သို့မဟုတ် အမိန့်ပေးဆာဗာ ဆက်တင်များကို ကိုယ်တိုင်ရိုက်ထည့်ပါ။",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

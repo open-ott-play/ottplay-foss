@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv подешавања",
     "Allow diagnostics for 10 minutes": "Оставите дијагностику 10 минута",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Дозволите овом серверу да прикупља дијагностичке бројаче и поново покрене овај стрим или медијски плејер. Привремени приступ траје 10 минута. Поуздана подршка остаје доступна након поновног повезивања или поновног покретања; свако снимање и даље истиче након 10 минута. Колекција се паузира док је скривена или ван мреже.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Дозволите овом серверу да прикупља бројаче репродукције, мреже и улаза за ову сесију у првом плану. Захтева HTTPS и дозволу сервера. Зауставља се након 10 минута, када је скривена или када је искључена.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Додај ID овог уређаја на листу дозвољених",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS медијски плејер не може да преузме HTTP EPG извор. Користите HTTPS извор.",
@@ -249,6 +254,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Конфигуришите Шаравоз у Подешавања -> Подешавања добављача",
     Connect: "Повежите се",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Прво повежите овај медијски плејер са командним сервером.",
     Connected: "Повезано",
@@ -730,6 +737,10 @@ var keyStrings = {
         "Даљински унос је истекао. Отворите нову сесију да бисте покушали поново.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сесија даљинског уноса није доступна. Отворите нову сесију да бисте покушали поново.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Удаљена сесија је истекла",
     "Remote text entry": "Даљински унос текста",
     "Remote text entry denied": "Даљински унос текста је одбијен",
@@ -777,6 +788,13 @@ var keyStrings = {
     "Save settings to storage": "Сачувајте подешавања у складишту",
     "Scan this QR code with your phone to enter text.":
         "Скенирајте овај QR код телефоном да бисте унели текст.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Сценарио",
     Search: "Тражи",
     "Search programme": "Пронађи емисију",
@@ -796,6 +814,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Изаберите извор шаблона плејлисте за EPG и логотипе",
     "Select Stalker portal": "Изаберите портал Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Пошаљите захтев",
     "Send settings": "Пошаљите подешавања",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -881,6 +901,7 @@ var keyStrings = {
     "Stop diagnostics": "Зауставите дијагностику",
     "Stop playback and return to live":
         "Заустави репродукцију и врати се на пренос уживо",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Стрим није могао да се пусти",
     "Stream type: %1": "Тип тока: %1",
     "String for search": "Упит за претрагу",
@@ -905,6 +926,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Уређај ID у адреси је неважећи.",
     "The discovery response is invalid.": "Одговор на откривање је неважећи.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Овај прегледач не може безбедно да се упари аутоматски. Ажурирајте га или ручно унесите подешавања командног сервера.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

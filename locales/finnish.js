@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv asetukset",
     "Allow diagnostics for 10 minutes": "Salli diagnostiikka 10 minuutiksi",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Salli tämän palvelimen kerätä diagnostisia laskureita ja käynnistää tämä stream tai mediasoitin uudelleen. Väliaikainen pääsy kestää 10 minuuttia. Luotettu tuki on saatavilla uudelleen yhdistämisen tai uudelleenkäynnistyksen jälkeen; jokainen sieppaus vanhenee edelleen 10 minuutin kuluttua. Kokoelma keskeytyy piilotettuna tai offline-tilassa.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Salli tämän palvelimen kerätä toisto-, verkko- ja tulolaskurit tälle etualalla. Vaatii HTTPS ja palvelimen luvan. Pysähtyy 10 minuutin kuluttua, piilotettuna tai irrotettuna.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Lisää tämän laitteen ID sallittujen luetteloon",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -251,6 +256,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Määritä Шаравоз kohdassa Asetukset -> Palveluntarjoajan asetukset",
     Connect: "Yhdistä",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Liitä tämä mediasoitin ensin komentopalvelimeen.",
     Connected: "Yhdistetty",
@@ -729,6 +736,10 @@ var keyStrings = {
         "Kaukosyöte on vanhentunut. Avaa uusi istunto ja yritä uudelleen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Etäsyöttöistunto ei ole käytettävissä. Avaa uusi istunto ja yritä uudelleen.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Etäistunto vanhentunut",
     "Remote text entry": "Tekstin etäsyöttö",
     "Remote text entry denied": "Tekstin etäsyöttö kielletty",
@@ -775,6 +786,13 @@ var keyStrings = {
     "Save settings to storage": "Tallenna asetukset tallennustilaan",
     "Scan this QR code with your phone to enter text.":
         "Skannaa tämä QR-koodi puhelimellasi kirjoittaaksesi tekstiä.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Käsikirjoitus",
     Search: "Etsi",
     "Search programme": "Etsi ohjelma",
@@ -793,6 +811,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Valitse soittolistamallin lähde EPG:lle ja logoille",
     "Select Stalker portal": "Valitse Stalker-portaali",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Lähetä pyyntö",
     "Send settings": "Lähetä asetukset",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -878,6 +898,7 @@ var keyStrings = {
     "Stop diagnostics": "Lopeta diagnostiikka",
     "Stop playback and return to live":
         "Pysäytä toisto ja palaa suoraan lähetykseen",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Striimiä ei voitu toistaa",
     "Stream type: %1": "Striimin tyyppi: %1",
     "String for search": "Hakukysely",
@@ -902,6 +923,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Osoitteessa oleva laite ID on virheellinen.",
     "The discovery response is invalid.": "Etsintävastaus on virheellinen.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tämä selain ei voi muodostaa pariliitosta turvallisesti automaattisesti. Päivitä se tai syötä komentopalvelimen asetukset manuaalisesti.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

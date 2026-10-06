@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Ρυθμίσεις All4you.tv",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Επιτρέψτε αυτό το αναγνωριστικό συσκευής",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -253,6 +258,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Ρυθμίστε το Шаравоз από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     Connect: "Σύνδεση",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Συνδέθηκε",
@@ -742,6 +749,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Η απομακρυσμένη συνεδρία έληξε",
     "Remote text entry": "Απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry denied":
@@ -790,6 +801,13 @@ var keyStrings = {
     "Save settings to storage": "Αποθήκευση ρυθμίσεων στον χώρο αποθήκευσης",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Σενάριο",
     Search: "Αναζήτηση",
     "Search programme": "Αναζήτηση εκπομπής",
@@ -809,6 +827,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Επιλέξτε πηγή προτύπου λίστας αναπαραγωγής για EPG και λογότυπα",
     "Select Stalker portal": "Επιλογή πύλης Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Αποστολή αιτήματος",
     "Send settings": "Αποστολή ρυθμίσεων",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -897,6 +917,7 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Διακοπή αναπαραγωγής και επιστροφή στη ζωντανή μετάδοση",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Δεν ήταν δυνατή η αναπαραγωγή της ροής",
     "Stream type: %1": "Τύπος ροής: %1",
     "String for search": "Όρος αναζήτησης",
@@ -921,6 +942,8 @@ var keyStrings = {
         "Το αναγνωριστικό συσκευής στη διεύθυνση δεν είναι έγκυρο.",
     "The discovery response is invalid.":
         "Η απόκριση της αναζήτησης δεν είναι έγκυρη.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Αυτό το πρόγραμμα περιήγησης δεν μπορεί να εκτελέσει ασφαλή αυτόματη σύζευξη. Ενημερώστε το ή εισαγάγετε χειροκίνητα τις ρυθμίσεις του διακομιστή εντολών.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

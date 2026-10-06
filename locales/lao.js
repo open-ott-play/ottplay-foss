@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "ການຕັ້ງຄ່າ All4you.tv",
     "Allow diagnostics for 10 minutes": "ອະນຸຍາດໃຫ້ວິນິດໄສ 10 ນາທີ",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ອະນຸຍາດໃຫ້ເຊີບເວີນີ້ເກັບຕົວນັບວິນິດໄສ ແລະ ເລີ່ມສະຕຣີມ ຫຼື ເຄື່ອງຫຼິ້ນນີ້ຄືນ. ການເຂົ້າໃຊ້ຊົ່ວຄາວມີອາຍຸ 10 ນາທີ. ການຊ່ວຍເຫຼືອທີ່ໄວ້ໃຈຍັງໃຊ້ໄດ້ຫຼັງເຊື່ອມຕໍ່ ຫຼື ເລີ່ມຄືນ; ການເກັບແຕ່ລະຄັ້ງຍັງໝົດອາຍຸຫຼັງ 10 ນາທີ. ການເກັບຈະຢຸດຊົ່ວຄາວເມື່ອໜ້າຖືກເຊື່ອງ ຫຼື ອອບລາຍ.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ອະນຸຍາດໃຫ້ເຊີບເວີນີ້ເກັບຕົວນັບການຫຼິ້ນ, ເຄືອຂ່າຍ ແລະ ການປ້ອນໃນເຊດຊັນໜ້າທີ່ເປີດຢູ່ນີ້. ຕ້ອງມີ HTTPS ແລະ ການອະນຸຍາດຈາກເຊີບເວີ. ຈະຢຸດຫຼັງ 10 ນາທີ, ເມື່ອໜ້າຖືກເຊື່ອງ ຫຼື ຂາດການເຊື່ອມຕໍ່.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ເພີ່ມ ID ອຸປະກອນນີ້ເຂົ້າລາຍການທີ່ອະນຸຍາດ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "ເຄື່ອງຫຼິ້ນ HTTPS ບໍ່ສາມາດດາວໂຫຼດແຫຼ່ງ EPG ແບບ HTTP. ໃຊ້ແຫຼ່ງ HTTPS.",
@@ -239,6 +244,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "ຕັ້ງຄ່າ Шаравоз ໃນ ການຕັ້ງຄ່າ -> ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ",
     Connect: "ເຊື່ອມຕໍ່",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "ເຊື່ອມຕໍ່ເຄື່ອງຫຼິ້ນນີ້ກັບເຊີບເວີຄຳສັ່ງກ່ອນ.",
     Connected: "ເຊື່ອມຕໍ່ແລ້ວ",
@@ -696,6 +703,10 @@ var keyStrings = {
         "ການປ້ອນທາງໄກໝົດອາຍຸ. ເປີດເຊດຊັນໃໝ່ເພື່ອລອງອີກ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ເຊດຊັນປ້ອນທາງໄກບໍ່ພ້ອມໃຊ້. ເປີດເຊດຊັນໃໝ່ເພື່ອລອງອີກ.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "ເຊດຊັນທາງໄກໝົດອາຍຸ",
     "Remote text entry": "ປ້ອນຂໍ້ຄວາມທາງໄກ",
     "Remote text entry denied": "ປະຕິເສດການປ້ອນຂໍ້ຄວາມທາງໄກ",
@@ -740,6 +751,13 @@ var keyStrings = {
     "Save settings to storage": "ບັນທຶກການຕັ້ງຄ່າໃສ່ບ່ອນເກັບ",
     "Scan this QR code with your phone to enter text.":
         "ສະແກນລະຫັດ QR ນີ້ດ້ວຍໂທລະສັບເພື່ອປ້ອນຂໍ້ຄວາມ.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "ບົດຮູບເງົາ",
     Search: "ຄົ້ນຫາ",
     "Search programme": "ຄົ້ນຫາລາຍການ",
@@ -758,6 +776,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ເລືອກແຫຼ່ງແມ່ແບບລາຍການຫຼິ້ນສຳລັບ EPG ແລະ ໂລໂກ້",
     "Select Stalker portal": "ເລືອກພອດທັນ Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ສົ່ງຄຳຂໍ",
     "Send settings": "ສົ່ງການຕັ້ງຄ່າ",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -841,6 +861,7 @@ var keyStrings = {
     "Stop current capture": "ຢຸດການເກັບຂໍ້ມູນປັດຈຸບັນ",
     "Stop diagnostics": "ຢຸດການວິນິດໄສ",
     "Stop playback and return to live": "ຢຸດການຫຼິ້ນ ແລະ ກັບໄປຖ່າຍທອດສົດ",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ບໍ່ສາມາດຫຼິ້ນສະຕຣີມ",
     "Stream type: %1": "ປະເພດສະຕຣີມ: %1",
     "String for search": "ຄຳຄົ້ນຫາ",
@@ -862,6 +883,8 @@ var keyStrings = {
     "The command server discovery URL is invalid.": "URL ຄົ້ນຫາເຊີບເວີຄຳສັ່ງບໍ່ຖືກຕ້ອງ.",
     "The device ID in the address is invalid.": "ID ອຸປະກອນໃນທີ່ຢູ່ບໍ່ຖືກຕ້ອງ.",
     "The discovery response is invalid.": "ຄຳຕອບການຄົ້ນຫາບໍ່ຖືກຕ້ອງ.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ບຣາວເຊີນີ້ບໍ່ສາມາດຈັບຄູ່ອັດຕະໂນມັດຢ່າງປອດໄພ. ອັບເດດມັນ ຫຼື ປ້ອນການຕັ້ງຄ່າເຊີບເວີຄຳສັ່ງດ້ວຍຕົນເອງ.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

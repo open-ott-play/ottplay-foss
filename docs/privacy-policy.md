@@ -1,6 +1,6 @@
 # Privacy Policy — OTT-play FOSS
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-10-06
 
 Published by **alvit**. For privacy or support questions, contact [alvit.work@gmail.com](mailto:alvit.work@gmail.com).
 
@@ -25,6 +25,8 @@ Connections use your configured services or the optional hosted Demo described b
 **Local HTTP control.** The Capacitor Android and iOS apps' inbound HTTP command listener is disabled by default. Enabling **Local HTTP remote control** in player Settings creates a random device code required for authenticated command requests on the local device interface. The code persists on this device across normal restarts. Disabling HTTP control revokes access; enabling it again creates a new code. Settings exports do not include the code or consent, and imports cannot grant HTTP access. Command integrations can process playback commands and routing identifiers. If you configure remote command polling, requests go to that configured endpoint.
 
 **Diagnostics and support.** Technical messages may describe playback or connection failures. Optional companion-host debug and feedback functions depend on the host and features you configure. If you share diagnostics, screenshots or settings for support, remove credentials, private URLs and other sensitive information first. GitHub issues are public. In the Android Play distribution, opening About displays local diagnostic information and does not request your public IP address from an external lookup service.
+
+**Optional remote screenshots.** Supported players can send screenshots to your configured command server only after you allow screenshots locally for up to ten minutes. Browsers also ask you to select a capture source, which can include content outside the player if you select another window or display. Images may contain personal information. Permission ends when stopped, reloaded, disconnected or expired; remote commands cannot grant it. Transfers require HTTPS except for a loopback connection on the same device. The player and reference command server expire cached image responses within sixty seconds after completion; the requesting controller can save a PNG file that remains until you delete it. Stopping permission cannot retract an in-flight transfer or delete images already received or saved by another party. See [remote screenshot controls and platform support](remote-command-server.md#remote-screenshots).
 
 There is no baked-in analytics, advertising, crash-reporting or tracking SDK deliberately configured in this client. Network requests still disclose connection information to the receiving service. Store Data safety declarations must reflect the actual distribution and hosting arrangements; the absence of analytics does not mean that no data is transmitted.
 

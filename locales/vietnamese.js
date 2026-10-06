@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Cài đặt All4you.tv",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Cho phép ID thiết bị này",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -250,6 +255,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Cấu hình Шаравоз trong Cài đặt -> Cài đặt nhà cung cấp",
     Connect: "Kết nối",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Đã kết nối",
@@ -723,6 +730,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Phiên từ xa đã hết hạn",
     "Remote text entry": "Nhập văn bản từ xa",
     "Remote text entry denied": "Nhập văn bản từ xa bị từ chối",
@@ -768,6 +779,13 @@ var keyStrings = {
     "Save settings to storage": "Lưu cài đặt vào bộ nhớ",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Kịch bản",
     Search: "Tìm kiếm",
     "Search programme": "Tìm chương trình",
@@ -786,6 +804,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Chọn nguồn mẫu danh sách phát cho EPG và biểu trưng",
     "Select Stalker portal": "Chọn cổng Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Gửi yêu cầu",
     "Send settings": "Gửi cài đặt",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -871,6 +891,7 @@ var keyStrings = {
     "Stop current capture": "Stop current capture",
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live": "Dừng phát và quay lại trực tiếp",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Không thể phát luồng",
     "Stream type: %1": "Loại luồng: %1",
     "String for search": "Nội dung tìm kiếm",
@@ -894,6 +915,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID thiết bị trong địa chỉ không hợp lệ.",
     "The discovery response is invalid.": "Phản hồi tìm kiếm không hợp lệ.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Trình duyệt này không thể ghép nối tự động một cách an toàn. Hãy cập nhật trình duyệt hoặc nhập thủ công cài đặt máy chủ lệnh.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

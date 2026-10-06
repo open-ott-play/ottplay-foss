@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv-ийн тохиргоо",
     "Allow diagnostics for 10 minutes": "Оношилгоог 10 минут зөвшөөрөх",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Энэ серверт оношилгооны тоолуур цуглуулах, энэ урсгал эсвэл тоглуулагчийг дахин эхлүүлэхийг зөвшөөрнө үү. Түр хандалт 10 минут үргэлжилнэ. Итгэмжлэгдсэн тусламж дахин холбогдох эсвэл эхлүүлсний дараа ч боломжтой байна; цуглуулалт бүр 10 минутын дараа дуусна. Хуудас нуугдсан эсвэл сүлжээгүй үед цуглуулалтыг түр зогсооно.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Энэ серверт нүүрэнд байгаа энэ хуудасны сешнд тоглуулалт, сүлжээ болон оролтын тоолуур цуглуулахыг зөвшөөрнө үү. HTTPS болон серверийн зөвшөөрөл шаардлагатай. 10 минутын дараа, хуудас нуугдах эсвэл холболт тасрахад зогсоно.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Энэ төхөөрөмжийн ID-г зөвшөөрөгдсөн жагсаалтад нэмэх",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -252,6 +257,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт Шаравоз-ийг тохируулна уу",
     Connect: "Холбох",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Эхлээд энэ тоглуулагчийг тушаалын серверт холбоно уу.",
     Connected: "Холбогдсон",
@@ -737,6 +744,10 @@ var keyStrings = {
         "Алсаас оруулах хугацаа дууссан. Дахин оролдохын тулд шинэ сешн нээнэ үү.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Алсаас оруулах сешн боломжгүй. Дахин оролдохын тулд шинэ сешн нээнэ үү.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Алсын сешний хугацаа дууссан",
     "Remote text entry": "Алсаас текст оруулах",
     "Remote text entry denied": "Алсаас текст оруулахыг хориглосон",
@@ -783,6 +794,13 @@ var keyStrings = {
     "Save settings to storage": "Тохиргоог хадгалах санд хадгалах",
     "Scan this QR code with your phone to enter text.":
         "Текст оруулахын тулд энэ QR кодыг утсаараа уншуулна уу.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Кино зохиол",
     Search: "Хайх",
     "Search programme": "Нэвтрүүлэг хайх",
@@ -801,6 +819,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG болон логонд тоглуулах жагсаалтын загвар эх сурвалж сонгох",
     "Select Stalker portal": "Stalker портал сонгох",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Хүсэлт илгээх",
     "Send settings": "Тохиргоо илгээх",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -887,6 +907,7 @@ var keyStrings = {
     "Stop diagnostics": "Оношилгоог зогсоох",
     "Stop playback and return to live":
         "Тоглуулалтыг зогсоогоод шууд эфирт буцах",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Урсгалыг тоглуулж чадсангүй",
     "Stream type: %1": "Урсгалын төрөл: %1",
     "String for search": "Хайлтын хүсэлт",
@@ -911,6 +932,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Хаяг дахь төхөөрөмжийн ID буруу байна.",
     "The discovery response is invalid.": "Хайлтын хариу буруу байна.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Энэ хөтөч автоматаар аюулгүй хослуулж чадахгүй. Үүнийг шинэчлэх эсвэл тушаалын серверийн тохиргоог гараар оруулна уу.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

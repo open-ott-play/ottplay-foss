@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ezarpenak",
     "Allow diagnostics for 10 minutes": "Baimendu diagnostikoa 10 minutuz",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Baimendu zerbitzari honi diagnostiko-kontagailuak biltzea eta transmisio hau edo erreproduzitzailea berrabiaraztea. Aldi baterako sarbideak 10 minutu irauten du. Konfiantzazko laguntza erabilgarri geratzen da berriro konektatu edo berrabiarazi ondoren; bilketa bakoitza 10 minuturen buruan iraungitzen da. Bilketa eten egiten da aplikazioa ezkutuan edo lineaz kanpo dagoenean.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Baimendu zerbitzari honi erreprodukzio-, sare- eta sarrera-kontagailuak biltzea lehen planoko saio honetan. HTTPS eta zerbitzariaren baimena behar dira. 10 minuturen buruan, orria ezkutatzean edo deskonektatzean gelditzen da.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Baimendu gailuaren ID hau",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS erreproduzitzaile batek ezin du HTTP EPG iturri bat deskargatu. Erabili HTTPS iturri bat.",
@@ -252,6 +257,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Konfiguratu Шаравоз hemen: Ezarpenak → Hornitzailearen ezarpenak",
     Connect: "Konektatu",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Lehenik, konektatu erreproduzitzaile hau komando-zerbitzari batera.",
     Connected: "Konektatuta",
@@ -735,6 +742,10 @@ var keyStrings = {
         "Urruneko sarrera iraungi da. Ireki saio berria berriro saiatzeko.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Urruneko sarreraren saioa ez dago erabilgarri. Ireki saio berria berriro saiatzeko.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Urruneko saioa iraungi da",
     "Remote text entry": "Urruneko testu-sarrera",
     "Remote text entry denied": "Urruneko testu-sarrera ukatu da",
@@ -782,6 +793,13 @@ var keyStrings = {
     "Save settings to storage": "Gorde ezarpenak biltegian",
     "Scan this QR code with your phone to enter text.":
         "Eskaneatu QR kode hau telefonoarekin testua sartzeko.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Gidoia",
     Search: "Bilatu",
     "Search programme": "Bilatu saioa",
@@ -800,6 +818,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Hautatu zerrenda-txantiloiaren iturria EPGrako eta logotipoetarako",
     "Select Stalker portal": "Hautatu Stalker ataria",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Bidali eskaera",
     "Send settings": "Bidali ezarpenak",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -887,6 +907,7 @@ var keyStrings = {
     "Stop diagnostics": "Gelditu diagnostikoa",
     "Stop playback and return to live":
         "Gelditu erreprodukzioa eta itzuli zuzenekora",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Ezin izan da transmisioa erreproduzitu",
     "Stream type: %1": "Transmisio mota: %1",
     "String for search": "Bilaketa-testua",
@@ -912,6 +933,8 @@ var keyStrings = {
         "Helbideko gailuaren IDa baliogabea da.",
     "The discovery response is invalid.":
         "Bilaketaren erantzuna baliogabea da.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Nabigatzaile hau ezin da automatikoki eta modu seguruan parekatu. Eguneratu edo sartu komando-zerbitzariaren ezarpenak eskuz.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

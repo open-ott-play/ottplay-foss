@@ -160,7 +160,9 @@ function remoteProtectedInput(w: any): boolean {
         if (
             w.$ &&
             w
-                .$("#pin, #remoteDiagnosticsToggle, #remoteDiagnosticsTrust")
+                .$(
+                    "#pin, #remoteDiagnosticsToggle, #remoteDiagnosticsTrust, #remoteScreenshotToggle"
+                )
                 .is(":visible")
         )
             return true;
@@ -472,6 +474,9 @@ export function executeRemoteControl(
             ].filter(lifecycleAvailable),
             playback: playback,
             player: remotePlayerInfo(w),
+            screenshot: w.__ottRemoteScreenshot
+                ? w.__ottRemoteScreenshot.snapshot()
+                : { source: null, state: "unsupported" },
             version: 1,
         });
         return;

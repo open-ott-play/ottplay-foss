@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "የAll4you.tv ቅንብሮች",
     "Allow diagnostics for 10 minutes": "ምርመራን ለ10 ደቂቃ ፍቀድ",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ይህ አገልጋይ የምርመራ ቆጣሪዎችን እንዲሰበስብ እና ይህን ዥረት ወይም ማጫወቻ እንደገና እንዲጀምር ይፍቀዱለት። ጊዜያዊ መዳረሻ ለ10 ደቂቃ ይቆያል። የታመነ ድጋፍ እንደገና ከተገናኘ ወይም እንደገና ከተጀመረ በኋላም ይገኛል፤ እያንዳንዱ የመረጃ መሰብሰብ ክፍለ ጊዜ ግን ከ10 ደቂቃ በኋላ ያበቃል። ገጹ ሲደበቅ ወይም ከመስመር ውጭ ሲሆን መረጃ መሰብሰብ ለጊዜው ይቆማል።",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ገጹ በፊት ለፊት ክፍት በሆነበት በዚህ ክፍለ ጊዜ፣ ይህ አገልጋይ የመልሶ ማጫወት፣ የአውታረ መረብ እና የግቤት ቆጣሪዎችን እንዲሰበስብ ይፍቀዱለት። HTTPS እና የአገልጋይ ፈቃድ ያስፈልጋል። ከ10 ደቂቃ በኋላ፣ ገጹ ሲደበቅ ወይም ግንኙነቱ ሲቋረጥ ይቆማል።",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ይህን የመሣሪያ ID ወደ የተፈቀዱ ዝርዝር ያክሉ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "የHTTPS ሚዲያ ማጫወቻ የHTTP EPG ምንጭ ማውረድ አይችልም። የHTTPS ምንጭ ተጠቀም።",
@@ -240,6 +245,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравозን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     Connect: "አገናኝ",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "ይህን ማጫወቻ መጀመሪያ ከትእዛዝ አገልጋይ ጋር ያገናኙ።",
     Connected: "ተገናኝቷል",
@@ -701,6 +708,10 @@ var keyStrings = {
         "የርቀት ግቤት ጊዜ አልፏል። ዳግም ለመሞከር አዲስ ክፍለ ጊዜ ይክፈቱ።",
     "Remote input session is unavailable. Open a new session to try again.":
         "የርቀት ግቤት ክፍለ ጊዜ አይገኝም። ዳግም ለመሞከር አዲስ ክፍለ ጊዜ ይክፈቱ።",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "የርቀት ክፍለ ጊዜ ጊዜው አልፏል",
     "Remote text entry": "የርቀት ጽሑፍ ግቤት",
     "Remote text entry denied": "የርቀት ጽሑፍ ግቤት ተከልክሏል",
@@ -744,6 +755,13 @@ var keyStrings = {
     "Save settings to storage": "ቅንብሮችን በማከማቻ አስቀምጥ",
     "Scan this QR code with your phone to enter text.":
         "ጽሑፍ ለማስገባት ይህን QR ኮድ በስልክዎ ይቃኙ።",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "የፊልም ጽሑፍ",
     Search: "ፈልግ",
     "Search programme": "ፕሮግራም ፈልግ",
@@ -762,6 +780,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ለEPG እና አርማዎች የአጫዋች ዝርዝር አብነት ምንጭ ይምረጡ",
     "Select Stalker portal": "የStalker ፖርታል ምረጥ",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ጥያቄ ላክ",
     "Send settings": "ቅንብሮችን ላክ",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -844,6 +864,7 @@ var keyStrings = {
     "Stop current capture": "የአሁኑን መረጃ መሰብሰብ አቁም",
     "Stop diagnostics": "ምርመራን አቁም",
     "Stop playback and return to live": "መልሶ ማጫወትን አቁም እና ወደ ቀጥታ ስርጭት ተመለስ",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ዥረቱን ማጫወት አልተቻለም",
     "Stream type: %1": "የዥረት ዓይነት፦ %1",
     "String for search": "የፍለጋ ጥያቄ",
@@ -866,6 +887,8 @@ var keyStrings = {
         "የትእዛዝ አገልጋይ ፍለጋ URL ልክ አይደለም።",
     "The device ID in the address is invalid.": "በአድራሻው ያለው የመሣሪያ ID ልክ አይደለም።",
     "The discovery response is invalid.": "የፍለጋው ምላሽ ልክ አይደለም።",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ይህ አሳሽ በደህና በራስ-ሰር ማጣመር አይችልም። ያዘምኑት ወይም የትእዛዝ አገልጋይ ቅንብሮችን በእጅ ያስገቡ።",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

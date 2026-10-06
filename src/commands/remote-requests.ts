@@ -14,6 +14,7 @@ import {
     executeRemoteRestart,
     remotePlayerInfo,
 } from "./remote-restart";
+import { executeRemoteScreenshot } from "./remote-screenshot";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -49,6 +50,7 @@ export function executeRemoteRequest(
         w.__ottKiosk.enabled() &&
         [
             "status",
+            "screenshot",
             "channels",
             "providers",
             "profiles",
@@ -143,6 +145,9 @@ export function executeRemoteRequest(
     ) {
         handleRemoteProfiles(request, done);
         return;
+    }
+    if (request.action === "screenshot") {
+        return executeRemoteScreenshot(w, params, done);
     }
     if (request.action === "restart") {
         executeRemoteRestart(w, params, done, afterReply);

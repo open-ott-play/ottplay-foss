@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv 설정",
     "Allow diagnostics for 10 minutes": "10분간 진단 허용",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "이 서버가 진단 카운터를 수집하고 이 스트림 또는 플레이어를 다시 시작하도록 허용합니다. 임시 액세스는 10분 동안 지속됩니다. 다시 연결하거나 다시 시작한 후에도 신뢰할 수 있는 지원이 계속 제공됩니다. 각 캡처는 10분 후에 만료됩니다. 숨김 상태 또는 오프라인 상태에서는 수집이 일시 중지됩니다.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "이 서버가 이 포그라운드 세션에 대한 재생, 네트워크 및 입력 카운터를 수집하도록 허용합니다. HTTPS 및 서버 권한이 필요합니다. 10분 후, 숨겨지거나 연결이 끊어지면 중지됩니다.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "이 장치를 허용 목록에 추가하세요 ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS 플레이어는 HTTP EPG 소스를 다운로드할 수 없습니다. HTTPS 소스를 사용하세요.",
@@ -246,6 +251,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "설정 -> 공급자 설정에서 Шаравоз 구성",
     Connect: "연결",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "먼저 이 플레이어를 커맨드 서버에 연결하세요.",
     Connected: "연결됨",
@@ -722,6 +729,10 @@ var keyStrings = {
         "원격 입력이 만료되었습니다. 새 세션을 열어 다시 시도하세요.",
     "Remote input session is unavailable. Open a new session to try again.":
         "원격 입력 세션을 사용할 수 없습니다. 새 세션을 열어 다시 시도하세요.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "원격 세션이 만료되었습니다.",
     "Remote text entry": "원격 텍스트 입력",
     "Remote text entry denied": "원격 텍스트 입력이 거부되었습니다.",
@@ -768,6 +779,13 @@ var keyStrings = {
     "Save settings to storage": "설정을 스토리지에 저장",
     "Scan this QR code with your phone to enter text.":
         "문자를 입력하려면 휴대폰으로 이 QR 코드를 스캔하세요.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "각본",
     Search: "검색",
     "Search programme": "방송 프로그램 검색",
@@ -786,6 +804,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG 및 로고에 대한 재생 목록 템플릿 소스 선택",
     "Select Stalker portal": "Stalker 포탈 선택",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "요청 보내기",
     "Send settings": "전송 설정",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -872,6 +892,7 @@ var keyStrings = {
     "Stop current capture": "전류 캡처 중지",
     "Stop diagnostics": "진단 중지",
     "Stop playback and return to live": "재생을 중지하고 라이브로 돌아갑니다.",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "스트림을 재생할 수 없습니다.",
     "Stream type: %1": "스트림 유형: %1",
     "String for search": "검색어",
@@ -895,6 +916,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "주소의 ID 디바이스가 유효하지 않습니다.",
     "The discovery response is invalid.": "검색 응답이 잘못되었습니다.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "이 브라우저는 자동으로 안전하게 페어링할 수 없습니다. 이를 업데이트하거나 명령 서버 설정을 수동으로 입력하십시오.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

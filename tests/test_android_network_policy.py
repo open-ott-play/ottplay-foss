@@ -25,6 +25,101 @@ import play.ott.foss.*
 import java.net.*
 import java.util.concurrent.*
 fun wait(call: PluginCall) { check(call.done.await(5, TimeUnit.SECONDS)); }
+fun screenshotTransport() {
+    BuildConfig.FLAVOR = "full"
+    val plugin = StalkerPortalPlugin()
+    fun shot(url: String, id: String = "shot_test", body: String = "{}", headers: JSObject = JSObject().put("Authorization", "Bearer fixture")): PluginCall {
+        val call = PluginCall(JSObject().put("url", url).put("requestId", id).put("body", body)
+            .put("method", "POST").put("headers", headers).put("timeoutMs", 2000).put("screenshotControl", true))
+        plugin.httpRequest(call); return call
+    }
+    fun readRequest(socket: Socket): String {
+        val input = socket.getInputStream().bufferedReader()
+        val headers = StringBuilder()
+        var length = 0
+        while (true) {
+            val line = input.readLine() ?: error("missing request")
+            if (line.isEmpty()) break
+            headers.append(line).append('\n')
+            if (line.startsWith("Content-Length:", true)) length = line.substringAfter(':').trim().toInt()
+        }
+        repeat(length) { check(input.read() >= 0) }
+        return headers.toString()
+    }
+    fun exchange(response: ByteArray): Pair<PluginCall, String> {
+        val server = ServerSocket(0, 4, InetAddress.getByName("127.0.0.1"))
+        var request = ""
+        val worker = Thread {
+            server.soTimeout = 4000
+            server.accept().use { socket ->
+                request = readRequest(socket)
+                try { socket.getOutputStream().write(response) } catch (_: java.io.IOException) { }
+            }
+        }.apply { start() }
+        val call = shot("http://127.0.0.1:${server.localPort}/api/responses")
+        wait(call); worker.join(5000); server.close(); check(!worker.isAlive)
+        return call to request
+    }
+    val cookieManager = CookieManager()
+    CookieHandler.setDefault(cookieManager)
+    cookieManager.cookieStore.add(URI("http://127.0.0.1"), HttpCookie("private", "must-not-send"))
+    val (ok, request) = exchange("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nSet-Cookie: private=secret\r\nConnection: close\r\n\r\n{}".toByteArray())
+    check(ok.error == null && ok.result.getInt("status") == 200)
+    check(request.contains("Authorization: Bearer fixture"))
+    check(!request.lines().any { it.startsWith("Cookie:", true) })
+    check(!ok.result.getString("headers")!!.contains("Cookie", true))
+    CookieHandler.setDefault(null)
+    for (url in listOf("http://192.168.1.1/api/responses", "http://127.1/api/responses", "http://localhost.example/api/responses", "https://user:secret@controller.example/api/responses")) {
+        val bad = shot(url); wait(bad); check(bad.code == "invalid_request")
+    }
+    for (headers in listOf(JSObject().put("Cookie", "private=value"), JSObject().put("Authorization", "Bearer x\r\nX-Bad: y"))) {
+        val bad = shot("https://controller.example/api/responses", headers = headers); wait(bad); check(bad.code == "invalid_request")
+    }
+    val largeUpload = shot("https://controller.example/api/responses", body = "я".repeat(1048577))
+    wait(largeUpload); check(largeUpload.code == "invalid_request")
+    val receiver = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+    val (redirect, _) = exchange("HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:${receiver.localPort}/target\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+    check(redirect.error != null)
+    receiver.soTimeout = 200
+    try { receiver.accept(); error("Screenshot redirect followed") } catch (_: SocketTimeoutException) { }
+    receiver.close()
+    val (large, _) = exchange("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n".toByteArray() + ByteArray(2097153) { 65 })
+    check(large.error != null)
+    val (utf8, _) = exchange("HTTP/1.1 200 OK\r\nContent-Length: 1\r\nConnection: close\r\n\r\n".toByteArray() + byteArrayOf(-1))
+    check(utf8.error != null)
+    println("PASS screenshot HTTP lane: exact-loopback/HTTPS, no global cookies, header/upload/streaming bounds, no redirected destination request")
+
+    val held = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+    val started = CountDownLatch(1)
+    val release = CountDownLatch(1)
+    val worker = Thread {
+        held.accept().use { socket ->
+            readRequest(socket)
+            socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n".toByteArray())
+            started.countDown(); release.await(5, TimeUnit.SECONDS)
+        }
+    }.apply { start() }
+    val pending = shot("http://127.0.0.1:${held.localPort}/api/responses", "cancel_this")
+    check(started.await(5, TimeUnit.SECONDS))
+    val duplicate = shot("http://127.0.0.1:${held.localPort}/api/responses", "cancel_this")
+    wait(duplicate); check(duplicate.code == "busy")
+    val cancel = PluginCall(JSObject().put("requestId", "cancel_this"))
+    plugin.cancelHttpRequest(cancel); wait(cancel); wait(pending)
+    check(cancel.result.getBoolean("cancelled") && pending.error != null)
+    release.countDown(); worker.join(5000); held.close(); check(!worker.isAlive)
+    val again = PluginCall(JSObject().put("requestId", "cancel_this"))
+    plugin.cancelHttpRequest(again); wait(again); check(!again.result.getBoolean("cancelled"))
+    plugin.handleOnDestroy()
+    val destroyed = shot("https://controller.example/api/responses")
+    wait(destroyed); check(destroyed.code == "busy")
+    println("PASS screenshot HTTP lane: requestId ownership, active socket cancellation and destroyed-owner rejection")
+    // OkHttp's dispatcher is idle but has a keepalive thread; release it so this
+    // standalone JVM regression does not wait a minute after all assertions pass.
+    val clientField = plugin.javaClass.getDeclaredField("swopClient").apply { isAccessible = true }
+    val client = clientField.get(plugin) as okhttp3.OkHttpClient
+    client.dispatcher.executorService.shutdown()
+    client.connectionPool.evictAll()
+}
 fun main() {
     val server = ServerSocket(0, 4, InetAddress.getByName("127.0.0.1"))
     val endpoint = "http://127.0.0.1:${server.localPort}/stalker_portal/api/?token=fixture"
@@ -66,6 +161,7 @@ fun main() {
     val failure = PluginCall(JSObject().put("url",endpoint)); generic.httpRequest(failure); wait(failure)
     check(failure.error != null && !failure.error!!.contains("token") && !failure.error!!.contains("127.0.0.1"))
     println("PASS actual Android HTTP plugins: SWOP refuses plaintext/credentials/query/normalized paths in both editions; Play rejects HTTP before network; Full native HTTP/M3U retain requests; errors omit provider URLs")
+    screenshotTransport()
 }
 '''
 SDK=Path(os.environ.get('ANDROID_SDK_ROOT',os.environ.get('ANDROID_HOME','/opt/homebrew/share/android-commandlinetools')))/'platforms/android-36/android.jar'

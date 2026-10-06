@@ -59,10 +59,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ਸੈਟਿੰਗਾਂ",
     "Allow diagnostics for 10 minutes": "10 ਮਿੰਟਾਂ ਲਈ ਡਾਇਗਨੌਸਟਿਕਸ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ਇਸ ਸਰਵਰ ਨੂੰ ਡਾਇਗਨੌਸਟਿਕ ਕਾਊਂਟਰ ਇਕੱਠੇ ਕਰਨ ਅਤੇ ਇਸ ਸਟ੍ਰੀਮ ਜਾਂ ਪਲੇਅਰ ਨੂੰ ਮੁੜ ਚਾਲੂ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ। ਅਸਥਾਈ ਪਹੁੰਚ 10 ਮਿੰਟ ਰਹਿੰਦੀ ਹੈ। ਭਰੋਸੇਯੋਗ ਸਹਾਇਤਾ ਮੁੜ-ਕੁਨੈਕਟ ਕਰਨ ਜਾਂ ਮੁੜ-ਚਾਲੂ ਕਰਨ ਤੋਂ ਬਾਅਦ ਉਪਲਬਧ ਰਹਿੰਦੀ ਹੈ; ਹਰੇਕ ਕੈਪਚਰ ਦੀ ਮਿਆਦ ਅਜੇ ਵੀ 10 ਮਿੰਟ ਬਾਅਦ ਖਤਮ ਹੋ ਜਾਂਦੀ ਹੈ। ਲੁਕਵੇਂ ਜਾਂ ਔਫਲਾਈਨ ਹੋਣ 'ਤੇ ਸੰਗ੍ਰਹਿ ਰੁਕ ਜਾਂਦਾ ਹੈ।",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ਇਸ ਸਰਵਰ ਨੂੰ ਇਸ ਫੋਰਗਰਾਉਂਡ ਸੈਸ਼ਨ ਲਈ ਪਲੇਬੈਕ, ਨੈੱਟਵਰਕ ਅਤੇ ਇਨਪੁਟ ਕਾਊਂਟਰ ਇਕੱਠੇ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ। HTTPS ਅਤੇ ਸਰਵਰ ਅਨੁਮਤੀ ਦੀ ਲੋੜ ਹੈ। 10 ਮਿੰਟਾਂ ਬਾਅਦ, ਲੁਕੇ ਹੋਣ 'ਤੇ, ਜਾਂ ਡਿਸਕਨੈਕਟ ਹੋਣ 'ਤੇ ਰੁਕ ਜਾਂਦਾ ਹੈ।",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "ਇਸ ਡਿਵਾਈਸ ID ਨੂੰ ਮਨਜ਼ੂਰੀ ਦਿਓ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "ਇੱਕ HTTPS ਪਲੇਅਰ ਇੱਕ HTTP EPG ਸਰੋਤ ਨੂੰ ਡਾਊਨਲੋਡ ਨਹੀਂ ਕਰ ਸਕਦਾ ਹੈ। ਇੱਕ HTTPS ਸਰੋਤ ਦੀ ਵਰਤੋਂ ਕਰੋ।",
@@ -243,6 +248,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "ਸੈਟਿੰਗਾਂ -> ਪ੍ਰਦਾਤਾ ਸੈਟਿੰਗਾਂ ਵਿੱਚ Шаравоз ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ",
     Connect: "ਕਨੈਕਟ ਕਰੋ",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "ਪਹਿਲਾਂ ਇਸ ਪਲੇਅਰ ਨੂੰ ਕਮਾਂਡ ਸਰਵਰ ਨਾਲ ਕਨੈਕਟ ਕਰੋ।",
     Connected: "ਕਨੈਕਟ ਕੀਤਾ ਗਿਆ",
@@ -712,6 +719,10 @@ var keyStrings = {
         "ਰਿਮੋਟ ਇਨਪੁੱਟ ਦੀ ਮਿਆਦ ਸਮਾਪਤ ਹੋਈ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਇੱਕ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ।",
     "Remote input session is unavailable. Open a new session to try again.":
         "ਰਿਮੋਟ ਇਨਪੁਟ ਸੈਸ਼ਨ ਅਣਉਪਲਬਧ ਹੈ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਇੱਕ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ।",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "ਰਿਮੋਟ ਸੈਸ਼ਨ ਦੀ ਮਿਆਦ ਪੁੱਗ ਗਈ",
     "Remote text entry": "ਰਿਮੋਟ ਟੈਕਸਟ ਐਂਟਰੀ",
     "Remote text entry denied": "ਰਿਮੋਟ ਟੈਕਸਟ ਐਂਟਰੀ ਨੂੰ ਅਸਵੀਕਾਰ ਕੀਤਾ ਗਿਆ",
@@ -757,6 +768,13 @@ var keyStrings = {
     "Save settings to storage": "ਸਟੋਰੇਜ ਵਿੱਚ ਸੈਟਿੰਗਾਂ ਨੂੰ ਸੁਰੱਖਿਅਤ ਕਰੋ",
     "Scan this QR code with your phone to enter text.":
         "ਟੈਕਸਟ ਦਰਜ ਕਰਨ ਲਈ ਆਪਣੇ ਫ਼ੋਨ ਨਾਲ ਇਸ QR ਕੋਡ ਨੂੰ ਸਕੈਨ ਕਰੋ।",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "ਸਕ੍ਰੀਨਪਲੇ",
     Search: "ਖੋਜੋ",
     "Search programme": "ਪ੍ਰੋਗਰਾਮ ਲੱਭੋ",
@@ -775,6 +793,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ਅਤੇ ਲੋਗੋ ਲਈ ਪਲੇਲਿਸਟ ਟੈਮਪਲੇਟ ਸਰੋਤ ਚੁਣੋ",
     "Select Stalker portal": "Stalker ਪੋਰਟਲ ਚੁਣੋ",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ਬੇਨਤੀ ਭੇਜੋ",
     "Send settings": "ਸੈਟਿੰਗਾਂ ਭੇਜੋ",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -858,6 +878,7 @@ var keyStrings = {
     "Stop current capture": "ਮੌਜੂਦਾ ਕੈਪਚਰ ਨੂੰ ਰੋਕੋ",
     "Stop diagnostics": "ਡਾਇਗਨੌਸਟਿਕਸ ਬੰਦ ਕਰੋ",
     "Stop playback and return to live": "ਪਲੇਬੈਕ ਬੰਦ ਕਰੋ ਅਤੇ ਲਾਈਵ 'ਤੇ ਵਾਪਸ ਜਾਓ",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ਸਟ੍ਰੀਮ ਨੂੰ ਚਲਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ",
     "Stream type: %1": "ਸਟ੍ਰੀਮ ਦੀ ਕਿਸਮ: %1",
     "String for search": "ਖੋਜ ਪੁੱਛਗਿੱਛ",
@@ -879,6 +900,8 @@ var keyStrings = {
     "The command server discovery URL is invalid.": "ਕਮਾਂਡ ਸਰਵਰ ਖੋਜ URL ਅਵੈਧ ਹੈ।",
     "The device ID in the address is invalid.": "ਪਤੇ ਵਿੱਚ ਡਿਵਾਈਸ ID ਅਵੈਧ ਹੈ।",
     "The discovery response is invalid.": "ਖੋਜ ਜਵਾਬ ਅਵੈਧ ਹੈ।",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਸਵੈਚਲਿਤ ਤੌਰ 'ਤੇ ਜੋੜਾ ਨਹੀਂ ਬਣਾ ਸਕਦਾ। ਇਸਨੂੰ ਅੱਪਡੇਟ ਕਰੋ ਜਾਂ ਕਮਾਂਡ ਸਰਵਰ ਸੈਟਿੰਗਾਂ ਨੂੰ ਹੱਥੀਂ ਦਾਖਲ ਕਰੋ।",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

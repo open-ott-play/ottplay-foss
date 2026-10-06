@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tvの設定",
     "Allow diagnostics for 10 minutes": "10 分間診断を許可します。",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "このサーバーが診断カウンターを収集し、このストリームまたはプレーヤーを再起動できるようにします。一時的なアクセスは 10 分間継続します。信頼できるサポートは、再接続または再起動後も引き続き利用できます。各キャプチャは 10 分後に期限切れになります。非表示またはオフラインの間、収集は一時停止します。",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "このサーバーがこのフォアグラウンド セッションの再生カウンター、ネットワーク カウンター、および入力カウンターを収集できるようにします。 HTTPS とサーバー許可が必要です。非表示の場合、または切断された場合は 10 分後に停止します。",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "このデバイスをホワイトリストに登録 ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPSプレーヤーでは、HTTP EPGソースをダウンロードできません。 HTTPS ソースを使用します。",
@@ -249,6 +254,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "[設定] -> [プロバイダー設定] で Шаравоз を設定します。",
     Connect: "つながる",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "まず、このプレーヤーをコマンドサーバーに接続します。",
     Connected: "つながった",
@@ -727,6 +734,10 @@ var keyStrings = {
         "リモート入力の有効期限が切れました。新しいセッションを開いて再試行してください。",
     "Remote input session is unavailable. Open a new session to try again.":
         "リモート入力セッションは利用できません。新しいセッションを開いて再試行してください。",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "リモートセッションの有効期限が切れました",
     "Remote text entry": "リモート文字入力",
     "Remote text entry denied": "リモートテキスト入力が拒否されました",
@@ -774,6 +785,13 @@ var keyStrings = {
     "Save settings to storage": "設定をストレージに保存",
     "Scan this QR code with your phone to enter text.":
         "このQRコードを携帯電話でスキャンしてテキストを入力してください。",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "脚本",
     Search: "検索",
     "Search programme": "番組を検索",
@@ -793,6 +811,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPGとロゴのプレイリストテンプレートソースを選択",
     "Select Stalker portal": "Stalkerポータルを選択",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "送信リクエスト",
     "Send settings": "送信設定",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -880,6 +900,7 @@ var keyStrings = {
     "Stop current capture": "現在のキャプチャを停止します",
     "Stop diagnostics": "診断停止",
     "Stop playback and return to live": "再生を停止してライブに戻ります",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ストリームを再生できませんでした",
     "Stream type: %1": "ストリームタイプ：%1",
     "String for search": "検索クエリ",
@@ -904,6 +925,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "アドレス内のデバイスIDは無効です。",
     "The discovery response is invalid.": "検出応答が無効です。",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "このブラウザは安全に自動ペアリングできません。更新するか、コマンド サーバー設定を手動で入力します。",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

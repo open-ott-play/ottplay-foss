@@ -61,10 +61,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Configuració de All4you.tv",
     "Allow diagnostics for 10 minutes": "Permet el diagnòstic durant 10 minuts",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Permet que aquest servidor reculli comptadors de diagnòstic i reiniciï aquesta transmissió o el reproductor. L’accés temporal dura 10 minuts. L’assistència de confiança continua disponible després de tornar a connectar o reiniciar; cada recollida caduca igualment al cap de 10 minuts. La recollida es pausa quan l’aplicació està oculta o sense connexió.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Permet que aquest servidor reculli comptadors de reproducció, xarxa i entrada durant aquesta sessió en primer pla. Calen HTTPS i permís del servidor. S’atura al cap de 10 minuts, en ocultar la pàgina o en desconnectar-se.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Autoritza aquest ID de dispositiu",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Un reproductor HTTPS no pot baixar una font EPG HTTP. Utilitza una font HTTPS.",
@@ -255,6 +260,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Configura Шаравоз a Configuració → Configuració del proveïdor",
     Connect: "Connecta",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connecta primer aquest reproductor a un servidor d’ordres.",
     Connected: "Connectat",
@@ -748,6 +755,10 @@ var keyStrings = {
         "L’entrada remota ha caducat. Obre una sessió nova per tornar-ho a provar.",
     "Remote input session is unavailable. Open a new session to try again.":
         "La sessió d’entrada remota no està disponible. Obre una sessió nova per tornar-ho a provar.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "La sessió remota ha caducat",
     "Remote text entry": "Entrada de text remota",
     "Remote text entry denied": "Entrada de text remota denegada",
@@ -795,6 +806,13 @@ var keyStrings = {
     "Save settings to storage": "Desa la configuració a l’emmagatzematge",
     "Scan this QR code with your phone to enter text.":
         "Escaneja aquest codi QR amb el telèfon per introduir text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Guió",
     Search: "Cerca",
     "Search programme": "Cerca un programa",
@@ -814,6 +832,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Selecciona la font de la plantilla de la llista per a l’EPG i els logotips",
     "Select Stalker portal": "Selecciona un portal Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Envia la sol·licitud",
     "Send settings": "Envia la configuració",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -905,6 +925,7 @@ var keyStrings = {
     "Stop diagnostics": "Atura el diagnòstic",
     "Stop playback and return to live":
         "Atura la reproducció i torna al directe",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "No s’ha pogut reproduir la transmissió",
     "Stream type: %1": "Tipus de transmissió: %1",
     "String for search": "Text de cerca",
@@ -929,6 +950,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "L’ID del dispositiu a l’adreça no és vàlid.",
     "The discovery response is invalid.": "La resposta de cerca no és vàlida.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Aquest navegador no pot aparellar-se automàticament de manera segura. Actualitza’l o introdueix manualment la configuració del servidor d’ordres.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":

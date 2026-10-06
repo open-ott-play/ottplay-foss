@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Ètò All4you.tv",
     "Allow diagnostics for 10 minutes": "Gba àyẹ̀wò ìṣòro láàyè fún ìṣẹ́jú 10",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Gba sáfà yìí láàyè láti gba àwọn òǹkà àyẹ̀wò ìṣòro àti láti tún ìṣàn tàbí ẹ̀rọ ìṣeré yìí bẹ̀rẹ̀. Ìwọlé fún ìgbà díẹ̀ máa ń pé ìṣẹ́jú 10. Ìrànlọ́wọ́ tí a fọkàn tán ṣì wà lẹ́yìn títún sopọ̀ tàbí títún bẹ̀rẹ̀; gbígba dátà kọ̀ọ̀kan ṣì parí lẹ́yìn ìṣẹ́jú 10. Gbigba dátà dá dúró nígbà tí ojú ìwé bá fara sin tàbí tí kò bá sí lórí ayélujára.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Gba sáfà yìí láàyè láti gba àwọn òǹkà ìṣeré, nẹ́tíwọ́ọ̀kì àti ìtẹ̀wọlé fún sáà yìí nígbà tí ojú ìwé wà níwájú. Ó nílò HTTPS àti àṣẹ sáfà. Ó dá dúró lẹ́yìn ìṣẹ́jú 10, nígbà tí ojú ìwé fara sin, tàbí tí ìsopọ̀ bá ge.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Gba ID Ẹ̀rọ yìí láàyè",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Ẹ̀rọ ìṣeré HTTPS kò lè gba orísun EPG HTTP sílẹ̀. Lo orísun HTTPS.",
@@ -245,6 +250,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Ṣètò Шаравоз ní Ètò -> Ètò olùpèsè",
     Connect: "Sopọ̀",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Kọ́kọ́ so ẹ̀rọ ìṣeré yìí pọ̀ mọ́ sáfà àṣẹ kan.",
     Connected: "Ti sopọ̀",
@@ -718,6 +725,10 @@ var keyStrings = {
         "Àkókò títẹ ọ̀rọ̀ láti ọ̀nà jíjìn ti parí. Ṣí sáà tuntun láti tún gbìyànjú.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sáà títẹ ọ̀rọ̀ láti ọ̀nà jíjìn kò sí lárọ̀ọ́wọ́tó. Ṣí sáà tuntun láti tún gbìyànjú.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Sáà láti ọ̀nà jíjìn ti parí àkókò",
     "Remote text entry": "Títẹ ọ̀rọ̀ láti ọ̀nà jíjìn",
     "Remote text entry denied": "A kọ títẹ ọ̀rọ̀ láti ọ̀nà jíjìn",
@@ -764,6 +775,13 @@ var keyStrings = {
     "Save settings to storage": "Fi ètò pamọ́ sí ibi ìpamọ́",
     "Scan this QR code with your phone to enter text.":
         "Ṣàyẹ̀wò kóòdù QR yìí pẹ̀lú fóònù rẹ láti tẹ ọ̀rọ̀.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Ìwé ìtàn fíìmù",
     Search: "Wá",
     "Search programme": "Wá ètò",
@@ -782,6 +800,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Yan orísun àwòṣe àkójọ ìṣeré fún EPG àti àwọn àmì ìdánimọ̀",
     "Select Stalker portal": "Yan ojú-ọ̀nà Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Fi ìbéèrè ránṣẹ́",
     "Send settings": "Fi ètò ránṣẹ́",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -866,6 +886,7 @@ var keyStrings = {
     "Stop diagnostics": "Dá àyẹ̀wò ìṣòro dúró",
     "Stop playback and return to live":
         "Dá ìṣeré dúró kí o sì padà sí ìgbóhùnsáfẹ́fẹ́ tààrà",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "A kò lè ṣeré ìṣàn",
     "Stream type: %1": "Irú ìṣàn: %1",
     "String for search": "Ọ̀rọ̀ ìwádìí",
@@ -889,6 +910,8 @@ var keyStrings = {
         "URL wíwá sáfà àṣẹ kò péye.",
     "The device ID in the address is invalid.": "ID ẹ̀rọ inú àdírẹ́sì kò péye.",
     "The discovery response is invalid.": "Ìdáhùn wíwá sáfà kò péye.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Aṣàwákiri yìí kò lè so ẹ̀rọ pọ̀ láìfọwọ́yí pẹ̀lú ààbò. Mú un dójú ìwọ̀n tàbí tẹ ètò sáfà àṣẹ pẹ̀lú ọwọ́.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
