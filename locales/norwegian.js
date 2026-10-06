@@ -259,11 +259,19 @@ var keyStrings = {
     Connect: "Koble til",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Koble denne mediespilleren til en kommandoserver først.",
     Connected: "Tilkoblet",
     "Connected. Waiting for the channel list...":
         "Tilkoblet. Venter på kanallisten...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Kobler til ekstern diagnostikk for denne siden.",
     "Connecting to Plex…": "Kobler til Plex...",
@@ -723,7 +731,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Fjernkontroll (ingen fargeknapper)",
     "Remote (number buttons N/A)": "Fjernkontroll (ingen tallknapper)",
     "Remote control": "Fjernkontroll",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Fjerndiagnostikk",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Fjerndiagnostikk samler inn for denne siden.",
     "Remote diagnostics is off.": "Fjerndiagnostikk er av.",
@@ -793,6 +809,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Manus",
@@ -814,6 +832,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Velg spillelistemalkilde for EPG og logoer",
     "Select Stalker portal": "Velg Stalker-portal",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Send forespørsel",
@@ -897,6 +917,7 @@ var keyStrings = {
     "Starting...": "Starter …",
     Status: "Status",
     Stop: "Stopp",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Stopp gjeldende fangst",
     "Stop diagnostics": "Stopp diagnostikk",
     "Stop playback and return to live":
@@ -921,6 +942,8 @@ var keyStrings = {
     "Tabox settings": "Tabox innstillinger",
     "Text is too long for remote input.":
         "Teksten er for lang for ekstern inntasting.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Kommandotjeneroppdagelsen URL er ugyldig.",
     "The device ID in the address is invalid.":

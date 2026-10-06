@@ -208,6 +208,19 @@ function fixture(initial = []) {
         return sequence;
     };
     w.clearTimeout = (id) => jobs.delete(id);
+    const connectionState = index.statements.find(
+        (node) =>
+            ts.isVariableStatement(node) &&
+            node.declarationList.declarations.some(
+                (decl) => decl.name.getText(index) === "remoteControlConnection"
+            )
+    );
+    assert.ok(
+        connectionState,
+        "Private runtime connection state is initialized before hooks"
+    );
+    w.eval(compile(connectionState.getText(index)));
+    w.eval(functions("src/index.ts", ["remoteControlConfig"]));
     w.eval(assignment("__ottCommandServer"));
     w.eval(
         functions("src/plugins/control-discovery.ts", [
@@ -266,6 +279,99 @@ function fixture(initial = []) {
         writes,
     };
 }
+
+for (const failureAt of [1, 2, 3, 4]) {
+    const h = fixture();
+    try {
+        h.controller.configure({
+            address: "https://old.example",
+            enabled: true,
+            token,
+        });
+        assert.equal(h.w.remoteControlConfig().enabled, true);
+        const initialRequest = h.requests[h.requests.length - 1];
+        const actualSave = h.w.saveSettings;
+        let calls = 0;
+        const diagnostics = [];
+        const screenshots = [];
+        h.w.__ottRemoteDiagnostics = {
+            configurationChanged(config) {
+                diagnostics.push(JSON.parse(JSON.stringify(config)));
+            },
+        };
+        h.w.__ottRemoteScreenshot = {
+            configurationChanged() {
+                screenshots.push(
+                    JSON.parse(JSON.stringify(h.w.remoteControlConfig()))
+                );
+            },
+        };
+        h.w.saveSettings = (patch) =>
+            ++calls >= failureAt ? false : actualSave(patch);
+        // configure persists disabled first, then enabled; each callback contains two writes.
+        try {
+            h.controller.configure({
+                address: "https://new.example",
+                enabled: true,
+                token: nextToken,
+            });
+        } catch (error) {
+            assert.match(error.message, /settings could not be saved/);
+        }
+        assert.equal(initialRequest.aborted, true);
+        assert.equal(h.w.remoteControlConfig().enabled, false);
+        assert.equal(h.controller.status().enabled, false);
+        assert.ok(diagnostics.length && screenshots.length);
+        assert.ok(diagnostics.every((config) => config.enabled === false));
+        assert.ok(screenshots.every((config) => config.enabled === false));
+        assert.equal(
+            h.w.remoteControlConfig().address,
+            failureAt <= 2
+                ? "https://new.example"
+                : "https://new.example/api/webhook/commands"
+        );
+        if (failureAt === 1)
+            assert.equal(
+                h.w.settings.commandServerEnabled,
+                1,
+                "reproduce stale saved enablement when the very first disable write fails"
+            );
+        const detached = h.w.remoteControlConfig();
+        detached.enabled = true;
+        detached.token = token;
+        assert.equal(
+            h.w.remoteControlConfig().enabled,
+            false,
+            "hooks cannot mutate private connection authority"
+        );
+        h.w.saveSettings = actualSave;
+        h.controller.configure({
+            address: "https://new.example",
+            enabled: true,
+            token: nextToken,
+        });
+        assert.equal(h.w.remoteControlConfig().enabled, true);
+        assert.equal(h.w.remoteControlConfig().token, nextToken);
+        assert.equal(diagnostics[diagnostics.length - 1].enabled, true);
+        assert.equal(screenshots[screenshots.length - 1].enabled, true);
+        assert.equal(
+            h.requests[h.requests.length - 1].headers.Authorization,
+            "Bearer " + nextToken
+        );
+        const resumed = fixture([...h.stored]);
+        try {
+            assert.equal(resumed.w.remoteControlConfig().enabled, true);
+            assert.equal(resumed.w.remoteControlConfig().token, nextToken);
+        } finally {
+            resumed.destroy();
+        }
+    } finally {
+        h.destroy();
+    }
+}
+console.log(
+    "PASS runtime connection authority: first/second callback save failures, stale preferences, detached snapshots, reconnect and saved boot"
+);
 
 for (const first of ["address", "token"]) {
     const h = fixture();

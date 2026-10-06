@@ -253,11 +253,19 @@ var keyStrings = {
     Connect: "نښلول",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "دا میډیا پلیر لومړی د کمانډ سرور سره وصل کړئ.",
     Connected: "نښلول شوی",
     "Connected. Waiting for the channel list...":
         "نښلول شوی. د چینل لیست ته انتظار کول ...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "د دې پاڼې لپاره د ریموټ تشخیص سره نښلول.",
     "Connecting to Plex…": "د Plex سره نښلول…",
@@ -717,7 +725,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ریموټ (د رنګ بټن نشته)",
     "Remote (number buttons N/A)": "ریموټ (د شمیرې تڼۍ نشته)",
     "Remote control": "ریموټ کنټرول",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "لیرې تشخیص",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "لیرې تشخیص د دې پاڼې معلومات راټولوي.",
     "Remote diagnostics is off.": "ریموټ تشخیص بند دی.",
@@ -786,6 +802,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "فلم‌لیک",
@@ -807,6 +825,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "د EPG او لوګو لپاره د پلې‌لېست ټیمپلیټ سرچینه وټاکئ",
     "Select Stalker portal": "Stalker پورټل غوره کړئ",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "غوښتنه واستوئ",
@@ -889,6 +909,7 @@ var keyStrings = {
     "Starting...": "پیل…",
     Status: "حالت",
     Stop: "ودریږئ",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "د معلوماتو اوسنۍ راټولونه ودروئ",
     "Stop diagnostics": "تشخیص بند کړئ",
     "Stop playback and return to live":
@@ -912,6 +933,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "د Tabox ترتیبات",
     "Text is too long for remote input.": "متن د لرې ننوتلو لپاره ډېر اوږد دی.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "د قوماندې سرور د موندلو URL ناسم دی.",
     "The device ID in the address is invalid.": "په پته کې د وسیلې ID ناسم دی.",

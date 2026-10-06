@@ -260,11 +260,19 @@ var keyStrings = {
     Connect: "Пайваст шавед",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Аввал ин плеерро ба сервери фармонҳо пайваст кунед.",
     Connected: "Пайваст шуд",
     "Connected. Waiting for the channel list...":
         "Пайваст шуд. Интизори рӯйхати каналҳо…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Ташхиси дурдаст барои ин саҳифа пайваст мешавад.",
     "Connecting to Plex…": "Пайвастшавӣ ба Plex…",
@@ -726,7 +734,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пулт (бе тугмаҳои ранга)",
     "Remote (number buttons N/A)": "Пулт (бе тугмаҳои рақамӣ)",
     "Remote control": "Идоракунии дурдаст",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Ташхиси дурдаст",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Ташхиси дурдаст барои ин саҳифа маълумот ҷамъ мекунад.",
     "Remote diagnostics is off.": "Ташхиси дурдаст хомӯш аст.",
@@ -795,6 +811,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Сенария",
@@ -816,6 +834,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Манбаи қолаби рӯйхати пахшро барои EPG ва нишонаҳо интихоб кунед",
     "Select Stalker portal": "Портали Stalker-ро интихоб кунед",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Дархост фиристед",
@@ -901,6 +921,7 @@ var keyStrings = {
     "Starting...": "Оғоз…",
     Status: "Ҳолат",
     Stop: "Қатъ кунед",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Ҷамъоварии ҷориро қатъ кунед",
     "Stop diagnostics": "Ташхисро қатъ кунед",
     "Stop playback and return to live":
@@ -925,6 +946,8 @@ var keyStrings = {
     "Tabox settings": "Танзимоти Tabox",
     "Text is too long for remote input.":
         "Матн барои вуруди дурдаст хеле дароз аст.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL-и ҷустуҷӯи сервери фармонҳо нодуруст аст.",
     "The device ID in the address is invalid.":

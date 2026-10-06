@@ -250,11 +250,19 @@ var keyStrings = {
     Connect: "সংযোগ কৰক",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "প্ৰথমে এই প্লেয়াৰ এটা আদেশ ছাৰ্ভাৰৰ সৈতে সংযোগ কৰক।",
     Connected: "সংযুক্ত",
     "Connected. Waiting for the channel list...":
         "সংযুক্ত। চেনেলৰ তালিকাৰ বাবে অপেক্ষা কৰি আছে...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "এই পৃষ্ঠাৰ বাবে দূৰৱৰ্তী নিদান সংযোগ হৈ আছে।",
     "Connecting to Plex…": "Plex-ৰ সৈতে সংযোগ হৈ আছে…",
@@ -704,7 +712,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "ৰিম’ট (ৰঙীন বুটাম নাই)",
     "Remote (number buttons N/A)": "ৰিম’ট (সংখ্যাৰ বুটাম নাই)",
     "Remote control": "ৰিম’ট নিয়ন্ত্ৰণ",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "দূৰৱৰ্তী নিদান",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "দূৰৱৰ্তী নিদানে এই পৃষ্ঠাৰ তথ্য সংগ্ৰহ কৰি আছে।",
     "Remote diagnostics is off.": "দূৰৱৰ্তী নিদান বন্ধ আছে।",
@@ -773,6 +789,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "চিত্ৰনাট্য",
@@ -793,6 +811,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG আৰু ল’গ’ৰ বাবে প্লেলিষ্ট টেমপ্লেটৰ উৎস বাছক",
     "Select Stalker portal": "Stalker প’ৰ্টেল বাছক",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "অনুৰোধ পঠিয়াওক",
@@ -875,6 +895,7 @@ var keyStrings = {
     "Starting...": "আৰম্ভ হৈ আছে…",
     Status: "স্থিতি",
     Stop: "বন্ধ কৰক",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "বৰ্তমানৰ তথ্য সংগ্ৰহ বন্ধ কৰক",
     "Stop diagnostics": "নিদান বন্ধ কৰক",
     "Stop playback and return to live":
@@ -898,6 +919,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ছেটিংছ",
     "Text is too long for remote input.": "দূৰৱৰ্তী ইনপুটৰ বাবে পাঠ অতি দীঘল।",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "আদেশ ছাৰ্ভাৰ সন্ধানৰ URL বৈধ নহয়।",
     "The device ID in the address is invalid.": "ঠিকনাত থকা ডিভাইচ ID বৈধ নহয়।",

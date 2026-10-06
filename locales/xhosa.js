@@ -261,11 +261,19 @@ var keyStrings = {
     Connect: "Qhagamshela",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Qala ngokuqhagamshela esi sidlali kwiseva yemiyalelo.",
     Connected: "Kuqhagamshelwe",
     "Connected. Waiting for the channel list...":
         "Kuqhagamshelwe. Kulindwe uluhlu lwamajelo...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Kuqhagamshelwa uxilongo olukude lweli phepha.",
     "Connecting to Plex…": "Kuqhagamshelwa kwi-Plex…",
@@ -738,7 +746,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Isilawuli kude (asinamaqhosha anemibala)",
     "Remote (number buttons N/A)": "Isilawuli kude (asinamaqhosha amanani)",
     "Remote control": "Ulawulo olukude",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Uxilongo olukude",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Uxilongo olukude luqokelela idatha yeli phepha.",
     "Remote diagnostics is off.": "Uxilongo olukude lucinyiwe.",
@@ -808,6 +824,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Umbhalo wefilimu",
@@ -828,6 +846,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Khetha umthombo wesakhelo soluhlu lokudlala se-EPG neelogo",
     "Select Stalker portal": "Khetha iphothali ye-Stalker",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Thumela isicelo",
@@ -915,6 +935,7 @@ var keyStrings = {
     "Starting...": "Kuyaqalwa…",
     Status: "Isimo",
     Stop: "Misa",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Misa uqokelelo lwedatha lwangoku",
     "Stop diagnostics": "Misa uxilongo",
     "Stop playback and return to live":
@@ -939,6 +960,8 @@ var keyStrings = {
     "Tabox settings": "Iisetingi ze-Tabox",
     "Text is too long for remote input.":
         "Umbhalo mde kakhulu ukuba ungafakwa ukude.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "I-URL yokufunyanwa kweseva yemiyalelo ayisebenzi.",
     "The device ID in the address is invalid.":

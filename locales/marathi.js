@@ -249,11 +249,19 @@ var keyStrings = {
     Connect: "कनेक्ट करा",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "हा प्लेअर प्रथम कमांड सर्व्हरशी कनेक्ट करा.",
     Connected: "कनेक्ट केलेले",
     "Connected. Waiting for the channel list...":
         "कनेक्ट केले. चॅनल सूचीची प्रतीक्षा करत आहे...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "या पेजसाठी रिमोट डायग्नोस्टिक्स कनेक्ट करत आहे.",
     "Connecting to Plex…": "Plex शी कनेक्ट करत आहे…",
@@ -705,7 +713,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "रिमोट (कोणतीही रंगाची बटणे नाहीत)",
     "Remote (number buttons N/A)": "रिमोट (नंबर बटणे नाहीत)",
     "Remote control": "रिमोट कंट्रोल",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "रिमोट डायग्नोस्टिक्स",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "या पेजसाठी रिमोट डायग्नोस्टिक्स गोळा करत आहे.",
     "Remote diagnostics is off.": "रिमोट डायग्नोस्टिक्स बंद आहे.",
@@ -773,6 +789,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "पटकथा",
@@ -793,6 +811,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG आणि लोगोसाठी प्लेलिस्ट टेम्पलेट स्रोत निवडा",
     "Select Stalker portal": "Stalker पोर्टल निवडा",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "विनंती पाठवा",
@@ -876,6 +896,7 @@ var keyStrings = {
     "Starting...": "सुरू करत आहे...",
     Status: "स्थिती",
     Stop: "थांबा",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "वर्तमान कॅप्चर थांबवा",
     "Stop diagnostics": "निदान थांबवा",
     "Stop playback and return to live": "प्लेबॅक थांबवा आणि थेट वर परत या",
@@ -898,6 +919,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox सेटिंग्ज",
     "Text is too long for remote input.": "दूरस्थ इनपुटसाठी मजकूर खूप मोठा आहे.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "कमांड सर्व्हर शोध URL अवैध आहे.",
     "The device ID in the address is invalid.": "पत्त्यातील ID डिव्हाइस अवैध आहे.",

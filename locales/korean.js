@@ -253,11 +253,19 @@ var keyStrings = {
     Connect: "연결",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "먼저 이 플레이어를 커맨드 서버에 연결하세요.",
     Connected: "연결됨",
     "Connected. Waiting for the channel list...":
         "연결되었습니다. 채널 목록을 기다리는 중...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "이 페이지에 대한 원격 진단을 연결합니다.",
     "Connecting to Plex…": "Plex에 연결 중…",
@@ -715,7 +723,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "리모콘(컬러 버튼 없음)",
     "Remote (number buttons N/A)": "리모콘(숫자버튼 없음)",
     "Remote control": "리모콘",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "원격진단",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "이 페이지에 대한 원격 진단을 수집 중입니다.",
     "Remote diagnostics is off.": "원격 진단이 꺼져 있습니다.",
@@ -784,6 +800,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "각본",
@@ -804,6 +822,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG 및 로고에 대한 재생 목록 템플릿 소스 선택",
     "Select Stalker portal": "Stalker 포탈 선택",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "요청 보내기",
@@ -889,6 +909,7 @@ var keyStrings = {
     "Starting...": "시작 중…",
     Status: "상태",
     Stop: "정지",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "전류 캡처 중지",
     "Stop diagnostics": "진단 중지",
     "Stop playback and return to live": "재생을 중지하고 라이브로 돌아갑니다.",
@@ -911,6 +932,8 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox 설정",
     "Text is too long for remote input.": "원격입력에 텍스트가 너무 깁니다.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "명령 서버 검색 URL가 잘못되었습니다.",
     "The device ID in the address is invalid.":

@@ -255,11 +255,19 @@ var keyStrings = {
     Connect: "Подключить",
     "Connect an HTTPS command server before allowing screenshots.":
         "Перед разрешением снимков экрана подключитесь к серверу команд по HTTPS.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Для снимков экрана подключите сервер удалённого управления по HTTPS.",
+    "Connect remote control to enable diagnostics.":
+        "Подключите удалённое управление, чтобы включить диагностику.",
     "Connect this player to a command server first.":
         "Сначала подключите плеер к серверу управления.",
     Connected: "Подключено",
     "Connected. Waiting for the channel list...":
         "Подключено. Ожидание списка каналов…",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Подключение удалённого управления разрешает этому серверу диагностику и восстановление плеера. Доступ сохраняется после перезапуска и прекращается при отключении. Каждая сессия сбора диагностики ограничена 10 минутами.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Подключение диагностики к серверу удалённого управления.",
     "Connecting remote diagnostics for this page.":
         "Подключение удалённой диагностики для этой страницы.",
     "Connecting to Plex…": "Подключение к Plex…",
@@ -719,7 +727,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Пульт без цветных кнопок",
     "Remote (number buttons N/A)": "Пульт без цифровых кнопок",
     "Remote control": "Удалённое управление",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Удалённое управление разрешает диагностику. Готово к запросам оператора.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Удалённое управление разрешает диагностику. Ожидание восстановления связи.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Удалённое управление включает снимки плеера, в том числе настроек. На снимках могут быть личные данные. В приложении дополнительное разрешение не требуется. В браузере нужно выбрать источник захвата.",
     "Remote diagnostics": "Удалённая диагностика",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Идёт сбор диагностики для этого подключения (до 10 минут на сессию).",
     "Remote diagnostics is collecting for this page.":
         "Для этой страницы идёт сбор диагностических данных.",
     "Remote diagnostics is off.": "Удалённая диагностика выключена.",
@@ -788,6 +804,8 @@ var keyStrings = {
         "Показ экрана отменён или недоступен.",
     "Screenshot permission could not be enabled.":
         "Не удалось разрешить снимки экрана.",
+    "Screenshots are available while remote control is connected.":
+        "Снимки экрана доступны, пока подключено удалённое управление.",
     "Screenshots are unavailable on this platform.":
         "На этой платформе снимки экрана недоступны.",
     Script: "Сценарий",
@@ -808,6 +826,7 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Выберите источник шаблона плейлиста, EPG и логотипов",
     "Select Stalker portal": "Выбор портала Stalker",
+    "Select screenshot source in browser": "Выбрать источник снимка в браузере",
     "Select the player tab or window in the browser sharing dialog.":
         "Выберите вкладку или окно плеера в диалоге показа экрана браузера.",
     "Send request": "Отправить запрос",
@@ -891,6 +910,7 @@ var keyStrings = {
     "Starting...": "Запуск…",
     Status: "Состояние",
     Stop: "Остановить",
+    "Stop browser sharing": "Остановить захват в браузере",
     "Stop current capture": "Завершить текущий сбор",
     "Stop diagnostics": "Остановить диагностику",
     "Stop playback and return to live":
@@ -915,6 +935,8 @@ var keyStrings = {
     "Tabox settings": "Настройки Tabox",
     "Text is too long for remote input.":
         "Текст слишком длинный для удалённого ввода.",
+    "The browser screenshot source is ready.":
+        "Источник снимков в браузере готов.",
     "The command server discovery URL is invalid.":
         "Неверный URL для поиска сервера команд.",
     "The device ID in the address is invalid.":

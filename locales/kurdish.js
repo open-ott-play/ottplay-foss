@@ -259,11 +259,19 @@ var keyStrings = {
     Connect: "Girêde",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Pêşî vê lêdêra medyayê bi serverek fermanê ve girêdin.",
     Connected: "Girêdayî",
     "Connected. Waiting for the channel list...":
         "Girêdayî. Li benda lîsteya kanalê ne...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Girêdana teşhîsên ji dûr ve ji bo vê rûpelê.",
     "Connecting to Plex…": "Girêdana bi Plex…",
@@ -722,7 +730,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Kontrola dûr (bê bişkokên rengîn)",
     "Remote (number buttons N/A)": "Kontrola dûr (bê bişkokên hejmarê)",
     "Remote control": "Kontrola dûr",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Teşhîsa ji dûr ve",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Diyagnostîka ji dûr ve ji bo vê rûpelê daneyan berhev dike.",
     "Remote diagnostics is off.": "Teşhîskirina ji dûr ve neçalak e.",
@@ -793,6 +809,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Senaryo",
@@ -814,6 +832,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Ji bo EPG û logoyan çavkaniya şablonê lîsteya lêdanê hilbijêrin",
     "Select Stalker portal": "Portala Stalker hilbijêre",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Daxwazê bişîne",
@@ -898,6 +918,7 @@ var keyStrings = {
     "Starting...": "Dest pê dike…",
     Status: "Rewş",
     Stop: "Bisekinîne",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Berhevkirina daneyên heyî bisekinînin",
     "Stop diagnostics": "Diyagnostîkê bisekinîne",
     "Stop playback and return to live":
@@ -922,6 +943,8 @@ var keyStrings = {
     "Tabox settings": "Mîhengên Tabox",
     "Text is too long for remote input.":
         "Nivîs ji bo têketina dûr pir dirêj e.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "URL-ya lêgerîna pêşkêşkerê fermanan nederbasdar e.",
     "The device ID in the address is invalid.":

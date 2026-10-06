@@ -258,11 +258,19 @@ var keyStrings = {
     Connect: "Yhdistä",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Liitä tämä mediasoitin ensin komentopalvelimeen.",
     Connected: "Yhdistetty",
     "Connected. Waiting for the channel list...":
         "Yhdistetty. Kanavalistaa odotellessa...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Yhdistetään tämän sivun etädiagnostiikkaa.",
     "Connecting to Plex…": "Yhdistetään verkkoon Plex…",
@@ -722,7 +730,15 @@ var keyStrings = {
     "Remote (color buttons N/A)": "Kaukosäädin (ei väripainikkeita)",
     "Remote (number buttons N/A)": "Kaukosäädin (ei numeropainikkeita)",
     "Remote control": "Kaukosäädin",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Etädiagnostiikka",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Etädiagnostiikkaa kerätään tälle sivulle.",
     "Remote diagnostics is off.": "Etädiagnostiikka on pois päältä.",
@@ -791,6 +807,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Käsikirjoitus",
@@ -811,6 +829,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Valitse soittolistamallin lähde EPG:lle ja logoille",
     "Select Stalker portal": "Valitse Stalker-portaali",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Lähetä pyyntö",
@@ -894,6 +914,7 @@ var keyStrings = {
     "Starting...": "Alkaen…",
     Status: "Tila",
     Stop: "Pysäytä",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Pysäytä nykyinen sieppaus",
     "Stop diagnostics": "Lopeta diagnostiikka",
     "Stop playback and return to live":
@@ -918,6 +939,8 @@ var keyStrings = {
     "Tabox settings": "Tabox asetukset",
     "Text is too long for remote input.":
         "Teksti on liian pitkä etäsyöttöä varten.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Komentopalvelimen etsintä URL on virheellinen.",
     "The device ID in the address is invalid.":

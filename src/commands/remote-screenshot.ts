@@ -1,6 +1,6 @@
 import { remotePlayerInfo } from "./remote-restart";
 
-/** Screenshot permissions cannot be created by a remote request. */
+/** Uses the connected controller and existing capture source; never opens a browser picker. */
 export function executeRemoteScreenshot(
     w: any,
     params: any,
@@ -40,7 +40,7 @@ export function executeRemoteScreenshot(
             remotePlayerInfo(w).runtime !== runtime
         ) {
             done({
-                data: { error: "Screenshot permission or player changed." },
+                data: { error: "Screenshot source or player changed." },
                 status: "rejected",
             });
             return;

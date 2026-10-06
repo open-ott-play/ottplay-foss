@@ -78,7 +78,7 @@ class RemoteScreenshotPlugin : Plugin() {
         request.deadline = deadline
         main.postDelayed(deadline, 10_000)
         // Animation callbacks precede drawing. The second frame crosses a full
-        // traversal so a just-closed protected panel is not copied from the old
+        // traversal so recent UI changes are not copied from the old
         // window buffer. Recheck the owner before starting native PixelCopy.
         val copyAfterPaint = Runnable {
             if (!isCurrent(request)) {

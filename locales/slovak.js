@@ -260,11 +260,19 @@ var keyStrings = {
     Connect: "Pripojte sa",
     "Connect an HTTPS command server before allowing screenshots.":
         "Connect an HTTPS command server before allowing screenshots.",
+    "Connect an HTTPS command server to use screenshots.":
+        "Connect an HTTPS command server to use screenshots.",
+    "Connect remote control to enable diagnostics.":
+        "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Najprv pripojte tento prehrávač médií k príkazovému serveru.",
     Connected: "Pripojené",
     "Connected. Waiting for the channel list...":
         "Pripojené. Čaká sa na zoznam kanálov...",
+    "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
+        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+    "Connecting remote diagnostics for the enabled remote control connection.":
+        "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Pripája sa vzdialená diagnostika pre túto stránku.",
     "Connecting to Plex…": "Pripája sa k Plex…",
@@ -734,7 +742,15 @@ var keyStrings = {
     "Remote (number buttons N/A)":
         "Diaľkové ovládanie (bez číselných tlačidiel)",
     "Remote control": "Diaľkové ovládanie",
+    "Remote control authorizes diagnostics. Ready for an operator.":
+        "Remote control authorizes diagnostics. Ready for an operator.",
+    "Remote control authorizes diagnostics. Waiting to reconnect.":
+        "Remote control authorizes diagnostics. Waiting to reconnect.",
+    "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
+        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
     "Remote diagnostics": "Diaľková diagnostika",
+    "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
+        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
     "Remote diagnostics is collecting for this page.":
         "Pre túto stránku sa zhromažďuje vzdialená diagnostika.",
     "Remote diagnostics is off.": "Diaľková diagnostika je vypnutá.",
@@ -804,6 +820,8 @@ var keyStrings = {
         "Screen sharing was cancelled or is unavailable.",
     "Screenshot permission could not be enabled.":
         "Screenshot permission could not be enabled.",
+    "Screenshots are available while remote control is connected.":
+        "Screenshots are available while remote control is connected.",
     "Screenshots are unavailable on this platform.":
         "Screenshots are unavailable on this platform.",
     Script: "Scenár",
@@ -824,6 +842,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Vyberte zdroj šablóny zoznamu videí pre EPG a logá",
     "Select Stalker portal": "Vyberte Stalker portál",
+    "Select screenshot source in browser":
+        "Select screenshot source in browser",
     "Select the player tab or window in the browser sharing dialog.":
         "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Odoslať žiadosť",
@@ -908,6 +928,7 @@ var keyStrings = {
     "Starting...": "Začína sa…",
     Status: "Stav",
     Stop: "Zastaviť",
+    "Stop browser sharing": "Stop browser sharing",
     "Stop current capture": "Zastaviť aktuálne snímanie",
     "Stop diagnostics": "Zastavte diagnostiku",
     "Stop playback and return to live":
@@ -932,6 +953,8 @@ var keyStrings = {
     "Tabox settings": "Tabox nastavenia",
     "Text is too long for remote input.":
         "Text je príliš dlhý na diaľkový vstup.",
+    "The browser screenshot source is ready.":
+        "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
         "Zistenie príkazového servera URL je neplatné.",
     "The device ID in the address is invalid.":
