@@ -473,6 +473,190 @@
             }
 
 
+            // BCP 47 language/script matching uses the shipped CLDR 48 scripts.
+            // Keep this independent of Intl and the main bundle for older TVs.
+            function detectBootLanguage() {
+                var locales = {
+                    "af": ["_afr", "latn"],
+                    "am": ["_amh", "ethi"],
+                    "ar": ["_ara", "arab"],
+                    "as": ["_asm", "beng"],
+                    "az": ["_aze", "latn"],
+                    "be": ["_bel", "cyrl"],
+                    "bg": ["_bul", "cyrl"],
+                    "bn": ["_ben", "beng"],
+                    "bs": ["_bos", "latn"],
+                    "ca": ["_cat", "latn"],
+                    "cs": ["_cze", "latn"],
+                    "da": ["_dan", "latn"],
+                    "de": ["_ger", "latn"],
+                    "el": ["_gre", "grek"],
+                    "en": ["_eng", "latn"],
+                    "es": ["_spa", "latn"],
+                    "et": ["_est", "latn"],
+                    "eu": ["_baq", "latn"],
+                    "fa": ["_per", "arab"],
+                    "fi": ["_fin", "latn"],
+                    "fil": ["_fil", "latn"],
+                    "fr": ["_fra", "latn"],
+                    "ga": ["_gle", "latn"],
+                    "gl": ["_glg", "latn"],
+                    "gu": ["_guj", "gujr"],
+                    "ha": ["_hau", "latn"],
+                    "he": ["_heb", "hebr"],
+                    "hi": ["_hin", "deva"],
+                    "hr": ["_hrv", "latn"],
+                    "hu": ["_hun", "latn"],
+                    "hy": ["_arm", "armn"],
+                    "id": ["_ind", "latn"],
+                    "ig": ["_ibo", "latn"],
+                    "is": ["_ice", "latn"],
+                    "it": ["_ita", "latn"],
+                    "ja": ["_jpn", "jpan"],
+                    "ka": ["_geo", "geor"],
+                    "kk": ["_kaz", "cyrl"],
+                    "km": ["_khm", "khmr"],
+                    "kn": ["_kan", "knda"],
+                    "ko": ["_kor", "kore"],
+                    "ku": ["_kur", "latn"],
+                    "ky": ["_kir", "cyrl"],
+                    "lo": ["_lao", "laoo"],
+                    "lt": ["_lit", "latn"],
+                    "lv": ["_lat", "latn"],
+                    "mg": ["_mlg", "latn"],
+                    "mk": ["_mac", "cyrl"],
+                    "ml": ["_mal", "mlym"],
+                    "mn": ["_mon", "cyrl"],
+                    "mr": ["_mar", "deva"],
+                    "ms": ["_may", "latn"],
+                    "mt": ["_mlt", "latn"],
+                    "my": ["_bur", "mymr"],
+                    "ne": ["_nep", "deva"],
+                    "nl": ["_dut", "latn"],
+                    "no": ["_nor", "latn"],
+                    "or": ["_ori", "orya"],
+                    "pa": ["_pan", "guru"],
+                    "pl": ["_pol", "latn"],
+                    "ps": ["_pus", "arab"],
+                    "pt": ["_por", "latn"],
+                    "ro": ["_rou", "latn"],
+                    "ru": ["_rus", "cyrl"],
+                    "rw": ["_kin", "latn"],
+                    "sd": ["_snd", "arab"],
+                    "si": ["_sin", "sinh"],
+                    "sk": ["_slo", "latn"],
+                    "sl": ["_slv", "latn"],
+                    "so": ["_som", "latn"],
+                    "sq": ["_alb", "latn"],
+                    "sr": ["_srp", "cyrl"],
+                    "sv": ["_swe", "latn"],
+                    "sw": ["_swa", "latn"],
+                    "ta": ["_tam", "taml"],
+                    "te": ["_tel", "telu"],
+                    "tg": ["_tgk", "cyrl"],
+                    "th": ["_tha", "thai"],
+                    "tk": ["_tuk", "latn"],
+                    "tr": ["_tur", "latn"],
+                    "uk": ["_ukr", "cyrl"],
+                    "ur": ["_urd", "arab"],
+                    "uz": ["_uzb", "latn"],
+                    "vi": ["_vie", "latn"],
+                    "xh": ["_xho", "latn"],
+                    "yo": ["_yor", "latn"],
+                    "zh": ["_chi", "hans"],
+                    "zu": ["_zul", "latn"]
+                };
+                var regionalScripts = {
+                    "az-iq": "arab",
+                    "az-ir": "arab",
+                    "az-ru": "cyrl",
+                    "ha-cm": "arab",
+                    "ha-sd": "arab",
+                    "kk-af": "arab",
+                    "kk-cn": "arab",
+                    "kk-ir": "arab",
+                    "kk-mn": "arab",
+                    "ku-am": "cyrl",
+                    "ku-az": "cyrl",
+                    "ku-ge": "cyrl",
+                    "ku-iq": "arab",
+                    "ku-ir": "arab",
+                    "ku-lb": "arab",
+                    "ku-tm": "cyrl",
+                    "ky-cn": "arab",
+                    "ky-tr": "latn",
+                    "mn-cn": "mong",
+                    "ms-cc": "arab",
+                    "pa-pk": "arab",
+                    "sd-in": "deva",
+                    "sr-me": "latn",
+                    "sr-ro": "latn",
+                    "sr-tr": "latn",
+                    "tg-pk": "arab",
+                    "uz-af": "arab",
+                    "uz-cn": "cyrl",
+                    "zh-au": "hant",
+                    "zh-bn": "hant",
+                    "zh-gb": "hant",
+                    "zh-gf": "hant",
+                    "zh-hk": "hant",
+                    "zh-id": "hant",
+                    "zh-mo": "hant",
+                    "zh-pa": "hant",
+                    "zh-pf": "hant",
+                    "zh-ph": "hant",
+                    "zh-sr": "hant",
+                    "zh-th": "hant",
+                    "zh-tw": "hant",
+                    "zh-us": "hant",
+                    "zh-vn": "hant"
+                };
+                var aliases = { iw: "he", in: "id", tl: "fil", nb: "no", mo: "ro", kmr: "ku" };
+                function match(value) {
+                    if (typeof value !== "string") return "";
+                    var tag = value.replace(/_/g, "-").toLowerCase();
+                    if (!/^[a-z]{2,3}(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?$/.test(tag)) return "";
+                    var parts = tag.split("-"), base = parts[0], script = "", region = "";
+                    if (Object.prototype.hasOwnProperty.call(aliases, base)) base = aliases[base];
+                    if (!Object.prototype.hasOwnProperty.call(locales, base)) return "";
+                    var i = 1;
+                    if (/^[a-z]{4}$/.test(parts[i] || "")) script = parts[i++];
+                    if (/^(?:[a-z]{2}|[0-9]{3})$/.test(parts[i] || "")) region = parts[i];
+                    var entry = locales[base];
+                    script = script || regionalScripts[base + "-" + region] || entry[1];
+                    return script === entry[1] ? entry[0] : "";
+                }
+                function choose(values) {
+                    for (var i = 0; i < values.length; i++) {
+                        var code = match(values[i]);
+                        if (code) return code;
+                    }
+                    return "";
+                }
+                function hasPreferences(values) {
+                    return Object.prototype.toString.call(values) === "[object Array]" && values.length > 0;
+                }
+                var values, code, i;
+                // A nonempty native/browser list is authoritative, even when none
+                // of its languages are supported. Do not guess a different script
+                // from a less precise fallback such as language="zh".
+                try {
+                    values = window.__ottPreferredLanguages;
+                    if (hasPreferences(values)) return choose(values);
+                } catch (ignore) {}
+                try {
+                    values = navigator.languages;
+                    if (hasPreferences(values)) return choose(values);
+                } catch (ignored) {}
+                var properties = ["language", "userLanguage", "browserLanguage"];
+                for (i = 0; i < properties.length; i++) {
+                    try {
+                        code = match(navigator[properties[i]]);
+                        if (code) return code;
+                    } catch (ignored) {}
+                }
+                return "";
+            }
             // Same unprefixed preference used by stbGetItem, including its
             // cookie fallback when localStorage is denied. No catalog is copied.
             function loadBootLanguage(ready) {
@@ -555,6 +739,8 @@
                         if (cookie) language = decodeURIComponent(cookie[1]);
                     } catch (ignored) {}
                 }
+                var automatic = !language;
+                if (automatic) language = detectBootLanguage();
                 if (!Object.prototype.hasOwnProperty.call(assets, language)) { ready(); return; }
                 window.__ottBootDictionary = window.keyStrings;
                 function finish() {
@@ -571,6 +757,10 @@
                     if (ended) {
                         window.keyStrings = window.__ottBootDictionary || {};
                         return;
+                    }
+                    if (window.keyStrings && window.keyStrings !== window.__ottBootDictionary &&
+                            typeof window.keyStrings.lang === "string") {
+                        window.__ottBootLanguage = { code: language, dictionary: window.keyStrings, automatic: automatic };
                     }
                     window.__ottBootDictionary = window.keyStrings;
                     finish();

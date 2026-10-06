@@ -1,6 +1,22 @@
 import UIKit
 import Capacitor
 import CapApp_SPM
+import WebKit
+
+private func preferredLanguageOrigin(_ url: URL) -> String? {
+    guard let scheme = url.scheme?.lowercased(),
+          let host = url.host?.lowercased(), !host.isEmpty,
+          !["file", "data", "about", "javascript", "blob"].contains(scheme) else {
+        return nil
+    }
+    let authority = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+    var origin = "\(scheme)://\(authority)"
+    if let port = url.port,
+       !(scheme == "http" && port == 80), !(scheme == "https" && port == 443) {
+        origin += ":\(port)"
+    }
+    return origin
+}
 
 class MainViewController: CAPBridgeViewController {
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -12,6 +28,29 @@ class MainViewController: CAPBridgeViewController {
     }
 
     override func capacitorDidLoad() {
+        // This hook runs before Capacitor's first loadWebView(). WebKit exposes
+        // only its primary language to JS; retain the full native preference order.
+        let origins = [bridge?.config.localURL, bridge?.config.serverURL]
+            .compactMap { $0 }
+            .compactMap(preferredLanguageOrigin)
+        if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
+           let json = String(data: data, encoding: .utf8),
+           let originsData = try? JSONSerialization.data(withJSONObject: origins),
+           let originsJson = String(data: originsData, encoding: .utf8) {
+            let script = WKUserScript(
+                source: """
+                (function () {
+                    if (window !== window.top) return;
+                    var origin = window.location.protocol + "//" + window.location.host;
+                    if (\(originsJson).indexOf(origin) === -1) return;
+                    window.__ottPreferredLanguages = \(json);
+                }());
+                """,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+            webView?.configuration.userContentController.addUserScript(script)
+        }
         bridge?.registerPluginInstance(AccessMediaPlugin())
         MobileXmltvEpg.requestHandler = { request, completion in
             AccessMedia.fetch(request, discoverOnFailure: false, completion: completion)
