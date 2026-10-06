@@ -2023,52 +2023,75 @@ test("PLi-HD keeps preview, mask and list aligned after mirroring and resize", a
     }
 });
 
-test("English interface credits are readable offline and return to the list", async ({
-    browser,
-}) => {
-    const fixture = await fixturePage(browser, "tauri");
-    const page = fixture.page;
-    try {
-        const title = await page.locator("#listCaption").textContent();
-        await page.evaluate(() => {
-            infoArr
-                .find((entry) => entry.name === "Interface credits")
-                .action();
-        });
-        const credits = page.locator("#listAbout .interface-credits");
-        await expect(credits).toHaveAttribute("lang", "en");
-        await expect(credits).toContainText("Vali (2009–2010)");
-        await expect(credits).toContainText("VU+NL, Milo");
-        await expect(credits).toContainText("alex_qr");
-        await expect(credits.locator("a").first()).toHaveAttribute(
-            "href",
-            "https://github.com/littlesat/skin-PLiHD"
+for (const language of ["english", "russian"]) {
+    test(`${language} credits controls retain readable English attribution offline`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(
+            browser,
+            "tauri",
+            undefined,
+            language
         );
-        expect(
+        const page = fixture.page;
+        try {
+            const title = await page.locator("#listCaption").textContent();
             await page.evaluate(() => {
-                aboutKeyHandler(keys.DOWN);
-                return document.querySelector("#listAbout .interface-credits")
-                    .scrollTop;
-            })
-        ).toBeGreaterThan(0);
-        await page.evaluate(() => aboutKeyHandler(keys.RETURN));
-        await expect(credits).toHaveCount(0);
-        await expect(page.locator("#listCaption")).toHaveText(title);
-        await expect(page.locator("#it0")).toBeVisible();
-        await page.evaluate(() => {
-            infoArr
-                .find((entry) => entry.name === "Interface credits")
-                .action();
-        });
-        await page.locator('#listPodval [role="button"]').click();
-        await expect(credits).toHaveCount(0);
-        await expect(page.locator("#it0")).toBeVisible();
-        expect(fixture.errors).toEqual([]);
-        expect(fixture.unexpectedRequests).toEqual([]);
-    } finally {
-        await fixture.close();
-    }
-});
+                infoArr
+                    .find((entry) => entry.name === "Interface credits")
+                    .action();
+            });
+            const credits = page.locator("#listAbout .interface-credits");
+            await expect(credits.locator("div[lang=en]")).toBeVisible();
+            await expect(credits.locator(".credits-title")).toHaveText(
+                language === "russian"
+                    ? "Авторы интерфейса"
+                    : "Interface credits"
+            );
+            await expect(credits.locator(".credits-language")).toHaveText(
+                language === "russian"
+                    ? "Оригинальный текст: Английский"
+                    : "Original text: English"
+            );
+            await expect(credits.locator(".credits-navigation")).toHaveText(
+                language === "russian"
+                    ? "Прокрутка — вверх и вниз. Назад — закрыть."
+                    : "Use Up / Down to scroll. Back to close."
+            );
+            await expect(credits).toContainText("Vali (2009–2010)");
+            await expect(credits).toContainText("VU+NL, Milo");
+            await expect(credits).toContainText("alex_qr");
+            await expect(credits.locator("a").first()).toHaveAttribute(
+                "href",
+                "https://github.com/littlesat/skin-PLiHD"
+            );
+            expect(
+                await page.evaluate(() => {
+                    aboutKeyHandler(keys.DOWN);
+                    return document.querySelector(
+                        "#listAbout .interface-credits"
+                    ).scrollTop;
+                })
+            ).toBeGreaterThan(0);
+            await page.evaluate(() => aboutKeyHandler(keys.RETURN));
+            await expect(credits).toHaveCount(0);
+            await expect(page.locator("#listCaption")).toHaveText(title);
+            await expect(page.locator("#it0")).toBeVisible();
+            await page.evaluate(() => {
+                infoArr
+                    .find((entry) => entry.name === "Interface credits")
+                    .action();
+            });
+            await page.locator('#listPodval [role="button"]').click();
+            await expect(credits).toHaveCount(0);
+            await expect(page.locator("#it0")).toBeVisible();
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
 
 for (const profile of ["tauri", "capacitor"]) {
     test(`${profile} media controls dispatch without inline handlers`, async ({
