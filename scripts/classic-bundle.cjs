@@ -98,6 +98,7 @@ const CLASSIC_MODULES = [
     "build/plugins/diagnostics-permission.js",
     "build/plugins/diagnostics-controller.js",
 
+    "build/plugins/strict-kiosk-input.js",
     "build/plugins/kiosk.js",
     "build/plugins/control-discovery.js",
     "build/plugins/mobile-native-media.js",
