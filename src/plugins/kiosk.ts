@@ -1,4 +1,5 @@
 import { caselessKey } from "../utils/caseless";
+import { createStrictKioskInput } from "./strict-kiosk-input";
 
 /** Device-local policy. Only the authenticated command-server dispatcher mutates it. */
 export function createKiosk(w: any): any {
@@ -12,6 +13,7 @@ export function createKiosk(w: any): any {
     var lastSaved = 0;
     var lastMediaId = "";
     var mediaStarting = false;
+    var strictInput = createStrictKioskInput(w, strict);
     function now(): number {
         return w.performance && typeof w.performance.now === "function"
             ? w.performance.now()
@@ -29,6 +31,9 @@ export function createKiosk(w: any): any {
     function locked(): boolean {
         return !!(policy && (policy.channel || policy.media));
     }
+    function strict(): boolean {
+        return locked() && policy.strict === true;
+    }
     function reset(): void {
         lastPosition = null;
         lastProgress = now();
@@ -36,6 +41,7 @@ export function createKiosk(w: any): any {
         lastMediaId = "";
         mediaStarting = !!(policy && policy.media);
         health = locked() ? "starting" : policy ? "waiting" : "idle";
+        strictInput.sync();
     }
     function save(next: any): boolean {
         try {
@@ -72,6 +78,7 @@ export function createKiosk(w: any): any {
             retries: retries,
             retry_seconds: 10,
             state: locked() ? "locked" : policy ? "waiting" : "off",
+            strict: !!(policy && policy.strict),
         };
     }
     function allowed(id: any): boolean {
@@ -146,6 +153,7 @@ export function createKiosk(w: any): any {
                     },
                     provider: policy.provider,
                     source: policy.source,
+                    strict: policy.strict === true,
                 })
             )
                 return false;
@@ -327,8 +335,12 @@ export function createKiosk(w: any): any {
             typeof params !== "object" ||
             Array.isArray(params) ||
             Object.keys(params).some(function (name) {
-                return name !== "mode" && name !== "query";
+                return name !== "mode" && name !== "query" && name !== "strict";
             }) ||
+            (params.strict !== undefined &&
+                typeof params.strict !== "boolean") ||
+            ((mode === "off" || mode === "status") &&
+                params.strict !== undefined) ||
             ["status", "on", "off", "set"].indexOf(mode) < 0 ||
             (params.query !== undefined &&
                 (typeof params.query !== "string" ||
@@ -356,6 +368,16 @@ export function createKiosk(w: any): any {
                 return;
             }
             if (mode === "on" && enabled() && params.query === undefined) {
+                if (
+                    params.strict !== undefined &&
+                    params.strict !== !!policy.strict
+                ) {
+                    if (!save({ ...policy, strict: params.strict })) {
+                        fail("Could not save kiosk policy.");
+                        return;
+                    }
+                    if (locked()) closeControls();
+                }
                 done({ data: snapshot(), status: "ok" });
                 return;
             }
@@ -402,6 +424,10 @@ export function createKiosk(w: any): any {
                         media: selection,
                         provider: "vportal",
                         source: selection.source,
+                        strict:
+                            params.strict !== undefined
+                                ? params.strict
+                                : !!(policy && policy.strict),
                     })
                 ) {
                     fail("Could not save kiosk policy.");
@@ -477,6 +503,10 @@ export function createKiosk(w: any): any {
                     channel: selected,
                     provider: provider(),
                     source: source(),
+                    strict:
+                        params.strict !== undefined
+                            ? params.strict
+                            : !!(policy && policy.strict),
                 })
             ) {
                 fail("Could not save kiosk policy.");
@@ -501,6 +531,8 @@ export function createKiosk(w: any): any {
                 saved &&
                 typeof saved.source === "string" &&
                 typeof saved.provider === "string" &&
+                (saved.strict === undefined ||
+                    typeof saved.strict === "boolean") &&
                 (saved.media
                     ? saved.provider === "vportal" &&
                       saved.channel === null &&
@@ -612,5 +644,7 @@ export function createKiosk(w: any): any {
         },
         snapshot: snapshot,
         stopDiagnostics: stopDiagnostics,
+        strict: strict,
+        strictKey: strictInput.key,
     };
 }

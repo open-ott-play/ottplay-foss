@@ -98,6 +98,12 @@ export var keys: Record<string, number> = {
  */
 export function keyHandler(event: KeyboardEvent): void {
     cancelNativeListInertia();
+    var kiosk = (window as any).__ottKiosk;
+    if (kiosk && kiosk.strict && kiosk.strict()) {
+        handleTouchCancel();
+        kiosk.strictKey(event);
+        return;
+    }
     // If an input, textarea, or contenteditable is focused, let the browser handle
     // printable typing. But when #listEdit is open (native playlist-name editor),
     // still route accept/cancel so TV Back also reaches handleEditKey → editKey2.
