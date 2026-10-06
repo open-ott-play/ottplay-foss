@@ -99,13 +99,14 @@ test("every complete preloaded family stays synchronous", () => {
         "playlist",
         "plex",
         "stalker",
+        "vportal",
     ]);
     let completed = 0;
     for (const kind of kinds) {
         f.publish(kind);
         f.ensure(kind, owner(), () => completed++);
     }
-    assert.equal(completed, 6);
+    assert.equal(completed, 7);
     assert.equal(f.requests.length, 0);
 });
 

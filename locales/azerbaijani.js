@@ -275,6 +275,8 @@ var keyStrings = {
         "Cütləşmə sorğusu yaratmaq mümkün olmadı. Yenidən sınamaq üçün serveri təkrar axtarın.",
     "Could not load. Select to retry.":
         "Yükləmək mümkün olmadı. Yenidən cəhd üçün seçin.",
+    "Could not save provider settings.":
+        "Provayder parametrlərini saxlamaq mümkün olmadı.",
     "Could not save the approved command server settings.":
         "Əmr serverinin təsdiqlənmiş ayarlarını saxlamaq mümkün olmadı.",
     "Could not update HTTP remote control.":
@@ -602,6 +604,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Saxlanmış ayarlar tapılmadı",
+    "Not configured": "Qurulmayıb",
     "Not found": "Tapılmadı",
     "Not reduce video when showing the list (bugfix)":
         "Siyahı göstərilərkən videonu kiçiltmə (xəta düzəlişi)",
@@ -970,6 +973,7 @@ var keyStrings = {
     "VOD not supported by provider": "Provayder tələb üzrə videonu dəstəkləmir",
     "Volume step, %": "Səs addımı, %",
     "VPortal link": "VPortal keçidi",
+    "VPortal profiles": "VPortal profilləri",
     "VPortal request failed":
         "VPortal yüklənmədi. Keçidi, giriş açarını və portalın əlçatanlığını yoxlayın.",
     volume: "səs",

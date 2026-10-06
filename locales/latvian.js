@@ -275,6 +275,8 @@ var keyStrings = {
         "Neizdevās izveidot pārošanas pieprasījumu. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
     "Could not load. Select to retry.":
         "Neizdevās ielādēt. Atlasiet, lai mēģinātu vēlreiz.",
+    "Could not save provider settings.":
+        "Neizdevās saglabāt pakalpojumu sniedzēja iestatījumus.",
     "Could not save the approved command server settings.":
         "Neizdevās saglabāt apstiprinātos komandu servera iestatījumus.",
     "Could not update HTTP remote control.":
@@ -606,6 +608,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nav atrasti saglabāti iestatījumi",
+    "Not configured": "Nav konfigurēts",
     "Not found": "Nav atrasts",
     "Not reduce video when showing the list (bugfix)":
         "Nesamazināt video, rādot sarakstu (kļūdas labojums)",
@@ -973,6 +976,7 @@ var keyStrings = {
     "VOD not supported by provider": "Šis pakalpojuma sniedzējs neatbalsta VOD",
     "Volume step, %": "Skaļuma solis, %",
     "VPortal link": "VPortal saite",
+    "VPortal profiles": "VPortal profili",
     "VPortal request failed":
         "Neizdevās ielādēt VPortal. Pārbaudiet saiti, piekļuves atslēgu un portāla pieejamību.",
     volume: "skaļums",

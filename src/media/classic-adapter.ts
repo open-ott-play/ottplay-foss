@@ -1270,6 +1270,12 @@ function classicMediaRuntime(): any {
         },
         prepare: function (payload: any, url: string) {
             if (
+                w.__ottKiosk &&
+                typeof w.__ottKiosk.allowedMedia === "function" &&
+                !w.__ottKiosk.allowedMedia(payload.__ottMediaRef)
+            )
+                return null;
+            if (
                 payload.__ottMediaRef &&
                 payload.__ottMediaRef.sourceId !== source
             )
@@ -1352,6 +1358,61 @@ function classicMediaRuntime(): any {
                     );
                 },
             };
+        },
+        restoreKiosk: function (selection: any, guard: () => boolean) {
+            if (
+                !current() ||
+                !guard() ||
+                selection.source !== source ||
+                !Array.isArray(selection.records) ||
+                !selection.records.length
+            )
+                return false;
+            var items = describe(selection.records, {
+                kind: "history",
+                title: "VPortal",
+            });
+            var index = selection.index;
+            if (
+                !items[index] ||
+                items.some(function (item: MediaLibraryItem) {
+                    return (
+                        !item.payload.request || item.ref.sourceId !== source
+                    );
+                })
+            )
+                return false;
+            var revision = automaticGeneration + 1;
+            api.cancelAuto();
+            if (!current() || !guard() || automaticGeneration !== revision)
+                return false;
+            if (typeof w.__ottClassicPlayback.reconcile === "function")
+                w.__ottClassicPlayback.reconcile();
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            function valid() {
+                return (
+                    current() &&
+                    guard() &&
+                    revision === automaticGeneration &&
+                    w.__ottClassicPlayback.snapshot().generation === generation
+                );
+            }
+            if (!valid()) return false;
+            authorize(items[index], function () {
+                if (!valid()) return;
+                resolve(
+                    items[index],
+                    { index: index, items: items, repeat: "all" },
+                    true,
+                    valid,
+                    undefined,
+                    {
+                        position: selection.position || 0,
+                        unavailable: function () {},
+                    }
+                );
+            });
+            return true;
         },
         restoreLast: function (onUnavailable?: () => void) {
             if (!current() || restored) return false;
@@ -1904,6 +1965,75 @@ function classicMediaRuntime(): any {
     highlight: function (index: number, revision: number) {
         classicMediaRuntime().highlight(index, revision);
     },
+    keepKioskLoop: function () {
+        var playing = mediaClassicPlayback;
+        if (!playing || playing.ref.sourceId !== classicMediaSourceId()) return;
+        if (playing.sequence) playing.sequence.repeat = "all";
+        else
+            playing.sequence = {
+                index: 0,
+                items: [
+                    {
+                        payload: playing.payload,
+                        ref: playing.ref,
+                        title: String(playing.payload.title || ""),
+                    },
+                ],
+                repeat: "all",
+            };
+    },
+    kioskSelection: function () {
+        var w = window as any;
+        var playing = mediaClassicPlayback;
+        var source = classicMediaSourceId();
+        var state = w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
+        if (
+            !playing ||
+            playing.ref.sourceId !== source ||
+            !w.__ottActiveProviderDriver ||
+            w.__ottActiveProviderDriver.id !== "vportal" ||
+            !state ||
+            state.phase === "stopped" ||
+            state.phase === "idle" ||
+            !state.target ||
+            state.target.kind !== "vod" ||
+            state.target.sourceId !== source ||
+            state.target.channelId !== playing.ref.itemId
+        )
+            return null;
+        var sequence = playing.sequence;
+        var items = sequence ? sequence.items : [playing];
+        if (!items.length || items.length > 1000) return null;
+        var index = -1;
+        var records: any[] = [];
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (!item.payload.request || item.ref.sourceId !== source)
+                return null;
+            if (item.ref.itemId === playing.ref.itemId) index = i;
+            // Persist provider requests/identities, never resolved or expiring media URLs.
+            records.push({
+                __ottMediaRef: item.ref,
+                __ottVPortalQueue: true,
+                adult: item.payload.adult,
+                request: item.payload.request,
+                title: String(item.payload.title || ""),
+                vportalSource: item.payload.vportalSource,
+            });
+        }
+        if (index < 0) return null;
+        var value = {
+            index: index,
+            position:
+                isFinite(state.position) && state.position >= 0
+                    ? state.position
+                    : 0,
+            records: records,
+            source: source,
+        };
+        var json = JSON.stringify(value);
+        return json.length <= 500000 ? JSON.parse(json) : null;
+    },
     open: function (target: any, title?: string) {
         classicMediaRuntime().open(target, title);
     },
@@ -1938,6 +2068,9 @@ function classicMediaRuntime(): any {
     },
     prepare: function (item: any, url: string) {
         return classicMediaRuntime().prepare(item, url);
+    },
+    restoreKiosk: function (selection: any, guard: () => boolean) {
+        return classicMediaRuntime().restoreKiosk(selection, guard);
     },
     restoreLast: function (onUnavailable?: () => void) {
         return classicMediaRuntime().restoreLast(onUnavailable);

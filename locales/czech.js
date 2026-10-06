@@ -272,6 +272,8 @@ var keyStrings = {
         "Nepodařilo se vytvořit žádost o párování. Pro další pokus znovu vyhledejte server.",
     "Could not load. Select to retry.":
         "Načítání se nezdařilo. Vyberte pro opakování.",
+    "Could not save provider settings.":
+        "Nastavení poskytovatele se nepodařilo uložit.",
     "Could not save the approved command server settings.":
         "Nepodařilo se uložit schválená nastavení příkazového serveru.",
     "Could not update HTTP remote control.":
@@ -597,6 +599,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Uložená nastavení nebyla nalezena",
+    "Not configured": "Nenastaveno",
     "Not found": "Nenalezeno",
     "Not reduce video when showing the list (bugfix)":
         "Nezmenšovat video při zobrazení seznamu (oprava)",
@@ -965,6 +968,7 @@ var keyStrings = {
         "Poskytovatel nepodporuje video na vyžádání",
     "Volume step, %": "Krok hlasitosti, %",
     "VPortal link": "Odkaz VPortal",
+    "VPortal profiles": "Profily VPortal",
     "VPortal request failed":
         "Nepodařilo se načíst VPortal. Zkontrolujte odkaz, přístupový klíč a dostupnost portálu.",
     volume: "hlasitost",

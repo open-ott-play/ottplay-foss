@@ -623,3 +623,132 @@ for (const key of ["Enter", " "]) {
 console.log(
     "Kiosk admission, recovery, persistence, remote replacement and input tests passed"
 );
+
+// VPortal has no TV channel list: lock the current request-backed media queue.
+{
+    const r = rig();
+    const source = "vportal:0@one";
+    r.source(source);
+    r.w.__ottActiveProviderDriver = { id: "vportal" };
+    r.w.cList = [];
+    r.w.curList = [];
+    const records = [0, 1].map((i) => ({
+        __ottMediaRef: { itemId: "episode:" + i, sourceId: source },
+        request: { episode: i },
+        title: "Episode " + i,
+        vportalSource: source,
+    }));
+    let selection = { index: 0, position: 12, records, source };
+    const restored = [];
+    let looped = 0;
+    let ended = false;
+    r.w.__ottMedia = {
+        current: () => ({
+            ended: ended,
+            ref: selection.records[selection.index].__ottMediaRef,
+        }),
+        keepKioskLoop: () => looped++,
+        kioskSelection: () => selection,
+        restoreKiosk: (value, guard) => {
+            restored.push({ guard, value });
+            return true;
+        },
+        sourceId: () => source,
+    };
+    r.w.__ottClassicPlayback = {
+        snapshot: () => ({
+            position: selection.position,
+            target: {
+                channelId:
+                    selection.records[selection.index].__ottMediaRef.itemId,
+                kind: "vod",
+                sourceId: source,
+            },
+        }),
+    };
+    const result = r.request({ mode: "on" });
+    assert.equal(result.status, "ok");
+    assert.equal(result.data.state, "locked");
+    assert.equal(result.data.channel, null);
+    assert.equal(result.data.media.total, 2);
+    assert.equal(looped, 1);
+    assert.equal(
+        r.kiosk.allowed("a"),
+        false,
+        "TV cannot enter a VPortal kiosk"
+    );
+    assert.equal(
+        r.kiosk.allowedMedia(records[1].__ottMediaRef),
+        true,
+        "next episode remains allowed"
+    );
+    assert.equal(
+        r.kiosk.allowedMedia({ itemId: "unrelated", sourceId: source }),
+        false
+    );
+    assert(
+        !JSON.stringify(result).includes("request"),
+        "wire status does not expose media requests"
+    );
+    r.advance(59);
+    assert.equal(restored.length, 0, "slow native startup gets its full grace");
+    r.advance(2);
+    assert.equal(restored.length, 1);
+    r.play(true);
+    r.advance(20, true);
+    assert.equal(restored.length, 1, "healthy VOD never restarts");
+    ended = true;
+    r.play(false);
+    r.advance(20);
+    assert.equal(
+        restored.length,
+        1,
+        "slow next-episode resolution receives startup grace"
+    );
+    ended = false;
+    r.play(true);
+    selection = { index: 1, position: 3, records, source };
+    r.advance(6, true);
+    assert.equal(
+        JSON.parse(r.storage.__ottKioskV1).media.index,
+        1,
+        "episode cursor persists"
+    );
+    assert.equal(r.kiosk.snapshot().media.index, 1);
+    const reloaded = rig(r.storage);
+    reloaded.source(source);
+    reloaded.w.__ottActiveProviderDriver = { id: "vportal" };
+    reloaded.w.__ottMedia = r.w.__ottMedia;
+    assert.equal(reloaded.kiosk.restoreMedia(), true);
+    assert.equal(restored.at(-1).value.index, 1);
+    const guard = restored.at(-1).guard;
+    assert.equal(guard(), true);
+    reloaded.request({ mode: "off" });
+    assert.equal(guard(), false, "unlock invalidates delayed resume");
+    r.w.__ottMedia.sourceId = () => "vportal:1@two";
+    r.advance(60);
+    assert.equal(
+        r.kiosk.snapshot().health,
+        "source-unavailable",
+        "same IDs on another profile cannot play"
+    );
+    r.request({ mode: "off" });
+    assert.equal(r.kiosk.allowedMedia(null), true);
+}
+{
+    const r = rig();
+    r.w.__ottActiveProviderDriver = { id: "vportal" };
+    r.w.__ottMedia = {
+        kioskSelection: () => null,
+        sourceId: () => "vportal:0",
+    };
+    assert.equal(
+        r.request({ mode: "on" }).status,
+        "rejected",
+        "empty library cannot masquerade as a locked video"
+    );
+    assert.equal(r.kiosk.enabled(), false);
+}
+console.log(
+    "VPortal kiosk persistence, episode admission, startup grace and cancellation passed"
+);

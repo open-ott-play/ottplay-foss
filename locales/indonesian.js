@@ -275,6 +275,8 @@ var keyStrings = {
         "Tidak dapat membuat permintaan pemasangan. Cari server lagi untuk mencoba kembali.",
     "Could not load. Select to retry.":
         "Gagal memuat. Pilih untuk mencoba lagi.",
+    "Could not save provider settings.":
+        "Tidak dapat menyimpan pengaturan penyedia.",
     "Could not save the approved command server settings.":
         "Tidak dapat menyimpan pengaturan server perintah yang disetujui.",
     "Could not update HTTP remote control.":
@@ -601,6 +603,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Tidak ditemukan pengaturan tersimpan",
+    "Not configured": "Belum dikonfigurasi",
     "Not found": "Tidak ditemukan",
     "Not reduce video when showing the list (bugfix)":
         "Jangan perkecil video saat menampilkan daftar (perbaikan bug)",
@@ -971,6 +974,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD tidak didukung oleh penyedia ini",
     "Volume step, %": "Langkah volume, %",
     "VPortal link": "Tautan VPortal",
+    "VPortal profiles": "Profil VPortal",
     "VPortal request failed":
         "Tidak dapat memuat VPortal. Periksa tautan, kunci akses, dan ketersediaan portal.",
     volume: "volume",

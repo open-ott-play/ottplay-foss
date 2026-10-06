@@ -375,7 +375,7 @@ by an external script while it evaluates. Script loading is serialized so the
 next reset occurs after the previous script finishes. If the loader never calls
 either completion callback, replacement waits; allowing the next script to
 run on a timeout alone would let late evaluation overwrite the active driver.
-All 48 built-in provider profiles publish isolated instances and avoid this
+All 50 built-in provider profiles publish isolated instances and avoid this
 custom-script limitation. The Full dealer extension can still add external script
 providers. Play excludes both that entrypoint and its scoped script runtime; its
 four managed profiles retain the same source/catalog cancellation behavior.

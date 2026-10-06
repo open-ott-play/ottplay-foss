@@ -276,6 +276,8 @@ var keyStrings = {
         "Não foi possível criar um pedido de emparelhamento. Procure novamente o servidor para voltar a tentar.",
     "Could not load. Select to retry.":
         "Não foi possível carregar. Selecione para tentar novamente.",
+    "Could not save provider settings.":
+        "Não foi possível guardar as definições do fornecedor.",
     "Could not save the approved command server settings.":
         "Não foi possível guardar as configurações aprovadas do servidor de comandos.",
     "Could not update HTTP remote control.":
@@ -608,6 +610,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Não foram encontradas configurações guardadas",
+    "Not configured": "Não configurado",
     "Not found": "Não encontrado",
     "Not reduce video when showing the list (bugfix)":
         "Não reduzir o vídeo ao mostrar a lista (correção)",
@@ -979,6 +982,7 @@ var keyStrings = {
     "VOD not supported by provider": "O fornecedor não suporta VOD",
     "Volume step, %": "Incremento de volume, %",
     "VPortal link": "Ligação VPortal",
+    "VPortal profiles": "Perfis VPortal",
     "VPortal request failed":
         "Não foi possível carregar o VPortal. Verifique a ligação, a chave de acesso e a disponibilidade do portal.",
     volume: "volume",

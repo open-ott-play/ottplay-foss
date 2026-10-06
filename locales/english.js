@@ -271,6 +271,7 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "Could not create a pairing request. Find the server again to retry.",
     "Could not load. Select to retry.": "Could not load. Select to retry.",
+    "Could not save provider settings.": "Could not save provider settings.",
     "Could not save the approved command server settings.":
         "Could not save the approved command server settings.",
     "Could not update HTTP remote control.":
@@ -596,6 +597,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "No saved settings found",
+    "Not configured": "Not configured",
     "Not found": "Not found",
     "Not reduce video when showing the list (bugfix)":
         "Do not shrink video when showing the list (bug fix)",
@@ -961,6 +963,7 @@ var keyStrings = {
     "VOD not supported by provider": "VOD is not supported by this provider",
     "Volume step, %": "Volume step, %",
     "VPortal link": "VPortal link",
+    "VPortal profiles": "VPortal profiles",
     "VPortal request failed":
         "Could not load VPortal. Check the link, access key, and portal availability.",
     volume: "volume",

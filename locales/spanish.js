@@ -278,6 +278,8 @@ var keyStrings = {
         "No se pudo crear una solicitud de vinculación. Vuelve a buscar el servidor para reintentarlo.",
     "Could not load. Select to retry.":
         "No se pudo cargar. Selecciona para reintentar.",
+    "Could not save provider settings.":
+        "No se pudo guardar la configuración del proveedor.",
     "Could not save the approved command server settings.":
         "No se pudieron guardar los ajustes aprobados del servidor de órdenes.",
     "Could not update HTTP remote control.":
@@ -609,6 +611,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "No se encontraron ajustes guardados",
+    "Not configured": "Sin configurar",
     "Not found": "No encontrado",
     "Not reduce video when showing the list (bugfix)":
         "No reducir el vídeo al mostrar la lista (corrección)",
@@ -981,6 +984,7 @@ var keyStrings = {
     "VOD not supported by provider": "El proveedor no admite VOD",
     "Volume step, %": "Incremento de volumen, %",
     "VPortal link": "Enlace VPortal",
+    "VPortal profiles": "Perfiles de VPortal",
     "VPortal request failed":
         "No se pudo cargar VPortal. Comprueba el enlace, la clave de acceso y la disponibilidad del portal.",
     volume: "volumen",

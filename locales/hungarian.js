@@ -276,6 +276,8 @@ var keyStrings = {
         "Nem sikerült párosítási kérelmet létrehozni. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
     "Could not load. Select to retry.":
         "Nem sikerült betölteni. Válassza az újrapróbálkozáshoz.",
+    "Could not save provider settings.":
+        "Nem sikerült menteni a szolgáltató beállításait.",
     "Could not save the approved command server settings.":
         "Nem sikerült menteni a parancskiszolgáló jóváhagyott beállításait.",
     "Could not update HTTP remote control.":
@@ -606,6 +608,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Nem találhatók mentett beállítások",
+    "Not configured": "Nincs beállítva",
     "Not found": "Nem található",
     "Not reduce video when showing the list (bugfix)":
         "Ne zsugorítsa a videót a lista megjelenítésekor (hibajavítás)",
@@ -981,6 +984,7 @@ var keyStrings = {
     "VOD not supported by provider": "Ez a szolgáltató nem támogatja a VOD-ot",
     "Volume step, %": "Hangerő lépésköze, %",
     "VPortal link": "VPortal-hivatkozás",
+    "VPortal profiles": "VPortal-profilok",
     "VPortal request failed":
         "Nem sikerült betölteni a VPortalt. Ellenőrizze a hivatkozást, a hozzáférési kulcsot és a portál elérhetőségét.",
     volume: "hangerő",

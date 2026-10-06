@@ -1456,6 +1456,7 @@ export function onChannelsLoaded(): void {
                     );
                 };
                 var openLibrary = function (): void {
+                    if (host.__ottKiosk && host.__ottKiosk.locked()) return;
                     if (currentLibrary()) host.popMedia();
                 };
                 // Resolve the saved media ID immediately. A delayed startup

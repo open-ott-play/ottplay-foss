@@ -1511,3 +1511,8 @@ export function createNasLibrary(host: any): any {
 (window as any).popNasMedia = function () {
     (window as any).__ottNasLibrary.open();
 };
+
+(window as any).__ottVPortal = {
+    create: createVPortalClient,
+    parse: parseVPortalLink,
+};

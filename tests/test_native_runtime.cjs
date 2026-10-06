@@ -179,7 +179,7 @@ function fixture(name, play) {
             read("devices/" + device + "/device.js")
         );
     const providers = play
-        ? ["demo", "m3u", "plex", "stalker", "xtream"]
+        ? ["demo", "m3u", "plex", "stalker", "vportal", "xtream"]
         : fs
               .readdirSync(path.join(root, "providers"))
               .filter((id) =>

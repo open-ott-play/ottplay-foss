@@ -274,6 +274,8 @@ var keyStrings = {
         "Kunde inte skapa en parkopplingsbegäran. Sök efter servern igen för att försöka på nytt.",
     "Could not load. Select to retry.":
         "Kunde inte ladda. Välj för att försöka igen.",
+    "Could not save provider settings.":
+        "Det gick inte att spara leverantörsinställningarna.",
     "Could not save the approved command server settings.":
         "Kunde inte spara de godkända inställningarna för kommandoservern.",
     "Could not update HTTP remote control.":
@@ -603,6 +605,7 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "Inga sparade inställningar hittades",
+    "Not configured": "Inte konfigurerat",
     "Not found": "Hittades inte",
     "Not reduce video when showing the list (bugfix)":
         "Förminska inte videon när listan visas (felkorrigering)",
@@ -972,6 +975,7 @@ var keyStrings = {
     "VOD not supported by provider": "Leverantören stöder inte beställvideo",
     "Volume step, %": "Volymsteg, %",
     "VPortal link": "VPortal-länk",
+    "VPortal profiles": "VPortal-profiler",
     "VPortal request failed":
         "Kunde inte läsa in VPortal. Kontrollera länken, åtkomstnyckeln och portalens tillgänglighet.",
     volume: "volym",

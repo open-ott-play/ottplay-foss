@@ -28,7 +28,7 @@ test("registry only resolves explicit drivers and does not accept prototype name
         Array.from(registry.ids()),
         Array.from(f.host.__ottProviderDriverProfiles, (profile) => profile.id)
     );
-    assert.equal(registry.ids().length, 49);
+    assert.equal(registry.ids().length, 50);
     assert.equal(registry.has("constructor"), false);
     assert.equal(registry.has("m3u"), true);
     assert.throws(() => registry.register("demo", () => {}), /Duplicate/);
@@ -324,10 +324,11 @@ test("all managed provider kinds settle loader only on a terminal catalog result
     const representatives = new Map(
         profiles.map((profile) => [profile.kind, profile.id])
     );
-    assert.equal(representatives.size, 11);
+    assert.equal(representatives.size, 12);
     for (const [kind, id] of representatives) {
         const f = integrationFixture(id);
-        const loadingPanel = kind === "plex" ? "#dialogbox" : "#launch";
+        const loadingPanel =
+            kind === "plex" || kind === "vportal" ? "#dialogbox" : "#launch";
         f.host.infoBox = () => {};
         let settingsOpened = 0;
         f.host.showPage = () => {
@@ -356,7 +357,7 @@ test("all managed provider kinds settle loader only on a terminal catalog result
         deliver(undefined, "network");
         assert.equal(f.panels[loadingPanel].visible, false, kind);
         assert.equal(f.panels["#launch"].visible, false, kind);
-        if (kind === "plex") {
+        if (kind === "plex" || kind === "vportal") {
             assert.equal(driver.libraryReady(), false);
             assert.equal(f.completed, 0, "failed library must not open TV");
             assert.equal(settingsOpened, 1, "failed library opens settings");
