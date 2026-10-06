@@ -97,6 +97,9 @@ function moduleOf(file, requireFn, window) {
                             addressForProxy()
                         ).searchParams.get("device_id"),
                         operation: body.params.operation,
+                        ...(body.params.offset === undefined
+                            ? {}
+                            : { offset: body.params.offset }),
                     });
                     if (
                         lostStepSubmission &&
@@ -400,7 +403,7 @@ function moduleOf(file, requireFn, window) {
                                 dropStepReceipt &&
                                 !droppedStepReceipt &&
                                 receipt.data &&
-                                receipt.data.operation === "next_channel"
+                                receipt.data.operation === dropStepReceipt
                             ) {
                                 assert.equal(response.status, 200);
                                 droppedStepReceipt = true;
@@ -516,8 +519,9 @@ function moduleOf(file, requireFn, window) {
                     return gate;
                 },
                 dispatches,
-                dropNextStepReceipt: () => {
-                    dropStepReceipt = true;
+                dropNextStepReceipt: (operation = "next_channel") => {
+                    dropStepReceipt = operation;
+                    droppedStepReceipt = false;
                 },
                 dropped,
                 droppedReload,
@@ -715,13 +719,17 @@ function moduleOf(file, requireFn, window) {
         const isolatedSteps = desktop().channelSteps;
         const isolatedSelection = desktop().selectedChannel;
         const isolatedRequests = desktop().controlsReceived.length;
-        async function step(alias, operation, id, name, number) {
+        async function step(alias, operation, id, name, number, offset) {
             const before = television();
             const posted = submissions.length;
+            const params = {
+                operation,
+                ...(offset === undefined ? {} : { offset }),
+            };
             assert.deepEqual(await jsonOn("tv", alias), {
                 channel: { id, name, number },
                 dispatched: true,
-                operation,
+                ...params,
             });
             const after = television();
             assert.equal(after.selectedChannel, id);
@@ -730,11 +738,11 @@ function moduleOf(file, requireFn, window) {
                 after.controlsReceived
                     .slice(before.controlsReceived.length)
                     .map(({ action, params }) => ({ action, params })),
-                [{ action: "playback", params: { operation } }],
+                [{ action: "playback", params }],
                 "a relative step is one typed request, never an input fallback"
             );
             assert.deepEqual(submissions.slice(posted), [
-                { action: "playback", device: "dev_test", operation },
+                { action: "playback", device: "dev_test", ...params },
             ]);
             assert.deepEqual(after.keysReceived, before.keysReceived);
         }
@@ -798,6 +806,79 @@ function moduleOf(file, requireFn, window) {
             uncertainBefore.controlsReceived.length + 1
         );
         lostStepSubmission = null;
+        for (const [offset, id, name, number] of [
+            [15, "c", "Спорт", 4],
+            [-15, "c", "Спорт", 4],
+            [4, "a", "Новости HD", 1],
+            [-5, "b", "Новости", 3],
+            [9007199254740991, "c", "Спорт", 4],
+            [-9007199254740991, "b", "Новости", 3],
+        ])
+            await step(
+                (offset > 0 ? "+" : "") + offset,
+                "step_channel",
+                id,
+                name,
+                number,
+                offset
+            );
+        const offsetReceiptStart = television().receipts.length;
+        television().dropNextStepReceipt("step_channel");
+        await step("+4", "step_channel", "c", "Спорт", 4, 4);
+        await eventually(
+            () =>
+                television()
+                    .receipts.slice(offsetReceiptStart)
+                    .filter(
+                        (receipt) => receipt.data.operation === "step_channel"
+                    ),
+            (receipts) => receipts.length >= 2,
+            "lost offset receipt ACK must resend only the original receipt"
+        );
+        const offsetReceipts = television()
+            .receipts.slice(offsetReceiptStart)
+            .filter((receipt) => receipt.data.operation === "step_channel");
+        assert(
+            offsetReceipts.every(
+                (receipt) =>
+                    JSON.stringify(receipt) ===
+                    JSON.stringify(offsetReceipts[0])
+            )
+        );
+        const offsetUncertainBefore = television();
+        const offsetUncertainPosted = submissions.length;
+        lostStepSubmission = { dropped: false, operation: "step_channel" };
+        await assert.rejects(jsonOn("tv", "-4"), (error) => {
+            assert.equal(error.stdout, "");
+            return true;
+        });
+        assert(lostStepSubmission.dropped);
+        await eventually(
+            television,
+            (state) =>
+                state.channelSteps === offsetUncertainBefore.channelSteps + 1,
+            "a lost offset POST response must not cause a second channel switch"
+        );
+        assert.equal(television().selectedChannel, "b");
+        assert.deepEqual(submissions.slice(offsetUncertainPosted), [
+            {
+                action: "playback",
+                device: "dev_test",
+                offset: -4,
+                operation: "step_channel",
+            },
+        ]);
+        assert.equal(
+            television().controlsReceived.length,
+            offsetUncertainBefore.controlsReceived.length + 1
+        );
+        lostStepSubmission = null;
+        const invalidOffsetPosted = submissions.length;
+        const invalidOffsetSteps = television().channelSteps;
+        for (const value of ["+0", "-0", "+1.5", "+9007199254740992"])
+            await assert.rejects(jsonOn("tv", value));
+        assert.equal(submissions.length, invalidOffsetPosted);
+        assert.equal(television().channelSteps, invalidOffsetSteps);
         assert.equal(desktop().channelSteps, isolatedSteps);
         assert.equal(desktop().selectedChannel, isolatedSelection);
         assert.equal(desktop().controlsReceived.length, isolatedRequests);
@@ -817,6 +898,7 @@ function moduleOf(file, requireFn, window) {
         assert.deepEqual(browserCaps.playback, [
             "previous_channel",
             "next_channel",
+            "step_channel",
         ]);
         assert(browserCaps.input.includes("ok"));
 
@@ -982,6 +1064,7 @@ function moduleOf(file, requireFn, window) {
             "seek",
             "previous_channel",
             "next_channel",
+            "step_channel",
         ]);
         for (const operation of ["pause", "resume"])
             assert.deepEqual(await jsonOn("tv", operation), {
@@ -1003,6 +1086,7 @@ function moduleOf(file, requireFn, window) {
             "resume",
             "previous_channel",
             "next_channel",
+            "step_channel",
         ]);
         await unsupported("tv", television, ["seek", "1"], "playback", {
             operation: "seek",
@@ -1030,6 +1114,23 @@ function moduleOf(file, requireFn, window) {
             { action: "playback", params: { operation: null } },
             { action: "playback", params: { operation: "next_chanel" } },
             { action: "playback", params: { operation: "prev" } },
+            { action: "playback", params: { operation: "step_channel" } },
+            {
+                action: "playback",
+                params: { offset: 0, operation: "step_channel" },
+            },
+            {
+                action: "playback",
+                params: { offset: 1.5, operation: "step_channel" },
+            },
+            {
+                action: "playback",
+                params: { offset: 9007199254740992, operation: "step_channel" },
+            },
+            {
+                action: "playback",
+                params: { offset: 15, operation: "step_channel", repeat: 2 },
+            },
             { action: "input", params: { key: "previous_channel" } },
             {
                 action: "playback",
@@ -1057,7 +1158,7 @@ function moduleOf(file, requireFn, window) {
         }
         assert.equal(television().channelSteps, malformedStepCount);
         console.log(
-            "PASS previous/prev/next through real Go + compiled TS + Python: active-category adjacency, both wraps, catalogue receipt numbers, one mutation, device isolation, malformed rejection and no replay after lost POST/receipt responses"
+            "PASS previous/prev/next and signed offsets through real Go + compiled TS + Python: category wraps, exact safe-integer offsets, catalogue receipts, one mutation, device isolation, malformed rejection and no replay after lost POST/receipt responses"
         );
         console.log(
             "PASS real Go + compiled TS + Python controls: capability identities, CLI key aliases, exact after-ACK effects/retries, protected-input cancellation, native/browser lifecycle distinctions and owned playback shapes"

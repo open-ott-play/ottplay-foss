@@ -165,6 +165,23 @@ being browsed. The receipt contains `{operation,dispatched:true,channel:{id,numb
 UI/PIN, standby, kiosk or settings lock rejects the step. `prev` is list order,
 not viewing history. A single-channel category selects the same channel.
 
+`ott PLAYER +15` and `ott PLAYER -15` move by a signed offset in that same
+playing category, wrapping as many times as needed. With 100 channels, channel
+100 plus 15 selects 15, channel 1 minus 15 selects 86, and channel 5 minus 15
+selects 90. The player selects the final destination once; it does not play
+intermediate channels. A complete turn, or any offset in a single-channel
+category, selects the current channel once.
+
+The wire request is `playback` with exactly
+`{"operation":"step_channel","offset":15}`. `offset` must be a nonzero JSON
+integer between -9007199254740991 and 9007199254740991. The receipt adds the
+exact requested `offset` to `{operation,dispatched:true,channel:{id,number,name}}`.
+The destination still uses the playing category order; the receipt's `number`
+remains the global catalogue number. `caps.playback` includes `step_channel`
+when the selection state permits relative commands, even if adjacent channels
+need a PIN. Every actual destination is checked independently; protected or
+stale requests are rejected without a deferred PIN continuation.
+
 Both the controller and player must support these operations. They appear in
 `caps.playback` when available and as `prev` / `next` in the bare `ott PLAYER`
 overview. A lost response is never retried as a new mutation. Existing

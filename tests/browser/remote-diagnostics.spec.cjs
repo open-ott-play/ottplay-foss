@@ -467,6 +467,138 @@ test("remote channel steps close a different browsing category and discard its p
     expect(server.errors).toEqual([]);
 });
 
+test("remote channel offsets wrap the playing category in one admitted switch", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    const request = (action, params = {}) =>
+        page.evaluate(
+            ({ action, params }) =>
+                new Promise((resolve) =>
+                    executeRemoteRequest({ action, params }, resolve)
+                ),
+            { action, params }
+        );
+    await page.evaluate(() => {
+        window.closeList();
+        window.infoBarHide();
+        window.settings.preview = 1;
+        window.settings.noSmall = 0;
+        window.settings.infoSwitch = 0;
+        window.settings.stopPlay = 0;
+        window.favoritesArray = [];
+        window.channels = {
+            9000: {
+                category: { name: "Browsing category" },
+                channel_name: "Outside the playing category",
+                url: "https://media.fixture.invalid/9000.m3u8",
+            },
+        };
+        window.cList = [9000];
+        for (let number = 1; number <= 100; number++) {
+            const id = 1000 + number;
+            window.channels[id] = {
+                category: { name: "Playing category" },
+                channel_name: "Channel " + number,
+                url: "https://media.fixture.invalid/" + id + ".m3u8",
+            };
+            window.cList.push(id);
+        }
+        window.__ottChannels.mount(window);
+        window.commandChannelsReady = true;
+        // Use the real mounted library, browsing preview, guards and playChannel;
+        // intercept only decoder dispatch so each request has one observable effect.
+        window.__remoteOffsetPlays = [];
+        window.stbPlay = (url) => window.__remoteOffsetPlays.push(url);
+    });
+    for (const [from, offset, to] of [
+        [100, 15, 15],
+        [1, -15, 86],
+        [5, -15, 90],
+        [100, 215, 15],
+        [1, -215, 86],
+        [1, 9007199254740991, 92],
+        [1, -9007199254740991, 10],
+        [42, 100, 42],
+        [42, -100, 42],
+    ]) {
+        await page.evaluate((number) => {
+            window.setCurrent(
+                window.catsArray.indexOf("Playing category"),
+                number - 1
+            );
+            _channelsList(window.catsArray.indexOf("Browsing category"), 0);
+            window.previewChId(9000);
+        }, from);
+        await expect(page.locator("#list_window")).toBeVisible();
+        await expect(page.locator("#list")).toContainText(
+            "Outside the playing category"
+        );
+        expect((await request("capabilities")).data.playback).toContain(
+            "step_channel"
+        );
+        const before = await page.evaluate(
+            () => window.__remoteOffsetPlays.length
+        );
+        expect(
+            await request("playback", { offset, operation: "step_channel" })
+        ).toEqual({
+            data: {
+                channel: {
+                    id: 1000 + to,
+                    name: "Channel " + to,
+                    number: to + 1,
+                },
+                dispatched: true,
+                offset,
+                operation: "step_channel",
+            },
+            status: "ok",
+        });
+        await expect(page.locator("#list_window")).toBeHidden();
+        await expect(page.locator("#list")).toBeHidden();
+        expect(
+            await page.evaluate(() => ({
+                channel: window.curList[window.primaryIndex],
+                group: window.catsArray[window.catIndex],
+                preview: window.previewChan,
+            }))
+        ).toEqual({
+            channel: 1000 + to,
+            group: "Playing category",
+            preview: null,
+        });
+        expect(
+            await page.evaluate(
+                (start) => window.__remoteOffsetPlays.slice(start),
+                before
+            )
+        ).toEqual(["https://media.fixture.invalid/" + (1000 + to) + ".m3u8"]);
+    }
+    await page.evaluate(() => window.infoBox("Local modal must remain open"));
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    const before = await page.evaluate(() => window.__remoteOffsetPlays.length);
+    expect(
+        (
+            await request("playback", {
+                offset: 15,
+                operation: "step_channel",
+            })
+        ).status
+    ).toBe("rejected");
+    expect((await request("capabilities")).data.playback).not.toContain(
+        "step_channel"
+    );
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    expect(await page.evaluate(() => window.__remoteOffsetPlays.length)).toBe(
+        before
+    );
+    expect(server.calls).toEqual([]);
+    expect(server.errors).toEqual([]);
+});
+
 test("remote navigation cannot enter or confirm legacy exit while local controls still work", async ({
     page,
     context,
