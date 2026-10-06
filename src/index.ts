@@ -50,8 +50,9 @@ import { nativePromiseToJq } from "./plugins/jquery-bridge";
 import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
-import { tauriInvoke } from "./plugins/native-bridge";
+import { resolveNativePlugin, tauriInvoke } from "./plugins/native-bridge";
 import { installRemoteLifecycle } from "./plugins/remote-lifecycle";
+import { installRemoteScreenshot } from "./plugins/remote-screenshot";
 import "./plugins/native-http";
 import {
     StalkerPortal,
@@ -5943,11 +5944,24 @@ window.showPopup = showPopup;
               ? function (request: any): Promise<any> {
                     return StalkerPortal.httpRequest(request);
                 }
-              : undefined
+              : undefined,
+        typeof window.__TAURI__ === "undefined" &&
+            (window as any).Capacitor &&
+            (!(window as any).Capacitor.isNativePlatform ||
+                (window as any).Capacitor.isNativePlatform()) &&
+            typeof StalkerPortal.cancelHttpRequest === "function"
+            ? function (requestId: string): void {
+                  StalkerPortal.cancelHttpRequest!({
+                      requestId: requestId,
+                  }).catch(function () {});
+              }
+            : undefined
     ),
     function (config: any): void {
         if ((window as any).__ottRemoteDiagnostics)
             (window as any).__ottRemoteDiagnostics.configurationChanged(config);
+        if ((window as any).__ottRemoteScreenshot)
+            (window as any).__ottRemoteScreenshot.configurationChanged();
         if (
             !saveSettings({ commandServerEnabled: 0 }) ||
             !saveSettings({
@@ -5968,6 +5982,53 @@ window.showPopup = showPopup;
         return executeRemoteRequest(request, done, afterReply);
     }
 );
+
+installRemoteScreenshot(window, {
+    getConfig: function () {
+        return {
+            address: settings.commandServerAddress,
+            enabled: settings.commandServerEnabled === 1,
+            token: settings.commandServerToken,
+        };
+    },
+    mobile: resolveNativePlugin<any>("RemoteScreenshot", function () {
+        return {
+            capabilities: function () {
+                return Promise.resolve({ source: null, supported: false });
+            },
+            capture: function () {
+                return Promise.reject(new Error("Screenshots unavailable"));
+            },
+        };
+    }),
+    onStatus: function (status: any): void {
+        var badge = document.getElementById("remoteScreenshotIndicator");
+        if (!status.enabled && !status.pending) {
+            var controller = (window as any).__ottCommandServer;
+            if (controller && controller.discardScreenshots)
+                controller.discardScreenshots();
+            if (badge && badge.parentNode) badge.parentNode.removeChild(badge);
+            return;
+        }
+        if (!badge) {
+            badge = document.createElement("button");
+            badge.id = "remoteScreenshotIndicator";
+            badge.style.cssText =
+                "position:fixed;right:8px;bottom:8px;z-index:99999;" +
+                "background:#532900;color:white;border:1px solid white;padding:6px;";
+            badge.onclick = function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                (window as any).__ottRemoteScreenshot.stop();
+            };
+            (document.body || document.documentElement).appendChild(badge);
+        }
+        badge.textContent =
+            (window as any)._("Remote screenshots") +
+            " · " +
+            (window as any)._("Stop");
+    },
+});
 
 function initRemoteDiagnostics(): void {
     (window as any).__ottRemoteDiagnostics = installDiagnosticsController(
@@ -6228,6 +6289,28 @@ window.settingsCommands = function (): void {
     var commandServer = w.__ottCommandServer;
     var discovery = w.__ottControlDiscovery;
     var diagnostics = w.__ottRemoteDiagnostics;
+    var screenshots = w.__ottRemoteScreenshot;
+    function refreshScreenshots(): void {
+        if (!screenshots || closed) return;
+        var view = screenshots.status();
+        var label = document.getElementById("remoteScreenshotStatus");
+        if (label)
+            label.textContent =
+                view.state === "unsupported"
+                    ? w._("Screenshots are unavailable on this platform.")
+                    : w._(view.message);
+        var button = document.getElementById(
+            "remoteScreenshotToggle"
+        ) as HTMLButtonElement | null;
+        if (button) {
+            button.disabled = view.state === "unsupported";
+            button.textContent = w._(
+                view.enabled || view.pending
+                    ? "Stop screenshots"
+                    : "Allow screenshots for 10 minutes"
+            );
+        }
+    }
     function refreshDiagnostics(): void {
         if (!diagnostics || closed) return;
         var status = diagnostics.status();
@@ -6278,8 +6361,8 @@ window.settingsCommands = function (): void {
         var choices = document.getElementById("commandServerDiscoveryChoices");
         if (!choices) return;
         choices.textContent = "";
-        controls.length = Math.min(controls.length, 12);
-        controlActions.length = Math.min(controlActions.length, 12);
+        controls.length = Math.min(controls.length, 13);
+        controlActions.length = Math.min(controlActions.length, 13);
         status.servers.forEach(function (server: any, index: number) {
             var button = document.createElement("button");
             button.textContent =
@@ -6379,6 +6462,14 @@ window.settingsCommands = function (): void {
                 diagnostics.stopSession();
             refreshDiagnostics();
         },
+        function (): void {
+            if (screenshots && !w.__ottRemoteInputActive) {
+                var view = screenshots.status();
+                if (view.enabled || view.pending) screenshots.stop();
+                else screenshots.grant(true);
+            }
+            refreshScreenshots();
+        },
     ];
     var parent = ["listCaption", "listDetail", "listPodval"].map(function (id) {
         var element = document.getElementById(id);
@@ -6447,6 +6538,7 @@ window.settingsCommands = function (): void {
         if (commandServer) commandServer.subscribe(null);
         if (discovery) discovery.subscribe(null);
         if (diagnostics) diagnostics.subscribe(null);
+        if (screenshots) screenshots.subscribe(null);
         $("#listAbout").hide().text("");
         ["listCaption", "listDetail", "listPodval"].forEach(
             function (id, index) {
@@ -6560,6 +6652,17 @@ window.settingsCommands = function (): void {
             text(w._("Stop current capture")) +
             "</button><br/><br/>" +
             "<b>" +
+            text(w._("Remote screenshots")) +
+            "</b><br/>" +
+            text(
+                w._(
+                    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect."
+                )
+            ) +
+            '<br/><span id="remoteScreenshotStatus" role="status"></span><br/>' +
+            '<button id="remoteScreenshotToggle">' +
+            text(w._("Allow screenshots for 10 minutes")) +
+            "</button><br/><br/><b>" +
             text(w._("Local HTTP remote control")) +
             ":</b> " +
             text(w._(remoteStatus.enabled ? "on" : "off")) +
@@ -6658,6 +6761,9 @@ window.settingsCommands = function (): void {
             11
         );
         refreshDiagnostics();
+        bindControl(document.getElementById("remoteScreenshotToggle")!, 12);
+        refreshScreenshots();
+        if (screenshots) screenshots.subscribe(refreshScreenshots);
         var footerControls = footer
             ? footer.querySelectorAll("span[onclick]")
             : [];

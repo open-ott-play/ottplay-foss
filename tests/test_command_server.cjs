@@ -621,6 +621,30 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     assert.equal(nativeRequest.secureControl, true);
     assert.equal(nativeRequest.url, secure.url);
     cancelNativeSecure();
+    const nativeCancellations = [];
+    const screenshotTransport = createCommandServerTransport(
+        t.w,
+        (value) => {
+            nativeRequest = value;
+            return new Promise((resolve) => { resolveNative = resolve; });
+        },
+        (id) => nativeCancellations.push(id)
+    );
+    const screenshotRequest = {
+        ...request,
+        screenshotControl: true,
+        url: "https://host/api/responses",
+    };
+    const cancelScreenshot = screenshotTransport(screenshotRequest, () => {});
+    assert.match(nativeRequest.requestId, /^ott_shot_\d+_\d+$/);
+    const firstRequestId = nativeRequest.requestId;
+    cancelScreenshot();
+    cancelScreenshot();
+    assert.deepEqual(nativeCancellations, [firstRequestId]);
+    screenshotTransport({ ...screenshotRequest }, () => {});
+    assert.notEqual(nativeRequest.requestId, firstRequestId);
+    t.next();
+    assert.equal(nativeCancellations.length, 2, "native timeout cancels upload");
     const secureResults = [];
     const acceptSecure = (value) => secureResults.push(value);
     browserTransport(secure, acceptSecure);
@@ -1464,3 +1488,249 @@ for (const action of ["lifecycle", "input"]) {
 console.log(
     "PASS actual lifecycle/input transport: lost ACK, byte-identical retry, single dispatch, duplicate replay, disable, expiry and local policy changes"
 );
+
+// Image bytes expire independently of network progress and ordinary receipt caching.
+function screenshotJob(rpc, delay) {
+    const found = [...rpc.jobs].find(([, job]) => job.delay === delay);
+    assert.ok(found, "expected screenshot/poll timer at " + delay);
+    const [id, job] = found;
+    rpc.jobs.delete(id);
+    job.fn();
+}
+function screenshotEnvelope(id, lifetime = 30) {
+    return {
+        commands: [],
+        requests: [
+            {
+                action: "screenshot",
+                id,
+                params: { runtime: "page-123" },
+                expires_at: clock / 1000 + lifetime,
+            },
+        ],
+        server_time: clock / 1000,
+    };
+}
+function screenshotHarness(image = "private-image", elapsed = 0) {
+    let captures = 0;
+    const rpc = harness("http:", (request, done) => {
+        assert.equal(request.action, "screenshot");
+        captures++;
+        clock += elapsed;
+        done({ status: "ok", data: { image } });
+    });
+    rpc.captureCount = () => captures;
+    return rpc;
+}
+for (const reason of [
+    "revoke",
+    "request-expiry",
+    "60-second-bound",
+    "clock-rollback",
+]) {
+    clock = 20000000;
+    const rpc = screenshotHarness();
+    const id = "a".repeat(32);
+    rpc.connect();
+    rpc.respond(
+        screenshotEnvelope(id, reason === "60-second-bound" ? 120 : 30)
+    );
+    screenshotJob(rpc, 0);
+    const inFlight = rpc.requests.at(-1);
+    assert.ok(inFlight.request.body.includes("private-image"));
+    assert.equal(inFlight.request.screenshotControl, true, "image POST uses the no-redirect transport");
+    if (reason === "revoke") rpc.controller.discardScreenshots();
+    else {
+        if (reason === "clock-rollback") clock -= 100000;
+        else clock += reason === "60-second-bound" ? 60000 : 30000;
+        screenshotJob(rpc, reason === "60-second-bound" ? 60000 : 30000);
+    }
+    assert.equal(
+        inFlight.aborted,
+        true,
+        reason + " cancels active image upload"
+    );
+    screenshotJob(rpc, 0);
+    const tombstone = rpc.requests.at(-1);
+    assert.equal(JSON.parse(tombstone.request.body).status, "rejected");
+    assert.equal(tombstone.request.body.includes("private-image"), false);
+    // A late completion cannot shift the replacement or start another poll.
+    inFlight.complete({ body: '{"status":"ok"}', status: 200 });
+    assert.equal(rpc.jobs.size, 0);
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    // Even a controller replay with newly extended server expiry cannot recapture.
+    rpc.respond(screenshotEnvelope(id, 120));
+    rpc.next();
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).status,
+        "rejected"
+    );
+    assert.equal(
+        rpc.requests.at(-1).request.body.includes("private-image"),
+        false
+    );
+    assert.equal(rpc.captureCount(), 1, reason + " replay did not recapture");
+}
+{
+    clock = 21000000;
+    const rpc = screenshotHarness("private-image", 2000);
+    rpc.connect();
+    rpc.respond(screenshotEnvelope("b".repeat(32), 5));
+    assert.ok(
+        [...rpc.jobs.values()].some((job) => job.delay === 3000),
+        "capture time consumes original request lifetime"
+    );
+    screenshotJob(rpc, 3000);
+    screenshotJob(rpc, 0);
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).status,
+        "rejected"
+    );
+    assert.equal(rpc.captureCount(), 1);
+}
+{
+    clock = 22000000;
+    const rpc = screenshotHarness();
+    const id = "c".repeat(32);
+    rpc.connect();
+    rpc.respond(screenshotEnvelope(id));
+    screenshotJob(rpc, 0);
+    rpc.respond({ status: "ok" });
+    screenshotJob(rpc, 1000);
+    const poll = rpc.requests.at(-1);
+    rpc.controller.discardScreenshots();
+    assert.equal(
+        poll.aborted,
+        false,
+        "revoking images does not cancel unrelated poll"
+    );
+    assert.equal(
+        rpc.jobs.size,
+        0,
+        "revocation discards idle image expiry timer"
+    );
+    rpc.respond(screenshotEnvelope(id));
+    rpc.next();
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).status,
+        "rejected"
+    );
+    assert.equal(rpc.captureCount(), 1);
+}
+{
+    clock = 23000000;
+    const rpc = screenshotHarness();
+    const id = "d".repeat(32);
+    rpc.connect();
+    rpc.respond(screenshotEnvelope(id));
+    rpc.connect({ enabled: false });
+    assert.equal(rpc.jobs.size, 0, "disconnect immediately drops image timers");
+    rpc.connect();
+    rpc.respond(screenshotEnvelope(id));
+    rpc.next();
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).status,
+        "rejected"
+    );
+    assert.equal(
+        rpc.captureCount(),
+        1,
+        "same-controller reconnect preserves only tombstone"
+    );
+    rpc.connect({ address: "another-controller.local" });
+    rpc.respond(screenshotEnvelope(id));
+    assert.equal(
+        rpc.captureCount(),
+        2,
+        "controller identity change retires old tombstones"
+    );
+    rpc.controller.discardScreenshots();
+}
+{
+    clock = 24000000;
+    const rpc = screenshotHarness("s".repeat(1200000));
+    const first = "e".repeat(32),
+        second = "f".repeat(32);
+    rpc.connect();
+    rpc.respond(screenshotEnvelope(first));
+    screenshotJob(rpc, 0);
+    rpc.respond({ status: "ok" });
+    screenshotJob(rpc, 1000);
+    rpc.respond(screenshotEnvelope(second));
+    screenshotJob(rpc, 0);
+    rpc.respond({ status: "ok" });
+    screenshotJob(rpc, 1000);
+    rpc.respond(screenshotEnvelope(first));
+    screenshotJob(rpc, 0);
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).status,
+        "rejected"
+    );
+    assert.equal(
+        rpc.captureCount(),
+        2,
+        "2 MiB response-cache eviction must not recapture the oldest screenshot"
+    );
+    rpc.controller.discardScreenshots();
+}
+console.log(
+    "PASS screenshot transport: timed image purge, original expiry, 60-second bound, clock rollback, revoke, in-flight abort/late callback, tombstones, eviction and reconnect identity"
+);
+
+// Use the actual Fetch transport and two HTTP listeners: no image or credential
+// may arrive at a redirect destination, including a different loopback origin.
+(async () => {
+    const http = require("node:http");
+    let sinkRequests = 0;
+    const sink = http.createServer((request, response) => {
+        sinkRequests++;
+        request.resume();
+        response.end("{}");
+    });
+    const listen = (server) => new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    await listen(sink);
+    let sourceRequests = 0;
+    let receivedBytes = 0;
+    const origin = http.createServer((request, response) => {
+        sourceRequests++;
+        request.on("data", (chunk) => { receivedBytes += chunk.length; });
+        request.on("end", () => {
+            const code = Number(request.url.slice(1));
+            response.writeHead(code, code === 200 ? {} : {
+                Location: `http://127.0.0.1:${sink.address().port}/image`,
+            });
+            response.end("{}");
+        });
+    });
+    try {
+        await listen(origin);
+        const send = createCommandServerTransport({ setTimeout, clearTimeout, fetch, Request, AbortController });
+        const payload = JSON.stringify({ image: "A".repeat(1400000) });
+        const request = {
+            body: payload,
+            headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+            method: "POST", screenshotControl: true, timeoutMs: 3000,
+        };
+        for (const status of [200, 301, 302, 303, 307, 308]) {
+            const result = await new Promise((resolve) => send({ ...request,
+                url: `http://127.0.0.1:${origin.address().port}/${status}`,
+            }, resolve));
+            assert.equal(result && result.status, status === 200 ? 200 : undefined);
+        }
+        assert.equal(sourceRequests, 6);
+        assert.equal(receivedBytes, Buffer.byteLength(payload) * 6);
+        assert.equal(sinkRequests, 0, "redirect target never receives image body or bearer token");
+        for (const url of ["http://192.168.1.2/api/responses", "https://user:pass@example.com/api/responses",
+            `http://127.0.0.1:${origin.address().port}/200#fragment`]) {
+            assert.equal(await new Promise((resolve) => send({ ...request, url }, resolve)), undefined);
+        }
+        assert.equal(sourceRequests, 6, "invalid screenshot endpoints never make a request");
+        console.log("PASS screenshot Fetch: bounded image-sized upload, all redirect statuses blocked, exact endpoint policy");
+    } finally {
+        for (const server of [origin, sink]) {
+            server.closeAllConnections();
+            await new Promise((resolve) => server.close(resolve));
+        }
+    }
+})().catch((error) => { console.error(error); process.exitCode = 1; });

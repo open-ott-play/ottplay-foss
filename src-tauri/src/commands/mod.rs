@@ -1,5 +1,6 @@
 pub mod native_hls;
 pub mod lifecycle;
+pub mod screenshot;
 pub mod plex_auth;
 pub mod control_discovery;
 pub mod media_session;

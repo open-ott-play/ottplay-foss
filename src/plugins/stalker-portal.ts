@@ -38,6 +38,7 @@ export interface StalkerPortalPlugin {
         headers?: Record<string, string>;
         timeoutMs?: number;
         requestId?: string;
+        screenshotControl?: boolean;
     }): Promise<NativeHttpResponse>;
     portalRequest(opts: {
         url: string;

@@ -46,8 +46,35 @@ let diagnosticStorageError = false;
 let diagnosticSession;
 let diagnosticListener = null;
 const diagnosticChanges = [];
+let screenshotEnabled = false;
+let screenshotListener = null;
+const screenshotChanges = [];
 Object.assign(w, {
     _: (text) => text,
+    __ottRemoteScreenshot: {
+        grant: (local) => {
+            assert.equal(local, true);
+            screenshotEnabled = true;
+            screenshotChanges.push(true);
+            if (screenshotListener) screenshotListener();
+        },
+        stop: () => {
+            screenshotEnabled = false;
+            screenshotChanges.push(false);
+            if (screenshotListener) screenshotListener();
+        },
+        status: () => ({
+            enabled: screenshotEnabled,
+            message: screenshotEnabled
+                ? "Remote screenshots are allowed for 10 minutes. Close settings to capture."
+                : "Remote screenshots are off.",
+            pending: false,
+            state: screenshotEnabled ? "ready" : "permission_required",
+        }),
+        subscribe: (listener) => {
+            screenshotListener = listener;
+        },
+    },
     __ottRemoteDiagnostics: {
         setEnabled: (enabled) => {
             diagnosticEnabled = enabled;
@@ -494,11 +521,37 @@ assert.equal(
     "Stopping capture retains explicit server trust"
 );
 remoteKey(w.keys.RIGHT);
+assert.equal(w.document.activeElement.id, "remoteScreenshotToggle");
+assert.deepEqual(
+    screenshotChanges,
+    [],
+    "Opening settings and navigation never grant screenshots"
+);
+w.__ottRemoteInputActive = true;
+remoteKey(w.keys.ENTER);
+assert.deepEqual(
+    screenshotChanges,
+    [],
+    "Remote input cannot grant screenshot permission through the settings button"
+);
+w.__ottRemoteInputActive = false;
+remoteKey(w.keys.ENTER);
+assert.deepEqual(screenshotChanges, [true]);
+assert.equal(w.document.activeElement.textContent, "Stop screenshots");
+remoteKey(w.keys.ENTER);
+assert.deepEqual(screenshotChanges, [true, false]);
+assert.equal(
+    w.document.activeElement.textContent,
+    "Allow screenshots for 10 minutes"
+);
+remoteKey(w.keys.RIGHT);
 assert.equal(
     w.document.activeElement.id,
     "commandServerAddress",
     "selection wraps"
 );
+remoteKey(w.keys.LEFT);
+assert.equal(w.document.activeElement.id, "remoteScreenshotToggle");
 remoteKey(w.keys.LEFT);
 assert.equal(w.document.activeElement.id, "remoteDiagnosticsTrust");
 remoteKey(w.keys.ENTER);

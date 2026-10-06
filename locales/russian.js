@@ -997,4 +997,27 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Настройки Шаравоз",
     "↑↓ Scroll": "↑↓ Прокрутка",
+
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Разрешить снимки экрана на 10 минут",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Разрешить этому серверу запрашивать снимки экрана в течение 10 минут. Снимки могут содержать личные данные. В браузере выберите вкладку или окно плеера. Разрешение отменяется при перезагрузке или отключении.",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Перед разрешением снимков экрана подключитесь к серверу команд по HTTPS.",
+    "Remote screenshots": "Удалённые снимки экрана",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Удалённые снимки экрана разрешены на 10 минут. Закройте настройки для съёмки.",
+    "Remote screenshots are off.": "Удалённые снимки экрана отключены.",
+    "Screen sharing could not start.": "Не удалось начать показ экрана.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Показ экрана отменён или недоступен.",
+    "Screenshot permission could not be enabled.":
+        "Не удалось разрешить снимки экрана.",
+    "Screenshots are unavailable on this platform.":
+        "На этой платформе снимки экрана недоступны.",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Выберите вкладку или окно плеера в диалоге показа экрана браузера.",
+    "Stop screenshots": "Запретить снимки экрана",
+    "This browser cannot identify the selected screenshot source.":
+        "Браузер не может определить выбранный источник снимка экрана.",
 };

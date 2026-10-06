@@ -67,6 +67,7 @@ jobs:
           printf '%s  %s\n' b15e605ca0a4b12c62ea7f657dad413c236c947e875854767349cdbe20df473c "$RUNNER_TEMP/okhttp.jar" 3b13dcc3e1573047c2d507fc4f7fcb0bb0cbcd9d395da21d20e09406e2cd6a73 "$RUNNER_TEMP/okio.jar" | sha256sum --check
           export ANDROID_HTTP_CLASSPATH="$RUNNER_TEMP/okhttp.jar:$RUNNER_TEMP/okio.jar"
           python3 tests/test_android_queue.py
+          python3 tests/test_android_screenshot.py
           python3 tests/test_android_epg_editions.py
           python3 tests/test_android_network_policy.py
           npm run test:native-dash
@@ -103,6 +104,7 @@ jobs:
           python3 tests/test_ios_access_auth.py
           python3 tests/test_ios_public_http.py
           python3 tests/test_native_swop_swift.py
+          python3 tests/test_native_screenshot_transport_swift.py
           python3 tests/test_xmltv_warmup_smoke.py
       - name: Test iOS command queue consent and authentication
         run: python3 tests/test_ios_command_queue.py

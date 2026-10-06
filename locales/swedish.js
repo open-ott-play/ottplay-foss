@@ -1000,4 +1000,27 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз-inställningar",
     "↑↓ Scroll": "↑↓ Rulla",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
+    "Stop screenshots": "Stop screenshots",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
 };
