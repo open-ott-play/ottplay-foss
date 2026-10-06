@@ -27,6 +27,18 @@ fn preferred_languages() -> Vec<String> {
 
 #[cfg(any(test, all(unix, not(target_vendor = "apple"))))]
 fn posix_languages(values: [String; 4]) -> Vec<String> {
+    // GNU gettext ignores LANGUAGE when the effective message locale is C/POSIX,
+    // including C.UTF-8. Keep English authoritative instead of falling through
+    // to the WebView's language list. Empty overrides do not mask lower levels.
+    let message_locale = values[1..]
+        .iter()
+        .map(|value| value.trim())
+        .find(|value| !value.is_empty());
+    if message_locale
+        .is_some_and(|value| matches!(value.split(['.', '@']).next(), Some("C" | "POSIX")))
+    {
+        return vec!["en".into()];
+    }
     let mut languages = Vec::new();
     for (index, value) in values.iter().enumerate() {
         for entry in value.splitn(if index == 0 { usize::MAX } else { 1 }, ':') {
@@ -107,5 +119,42 @@ mod tests {
         assert_eq!(posix_language("sr_RS@unknown"), None);
         assert_eq!(posix_language("C.UTF-8"), None);
         assert_eq!(posix_language("POSIX"), None);
+    }
+
+    #[test]
+    fn effective_c_locale_overrides_language_preferences() {
+        for locale in ["C", "POSIX", "C.UTF-8", "C.utf8", "POSIX.UTF-8"] {
+            for index in 1..4 {
+                let mut values = ["fr:de".into(), "".into(), "".into(), "".into()];
+                values[index] = locale.into();
+                for lower in &mut values[index + 1..] {
+                    *lower = "ru_RU.UTF-8".into();
+                }
+                let languages = posix_languages(values);
+                assert_eq!(languages, ["en"], "locale {locale} at level {index}");
+                assert_eq!(
+                    script_for(&languages),
+                    "window.__ottPreferredLanguages=[\"en\"];"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn shadowed_c_locale_does_not_disable_language_preferences() {
+        for values in [
+            ["fr:de", "sr_RS@latin", "C", "POSIX.UTF-8"],
+            ["fr:de", "", "sr_RS@latin", "C.UTF-8"],
+        ] {
+            assert_eq!(
+                posix_languages(values.map(String::from)),
+                ["fr", "de", "sr-Latn-RS"]
+            );
+        }
+        assert_eq!(
+            posix_languages(["fr:de", "", "", ""].map(String::from)),
+            ["fr", "de"]
+        );
+        assert!(posix_languages(["", "", "", ""].map(String::from)).is_empty());
     }
 }
