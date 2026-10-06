@@ -697,6 +697,37 @@ console.log(
     r.play(true);
     r.advance(20, true);
     assert.equal(restored.length, 1, "healthy VOD never restarts");
+    for (const failure of ["write", "readback", "mismatch"]) {
+        const write = r.w.stbSetItem;
+        const read = r.w.stbGetItem;
+        const persisted = r.storage.__ottKioskV1;
+        selection.position += 10;
+        r.w.stbSetItem = (key, value) => {
+            if (failure === "write") throw Error("quota");
+            if (failure !== "mismatch") write(key, value);
+        };
+        r.w.stbGetItem = (key) => {
+            if (failure === "readback") throw Error("storage unavailable");
+            return read(key);
+        };
+        // Brief buffering is still below the playback watchdog threshold.
+        // A failed position checkpoint must not masquerade as a decoder error.
+        r.advance(6);
+        assert.equal(r.kiosk.snapshot().health, "playing", failure);
+        assert.equal(restored.length, 1, failure + " does not restart video");
+        if (failure !== "readback")
+            assert.equal(r.storage.__ottKioskV1, persisted);
+        r.w.stbSetItem = write;
+        r.w.stbGetItem = read;
+        r.advance(6, true);
+        assert.equal(
+            JSON.parse(r.storage.__ottKioskV1).media.position,
+            selection.position,
+            failure + " retries and persists the latest position after recovery"
+        );
+        assert.equal(r.kiosk.snapshot().health, "playing");
+        assert.equal(restored.length, 1);
+    }
     ended = true;
     r.play(false);
     r.advance(20);

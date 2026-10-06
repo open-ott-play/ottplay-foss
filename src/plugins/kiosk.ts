@@ -255,9 +255,16 @@ export function createKiosk(w: any): any {
                             }
                         }
                         if (time - lastSaved >= 5000) {
-                            var stored = JSON.stringify(policy);
-                            w.stbSetItem(key, stored);
-                            if (w.stbGetItem(key) === stored) lastSaved = time;
+                            try {
+                                var stored = JSON.stringify(policy);
+                                w.stbSetItem(key, stored);
+                                if (w.stbGetItem(key) === stored)
+                                    lastSaved = time;
+                            } catch (_) {
+                                // Keep the live cursor for recovery. A failed checkpoint
+                                // does not describe decoder health; retry in five seconds.
+                                lastSaved = time;
+                            }
                         }
                     }
                 }
