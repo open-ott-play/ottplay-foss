@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv সেটিংস",
     "Allow diagnostics for 10 minutes": "10 মিনিটের জন্য ডায়াগনস্টিকসের অনুমতি দিন",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "এই সার্ভারটিকে ডায়াগনস্টিক কাউন্টার সংগ্রহ করতে এবং এই স্ট্রীম বা প্লেয়ারটিকে পুনরায় চালু করার অনুমতি দিন। অস্থায়ী অ্যাক্সেস 10 মিনিট স্থায়ী হয়। বিশ্বস্ত সমর্থন পুনরায় সংযোগ বা পুনরায় চালু করার পরে উপলব্ধ থাকে; প্রতিটি ক্যাপচার এখনও 10 মিনিট পরে মেয়াদ শেষ হয়. লুকানো বা অফলাইন থাকাকালীন সংগ্রহ বিরতি দেয়।",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "এই সার্ভারটিকে এই ফোরগ্রাউন্ড সেশনের জন্য প্লেব্যাক, নেটওয়ার্ক এবং ইনপুট কাউন্টার সংগ্রহ করার অনুমতি দিন। HTTPS এবং সার্ভারের অনুমতি প্রয়োজন। 10 মিনিটের পরে, লুকানো অবস্থায় বা সংযোগ বিচ্ছিন্ন হলে থামে।",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "এই ডিভাইসটিকে অনুমতি দিন ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "একটি HTTPS প্লেয়ার একটি HTTP EPG উৎস ডাউনলোড করতে পারে না৷ একটি HTTPS উৎস ব্যবহার করুন।",
@@ -244,6 +249,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "সেটিংস -> প্রদানকারী সেটিংসে Шаравоз কনফিগার করুন",
     Connect: "সংযোগ করুন",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "এই প্লেয়ারটিকে প্রথমে একটি কমান্ড সার্ভারের সাথে সংযুক্ত করুন৷",
     Connected: "সংযুক্ত",
@@ -711,6 +718,10 @@ var keyStrings = {
         "রিমোট ইনপুটের মেয়াদ শেষ। আবার চেষ্টা করতে একটি নতুন অধিবেশন খুলুন.",
     "Remote input session is unavailable. Open a new session to try again.":
         "দূরবর্তী ইনপুট সেশন অনুপলব্ধ৷ আবার চেষ্টা করতে একটি নতুন অধিবেশন খুলুন.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "দূরবর্তী সেশনের মেয়াদ শেষ হয়েছে",
     "Remote text entry": "দূরবর্তী পাঠ্য এন্ট্রি",
     "Remote text entry denied": "দূরবর্তী পাঠ্য এন্ট্রি অস্বীকৃত",
@@ -757,6 +768,13 @@ var keyStrings = {
     "Save settings to storage": "স্টোরেজে সেটিংস সংরক্ষণ করুন",
     "Scan this QR code with your phone to enter text.":
         "পাঠ্য লিখতে আপনার ফোন দিয়ে এই QR কোডটি স্ক্যান করুন৷",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "চিত্রনাট্য",
     Search: "অনুসন্ধান করুন",
     "Search programme": "অনুষ্ঠান খুঁজুন",
@@ -775,6 +793,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG এবং লোগোগুলির জন্য প্লেলিস্ট টেমপ্লেট উত্স নির্বাচন করুন৷",
     "Select Stalker portal": "Stalker পোর্টাল নির্বাচন করুন",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "অনুরোধ পাঠান",
     "Send settings": "পাঠান সেটিংস",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -858,6 +878,7 @@ var keyStrings = {
     "Stop current capture": "বর্তমান ক্যাপচার বন্ধ করুন",
     "Stop diagnostics": "ডায়াগনস্টিক বন্ধ করুন",
     "Stop playback and return to live": "প্লেব্যাক বন্ধ করুন এবং লাইভে ফিরে আসুন",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "স্ট্রিম চালানো যাবে না",
     "Stream type: %1": "স্ট্রিমের ধরন: %1",
     "String for search": "অনুসন্ধান ক্যোয়ারী",
@@ -880,6 +901,8 @@ var keyStrings = {
         "কমান্ড সার্ভার আবিষ্কার URL অবৈধ৷",
     "The device ID in the address is invalid.": "ঠিকানায় ID ডিভাইসটি অবৈধ।",
     "The discovery response is invalid.": "আবিষ্কারের প্রতিক্রিয়া অবৈধ।",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "এই ব্রাউজারটি নিরাপদে স্বয়ংক্রিয়ভাবে জোড়া দিতে পারে না। এটি আপডেট করুন বা ম্যানুয়ালি কমান্ড সার্ভার সেটিংস লিখুন।",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -975,27 +998,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз সেটিংস",
     "↑↓ Scroll": "↑↓ স্ক্রোল করুন",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

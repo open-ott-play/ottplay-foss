@@ -626,7 +626,9 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
         t.w,
         (value) => {
             nativeRequest = value;
-            return new Promise((resolve) => { resolveNative = resolve; });
+            return new Promise((resolve) => {
+                resolveNative = resolve;
+            });
         },
         (id) => nativeCancellations.push(id)
     );
@@ -644,7 +646,11 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     screenshotTransport({ ...screenshotRequest }, () => {});
     assert.notEqual(nativeRequest.requestId, firstRequestId);
     t.next();
-    assert.equal(nativeCancellations.length, 2, "native timeout cancels upload");
+    assert.equal(
+        nativeCancellations.length,
+        2,
+        "native timeout cancels upload"
+    );
     const secureResults = [];
     const acceptSecure = (value) => secureResults.push(value);
     browserTransport(secure, acceptSecure);
@@ -1503,9 +1509,9 @@ function screenshotEnvelope(id, lifetime = 30) {
         requests: [
             {
                 action: "screenshot",
+                expires_at: clock / 1000 + lifetime,
                 id,
                 params: { runtime: "page-123" },
-                expires_at: clock / 1000 + lifetime,
             },
         ],
         server_time: clock / 1000,
@@ -1517,7 +1523,7 @@ function screenshotHarness(image = "private-image", elapsed = 0) {
         assert.equal(request.action, "screenshot");
         captures++;
         clock += elapsed;
-        done({ status: "ok", data: { image } });
+        done({ data: { image }, status: "ok" });
     });
     rpc.captureCount = () => captures;
     return rpc;
@@ -1538,7 +1544,11 @@ for (const reason of [
     screenshotJob(rpc, 0);
     const inFlight = rpc.requests.at(-1);
     assert.ok(inFlight.request.body.includes("private-image"));
-    assert.equal(inFlight.request.screenshotControl, true, "image POST uses the no-redirect transport");
+    assert.equal(
+        inFlight.request.screenshotControl,
+        true,
+        "image POST uses the no-redirect transport"
+    );
     if (reason === "revoke") rpc.controller.discardScreenshots();
     else {
         if (reason === "clock-rollback") clock -= 100000;
@@ -1688,49 +1698,98 @@ console.log(
         request.resume();
         response.end("{}");
     });
-    const listen = (server) => new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const listen = (server) =>
+        new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     await listen(sink);
     let sourceRequests = 0;
     let receivedBytes = 0;
     const origin = http.createServer((request, response) => {
         sourceRequests++;
-        request.on("data", (chunk) => { receivedBytes += chunk.length; });
+        request.on("data", (chunk) => {
+            receivedBytes += chunk.length;
+        });
         request.on("end", () => {
             const code = Number(request.url.slice(1));
-            response.writeHead(code, code === 200 ? {} : {
-                Location: `http://127.0.0.1:${sink.address().port}/image`,
-            });
+            response.writeHead(
+                code,
+                code === 200
+                    ? {}
+                    : {
+                          Location: `http://127.0.0.1:${sink.address().port}/image`,
+                      }
+            );
             response.end("{}");
         });
     });
     try {
         await listen(origin);
-        const send = createCommandServerTransport({ setTimeout, clearTimeout, fetch, Request, AbortController });
+        const send = createCommandServerTransport({
+            AbortController,
+            clearTimeout,
+            fetch,
+            Request,
+            setTimeout,
+        });
         const payload = JSON.stringify({ image: "A".repeat(1400000) });
         const request = {
             body: payload,
-            headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-            method: "POST", screenshotControl: true, timeoutMs: 3000,
+            headers: {
+                Authorization: "Bearer " + token,
+                "Content-Type": "application/json",
+            },
+            method: "POST",
+            screenshotControl: true,
+            timeoutMs: 3000,
         };
         for (const status of [200, 301, 302, 303, 307, 308]) {
-            const result = await new Promise((resolve) => send({ ...request,
-                url: `http://127.0.0.1:${origin.address().port}/${status}`,
-            }, resolve));
-            assert.equal(result && result.status, status === 200 ? 200 : undefined);
+            const result = await new Promise((resolve) =>
+                send(
+                    {
+                        ...request,
+                        url: `http://127.0.0.1:${origin.address().port}/${status}`,
+                    },
+                    resolve
+                )
+            );
+            assert.equal(
+                result && result.status,
+                status === 200 ? 200 : undefined
+            );
         }
         assert.equal(sourceRequests, 6);
         assert.equal(receivedBytes, Buffer.byteLength(payload) * 6);
-        assert.equal(sinkRequests, 0, "redirect target never receives image body or bearer token");
-        for (const url of ["http://192.168.1.2/api/responses", "https://user:pass@example.com/api/responses",
-            `http://127.0.0.1:${origin.address().port}/200#fragment`]) {
-            assert.equal(await new Promise((resolve) => send({ ...request, url }, resolve)), undefined);
+        assert.equal(
+            sinkRequests,
+            0,
+            "redirect target never receives image body or bearer token"
+        );
+        for (const url of [
+            "http://192.168.1.2/api/responses",
+            "https://user:pass@example.com/api/responses",
+            `http://127.0.0.1:${origin.address().port}/200#fragment`,
+        ]) {
+            assert.equal(
+                await new Promise((resolve) =>
+                    send({ ...request, url }, resolve)
+                ),
+                undefined
+            );
         }
-        assert.equal(sourceRequests, 6, "invalid screenshot endpoints never make a request");
-        console.log("PASS screenshot Fetch: bounded image-sized upload, all redirect statuses blocked, exact endpoint policy");
+        assert.equal(
+            sourceRequests,
+            6,
+            "invalid screenshot endpoints never make a request"
+        );
+        console.log(
+            "PASS screenshot Fetch: bounded image-sized upload, all redirect statuses blocked, exact endpoint policy"
+        );
     } finally {
         for (const server of [origin, sink]) {
             server.closeAllConnections();
             await new Promise((resolve) => server.close(resolve));
         }
     }
-})().catch((error) => { console.error(error); process.exitCode = 1; });
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

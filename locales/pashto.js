@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv ترتیبات",
     "Allow diagnostics for 10 minutes": "د 10 دقیقو لپاره تشخیص ته اجازه ورکړئ",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "دې سرور ته اجازه ورکړئ چې تشخیصي شمېرنې راټولې کړي او دا خپرونه یا پلیر بیا پیل کړي. لنډمهاله لاسرسی 10 دقیقې دوام کوي. باوري ملاتړ له بیا نښلېدو یا بیا پیل وروسته هم شته؛ د معلوماتو هره راټولونه له 10 دقیقو وروسته پای ته رسېږي. د پاڼې د پټېدو یا د شبکې د نشتوالي پر مهال راټولونه ځنډېږي.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "دې سرور ته اجازه ورکړئ چې د دې ښکاره پاڼې په ناسته کې د غږونې، شبکې او ننوتنو شمېرنې راټولې کړي. HTTPS او د سرور اجازه اړینه ده. له 10 دقیقو وروسته، د پاڼې د پټېدو یا د اړیکې د پرې کېدو پر مهال درېږي.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "د دې وسیلې ID د اجازه لرونکو په لېست کې ورزیات کړئ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -246,6 +251,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Шаравоз د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     Connect: "نښلول",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "دا میډیا پلیر لومړی د کمانډ سرور سره وصل کړئ.",
     Connected: "نښلول شوی",
@@ -724,6 +731,10 @@ var keyStrings = {
         "ریموټ ان پټ پای ته ورسید. د بیا هڅه کولو لپاره نوې ناسته پرانیزئ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ریموټ ان پټ سیشن شتون نلري. د بیا هڅه کولو لپاره نوې ناسته پرانیزئ.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "ریموټ ناسته پای ته ورسیده",
     "Remote text entry": "لرې متن داخلول",
     "Remote text entry denied": "ریموټ متن داخلول رد شول",
@@ -770,6 +781,13 @@ var keyStrings = {
     "Save settings to storage": "ترتیبات په ذخیره کې خوندي کړئ",
     "Scan this QR code with your phone to enter text.":
         "دا QR کوډ د خپل تلیفون سره سکین کړئ ترڅو متن داخل کړئ.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "فلم‌لیک",
     Search: "لټون",
     "Search programme": "پروګرام ولټوئ",
@@ -789,6 +807,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "د EPG او لوګو لپاره د پلې‌لېست ټیمپلیټ سرچینه وټاکئ",
     "Select Stalker portal": "Stalker پورټل غوره کړئ",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "غوښتنه واستوئ",
     "Send settings": "امستنې واستوئ",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -873,6 +893,7 @@ var keyStrings = {
     "Stop diagnostics": "تشخیص بند کړئ",
     "Stop playback and return to live":
         "پلې کول ودروئ او ژوندۍ خپرونې ته لاړ شئ",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "خپرونه پلې نه شوه",
     "Stream type: %1": "د خپرونې ډول: %1",
     "String for search": "د لټون عبارت",
@@ -895,6 +916,8 @@ var keyStrings = {
         "د قوماندې سرور د موندلو URL ناسم دی.",
     "The device ID in the address is invalid.": "په پته کې د وسیلې ID ناسم دی.",
     "The discovery response is invalid.": "د موندلو ځواب ناسم دی.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "دا براوزر په خوندي ډول اتومات جوړه نه شي جوړولای. تازه یې کړئ یا د قوماندې سرور ترتیبات په لاس دننه کړئ.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -989,27 +1012,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "د Шаравоз ترتیبات",
     "↑↓ Scroll": "↑↓ خوځول",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Saitunan All4you.tv",
     "Allow diagnostics for 10 minutes":
         "Ba da izinin binciken matsala na minti 10",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ba wannan sabar izinin tattara ƙididdigar binciken matsala da sake kunna wannan rafi ko manhajar kunnawa. Izinin wucin gadi yana ɗaukar minti 10. Tallafin da aka amince da shi yana nan bayan sake haɗawa ko sake kunnawa; kowane tattarawa har yanzu yana ƙarewa bayan minti 10. Tattarawa tana tsayawa idan an ɓoye manhajar ko babu haɗin yanar gizo.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ba wannan sabar izinin tattara ƙididdigar kunnawa, hanyar sadarwa da shigarwa yayin da wannan zaman yake a gaba. Ana buƙatar HTTPS da izinin sabar. Yana tsayawa bayan minti 10, idan an ɓoye shi ko an katse haɗin.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Ƙara ID na wannan na'ura zuwa jerin waɗanda aka yarda",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -250,6 +255,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Saita Шаравоз a Saituna -> Saitunan mai bada sabis",
     Connect: "Haɗa",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Da farko haɗa wannan manhajar kunnawa zuwa sabar umarni.",
     Connected: "An haɗa",
@@ -732,6 +739,10 @@ var keyStrings = {
         "Lokacin shigarwa daga nesa ya ƙare. Buɗe sabon zama don sake gwadawa.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Zaman shigarwa daga nesa ba ya samuwa. Buɗe sabon zama don sake gwadawa.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Zaman nesa ya ƙare",
     "Remote text entry": "Shigar da rubutu daga nesa",
     "Remote text entry denied": "An hana shigar da rubutu daga nesa",
@@ -779,6 +790,13 @@ var keyStrings = {
     "Save settings to storage": "Ajiye saituna a ma'ajiya",
     "Scan this QR code with your phone to enter text.":
         "Duba wannan lambar QR da wayarka don shigar da rubutu.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Rubutun fim",
     Search: "Nema",
     "Search programme": "Nemi shiri",
@@ -797,6 +815,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Zaɓi tushen samfurin jerin kunnawa don EPG da tambura",
     "Select Stalker portal": "Zaɓi tashar Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Aika buƙata",
     "Send settings": "Aika saituna",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -881,6 +901,7 @@ var keyStrings = {
     "Stop diagnostics": "Dakatar da binciken matsala",
     "Stop playback and return to live":
         "Dakatar da kunnawa kuma koma kai tsaye",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Ba a iya kunna rafin ba",
     "Stream type: %1": "Nau'in rafi: %1",
     "String for search": "Rubutun nema",
@@ -906,6 +927,8 @@ var keyStrings = {
         "ID na na'ura a adireshin ba ya inganta.",
     "The discovery response is invalid.":
         "Amsar binciken sabar ba ta inganta ba.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Wannan burauza ba ya iya haɗawa ta atomatik cikin aminci. Sabunta shi ko shigar da saitunan sabar umarni da hannu.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -1003,27 +1026,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Saitunan Шаравоз",
     "↑↓ Scroll": "↑↓ Gungura",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

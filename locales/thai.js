@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "การตั้งค่า All4you.tv",
     "Allow diagnostics for 10 minutes": "รอการวินิจฉัยเป็นเวลา 10 นาที",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "อนุญาตให้เซิร์ฟเวอร์นี้รวบรวมตัวนับการวินิจฉัยและรีสตาร์ทสตรีมหรือเครื่องเล่นนี้ การเข้าถึงชั่วคราวใช้เวลา 10 นาที การสนับสนุนที่เชื่อถือได้จะยังคงอยู่หลังจากเชื่อมต่อใหม่หรือรีสตาร์ท การจับแต่ละครั้งยังคงหมดอายุหลังจากผ่านไป 10 นาที คอลเลกชันหยุดชั่วคราวขณะซ่อนหรือออฟไลน์",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "อนุญาตให้เซิร์ฟเวอร์นี้รวบรวมการเล่น เครือข่าย และตัวนับอินพุตสำหรับเซสชันเบื้องหน้านี้ ต้อง HTTPS และสิทธิ์ของเซิร์ฟเวอร์ หยุดหลังจากผ่านไป 10 นาที เมื่อซ่อนไว้ หรือเมื่อไม่ได้เชื่อมต่อ",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "อนุญาตอุปกรณ์นี้ ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "เครื่องเล่น HTTPS ไม่สามารถดาวน์โหลดซอร์ส HTTP EPG ได้ ใช้แหล่งที่มา HTTPS",
@@ -246,6 +251,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "กำหนดค่า Шаравоз ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     Connect: "เชื่อมต่อ",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "เชื่อมต่อเครื่องเล่นนี้กับเซิร์ฟเวอร์คำสั่งก่อน",
     Connected: "เชื่อมต่อแล้ว",
@@ -709,6 +716,10 @@ var keyStrings = {
         "อินพุตระยะไกลหมดอายุ เปิดเซสชันใหม่เพื่อลองอีกครั้ง",
     "Remote input session is unavailable. Open a new session to try again.":
         "เซสชั่นการป้อนข้อมูลระยะไกลไม่พร้อมใช้งาน เปิดเซสชันใหม่เพื่อลองอีกครั้ง",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "เซสชันระยะไกลหมดอายุแล้ว",
     "Remote text entry": "การป้อนข้อความระยะไกล",
     "Remote text entry denied": "การป้อนข้อความระยะไกลถูกปฏิเสธ",
@@ -754,6 +765,13 @@ var keyStrings = {
     "Save settings to storage": "บันทึกการตั้งค่าลงพื้นที่เก็บข้อมูล",
     "Scan this QR code with your phone to enter text.":
         "สแกนรหัส QR นี้ด้วยโทรศัพท์ของคุณเพื่อป้อนข้อความ",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "บทภาพยนตร์",
     Search: "ค้นหา",
     "Search programme": "ค้นหารายการ",
@@ -772,6 +790,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "เลือกแหล่งเทมเพลตเพลย์ลิสต์สำหรับ EPG และโลโก้",
     "Select Stalker portal": "เลือกพอร์ทัล Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "ส่งคำขอ",
     "Send settings": "การตั้งค่าการส่ง",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -856,6 +876,7 @@ var keyStrings = {
     "Stop current capture": "หยุดการบันทึกปัจจุบัน",
     "Stop diagnostics": "หยุดการวินิจฉัย",
     "Stop playback and return to live": "หยุดการเล่นและกลับสู่การถ่ายทอดสด",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "ไม่สามารถเล่นสตรีมได้",
     "Stream type: %1": "ประเภทสตรีม: %1",
     "String for search": "คำค้นหา",
@@ -879,6 +900,8 @@ var keyStrings = {
         "การค้นพบเซิร์ฟเวอร์คำสั่ง URL ไม่ถูกต้อง",
     "The device ID in the address is invalid.": "อุปกรณ์ ID ในที่อยู่ไม่ถูกต้อง",
     "The discovery response is invalid.": "การตอบสนองการค้นพบไม่ถูกต้อง",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "เบราว์เซอร์นี้ไม่สามารถจับคู่โดยอัตโนมัติได้อย่างปลอดภัย อัปเดตหรือป้อนการตั้งค่าเซิร์ฟเวอร์คำสั่งด้วยตนเอง",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -972,27 +995,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "การตั้งค่า Шаравоз",
     "↑↓ Scroll": "↑↓ เลื่อน",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

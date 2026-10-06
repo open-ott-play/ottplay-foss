@@ -51,30 +51,6 @@ let screenshotListener = null;
 const screenshotChanges = [];
 Object.assign(w, {
     _: (text) => text,
-    __ottRemoteScreenshot: {
-        grant: (local) => {
-            assert.equal(local, true);
-            screenshotEnabled = true;
-            screenshotChanges.push(true);
-            if (screenshotListener) screenshotListener();
-        },
-        stop: () => {
-            screenshotEnabled = false;
-            screenshotChanges.push(false);
-            if (screenshotListener) screenshotListener();
-        },
-        status: () => ({
-            enabled: screenshotEnabled,
-            message: screenshotEnabled
-                ? "Remote screenshots are allowed for 10 minutes. Close settings to capture."
-                : "Remote screenshots are off.",
-            pending: false,
-            state: screenshotEnabled ? "ready" : "permission_required",
-        }),
-        subscribe: (listener) => {
-            screenshotListener = listener;
-        },
-    },
     __ottRemoteDiagnostics: {
         setEnabled: (enabled) => {
             diagnosticEnabled = enabled;
@@ -102,6 +78,30 @@ Object.assign(w, {
         },
         subscribe: (listener) => {
             diagnosticListener = listener;
+        },
+    },
+    __ottRemoteScreenshot: {
+        grant: (local) => {
+            assert.equal(local, true);
+            screenshotEnabled = true;
+            screenshotChanges.push(true);
+            if (screenshotListener) screenshotListener();
+        },
+        status: () => ({
+            enabled: screenshotEnabled,
+            message: screenshotEnabled
+                ? "Remote screenshots are allowed for 10 minutes. Close settings to capture."
+                : "Remote screenshots are off.",
+            pending: false,
+            state: screenshotEnabled ? "ready" : "permission_required",
+        }),
+        stop: () => {
+            screenshotEnabled = false;
+            screenshotChanges.push(false);
+            if (screenshotListener) screenshotListener();
+        },
+        subscribe: (listener) => {
+            screenshotListener = listener;
         },
     },
     deviceUUID: "<script>window.injected=true</script>" + "uid".repeat(100),

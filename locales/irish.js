@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Socruithe All4you.tv",
     "Allow diagnostics for 10 minutes":
         "Ceadaigh diagnóisic ar feadh 10 nóiméad",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ceadaigh don fhreastalaí seo cuntair dhiagnóiseacha a bhailiú agus an sruth seo nó an seinnteoir a atosú. Maireann rochtain shealadach 10 nóiméad. Bíonn tacaíocht iontaofa ar fáil fós tar éis athcheangail nó atosaithe; téann gach bailiúchán in éag fós tar éis 10 nóiméad. Cuirtear an bailiú ar sos nuair atá an aip i bhfolach nó as líne.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ceadaigh don fhreastalaí seo cuntair athsheinm, líonra agus ionchuir a bhailiú don seisiún seo sa tulra. Tá HTTPS agus cead an fhreastalaí de dhíth. Stadann sé tar éis 10 nóiméad, nuair atá an leathanach i bhfolach nó nuair a dhícheanglaítear é.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Ceadaigh an t-aitheantas gléis seo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Ní féidir le seinnteoir HTTPS foinse EPG HTTP a íoslódáil. Úsáid foinse HTTPS.",
@@ -254,6 +259,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Cumraigh Шаравоз in Socruithe → Socruithe an tsoláthraí",
     Connect: "Ceangail",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Ceangail an seinnteoir seo le freastalaí orduithe ar dtús.",
     Connected: "Ceangailte",
@@ -737,6 +744,10 @@ var keyStrings = {
         "Chuaigh an cianionchur in éag. Oscail seisiún nua chun triail eile a bhaint as.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Níl an seisiún cianionchuir ar fáil. Oscail seisiún nua chun triail eile a bhaint as.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Chuaigh an seisiún cianda in éag",
     "Remote text entry": "Cianionchur téacs",
     "Remote text entry denied": "Diúltaíodh don chianionchur téacs",
@@ -783,6 +794,13 @@ var keyStrings = {
     "Save settings to storage": "Sábháil socruithe sa stóras",
     "Scan this QR code with your phone to enter text.":
         "Scan an cód QR seo le d’fhón chun téacs a chur isteach.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Script scannáin",
     Search: "Cuardaigh",
     "Search programme": "Cuardaigh clár",
@@ -802,6 +820,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Roghnaigh foinse teimpléid seinmliosta le haghaidh EPG agus lógónna",
     "Select Stalker portal": "Roghnaigh tairseach Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Seol iarratas",
     "Send settings": "Seol socruithe",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -890,6 +910,7 @@ var keyStrings = {
     "Stop diagnostics": "Stad diagnóisic",
     "Stop playback and return to live":
         "Stad an athsheinm agus fill ar an gcraoladh beo",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Níorbh fhéidir an sruth a sheinm",
     "Stream type: %1": "Cineál srutha: %1",
     "String for search": "Téarma cuardaigh",
@@ -915,6 +936,8 @@ var keyStrings = {
         "Tá an t-aitheantas gléis sa seoladh neamhbhailí.",
     "The discovery response is invalid.":
         "Tá an freagra aimsiúcháin neamhbhailí.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ní féidir leis an mbrabhsálaí seo péireáil go huathoibríoch go sábháilte. Nuashonraigh é nó cuir isteach socruithe an fhreastalaí orduithe de láimh.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -1012,27 +1035,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Socruithe Шаравоз",
     "↑↓ Scroll": "↑↓ Scrollaigh",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

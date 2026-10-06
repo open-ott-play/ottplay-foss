@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Fikirakirana All4you.tv",
     "Allow diagnostics for 10 minutes":
         "Avelao ny fitiliana mandritra ny 10 minitra",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Avelao ity lohamilina ity hanangona antontan'isa fitiliana sy hamerina hanomboka ity fikorianana na mpamaky ity. Maharitra 10 minitra ny fidirana vonjimaika. Mbola misy ny fanohanana azo itokisana aorian'ny fampifandraisana na fanombohana indray; mifarana aorian'ny 10 minitra foana ny fanangonana tsirairay. Miato ny fanangonana rehefa miafina ny rindranasa na tsy misy fifandraisana.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Avelao ity lohamilina ity hanangona antontan'isa momba ny fandefasana, tambajotra ary fampidirana mandritra ity fotoana isehoan'ny rindranasa ity. Ilaina ny HTTPS sy ny fahazoan-dalan'ny lohamilina. Mijanona aorian'ny 10 minitra, rehefa miafina na tapaka ny fifandraisana.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Ampio amin'ny lisitra ekena ity ID fitaovana ity",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -258,6 +263,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Amboary ny Шаравоз ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     Connect: "Ampifandraiso",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Ampifandraiso amin'ny lohamilina baiko aloha ity mpamaky ity.",
     Connected: "Mifandray",
@@ -756,6 +763,10 @@ var keyStrings = {
         "Tapitra ny fe-potoana fampidirana lavitra. Manokafa fotoana vaovao mba hanandrana indray.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Tsy misy ny fotoam-pampidirana lavitra. Manokafa fotoana vaovao mba hanandrana indray.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Tapitra ny fotoana lavitra",
     "Remote text entry": "Fampidirana soratra lavitra",
     "Remote text entry denied": "Nolavina ny fampidirana soratra lavitra",
@@ -804,6 +815,13 @@ var keyStrings = {
         "Tehirizo ao amin'ny fitahirizana ny fikirakirana",
     "Scan this QR code with your phone to enter text.":
         "Vakio amin'ny findainao ity kaody QR ity mba hampidirana soratra.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Soratra ho an'ny sarimihetsika",
     Search: "Mitadiava",
     "Search programme": "Mitadiava fandaharana",
@@ -823,6 +841,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Safidio ny loharanon'ny môdely lisitra fandefasana ho an'ny EPG sy famantarana",
     "Select Stalker portal": "Safidio ny vavahady Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Alefaso ny fangatahana",
     "Send settings": "Alefaso ny fikirakirana",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -915,6 +935,7 @@ var keyStrings = {
     "Stop diagnostics": "Atsaharo ny fitiliana",
     "Stop playback and return to live":
         "Atsaharo ny fandefasana ary miverena amin'ny mivantana",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Tsy afaka nandefa ny fikorianana",
     "Stream type: %1": "Karazana fikorianana: %1",
     "String for search": "Teny fikarohana",
@@ -940,6 +961,8 @@ var keyStrings = {
         "Tsy manan-kery ny ID fitaovana ao amin'ny adiresy.",
     "The discovery response is invalid.":
         "Tsy manan-kery ny valin'ny fikarohana.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tsy afaka mampifandray fitaovana ho azy amin'ny fomba azo antoka ity mpitety tranonkala ity. Havaozy izy na ampidiro an-tanana ny fikirakiran'ny lohamilina baiko.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -1039,27 +1062,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Fikirakirana Шаравоз",
     "↑↓ Scroll": "↑↓ Kikisaho",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

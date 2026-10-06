@@ -60,10 +60,15 @@ var keyStrings = {
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Настройки за All4you.tv",
     "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID": "Разрешете този ID на устройство",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
@@ -252,6 +257,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "Настройте Шаравоз в Настройки -> Настройки на доставчика",
     Connect: "Свързване",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
     Connected: "Свързано",
@@ -730,6 +737,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Сесията за дистанционен достъп изтече",
     "Remote text entry": "Дистанционно въвеждане на текст",
     "Remote text entry denied": "Дистанционното въвеждане на текст е забранено",
@@ -777,6 +788,13 @@ var keyStrings = {
     "Save settings to storage": "Запазване на настройките в хранилището",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Сценарий",
     Search: "Търсене",
     "Search programme": "Търсене на предаване",
@@ -795,6 +813,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Изберете шаблон на плейлист за програмата и логата",
     "Select Stalker portal": "Избор на портал Stalker",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Изпращане на заявка",
     "Send settings": "Изпращане на настройки",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -884,6 +904,7 @@ var keyStrings = {
     "Stop diagnostics": "Stop diagnostics",
     "Stop playback and return to live":
         "Спиране на възпроизвеждането и връщане на живо",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Потокът не може да се възпроизведе",
     "Stream type: %1": "Тип поток: %1",
     "String for search": "Текст за търсене",
@@ -908,6 +929,8 @@ var keyStrings = {
         "ID на устройството в адреса е невалиден.",
     "The discovery response is invalid.":
         "Получен е невалиден отговор на заявката за търсене.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Този браузър не поддържа безопасно автоматично сдвояване. Обновете го или въведете настройките на сървъра за команди ръчно.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -1006,27 +1029,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Настройки за Шаравоз",
     "↑↓ Scroll": "↑↓ Превъртане",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };

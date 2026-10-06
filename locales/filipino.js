@@ -62,10 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv na mga setting",
     "Allow diagnostics for 10 minutes":
         "Payagan ang mga diagnostic sa loob ng 10 minuto",
+
+    // Remote screenshots: English fallback pending translation.
+    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Payagan ang server na ito na mangolekta ng mga diagnostic counter at i-restart ang stream o media player na ito. Ang pansamantalang pag-access ay tumatagal ng 10 minuto. Mananatiling available ang pinagkakatiwalaang suporta pagkatapos muling kumonekta o mag-restart; mag-e-expire pa rin ang bawat pagkuha pagkatapos ng 10 minuto. Naka-pause ang koleksyon habang nakatago o offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Payagan ang server na ito na mangolekta ng playback, network at input counter para sa foreground session na ito. Nangangailangan ng HTTPS at pahintulot ng server. Hihinto pagkatapos ng 10 minuto, kapag nakatago, o kapag nadiskonekta.",
+    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
+        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
     "Allowlist this Device ID":
         "Idagdag ang ID ng device na ito sa listahan ng pinapayagan",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -255,6 +260,8 @@ var keyStrings = {
     "Configure Шаравоз in Settings -> Provider Settings":
         "I-configure ang Шаравоз sa Mga Setting -> Mga Setting ng Provider",
     Connect: "Kumonekta",
+    "Connect an HTTPS command server before allowing screenshots.":
+        "Connect an HTTPS command server before allowing screenshots.",
     "Connect this player to a command server first.":
         "Ikonekta muna ang media player na ito sa isang command server.",
     Connected: "Nakakonekta",
@@ -743,6 +750,10 @@ var keyStrings = {
         "Nag-expire ang remote input. Magbukas ng bagong session para subukang muli.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Hindi available ang remote input session. Magbukas ng bagong session para subukang muli.",
+    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
+        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
+    "Remote screenshots are off.": "Remote screenshots are off.",
     "Remote session expired": "Nag-expire ang remote session",
     "Remote text entry": "Malayong entry ng text",
     "Remote text entry denied": "Tinanggihan ang remote na text entry",
@@ -792,6 +803,13 @@ var keyStrings = {
     "Save settings to storage": "I-save ang mga setting sa storage",
     "Scan this QR code with your phone to enter text.":
         "I-scan ang QR code na ito gamit ang iyong telepono upang maglagay ng text.",
+    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing was cancelled or is unavailable.":
+        "Screen sharing was cancelled or is unavailable.",
+    "Screenshot permission could not be enabled.":
+        "Screenshot permission could not be enabled.",
+    "Screenshots are unavailable on this platform.":
+        "Screenshots are unavailable on this platform.",
     Script: "Iskrip",
     Search: "Maghanap",
     "Search programme": "Maghanap ng programa",
@@ -811,6 +829,8 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Pumili ng pinagmulan ng template ng playlist para sa EPG at mga logo",
     "Select Stalker portal": "Piliin ang Stalker portal",
+    "Select the player tab or window in the browser sharing dialog.":
+        "Select the player tab or window in the browser sharing dialog.",
     "Send request": "Magpadala ng kahilingan",
     "Send settings": "Ipadala ang mga setting",
     "Send this code from your proxy in the Authorization: Bearer header.":
@@ -901,6 +921,7 @@ var keyStrings = {
     "Stop diagnostics": "Itigil ang mga diagnostic",
     "Stop playback and return to live":
         "Ihinto ang playback at bumalik sa direktang pagsasahimpapawid",
+    "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Hindi ma-play ang stream",
     "Stream type: %1": "Uri ng stream: %1",
     "String for search": "Query sa paghahanap",
@@ -925,6 +946,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Ang device na ID sa address ay hindi wasto.",
     "The discovery response is invalid.": "Di-wasto ang tugon sa pagtuklas.",
+    "This browser cannot identify the selected screenshot source.":
+        "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ang browser na ito ay hindi maaaring awtomatikong magpares. I-update ito o ipasok ang mga setting ng command server nang manu-mano.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -1022,27 +1045,4 @@ var keyStrings = {
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Шаравоз na mga setting",
     "↑↓ Scroll": "↑↓ Mag-scroll",
-
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
-    "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
-    "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
-    "Remote screenshots": "Remote screenshots",
-    "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
-    "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
-    "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
-    "Stop screenshots": "Stop screenshots",
-    "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
 };
