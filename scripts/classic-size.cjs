@@ -96,7 +96,11 @@ const { gzipSync } = require("node:zlib");
 // add about 9.9 KiB raw / 2.9 KiB gzip to the entry; provider assets are unchanged.
 // Node 26.8.2 measures 714105 raw / 217220 gzip for web and 714063 / 217278
 // for native. Retain bounded Node 22 and release-version suffix headroom.
-const BUDGET = Object.freeze({ bytes: 715000, gzipBytes: 218500 });
+// Adjacent-channel control and guarded list/PiP admission add 3272 raw bytes
+// over ac2a4ce: Node 22.23.3 web 717691/218773, native 717649/218836.
+// The measured gzip delta is 921 on Node 22 and at most 944 on Node 26.
+// Allocate 3300 raw/950 gzip for this feature, preserving the previous reserve.
+const BUDGET = Object.freeze({ bytes: 718300, gzipBytes: 219450 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -147,7 +151,10 @@ const BUDGET = Object.freeze({ bytes: 715000, gzipBytes: 218500 });
 // retain bounded release-suffix headroom while counting every provider.
 // The same diagnostic implementation is counted once; providers are unchanged.
 // Kiosk changes only the entry; count the same measured cost in total payloads.
-const TOTAL_BUDGET = Object.freeze({ bytes: 812600, gzipBytes: 255000 });
+// The same adjacent-channel feature adds the same cost to the complete payload;
+// all six optional provider bundles are unchanged. Node 22.23.3 totals measure
+// web 815284/255322 and native 815242/255385; preserve the previous reserve.
+const TOTAL_BUDGET = Object.freeze({ bytes: 815900, gzipBytes: 255950 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

@@ -72,15 +72,45 @@ function moduleOf(file, requireFn, window) {
     );
     const controllers = [];
     const prefix = "/ott-control";
+    const submissions = [];
+    let lostStepSubmission = null;
     const proxy = http.createServer((request, response) => {
         if (!request.url.startsWith(prefix + "/")) {
             response.writeHead(404).end();
             return;
         }
+        const requestChunks = [];
+        request.on("data", (chunk) => requestChunks.push(chunk));
         const upstream = http.request(
             "http://127.0.0.1:" + port + request.url.slice(prefix.length),
             { headers: request.headers, method: request.method },
             (incoming) => {
+                if (
+                    request.method === "POST" &&
+                    request.url.startsWith(prefix + "/api/requests?")
+                ) {
+                    const body = JSON.parse(Buffer.concat(requestChunks));
+                    submissions.push({
+                        action: body.action,
+                        device: new URL(
+                            request.url,
+                            addressForProxy()
+                        ).searchParams.get("device_id"),
+                        operation: body.params.operation,
+                    });
+                    if (
+                        lostStepSubmission &&
+                        !lostStepSubmission.dropped &&
+                        body.action === "playback" &&
+                        body.params.operation === lostStepSubmission.operation
+                    ) {
+                        assert.equal(incoming.statusCode, 202);
+                        lostStepSubmission.dropped = true;
+                        incoming.resume();
+                        response.destroy();
+                        return;
+                    }
+                }
                 response.writeHead(incoming.statusCode, incoming.headers);
                 incoming.pipe(response);
             }
@@ -88,6 +118,9 @@ function moduleOf(file, requireFn, window) {
         upstream.on("error", () => response.writeHead(502).end());
         request.pipe(upstream);
     });
+    function addressForProxy() {
+        return "http://127.0.0.1:" + proxy.address().port;
+    }
     try {
         await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
         const address = "http://127.0.0.1:" + proxy.address().port + prefix;
@@ -123,6 +156,9 @@ function moduleOf(file, requireFn, window) {
                 seeks = 0,
                 nativeExits = 0,
                 nativeRestarts = 0,
+                channelSteps = 0,
+                dropStepReceipt = false,
+                droppedStepReceipt = false,
                 protectedInput = false,
                 pendingAck = null;
             const keysReceived = [],
@@ -171,6 +207,7 @@ function moduleOf(file, requireFn, window) {
                     },
                     source: () => "demo",
                 },
+                catIndex: 0,
                 cats: { one: ["a", "b"] },
                 catsArray: ["one"],
                 channels: {
@@ -182,14 +219,18 @@ function moduleOf(file, requireFn, window) {
                 commandChannelsReady: true,
                 curList: ["a", "b"],
                 deviceUUID: device,
+                ifParentalAccessChId: () => false,
                 loadPlaylist: () => playlistLoads++,
                 location: { protocol: "http:" },
+                parentalArray: [],
                 playChannel: () => {},
+                primaryIndex: 0,
                 restart: () => reloads++,
                 setTimeout,
                 stbGetItem: () => "demo",
                 stbGetVolume: () => volume,
             };
+            host.curList = host.cats.one;
             host.keys = {
                 CH_UP: 427,
                 ENTER: 13,
@@ -216,6 +257,7 @@ function moduleOf(file, requireFn, window) {
                 checkpoint: () => {},
                 snapshot: () => ({ target: { kind: playbackKind } }),
             };
+            host.__ottParental = { needs: () => false };
             if (native)
                 host.__TAURI__ = {
                     core: {
@@ -285,9 +327,15 @@ function moduleOf(file, requireFn, window) {
                 host
             ).createKiosk(host);
             host.__ottKiosk.init();
-            host.playChannel = (c, i) => {
+            host.playChannel = (c, i, _remote, admission) => {
+                if (admission && !admission()) return false;
                 const id = host.cats[host.catsArray[c]][i];
-                if (host.__ottKiosk.admit(id)) host.primaryIndex = i;
+                if (!host.__ottKiosk.admit(id)) return false;
+                host.catIndex = c;
+                host.curList = host.cats[host.catsArray[c]];
+                host.primaryIndex = i;
+                if (admission) channelSteps++;
+                return true;
             };
             const dispatch = (command) => {
                 dispatches++;
@@ -348,6 +396,17 @@ function moduleOf(file, requireFn, window) {
                         if (request.url.endsWith("/api/responses")) {
                             const receipt = JSON.parse(request.body);
                             receipts.push(receipt);
+                            if (
+                                dropStepReceipt &&
+                                !droppedStepReceipt &&
+                                receipt.data &&
+                                receipt.data.operation === "next_channel"
+                            ) {
+                                assert.equal(response.status, 200);
+                                droppedStepReceipt = true;
+                                complete();
+                                return;
+                            }
                             if (
                                 pendingAck &&
                                 receipt.data &&
@@ -431,6 +490,7 @@ function moduleOf(file, requireFn, window) {
             });
             controllers.push(controller);
             return () => ({
+                channelSteps,
                 configuration: clone(configuration),
                 controlsReceived: clone(controlsReceived),
                 defer: (action, value) => {
@@ -456,8 +516,12 @@ function moduleOf(file, requireFn, window) {
                     return gate;
                 },
                 dispatches,
+                dropNextStepReceipt: () => {
+                    dropStepReceipt = true;
+                },
                 dropped,
                 droppedReload,
+                droppedStepReceipt,
                 keysReceived: keysReceived.slice(),
                 kiosk: host.__ottKiosk.snapshot(),
                 nativeExits,
@@ -479,7 +543,20 @@ function moduleOf(file, requireFn, window) {
                 resumed,
                 seeks,
                 select: host.playChannel,
+                selectedChannel: host.curList[host.primaryIndex],
                 standby,
+                stepCategory: () => {
+                    host.channels.c = { channel_name: "Спорт" };
+                    host.channels.x = {
+                        channel_name: "Outside active category",
+                    };
+                    host.cList = ["a", "x", "b", "c"];
+                    host.cats.steps = ["c", "a", "b"];
+                    host.catsArray = ["one", "steps"];
+                    host.catIndex = 1;
+                    host.curList = host.cats.steps;
+                    host.primaryIndex = 0;
+                },
                 streamRestarts,
                 volume,
             });
@@ -634,6 +711,97 @@ function moduleOf(file, requireFn, window) {
         await run("kiosk", "set", "ВоСт");
         assert.equal(television().kiosk.channel.id, "a");
         await run("kiosk", "off");
+        television().stepCategory();
+        const isolatedSteps = desktop().channelSteps;
+        const isolatedSelection = desktop().selectedChannel;
+        const isolatedRequests = desktop().controlsReceived.length;
+        async function step(alias, operation, id, name, number) {
+            const before = television();
+            const posted = submissions.length;
+            assert.deepEqual(await jsonOn("tv", alias), {
+                channel: { id, name, number },
+                dispatched: true,
+                operation,
+            });
+            const after = television();
+            assert.equal(after.selectedChannel, id);
+            assert.equal(after.channelSteps, before.channelSteps + 1);
+            assert.deepEqual(
+                after.controlsReceived
+                    .slice(before.controlsReceived.length)
+                    .map(({ action, params }) => ({ action, params })),
+                [{ action: "playback", params: { operation } }],
+                "a relative step is one typed request, never an input fallback"
+            );
+            assert.deepEqual(submissions.slice(posted), [
+                { action: "playback", device: "dev_test", operation },
+            ]);
+            assert.deepEqual(after.keysReceived, before.keysReceived);
+        }
+        // The active category is c,a,b, while ott s numbers are a,x,b,c.
+        // Neither adjacency nor wrap may visit x outside the current category.
+        await step("prev", "previous_channel", "b", "Новости", 3);
+        await step("previous", "previous_channel", "a", "Новости HD", 1);
+        await step("next", "next_channel", "b", "Новости", 3);
+        await step("NeXt", "next_channel", "c", "Спорт", 4);
+        const receiptStart = television().receipts.length;
+        television().dropNextStepReceipt();
+        await step("next", "next_channel", "a", "Новости HD", 1);
+        await eventually(
+            () =>
+                television()
+                    .receipts.slice(receiptStart)
+                    .filter(
+                        (receipt) => receipt.data.operation === "next_channel"
+                    ),
+            (receipts) => receipts.length >= 2,
+            "lost channel-step receipt ACK must be retried"
+        );
+        const stepReceipts = television()
+            .receipts.slice(receiptStart)
+            .filter((receipt) => receipt.data.operation === "next_channel");
+        assert(television().droppedStepReceipt);
+        assert(
+            stepReceipts.every(
+                (receipt) =>
+                    JSON.stringify(receipt) === JSON.stringify(stepReceipts[0])
+            )
+        );
+        assert.equal(television().channelSteps, 5);
+        assert.equal(television().selectedChannel, "a");
+
+        // Lose the successful POST response before the CLI knows the request ID.
+        // The submitted relative action can still happen, so it must not replay.
+        const uncertainBefore = television();
+        const uncertainPosted = submissions.length;
+        lostStepSubmission = { dropped: false, operation: "previous_channel" };
+        await assert.rejects(jsonOn("tv", "previous"), (error) => {
+            assert.equal(error.stdout, "");
+            return true;
+        });
+        assert(lostStepSubmission.dropped);
+        await eventually(
+            television,
+            (state) => state.channelSteps === uncertainBefore.channelSteps + 1,
+            "the accepted step with a lost POST response must reach its player"
+        );
+        assert.equal(television().selectedChannel, "c");
+        assert.deepEqual(submissions.slice(uncertainPosted), [
+            {
+                action: "playback",
+                device: "dev_test",
+                operation: "previous_channel",
+            },
+        ]);
+        assert.equal(
+            television().controlsReceived.length,
+            uncertainBefore.controlsReceived.length + 1
+        );
+        lostStepSubmission = null;
+        assert.equal(desktop().channelSteps, isolatedSteps);
+        assert.equal(desktop().selectedChannel, isolatedSelection);
+        assert.equal(desktop().controlsReceived.length, isolatedRequests);
+
         const browserCaps = await jsonOn("tv", "CAPS");
         const nativeCaps = await jsonOn("mac", "capabilities");
         assert.equal(browserCaps.version, 1);
@@ -646,7 +814,10 @@ function moduleOf(file, requireFn, window) {
         assert(nativeCaps.lifecycle.includes("exit_app"));
         assert(nativeCaps.lifecycle.includes("restart_app"));
         assert(!nativeCaps.lifecycle.includes("reboot_device"));
-        assert.deepEqual(browserCaps.playback, []);
+        assert.deepEqual(browserCaps.playback, [
+            "previous_channel",
+            "next_channel",
+        ]);
         assert(browserCaps.input.includes("ok"));
 
         async function unsupported(name, get, args, action, params) {
@@ -809,6 +980,8 @@ function moduleOf(file, requireFn, window) {
             "pause",
             "resume",
             "seek",
+            "previous_channel",
+            "next_channel",
         ]);
         for (const operation of ["pause", "resume"])
             assert.deepEqual(await jsonOn("tv", operation), {
@@ -828,6 +1001,8 @@ function moduleOf(file, requireFn, window) {
         assert.deepEqual((await jsonOn("tv", "caps")).playback, [
             "pause",
             "resume",
+            "previous_channel",
+            "next_channel",
         ]);
         await unsupported("tv", television, ["seek", "1"], "playback", {
             operation: "seek",
@@ -846,9 +1021,22 @@ function moduleOf(file, requireFn, window) {
             { action: "playback", params: { operation: "pause", position: 0 } },
             {
                 action: "playback",
+                params: { operation: "previous_channel", position: null },
+            },
+            {
+                action: "playback",
+                params: { operation: "next_channel", repeat: 2 },
+            },
+            { action: "playback", params: { operation: null } },
+            { action: "playback", params: { operation: "next_chanel" } },
+            { action: "playback", params: { operation: "prev" } },
+            { action: "input", params: { key: "previous_channel" } },
+            {
+                action: "playback",
                 params: { operation: "seek", position: 9007199254740992 },
             },
         ];
+        const malformedStepCount = television().channelSteps;
         for (const payload of malformed) {
             const result = await fetch(
                 address + "/api/requests?device_id=dev_test",
@@ -867,6 +1055,10 @@ function moduleOf(file, requireFn, window) {
                 "Go must reject an ambiguous control before queue admission"
             );
         }
+        assert.equal(television().channelSteps, malformedStepCount);
+        console.log(
+            "PASS previous/prev/next through real Go + compiled TS + Python: active-category adjacency, both wraps, catalogue receipt numbers, one mutation, device isolation, malformed rejection and no replay after lost POST/receipt responses"
+        );
         console.log(
             "PASS real Go + compiled TS + Python controls: capability identities, CLI key aliases, exact after-ACK effects/retries, protected-input cancellation, native/browser lifecycle distinctions and owned playback shapes"
         );

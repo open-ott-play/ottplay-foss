@@ -630,3 +630,346 @@ for (const name of ["exportSettingsUI", "importSettingsUI"]) {
 console.log(
     "PASS private transfer boundaries: real Manage settings owner protects child dialogs and import/export refuse remote initiation"
 );
+
+// Execute the real channel admission/playback boundary, not a synthetic key path.
+function channelStepFixture() {
+    const f = fixture();
+    const w = f.w;
+    const needs = w.__ottParental.needs;
+    f.source = "provider-one";
+    f.owner = null;
+    f.pinCalls = 0;
+    f.channelLocked = false;
+    w.__ottSourceIdentity = { current: () => f.source };
+    w.__ottCommandChannelLoad = {};
+    w.__ottClassicScreenPort.screens.current = () => f.owner;
+    w.__ottClassicScreenPort.listOwner = () => f.owner;
+    w.__ottParental.needs = (kind) =>
+        kind === "channels" ? f.channelLocked : needs(kind);
+    Object.assign(w.__ottKiosk, { admit: () => true, allowed: () => true });
+    w.channels = {
+        1: { channel_name: "Первый", url: "https://private.example/1" },
+        2: { channel_name: "Второй", url: "https://private.example/2" },
+        3: {
+            channel_name: "Outside category",
+            url: "https://private.example/3",
+        },
+        4: { channel_name: "Четвёртый", url: "https://private.example/4" },
+    };
+    w.cList = [1, 3, 4, 2];
+    w.cats = { All: w.cList, Favourites: [2, 1, 4], Other: [3] };
+    w.catsArray = ["All", "Favourites", "Other"];
+    w.catIndex = 1;
+    w.curList = w.cats.Favourites;
+    w.primaryIndex = 0;
+    w.parentalArray = [];
+    w.commandChannelsReady = true;
+    w.ifParentalAccessChId = (_id, callback) => {
+        f.pinCalls++;
+        if (!f.channelLocked) return false;
+        f.pinContinuation = callback;
+        return true;
+    };
+    const globals = {
+        _: (text) => text,
+        checkMedia() {},
+        clearTimeout: (timer) => f.effects.push(["clear", timer]),
+        closeList() {
+            assert.equal(
+                w.previewChan,
+                null,
+                "preview cannot restore the old stream"
+            );
+            f.effects.push("close-list");
+            w.isListVisible = false;
+            f.owner = null;
+            if (f.onClose) f.onClose();
+        },
+        console: { log() {} },
+        exports: {},
+        ifParentalAccessChId: (...args) => w.ifParentalAccessChId(...args),
+        infoBox: () =>
+            assert.fail("a validated category cannot open an error dialog"),
+        playChannel: (...args) => w.playChannel(...args),
+        providerGetJson: () => ({}),
+        sendClientFeedback: () => assert.fail("no unsolicited error feedback"),
+        setCurrent(category, index) {
+            f.effects.push(["select", category, index]);
+            w.catIndex = category;
+            w.curList = w.cats[w.catsArray[category]];
+            w.primaryIndex = index;
+        },
+        setTimeout: () => 1,
+        settings: { infoSwitch: false, stopPlay: false },
+        showChannelInfo() {},
+        stbPlay: (url) => f.effects.push(["play", url]),
+        stbStop: () => f.effects.push("stop"),
+        updateChannelInfo() {},
+        window: w,
+    };
+    for (const name of [
+        "cats",
+        "catsArray",
+        "channels",
+        "curList",
+        "primaryIndex",
+    ])
+        Object.defineProperty(globals, name, { get: () => w[name] });
+    vm.runInNewContext(
+        ts.transpileModule(
+            sourceFunction("src/channels/index.ts", "getChannelUrl") +
+                "\n" +
+                sourceFunction("src/index.ts", "_playChannel") +
+                "\nexports.play = _playChannel;",
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText,
+        globals
+    );
+    w.playChannel = globals.exports.play;
+    f.globals = globals;
+    f.played = () => f.effects.filter((effect) => effect[0] === "play");
+    f.kind("live");
+    // An adjacent live channel does not require a decoder owned by the new backend.
+    w.stbPlay = () => {};
+    return f;
+}
+
+// Use the real list/PiP cleanup: a channel step must not open an unrelated PIN.
+{
+    const f = channelStepFixture();
+    const w = f.w;
+    const g = f.globals;
+    Object.assign(g, {
+        $: () => ({ hide() {}, toggle() {} }),
+        cancelMediaLoad() {},
+        listElement: null,
+    });
+    g.console.error = (error) => {
+        throw error;
+    };
+    Object.defineProperty(g, "isListVisible", {
+        get: () => w.isListVisible,
+        set: (value) => {
+            w.isListVisible = value;
+        },
+    });
+    w.__ottClassicScreenPort.closeList = () => {
+        f.owner = null;
+    };
+    vm.runInNewContext(
+        ts.transpileModule(
+            ["withPipChannelAccess", "playPipChannel", "closeList"]
+                .map((name) => sourceFunction("src/ui/index.ts", name))
+                .join("\n"),
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText,
+        g
+    );
+    w.isListVisible = true;
+    f.owner = { kind: "list", model: {} };
+    w.pipCatIndex = 2;
+    w.pipIndex = 0;
+    w.stbPlayPip = () =>
+        assert.fail("a remote channel step must not restore PiP");
+    w.parentalArray = [3];
+    f.channelLocked = true;
+    w.ifParentalAccessChId = (id, continuation) => {
+        f.pinCalls++;
+        if (id !== 3) return false;
+        f.pinContinuation = continuation;
+        return true;
+    };
+    assert.equal(
+        f.run("playback", { operation: "next_channel" }).result.status,
+        "ok"
+    );
+    assert.equal(w.isListVisible, false);
+    assert.deepEqual(f.played(), [["play", "https://private.example/1"]]);
+    assert.equal(
+        f.pinCalls,
+        0,
+        "closing the real list does not open a PiP PIN"
+    );
+    assert.equal(f.pinContinuation, undefined);
+    g.closeList();
+    assert.equal(
+        f.pinCalls,
+        1,
+        "ordinary list close retains its PiP admission"
+    );
+    assert.equal(typeof f.pinContinuation, "function");
+}
+
+for (const [operation, start, expected, number] of [
+    ["next_channel", 0, 1, 1],
+    ["next_channel", 2, 0, 4],
+    ["previous_channel", 0, 2, 3],
+    ["previous_channel", 2, 1, 1],
+]) {
+    const f = channelStepFixture();
+    f.w.primaryIndex = start;
+    f.w.isListVisible = true;
+    f.owner = { kind: "list", model: {} };
+    f.w.listCatIndex = 2;
+    f.w.listArray = [3];
+    f.w.selIndex = 0;
+    f.w.previewChan = { ch_id: 3 };
+    f.w.previewTimer = 123;
+    assert.deepEqual(f.run("capabilities").result.data.playback, [
+        "previous_channel",
+        "next_channel",
+    ]);
+    assert.deepEqual(
+        f.effects,
+        [],
+        "capability reads have no playback/UI effects"
+    );
+    const pending = f.run("playback", { operation });
+    const id = f.w.curList[expected];
+    assert.deepEqual(pending.result, {
+        data: {
+            channel: { id, name: f.w.channels[id].channel_name, number },
+            dispatched: true,
+            operation,
+        },
+        status: "ok",
+    });
+    assert.equal(
+        pending.effect,
+        undefined,
+        "relative steps are not replayed after ACK"
+    );
+    assert.equal(f.w.primaryIndex, expected);
+    assert.equal(
+        f.w.catIndex,
+        1,
+        "browsing another category does not select its order"
+    );
+    assert.equal(f.w.isListVisible, false);
+    assert.ok(f.effects.includes("close-list"));
+    assert.deepEqual(f.played(), [["play", "https://private.example/" + id]]);
+    assert.equal(
+        f.pinCalls,
+        0,
+        "remote admission cannot enqueue a PIN callback"
+    );
+    assert.ok(!JSON.stringify(pending.result).includes("private.example"));
+}
+
+for (const [name, mutate] of Object.entries({
+    "changed active list": (f) => (f.w.curList = [2, 1]),
+    "empty category": (f) => f.w.curList.splice(0),
+    "empty channel name": (f) => (f.w.channels[1].channel_name = " "),
+    "infinite category": (f) => (f.w.catIndex = Infinity),
+    "invalid target ID": (f) => (f.w.curList[1] = {}),
+    "invalid Unicode name": (f) => (f.w.channels[1].channel_name = "\ud800"),
+    kiosk: (f) => f.kiosk(true),
+    "local-only list": (f) =>
+        (f.owner = { kind: "list", model: { localOnlyInput: true } }),
+    "missing current channel": (f) => delete f.w.channels[2],
+    "missing full catalogue target": (f) => (f.w.cList = [2, 3]),
+    "missing parental policy": (f) => delete f.w.parentalArray,
+    "missing target channel": (f) => delete f.w.channels[1],
+    "modal confirmation": (f) => (f.owner = { kind: "dialog", model: {} }),
+    "NaN current index": (f) => (f.w.primaryIndex = NaN),
+    "negative current index": (f) => (f.w.primaryIndex = -1),
+    "out-of-range current index": (f) => (f.w.primaryIndex = 3),
+    "PIN or support screen": (f) => f.protect(true),
+    "protected target": (f) => {
+        f.channelLocked = true;
+        f.w.parentalArray = [1];
+    },
+    "settings lock": (f) => f.lock(true),
+    standby: (f) => (f.w.stbIsStandby = () => true),
+    "text editor": (f) => (f.owner = { kind: "editor", model: {} }),
+    "unready catalogue": (f) => (f.w.commandChannelsReady = false),
+})) {
+    const f = channelStepFixture();
+    mutate(f);
+    assert.ok(
+        !f.run("capabilities").result.data.playback.includes("next_channel"),
+        name + " is not advertised"
+    );
+    assert.equal(
+        f.run("playback", { operation: "next_channel" }).result.status,
+        "rejected",
+        name
+    );
+    assert.deepEqual(f.effects, [], name + " has no UI/playback effects");
+    assert.equal(
+        f.pinCalls,
+        0,
+        name + " does not queue a delayed PIN continuation"
+    );
+}
+
+for (const mutate of [
+    (f) => (f.source = "provider-two"),
+    (f) => (f.w.__ottCommandChannelLoad = {}),
+    (f) => (f.w.primaryIndex = 1),
+    (f) => (f.w.curList[1] = 3),
+    (f) => f.w.curList.push(3),
+    (f) => f.w.cList.reverse(),
+    (f) => f.lock(true),
+    (f) => f.kiosk(true),
+    (f) => f.protect(true),
+    (f) => {
+        f.channelLocked = true;
+        f.w.parentalArray = [1];
+    },
+]) {
+    const f = channelStepFixture();
+    f.w.isListVisible = true;
+    f.owner = { kind: "list", model: {} };
+    f.w.previewChan = { ch_id: 3 };
+    f.onClose = () => mutate(f);
+    assert.equal(
+        f.run("playback", { operation: "next_channel" }).result.status,
+        "rejected"
+    );
+    assert.deepEqual(
+        f.played(),
+        [],
+        "UI cleanup cannot redirect a bound channel step"
+    );
+    assert.equal(f.pinCalls, 0);
+    assert.equal(f.pinContinuation, undefined);
+}
+
+{
+    const f = channelStepFixture();
+    f.w.curList.splice(1);
+    assert.equal(
+        f.run("playback", { operation: "previous_channel" }).result.status,
+        "ok"
+    );
+    assert.deepEqual(
+        f.played(),
+        [["play", "https://private.example/2"]],
+        "one-channel category wraps to itself"
+    );
+}
+{
+    const f = channelStepFixture();
+    for (const params of [
+        { operation: "next_channel", position: 0 },
+        { operation: "previous_channel", position: undefined },
+        { count: 2, operation: "next_channel" },
+    ])
+        assert.equal(f.run("playback", params).result.status, "rejected");
+    assert.deepEqual(f.effects, []);
+    f.channelLocked = true;
+    f.w.playChannel(1, 1, true);
+    assert.equal(
+        f.pinCalls,
+        1,
+        "ordinary playback retains its PIN prompt flow"
+    );
+    assert.equal(typeof f.pinContinuation, "function");
+    f.channelLocked = false;
+    f.pinContinuation();
+    assert.deepEqual(f.played(), [["play", "https://private.example/1"]]);
+}
+console.log(
+    "PASS adjacent channels: real playback admission, category order/wrap, list/preview close, modal/PIN/kiosk guards and stale cleanup fencing"
+);
