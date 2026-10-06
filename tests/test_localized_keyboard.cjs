@@ -46,7 +46,7 @@ assert.deepEqual(codes.slice(20, 28), [
     "_aze",
     "_kaz",
 ]);
-assert.deepEqual(codes.slice(28), [
+assert.deepEqual(codes.slice(28, 58), [
     "_ara",
     "_chi",
     "_jpn",
@@ -77,6 +77,38 @@ assert.deepEqual(codes.slice(28), [
     "_slv",
     "_hrv",
     "_srp",
+]);
+assert.deepEqual(codes.slice(58), [
+    "_geo",
+    "_alb",
+    "_bos",
+    "_mac",
+    "_ice",
+    "_cat",
+    "_baq",
+    "_glg",
+    "_gle",
+    "_mlt",
+    "_pus",
+    "_kur",
+    "_tgk",
+    "_kir",
+    "_tuk",
+    "_mon",
+    "_lao",
+    "_ori",
+    "_asm",
+    "_snd",
+    "_afr",
+    "_amh",
+    "_hau",
+    "_yor",
+    "_ibo",
+    "_som",
+    "_zul",
+    "_xho",
+    "_mlg",
+    "_kin",
 ]);
 const dom = new JSDOM(
     '<div id="listEdit" style="width:700px;height:520px"></div><div id="listPodval"></div>',
@@ -275,6 +307,15 @@ try {
         ["_gre", "ΐ", "Ι\u0308\u0301"],
         ["_tur", "i", "İ"],
         ["_aze", "i", "İ"],
+        ["_geo", "ა", "Ა"],
+        ["_hau", "ɓ", "Ɓ"],
+        ["_hau", "ɗ", "Ɗ"],
+        ["_hau", "ƙ", "Ƙ"],
+        ["_hau", "ƴ", "Ƴ"],
+        ["_kur", "i", "I"],
+        ["_kur", "î", "Î"],
+        ["_yor", "ẹ", "Ẹ"],
+        ["_ibo", "ụ", "Ụ"],
     ]) {
         layout(code);
         w._keyPage = Math.floor(w.keyStrings.alhabet.indexOf(character) / 40);
@@ -291,6 +332,29 @@ try {
             character === "i" ? 1 : 0,
             "only locale-sensitive i insertion reads the current language"
         );
+    }
+    layout("_geo");
+    const originalUpperCase = w.String.prototype.toUpperCase;
+    try {
+        w.String.prototype.toUpperCase = function () {
+            const value = String(this);
+            return /^[ა-ჰ]$/.test(value)
+                ? value
+                : originalUpperCase.call(value);
+        };
+        assert.equal(w.eval('"ა".toUpperCase()'), "ა", "pre-Unicode-11 engine");
+        w.editvar = "";
+        w.editPos = 0;
+        w._keyCur = w._keys.indexOf("ა");
+        w.showEdit();
+        assert.equal(
+            w.document.getElementById("ik" + w._keyCur).textContent,
+            "Ა"
+        );
+        w.editKey1(w.keys.ENTER);
+        assert.equal(w.editvar, "Ა", "legacy engine inserts Georgian capitals");
+    } finally {
+        w.String.prototype.toUpperCase = originalUpperCase;
     }
     layout("_tur");
     w._keyCur = 0;
@@ -420,6 +484,17 @@ try {
         ["_tha", "ไทย"],
         ["_bur", "မြန်မာ"],
         ["_khm", "ខ្មែរ"],
+        ["_geo", "ქართული"],
+        ["_amh", "አማርኛ"],
+        ["_lao", "ພາສາ​ລາວ"],
+        ["_ori", "ଓଡ଼ିଆଡ଼"],
+        ["_asm", "অসমীয়া"],
+        ["_snd", "سنڌي"],
+        ["_snd", "جھگھ٠١٢٣٤٥٦٧٨٩"],
+        ["_pus", "پښتو"],
+        ["_yor", "ẹ́ọ̀m̄"],
+        ["_ibo", "ị́ụ̀"],
+        ["_hau", "ɓɗƙƴ"],
     ]) {
         layout(code);
         w._setCase(false);
@@ -435,6 +510,11 @@ try {
             w._buildKeyboard();
             w.showEdit();
             w._keyCur = w._keys.indexOf(character);
+            if (character === "\u200b")
+                assert.equal(
+                    w.document.getElementById("ik" + w._keyCur).textContent,
+                    "ZWSP"
+                );
             if (character === "\u200c")
                 assert.equal(
                     w.document.getElementById("ik" + w._keyCur).textContent,
@@ -458,7 +538,7 @@ try {
     assert.equal(w.document.querySelector("#ee img"), null);
     assert.equal(w.document.getElementById("ee").textContent, w.editvar);
     console.log(
-        "PASS localized keyboard: 58 alphabets, paging, all focus directions, case round trips and multicodepoint insertion"
+        "PASS localized keyboard: 88 alphabets, paging, all focus directions, case round trips and multicodepoint insertion"
     );
 } finally {
     w.close();

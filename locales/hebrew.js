@@ -543,7 +543,7 @@ var keyStrings = {
     "Loading...": "טוען…",
     "Local HTTP remote control": "שליטה מקומית דרך HTTP",
     "Local URL": "כתובת מקומית",
-    Login: "כניסה",
+    Login: "שם משתמש",
     lang: "עברית",
     large: "גדול",
     left: "שמאל",
@@ -618,7 +618,7 @@ var keyStrings = {
     "Overwrite current settings?": "לדרוס את ההגדרות הנוכחיות?",
     off: "כבוי",
     on: "פעיל",
-    "on ": "פעיל ",
+    "on ": "בלחיצה על ",
     "or scan": "או סרוק",
     Packages: "חבילות",
     "Pairing approved. Command server configured.":

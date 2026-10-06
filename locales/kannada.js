@@ -356,11 +356,11 @@ var keyStrings = {
     "Enter playlist archive hours": "ಪ್ಲೇಪಟ್ಟಿಯ ಸಂಗ್ರಹದ ಅವಧಿಯನ್ನು ಗಂಟೆಗಳಲ್ಲಿ ನಮೂದಿಸಿ",
     "Enter playlist Name": "ಪ್ಲೇಪಟ್ಟಿ ಹೆಸರನ್ನು ನಮೂದಿಸಿ",
     "Enter playlist URL": "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ನಮೂದಿಸಿ URL",
-    "Enter Stalker portal URL": "Stalker ಪೋರ್ಟಲ್ URL ನಮೂದಿಸಿ",
+    "Enter Stalker portal URL": "Stalker ಪೋರ್ಟಲ್‌ನ URL ನಮೂದಿಸಿ",
     "Enter Stalker portal URL (e.g. http://your-portal:8800)":
-        "Stalker ಪೋರ್ಟಲ್ ಅನ್ನು ನಮೂದಿಸಿ URL (ಉದಾ. http://your-portal:8800)",
+        "Stalker ಪೋರ್ಟಲ್‌ನ URL ನಮೂದಿಸಿ (ಉದಾ. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
-        "Stalker ಪೋರ್ಟಲ್ ಅನ್ನು ನಮೂದಿಸಿ URL (ಉದಾ. http://your-portal/stalker_portal/c/)",
+        "Stalker ಪೋರ್ಟಲ್‌ನ URL ನಮೂದಿಸಿ (ಉದಾ. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "ಸರ್ವರ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ (%1).",
     "Enter the access code separately, not in the server address.":
         "ಪ್ರವೇಶ ಕೋಡ್ ಅನ್ನು ಪ್ರತ್ಯೇಕವಾಗಿ ನಮೂದಿಸಿ, ಸರ್ವರ್ ವಿಳಾಸದಲ್ಲಿ ಅಲ್ಲ.",
@@ -504,7 +504,7 @@ var keyStrings = {
     "Infobar display timeout, s": "ಮಾಹಿತಿ ಪಟ್ಟಿಯ ಪ್ರದರ್ಶನದ ಸಮಯ ಮೀರಿದೆ, ಸೆ",
     "Infobar settings": "ಮಾಹಿತಿ ಪಟ್ಟಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     Information: "ಮಾಹಿತಿ",
-    "Interface credits": "ಇಂಟರ್ಫೇಸ್ ಕ್ರೆಡಿಟ್‌ಗಳು",
+    "Interface credits": "ಇಂಟರ್ಫೇಸ್‌ಗೆ ಕೊಡುಗೆ ನೀಡಿದವರು",
     "Interface settings": "ಇಂಟರ್ಫೇಸ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Interface theme": "ಇಂಟರ್ಫೇಸ್ ಥೀಮ್",
     "Interface transparency": "ಇಂಟರ್ಫೇಸ್ ಪಾರದರ್ಶಕತೆ",
@@ -547,10 +547,10 @@ var keyStrings = {
     "Loading...": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
     "Local HTTP remote control": "ಸ್ಥಳೀಯ HTTP ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್",
     "Local URL": "ಸ್ಥಳೀಯ URL",
-    Login: "ಲಾಗಿನ್",
+    Login: "ಬಳಕೆದಾರಹೆಸರು",
     lang: "ಕನ್ನಡ",
     large: "ದೊಡ್ಡದು",
-    left: "ಬಿಟ್ಟು",
+    left: "ಎಡ",
     "left-bottom": "ಕೆಳಗಿನ-ಎಡ",
     "logos...": "ಚಾನೆಲ್ ಲೋಗೋಗಳು...",
     M3U: "M3U",
@@ -761,7 +761,7 @@ var keyStrings = {
         "ಪಠ್ಯವನ್ನು ನಮೂದಿಸಲು ನಿಮ್ಮ ಫೋನ್‌ನೊಂದಿಗೆ ಈ QR ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.",
     Script: "ಚಿತ್ರಕಥೆ",
     Search: "ಹುಡುಕಾಟ",
-    "Search programme": "ಹುಡುಕಾಟ ಪ್ರೋಗ್ರಾಂ",
+    "Search programme": "ಕಾರ್ಯಕ್ರಮ ಹುಡುಕಿ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ಸುರಕ್ಷಿತ ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಪ್ರಾರಂಭಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಆನ್-ಸ್ಕ್ರೀನ್ ಕೀಬೋರ್ಡ್ ಬಳಸಿ.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

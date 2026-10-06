@@ -561,7 +561,7 @@ var keyStrings = {
     "Loading...": "Laster inn …",
     "Local HTTP remote control": "Lokal HTTP fjernkontroll",
     "Local URL": "Lokal URL",
-    Login: "Logg inn",
+    Login: "Brukernavn",
     lang: "Norsk bokmål",
     large: "store",
     left: "venstre",
@@ -779,7 +779,7 @@ var keyStrings = {
         "Skann denne QR-koden med telefonen for å skrive inn tekst.",
     Script: "Manus",
     Search: "Søk",
-    "Search programme": "Søkeprogram",
+    "Search programme": "Søk etter program",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Sikker ekstern inngang kunne ikke starte. Prøv igjen eller bruk skjermtastaturet.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

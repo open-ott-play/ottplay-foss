@@ -568,7 +568,7 @@ var keyStrings = {
     "Loading...": "Nalaganje ...",
     "Local HTTP remote control": "Lokalni daljinski upravljalnik HTTP",
     "Local URL": "Lokalno URL",
-    Login: "Prijava",
+    Login: "Uporabniško ime",
     lang: "Slovenščina",
     large: "velik",
     left: "levo",
@@ -763,7 +763,7 @@ var keyStrings = {
     "Restart player": "Znova zaženite predstavnostni predvajalnik",
     "Restart stream": "Znova zaženi tok",
     "Restart stream / Live": "Znova zaženi tok / V živo",
-    "Resume from archive?": "Življenjepis iz arhiva?",
+    "Resume from archive?": "Nadaljujem predvajanje iz arhiva?",
     Retry: "Poskusite znova",
     "Retry EPG download": "Poskusite znova prenesti EPG",
     "Return to previous channel": "Vrnitev na prejšnji kanal",
@@ -787,7 +787,7 @@ var keyStrings = {
         "Preberite to kodo QR s telefonom, da vnesete besedilo.",
     Script: "Scenarij",
     Search: "Iskanje",
-    "Search programme": "Iskalni program",
+    "Search programme": "Poišči oddajo",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Varnega oddaljenega vnosa ni bilo mogoče zagnati. Poskusite znova ali uporabite zaslonsko tipkovnico.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

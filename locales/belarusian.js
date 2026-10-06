@@ -558,7 +558,7 @@ var keyStrings = {
     "Loading...": "Загрузка…",
     "Local HTTP remote control": "Лакальны HTTP-пульт",
     "Local URL": "Лакальны адрас",
-    Login: "Лагін",
+    Login: "Імя карыстальніка",
     lang: "Беларуская",
     large: "вялікі",
     left: "злева",

@@ -563,7 +563,7 @@ var keyStrings = {
     "Loading...": "učitavanje...",
     "Local HTTP remote control": "Lokalni HTTP daljinski upravljač",
     "Local URL": "Lokalno URL",
-    Login: "Prijava",
+    Login: "Korisničko ime",
     lang: "Hrvatski",
     large: "velika",
     left: "lijevo",
@@ -621,7 +621,7 @@ var keyStrings = {
     "not set": "nije postavljeno",
     Off: "Isključeno",
     Ok: "OK",
-    Open: "Otvoreno",
+    Open: "Otvori",
     "Open in PiP": "Otvori u PiP",
     "Open Plex sign-in page": "Otvorite Plex stranicu za prijavu",
     "Open plex.tv/link on your phone or computer and enter this code.":
@@ -756,7 +756,7 @@ var keyStrings = {
     "Restart player": "Ponovo pokrenite medijski reproduktor",
     "Restart stream": "Ponovno pokrenite stream",
     "Restart stream / Live": "Ponovno pokrenite stream / Uživo",
-    "Resume from archive?": "Životopis iz arhive?",
+    "Resume from archive?": "Nastaviti iz arhive?",
     Retry: "Pokušaj ponovo",
     "Retry EPG download": "Pokušajte ponovo preuzeti EPG",
     "Return to previous channel": "Povratak na prethodni kanal",
@@ -780,7 +780,7 @@ var keyStrings = {
         "Skenirajte ovaj QR kod svojim telefonom da biste unijeli tekst.",
     Script: "Scenarij",
     Search: "Traži",
-    "Search programme": "Program za traženje",
+    "Search programme": "Pronađi emisiju",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Sigurni daljinski unos nije se mogao pokrenuti. Pokušajte ponovo ili upotrijebite zaslonsku tipkovnicu.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

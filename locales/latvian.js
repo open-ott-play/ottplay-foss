@@ -564,7 +564,7 @@ var keyStrings = {
     "Loading...": "Ielādē…",
     "Local HTTP remote control": "Vietējā HTTP tālvadība",
     "Local URL": "Lokālais URL",
-    Login: "Pieteikšanās",
+    Login: "Lietotājvārds",
     lang: "Latviešu",
     large: "liels",
     left: "pa kreisi",
@@ -640,7 +640,7 @@ var keyStrings = {
     "Overwrite current settings?": "Pārrakstīt pašreizējos iestatījumus?",
     off: "izslēgts",
     on: "ieslēgta",
-    "on ": "ieslēgts ",
+    "on ": "nospiežot ",
     "or scan": "vai skenējiet",
     Packages: "Pakotnes",
     "Pairing approved. Command server configured.":

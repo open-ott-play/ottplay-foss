@@ -365,11 +365,11 @@ var keyStrings = {
         "பிளேலிஸ்ட் காப்பகத்தின் கால அளவை மணிநேரத்தில் உள்ளிடவும்",
     "Enter playlist Name": "பிளேலிஸ்ட் பெயரை உள்ளிடவும்",
     "Enter playlist URL": "பிளேலிஸ்ட்டை உள்ளிடவும் URL",
-    "Enter Stalker portal URL": "Stalker போர்ட்டலை உள்ளிடவும் URL",
+    "Enter Stalker portal URL": "Stalker போர்ட்டலின் URL-ஐ உள்ளிடவும்",
     "Enter Stalker portal URL (e.g. http://your-portal:8800)":
-        "Stalker போர்ட்டலை உள்ளிடவும் URL (எ.கா. http://your-portal:8800)",
+        "Stalker போர்ட்டலின் URL-ஐ உள்ளிடவும் (எ.கா. http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
-        "Stalker போர்ட்டலை உள்ளிடவும் URL (எ.கா. http://your-portal/stalker_portal/c/)",
+        "Stalker போர்ட்டலின் URL-ஐ உள்ளிடவும் (எ.கா. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "சேவையக எண்ணை உள்ளிடவும் (%1).",
     "Enter the access code separately, not in the server address.":
         "அணுகல் குறியீட்டை தனித்தனியாக உள்ளிடவும், சேவையக முகவரியில் இல்லை.",
@@ -513,7 +513,7 @@ var keyStrings = {
     "Infobar display timeout, s": "தகவல் பட்டி காட்சி நேரம் முடிந்தது, எஸ்",
     "Infobar settings": "தகவல் பட்டி அமைப்புகள்",
     Information: "தகவல்",
-    "Interface credits": "இடைமுக வரவுகள்",
+    "Interface credits": "இடைமுகத்தை உருவாக்கியவர்கள்",
     "Interface settings": "இடைமுக அமைப்புகள்",
     "Interface theme": "இடைமுக தீம்",
     "Interface transparency": "இடைமுகம் வெளிப்படைத்தன்மை",
@@ -556,10 +556,10 @@ var keyStrings = {
     "Loading...": "ஏற்றுகிறது…",
     "Local HTTP remote control": "உள்ளூர் HTTP ரிமோட் கண்ட்ரோல்",
     "Local URL": "உள்ளூர் URL",
-    Login: "உள்நுழைக",
+    Login: "பயனர்பெயர்",
     lang: "தமிழ்",
     large: "பெரியது",
-    left: "விட்டு",
+    left: "இடது",
     "left-bottom": "கீழ்-இடது",
     "logos...": "சேனல் லோகோக்கள்…",
     M3U: "M3U",
@@ -614,7 +614,7 @@ var keyStrings = {
     "not set": "அமைக்கப்படவில்லை",
     Off: "முடக்கம்",
     Ok: "சரி",
-    Open: "திறந்திருக்கும்",
+    Open: "திறக்கவும்",
     "Open in PiP": "PiP இல் திறக்கவும்",
     "Open Plex sign-in page": "Plex உள்நுழைவுப் பக்கத்தைத் திறக்கவும்",
     "Open plex.tv/link on your phone or computer and enter this code.":
@@ -772,7 +772,7 @@ var keyStrings = {
         "உரையை உள்ளிட இந்த QR குறியீட்டை உங்கள் ஃபோன் மூலம் ஸ்கேன் செய்யவும்.",
     Script: "திரைக்கதை",
     Search: "தேடல்",
-    "Search programme": "தேடல் திட்டம்",
+    "Search programme": "நிகழ்ச்சியைத் தேடவும்",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "பாதுகாப்பான ரிமோட் உள்ளீட்டைத் தொடங்க முடியவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது திரையில் உள்ள விசைப்பலகையைப் பயன்படுத்தவும்.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

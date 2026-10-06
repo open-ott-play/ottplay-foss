@@ -561,7 +561,7 @@ var keyStrings = {
     "Loading...": "Ladataan…",
     "Local HTTP remote control": "Paikallinen HTTP kaukosäädin",
     "Local URL": "Paikallinen URL",
-    Login: "Kirjaudu sisään",
+    Login: "Käyttäjätunnus",
     lang: "Suomi",
     large: "suuri",
     left: "vasemmalle",

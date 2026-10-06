@@ -358,11 +358,11 @@ var keyStrings = {
         "ป้อนจำนวนชั่วโมงของการออกอากาศที่ผ่านมาสำหรับเพลย์ลิสต์นี้",
     "Enter playlist Name": "ป้อนชื่อเพลย์ลิสต์",
     "Enter playlist URL": "เข้าสู่เพลย์ลิสต์ URL",
-    "Enter Stalker portal URL": "เข้าสู่พอร์ทัล Stalker URL",
+    "Enter Stalker portal URL": "ป้อน URL ของพอร์ทัล Stalker",
     "Enter Stalker portal URL (e.g. http://your-portal:8800)":
-        "เข้าสู่พอร์ทัล Stalker URL (เช่น http://your-portal:8800)",
+        "ป้อน URL ของพอร์ทัล Stalker (เช่น http://your-portal:8800)",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
-        "เข้าสู่พอร์ทัล Stalker URL (เช่น http://your-portal/stalker_portal/c/)",
+        "ป้อน URL ของพอร์ทัล Stalker (เช่น http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "ป้อนหมายเลขเซิร์ฟเวอร์ (%1)",
     "Enter the access code separately, not in the server address.":
         "ป้อนรหัสการเข้าถึงแยกต่างหาก ไม่ใช่ในที่อยู่เซิร์ฟเวอร์",
@@ -545,10 +545,10 @@ var keyStrings = {
     "Loading...": "กำลังโหลด...",
     "Local HTTP remote control": "รีโมทคอนโทรล HTTP ภายในเครื่อง",
     "Local URL": "URL ท้องถิ่น",
-    Login: "เข้าสู่ระบบ",
+    Login: "ชื่อผู้ใช้",
     lang: "ไทย",
     large: "ใหญ่",
-    left: "เหลืออยู่",
+    left: "ซ้าย",
     "left-bottom": "ล่างซ้าย",
     "logos...": "โลโก้ของช่อง...",
     M3U: "M3U",
@@ -756,7 +756,7 @@ var keyStrings = {
         "สแกนรหัส QR นี้ด้วยโทรศัพท์ของคุณเพื่อป้อนข้อความ",
     Script: "บทภาพยนตร์",
     Search: "ค้นหา",
-    "Search programme": "โปรแกรมค้นหา",
+    "Search programme": "ค้นหารายการ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ไม่สามารถเริ่มอินพุตระยะไกลแบบปลอดภัยได้ โปรดลองอีกครั้งหรือใช้แป้นพิมพ์บนหน้าจอ",
     "Secure remote input could not start. Please use the on-screen keyboard.":

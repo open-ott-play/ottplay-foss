@@ -508,7 +508,7 @@ var keyStrings = {
     "Infobar display timeout, s": "ഇൻഫോ ബാർ ഡിസ്പ്ലേ കാലഹരണപ്പെട്ടു, എസ്",
     "Infobar settings": "വിവര ബാർ ക്രമീകരണങ്ങൾ",
     Information: "വിവരങ്ങൾ",
-    "Interface credits": "ഇൻ്റർഫേസ് ക്രെഡിറ്റുകൾ",
+    "Interface credits": "ഇന്റർഫേസ് സംഭാവനക്കാർ",
     "Interface settings": "ഇൻ്റർഫേസ് ക്രമീകരണങ്ങൾ",
     "Interface theme": "ഇൻ്റർഫേസ് തീം",
     "Interface transparency": "ഇൻ്റർഫേസ് സുതാര്യത",
@@ -550,10 +550,10 @@ var keyStrings = {
     "Loading...": "ലോഡ് ചെയ്യുന്നു…",
     "Local HTTP remote control": "പ്രാദേശിക HTTP റിമോട്ട് കൺട്രോൾ",
     "Local URL": "പ്രാദേശിക URL",
-    Login: "ലോഗിൻ ചെയ്യുക",
+    Login: "ഉപയോക്തൃനാമം",
     lang: "മലയാളം",
     large: "വലുത്",
-    left: "അവശേഷിക്കുന്നു",
+    left: "ഇടത്",
     "left-bottom": "താഴെ-ഇടത്",
     "logos...": "ചാനൽ ലോഗോകൾ...",
     M3U: "M3U",
@@ -608,7 +608,7 @@ var keyStrings = {
     "not set": "സജ്ജീകരിച്ചിട്ടില്ല",
     Off: "ഓഫ്",
     Ok: "ശരി",
-    Open: "തുറന്നിരിക്കുന്നു",
+    Open: "തുറക്കുക",
     "Open in PiP": "PiP-ൽ തുറക്കുക",
     "Open Plex sign-in page": "Plex സൈൻ ഇൻ പേജ് തുറക്കുക",
     "Open plex.tv/link on your phone or computer and enter this code.":
@@ -669,7 +669,7 @@ var keyStrings = {
     "POLMEDIA settings": "POLMEDIA ക്രമീകരണങ്ങൾ",
     "Portal URL": "പോർട്ടൽ URL",
     "Position shift -10 seconds after pause":
-        "താൽക്കാലികമായി നിർത്തി 10 സെക്കൻഡ് പിന്നോട്ട് നോക്കുക",
+        "താൽക്കാലിക വിരാമത്തിനു ശേഷം പ്ലേബാക്ക് 10 സെക്കൻഡ് പിന്നിലേക്ക് നീക്കുക",
     Postpaid: "പോസ്റ്റ്പെയ്ഡ്",
     PROST: "PROST",
     "PROST settings": "PROST ക്രമീകരണങ്ങൾ",
@@ -767,7 +767,7 @@ var keyStrings = {
         "ടെക്സ്റ്റ് നൽകുന്നതിന് നിങ്ങളുടെ ഫോൺ ഉപയോഗിച്ച് ഈ QR കോഡ് സ്കാൻ ചെയ്യുക.",
     Script: "തിരക്കഥ",
     Search: "തിരയുക",
-    "Search programme": "തിരയൽ പ്രോഗ്രാം",
+    "Search programme": "പരിപാടി തിരയുക",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "സുരക്ഷിത വിദൂര ഇൻപുട്ട് ആരംഭിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കിൽ ഓൺ-സ്ക്രീൻ കീബോർഡ് ഉപയോഗിക്കുക.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

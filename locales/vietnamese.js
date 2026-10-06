@@ -555,7 +555,7 @@ var keyStrings = {
     "Loading...": "Đang tải…",
     "Local HTTP remote control": "Điều khiển từ xa HTTP cục bộ",
     "Local URL": "URL cục bộ",
-    Login: "Đăng nhập",
+    Login: "Tên người dùng",
     lang: "Tiếng Việt",
     large: "lớn",
     left: "trái",
@@ -631,7 +631,7 @@ var keyStrings = {
     "Overwrite current settings?": "Ghi đè cài đặt hiện tại?",
     off: "tắt",
     on: "bật",
-    "on ": "bật ",
+    "on ": "khi nhấn ",
     "or scan": "hoặc quét",
     Packages: "Gói dịch vụ",
     "Pairing approved. Command server configured.":

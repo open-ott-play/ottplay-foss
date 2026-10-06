@@ -2,9 +2,9 @@
 
 ## Translation catalog
 
-`locales/english.js` is the canonical interface dictionary. The other 57 language
+`locales/english.js` is the canonical interface dictionary. The other 87 language
 packs contain the same keys; `lang` and the historical `alhabet` spelling are
-locale metadata. Existing language codes and the first 28 selector positions
+locale metadata. Existing language codes and the first 58 selector positions
 are preserved. Translations were completed with machine/AI assistance and checked for
 key and formatting consistency; these checks do not replace native-speaker
 editorial review.
@@ -15,7 +15,14 @@ as `_eng` and `_rus` to `/locales/english.js` and `/locales/russian.js`.
 Both runtime loaders and the catalog/packaging checks use this map. Existing
 saved preferences and keyboard locale identifiers are unchanged; an unknown
 identifier loads English. The catalog audit verifies a one-to-one relationship
-between the selector, the asset map, and all 58 shipped files.
+between the selector, the asset map, and all 88 shipped files.
+
+Translate the canonical English values with their UI context; historical keys
+can be ambiguous. `Login` labels a provider username field, while `on ` prefixes
+the ENTER button in the channel preview setting. `Resume from archive?` means
+continue playback; `Search programme` refers to a broadcast programme, and
+`left` is a screen position. These are not sign-in actions, power states,
+résumés, search software or remaining quantities.
 
 `scripts/localization-catalog.cjs` derives keys from translation calls, settings
 labels, menu definitions, provider schemas and shipped device/provider scripts.
@@ -211,6 +218,37 @@ Automated tests verify the full inventories, marks/joiners, source and packaged
 catalogs, and composition event handling in Chromium and WebKit for Server,
 Tauri and Capacitor profiles. Synthetic composition events are not a substitute
 for testing an installed IME on each supported physical device.
+
+## Eighty-eight language packs
+
+Thirty further languages append to the existing 58 selector positions: Georgian,
+Albanian, Bosnian, Macedonian, Icelandic, Catalan, Basque, Galician, Irish,
+Maltese, Pashto, Kurdish, Tajik, Kyrgyz, Turkmen, Mongolian, Lao, Odia,
+Assamese, Sindhi, Afrikaans, Amharic, Hausa, Yoruba, Igbo, Somali, Zulu,
+Xhosa, Malagasy and Kinyarwanda. Every pack covers the same 806 canonical keys
+and is shipped in Server, Tauri and Capacitor. These packs were drafted and
+edited with AI from the public English catalog; cached machine translations
+and existing closely related language packs were used where available. The
+same structural checks and native-speaker review limitations apply.
+
+Kurdish uses Kurmanji Latin, Sindhi uses Arabic, Tajik/Kyrgyz/Mongolian use
+Cyrillic, and Turkmen uses Latin. These choices do not represent other scripts
+or language varieties. CLDR main exemplars plus documented auxiliary characters
+cover their modern alphabets. Somali includes its auxiliary vowels; Kyrgyz adds
+the auxiliary loan letters. Hausa, Yoruba and Igbo provide tone marks; Malagasy
+includes auxiliary accented letters. Both composed and decomposed spellings are
+enterable where needed for literal channel search. Odia and Assamese include
+direct encoded nukta letters as well as combining sequences. Sindhi offers both
+its CLDR default Arabic-Indic digits and the extended Persian digit forms.
+
+Amharic supplies all 282 main-exemplar Ethiopic syllables on paged keys, with
+script punctuation and numerals. This is a literal syllabary, not a phonetic
+transliterator. Lao includes native digits and an explicit `ZWSP` key for its
+zero-width word separator. The label is visible, but only U+200B enters the
+value. Combining signs still display a dotted circle without inserting it.
+Georgian uppercase input uses an explicit modern Mtavruli mapping for TV engines
+whose Unicode casing tables predate Unicode 11; visible glyphs still depend on
+the device's fonts.
 
 ## Unicode attribution
 

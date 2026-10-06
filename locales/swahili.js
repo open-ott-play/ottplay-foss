@@ -568,7 +568,7 @@ var keyStrings = {
     "Loading...": "Inapakia...",
     "Local HTTP remote control": "Kidhibiti cha mbali cha HTTP cha ndani",
     "Local URL": "Karibu URL",
-    Login: "Ingia",
+    Login: "Jina la mtumiaji",
     lang: "Kiswahili",
     large: "kubwa",
     left: "kushoto",

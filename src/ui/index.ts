@@ -2929,6 +2929,10 @@ function _keyboardCharacter(value: string): string {
     if (value === "i" && !_keyE && /^_(tur|aze)$/.test(_ottplaylang()))
         return "İ";
     if (value === "ß") return "ẞ";
+    // Older TV engines predate Unicode 11's Georgian Mtavruli case mapping.
+    var code = value.charCodeAt(0);
+    if (code >= 0x10d0 && code <= 0x10f0)
+        return String.fromCharCode(code + 0xbc0);
     // Expanded uppercase forms (e.g. Armenian և) still occupy one key cell.
     return value.toUpperCase();
 }
@@ -3093,7 +3097,7 @@ export function showEdit(): void {
     r += '<div id="ee" dir="auto"></div><div class="osk-grid">';
     // Unicode marks in the shipped alphabets need a visible standalone label.
     var combiningMark =
-        /^[\u0301\u064b-\u0652\u0654\u0670\u0901-\u0903\u093c\u093e-\u0943\u0945\u0947-\u0949\u094b-\u094d\u0981-\u0983\u09bc\u09be-\u09c4\u09c7-\u09c8\u09cb-\u09cd\u09d7\u09e2-\u09e3\u0a02\u0a3c\u0a3e-\u0a42\u0a47-\u0a48\u0a4b-\u0a4d\u0a70-\u0a71\u0a81-\u0a83\u0abc\u0abe-\u0ac5\u0ac7-\u0ac9\u0acb-\u0acd\u0bbe-\u0bc2\u0bc6-\u0bc8\u0bca-\u0bcd\u0c01-\u0c03\u0c3e-\u0c44\u0c46-\u0c48\u0c4a-\u0c4d\u0c55-\u0c56\u0c82-\u0c83\u0cbc\u0cbe-\u0cc4\u0cc6-\u0cc8\u0cca-\u0ccd\u0cd5-\u0cd6\u0d02-\u0d03\u0d3e-\u0d44\u0d46-\u0d48\u0d4a-\u0d4d\u0d57\u0d62-\u0d63\u0d82-\u0d83\u0dca\u0dcf-\u0dd4\u0dd6\u0dd8-\u0ddf\u0df2-\u0df3\u0e31\u0e34-\u0e3a\u0e47-\u0e4e\u102b-\u1032\u1036-\u103e\u17b6-\u17cb\u17cd\u17d0\u17d2\u3099-\u309a]/;
+        /^[\u0300-\u0304\u0307-\u0308\u0323\u064b-\u0652\u0654\u0670\u0901-\u0903\u093c\u093e-\u0943\u0945\u0947-\u0949\u094b-\u094d\u0981-\u0983\u09bc\u09be-\u09c4\u09c7-\u09c8\u09cb-\u09cd\u09d7\u09e2-\u09e3\u0a02\u0a3c\u0a3e-\u0a42\u0a47-\u0a48\u0a4b-\u0a4d\u0a70-\u0a71\u0a81-\u0a83\u0abc\u0abe-\u0ac5\u0ac7-\u0ac9\u0acb-\u0acd\u0b01-\u0b03\u0b3c\u0b3e-\u0b44\u0b47-\u0b48\u0b4b-\u0b4d\u0b56-\u0b57\u0b62-\u0b63\u0bbe-\u0bc2\u0bc6-\u0bc8\u0bca-\u0bcd\u0c01-\u0c03\u0c3e-\u0c44\u0c46-\u0c48\u0c4a-\u0c4d\u0c55-\u0c56\u0c82-\u0c83\u0cbc\u0cbe-\u0cc4\u0cc6-\u0cc8\u0cca-\u0ccd\u0cd5-\u0cd6\u0d02-\u0d03\u0d3e-\u0d44\u0d46-\u0d48\u0d4a-\u0d4d\u0d57\u0d62-\u0d63\u0d82-\u0d83\u0dca\u0dcf-\u0dd4\u0dd6\u0dd8-\u0ddf\u0df2-\u0df3\u0e31\u0e34-\u0e3a\u0e47-\u0e4e\u0eb1\u0eb4-\u0eb9\u0ebb-\u0ebc\u0ec8-\u0ecd\u102b-\u1032\u1036-\u103e\u17b6-\u17cb\u17cd\u17d0\u17d2\u3099-\u309a]/;
     for (var s = 0; s < _keys.length; s++) {
         if (s > 0 && s % 10 === 0) r += "<br/>";
         var charCode = _keys.charCodeAt(s);
@@ -3101,15 +3105,17 @@ export function showEdit(): void {
         var n = sym ? sym.s : _keyboardCharacter(_keys[s]);
         if (!sym)
             n = metadataText(
-                n === "\u200c"
-                    ? "ZWNJ"
-                    : n === "\u200d"
-                      ? "ZWJ"
-                      : combiningMark.test(n)
-                        ? "◌" + n
-                        : n
+                n === "\u200b"
+                    ? "ZWSP"
+                    : n === "\u200c"
+                      ? "ZWNJ"
+                      : n === "\u200d"
+                        ? "ZWJ"
+                        : combiningMark.test(n)
+                          ? "◌" + n
+                          : n
             );
-        if (charCode === 0x200c || charCode === 0x200d)
+        if (charCode === 0x200b || charCode === 0x200c || charCode === 0x200d)
             n = '<span style="font-size:60%">' + n + "</span>";
         r +=
             '<div id="ik' +

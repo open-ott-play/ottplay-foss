@@ -554,7 +554,7 @@ var keyStrings = {
     "Loading...": "로딩중…",
     "Local HTTP remote control": "로컬 HTTP 원격 제어",
     "Local URL": "로컬 URL",
-    Login: "로그인",
+    Login: "사용자 이름",
     lang: "한국어",
     large: "대형",
     left: "왼쪽",
@@ -613,7 +613,7 @@ var keyStrings = {
     "not set": "설정되지 않음",
     Off: "꺼짐",
     Ok: "확인",
-    Open: "오픈",
+    Open: "열기",
     "Open in PiP": "PiP에서 열기",
     "Open Plex sign-in page": "Plex 로그인 페이지 열기",
     "Open plex.tv/link on your phone or computer and enter this code.":
@@ -770,7 +770,7 @@ var keyStrings = {
         "문자를 입력하려면 휴대폰으로 이 QR 코드를 스캔하세요.",
     Script: "각본",
     Search: "검색",
-    "Search programme": "검색프로그램",
+    "Search programme": "방송 프로그램 검색",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "보안 원격 입력을 시작할 수 없습니다. 다시 시도하거나 화면 키보드를 사용하십시오.",
     "Secure remote input could not start. Please use the on-screen keyboard.":

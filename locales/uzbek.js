@@ -565,7 +565,7 @@ var keyStrings = {
     "Loading...": "Yuklanmoqda…",
     "Local HTTP remote control": "Mahalliy HTTP pulti",
     "Local URL": "Mahalliy URL manzil",
-    Login: "Kirish",
+    Login: "Foydalanuvchi nomi",
     lang: "Oʻzbekcha",
     large: "katta",
     left: "chap",
@@ -640,7 +640,7 @@ var keyStrings = {
     "Overwrite current settings?": "Joriy sozlamalar ustiga yozilsinmi?",
     off: "o'chirilgan",
     on: "yoqilgan",
-    "on ": "yoqilgan ",
+    "on ": "tugmani bosganda: ",
     "or scan": "yoki skanerlang",
     Packages: "Paketlar",
     "Pairing approved. Command server configured.":

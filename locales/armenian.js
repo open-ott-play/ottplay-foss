@@ -561,7 +561,7 @@ var keyStrings = {
     "Loading...": "Բեռնում…",
     "Local HTTP remote control": "Տեղային HTTP հեռակառավարում",
     "Local URL": "Տեղային URL",
-    Login: "Մուտքանուն",
+    Login: "Օգտանուն",
     lang: "Հայերեն",
     large: "մեծ",
     left: "ձախ",
@@ -636,7 +636,7 @@ var keyStrings = {
     "Overwrite current settings?": "Վերագրե՞լ ընթացիկ կարգավորումները։",
     off: "անջատված",
     on: "միացված",
-    "on ": "միացված ",
+    "on ": "սեղմելով ",
     "or scan": "կամ սկանավորեք",
     Packages: "Փաթեթներ",
     "Pairing approved. Command server configured.":

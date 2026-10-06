@@ -568,7 +568,7 @@ var keyStrings = {
     "Loading...": "Se încarcă…",
     "Local HTTP remote control": "Control HTTP local",
     "Local URL": "URL local",
-    Login: "Autentificare",
+    Login: "Nume de utilizator",
     lang: "Română",
     large: "mare",
     left: "stânga",
@@ -644,7 +644,7 @@ var keyStrings = {
     "Overwrite current settings?": "Suprascrieți setările curente?",
     off: "dezactivat",
     on: "activat",
-    "on ": "pornit ",
+    "on ": "la apăsarea ",
     "or scan": "sau scanați",
     Packages: "Pachete",
     "Pairing approved. Command server configured.":

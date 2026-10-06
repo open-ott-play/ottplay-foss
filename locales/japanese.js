@@ -366,11 +366,11 @@ var keyStrings = {
         "このプレイリストで過去の放送を何時間分利用できるかを入力します。",
     "Enter playlist Name": "プレイリスト名を入力",
     "Enter playlist URL": "プレイリストに入る URL",
-    "Enter Stalker portal URL": "Stalker ポータル URL に入る",
+    "Enter Stalker portal URL": "Stalker ポータルのURLを入力してください",
     "Enter Stalker portal URL (e.g. http://your-portal:8800)":
-        "Stalker ポータル URL と入力します (例: http://your-portal:8800)",
+        "Stalker ポータルのURLを入力してください（例: http://your-portal:8800）",
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
-        "Stalker ポータル URL と入力します (例: http://your-portal/stalker_portal/c/)",
+        "Stalker ポータルのURLを入力してください（例: http://your-portal/stalker_portal/c/）",
     "Enter server number (%1).": "サーバー番号（%1）を入力します。",
     "Enter the access code separately, not in the server address.":
         "アクセスコードはサーバーアドレスではなく、別途入力してください。",
@@ -558,7 +558,7 @@ var keyStrings = {
     "Loading...": "読み込み中…",
     "Local HTTP remote control": "ローカル HTTP リモコン",
     "Local URL": "ローカル URL",
-    Login: "ログイン",
+    Login: "ユーザー名",
     lang: "日本語",
     large: "大",
     left: "左",
@@ -776,7 +776,7 @@ var keyStrings = {
         "このQRコードを携帯電話でスキャンしてテキストを入力してください。",
     Script: "脚本",
     Search: "検索",
-    "Search programme": "検索プログラム",
+    "Search programme": "番組を検索",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "セキュアリモート入力を開始できませんでした。もう一度試すか、スクリーンキーボードを使用してください。",
     "Secure remote input could not start. Please use the on-screen keyboard.":

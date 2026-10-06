@@ -554,7 +554,7 @@ var keyStrings = {
     "Loading...": "Loading…",
     "Local HTTP remote control": "Local HTTP remote control",
     "Local URL": "Local URL",
-    Login: "Login",
+    Login: "Username",
     lang: "English",
     large: "large",
     left: "left",
@@ -629,7 +629,7 @@ var keyStrings = {
     "Overwrite current settings?": "Overwrite current settings?",
     off: "off",
     on: "on",
-    "on ": "on ",
+    "on ": "when pressing ",
     "or scan": "or scan",
     Packages: "Packages",
     "Pairing approved. Command server configured.":

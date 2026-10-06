@@ -113,7 +113,10 @@ const { gzipSync } = require("node:zlib");
 // Thirty external catalogs add selector labels, script-mark labels and owned
 // native composition/explicit-apply handling. Add 3.5 KB raw / 1.2 KB gzip
 // while preserving each upstream feature and release-version reserve.
-const BUDGET = Object.freeze({ bytes: 734950, gzipBytes: 224900 });
+// Thirty more external catalogs and Georgian/combining-mark keyboard support
+// add 1293 raw / about 800 gzip entry bytes. Node 22 measures 734887 raw /
+// 225215 gzip for web; retain the existing native and candidate suffix reserve.
+const BUDGET = Object.freeze({ bytes: 736450, gzipBytes: 225800 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -172,7 +175,7 @@ const BUDGET = Object.freeze({ bytes: 734950, gzipBytes: 224900 });
 // Include the optional VPortal family and VOD kiosk entry logic, plus the
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
-const TOTAL_BUDGET = Object.freeze({ bytes: 841050, gzipBytes: 264100 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 842550, gzipBytes: 265000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

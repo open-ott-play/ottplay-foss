@@ -1519,7 +1519,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                         : profile === "tauri"
                           ? "src-tauri/frontend/"
                           : "";
-                for (const [code, name, value] of [
+                const languageCases = [
                     ["_ara", "arabic", "أخبار ١٢ العربية"],
                     ["_per", "persian", "می\u200cروم فارسی"],
                     ["_hin", "hindi", "हिन्दी समाचार"],
@@ -1527,7 +1527,16 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                     ["_chi", "chinese", "中文新闻𠀀"],
                     ["_jpn", "japanese", "ニュース東京"],
                     ["_kor", "korean", "한글한"],
-                ]) {
+                    ["_geo", "georgian", "ქართული ამბები"],
+                    ["_amh", "amharic", "አማርኛ ዜና"],
+                    ["_lao", "lao", "ຂ່າວ\u200bລາວ"],
+                    ["_ori", "odia", "ଓଡ଼ିଆ ସମ୍ବାଦ"],
+                    ["_asm", "assamese", "অসমীয়া বাতৰি"],
+                    ["_snd", "sindhi", "سنڌي خبرون"],
+                    ["_yor", "yoruba", "Ìròyìn Yorùbá ẹ́"],
+                    ["_ibo", "igbo", "Akụkọ Igbo ụ̀"],
+                ];
+                for (const [code, name, value] of languageCases) {
                     const dictionary = readDictionary(
                         path.join(root, stage, "locales", name + ".js")
                     );
@@ -1608,7 +1617,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                     await page.evaluate(
                         () => window.__languageInputSaves.length
                     )
-                ).toBe(7);
+                ).toBe(languageCases.length);
                 expect(fixture.errors).toEqual([]);
                 expect(fixture.unexpectedRequests).toEqual([]);
             } finally {

@@ -502,7 +502,7 @@ var keyStrings = {
     "Infobar display timeout, s": "इन्फो बार डिस्प्ले टाइमआउट, एस",
     "Infobar settings": "जानकारी बार सेटिंग्स",
     Information: "जानकारी",
-    "Interface credits": "इंटरफ़ेस क्रेडिट",
+    "Interface credits": "इंटरफ़ेस के योगदानकर्ता",
     "Interface settings": "इंटरफ़ेस सेटिंग्स",
     "Interface theme": "इंटरफ़ेस थीम",
     "Interface transparency": "इंटरफ़ेस पारदर्शिता",
@@ -544,7 +544,7 @@ var keyStrings = {
     "Loading...": "लोड हो रहा है...",
     "Local HTTP remote control": "स्थानीय HTTP रिमोट कंट्रोल",
     "Local URL": "स्थानीय URL",
-    Login: "लॉगिन करें",
+    Login: "उपयोगकर्ता नाम",
     lang: "हिन्दी",
     large: "बड़ा",
     left: "बाएं",
@@ -759,7 +759,7 @@ var keyStrings = {
         "टेक्स्ट दर्ज करने के लिए इस QR कोड को अपने फ़ोन से स्कैन करें।",
     Script: "पटकथा",
     Search: "खोजें",
-    "Search programme": "खोज कार्यक्रम",
+    "Search programme": "कार्यक्रम खोजें",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "सुरक्षित रिमोट इनपुट प्रारंभ नहीं हो सका। कृपया पुनः प्रयास करें या ऑन-स्क्रीन कीबोर्ड का उपयोग करें।",
     "Secure remote input could not start. Please use the on-screen keyboard.":

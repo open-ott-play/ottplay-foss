@@ -573,10 +573,10 @@ var keyStrings = {
     "Loading...": "Naglo-load…",
     "Local HTTP remote control": "Lokal na HTTP remote control",
     "Local URL": "Lokal URL",
-    Login: "Mag-login",
+    Login: "Pangalan ng gumagamit",
     lang: "Filipino",
     large: "malaki",
-    left: "umalis",
+    left: "kaliwa",
     "left-bottom": "ibaba-kaliwa",
     "logos...": "Mga logo...",
     M3U: "M3U",
@@ -631,7 +631,7 @@ var keyStrings = {
     "not set": "hindi nakatakda",
     Off: "Naka-off",
     Ok: "OK",
-    Open: "Bukas",
+    Open: "Buksan",
     "Open in PiP": "Buksan sa PiP",
     "Open Plex sign-in page": "Buksan ang Plex page sa pag-sign in",
     "Open plex.tv/link on your phone or computer and enter this code.":
@@ -794,7 +794,7 @@ var keyStrings = {
         "I-scan ang QR code na ito gamit ang iyong telepono upang maglagay ng text.",
     Script: "Iskrip",
     Search: "Maghanap",
-    "Search programme": "Programa ng paghahanap",
+    "Search programme": "Maghanap ng programa",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Hindi makapagsimula ang secure na remote input. Pakisubukang muli o gamitin ang on-screen na keyboard.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
