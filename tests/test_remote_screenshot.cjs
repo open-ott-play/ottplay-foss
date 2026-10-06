@@ -449,6 +449,71 @@ async function test(name, fn) {
         assert.equal(result.data.image, png);
         assert.equal(typeof result.data.captured_at, "number");
     });
+    await test("native IPC grants both screenshot commands only to the main player", () => {
+        const scope = JSON.parse(
+            fs.readFileSync(
+                "src-tauri/capabilities/remote-screenshot.json",
+                "utf8"
+            )
+        );
+        const normal = JSON.parse(
+            fs.readFileSync("src-tauri/capabilities/default.json", "utf8")
+        );
+        const config = JSON.parse(
+            fs.readFileSync("src-tauri/tauri.conf.json", "utf8")
+        );
+        const permissions = [
+            "allow-screenshot-capabilities",
+            "allow-capture-screenshot",
+        ];
+        assert.equal(scope.identifier, "remote-screenshot");
+        assert.deepEqual(scope.windows, ["main"]);
+        assert.equal(
+            scope.webviews,
+            undefined,
+            "A webview wildcard would bypass the main-window scope"
+        );
+        assert.notEqual(scope.local, false);
+        assert.deepEqual(scope.remote, normal.remote);
+        assert.deepEqual(scope.permissions, permissions);
+        assert.ok(
+            !config.app.security.capabilities ||
+                config.app.security.capabilities.includes(scope.identifier),
+            "The packaged application must load the screenshot capability"
+        );
+        for (const name of permissions) {
+            const permission = fs.readFileSync(
+                "src-tauri/permissions/" + name + ".toml",
+                "utf8"
+            );
+            const command = name.slice("allow-".length).replaceAll("-", "_");
+            assert.match(
+                permission,
+                new RegExp('^identifier = "' + name + '"$', "m")
+            );
+            assert.match(
+                permission,
+                new RegExp('^commands\\.allow = \\["' + command + '"\\]$', "m")
+            );
+        }
+        for (const file of fs.readdirSync("src-tauri/capabilities")) {
+            if (!file.endsWith(".json") || file === "remote-screenshot.json")
+                continue;
+            const other = JSON.parse(
+                fs.readFileSync("src-tauri/capabilities/" + file, "utf8")
+            );
+            for (const permission of other.permissions || []) {
+                const identifier =
+                    typeof permission === "string"
+                        ? permission
+                        : permission.identifier;
+                assert.ok(
+                    !permissions.includes(identifier),
+                    file + " must not widen screenshot access"
+                );
+            }
+        }
+    });
     console.log("PASS remote screenshots: " + count + " behavior groups");
 })().catch((e) => {
     console.error(e);
