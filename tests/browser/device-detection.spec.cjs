@@ -481,8 +481,15 @@ async function bootForWebosRemote(
                 playing: true,
                 volume: [],
             };
-            if (observeExit)
+            if (observeExit) {
+                // A successful native close also marks the window closed. Without
+                // this boundary, the hosted-tab history fallback races assertions.
+                Object.defineProperty(window, "closed", {
+                    configurable: true,
+                    get: () => window.__remoteEffects.exits > 0,
+                });
                 window.close = () => window.__remoteEffects.exits++;
+            }
             window.stbIsPlaying = () => window.__remoteEffects.playing;
             window.stbPause = () => {
                 window.__remoteEffects.playing = false;
@@ -559,6 +566,7 @@ test.describe("webOS fullscreen remote navigation", () => {
                 expect(
                     await page.evaluate(() => window.__remoteEffects)
                 ).toMatchObject({ exits: 0, playing: true });
+                expect(await page.evaluate(() => window.closed)).toBe(false);
 
                 await back();
                 await expect(page).toHaveURL(playerUrl);
@@ -581,6 +589,11 @@ test.describe("webOS fullscreen remote navigation", () => {
                 expect(
                     await page.evaluate(() => window.__remoteEffects.exits)
                 ).toBe(1);
+                expect(await page.evaluate(() => window.closed)).toBe(true);
+                // Observe beyond the real 100ms hosted-close fallback. A successful
+                // native close must not navigate while this fixture stays inspectable.
+                await page.waitForTimeout(150);
+                await expect(page).toHaveURL(playerUrl);
                 // A held/second OK must not re-run the retired confirmation callback.
                 await remoteKey(page, 13, "Enter");
                 expect(
