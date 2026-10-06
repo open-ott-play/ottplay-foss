@@ -36,7 +36,7 @@ assert.deepEqual(codes.slice(0, 20), [
     "_ukr",
     "_uzb",
 ]);
-assert.deepEqual(codes.slice(20), [
+assert.deepEqual(codes.slice(20, 28), [
     "_ind",
     "_vie",
     "_may",
@@ -45,6 +45,38 @@ assert.deepEqual(codes.slice(20), [
     "_swe",
     "_aze",
     "_kaz",
+]);
+assert.deepEqual(codes.slice(28), [
+    "_ara",
+    "_chi",
+    "_jpn",
+    "_kor",
+    "_per",
+    "_hin",
+    "_ben",
+    "_urd",
+    "_pan",
+    "_mar",
+    "_tel",
+    "_tam",
+    "_guj",
+    "_kan",
+    "_mal",
+    "_nep",
+    "_sin",
+    "_tha",
+    "_bur",
+    "_khm",
+    "_swa",
+    "_fil",
+    "_fin",
+    "_dan",
+    "_nor",
+    "_est",
+    "_slo",
+    "_slv",
+    "_hrv",
+    "_srp",
 ]);
 const dom = new JSDOM(
     '<div id="listEdit" style="width:700px;height:520px"></div><div id="listPodval"></div>',
@@ -138,6 +170,13 @@ try {
             );
             w.showEdit();
             for (let index = 0; index < w._keys.length; index++) {
+                if (/^\p{Mark}/u.test(w._keys[index]))
+                    assert(
+                        w.document
+                            .getElementById("ik" + index)
+                            .textContent.startsWith("◌"),
+                        code + " combining mark has a visible label"
+                    );
                 w._keyCur = index;
                 for (const direction of [
                     w.keys.UP,
@@ -164,7 +203,8 @@ try {
             }
         }
         assert.equal(w._keyPage, 0, code + " page wrap");
-        for (const char of locale.requiredCharacters)
+        for (const char of locale.requiredCharacters +
+            (locale.extraCharacters || ""))
             assert(reachable.has(char), code + " missing " + char);
         for (const upper of locale.requiredUppercase || "")
             assert(reachable.has(upper), code + " missing uppercase " + upper);
@@ -369,13 +409,56 @@ try {
         "j́",
         "dotted circle is a label, never inserted text"
     );
+    for (const [code, text] of [
+        ["_ara", "عَرَبِيّ"],
+        ["_per", "می\u200cروم"],
+        ["_urd", "اردو"],
+        ["_hin", "हिन्दी"],
+        ["_ben", "বাংলা"],
+        ["_mal", "മലയാളം"],
+        ["_sin", "සිංහල"],
+        ["_tha", "ไทย"],
+        ["_bur", "မြန်မာ"],
+        ["_khm", "ខ្មែរ"],
+    ]) {
+        layout(code);
+        w._setCase(false);
+        w.editvar = "";
+        w.editPos = 0;
+        for (const character of text) {
+            const index = w.keyStrings.alhabet.indexOf(character);
+            assert(
+                index >= 0,
+                code + " word character must be available: " + character
+            );
+            w._keyPage = Math.floor(index / 40);
+            w._buildKeyboard();
+            w.showEdit();
+            w._keyCur = w._keys.indexOf(character);
+            if (character === "\u200c")
+                assert.equal(
+                    w.document.getElementById("ik" + w._keyCur).textContent,
+                    "ZWNJ"
+                );
+            w.editKey1(w.keys.ENTER);
+        }
+        assert.equal(
+            w.editvar,
+            text,
+            code + " preserves logical order, marks and joiners"
+        );
+        assert(
+            !w.editvar.includes("◌"),
+            "display-only dotted circles never enter the value"
+        );
+    }
     w.editvar = '<img src=x onerror="bad()">&';
     w.editPos = w.editvar.length;
     w._changeEdit();
     assert.equal(w.document.querySelector("#ee img"), null);
     assert.equal(w.document.getElementById("ee").textContent, w.editvar);
     console.log(
-        "PASS localized keyboard: 28 alphabets, paging, all focus directions, case round trips and multicodepoint insertion"
+        "PASS localized keyboard: 58 alphabets, paging, all focus directions, case round trips and multicodepoint insertion"
     );
 } finally {
     w.close();

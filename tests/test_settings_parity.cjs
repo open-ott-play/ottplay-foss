@@ -428,6 +428,12 @@ for (const profile of ["server", "capacitor-ios", "capacitor-android"]) {
         "Font type"
     );
     assert.equal(typeof w.__ottSettingsEditor.save, "function");
+    w.strENTER = "ENTER";
+    w.settingsChannels();
+    assert.equal(
+        initialRows.find((row) => row.id === "preview").values[2],
+        "T:on ENTER"
+    );
 }
 console.log(
     "OK: settings rows preserve translation receiver/order, fallback labels and initial draft fields"

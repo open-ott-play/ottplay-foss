@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
 const { JSDOM } = require("jsdom");
+const { readDictionary } = require("../../scripts/localization-catalog.cjs");
 
 const root = path.resolve(__dirname, "../..");
 const origin = "http://127.0.0.1:4198";
@@ -1497,6 +1498,128 @@ for (const profile of ["server", "tauri"]) {
 
 for (const profile of ["server", "tauri", "capacitor"]) {
     test(
+        profile +
+            " new script catalogs preserve native IME composition and RTL text",
+        async ({ browser }) => {
+            const fixture = await fixturePage(
+                browser,
+                profile,
+                undefined,
+                "arabic"
+            );
+            const page = fixture.page;
+            try {
+                await page.evaluate(() => {
+                    window.stbBindKeyHandler();
+                    window.__languageInputSaves = [];
+                });
+                const stage =
+                    profile === "capacitor"
+                        ? "dist-mobile/"
+                        : profile === "tauri"
+                          ? "src-tauri/frontend/"
+                          : "";
+                for (const [code, name, value] of [
+                    ["_ara", "arabic", "أخبار ١٢ العربية"],
+                    ["_per", "persian", "می\u200cروم فارسی"],
+                    ["_hin", "hindi", "हिन्दी समाचार"],
+                    ["_mal", "malayalam", "മലയാളം വാർത്തകൾ"],
+                    ["_chi", "chinese", "中文新闻𠀀"],
+                    ["_jpn", "japanese", "ニュース東京"],
+                    ["_kor", "korean", "한글한"],
+                ]) {
+                    const dictionary = readDictionary(
+                        path.join(root, stage, "locales", name + ".js")
+                    );
+                    await page.evaluate(
+                        ({ code, dictionary }) => {
+                            window.keyStrings = dictionary;
+                            stbSetItem("ottplaylang", code);
+                            window.editCaption = dictionary.Search;
+                            window.editvar = "";
+                            window.setEdit = () =>
+                                window.__languageInputSaves.push(
+                                    window.editvar
+                                );
+                            showEditKey1();
+                        },
+                        { code, dictionary }
+                    );
+                    const input = page.locator("#editvar");
+                    await expect(input).toBeFocused();
+                    await expect(input).toHaveAttribute("dir", "auto");
+                    await expect(page.locator("#editRemoteInput")).toHaveText(
+                        dictionary["Remote text entry"]
+                    );
+                    await expect(
+                        page.locator('#listEdit [data-ott-key="13"]')
+                    ).toContainText(dictionary.Set);
+                    await expect(
+                        page.locator('#listEdit [data-ott-key="27"]')
+                    ).toContainText(dictionary.Cancel);
+                    await input.dispatchEvent("compositionstart", { data: "" });
+                    await input.fill(value);
+                    for (const key of ["Enter", "Escape", "ArrowDown"])
+                        await input.dispatchEvent("keydown", {
+                            key,
+                            keyCode:
+                                key === "Enter"
+                                    ? 13
+                                    : key === "Escape"
+                                      ? 27
+                                      : 40,
+                        });
+                    await expect(input).toBeVisible();
+                    await expect(input).toBeFocused();
+                    await input.dispatchEvent("compositionend", {
+                        data: value,
+                    });
+                    await input.dispatchEvent("keydown", {
+                        key: "Enter",
+                        keyCode: 229,
+                    });
+                    await expect(input).toBeVisible();
+                    await input.press("Enter");
+                    await expect(input).toBeVisible();
+                    const save = page.locator('#listEdit [data-ott-key="13"]');
+                    await input.press("ArrowUp");
+                    await expect(save).toBeFocused();
+                    await save.press("ArrowUp");
+                    await expect(
+                        page.locator("#editRemoteInput")
+                    ).toBeFocused();
+                    await page.locator("#editRemoteInput").press("ArrowUp");
+                    await expect(input).toBeFocused();
+                    await input.press("ArrowDown");
+                    await page.locator("#editRemoteInput").press("ArrowDown");
+                    await expect(save).toBeFocused();
+                    if (code === "_ara") {
+                        await input.focus();
+                        await save.dispatchEvent("click");
+                    } else await save.press("Enter");
+                    await expect(page.locator("#listEdit")).toBeHidden();
+                    expect(
+                        await page.evaluate(() =>
+                            window.__languageInputSaves.at(-1)
+                        )
+                    ).toBe(value);
+                }
+                expect(
+                    await page.evaluate(
+                        () => window.__languageInputSaves.length
+                    )
+                ).toBe(7);
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+}
+
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(
         profile + " native editor hint buttons save and cancel settings",
         async ({ browser }) => {
             const fixture = await fixturePage(browser, profile);
@@ -1525,7 +1648,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                     await page
                         .locator("#listEdit [data-ott-key]")
                         .filter({
-                            hasText: save ? "- save" : "- return without save",
+                            hasText: save ? "Set" : "Cancel",
                         })
                         .click();
                     await expect(page.locator("#listEdit")).toBeHidden();

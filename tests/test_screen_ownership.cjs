@@ -953,6 +953,80 @@ test("native editor D-pad reaches remote input, keeps cursor keys, and hands off
         "detached remote button cannot start another session"
     );
 });
+test("CJK TV editors use native composition and preserve exact Unicode on commit", ({
+    w,
+    key,
+}) => {
+    configureSwopEditor(w, "TV");
+    const samples = { _chi: "新闻𠀀", _jpn: "ニュース東京", _kor: "한글한" };
+    const saves = [];
+    for (const [code, value] of Object.entries(samples)) {
+        w.stbGetItem = () => code;
+        w.editvar = "before";
+        w.setEdit = () => saves.push(w.editvar);
+        w.showEditKey1();
+        const owner = w.__ottClassicScreenPort.owner("editor");
+        const input = w.document.getElementById("editvar");
+        assert(input, code + " routes TV input to the IME-capable field");
+        assert.equal(input.getAttribute("dir"), "auto");
+        input.dispatchEvent(
+            new w.CompositionEvent("compositionstart", { data: "" })
+        );
+        input.value = value;
+        for (const keyName of ["Enter", "Escape", "ArrowDown"]) {
+            const event = new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                key: keyName,
+                keyCode:
+                    keyName === "Enter" ? 13 : keyName === "Escape" ? 27 : 40,
+            });
+            input.dispatchEvent(event);
+            assert.equal(
+                event.defaultPrevented,
+                false,
+                "IME retains candidate controls without isComposing"
+            );
+            assert.equal(owner.active(), true);
+        }
+        // Hint buttons / raw TV command routing must not commit mid-composition.
+        key(w.keys.ENTER);
+        assert.equal(owner.active(), true);
+        input.dispatchEvent(
+            new w.CompositionEvent("compositionend", { data: value })
+        );
+        input.dispatchEvent(
+            new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                key: "Enter",
+                keyCode: 229,
+            })
+        );
+        assert.equal(owner.active(), true, "229 commit event is not a save");
+        key(w.keys.ENTER);
+        assert.equal(
+            owner.active(),
+            true,
+            "raw TV Enter cannot implicitly submit after composition"
+        );
+        w.document.querySelector('#listEdit [data-ott-key="13"]').focus();
+        key(w.keys.ENTER);
+        assert.equal(owner.active(), false);
+        assert.equal(
+            saves[saves.length - 1],
+            value,
+            "read input.value once without appending event.data"
+        );
+        input.dispatchEvent(new w.CompositionEvent("compositionstart"));
+        assert.equal(
+            owner.model.nativeInputComposing,
+            false,
+            "closed editor removes composition listeners"
+        );
+    }
+    assert.equal(saves.length, 3);
+});
 function beginSwopEditor({ w, jobs }, mode, pendingSession = false) {
     configureSwopEditor(w, mode);
     const port = w.__ottClassicScreenPort;
