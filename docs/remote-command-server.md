@@ -156,6 +156,20 @@ are unavailable. PIN entry, local diagnostic consent/trust, exit confirmations
 and private settings import/export/reset screens require local interaction.
 Use explicit typed lifecycle commands for remote exit or reload.
 
+`ott PLAYER prev` / `previous` and `ott PLAYER next` select the adjacent channel
+in the currently playing category or favourites, wrapping at either end. They
+use typed playback operations `previous_channel` and `next_channel`, not UI
+keys: an admitted switch closes the channel list, even if another category is
+being browsed. The receipt contains `{operation,dispatched:true,channel:{id,number,name}}`;
+`number` is the catalogue number from `s`. An unloaded/stale selection, protected
+UI/PIN, standby, kiosk or settings lock rejects the step. `prev` is list order,
+not viewing history. A single-channel category selects the same channel.
+
+Both the controller and player must support these operations. They appear in
+`caps.playback` when available and as `prev` / `next` in the bare `ott PLAYER`
+overview. A lost response is never retried as a new mutation. Existing
+`key ch+` / `key ch-` keep their UI-dependent behavior, including list pagination.
+
 `pause` and `resume` operate on current owned archive/VOD playback; `seek SECONDS`
 uses the VOD timeline only. Live playback and archive seeking retain their existing
 domain-specific controls. Capability availability can change between reading it

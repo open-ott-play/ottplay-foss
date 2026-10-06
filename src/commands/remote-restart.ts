@@ -209,6 +209,160 @@ function remoteInputAllowed(w: any, key: string): boolean {
         /^(volume_up|volume_down|mute)$/.test(key)
     );
 }
+function remoteChannelStepAllowed(w: any): boolean {
+    if (remoteProtectedInput(w) || remoteKiosk(w) || remoteSettingsLocked(w))
+        return false;
+    if (typeof w.stbIsStandby === "function" && w.stbIsStandby()) return false;
+    var port = w.__ottClassicScreenPort;
+    if (!port || !port.screens || typeof port.screens.current !== "function")
+        return false;
+    var owner = port.screens.current();
+    // A channel change must not answer, dismiss or bypass a modal interaction.
+    if (owner && owner.kind !== "list") return false;
+    return !(
+        w.$ && w.$("#dialogbox, #listAbout, #listEdit, #numprog").is(":visible")
+    );
+}
+
+/** Bind relative movement to the playing category, never the browsing cursor. */
+function remoteChannelStep(w: any, direction: number): any {
+    try {
+        var list = w.curList;
+        var category = w.catIndex;
+        var position = w.primaryIndex;
+        var categories = w.catsArray;
+        var groups = w.cats;
+        var channels = w.channels;
+        var catalogue = w.cList || list;
+        var identity = w.__ottSourceIdentity;
+        var play = w.playChannel;
+        if (
+            !remoteChannelStepAllowed(w) ||
+            w.commandChannelsReady !== true ||
+            !Array.isArray(list) ||
+            !list.length ||
+            !Array.isArray(categories) ||
+            typeof category !== "number" ||
+            !isFinite(category) ||
+            category % 1 ||
+            category < 0 ||
+            category >= categories.length ||
+            !groups ||
+            groups[categories[category]] !== list ||
+            typeof position !== "number" ||
+            !isFinite(position) ||
+            position % 1 ||
+            position < 0 ||
+            position >= list.length ||
+            !channels ||
+            !channels[list[position]] ||
+            !Array.isArray(catalogue) ||
+            !Array.isArray(w.parentalArray) ||
+            !w.__ottParental ||
+            typeof w.__ottParental.needs !== "function" ||
+            typeof w.ifParentalAccessChId !== "function" ||
+            !identity ||
+            typeof identity.current !== "function" ||
+            typeof play !== "function"
+        )
+            return null;
+        var index = (position + direction + list.length) % list.length;
+        var id = list[index];
+        var row = channels[id];
+        var validId =
+            (typeof id === "string" && id.trim() && id.length <= 512) ||
+            (typeof id === "number" &&
+                isFinite(id) &&
+                id % 1 === 0 &&
+                Math.abs(id) <= 9007199254740991);
+        if (
+            !validId ||
+            !row ||
+            typeof row.channel_name !== "string" ||
+            !row.channel_name.trim() ||
+            row.channel_name.length > 16384
+        )
+            return null;
+        // Reject malformed Unicode before dispatching a receipt the CLI cannot read.
+        encodeURIComponent(String(id));
+        encodeURIComponent(row.channel_name);
+        var seen: Record<string, boolean> = Object.create(null);
+        var number = 0;
+        var selectedNumber = 0;
+        catalogue.forEach(function (value: any) {
+            if (seen[String(value)] || !channels[value]) return;
+            seen[String(value)] = true;
+            number++;
+            if (String(value) === String(id)) selectedNumber = number;
+        });
+        if (!selectedNumber) return null;
+        var source = identity.current(w);
+        var load = w.__ottCommandChannelLoad;
+        var oldId = list[position];
+        var oldRow = channels[oldId];
+        var listOrder = list.slice();
+        var name = row.channel_name;
+        var order = catalogue.slice();
+        var categoryName = categories[category];
+        var current = function (): boolean {
+            try {
+                // Admission is read-only: never queue a PIN continuation for a step.
+                if (
+                    !remoteChannelStepAllowed(w) ||
+                    !Array.isArray(w.parentalArray) ||
+                    !w.__ottParental ||
+                    (w.parentalArray.some(function (value: any) {
+                        return String(value) === String(id);
+                    }) &&
+                        w.__ottParental.needs("channels")) ||
+                    identity.current(w) !== source
+                )
+                    return false;
+                return (
+                    w.commandChannelsReady === true &&
+                    w.__ottCommandChannelLoad === load &&
+                    w.__ottSourceIdentity === identity &&
+                    w.playChannel === play &&
+                    w.curList === list &&
+                    w.cats === groups &&
+                    w.catsArray === categories &&
+                    categories[category] === categoryName &&
+                    groups[categoryName] === list &&
+                    w.catIndex === category &&
+                    w.primaryIndex === position &&
+                    list[position] === oldId &&
+                    list[index] === id &&
+                    list.length === listOrder.length &&
+                    listOrder.every(function (value: any, at: number) {
+                        return list[at] === value;
+                    }) &&
+                    w.channels === channels &&
+                    channels[oldId] === oldRow &&
+                    channels[id] === row &&
+                    row.channel_name === name &&
+                    (w.cList || w.curList) === catalogue &&
+                    catalogue.length === order.length &&
+                    order.every(function (value: any, at: number) {
+                        return catalogue[at] === value;
+                    })
+                );
+            } catch (_) {
+                return false;
+            }
+        };
+        return current()
+            ? {
+                  category: category,
+                  channel: { id: id, name: name, number: selectedNumber },
+                  current: current,
+                  index: index,
+                  play: play,
+              }
+            : null;
+    } catch (_) {
+        return null;
+    }
+}
 function remoteOwnedPlayback(w: any): any {
     if (
         !w.__ottCoreTransport ||
@@ -293,6 +447,8 @@ export function executeRemoteControl(
             ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
             : [];
     if (action === "capabilities") {
+        if (remoteChannelStep(w, -1)) playback.push("previous_channel");
+        if (remoteChannelStep(w, 1)) playback.push("next_channel");
         reply({
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
@@ -314,6 +470,45 @@ export function executeRemoteControl(
     }
     if (action === "playback") {
         var operation = params.operation;
+        if (operation === "previous_channel" || operation === "next_channel") {
+            if (Object.keys(params).length !== 1) {
+                fail("rejected", "Channel movement accepts only an operation.");
+                return;
+            }
+            var selected = remoteChannelStep(
+                w,
+                operation === "previous_channel" ? -1 : 1
+            );
+            if (!selected) {
+                fail(
+                    "rejected",
+                    "The adjacent channel is unavailable or requires local input."
+                );
+                return;
+            }
+            if (
+                !selected.current() ||
+                selected.play.call(
+                    w,
+                    selected.category,
+                    selected.index,
+                    true,
+                    selected.current
+                ) !== true
+            ) {
+                fail(
+                    "rejected",
+                    "The player did not admit the channel change."
+                );
+                return;
+            }
+            reply({
+                channel: selected.channel,
+                dispatched: true,
+                operation: operation,
+            });
+            return;
+        }
         if (
             ["pause", "resume", "seek"].indexOf(operation) < 0 ||
             (operation === "seek"

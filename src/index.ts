@@ -2402,6 +2402,7 @@ function setupTauriEpgCacheReady(): void {
  * @param catIdx - Category index.
  * @param chIdx - Channel index within the category.
  * @param fullscreen - Close the list after admitting a remote selection.
+ * @param admit - Optional current-state guard for a synchronous remote channel step.
  *
  * Side effects: Calls stbStop(), setCurrent(), updateChannelInfo(),
  * showChannelInfo(), stbPlay(). Sets window.playType = 0. Creates a
@@ -2413,9 +2414,11 @@ function setupTauriEpgCacheReady(): void {
 function _playChannel(
     catIdx: number,
     chIdx: number,
-    fullscreen?: boolean
-): void {
+    fullscreen?: boolean,
+    admit?: () => boolean
+): boolean | void {
     var w = window as any;
+    if (admit && !admit()) return false;
     var kiosk = w.__ottKiosk;
     var kioskId = (cats[catsArray[catIdx]] || [])[chIdx];
     if (kiosk && !kiosk.allowed(kioskId)) return;
@@ -2449,7 +2452,20 @@ function _playChannel(
     var requestedCategory = catsArray[catIdx];
     var requestedId = cats[requestedCategory] && cats[requestedCategory][chIdx];
     if (requestedId == null) return;
-    if (
+    if (admit) {
+        // A relative remote step must never leave a PIN continuation that may
+        // execute after the request has failed or the channel list has changed.
+        if (
+            !admit() ||
+            !Array.isArray(w.parentalArray) ||
+            !w.__ottParental ||
+            (w.parentalArray.some(function (id: any) {
+                return String(id) === String(requestedId);
+            }) &&
+                w.__ottParental.needs("channels"))
+        )
+            return false;
+    } else if (
         ifParentalAccessChId(requestedId, function () {
             var category = catsArray.indexOf(requestedCategory);
             var list = cats[requestedCategory];
@@ -2466,9 +2482,12 @@ function _playChannel(
         // A remote selection commits playback, rather than restoring the preview.
         clearTimeout(w.previewTimer);
         w.previewChan = null;
-        if (w.isListVisible) closeList();
+        if (w.isListVisible) closeList(!admit);
     }
+    // Closing a list can run cleanup that changes the provider or local policy.
+    if (admit && !admit()) return false;
     if (settings.stopPlay) stbStop();
+    if (admit && !admit()) return false;
     setCurrent(catIdx, chIdx);
     var channelId = curList[primaryIndex];
     console.log(
@@ -2492,6 +2511,7 @@ function _playChannel(
     stbPlay(getChannelUrl(channelId));
     clearTimeout(w._tmedia);
     w._tmedia = setTimeout(checkMedia, 2000);
+    return true;
 }
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */

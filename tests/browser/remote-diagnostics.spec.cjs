@@ -293,6 +293,180 @@ test("remote named input cannot grant local diagnostic consent or cross an ACK U
     expect(server.errors).toEqual([]);
 });
 
+test("remote channel steps close a different browsing category and discard its preview", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const server = await fixture(page, context, baseURL);
+    const request = (action, params = {}) =>
+        page.evaluate(
+            ({ action, params }) =>
+                new Promise((resolve) =>
+                    executeRemoteRequest({ action, params }, resolve)
+                ),
+            { action, params }
+        );
+    await page.evaluate(() => {
+        window.closeList();
+        window.infoBarHide();
+        window.settings.preview = 1;
+        window.settings.noSmall = 0;
+        window.settings.infoSwitch = 0;
+        window.settings.stopPlay = 0;
+        window.favoritesArray = [];
+        window.channels = {};
+        for (const [id, name, group] of [
+            [101, "Playing first", "Playing category"],
+            [102, "Playing middle", "Playing category"],
+            [103, "Playing last", "Playing category"],
+            [104, "Browsing preview", "Browsing category"],
+        ])
+            window.channels[id] = {
+                category: { name: group },
+                channel_name: name,
+                url: "https://media.fixture.invalid/" + id + ".m3u8",
+            };
+        window.cList = [101, 104, 102, 103];
+        window.__ottChannels.mount(window);
+        window.setCurrent(window.catsArray.indexOf("Playing category"), 0);
+        window.commandChannelsReady = true;
+        // Only the decoder effect is intercepted. The bundled channel list,
+        // preview timer, parental admission, playChannel and closeList are real.
+        window.__remoteChannelPlays = [];
+        window.stbPlay = (url) => window.__remoteChannelPlays.push(url);
+    });
+    for (const [operation, id, name, number] of [
+        ["previous_channel", 103, "Playing last", 4],
+        ["next_channel", 101, "Playing first", 1],
+    ]) {
+        await page.evaluate(() => {
+            _channelsList(window.catsArray.indexOf("Browsing category"), 0);
+            window.previewChId(104);
+        });
+        await expect(page.locator("#list_window")).toBeVisible();
+        await expect(page.locator("#list")).toContainText("Browsing preview");
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => window.previewChan && window.previewChan.ch_id
+                )
+            )
+            .toBe(104);
+        expect(
+            await page.evaluate(() => ({
+                browsing: window.catsArray[window.listCatIndex],
+                playing: window.catsArray[window.catIndex],
+            }))
+        ).toEqual({
+            browsing: "Browsing category",
+            playing: "Playing category",
+        });
+        const caps = await request("capabilities");
+        expect(caps.status).toBe("ok");
+        expect(caps.data.playback).toEqual(
+            expect.arrayContaining(["previous_channel", "next_channel"])
+        );
+        const before = await page.evaluate(
+            () => window.__remoteChannelPlays.length
+        );
+        expect(await request("playback", { operation })).toEqual({
+            data: {
+                channel: { id, name, number },
+                dispatched: true,
+                operation,
+            },
+            status: "ok",
+        });
+        await expect(page.locator("#list")).toBeHidden();
+        await expect(page.locator("#list_window")).toBeHidden();
+        await expect(page.locator("#list_osd")).toBeHidden();
+        expect(
+            await page.evaluate(() => ({
+                channel: window.curList[window.primaryIndex],
+                group: window.catsArray[window.catIndex],
+                preview: window.previewChan,
+                visible: window.isListVisible,
+            }))
+        ).toEqual({
+            channel: id,
+            group: "Playing category",
+            preview: null,
+            visible: false,
+        });
+        expect(
+            await page.evaluate(
+                (start) => window.__remoteChannelPlays.slice(start),
+                before
+            )
+        ).toEqual(["https://media.fixture.invalid/" + id + ".m3u8"]);
+    }
+    expect(
+        await page.evaluate(() => {
+            window.settings.psChannels = 1;
+            window.settings.psOptions = 0;
+            window.settings.requirePinForProviderSelection = 0;
+            window.parentPIN = "1234";
+            window.__ottParental.revoke();
+            const locked = window.__ottChannels.change("lock", 104, true);
+            _channelsList(window.catsArray.indexOf("Browsing category"), 0);
+            window.__remotePipPlays = [];
+            window.stbPlayPip = (url) => window.__remotePipPlays.push(url);
+            window.pipCatIndex = window.catsArray.indexOf("Browsing category");
+            window.pipIndex = window.cats["Browsing category"].indexOf(104);
+            return {
+                locked,
+                needsPin: window.__ottParental.needs("channels"),
+                preview: window.sNoSmall,
+            };
+        })
+    ).toEqual({ locked: true, needsPin: true, preview: 0 });
+    await expect(page.locator("#list_window")).toBeVisible();
+    const pipBefore = await page.evaluate(
+        () => window.__remoteChannelPlays.length
+    );
+    expect(
+        await request("playback", { operation: "next_channel" })
+    ).toMatchObject({
+        data: {
+            channel: { id: 102, name: "Playing middle", number: 3 },
+            dispatched: true,
+        },
+        status: "ok",
+    });
+    await expect(page.locator("#list")).toBeHidden();
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(await page.evaluate(() => window.__remotePipPlays)).toEqual([]);
+    expect(
+        await page.evaluate(
+            (start) => window.__remoteChannelPlays.slice(start),
+            pipBefore
+        )
+    ).toEqual(["https://media.fixture.invalid/102.m3u8"]);
+
+    await page.evaluate(() => window.infoBox("Local modal must remain open"));
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    const before = await page.evaluate(
+        () => window.__remoteChannelPlays.length
+    );
+    expect(
+        (await request("playback", { operation: "next_channel" })).status
+    ).toBe("rejected");
+    expect((await request("capabilities")).data.playback).not.toContain(
+        "next_channel"
+    );
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    expect(await page.evaluate(() => window.__remoteChannelPlays.length)).toBe(
+        before
+    );
+    expect(await page.evaluate(() => window.curList[window.primaryIndex])).toBe(
+        102
+    );
+    expect(server.calls).toEqual([]);
+    expect(server.errors).toEqual([]);
+});
+
 test("remote navigation cannot enter or confirm legacy exit while local controls still work", async ({
     page,
     context,
