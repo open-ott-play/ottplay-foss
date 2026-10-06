@@ -190,6 +190,7 @@ for (const provider of ["m3u", "vportal"]) {
         await page.waitForFunction(
             () => document.querySelector("video")?.currentTime > 0.2
         );
+        await page.evaluate(() => window.infoBox("Existing local dialog"));
         const lock = await rpc("kiosk", {
             mode: "on",
             strict: true,
@@ -203,6 +204,7 @@ for (const provider of ["m3u", "vportal"]) {
         });
         if (provider === "vportal") expect(lock.data.media.total).toBe(2);
         await expect(page.locator("html")).toHaveClass(/ott-kiosk-strict/);
+        await expect(page.locator("#dialogbox")).toBeHidden();
         const before = await page.evaluate(
             () => document.querySelector("video").currentTime
         );

@@ -609,6 +609,11 @@ body {
     user-select: none;
 }
 .ott-kiosk-strict #audio_badge,
+.ott-kiosk-strict #dialogbox,
+.ott-kiosk-strict #listAbout,
+.ott-kiosk-strict #listEdit,
+.ott-kiosk-strict #list_window,
+.ott-kiosk-strict #list_osd,
 .ott-kiosk-strict #descr,
 .ott-kiosk-strict #progress_span,
 .ott-kiosk-strict #volume_div {
