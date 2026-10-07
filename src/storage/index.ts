@@ -92,6 +92,80 @@ function createStorageAdapter(
  * operations switch to cookies/memory for this session and preserve readable keys.
  */
 const STORAGE_FALLBACK_KEYS = "ottplayStorageFallback";
+const STORAGE_COOKIE_ATTRIBUTES =
+    "; expires=Tue, 19 Jan 2038 03:14:07 GMT; path=/";
+
+/** Internal cookie bookkeeping must never be imported as a user setting. */
+export function isStorageMetadataKey(key: string): boolean {
+    return (
+        key === STORAGE_FALLBACK_KEYS ||
+        key.indexOf(STORAGE_FALLBACK_KEYS + ".") === 0
+    );
+}
+
+function readStorageCookies(): Record<string, string> {
+    const result: Record<string, string> = Object.create(null);
+    try {
+        const entries = (document.cookie || "").split(";");
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i].trim();
+            const equals = entry.indexOf("=");
+            if (equals <= 0) continue;
+            let key = "";
+            try {
+                key = decodeURIComponent(entry.slice(0, equals));
+                result[key] = decodeURIComponent(entry.slice(equals + 1));
+            } catch (_malformedCookie) {
+                // A corrupt marker is incomplete, not an absent override list.
+                if (isStorageMetadataKey(key)) result[key] = "";
+            }
+        }
+    } catch (_cookieAccess) {}
+    return result;
+}
+
+function storageFallbackHash(value: string): string {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++)
+        hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+    return (hash >>> 0).toString(36);
+}
+
+/** null means incomplete: never replace cookie values with stale native data. */
+function readStorageFallback(cookies: Record<string, string>): string[] | null {
+    const parts = Object.keys(cookies).filter(function (key) {
+        return key.indexOf(STORAGE_FALLBACK_KEYS + ".") === 0;
+    });
+    const marker = cookies[STORAGE_FALLBACK_KEYS];
+    if (marker === undefined) return parts.length ? null : [];
+    try {
+        let saved = JSON.parse(marker);
+        if (!Array.isArray(saved)) {
+            if (
+                !saved ||
+                saved.v !== 2 ||
+                !parts.length ||
+                saved.n !== parts.length
+            )
+                return null;
+            let value = "";
+            for (let i = 0; i < parts.length; i++) {
+                const part = cookies[STORAGE_FALLBACK_KEYS + "." + i];
+                if (!part) return null;
+                value += part;
+            }
+            if (storageFallbackHash(value) !== saved.h) return null;
+            saved = JSON.parse(value);
+        } else if (parts.length) return null;
+        if (!Array.isArray(saved)) return null;
+        for (let i = 0; i < saved.length; i++)
+            if (typeof saved[i] !== "string" || isStorageMetadataKey(saved[i]))
+                return null;
+        return saved;
+    } catch (_invalidMarker) {
+        return null;
+    }
+}
 
 function createLocalStorageAdapter(): StorageAdapter {
     let nativeStorage: Storage | null = null;
@@ -101,23 +175,98 @@ function createLocalStorageAdapter(): StorageAdapter {
     } catch (_error) {
         nativeStorage = null;
     }
-    const fallback = createCookieAdapter();
+    let cookieWrites = true;
+    const fallback = createCookieAdapter(function () {
+        return cookieWrites;
+    });
     const overrides: Record<string, boolean> = Object.create(null);
-    try {
-        const saved = JSON.parse(fallback.get(STORAGE_FALLBACK_KEYS) || "[]");
-        if (Array.isArray(saved))
-            saved.forEach(function (key) {
-                if (typeof key === "string" && key !== STORAGE_FALLBACK_KEYS)
-                    overrides[key] = true;
-            });
-    } catch (_invalidMarker) {}
-    const mark = function (key: string, active: boolean): void {
+    const saved = readStorageFallback(readStorageCookies());
+    let incomplete = saved === null;
+    if (saved)
+        saved.forEach(function (key) {
+            overrides[key] = true;
+        });
+    const persistOverrides = function (update?: () => void): void {
+        // Commit a small barrier before changing parts. A rejected part/final
+        // manifest leaves this barrier visible to both boot and the next adapter.
+        fallback.set(STORAGE_FALLBACK_KEYS, "pending");
+        const persisted =
+            readStorageCookies()[STORAGE_FALLBACK_KEYS] === "pending";
+        // Rejected metadata cannot authorize a partly persisted value change.
+        // CookieAdapter still keeps the current session's value in memory.
+        cookieWrites = persisted;
+        if (update) update();
+        cookieWrites = true;
+        if (!persisted) return;
+        // Unknown tombstones cannot be reconstructed from cookie values alone.
+        // Keep incomplete state until an explicit successful native clear.
+        if (incomplete) return;
+        const keys = Object.keys(overrides);
+        const value = JSON.stringify(keys).replace(
+            /[\u007f-\uffff]/g,
+            function (ch) {
+                return (
+                    "\\u" + ("000" + ch.charCodeAt(0).toString(16)).slice(-4)
+                );
+            }
+        );
+        const parts: string[] = [];
+        let offset = 0;
+        if (keys.length)
+            while (offset < value.length) {
+                const name = STORAGE_FALLBACK_KEYS + "." + parts.length;
+                // RFC 6265's 4096-byte minimum includes name, value and attributes.
+                // ASCII-escaped JSON permits safe splits even inside a long key.
+                const limit =
+                    4096 -
+                    encodeURIComponent(name).length -
+                    1 -
+                    STORAGE_COOKIE_ATTRIBUTES.length;
+                let end = offset;
+                let bytes = 0;
+                while (end < value.length) {
+                    const size = encodeURIComponent(value.charAt(end)).length;
+                    if (bytes + size > limit) break;
+                    bytes += size;
+                    end++;
+                }
+                parts.push(value.slice(offset, end));
+                offset = end;
+            }
+        parts.forEach(function (part, index) {
+            fallback.set(STORAGE_FALLBACK_KEYS + "." + index, part);
+        });
+        const cookies = readStorageCookies();
+        for (let i = 0; i < parts.length; i++)
+            if (cookies[STORAGE_FALLBACK_KEYS + "." + i] !== parts[i]) return;
+        Object.keys(cookies).forEach(function (key) {
+            if (key.indexOf(STORAGE_FALLBACK_KEYS + ".") !== 0) return;
+            const index = key.slice(STORAGE_FALLBACK_KEYS.length + 1);
+            if (
+                !/^(0|[1-9][0-9]*)$/.test(index) ||
+                Number(index) >= parts.length
+            )
+                fallback.del(key);
+        });
+        if (parts.length)
+            fallback.set(
+                STORAGE_FALLBACK_KEYS,
+                JSON.stringify({
+                    h: storageFallbackHash(value),
+                    n: parts.length,
+                    v: 2,
+                })
+            );
+        else fallback.del(STORAGE_FALLBACK_KEYS);
+    };
+    const mark = function (
+        key: string,
+        active: boolean,
+        update?: () => void
+    ): void {
         if (active) overrides[key] = true;
         else delete overrides[key];
-        const keys = Object.keys(overrides);
-        if (keys.length)
-            fallback.set(STORAGE_FALLBACK_KEYS, JSON.stringify(keys));
-        else fallback.del(STORAGE_FALLBACK_KEYS);
+        persistOverrides(update);
     };
 
     // Keep readable settings when a privacy restriction or quota makes the
@@ -125,11 +274,11 @@ function createLocalStorageAdapter(): StorageAdapter {
     const failover = function (): void {
         const previous = nativeStorage;
         nativeStorage = null;
-        if (!previous) return;
+        if (!previous || incomplete) return;
         try {
             for (let i = 0; i < previous.length; i++) {
                 const key = previous.key(i);
-                if (key != null) {
+                if (key != null && !isStorageMetadataKey(key)) {
                     const value = previous.getItem(key);
                     if (value != null && !overrides[key])
                         fallback.set(key, value);
@@ -138,7 +287,8 @@ function createLocalStorageAdapter(): StorageAdapter {
         } catch (_error) {}
     };
     const get = function (key: string): string | null {
-        if (overrides[key]) return fallback.get(key);
+        if (isStorageMetadataKey(key)) return null;
+        if (overrides[key] || incomplete) return fallback.get(key);
         if (nativeStorage) {
             try {
                 return nativeStorage.getItem(key);
@@ -149,36 +299,42 @@ function createLocalStorageAdapter(): StorageAdapter {
         return fallback.get(key);
     };
     const set = function (key: string, value: string): void {
-        if (nativeStorage) {
+        if (isStorageMetadataKey(key)) return;
+        if (nativeStorage && !incomplete) {
             try {
                 nativeStorage.setItem(key, value);
-                fallback.del(key);
-                if (overrides[key]) {
-                    mark(key, false);
-                }
+                if (overrides[key])
+                    mark(key, false, function () {
+                        fallback.del(key);
+                    });
+                else fallback.del(key);
                 return;
             } catch (_error) {
                 failover();
             }
         }
-        fallback.set(key, value);
-        mark(key, true);
+        mark(key, true, function () {
+            fallback.set(key, value);
+        });
     };
     const del = function (key: string): void {
-        if (nativeStorage) {
+        if (isStorageMetadataKey(key)) return;
+        if (nativeStorage && !incomplete) {
             try {
                 nativeStorage.removeItem(key);
-                fallback.del(key);
-                if (overrides[key]) {
-                    mark(key, false);
-                }
+                if (overrides[key])
+                    mark(key, false, function () {
+                        fallback.del(key);
+                    });
+                else fallback.del(key);
                 return;
             } catch (_error) {
                 failover();
             }
         }
-        fallback.del(key);
-        mark(key, true);
+        mark(key, true, function () {
+            fallback.del(key);
+        });
     };
     const clear = function (): void {
         if (nativeStorage) {
@@ -190,25 +346,29 @@ function createLocalStorageAdapter(): StorageAdapter {
                 Object.keys(overrides).forEach(function (key) {
                     delete overrides[key];
                 });
-                fallback.del(STORAGE_FALLBACK_KEYS);
+                incomplete = false;
+                persistOverrides();
                 return;
             } catch (_error) {
                 failover();
             }
         }
         const keys = Object.keys(fallback.dump());
-        fallback.clear();
         keys.forEach(function (key) {
-            mark(key, true);
+            overrides[key] = true;
+        });
+        // Existing deleted overrides have no cookie, but remain tombstones.
+        persistOverrides(function () {
+            fallback.clear();
         });
     };
     const dump = function (): Record<string, string> {
-        if (nativeStorage) {
+        if (nativeStorage && !incomplete) {
             try {
                 const result: Record<string, string> = {};
                 for (let i = 0; i < nativeStorage.length; i++) {
                     const key = nativeStorage.key(i);
-                    if (key != null) {
+                    if (key != null && !isStorageMetadataKey(key)) {
                         const value = nativeStorage.getItem(key);
                         if (value != null) result[key] = value;
                     }
@@ -240,25 +400,11 @@ function createLocalStorageAdapter(): StorageAdapter {
  * unix epoch (1970) for `del`. All values are URI-encoded/decoded.
  * The cookie path is always `/`.
  */
-function createCookieAdapter(): StorageAdapter {
+function createCookieAdapter(canPersist?: () => boolean): StorageAdapter {
     const values: Record<string, string | null> = Object.create(null);
     let cleared = false;
     const readCookies = function (): Record<string, string> {
-        const result: Record<string, string> = Object.create(null);
-        if (cleared) return result;
-        try {
-            const entries = (document.cookie || "").split(";");
-            for (let i = 0; i < entries.length; i++) {
-                const entry = entries[i].trim();
-                const equals = entry.indexOf("=");
-                if (equals <= 0) continue;
-                try {
-                    result[decodeURIComponent(entry.slice(0, equals))] =
-                        decodeURIComponent(entry.slice(equals + 1));
-                } catch (_malformedCookie) {}
-            }
-        } catch (_cookieAccess) {}
-        return result;
+        return cleared ? Object.create(null) : readStorageCookies();
     };
     const get = function (key: string): string | null {
         if (Object.prototype.hasOwnProperty.call(values, key)) {
@@ -272,16 +418,18 @@ function createCookieAdapter(): StorageAdapter {
     const set = function (key: string, value: string): void {
         if (!key) return;
         values[key] = String(value);
+        if (canPersist && !canPersist()) return;
         try {
             document.cookie =
                 encodeURIComponent(key) +
                 "=" +
                 encodeURIComponent(value) +
-                "; expires=Tue, 19 Jan 2038 03:14:07 GMT; path=/";
+                STORAGE_COOKIE_ATTRIBUTES;
         } catch (_cookieAccess) {}
     };
     const del = function (key: string): void {
         values[key] = null;
+        if (canPersist && !canPersist()) return;
         try {
             document.cookie =
                 encodeURIComponent(key) +
@@ -295,7 +443,9 @@ function createCookieAdapter(): StorageAdapter {
             if (value === null) delete result[key];
             else result[key] = value;
         }
-        delete result[STORAGE_FALLBACK_KEYS];
+        Object.keys(result).forEach(function (key) {
+            if (isStorageMetadataKey(key)) delete result[key];
+        });
         return result;
     };
     return createStorageAdapter(
@@ -575,7 +725,10 @@ export const stbClearAllItems = storage.clear;
  */
 export function stbGetAllItems(): Record<string, string> {
     var items = storage.dump();
-    delete items.__ottKioskV1;
+    Object.keys(items).forEach(function (key) {
+        if (key === "__ottKioskV1" || isStorageMetadataKey(key))
+            delete items[key];
+    });
     return items;
 }
 
@@ -583,6 +736,7 @@ export function stbGetAllItems(): Record<string, string> {
 export function isPortableSettingsKey(key: string): boolean {
     return (
         key !== "__ottKioskV1" &&
+        !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
     );
 }
@@ -595,7 +749,10 @@ export function portableSettingsSnapshot(
         items,
         true
     );
-    delete result.__ottKioskV1;
+    Object.keys(result).forEach(function (key) {
+        if (key === "__ottKioskV1" || isStorageMetadataKey(key))
+            delete result[key];
+    });
     return result;
 }
 

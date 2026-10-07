@@ -85,7 +85,17 @@ to show the manual picker. Without a match or after load failure/timeout, startu
 continues to that picker. All dictionary attempts have bounded timeouts; cancelled
 or late callbacks cannot replace the current dictionary or launch twice. If
 localStorage rejects a write, the fresh cookie fallback takes precedence on the
-next launch instead of resurrecting a stale language.
+next launch instead of resurrecting a stale language. Override metadata is split
+into bounded cookies, with an incomplete marker written before its parts and a
+complete marker committed only after reading back the persisted parts. Legacy
+single-cookie lists remain readable. Interrupted or rejected metadata cannot
+reactivate stale native values; startup and the running player use cookie/session
+fallback until an explicit successful native clear. Internal marker keys never
+enter settings backups or imports. If fallback cookies or their metadata cannot be written, changes may remain
+session-only; persistence across restart cannot be guaranteed. A previously
+committed cookie override can remain authoritative after restart if its metadata
+cannot be updated, even when a native write succeeds. Capability detection also
+tolerates denied access to localStorage.
 
 The filename allowlist is checked against the canonical asset map. The picker
 preserves the current dictionary on cancellation or failure. Tauri and Capacitor
@@ -357,17 +367,18 @@ so a single English plural rule is not imposed on other languages.
 ## Bundle cost and verification
 
 On Node 22.23.3 with version 1.1.53, the complete localization change increases
-the web entry from 746,380 bytes (228,703 gzip) at `8c240190` to 781,223 bytes
-(243,308 gzip). An independent intermediate build attributes 23,186 raw bytes
+the web entry from 746,380 bytes (228,703 gzip) at `8c240190` to 783,615 bytes
+(243,951 gzip). An independent intermediate build attributes 23,186 raw bytes
 and 10,982 gzip bytes to pinned Unicode support; the remaining interface,
-startup and media-language behavior adds 11,657 raw bytes and 3,623 gzip bytes.
+startup, storage recovery and media-language behavior adds 14,049 raw bytes and 4,266 gzip bytes.
 The dictionaries remain external assets. All Unicode tables count inside the
 entry; all seven optional provider families count toward the complete payload.
 
-The final native entry is 781,181 bytes (243,372 gzip). Including every provider,
-the web/native totals are 885,999/885,957 raw bytes and 282,574/282,638 gzip bytes.
-The size limits retain the previous absolute release headroom, rounded upward
-to 100 bytes. Reproduce the final artifacts with `npm ci`, `npm run build` and
+The final native entry is 783,573 bytes (244,023 gzip). Including every provider,
+the web/native totals are 888,391/888,349 raw bytes and 283,217/283,289 gzip bytes.
+The size limits remain unchanged after the bounded-cookie fix. At this version,
+the smaller web/native reserves are 685 raw / 477 gzip bytes for the entry and
+2,009 raw / 411 gzip bytes for the complete payload. Reproduce the final artifacts with `npm ci`, `npm run build` and
 `npm run check:size` on Node 22; `npm run check:bundle` also runs the pinned
 normalization/grapheme tests against the optimized entry. Long nonstarter runs
 use stable combining-class buckets to avoid quadratic reordering; conformance

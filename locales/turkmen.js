@@ -279,7 +279,7 @@ var keyStrings = {
         "Işledilen uzakdan dolandyryş birikmesi üçin uzakdaky diagnostikany birikdirmek.",
     "Connecting remote diagnostics for this page.":
         "Bu sahypa üçin uzakdan anyklaýyş birikdirilýär.",
-    "Connecting securely to your TV...": "Telewizora ygtybarly birikmek ...",
+    "Connecting securely to your TV...": "Telewizora howpsuz birikmek ...",
     "Connecting to Plex…": "Plex-e birikdirilýär…",
     "Connecting to Stalker portal...": "Stalker portalyna birikdirilýär…",
     "Connecting...": "Birikdirilýär…",

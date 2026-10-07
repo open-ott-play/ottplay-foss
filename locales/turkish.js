@@ -268,7 +268,7 @@ var keyStrings = {
     "Connect an HTTPS command server to use screenshots.":
         "Ekran görüntülerini kullanmak için bir HTTPS komut sunucusuna bağlanın.",
     "Connect remote control to enable diagnostics.":
-        "Tanılamayı etkinleştirmek için uzaktan kontrolyı bağlayın.",
+        "Tanılamayı etkinleştirmek için uzaktan kontrolü bağlayın.",
     "Connect this player to a command server first.":
         "Öncelikle bu oynatıcıyı bir komut sunucusuna bağlayın.",
     "Connect to TV": "TV'ye bağlanın",

@@ -355,6 +355,18 @@ var PLAYER_VERSION = "__OTTP_VERSION__";
 // Backward compat globals (were defined in old monolithic bundle)
 // channelListItemWidth — channel list item width, updated by showPage()
 (window as any).channelListItemWidth = 735;
+// Capability probes must tolerate privacy-restricted native storage access.
+function hasReadableLocalStorage(): boolean {
+    try {
+        var nativeStorage = window.localStorage;
+        if (!nativeStorage) return false;
+        nativeStorage.getItem("");
+        return true;
+    } catch (_storageAccess) {
+        return false;
+    }
+}
+
 // client_can — capability detection for provider scripts
 (window as any).client_can_https = false;
 (window as any).client_can = {
@@ -362,7 +374,7 @@ var PLAYER_VERSION = "__OTTP_VERSION__";
     is_maple:
         typeof navigator !== "undefined" &&
         navigator.userAgent.indexOf("Maple 6") !== -1,
-    localstorage: typeof window.localStorage !== "undefined",
+    localstorage: hasReadableLocalStorage(),
     websocket: typeof window.WebSocket !== "undefined",
 };
 (window as any).client_can.crossxhr =

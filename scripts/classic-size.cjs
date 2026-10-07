@@ -120,11 +120,12 @@ const { gzipSync } = require("node:zlib");
 // expiring image delivery. Reserve 13 KB raw / 4 KB gzip for this feature;
 // external dictionaries and native capture implementations remain separate.
 // Complete localization, system/media language preferences and pinned Unicode 17
-// measure 781223 / 243308 web and 781181 / 243372 native on Node 22.23.3,
+// measure 783615 / 243951 web and 783573 / 244023 native on Node 22.23.3,
 // compared with 746380 / 228703 web and 746338 / 228765 native at 8c240190.
 // Compact ASCII varints keep normalization, grapheme and full case-fold data
-// inside the measured entry. Retain the prior absolute release reserves
-// (3070 raw / 1035 gzip), rounded up to 100 bytes; do not exclude these tables.
+// inside the measured entry. Bounded cookie recovery uses part of the original
+// reserve; the unchanged cap leaves at least 685 raw / 477 gzip bytes at 1.1.53.
+// Do not exclude these tables or storage helpers from the measurement.
 const BUDGET = Object.freeze({ bytes: 784300, gzipBytes: 244500 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
@@ -185,10 +186,10 @@ const BUDGET = Object.freeze({ bytes: 784300, gzipBytes: 244500 });
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
 // Include the same screenshot feature once in the complete payload bound.
-// The same localized build plus all seven provider families is 885999 / 282574
-// web and 885957 / 282638 native. Only Stalker's locale adds provider bytes
-// (+24 raw / +7 gzip). Preserve the prior 4418 raw / 976 gzip complete-payload
-// reserve, rounded up to 100 bytes, while counting every provider and table.
+// The same localized build plus all seven provider families is 888391 / 283217
+// web and 888349 / 283289 native. Only Stalker's locale adds provider bytes
+// (+24 raw / +7 gzip). The unchanged complete-payload cap leaves at least
+// 2009 raw / 411 gzip bytes at 1.1.53, counting every provider and table.
 const TOTAL_BUDGET = Object.freeze({ bytes: 890400, gzipBytes: 283700 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",

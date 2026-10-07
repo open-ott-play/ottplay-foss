@@ -4,10 +4,12 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const { parse } = require("acorn");
+const { storagePolicySource } = require("./helpers/cloud-source-fixture.cjs");
 const root = path.resolve(__dirname, "..");
 const w = vm.createContext({ console });
 w.window = w;
 require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
+vm.runInContext(storagePolicySource(), w);
 require("./helpers/private-runtime.cjs")(w, "src/settings/cloud-codec.ts");
 const codec = w.__ottCloudSettingsCodec;
 const normalized = (value) => JSON.parse(JSON.stringify(value));
@@ -111,6 +113,42 @@ group(
             ),
             { ordinary: "value" }
         );
+    }
+);
+
+group(
+    "fallback protocol metadata cannot migrate through either cloud format",
+    () => {
+        const metadata = [
+            "ottplayStorageFallback",
+            "ottplayStorageFallback.0",
+            "ottplayStorageFallback.12",
+            "ottplayStorageFallback.pending",
+        ];
+        const ordinary = {
+            ottplaylang: "_rus",
+            ottplaylangmode: "manual",
+            ottplayStorageFallbackCustom: "ordinary setting",
+            "provider:ottplayStorageFallback.0": "provider payload",
+        };
+        const input = { ...ordinary };
+        for (const key of metadata) input[key] = "internal bookkeeping";
+        assert.deepEqual(normalized(codec.read(codec.write(input))), ordinary);
+        assert(!codec.write(input).includes("internal bookkeeping"));
+        const legacyXml = legacy(
+            Object.keys(input)
+                .map((key) => entry(key, input[key]))
+                .join("")
+        );
+        assert.deepEqual(normalized(codec.read(legacyXml)), ordinary);
+        for (const key of metadata) {
+            // A v2 document produced by an older/importing installation may contain
+            // protocol keys even though the current writer excludes them.
+            const xml = codec
+                .write({ ordinary: "internal bookkeeping" })
+                .replace("&quot;ordinary&quot;", "&quot;" + key + "&quot;");
+            assert.deepEqual(normalized(codec.read(xml)), {});
+        }
     }
 );
 

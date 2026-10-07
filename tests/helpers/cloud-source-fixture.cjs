@@ -1,6 +1,47 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
+function storagePolicySource(bundleAst) {
+    const ast =
+        bundleAst ||
+        ts.createSourceFile(
+            "storage.ts",
+            fs.readFileSync(
+                path.resolve(__dirname, "../../src/storage/index.ts"),
+                "utf8"
+            ),
+            ts.ScriptTarget.Latest,
+            true
+        );
+    const names = ["isStorageMetadataKey", "isPortableSettingsKey"];
+    const code = [];
+    for (const name of names) {
+        const nodes = ast.statements.filter(
+            (node) => ts.isFunctionDeclaration(node) && node.name?.text === name
+        );
+        if (nodes.length !== 1)
+            throw Error("Expected one storage policy function: " + name);
+        code.push(nodes[0].getText(ast));
+    }
+    const constants = [];
+    for (const statement of ast.statements) {
+        if (!ts.isVariableStatement(statement)) continue;
+        for (const declaration of statement.declarationList.declarations)
+            if (declaration.name.getText(ast) === "STORAGE_FALLBACK_KEYS")
+                constants.push("var " + declaration.getText(ast) + ";");
+    }
+    if (constants.length !== 1)
+        throw Error("Expected storage metadata namespace");
+    return ts
+        .transpileModule(constants.concat(code).join("\n"), {
+            compilerOptions: {
+                module: ts.ModuleKind.ES2015,
+                target: ts.ScriptTarget.ES5,
+            },
+        })
+        .outputText.replace(/^export /gm, "");
+}
+
 function cloudBundleSource(ast) {
     function single(nodes, name) {
         if (nodes.length !== 1)
@@ -65,6 +106,7 @@ function cloudBundleSource(ast) {
                 )
                     bridges.push(declaration);
     return [
+        storagePolicySource(ast),
         namedFunction("metadataText"),
         namedFunction("settingsFailure"),
         namedFunction("commitSettingsWrites"),
@@ -102,13 +144,16 @@ function cloudSource(bundleAst) {
             ts.isFunctionDeclaration(node) && node.name?.text === "metadataText"
     );
     return ts
-        .transpileModule(escape.getText(ast) + "\n" + source, {
-            compilerOptions: {
-                module: ts.ModuleKind.ES2015,
-                target: ts.ScriptTarget.ES5,
-            },
-        })
+        .transpileModule(
+            storagePolicySource() + "\n" + escape.getText(ast) + "\n" + source,
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        )
         .outputText.replace(/^import .*$/gm, "")
         .replace(/^export /gm, "");
 }
-module.exports = { cloudSource };
+module.exports = { cloudSource, storagePolicySource };

@@ -188,6 +188,9 @@ const hostile =
 
 test("cloud bundle extraction selects exact closures and rejects missing dependencies", () => {
     const code = [
+        'var STORAGE_FALLBACK_KEYS = "ottplayStorageFallback";',
+        "function isStorageMetadataKey(key) { return key === STORAGE_FALLBACK_KEYS; }",
+        "function isPortableSettingsKey(key) { return !isStorageMetadataKey(key); }",
         "function metadataText(value) { return value; }",
         "function settingsFailure() {}",
         "function commitSettingsWrites() {}",
@@ -202,6 +205,9 @@ test("cloud bundle extraction selects exact closures and rejects missing depende
     acorn.parse(extracted, { ecmaVersion: 5 });
     assert.equal(extracted.includes("unrelated"), false);
     for (const name of [
+        "STORAGE_FALLBACK_KEYS",
+        "isStorageMetadataKey",
+        "isPortableSettingsKey",
         "metadataText",
         "settingsFailure",
         "commitSettingsWrites",
@@ -215,7 +221,7 @@ test("cloud bundle extraction selects exact closures and rejects missing depende
         assert.throws(
             () =>
                 cloudSource(parse(artifact.replaceAll(name, name + "Missing"))),
-            /Expected one bundled cloud dependency/,
+            /Expected (?:one bundled cloud dependency|one storage policy function|storage metadata namespace)/,
             name + " must come from the supplied artifact"
         );
     }
