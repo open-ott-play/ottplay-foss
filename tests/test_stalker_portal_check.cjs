@@ -371,7 +371,7 @@ test("input selects exactly one saved profile and rejects invalid configuration"
     );
 });
 
-function cli(args, timeout = 5000) {
+function cli(args, options = {}) {
     return new Promise((resolve) => {
         const child = spawn(
             process.execPath,
@@ -379,7 +379,7 @@ function cli(args, timeout = 5000) {
                 path.join(__dirname, "../scripts/check-stalker-portal.cjs"),
                 ...args,
             ],
-            { timeout }
+            { timeout: 5000, ...options }
         );
         let stdout = "",
             stderr = "";
@@ -440,6 +440,33 @@ test("CLI rejects invalid limits and protocols before opening the input", async 
             stage: "input",
         });
         assert.equal(result.stderr, "");
+    }
+});
+
+test("CLI distinguishes missing option values from option-like filenames", async () => {
+    for (const value of ["--input", "--profile", "--timeout", "--help"])
+        assert.deepEqual(JSON.parse((await cli(["--input", value])).stdout), {
+            code: "invalid_arguments",
+            ok: false,
+            stage: "input",
+        });
+    const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), "ottplay-stalker-filename-")
+    );
+    try {
+        for (const name of ["--private-fixture.json", "--profile", "--help"])
+            fs.writeFileSync(path.join(directory, name), "null");
+        for (const input of [
+            "--private-fixture.json",
+            "./--profile",
+            "./--help",
+        ]) {
+            const result = await cli(["--input", input], { cwd: directory });
+            assert.equal(result.code, 1);
+            assert.equal(JSON.parse(result.stdout).code, "invalid_input");
+        }
+    } finally {
+        fs.rmSync(directory, { force: true, recursive: true });
     }
 });
 

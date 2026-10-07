@@ -355,19 +355,22 @@ async function main(args) {
     }
     try {
         const flags = {};
+        const optionNames = [
+            "--input",
+            "--profile",
+            "--protocol",
+            "--timeout",
+            "--deadline",
+            "--max-requests",
+        ];
         for (let index = 0; index < args.length; index += 2) {
             const key = args[index];
             if (
-                ![
-                    "--input",
-                    "--profile",
-                    "--protocol",
-                    "--timeout",
-                    "--deadline",
-                    "--max-requests",
-                ].includes(key) ||
+                !optionNames.includes(key) ||
                 flags[key] !== undefined ||
-                !args[index + 1]
+                !args[index + 1] ||
+                args[index + 1] === "--help" ||
+                optionNames.includes(args[index + 1])
             )
                 throw new ProbeError("invalid_arguments");
             flags[key] = args[index + 1];
