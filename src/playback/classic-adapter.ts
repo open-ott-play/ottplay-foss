@@ -123,6 +123,12 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
     var store = classicPlaybackOwnedState();
     var value = classicPlaybackProjectionValue(w);
     var previous = classicPlaybackProjection;
+    var sameConfiguration =
+        previous &&
+        classicPlaybackConfigurationMatches(
+            value.configuration,
+            previous.configuration
+        );
     if (
         !previous ||
         value.source !== previous.source ||
@@ -130,10 +136,7 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
         value.record !== previous.record ||
         value.catalog !== previous.catalog ||
         value.mode !== previous.mode ||
-        !classicPlaybackConfigurationMatches(
-            value.configuration,
-            previous.configuration
-        ) ||
+        !sameConfiguration ||
         (value.mode === -1e11 && value.media !== previous.media)
     ) {
         var target = classicPlaybackDecode(w);
@@ -156,10 +159,7 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
             value.record === previous.record &&
             value.mode === previous.mode &&
             value.media === previous.media &&
-            classicPlaybackConfigurationMatches(
-                value.configuration,
-                previous.configuration
-            )
+            sameConfiguration
         ) {
             // Republishing the catalog does not replace this decoder or reset
             // its measured position, paused state or terminal stop.

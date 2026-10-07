@@ -215,6 +215,16 @@ function fixture(managed = false) {
         "Unmanaged legacy fallback remains"
     );
 }
+for (const phase of ["pause", "stop"]) {
+    const c = fixture(true);
+    c.api.command({ type: phase });
+    c.channels[101] = { ...c.channels[101], rec: 1 };
+    assert.equal(
+        c.api.reconcile().phase,
+        "loading",
+        "A replacement source cannot inherit " + phase
+    );
+}
 {
     const c = fixture(true);
     c.api.command({ archiveStart: 1000, channelId: 101, type: "archive" });
