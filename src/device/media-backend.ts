@@ -86,6 +86,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
         var alive = true;
         var timer: any = null;
         var phase = "loading";
+        var awaitingRecovery = false;
         var retainPause = request.paused === true;
         var restorePlaying = false;
         var applyingPause = false;
@@ -139,6 +140,18 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 pendingEvents.push(type || "sample");
                 return;
             }
+            if (type === "error") {
+                if (!handle.active() || awaitingRecovery) return;
+                // Native and MSE errors may trigger an in-place engine fallback.
+                // Stop reporting play while preserving that lease's recovery.
+                awaitingRecovery = true;
+                phase = "loading";
+                command("loading");
+                updateTimer();
+                if (current()) publish(handle, "error");
+                return;
+            }
+            if (type === "ended" && awaitingRecovery) return;
             var latest = ports.context();
             if (context && latest && latest.generation === context.generation)
                 if (context.kind !== latest.kind) {
@@ -172,6 +185,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             }
             if (type === "pause" && phase !== "playing") type = "position";
             if (type === "playing" && !sample.paused && sample.ready >= 2) {
+                awaitingRecovery = false;
                 phase = "playing";
                 command("playing");
             } else if (
@@ -236,9 +250,11 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 phase = "paused";
                 command("pause");
             } else if (sample.ready >= 2) {
+                awaitingRecovery = false;
                 phase = "playing";
                 command("playing");
             }
+            updateTimer();
             publish(handle, "seek");
         }
         var handle: any = {
@@ -335,10 +351,22 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 retainPause = false;
                 engine.resume();
                 if (!current()) return;
-                phase = engine.sample().paused ? "paused" : "playing";
+                var sample = engine.sample();
+                var type = sample.paused
+                    ? "pause"
+                    : sample.ready >= 2
+                      ? "resume"
+                      : "loading";
+                phase =
+                    type === "pause"
+                        ? "paused"
+                        : type === "resume"
+                          ? "playing"
+                          : "loading";
+                if (phase === "playing") awaitingRecovery = false;
                 updateTimer();
-                command(phase === "paused" ? "pause" : "resume");
-                publish(handle, phase === "paused" ? "pause" : "resume");
+                command(type);
+                publish(handle, type);
             },
             sample: function () {
                 observe();

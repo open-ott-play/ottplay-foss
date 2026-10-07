@@ -217,6 +217,7 @@ import {
     stbPause,
     stbPlay,
     stbPlayPip,
+    stbResume,
     stbSetBuffer,
     stbSetPosTime,
     stbSetVolume,
@@ -2824,6 +2825,7 @@ window.refreshAudioBadge = refreshAudioBadge;
 window.stbPlay = stbPlay;
 window.stbStop = stbStop;
 window.stbPause = stbPause;
+window.stbResume = stbResume;
 window.stbContinue = stbContinue;
 window.stbIsPlaying = stbIsPlaying;
 window.stbToggleMute = stbToggleMute;

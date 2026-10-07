@@ -29,6 +29,7 @@ module.exports = defineConfig({
         "window-controls.spec.cjs",
         "remote-diagnostics.spec.cjs",
         "remote-screenshot.spec.cjs",
+        "remote-plex.spec.cjs",
     ],
     timeout: 30000,
     use: {

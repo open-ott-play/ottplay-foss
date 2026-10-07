@@ -227,6 +227,7 @@ try {
         "resetCoreNativeBitrate",
         "stbContinue",
         "stbPause",
+        "stbResume",
         "stbIsPlaying",
         "stbStop",
         "getCoreMediaBackend",
@@ -242,6 +243,7 @@ try {
             this.paused = false;
             return Promise.resolve();
         },
+        readyState: 0,
         removeAttribute() {},
     };
     let destroyed = 0;
@@ -280,10 +282,20 @@ try {
         w._playSession++;
     };
     vm.runInContext(controls, w);
+    w.stbResume(); // No current source is also a safe explicit Play.
     w.getCoreMediaBackend().open({ url: "fixture.mp4" });
-    for (let i = 0; i < 2; i++) {
-        vm.runInContext(scripts.MEDIA_PLAY, w);
-        assert.equal(video.paused, false);
+    for (const readyState of [0, 1, 2]) {
+        video.readyState = readyState;
+        w.stbPause();
+        for (let i = 0; i < 2; i++) {
+            vm.runInContext(scripts.MEDIA_PLAY, w);
+            assert.equal(
+                video.paused,
+                false,
+                `Play at readyState ${readyState}`
+            );
+            assert.equal(w.stbIsPlaying(), readyState >= 2);
+        }
     }
     for (let i = 0; i < 2; i++) {
         vm.runInContext(scripts.MEDIA_PAUSE, w);
@@ -293,6 +305,17 @@ try {
     assert.equal(video.paused, false);
     vm.runInContext(scripts.MEDIA_PLAY_PAUSE, w);
     assert.equal(video.paused, true);
+    const resume = w.stbResume;
+    delete w.stbResume;
+    for (let i = 0; i < 2; i++) {
+        vm.runInContext(scripts.MEDIA_PLAY, w);
+        assert.equal(
+            video.paused,
+            false,
+            "older bundles retain the Play fallback"
+        );
+    }
+    w.stbResume = resume;
     vm.runInContext(scripts.MEDIA_STOP, w);
     assert.equal(w._playSession, 2);
     assert.equal(w._coreNativeAttempt, 1);

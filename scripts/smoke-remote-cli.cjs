@@ -377,15 +377,21 @@ function moduleOf(file, requireFn, window) {
                         )
                       : name === "../plugins/vportal"
                         ? moduleOf("src/plugins/vportal.ts", dependencies, host)
-                        : name === "./remote-restart"
+                        : name === "./remote-plex"
                           ? moduleOf(
-                                "src/commands/remote-restart.ts",
+                                "src/commands/remote-plex.ts",
                                 dependencies,
                                 host
                             )
-                          : name === "../utils/caseless"
-                            ? caseless
-                            : { handleCommand: dispatch };
+                          : name === "./remote-restart"
+                            ? moduleOf(
+                                  "src/commands/remote-restart.ts",
+                                  dependencies,
+                                  host
+                              )
+                            : name === "../utils/caseless"
+                              ? caseless
+                              : { handleCommand: dispatch };
             const execute = moduleOf(
                 "src/commands/remote-requests.ts",
                 dependencies,
