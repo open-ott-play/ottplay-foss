@@ -204,6 +204,43 @@ test("manual stop, replacement and retired source generations never emit natural
         0
     );
 });
+test("decoder error stops reporting play without blocking valid in-place recovery", (f) => {
+    const events = [];
+    f.backend.subscribe((event) => events.push(event.type));
+    const first = f.backend.open({ url: "failed" });
+    f.playing();
+    f.leases[0].event("error");
+    assert.equal(first.snapshot().phase, "loading");
+    assert.equal(f.commands.at(-1).type, "loading");
+    assert(f.timers.every((timer) => !timer.active));
+    const count = f.commands.length;
+    for (const type of ["timeupdate", "ended", "error"])
+        f.leases[0].event(type);
+    assert.equal(f.commands.length, count);
+    assert.equal(events.filter((type) => type === "error").length, 1);
+    assert.equal(events.includes("ended"), false);
+    f.leases[0].sample.ready = 0;
+    f.leases[0].event("playing");
+    assert.equal(
+        first.snapshot().phase,
+        "loading",
+        "Unready events do not recover playback"
+    );
+    f.playing();
+    assert.equal(first.snapshot().phase, "playing");
+    const next = f.backend.open({ url: "next" });
+    f.playing(1);
+    f.leases[0].event("error");
+    assert.equal(next.snapshot().phase, "playing");
+    f.domain({ generation: 2, kind: "vod", position: 0 });
+    const before = f.commands.length;
+    f.leases[1].event("error");
+    assert.equal(
+        f.commands.length,
+        before,
+        "Retired domain cannot report an error"
+    );
+});
 
 function coreBridge(f, kind = "vod") {
     const file = "src/core/index.ts";

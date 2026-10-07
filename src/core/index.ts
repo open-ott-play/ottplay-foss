@@ -2719,6 +2719,7 @@ function openCoreEngineLease(
                 "pause",
                 "timeupdate",
                 "ended",
+                "error",
                 "loadedmetadata",
             ].forEach(function (name) {
                 var callback = function () {
