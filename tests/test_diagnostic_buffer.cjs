@@ -86,6 +86,55 @@ assert.equal(buffer.stats().droppedCount, 13);
 assert.equal(buffer.read(0, 3, 100).gap, true);
 assert.equal(buffer.read(5, 3, 100).gap, false);
 assert.equal(buffer.append("{}"), 6);
+// Accepted IDs stay consecutive through rejection, eviction and clear. Cursors
+// before, within and beyond the retained window must return the same FIFO page.
+const cursorBuffer = make({ maxBytes: 12, maxEntries: 3, maxEventBytes: 8 });
+for (let i = 0; i < 4; i++) {
+    assert.equal(cursorBuffer.append("{}"), i + 1);
+    assert.equal(cursorBuffer.append("[]"), null);
+}
+for (const [cursor, expected, gap] of [
+    [0, [2, 3, 4], true],
+    [1, [2, 3, 4], false],
+    [2, [3, 4], false],
+    [3, [4], false],
+    [4, [], false],
+    [5, [], false],
+    [Number.MAX_SAFE_INTEGER, [], false],
+]) {
+    const result = cursorBuffer.read(cursor, 3, 12);
+    assert.deepEqual(
+        Array.from(result.entries, (e) => e.sequence),
+        expected
+    );
+    assert.equal(result.gap, gap);
+    assert.equal(result.oldestSequence, 2);
+    assert.equal(result.nextSequence, expected.at(-1) ?? cursor);
+}
+assert.equal(cursorBuffer.read(2, 1, 12).nextSequence, 3);
+assert.equal(cursorBuffer.read(2, 3, 1).nextSequence, 2);
+assert.equal(cursorBuffer.read(2, 0, 12).nextSequence, 2);
+assert.equal(cursorBuffer.append('{"a":1}'), 5);
+assert.equal(cursorBuffer.append('{"a":2}'), 6);
+assert.deepEqual(
+    Array.from(cursorBuffer.read(0, 3, 12).entries, (e) => e.sequence),
+    [6]
+);
+assert.equal(cursorBuffer.read(5, 3, 12).gap, false);
+assert.equal(cursorBuffer.read(4, 3, 12).gap, true);
+cursorBuffer.clear();
+assert.equal(
+    cursorBuffer.read(Number.MAX_SAFE_INTEGER, 3, 12).nextSequence,
+    Number.MAX_SAFE_INTEGER
+);
+assert.equal(cursorBuffer.append("{}"), 7);
+assert.equal(cursorBuffer.append("{}"), 8);
+assert.deepEqual(
+    Array.from(cursorBuffer.read(7, 3, 12).entries, (e) => e.sequence),
+    [8]
+);
+assert.equal(cursorBuffer.read(6, 3, 12).gap, false);
+assert.equal(cursorBuffer.read(5, 3, 12).gap, true);
 // Node's UTF-8 encoder is an independent oracle, including lone surrogates.
 for (const text of [
     "ascii",

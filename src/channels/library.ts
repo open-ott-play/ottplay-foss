@@ -97,8 +97,12 @@ function createChannelLibrary(
     function clone<T>(value: T): T {
         return JSON.parse(JSON.stringify(value));
     }
-    function unique(value: any): string[] {
+    function unique(value: any, excluded?: string[]): string[] {
         var seen: Record<string, boolean> = Object.create(null);
+        if (excluded)
+            excluded.forEach(function (id) {
+                seen[id] = true;
+            });
         return Array.isArray(value)
             ? value.filter(function (id) {
                   if (typeof id !== "string" || seen[id]) return false;
@@ -185,11 +189,7 @@ function createChannelLibrary(
         });
         result.hidden = unique(value.hidden);
         result.unlocks = unique(value.unlocks);
-        result.locks = unique(value.locks.concat(result.locks)).filter(
-            function (id) {
-                return result.unlocks.indexOf(id) < 0;
-            }
-        );
+        result.locks = unique(value.locks.concat(result.locks), result.unlocks);
         ["aspect", "audio", "subtitle", "zoom"].forEach(function (kind) {
             var source = value.preferences[kind];
             var target: Record<string, number> = Object.create(null);
@@ -323,13 +323,19 @@ function createChannelLibrary(
                           .map(function (row) {
                               return row.itemId;
                           });
+            var locked: Record<string, boolean> | null = Object.create(null);
+            state.locks.forEach(function (id) {
+                locked![id] = true;
+            });
             state.unlocks = catalog
                 .filter(function (row) {
-                    return row.locked && state!.locks.indexOf(row.itemId) < 0;
+                    return row.locked && !locked![row.itemId];
                 })
                 .map(function (row) {
                     return row.itemId;
                 });
+            // Returned methods share this scope; release the temporary index.
+            locked = null;
             [
                 ["aAspects", "aspect"],
                 ["aAudios", "audio"],
@@ -352,9 +358,7 @@ function createChannelLibrary(
         }
     }
     state.unlocks = unique(state.unlocks.map(resolve));
-    state.locks = unique(state.locks.map(resolve)).filter(function (id) {
-        return state!.unlocks.indexOf(id) < 0;
-    });
+    state.locks = unique(state.locks.map(resolve), state.unlocks);
     Object.keys(state.preferences).forEach(function (kind) {
         var preferences = state!.preferences[kind];
         Object.keys(preferences).forEach(function (id) {

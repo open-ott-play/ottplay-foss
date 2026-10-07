@@ -155,7 +155,8 @@ function favoriteReferenceRecord(
     view: number[],
     references: ChannelReference[],
     index: any,
-    prior?: FavoriteReferenceList
+    prior?: FavoriteReferenceList,
+    merged?: boolean
 ): FavoriteReferenceList {
     var bindings: Record<string, ChannelReference> = Object.create(null);
     references.forEach(function (reference) {
@@ -165,11 +166,22 @@ function favoriteReferenceRecord(
     if (prior)
         view.forEach(function (id) {
             var original = prior.bindings[String(id)];
-            if (original && references.indexOf(original) >= 0)
+            // mergeFavoriteReferences includes every selected prior binding.
+            if (
+                original &&
+                (merged === true || references.indexOf(original) >= 0)
+            )
                 bindings[String(id)] = original;
         });
     return { bindings: bindings, references: references, view: view };
 }
+function appendFavoriteReferences(
+    target: ChannelReference[],
+    references: ChannelReference[]
+): void {
+    for (var i = 0; i < references.length; i++) target.push(references[i]);
+}
+
 /** Preserve invisible references at their next retained neighbour while visible rows can reorder. */
 function mergeFavoriteReferences(
     view: number[],
@@ -193,7 +205,8 @@ function mergeFavoriteReferences(
             var key = favoriteReferenceKey(reference);
             if (keys[key]) {
                 if (pending.length) {
-                    before[key] = (before[key] || []).concat(pending);
+                    var bucket = before[key] || (before[key] = []);
+                    appendFavoriteReferences(bucket, pending);
                     pending = [];
                 }
             } else if (index.project(reference) === null)
@@ -203,12 +216,13 @@ function mergeFavoriteReferences(
     selected.forEach(function (reference) {
         var key = favoriteReferenceKey(reference);
         if (before[key]) {
-            result = result.concat(before[key]);
+            appendFavoriteReferences(result, before[key]);
             delete before[key];
         }
         result.push(reference);
     });
-    return result.concat(pending);
+    appendFavoriteReferences(result, pending);
+    return result;
 }
 
 function isFavoriteReferenceBlob(value: any): boolean {
@@ -258,7 +272,9 @@ function favoriteLibrarySnapshot(index: any): any {
         });
         var references = mergeFavoriteReferences(view, prior, index);
         lists[name] = references;
-        records.push(favoriteReferenceRecord(view, references, index, prior));
+        records.push(
+            favoriteReferenceRecord(view, references, index, prior, true)
+        );
     });
     return {
         document: {

@@ -107,9 +107,14 @@ export function createDiagnosticBuffer(options: DiagnosticBufferOptions) {
         var page: DiagnosticEntry[] = [];
         var pageBytes = 0;
         var next = afterSequence;
-        for (var i = 0; i < entries.length && page.length < limit; i++) {
+        // Accepted IDs remain consecutive in the FIFO; rejected appends allocate none.
+        var oldest = entries.length ? entries[0].sequence : 0;
+        for (
+            var i = Math.max(0, afterSequence - oldest + 1);
+            i < entries.length && page.length < limit;
+            i++
+        ) {
             var entry = entries[i];
-            if (entry.sequence <= afterSequence) continue;
             if (pageBytes + entry.bytes > byteLimit) break;
             page.push({
                 bytes: entry.bytes,
@@ -119,7 +124,6 @@ export function createDiagnosticBuffer(options: DiagnosticBufferOptions) {
             next = entry.sequence;
             pageBytes += entry.bytes;
         }
-        var oldest = entries.length ? entries[0].sequence : 0;
         return {
             droppedCount: dropped,
             entries: page,
