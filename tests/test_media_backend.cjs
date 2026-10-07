@@ -242,6 +242,67 @@ test("decoder error stops reporting play without blocking valid in-place recover
     );
 });
 
+for (const operation of ["seek", "resume"]) {
+    test(
+        "ready " + operation + " recovery permits natural completion again",
+        (f) => {
+            const open = f.ports.open;
+            f.ports.open = (request, event) => {
+                const engine = open(request, event);
+                // Real play() may resolve asynchronously, with no immediate playing event.
+                engine.resume = () => {
+                    f.leases[0].sample.paused = false;
+                };
+                return engine;
+            };
+            const handle = f.backend.open({ url: "recoverable" });
+            f.playing();
+            f.leases[0].event("error");
+            assert.equal(handle.snapshot().phase, "loading");
+            handle[operation](20);
+            assert.equal(handle.snapshot().phase, "playing");
+            assert.equal(f.timers.filter((timer) => timer.active).length, 1);
+            f.leases[0].event("ended");
+            f.leases[0].event("ended");
+            assert.equal(handle.snapshot().phase, "stopped");
+            assert.equal(
+                f.commands.filter((command) => command.type === "ended").length,
+                1,
+                "Recovered source completes exactly once"
+            );
+        }
+    );
+}
+
+test("unready resume cannot report recovery before the decoder is ready", (f) => {
+    const handle = f.backend.open({ url: "recovering" });
+    f.playing();
+    f.leases[0].event("error");
+    Object.assign(f.leases[0].sample, { paused: true, ready: 0 });
+    const before = f.commands.length;
+    handle.resume();
+    assert.equal(handle.snapshot().phase, "loading");
+    assert.equal(
+        f.commands
+            .slice(before)
+            .some((command) => ["playing", "resume"].includes(command.type)),
+        false
+    );
+    assert(f.timers.every((timer) => !timer.active));
+    f.leases[0].event("ended");
+    assert.equal(
+        f.commands.some((command) => command.type === "ended"),
+        false
+    );
+    f.playing();
+    f.leases[0].event("ended");
+    assert.equal(handle.snapshot().phase, "stopped");
+    assert.equal(
+        f.commands.filter((command) => command.type === "ended").length,
+        1
+    );
+});
+
 function coreBridge(f, kind = "vod") {
     const file = "src/core/index.ts";
     const source = ts.createSourceFile(

@@ -250,9 +250,11 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 phase = "paused";
                 command("pause");
             } else if (sample.ready >= 2) {
+                awaitingRecovery = false;
                 phase = "playing";
                 command("playing");
             }
+            updateTimer();
             publish(handle, "seek");
         }
         var handle: any = {
@@ -349,10 +351,22 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 retainPause = false;
                 engine.resume();
                 if (!current()) return;
-                phase = engine.sample().paused ? "paused" : "playing";
+                var sample = engine.sample();
+                var type = sample.paused
+                    ? "pause"
+                    : sample.ready >= 2
+                      ? "resume"
+                      : "loading";
+                phase =
+                    type === "pause"
+                        ? "paused"
+                        : type === "resume"
+                          ? "playing"
+                          : "loading";
+                if (phase === "playing") awaitingRecovery = false;
                 updateTimer();
-                command(phase === "paused" ? "pause" : "resume");
-                publish(handle, phase === "paused" ? "pause" : "resume");
+                command(type);
+                publish(handle, type);
             },
             sample: function () {
                 observe();
