@@ -99,6 +99,17 @@ playback started: inspect status before issuing another play request. The player
 processes remote requests serially, so a status or preview command queued during
 slow preparation waits for that bounded request to finish.
 
+After restarting the player, use `ott l` to check that it is ready before
+starting or stepping a queue. Playback requests are refused while the initial
+provider load is incomplete; preview, status and stop remain available. An old
+archive-resume prompt cannot override a newer playback command.
+
+`playing` confirms the managed video decoder's state, not that its picture is
+visible above every window or overlay. When diagnosing a TV, check the physical
+screen as well as status. Decoder errors remove the `playing` state until
+playback is confirmed again; they never count as natural completion or skip to
+the next film.
+
 If preview reports missing configuration, save a Plex profile on that player.
 If it reports connection failure, check that the saved endpoint is reachable
 from the player, rather than only from the CLI machine. HTTPS browser players
