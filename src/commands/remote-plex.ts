@@ -57,6 +57,10 @@ export function remotePlexQueue(w: any, runtime: string): any {
             done({ data: snapshot(), status: "ok" });
             return;
         }
+        if (params.op !== "preview" && w.commandChannelsReady !== true) {
+            reject("Plex playback is unavailable on this player.");
+            return;
+        }
         if (loading) {
             reject("Plex queue request is already in progress.");
             return;

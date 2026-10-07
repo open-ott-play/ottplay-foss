@@ -42,6 +42,7 @@ function setup() {
     c.stbGetItem = (key) => c.stored[key] || null;
     c.__ottPlexAuth = { routing: () => null };
     c.p_pref = "m3u";
+    c.commandChannelsReady = true;
     c.__ottActiveProviderDriver = { id: "m3u" };
     c.sPSchannels = 1;
     c.parentPIN = "1234";
@@ -199,6 +200,50 @@ test("preview validates order without publishing, resolving streams or modifying
     assert.equal(h.c.__ottMedia.sourceId(), originalSource);
     assert.equal(JSON.stringify(h.c.stored), before);
     assert.equal(h.requests.length, 0);
+});
+test("startup readiness rejects playback but preserves preview and Plex-only providers", () => {
+    const h = setup();
+    h.c.commandChannelsReady = false;
+    assert.equal(h.call("play", ["1"]).replies[0].status, "rejected");
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.queue.retained(), false);
+    assert.equal(h.call("status").replies[0].data.state, "idle");
+    const preview = h.call("preview", ["1"]);
+    h.prepare(["1"]);
+    assert.equal(preview.replies[0].data.state, "ready");
+    assert.equal(h.call("play", ["1"]).replies[0].status, "rejected");
+    h.c.__ottActiveProviderDriver = {
+        capabilities: { libraryOnly: true },
+        id: "plex",
+    };
+    h.c.p_pref = "plex";
+    h.c.cList = [];
+    h.c.commandChannelsReady = true;
+    const play = h.call("play", ["1"]);
+    h.prepare(["1"]);
+    h.resolve("1");
+    assert.equal(
+        play.replies[0].status,
+        "ok",
+        "A ready Plex-only provider needs no TV channels"
+    );
+});
+test("a catalog reload during Plex preparation cannot commit late playback", () => {
+    const h = setup();
+    const play = h.call("play", ["1"]);
+    h.c.commandChannelsReady = false;
+    const stale = h.reply();
+    assert.equal(play.replies.length, 0);
+    assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+    const deadline = [...h.timers.values()].find((timer) => timer.ms === 35000);
+    assert(deadline, "Lost readiness still has a bounded execution deadline");
+    deadline.fn();
+    assert.equal(play.replies[0].status, "rejected");
+    h.c.commandChannelsReady = true;
+    stale.success({ MediaContainer: {} });
+    assert.equal(play.replies.length, 1);
+    assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+    assert.equal(h.queue.retained(), false);
 });
 test("failed replacement preflight preserves an already playing queue and client", () => {
     const h = setup();

@@ -153,6 +153,10 @@ function createRemotePlexQueue(
             done({ data: state(), status: "ok" });
             return;
         }
+        if (op !== "preview" && w.commandChannelsReady !== true) {
+            reject("Plex playback is unavailable on this player.");
+            return;
+        }
         var stepping = op === "next" || op === "previous";
         var ids = stepping && queue ? queue.ids.slice() : params.ids;
         if (
@@ -240,7 +244,9 @@ function createRemotePlexQueue(
                 w.__ottActiveProviderDriver === driver &&
                 w.p_pref === provider &&
                 (op === "preview" ||
-                    (!(w.__ottKiosk && w.__ottKiosk.enabled()) && allowed())) &&
+                    (w.commandChannelsReady === true &&
+                        !(w.__ottKiosk && w.__ottKiosk.enabled()) &&
+                        allowed())) &&
                 (committed || w.__ottMedia.sourceId() === mediaSource) &&
                 w.__ottClassicPlayback.snapshot().generation === generation &&
                 !(

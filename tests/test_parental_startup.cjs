@@ -671,6 +671,68 @@ for (const protectedChannel of [false, true]) {
         f.close();
     }
 }
+// An explicit playback choice owns the screen even while the old prompt is open.
+for (const answer of ["timeout", "yes", "no"]) {
+    const f = fixture({ archive: true, protectedChannel: false });
+    try {
+        f.start();
+        f.w.__ottClassicPlayback.command({
+            channelId: "78777",
+            item: { stream_url: "https://example.invalid/plex-film.mp4" },
+            sourceId: "plex-synthetic",
+            type: "vod",
+        });
+        if (answer === "timeout") f.runResume();
+        else f.w._doKey(answer === "yes" ? f.w.keys.ENTER : f.w.keys.RETURN);
+        assert.deepEqual(
+            f.archives,
+            [],
+            `${answer}: stale archive cannot replace Plex`
+        );
+        assert.deepEqual(
+            f.played,
+            [],
+            `${answer}: stale fallback cannot replace Plex`
+        );
+        assert.equal(
+            f.w.__ottClassicPlayback.snapshot().target.channelId,
+            "78777"
+        );
+        assert.equal(f.w.$("#dialogbox").is(":visible"), false);
+    } finally {
+        f.close();
+    }
+}
+{
+    const f = fixture({ archive: true, protectedChannel: false });
+    try {
+        f.start();
+        f.w.playChannel(1, 0);
+        f.runResume();
+        assert.deepEqual(f.archives, []);
+        assert.deepEqual(f.played, ["https://example.invalid/channel/101"]);
+    } finally {
+        f.close();
+    }
+}
+{
+    const f = fixture({ archive: true });
+    try {
+        f.start();
+        f.w._doKey(f.w.keys.ENTER);
+        f.w.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+        f.enter("2468");
+        assert.deepEqual(
+            f.archives,
+            [],
+            "A pending PIN cannot resurrect the old restore"
+        );
+        assert.deepEqual(f.played, []);
+    } finally {
+        f.close();
+    }
+}
+
 // Stopping the same archive revokes its pending restoration without changing IDs.
 {
     const f = fixture({ archive: true, protectedChannel: false });

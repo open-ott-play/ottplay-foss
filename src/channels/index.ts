@@ -596,8 +596,13 @@ export function restoreContinueWatch(): boolean {
                 source.list.indexOf(cw.channelId) !== -1
             );
         };
+        var playback = (window as any).__ottClassicPlayback;
+        var generation = playback.snapshot().generation;
+        var canRestore = function (): boolean {
+            return isCurrent() && playback.snapshot().generation === generation;
+        };
         var playLiveFallback = function (): boolean {
-            if (!isCurrent()) return false;
+            if (!canRestore()) return false;
             try {
                 window.playChannel(
                     resumeCatIndex,
@@ -617,7 +622,7 @@ export function restoreContinueWatch(): boolean {
             }
         };
         var playSavedArchive = function (): void {
-            if (!isCurrent()) return;
+            if (!canRestore()) return;
             if (ifParentalAccessChId(cw.channelId, playSavedArchive)) return;
             // Avoid setCurrent: it would overwrite the archive bookmark with live mode.
             catIndex = resumeCatIndex;
@@ -648,13 +653,19 @@ export function restoreContinueWatch(): boolean {
         };
 
         if (typeof window.confirmBox === "function") {
+            var restore = playback.guard(function (accept: boolean) {
+                if (accept) playSavedArchive();
+                else playLiveFallback();
+            });
             window.confirmBox(
                 _("Resume from archive?") +
                     "<br><br>" +
                     _("Bookmark age: %1 days", Math.floor(ageMs / 86400000)),
-                playSavedArchive,
                 function () {
-                    playLiveFallback();
+                    restore(true);
+                },
+                function () {
+                    restore(false);
                 },
                 10000
             );
