@@ -252,6 +252,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     const requests = [];
     const errors = [];
     let expandedFolder = false;
+    let failCollection = false;
     let holdCollection = false;
     let releaseCollection;
     let holdDecision = false;
@@ -290,6 +291,12 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         if (url.pathname === "/library/sections/7/folder") {
             const level = Number(url.searchParams.get("parent") || 0);
             folderParents.push(level);
+            if (level === 3 && failCollection)
+                return route.fulfill({
+                    body: "Unavailable",
+                    headers,
+                    status: 503,
+                });
             if (level === 3 && holdCollection)
                 await new Promise((release) => {
                     releaseCollection = release;
@@ -681,6 +688,38 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     );
     expect(folderParents).not.toContain(4);
     await page.evaluate(() => window.closeList());
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/42" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    await page.keyboard.press("ArrowUp");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/43" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    // A transient catalog error must not permanently disable full-screen
+    // arrows after the individual file has successfully resumed.
+    await page.evaluate(() => {
+        const playing = window.__ottMedia.current();
+        window.__ottMedia.checkpoint(playing.ref, 1, true);
+    });
+    failCollection = true;
+    await page.reload();
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia?.current()?.payload.request.path ===
+                "/library/metadata/43" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    expect(
+        await page.evaluate(() => window.__ottMedia.current().sequence)
+    ).toBeNull();
+    failCollection = false;
     await page.keyboard.press("ArrowDown");
     await page.waitForFunction(
         () =>

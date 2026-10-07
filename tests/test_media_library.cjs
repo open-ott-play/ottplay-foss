@@ -2884,6 +2884,87 @@ test("Full-screen Plex arrows select adjacent videos instead of the configured m
     );
 });
 
+function resumedWithoutFolder() {
+    const c = coldFolderResumeFixture();
+    const collect = c.providerMediaClient.collect;
+    c.providerMediaClient.collect = (_target, done) =>
+        done({ error: true, items: [] });
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    assert.equal(c.__ottMedia.current().sequence, null);
+    c.providerMediaClient.collect = collect;
+    c.deferFolder = true;
+    return c;
+}
+
+test("Plex arrows recover the original folder after an unavailable startup catalog", () => {
+    const c = resumedWithoutFolder();
+    c.__ottMedia.skip(1);
+    assert.equal(c.collections.length, 1);
+    assert.equal(
+        c.resolutions.length,
+        1,
+        "The current file keeps playing during collection"
+    );
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    c.__ottMedia.skip(-1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    assert.equal(c.collections.length, 1, "Recovered siblings are reused");
+});
+
+test("Pending folder recovery combines arrow presses without restarting the request", () => {
+    const c = resumedWithoutFolder();
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    assert.equal(c.collections.length, 1);
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/41"
+    );
+});
+
+test("Cancelled folder recovery cannot replace newer playback or navigation", () => {
+    for (const cancel of [
+        (c) => c.__ottMedia.cancelAuto(),
+        (c) => c.__ottClassicPlayback.command({ type: "stop" }),
+        (c) => c.mediaList("library"),
+    ]) {
+        const c = resumedWithoutFolder();
+        c.__ottMedia.skip(1);
+        const finish = c.completeFolder;
+        cancel(c);
+        finish(true);
+        assert.equal(c.resolutions.length, 1);
+        assert.equal(c.__ottMedia.current().sequence, null);
+    }
+});
+
+test("Missing original file never falls through to an unrelated folder sibling", () => {
+    const c = resumedWithoutFolder();
+    c.folderRows = c.folderRows.filter(
+        (row) => !row.request || row.request.path !== "/library/metadata/42"
+    );
+    c.__ottMedia.skip(1);
+    c.completeFolder();
+    assert.equal(c.resolutions.length, 1);
+    assert.equal(c.__ottMedia.current().sequence, null);
+    c.__ottMedia.skip(1);
+    assert.equal(
+        c.collections.length,
+        2,
+        "A later press can retry a failed collection"
+    );
+});
+
 test("Manual media skip respects queue order, repeat boundaries and shuffle", () => {
     const c = coldFolderResumeFixture();
     c.__ottMedia.restoreLast();
