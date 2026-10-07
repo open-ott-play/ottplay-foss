@@ -62,7 +62,9 @@ node scripts/check-stalker-portal.cjs --input /private/my-portal.json \
 Maximum options are 60 seconds per request, 300 seconds overall and 200 requests.
 Input must be a regular file and is limited to 256 KiB. Redirects are reported
 without following them, so credentials cannot be forwarded to another destination.
-TLS certificates are verified. No session data is written to disk.
+HTTPS requests verify TLS certificates. HTTP URLs are also accepted: the account
+MAC is sent in cleartext, as is the bearer token for classic requests. Use HTTPS
+to protect these credentials. No session data is written to disk.
 
 Common result codes:
 
