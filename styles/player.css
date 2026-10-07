@@ -52,6 +52,34 @@ body {
     -webkit-user-select: none;
     user-select: none;
 }
+
+/* Localize text flow without reversing player geometry or remote key order. */
+.localized-text[dir="rtl"] {
+    text-align: right;
+}
+.localized-text[dir="ltr"] {
+    text-align: left;
+}
+.localized-text.localized-centered {
+    text-align: center;
+}
+.localized-token {
+    direction: ltr;
+    unicode-bidi: embed;
+    unicode-bidi: isolate;
+}
+[data-ui-direction="rtl"] #listCaption,
+[data-ui-direction="rtl"] #listIn .item-label,
+[data-ui-direction="rtl"] #listDetail,
+[data-ui-direction="rtl"] .osk-cap {
+    direction: rtl;
+}
+/* Key badges retain their physical LTR order inside an RTL text label. */
+[data-ui-direction="rtl"] .btn {
+    direction: ltr;
+    unicode-bidi: embed;
+    unicode-bidi: isolate;
+}
 /* The player handles keyboard focus; WebKit's video outline must not frame the picture. */
 #video,
 #videopip {

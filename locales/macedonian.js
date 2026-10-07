@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "Поставки за All4you.tv",
     "Allow diagnostics for 10 minutes": "Дозволи дијагностика за 10 минути",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Дозволете слики од екранот 10 минути",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Дозволете му на овој сервер да собира дијагностички бројачи и повторно да ги стартува стримот или плеерот. Привремениот пристап трае 10 минути. Доверливата поддршка останува достапна по повторното поврзување или рестартирање; секое собирање сѐ уште истекува по 10 минути. Собирањето се паузира додека апликацијата е скриена или без мрежа.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Дозволете му на овој сервер да собира бројачи за репродукција, мрежа и внес во оваа активна сесија. Потребни се HTTPS и дозвола од серверот. Запира по 10 минути, кога страницата е скриена или кога ќе се прекине врската.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Дозволете овој сервер да бара слики 10 минути. Сликите може да содржат лични информации. Во прелистувачот, изберете ја картичката или прозорецот на плеерот. Дозволата завршува со повторно вчитување или исклучување.",
     "Allowlist this Device ID": "Дозволи го овој ID на уред",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Плеерот преку HTTPS не може да преземе EPG од HTTP извор. Користете HTTPS извор.",
@@ -103,6 +103,7 @@ var keyStrings = {
     "Background color": "Боја на позадината",
     "Background color of selected item":
         "Боја на позадината на избраната ставка",
+    "Backup state changed": "Состојбата на резервната копија е променета",
     "Balance, $": "Состојба, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +114,7 @@ var keyStrings = {
         "Однесување на копчињата %1/%2 во листите",
     "Black screen while switching the channel": "Црн екран при менување канал",
     Blue: "Сина",
+    "Bookmark age (days): %1": "Старост на обележувачот (денови): %1",
     "Bookmark age: %1 days": "Старост на обележувачот: %1 дена",
     "Browse folders": "Прегледај папки",
     "Buffer Size, s": "Големина на баферот, с",
@@ -164,11 +166,14 @@ var keyStrings = {
     "Choose language": "Избери јазик",
     "Choose Plex server": "Избери Plex сервер",
     "Choose provider": "Избери провајдер",
-    Classic: "Classic",
+    Classic: "Класичен",
     "Clear all settings?": "Да се исчистат сите поставки?",
     "Clear settings": "Исчисти поставки",
     Close: "Затвори",
     "Close PiP": "Затвори PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Зачувувањето/вчитувањето на облак бара фирмвер STB (host_ott не е поставен)",
+    "Cloud transfer failed": "Преносот на податоци преку облакот не успеа",
     Code: "Код",
     Color: "Боја",
     "Color spectrum": "Спектар на бои",
@@ -187,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Околината за компатибилност не може да се вчита. Отворете го плеерот повторно за да пробате пак.",
     "Compatible HLS": "Компатибилен HLS",
+    "Complete pairing link": "Целосна врска за спарување",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Поставете го All4you.tv во Поставки → Поставки за провајдер",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +265,24 @@ var keyStrings = {
         "Поставете го Шаравоз во Поставки → Поставки за провајдер",
     Connect: "Поврзи",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Поврзете команден сервер HTTPS пред да дозволите слики од екранот.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Поврзете команден сервер HTTPS за да користите слики од екранот.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Поврзете се со далечинското управување за да овозможите дијагностика.",
     "Connect this player to a command server first.":
         "Прво поврзете го овој плеер со команден сервер.",
+    "Connect to TV": "Поврзете се на ТВ",
     Connected: "Поврзано",
     "Connected. Waiting for the channel list...":
         "Поврзано. Се чека листата на канали…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Поврзувањето со далечинското управување му дозволува на овој сервер да го дијагностицира и поправа плеерот. Пристапот останува активен по рестартирање и завршува кога ќе ја прекинете врската. Секоја сесија за собирање дијагностички податоци е ограничена на 10 минути.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Се поврзува далечинската дијагностика за активната врска за далечинско управување.",
     "Connecting remote diagnostics for this page.":
         "Се поврзува далечинска дијагностика за оваа страница.",
+    "Connecting securely to your TV...": "Безбедно поврзување со вашиот ТВ...",
     "Connecting to Plex…": "Се поврзува со Plex…",
     "Connecting to Stalker portal...": "Се поврзува со Stalker порталот…",
     "Connecting...": "Се поврзува…",
@@ -293,6 +301,10 @@ var keyStrings = {
         "Не може да се создаде барање за спарување. Најдете го серверот повторно за нов обид.",
     "Could not load. Select to retry.":
         "Не може да се вчита. Изберете за повторен обид.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Не можев да го подготвам овој текст. Ве молиме скратете го и обидете се повторно.",
+    "Could not protect the private link. Use a different browser.":
+        "Не може да се заштити приватната врска. Користете различен прелистувач.",
     "Could not save provider settings.":
         "Поставките за провајдерот не може да се зачуваат.",
     "Could not save the approved command server settings.":
@@ -310,6 +322,8 @@ var keyStrings = {
     "Delete category": "Избриши категорија",
     "Delete channel": "Избриши канал",
     "Delete list": "Избриши листа",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Испораката не може да се потврди. Проверете го вашиот телевизор или обидете се повторно со истата порака пред да истече оваа сесија.",
     "Demo — moving test pattern": "Демонстрација — подвижна тест-слика",
     Description: "Опис",
     "Description of remote control buttons":
@@ -392,6 +406,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Внесете URL на Stalker порталот (на пр. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Внесете број на сервер (%1).",
+    "Enter text": "Внесете текст",
     "Enter the access code separately, not in the server address.":
         "Внесете го кодот за пристап одделно, а не во адресата на серверот.",
     "Enter the command server IP or address.":
@@ -547,8 +562,11 @@ var keyStrings = {
     "Interface transparency": "Проѕирност на интерфејсот",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Неважечки линк на каналот! Внесете го целосното име на хостот од URL на стримот во корисничката сметка (на пр. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Неважечки одговор на поставките за облак",
     "Invalid protected source configuration":
         "Неважечка конфигурација на заштитениот извор",
+    "Invalid setting": "Неважечка поставка",
     "IPTV token": "IPTV токен",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Поставки за IpStream.one",
@@ -628,6 +646,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ниту една емисија не се совпадна со каналите и датумите на плејлистата. Проверете ги изворот и часовникот на уредот.",
     "No saved settings found": "Не се пронајдени зачувани поставки",
+    "No supported system language. Choose a language.":
+        "Нема поддржан системски јазик. Изберете јазик.",
     "Not configured": "Не е поставено",
     "Not found": "Не е пронајдено",
     "Not reduce video when showing the list (bugfix)":
@@ -643,6 +663,8 @@ var keyStrings = {
     "not set": "не е поставено",
     Off: "исклучено",
     Ok: "Во ред",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Само овој ТВ може да ја прифати вашата порака. Линкот истекува по 10 минути.",
     Open: "Отвори",
     "Open in PiP": "Отвори во PiP",
     "Open Plex sign-in page": "Отвори ја страницата за најава на Plex",
@@ -655,6 +677,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP хост",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Поставки за OTT Prime ONLINE",
+    "OTT-play remote input": "Далечински внес во OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Достапен е OttPlay FOSS %1. Дали да се преземе и инсталира сега?",
     "Overwrite current settings?": "Да се препишат тековните поставки?",
@@ -687,6 +710,7 @@ var keyStrings = {
     Playback: "Репродукција",
     "Player and device info": "Информации за плеерот и уредот",
     "Player could not start": "Плеерот не може да се стартува",
+    "Player default": "Стандардниот избор на плеерот",
     "Player info:": "Информации за плеерот:",
     Playlist: "Плејлиста",
     "Playlist file": "Датотека со плејлиста",
@@ -707,6 +731,8 @@ var keyStrings = {
     Postpaid: "Плаќање по користење",
     PROST: "PROST",
     "PROST settings": "Поставки за PROST",
+    "Preferred audio language": "Префериран аудио јазик",
+    "Preferred subtitle language": "Префериран јазик на титл",
     Prepaid: "Претплатено",
     "Preparing secure remote input...":
         "Се подготвува безбеден далечински внес…",
@@ -740,14 +766,14 @@ var keyStrings = {
         "Далечински управувач (без бројчени копчиња)",
     "Remote control": "Далечински управувач",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Далечинското управување овозможува дијагностика. Подготвено за оператор.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Далечинското управување овозможува дијагностика. Се чека повторно поврзување.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Далечинското управување вклучува слики од екранот на плеерот и неговите поставки. Сликите може да содржат приватни податоци. Апликацијата може директно да снима слики без дополнително одобрение. Во прелистувачот треба да ја изберете картичката или прозорецот за споделување на овој уред.",
     "Remote diagnostics": "Далечинска дијагностика",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Далечинската дијагностика собира податоци за оваа врска (до 10 минути по сесија).",
     "Remote diagnostics is collecting for this page.":
         "Далечинската дијагностика собира податоци за оваа страница.",
     "Remote diagnostics is off.": "Далечинската дијагностика е исклучена.",
@@ -761,10 +787,11 @@ var keyStrings = {
         "Далечинскиот внес истече. Отворете нова сесија за повторен обид.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сесијата за далечински внес не е достапна. Отворете нова сесија за повторен обид.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Далечински слики од екранот",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Далечинските слики од екранот се дозволени 10 минути. Затворете ги поставките за снимање.",
+    "Remote screenshots are off.":
+        "Далечинските слики од екранот се исклучени.",
     "Remote session expired": "Далечинската сесија истече",
     "Remote text entry": "Далечинско внесување текст",
     "Remote text entry denied": "Далечинското внесување текст е одбиено",
@@ -793,6 +820,7 @@ var keyStrings = {
     "Resume from archive?": "Да продолжи од архивата?",
     Retry: "Обиди се повторно",
     "Retry EPG download": "Повторно преземи EPG",
+    "Retry same message": "Испрати ја истата порака повторно",
     "Return to previous channel": "Врати се на претходниот канал",
     Rewind: "Помести ја репродукцијата",
     "Rewind step by buttons %1/%2": "Чекор за премотување со копчињата %1/%2",
@@ -810,19 +838,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Зачувај поставки и вчитај листа на канали",
     "Save settings to storage": "Зачувај поставки во складиштето",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Скенирајте го кодот QR на вашиот телевизор или залепете го неговиот целосен приватен линк за спарување подолу.",
     "Scan this QR code with your phone to enter text.":
         "Скенирајте го овој QR код со телефонот за внесување текст.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Споделувањето екран не можеше да започне.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Споделувањето на екранот е откажано или е недостапно.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Дозволата за слика од екранот не може да се овозможи.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Сликите од екранот се достапни додека е активна врската за далечинско управување.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Сликите од екранот не се достапни на оваа платформа.",
     Script: "Сценарио",
     Search: "Пребарај",
+    "Search languages": "Пребарај јазик",
     "Search programme": "Пребарај емисија",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Безбедниот далечински внес не може да започне. Обидете се повторно или користете ја екранската тастатура.",
@@ -841,13 +873,14 @@ var keyStrings = {
         "Изберете извор за EPG и логоа од шаблонот на плејлистата",
     "Select Stalker portal": "Изберете Stalker портал",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Изберете извор на слики од екранот во прелистувачот",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Изберете ја картичката или прозорецот на плеерот во дијалогот за споделување на прелистувачот.",
     "Send request": "Испрати барање",
     "Send settings": "Испрати поставки",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Испратете го овој код од вашиот прокси во заглавието Authorization: Bearer.",
+    "Send to TV": "Испрати на ТВ",
     Server: "Сервер",
     "Server address": "Адреса на серверот",
     "Server address (for example 192.168.1.20:8081)":
@@ -856,10 +889,13 @@ var keyStrings = {
     "Server URL": "URL на серверот",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Серверот не е достапен. Автоматски се обидуваме повторно; проверете ги адресата и мрежниот пристап.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Сесијата е затворена. По потреба отворете нова сесија на телевизорот.",
     Set: "Примени",
     "Set parental code": "Постави родителски код",
     "Set timer?": "Да се постави тајмер?",
     Settings: "Поставки",
+    "Settings changed while editing": "Поставките се сменија при уредување",
     "Settings changed. Discovery was canceled.":
         "Поставките се променети. Откривањето е откажано.",
     "Settings copied": "Поставките се копирани",
@@ -869,10 +905,15 @@ var keyStrings = {
     "Settings imported": "Поставките се увезени",
     "Settings JSON": "JSON со поставки",
     "Settings loaded from storage": "Поставките се вчитани од складиштето",
+    "Settings received. Restarting player...":
+        "Примени се поставките. Се рестартира плеерот...",
     "Settings STB": "STB поставки",
     "Settings saved": "Поставките се зачувани",
     "Settings saved to storage": "Поставките се зачувани во складиштето",
     "Settings sended!": "Поставките се испратени!",
+    "Settings source changed": "Изворот на поставките е променет",
+    "Settings storage rejected write":
+        "Складиштето за поставки го одби запишувањето",
     "Several command servers were found. Select one below.":
         "Пронајдени се повеќе командни сервери. Изберете еден подолу.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -926,11 +967,11 @@ var keyStrings = {
     "Starting...": "Се стартува…",
     Status: "Состојба",
     Stop: "Запри",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Запрете го споделувањето на прелистувачот",
     "Stop current capture": "Запри го тековното собирање",
     "Stop diagnostics": "Запри дијагностика",
     "Stop playback and return to live": "Запри репродукција и врати се во живо",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Прекини го снимањето слики од екранот",
     "Stream could not be played": "Стримот не може да се репродуцира",
     "Stream type: %1": "Тип на стрим: %1",
     "String for search": "Текст за пребарување",
@@ -942,6 +983,7 @@ var keyStrings = {
     "Switch subtitle": "Смени титлови",
     "Switch to this list": "Префрли на оваа листа",
     "Swop URL": "Swop URL",
+    "System language": "Системски јазик",
     "saved on this device": "зачувано на овој уред",
     select: "избери",
     small: "мал",
@@ -950,15 +992,19 @@ var keyStrings = {
     "Tabox settings": "Поставки за Tabox",
     "Text is too long for remote input.":
         "Текстот е предолг за далечински внес.",
+    "Text is too long. Please shorten it before sending.":
+        "Текстот е предолг. Ве молиме скратете го пред да испратите.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Текст испратен. Проверете го вашиот телевизор за да потврдите дека се појавил.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Изворот на екранот на прелистувачот е подготвен.",
     "The command server discovery URL is invalid.":
         "URL за откривање на командниот сервер е неважечки.",
     "The device ID in the address is invalid.":
         "ID на уредот во адресата е неважечки.",
     "The discovery response is invalid.": "Одговорот за откривање е неважечки.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Овој прелистувач не може да го идентификува избраниот извор на слики од екранот.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Овој прелистувач не може безбедно да изврши автоматско спарување. Ажурирајте го или внесете ги поставките за командниот сервер рачно.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -967,6 +1013,10 @@ var keyStrings = {
         "Овој HTTPS плеер не може да се поврзе со HTTP сервер. Користете HTTPS сервер или отворете го плеерот преку HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "За оваа Play апликација е потребен HTTPS. Побарајте од провајдерот HTTPS плејлиста или URL на сервер.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Оваа врска за спарување е истечена. Отворете нова сесија на вашиот телевизор.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Оваа безбедна сесија не е достапна или е истечена. Отворете нова сесија на ТВ и користете ја неговата целосна врска.",
     Timer: "Тајмер",
     "Timer: switch to channel?": "Тајмер: да се префрли на овој канал?",
     "Timeshift: one minute back": "Врати една минута назад",
@@ -1015,6 +1065,8 @@ var keyStrings = {
         "Користете HTTP или HTTPS без корисничко име или лозинка во адресата.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Користете ЛЕВО/ДЕСНО за избор на контрола, OK за активирање и ГОРЕ/ДОЛУ за лизгање.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Користете ја целосната врска, вклучувајќи го и делот после #. Не го споделувајте со никој друг.",
     "Use Up / Down to scroll. Back to close.":
         "Користете Горе/Долу за лизгање. Назад за затворање.",
     Username: "Корисничко име",

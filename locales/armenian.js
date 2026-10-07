@@ -60,19 +60,19 @@ var keyStrings = {
     "All categories": "Բոլոր կատեգորիաները",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv կարգավորումներ",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Թույլատրել ախտորոշումը 10 րոպե",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Թույլատրել սքրինշոթները 10 րոպե",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Թույլ տվեք այս սերվերին հավաքել ախտորոշիչ ցուցանիշներ և վերագործարկել այս հոսքը կամ նվագարկիչը։ Ժամանակավոր մուտքը տևում է 10 րոպե։ Վստահելի աջակցությունը հասանելի է մնում վերամիացումից կամ վերագործարկումից հետո, սակայն տվյալների հավաքման յուրաքանչյուր սեանս ավարտվում է 10 րոպե անց։ Տվյալների հավաքումը դադարում է, երբ էջը թաքցված է կամ ցանցից անջատված։",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Թույլ տվեք այս սերվերին հավաքել նվագարկումը, ցանցը և մուտքագրման հաշվիչներն այս առաջին պլանի նիստի համար: Պահանջում է HTTPS և սերվերի թույլտվություն: Դադարեցնում է 10 րոպե հետո, երբ թաքնված է կամ երբ անջատված է:",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Թույլ տվեք այս սերվերին պատկերներ պահանջել 10 րոպե: Պատկերները կարող են պարունակել անձնական տվյալներ: Բրաուզերում ընտրեք նվագարկչի ներդիրը կամ պատուհանը: Թույլտվությունն ավարտվում է վերաբեռնման կամ անջատման դեպքում:",
     "Allowlist this Device ID": "Թույլատրել այս սարքի ID-ն",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "HTTPS նվագարկիչը չի կարող ներբեռնել HTTP EPG աղբյուրը: Օգտագործեք HTTPS աղբյուրը:",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Առանց պորտի IP-ն օգտագործում է HTTP 8081 պորտը։ Դադարեցնելու համար մաքրեք հասցեն կամ ընտրեք «Անջատել»։",
     "Another source sign-in is already open":
@@ -91,9 +91,9 @@ var keyStrings = {
     "Archive. Channel: ": "Արխիվ։ Ալիք՝ ",
     Aspect: "Կողմերի հարաբերակցություն",
     Audio: "Ձայն",
-    Automatic: "Automatic",
+    Automatic: "Ավտոմատ",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Ավտոմատ կերպով նվագարկում է աջակցվող ֆայլերը և անհրաժեշտության դեպքում օգտագործում է համատեղելի HLS:",
     alhabet: "աբգդեզէըթժիլխծկհձղճմյնշոչպջռսվտրցւփքօֆև",
     always: "միշտ",
     "and enter code": "և մուտքագրեք կոդը",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 րոպե հետ / առաջ",
     "Background color": "Ֆոնի գույն",
     "Background color of selected item": "Ընտրված տարրի ֆոնի գույն",
+    "Backup state changed": "Պահուստավորման վիճակը փոխվել է",
     "Balance, $": "Մնացորդ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +112,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "%1/%2 կոճակների վարքը ցուցակներում",
     "Black screen while switching the channel": "Սև էկրան՝ ալիքները փոխելիս",
     Blue: "Կապույտ",
+    "Bookmark age (days): %1": "Էջանիշի տարիք (օրեր)՝ %1",
     "Bookmark age: %1 days": "Էջանիշի տարիք՝ %1 օր",
     "Browse folders": "Դիտել ըստ պանակների",
     "Buffer Size, s": "Բուֆերի չափ, վ",
@@ -152,21 +154,23 @@ var keyStrings = {
     "Channel parental control": "Ծնողական վերահսկողություն ալիքի համար",
     Channels: "Ալիքներ",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Ստուգեք կապը և բացեք ձեր Plex գրադարանները:",
     "Check this server's SWOP configuration.":
         "Ստուգեք այս սերվերի SWOP կարգավորումները։",
-    "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+    "Checking the Plex server connection…": "Plex սերվերի կապի ստուգում…",
     "Choose from": "Ընտրել աղբյուրից",
     "Choose language": "Ընտրել լեզուն",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Ընտրեք Plex սերվեր",
     "Choose provider": "Ընտրել մատակարարին",
     Classic: "Դասական",
     "Clear all settings?": "Մաքրե՞լ բոլոր կարգավորումները։",
     "Clear settings": "Մաքրել կարգավորումները",
     Close: "Փակել",
     "Close PiP": "Փակել PiP-ը",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Ամպային պահպանումը կամ բեռնումը պահանջում է STB որոնված (host_ott-ը սահմանված չէ)",
+    "Cloud transfer failed": "Ամպային փոխանցումը ձախողվեց",
+    Code: "Մուտքի կոդը",
     Color: "Գույն",
     "Color spectrum": "Գունային սպեկտր",
     "Command server": "Հրամանների սերվեր",
@@ -183,7 +187,8 @@ var keyStrings = {
     "Command server found.": "Հրամանների սերվերը գտնվել է։",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Չհաջողվեց բեռնել համատեղելիության բաղադրիչները։ Կրկին բացեք նվագարկիչը։",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Համատեղելի HLS",
+    "Complete pairing link": "Ամբողջական զուգավորման հղում",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Կարգավորեք All4you.tv-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -217,7 +222,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Կարգավորեք OTT Prime ONLINE-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Կարգավորեք Plex-ը Կարգավորումներում -> Մատակարարի կարգավորումներում",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Կարգավորեք POLMEDIA-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure PROST in Settings -> Provider Settings":
@@ -256,23 +261,26 @@ var keyStrings = {
         "Կարգավորեք Шаравоз-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     Connect: "Միանալ",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Միացրեք HTTPS հրամանի սերվերը՝ նախքան սքրինշոթեր թույլ տալը:",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Միացրեք HTTPS հրամանի սերվերը՝ սքրինշոթներ օգտագործելու համար:",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Միացրեք հեռակառավարումը՝ ախտորոշումն ակտիվացնելու համար։",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Նախ միացրեք այս նվագարկիչը հրամանի սերվերին:",
+    "Connect to TV": "Միացեք հեռուստացույցին",
     Connected: "Միացված է",
     "Connected. Waiting for the channel list...":
         "Միացված է։ Սպասում է ալիքների ցուցակին…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Հեռակառավարման միացումը թույլ է տալիս այս սերվերին ախտորոշել և վերականգնել նվագարկիչը։ Մուտքը պահպանվում է վերագործարկումից հետո և ավարտվում է կապն անջատելիս։ Ախտորոշիչ տվյալների հավաքման յուրաքանչյուր սեանս սահմանափակված է 10 րոպեով։",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Միացված հեռակառավարման միացման հեռաախտորոշման միացում:",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Հեռակա ախտորոշման միացում այս էջի համար:",
+    "Connecting securely to your TV...":
+        "Ապահով միացում ձեր հեռուստացույցին...",
+    "Connecting to Plex…": "Միանում է Plex-ին…",
     "Connecting to Stalker portal...": "Միացում Stalker պորտալին…",
     "Connecting...": "Միացում…",
     "Continue watching?": "Շարունակե՞լ դիտումը։",
@@ -283,12 +291,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Պատճենեք ընտրված JSON-ը՝ օգտագործելով սարքի պատճենման հրամանը",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Չհաջողվեց միանալ Plex-ին։ Ստուգեք սերվերի հասցեն, մուտքի թոքենը և ցանցային կապը։",
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
     "Could not create a pairing request. Find the server again to retry.":
         "Չհաջողվեց ստեղծել զուգակցման հարցում։ Կրկին փորձելու համար նորից գտեք սերվերը։",
     "Could not load. Select to retry.":
         "Չհաջողվեց բեռնել։ Ընտրեք՝ կրկին փորձելու համար։",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Չհաջողվեց պատրաստել այս տեքստը: Խնդրում ենք կրճատել այն և նորից փորձել:",
+    "Could not protect the private link. Use a different browser.":
+        "Չհաջողվեց պաշտպանել անձնական հղումը: Օգտագործեք այլ բրաուզեր:",
     "Could not save provider settings.":
         "Չհաջողվեց պահպանել մատակարարի կարգավորումները։",
     "Could not save the approved command server settings.":
@@ -306,6 +318,8 @@ var keyStrings = {
     "Delete category": "Ջնջել կատեգորիան",
     "Delete channel": "Ջնջել ալիքը",
     "Delete list": "Ջնջել ցուցակը",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Առաքումը չհաջողվեց հաստատել: Ստուգեք ձեր հեռուստացույցը կամ նորից փորձեք նույն հաղորդագրությունը մինչև այս աշխատաշրջանի ժամկետի ավարտը:",
     "Demo — moving test pattern": "Ցուցադրություն — շարժվող փորձնական պատկեր",
     Description: "Նկարագրություն",
     "Description of remote control buttons":
@@ -320,7 +334,8 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV կարգավորումներ",
     Director: "Ռեժիսոր",
     "Disable HTTP remote": "Անջատել HTTP հեռակառավարումը",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support":
+        "Անջատել վստահելի հեռակառավարման աջակցությունը",
     "Disabled by default. Enabling creates a new device access code.":
         "Լռելյայն անջատված է։ Միացնելիս ստեղծվում է սարքի մուտքի նոր կոդ։",
     Disconnect: "Անջատել",
@@ -354,7 +369,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Այս ծառայությունից օգտվելու համար մուտքագրեք օգտանունը և գաղտնաբառը։",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Մուտքագրեք Plex սերվերի վավեր հասցե և մուտքի թոքեն։",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Մուտքագրեք վավեր սերվերի հասցե, օրինակ՝ 192.168.1.20:8081։",
     "Enter access key for": "Մուտքագրեք մուտքի բանալին՝",
@@ -371,8 +386,8 @@ var keyStrings = {
         "Մուտքագրեք MAC հասցեն (օր.՝ 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Մուտքագրեք մեդիա գրադարանի URL-ը",
     "Enter new category name": "Մուտքագրեք կատեգորիայի նոր անունը",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Մուտքագրեք Plex սերվերի հասցեն",
+    "Enter Plex token": "Մուտքագրեք Plex-ի թոքենը",
     "Enter Provider Code": "Մուտքագրեք մատակարարի կոդը",
     "Enter Provider Code on PC or Phone":
         "Մուտքագրեք մատակարարի կոդը համակարգչով կամ հեռախոսով",
@@ -388,6 +403,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Մուտքագրեք Stalker պորտալի URL-ը (օր.՝ http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Մուտքագրեք սերվերի համարը (%1)։",
+    "Enter text": "Մուտքագրեք տեքստ",
     "Enter the access code separately, not in the server address.":
         "Մուտքի կոդը մուտքագրեք առանձին, ոչ թե սերվերի հասցեում։",
     "Enter the command server IP or address.":
@@ -412,56 +428,56 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Մուտքագրեք Xtream սերվերի URL-ը (օր.՝ https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Մուտքագրեք Plex-ի ձեր մուտքի թոքենը։ Այն պահպանվում է այս սարքի պրոֆիլում։",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Մուտքագրեք ձեր Plex սերվերի հասցեն, օրինակ՝ http://192.168.1.25:32400",
     EPG: "Հեռուստածրագիր",
     "EPG and archive. Channel: ": "Հեռուստածրագիր և արխիվ։ Ալիք՝ ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "EPG արխիվը կամ XML-ն անվավեր է:",
+    "EPG cache and wait time: %1": "EPG քեշ և սպասման ժամանակ՝ %1",
+    "EPG cache updated: %1": "EPG քեշը թարմացվել է՝ %1",
+    "EPG channels: %1": "EPG ալիքներ՝ %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Չհաջողվեց գործարկել EPG-ն։ Վերագործարկեք նվագարկիչը՝ դրա ֆայլերը նորից բեռնելու համար։ Նվագարկումը կդադարեցվի։",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG ախտորոշում",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "EPG ախտորոշումը չի կարող բեռնվել: Կրկին բացեք այն նորից փորձելու համար:",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "EPG ներբեռնումը ձախողվեց: Ստուգեք կապը, HTTPS և աղբյուրի CORS թույլտվությունները:",
+    "EPG download time: %1": "EPG ներբեռնման ժամանակը՝ %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "EPG ներբեռնման ժամանակը սպառվել է: Կրկին փորձեք ներբեռնումը:",
+    "EPG elapsed: %1": "EPG անցած՝ %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG սխալ. Բացեք տեղեկատվություն → EPG ախտորոշում:",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG-ը գերազանցում է սարքի մշակման սահմանաչափը: Օգտագործեք ավելի փոքր աղբյուր կամ արխիվային պատուհան:",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG չի սկսվել։ Բեռնել M3U երգացանկը:",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG տեղական պահեստն անհասանելի է կամ լի է:",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG մշակման և պահպանման ժամանակը՝ %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "EPG մշակումը դադարեցվել է: Նորից փորձեք և ստուգեք դիտարկիչի աջակցությունը:",
+    "EPG programmes: %1": "EPG հաղորդումներ՝ %1",
+    "EPG progress: %1": "EPG առաջընթաց՝ %1",
+    "EPG ready": "EPG պատրաստ",
+    "EPG source returned HTTP %1": "EPG աղբյուրը վերադարձրեց HTTP %1",
+    "EPG source: %1": "EPG աղբյուր՝ %1",
+    "EPG stopped during: %1": "EPG դադարեցվել է %1 ընթացքում",
+    "EPG unavailable on this browser": "EPG անհասանելի է այս դիտարկիչում",
+    "EPG unavailable: %1": "EPG անհասանելի է՝ %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "EPG թարմացումը ձախողվեց; օգտագործելով պահպանված ծրագրի ուղեցույցը",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG՝ ծրագրի ուղեցույցի ներբեռնում...",
+    "EPG: opening local cache...": "EPG՝ բացելով տեղական քեշը...",
+    "EPG: processing programme guide...": "EPG՝ մշակման ծրագրի ուղեցույց...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG. պահպանված ծրագրի ուղեցույցի թարմացում...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG. սպասում է նվագարկչի մեկ այլ ներդիրին...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Սխալ․ №%1 կատեգորիան գոյություն չունի։<br>Ընտրեք այլ կատեգորիա։",
     "ERROR!": "Սխալ։",
@@ -496,7 +512,7 @@ var keyStrings = {
     "Finding command servers...": "Հրամանների սերվերների որոնում...",
     "First Run Setup": "Առաջին գործարկման կարգավորում",
     "Fit to screen": "Հարմարեցնել էկրանին",
-    Folders: "Folders",
+    Folders: "Թղթապանակներ",
     "Font type": "Տառատեսակ",
     "For download settings file open":
         "Կարգավորումների ֆայլը ներբեռնելու համար բացեք",
@@ -539,8 +555,10 @@ var keyStrings = {
     "Interface transparency": "Միջերեսի թափանցիկություն",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ալիքի հղումն անվավեր է։ Մուտքագրեք ամբողջական հոսթը՝ ինչպես անձնական էջի հոսքի URL-ում (օր.՝ subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Անվավեր ամպի կարգավորումների պատասխան",
     "Invalid protected source configuration":
         "Պաշտպանված աղբյուրի սխալ կարգավորում",
+    "Invalid setting": "Անվավեր կարգավորում",
     "IPTV token": "IPTV թոքեն",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one կարգավորումներ",
@@ -615,10 +633,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Այս ցանցում հրամանների սերվեր չի գտնվել։",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Այս հաշվի համար Plex սերվերներ չկան:",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Ոչ մի ծրագիր չի համապատասխանում երգացանկի ալիքներին և ամսաթվերին: Ստուգեք աղբյուրը և սարքի ժամացույցը:",
     "No saved settings found": "Պահպանված կարգավորումներ չեն գտնվել",
+    "No supported system language. Choose a language.":
+        "Համակարգի լեզուն չի աջակցվում։ Ընտրեք լեզու։",
     "Not configured": "Կարգավորված չէ",
     "Not found": "Չի գտնվել",
     "Not reduce video when showing the list (bugfix)":
@@ -634,18 +654,21 @@ var keyStrings = {
     "not set": "սահմանված չէ",
     Off: "Անջատված",
     Ok: "Լավ",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Միայն այս հեռուստացույցը կարող է ընդունել ձեր հաղորդագրությունը: Հղման ժամկետը լրանում է 10 րոպե անց։",
     Open: "Բացել",
     "Open in PiP": "Բացել PiP-ով",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Բացեք Plex մուտքի էջը",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Բացեք plex.tv/link ձեր հեռախոսում կամ համակարգչում և մուտքագրեք այս կոդը:",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Կամ բացեք այս ամբողջական մասնավոր հղումը մեկ այլ սարքի վրա.",
+    "Original file": "Բնօրինակ մեդիա ֆայլ",
     "Original text: %1": "Բնօրինակ տեքստ՝ %1",
     "OTT / APP host": "OTT / հավելվածի սերվեր",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE կարգավորումներ",
+    "OTT-play remote input": "OTT-play հեռակառավարման մուտք",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Հասանելի է OttPlay FOSS %1-ը։ Ներբեռնե՞լ և տեղադրե՞լ հիմա։",
     "Overwrite current settings?": "Վերագրե՞լ ընթացիկ կարգավորումները։",
@@ -675,9 +698,10 @@ var keyStrings = {
     "PiP window position": "PiP պատուհանի դիրք",
     "PiP window size": "PiP պատուհանի չափ",
     Play: "Նվագարկել",
-    Playback: "Playback",
+    Playback: "Մեդիա նվագարկումը",
     "Player and device info": "Նվագարկչի և սարքի տվյալներ",
     "Player could not start": "Չհաջողվեց գործարկել նվագարկիչը",
+    "Player default": "Նվագարկչի լռելյայն ընտրությունը",
     "Player info:": "Նվագարկչի տվյալներ՝",
     Playlist: "Նվագարկման ցուցակ",
     "Playlist file": "Նվագարկման ցուցակի ֆայլ",
@@ -686,11 +710,11 @@ var keyStrings = {
     "Playlist Name": "Նվագարկման ցուցակի անուն",
     "Playlist URL": "Նվագարկման ցուցակի URL",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Plex կապը ձախողվեց",
+    "Plex settings": "Plex կարգավորումներ",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Plex մուտքը չհաջողվեց։ Ստուգեք կապը և կրկին փորձեք կամ մուտքագրեք սերվերի հասցեն և մուտքի թոքենը։",
+    "Plex token": "Plex-ի մուտքի թոքեն",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA կարգավորումներ",
     "Portal URL": "Պորտալի URL",
@@ -699,8 +723,11 @@ var keyStrings = {
     Postpaid: "Հետվճար",
     PROST: "PROST",
     "PROST settings": "PROST կարգավորումներ",
+    "Preferred audio language": "Նախընտրելի աուդիո լեզու",
+    "Preferred subtitle language": "Նախընտրելի ենթագրերի լեզուն",
     Prepaid: "Կանխավճար",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Անվտանգ հեռակառավարման մուտքագրման նախապատրաստում...",
     Prev: "Նախորդ",
     "Preview in channel list": "Նախադիտում ալիքների ցուցակում",
     Previous: "Նախորդ",
@@ -733,31 +760,31 @@ var keyStrings = {
         "Հեռակառավարման վահանակ (առանց թվային կոճակների)",
     "Remote control": "Հեռակառավարում",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Հեռակառավարումը թույլ է տալիս ախտորոշումը: Պատրաստ է օպերատորի համար:",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Հեռակառավարումը թույլ է տալիս ախտորոշումը: Սպասում է նորից միանալու:",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Հեռակառավարումը ներառում է նվագարկչի և դրա կարգավորումների էկրանի պատկերները։ Պատկերները կարող են պարունակել անձնական տվյալներ։ Հավելվածից անմիջապես էկրանի պատկեր ստանալու համար լրացուցիչ հաստատում չի պահանջվում։ Դիտարկիչում պետք է այս սարքի վրա ընտրել համօգտագործվող ներդիրը կամ պատուհանը։",
+    "Remote diagnostics": "Հեռակա ախտորոշում",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Այս կապի համար հավաքվում է հեռահար ախտորոշում (մինչև 10 րոպե յուրաքանչյուր նստաշրջանի համար):",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Հեռակա ախտորոշումը հավաքվում է այս էջի համար:",
+    "Remote diagnostics is off.": "Հեռակա ախտորոշումն անջատված է:",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Հեռակառավարման ախտորոշումը պատրաստ է լիազորված օպերատորի համար:",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Հեռակա ախտորոշումն անհասանելի է այս նվագարկիչում:",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Հեռակա ախտորոշումը դադարեցվել է: Նորից միացրեք այն՝ թույլտվություն տրամադրելու համար:",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Հեռակա մուտքագրման ժամկետը սպառվել է: Բացեք նոր աշխատաշրջան՝ նորից փորձելու համար:",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Հեռակա մուտքագրման աշխատաշրջանն անհասանելի է: Բացեք նոր աշխատաշրջան՝ նորից փորձելու համար:",
+    "Remote screenshots": "Հեռավոր սքրինշոթներ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Հեռավոր սքրինշոթները թույլատրվում են 10 րոպե: Փակեք կարգավորումները նկարելու համար:",
+    "Remote screenshots are off.": "Հեռակա սքրինշոթներն անջատված են:",
     "Remote session expired": "Հեռակա աշխատաշրջանի ժամկետը լրացել է",
     "Remote text entry": "Հեռակա տեքստի մուտքագրում",
     "Remote text entry denied": "Հեռակա տեքստի մուտքագրումը մերժված է",
@@ -785,7 +812,8 @@ var keyStrings = {
     "Restart stream / Live": "Վերագործարկել հոսքը / ուղիղ եթեր",
     "Resume from archive?": "Շարունակե՞լ արխիվից։",
     Retry: "Կրկին փորձել",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Կրկին փորձեք EPG ներբեռնումը",
+    "Retry same message": "Կրկին փորձեք նույն հաղորդագրությունը",
     "Return to previous channel": "Վերադառնալ նախորդ ալիքին",
     Rewind: "Տեղաշարժել",
     "Rewind step by buttons %1/%2": "Հետ պտտելու քայլը %1/%2 կոճակներով",
@@ -797,32 +825,36 @@ var keyStrings = {
     "Save & load channels": "Պահպանել և բեռնել ալիքները",
     "Save and load": "Պահպանել և բեռնել",
     "Save and load channels": "Պահպանել և բեռնել ալիքները",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Պահպանել և բացել գրադարանը",
     "Save Settings": "Պահպանել կարգավորումները",
     "Save settings": "Պահպանել կարգավորումները",
     "Save settings and load channel list":
         "Պահպանել կարգավորումները և բեռնել ալիքների ցուցակը",
     "Save settings to storage": "Պահպանել կարգավորումները պահոցում",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Սկանավորեք QR կոդը ձեր հեռուստացույցի վրա կամ տեղադրեք դրա ամբողջական մասնավոր զուգավորման հղումը ստորև:",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Սկանավորեք այս QR կոդը ձեր հեռախոսով տեքստ մուտքագրելու համար:",
+    "Screen sharing could not start.":
+        "Էկրանի համօգտագործումը չհաջողվեց սկսել:",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Էկրանի համօգտագործումը չեղարկվել է կամ անհասանելի է:",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Սքրինշոթի թույլտվությունը հնարավոր չէ միացնել:",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Սքրինշոթները հասանելի են, մինչ հեռակառավարումը միացված է:",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Սքրինշոթներն անհասանելի են այս հարթակում:",
     Script: "Սցենար",
     Search: "Որոնել",
+    "Search languages": "Որոնել լեզուներ",
     "Search programme": "Որոնել հաղորդումը",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Անվտանգ հեռակառավարման մուտքագրումը չհաջողվեց սկսել: Խնդրում ենք կրկին փորձել կամ օգտագործել էկրանի ստեղնաշարը:",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Անվտանգ հեռակառավարման մուտքագրումը չհաջողվեց սկսել: Խնդրում ենք օգտագործել էկրանի ստեղնաշարը:",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Անվտանգ հեռակառավարման մուտքագրումն անհասանելի է այս սարքում: Օգտագործեք էկրանի ստեղնաշարը:",
     "Select a stream type:<br>%1": "Ընտրեք հոսքի տեսակը՝<br>%1",
     "Select category to add channel":
         "Ընտրեք կատեգորիա ալիքը ավելացնելու համար",
@@ -834,13 +866,14 @@ var keyStrings = {
         "Ընտրեք նվագարկման ցուցակի ձևանմուշի աղբյուրը՝ հեռուստածրագրի և պատկերանշանների համար",
     "Select Stalker portal": "Ընտրել Stalker պորտալը",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Ընտրեք սքրինշոթի աղբյուրը դիտարկիչում",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Ընտրեք նվագարկչի ներդիրը կամ պատուհանը բրաուզերի համօգտագործման երկխոսության մեջ:",
     "Send request": "Ուղարկել հարցումը",
     "Send settings": "Ուղարկել կարգավորումները",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Այս կոդն ուղարկեք պրոքսիից՝ Authorization: Bearer վերնագրում։",
+    "Send to TV": "Ուղարկել հեռուստացույց",
     Server: "Սերվեր",
     "Server address": "Սերվերի հասցե",
     "Server address (for example 192.168.1.20:8081)":
@@ -849,10 +882,14 @@ var keyStrings = {
     "Server URL": "Սերվերի URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Սերվերն անհասանելի է։ Փորձը կկրկնվի ինքնաշխատ․ ստուգեք հասցեն և ցանցային հասանելիությունը։",
+    "Session closed. Start a new one from your TV when needed.":
+        "Նիստը փակված. Անհրաժեշտության դեպքում նորը սկսեք ձեր հեռուստացույցից:",
     Set: "Սահմանել",
     "Set parental code": "Սահմանել ծնողական կոդը",
     "Set timer?": "Սահմանե՞լ ժամանակաչափ։",
     Settings: "Կարգավորումներ",
+    "Settings changed while editing":
+        "Կարգավորումները փոխվել են խմբագրման ընթացքում",
     "Settings changed. Discovery was canceled.":
         "Կարգավորումները փոխվել են։ Որոնումը չեղարկվել է։",
     "Settings copied": "Կարգավորումները պատճենվել են",
@@ -862,10 +899,15 @@ var keyStrings = {
     "Settings imported": "Կարգավորումները ներմուծվել են",
     "Settings JSON": "Կարգավորումներ՝ JSON ձևաչափով",
     "Settings loaded from storage": "Կարգավորումները բեռնված են պահոցից",
+    "Settings received. Restarting player...":
+        "Կարգավորումները ստացվել են։ Նվագարկիչը վերագործարկվում է...",
     "Settings STB": "STB կարգավորումներ",
     "Settings saved": "Կարգավորումները պահպանված են",
     "Settings saved to storage": "Կարգավորումները պահպանված են պահոցում",
     "Settings sended!": "Կարգավորումներն ուղարկված են։",
+    "Settings source changed": "Կարգավորումների աղբյուրը փոխվել է",
+    "Settings storage rejected write":
+        "Կարգավորումների պահեստը մերժել է գրանցումը։",
     "Several command servers were found. Select one below.":
         "Գտնվել են հրամանների մի քանի սերվերներ։ Ստորև ընտրեք դրանցից մեկը։",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -904,29 +946,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Կրկին մուտք գործեք պաշտպանված աղբյուր",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Մուտք գործեք ձեր Plex հաշիվ և ընտրեք սերվեր: Այս նվագարկիչում գաղտնաբառ մուտքագրված չէ:",
+    "Sign in with Plex": "Մուտք գործեք Plex-ով",
     "Sign in: %1": "Մուտք գործել՝ %1",
     "Sign out of all sources": "Դուրս գալ բոլոր աղբյուրներից",
     "Sign-in opens when you load a protected playlist.":
         "Մուտքի պատուհանը բացվում է պաշտպանված երգացանկը բեռնելիս։",
     "Sleep timer": "Քնի ժամանակաչափ",
     "Sort channels": "Դասավորել ալիքները",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Մուտք դեպի մեդիա աղբյուր",
+    "Source sign-in required": "Աղբյուրի մուտքը պարտադիր է",
     "Source sign-in was cancelled": "Մուտքը աղբյուր չեղարկվել է",
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
     "Stalker portal settings": "Stalker պորտալի կարգավորումներ",
     "Stalker portals": "Stalker պորտալներ",
     "Starting...": "Գործարկվում է…",
     Status: "Վիճակ",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Կանգ",
+    "Stop browser sharing": "Դադարեցնել բրաուզերի համօգտագործումը",
+    "Stop current capture": "Դադարեցրեք ընթացիկ նկարահանումը",
+    "Stop diagnostics": "Դադարեցրեք ախտորոշումը",
     "Stop playback and return to live":
         "Դադարեցնել նվագարկումը և վերադառնալ ուղիղ եթերին",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Դադարեցրեք սքրինշոթերը",
     "Stream could not be played": "Չհաջողվեց նվագարկել հոսքը",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",
     "String for search": "Որոնման հարցում",
@@ -938,22 +980,28 @@ var keyStrings = {
     "Switch subtitle": "Փոխել ենթագրերը",
     "Switch to this list": "Անցնել այս ցուցակին",
     "Swop URL": "Swop URL",
+    "System language": "Համակարգի լեզու",
     "saved on this device": "պահպանված է այս սարքում",
     select: "ընտրել",
     small: "փոքր",
     system: "համակարգային",
     Tabox: "Tabox",
     "Tabox settings": "Tabox կարգավորումներ",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Տեքստը չափազանց երկար է հեռավոր մուտքագրման համար:",
+    "Text is too long. Please shorten it before sending.":
+        "Տեքստը չափազանց երկար է: Խնդրում ենք կրճատել այն ուղարկելուց առաջ:",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Տեքստն ուղարկված է: Ստուգեք ձեր հեռուստացույցը՝ հաստատելու, որ այն հայտնվել է:",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Բրաուզերի սքրինշոթի աղբյուրը պատրաստ է:",
     "The command server discovery URL is invalid.":
         "Հրամանների սերվերի որոնման URL-ն անվավեր է։",
     "The device ID in the address is invalid.":
         "Հասցեում սարքի ID-ն անվավեր է։",
     "The discovery response is invalid.": "Որոնման պատասխանը անվավեր է։",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Այս դիտարկիչը չի կարող նույնականացնել ընտրված սքրինշոթի աղբյուրը:",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Այս դիտարկիչը չի կարող անվտանգ կատարել ավտոմատ զուգակցում։ Թարմացրեք այն կամ ձեռքով մուտքագրեք հրամանների սերվերի կարգավորումները։",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -962,6 +1010,10 @@ var keyStrings = {
         "Այս HTTPS նվագարկիչը չի կարող միանալ HTTP սերվերին։ Օգտագործեք HTTPS սերվեր կամ բացեք նվագարկիչը HTTP-ով։",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Այս Play հավելվածը պահանջում է HTTPS։ Խնդրեք մատակարարին տրամադրել HTTPS նվագարկման ցուցակ կամ սերվերի URL։",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Այս զուգավորման հղումը ժամկետանց է: Բացեք նոր նիստ ձեր հեռուստացույցով:",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Այս անվտանգ նիստն անհասանելի է կամ ժամկետանց է: Բացեք նոր նիստ հեռուստացույցով և օգտագործեք դրա ամբողջական հղումը:",
     Timer: "Ժամանակաչափ",
     "Timer: switch to channel?": "Ժամանակաչափ՝ անցնե՞լ այս ալիքին։",
     "Timeshift: one minute back": "Ժամանակային տեղաշարժ՝ մեկ րոպե հետ",
@@ -980,13 +1032,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv կարգավորումներ",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Վստահեք այս սերվերին հեռակա աջակցության համար",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Չհաջողվեց հեռացնել վստահելի մուտքը սարքի պահեստից:",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Վստահելի ախտորոշումն անհասանելի է, քանի որ սարքի հիշողությունը չի կարող թարմացվել:",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Վստահելի ախտորոշումը սպասում է, որ այս նվագարկիչը նորից միանա:",
     "Try demo": "Փորձել ցուցադրությունը",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG կարգավորումներ",
@@ -1006,18 +1058,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Օգտագործեք HTTP կամ HTTPS սերվերի հասցե։",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Հեռակա ախտորոշման համար օգտագործեք HTTPS հրամանի սերվեր:",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Օգտագործեք HTTP կամ HTTPS՝ առանց օգտանվան կամ գաղտնաբառի հասցեում։",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Օգտագործեք ՁԱԽ/ԱՋ՝ տարրն ընտրելու, OK՝ այն ակտիվացնելու և ՎԵՐԵՎ/ՆԵՐՔԵՎ՝ ոլորելու համար։",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Օգտագործեք ամբողջական հղումը՝ ներառյալ #-ից հետո հատվածը։ Մի կիսվեք այն ուրիշի հետ:",
     "Use Up / Down to scroll. Back to close.":
         "Ոլորելու համար օգտագործեք Վերև / Ներքև։ Փակելու համար՝ Հետ։",
     Username: "Օգտանուն",
     "Username or password is missing.":
         "Օգտանունը կամ գաղտնաբառը բացակայում է։",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Գործում է 10 րոպե։ «Հետ» կոճակը փակում է այս սեանսը։",
     Version: "Տարբերակ",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM կարգավորումներ",
@@ -1030,7 +1084,7 @@ var keyStrings = {
     "VPortal request failed":
         "Չհաջողվեց բեռնել VPortal-ը։ Ստուգեք հղումը, մուտքի բանալին և պորտալի հասանելիությունը։",
     volume: "ձայն",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Սպասում է մուտքի…",
     "Wrong parental code !!!": "Սխալ ծնողական կոդ!!!",
     "Xtream Codes Provider": "Xtream Codes մատակարար",
     "Xtream Codes settings": "Xtream Codes կարգավորումներ",

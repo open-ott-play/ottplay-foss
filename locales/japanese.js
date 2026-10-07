@@ -61,14 +61,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tvの設定",
     "Allow diagnostics for 10 minutes": "10 分間診断を許可します。",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "10 分間スクリーンショットを許可します",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "このサーバーが診断カウンターを収集し、このストリームまたはプレーヤーを再起動できるようにします。一時的なアクセスは 10 分間継続します。信頼できるサポートは、再接続または再起動後も引き続き利用できます。各キャプチャは 10 分後に期限切れになります。非表示またはオフラインの間、収集は一時停止します。",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "このサーバーがこのフォアグラウンド セッションの再生カウンター、ネットワーク カウンター、および入力カウンターを収集できるようにします。 HTTPS とサーバー許可が必要です。非表示の場合、または切断された場合は 10 分後に停止します。",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "このサーバーが 10 分間画像をリクエストできるようにします。画像には個人情報が含まれる場合があります。ブラウザで、プレーヤーのタブまたはウィンドウを選択します。許可はリロードまたは切断時に終了します。",
     "Allowlist this Device ID": "このデバイスをホワイトリストに登録 ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPSプレーヤーでは、HTTP EPGソースをダウンロードできません。 HTTPS ソースを使用します。",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1分戻る/進む",
     "Background color": "背景色",
     "Background color of selected item": "選択した項目の背景色",
+    "Backup state changed": "バックアップ状態が変更されました",
     "Balance, $": "残高、$",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "リスト内の%1/%2ボタンの動作",
     "Black screen while switching the channel": "チャンネル切り替え時の黒画面",
     Blue: "ブルー",
+    "Bookmark age (days): %1": "ブックマークの経過日数：%1",
     "Bookmark age: %1 days": "ブックマーク年齢：%1日",
     "Browse folders": "フォルダを参照する",
     "Buffer Size, s": "バッファサイズ、s",
@@ -160,11 +162,14 @@ var keyStrings = {
     "Choose language": "言語を選択してください",
     "Choose Plex server": "Plexサーバーを選択してください",
     "Choose provider": "プロバイダーを選ぶ",
-    Classic: "Classic",
+    Classic: "クラシック",
     "Clear all settings?": "すべての設定をクリアしますか？",
     "Clear settings": "設定クリア",
     Close: "閉じる",
     "Close PiP": "PiPを閉じる",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "クラウドセーブ/ロードにはSTBファームウェアが必要です（host_ottは未設定）",
+    "Cloud transfer failed": "クラウド転送に失敗しました",
     Code: "コード",
     Color: "カラー",
     "Color spectrum": "カラースペクトル",
@@ -183,6 +188,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "互換ランタイムを読み込めませんでした。プレーヤーを再度開いて再試行してください。",
     "Compatible HLS": "HLS対応",
+    "Complete pairing link": "完全なペアリングリンク",
     "Configure All4you.tv in Settings -> Provider Settings":
         "[設定] -> [プロバイダー設定] で All4you.tv を設定します。",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -255,22 +261,24 @@ var keyStrings = {
         "[設定] -> [プロバイダー設定] で Шаравоз を設定します。",
     Connect: "つながる",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "スクリーンショットを許可する前に、HTTPS コマンド サーバーに接続してください。",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "スクリーンショットを使用するには、HTTPS コマンド サーバーに接続します。",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "リモート操作に接続して診断を有効にします。",
     "Connect this player to a command server first.":
         "まず、このプレーヤーをコマンドサーバーに接続します。",
+    "Connect to TV": "テレビに接続する",
     Connected: "つながった",
     "Connected. Waiting for the channel list...":
         "つながった。チャンネルリストを待っています...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "リモート操作に接続すると、このサーバーにプレーヤーの診断と修復を許可します。アクセス権は再起動後も維持され、切断すると終了します。診断データの収集は1回につき最大10分です。",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "有効なリモート コントロール接続のリモート診断を接続しています。",
     "Connecting remote diagnostics for this page.":
         "このページのリモート診断を接続しています。",
+    "Connecting securely to your TV...": "テレビに安全に接続しています...",
     "Connecting to Plex…": "Plexに接続中…",
     "Connecting to Stalker portal...": "Stalkerポータルに接続中…",
     "Connecting...": "つながる…",
@@ -288,6 +296,10 @@ var keyStrings = {
         "ペアリング要求を作成できませんでした。サーバーを再度見つけて再試行してください。",
     "Could not load. Select to retry.":
         "読み込みに失敗しました。再試行するには選択してください。",
+    "Could not prepare this text. Please shorten it and try again.":
+        "このテキストを準備できませんでした。短くして再試行してください。",
+    "Could not protect the private link. Use a different browser.":
+        "プライベートリンクを保護できませんでした。別のブラウザを使用してください。",
     "Could not save provider settings.":
         "プロバイダーの設定を保存できませんでした。",
     "Could not save the approved command server settings.":
@@ -305,6 +317,8 @@ var keyStrings = {
     "Delete category": "カテゴリ削除",
     "Delete channel": "チャンネル削除",
     "Delete list": "リスト削除",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "メッセージの到達を確認できませんでした。テレビを確認するか、このセッションが期限切れになる前に同じメッセージを再送してください。",
     "Demo — moving test pattern": "デモ — 動くテストパターン",
     Description: "説明",
     "Description of remote control buttons": "リモコンボタンガイド",
@@ -387,6 +401,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker ポータルのURLを入力してください（例: http://your-portal/stalker_portal/c/）",
     "Enter server number (%1).": "サーバー番号（%1）を入力します。",
+    "Enter text": "文字を入力してください",
     "Enter the access code separately, not in the server address.":
         "アクセスコードはサーバーアドレスではなく、別途入力してください。",
     "Enter the command server IP or address.":
@@ -536,7 +551,9 @@ var keyStrings = {
     "Interface transparency": "インターフェースの透明性",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "チャンネルリンクが無効です！キャビネット ストリーム URL のように完全なホストを入力します (例: subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "無効なクラウド設定応答",
     "Invalid protected source configuration": "保護されたソース構成が無効です",
+    "Invalid setting": "設定が無効です",
     "IPTV token": "IPTVトークン",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.oneの設定",
@@ -617,6 +634,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "プレイリストのチャンネルと日付に一致する番組はありませんでした。ソースとデバイスのクロックを確認してください。",
     "No saved settings found": "保存された設定が見つかりません",
+    "No supported system language. Choose a language.":
+        "サポートされているシステム言語がありません。言語を選択してください。",
     "Not configured": "未設定",
     "Not found": "見つかりません",
     "Not reduce video when showing the list (bugfix)":
@@ -632,6 +651,8 @@ var keyStrings = {
     "not set": "未設定",
     Off: "オフ",
     Ok: "確認",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "あなたのメッセージを受信できるのはこのテレビだけです。リンクは 10 分後に期限切れになります。",
     Open: "開く",
     "Open in PiP": "PiPでオープン",
     "Open Plex sign-in page": "Plex サインイン ページを開く",
@@ -644,6 +665,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APPホスト",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINEの設定",
+    "OTT-play remote input": "OTT-playリモート入力",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1がございます。今すぐダウンロードしてインストールしますか?",
     "Overwrite current settings?": "現在の設定を上書きしますか？",
@@ -676,6 +698,7 @@ var keyStrings = {
     Playback: "再生",
     "Player and device info": "プレーヤーとデバイスの情報",
     "Player could not start": "プレーヤーを起動できませんでした",
+    "Player default": "プレーヤーの既定の選択",
     "Player info:": "プレーヤー情報：",
     Playlist: "プレイリスト",
     "Playlist file": "プレイリストファイル",
@@ -696,6 +719,8 @@ var keyStrings = {
     Postpaid: "後払い",
     PROST: "PROST",
     "PROST settings": "PROSTの設定",
+    "Preferred audio language": "優先音声言語",
+    "Preferred subtitle language": "希望する字幕言語",
     Prepaid: "プリペイド",
     "Preparing secure remote input...": "安全なリモート入力を準備しています...",
     Prev: "前へ",
@@ -729,14 +754,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "リモコン（数字ボタンなし）",
     "Remote control": "リモコン",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "遠​​隔制御により診断が許可されます。オペレーターの準備が整いました。",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "遠隔制御により診断を許可します。再接続を待っています。",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "リモート操作には、設定画面を含むプレーヤーのスクリーンショット撮影が含まれます。画像には個人情報が含まれる場合があります。アプリで直接撮影する場合、追加の承認は不要です。ブラウザでは、この端末で撮影対象のタブまたはウィンドウを選択する必要があります。",
     "Remote diagnostics": "遠隔診断",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "この接続に対してリモート診断を収集中です (セッションごとに最大 10 分)。",
     "Remote diagnostics is collecting for this page.":
         "このページではリモート診断を募集しています。",
     "Remote diagnostics is off.": "リモート診断がオフになっています。",
@@ -750,10 +775,11 @@ var keyStrings = {
         "リモート入力の有効期限が切れました。新しいセッションを開いて再試行してください。",
     "Remote input session is unavailable. Open a new session to try again.":
         "リモート入力セッションは利用できません。新しいセッションを開いて再試行してください。",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "リモートスクリーンショット",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "リモートスクリーンショットを10分間許可しました。撮影するには設定画面を閉じてください。",
+    "Remote screenshots are off.":
+        "リモートスクリーンショットがオフになっています。",
     "Remote session expired": "リモートセッションの有効期限が切れました",
     "Remote text entry": "リモート文字入力",
     "Remote text entry denied": "リモートテキスト入力が拒否されました",
@@ -782,6 +808,7 @@ var keyStrings = {
     "Resume from archive?": "過去の放送を再開しますか？",
     Retry: "リトライ",
     "Retry EPG download": "EPGダウンロードを再試行してください",
+    "Retry same message": "同じメッセージを再試行します",
     "Return to previous channel": "前のチャンネルに戻る",
     Rewind: "巻き戻し／早送り",
     "Rewind step by buttons %1/%2": "ボタン%1/%2の巻き戻しステップ",
@@ -799,19 +826,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "設定の保存とチャンネルリストの読み込み",
     "Save settings to storage": "設定をストレージに保存",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "テレビに表示されたQRコードをスキャンするか、非公開のペアリングリンク全体を下に貼り付けてください。",
     "Scan this QR code with your phone to enter text.":
         "このQRコードを携帯電話でスキャンしてテキストを入力してください。",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "画面共有を開始できませんでした。",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "画面共有がキャンセルされたか、利用できません。",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "スクリーンショット権限を有効にできませんでした。",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "リモート操作に接続している間はスクリーンショットを撮影できます。",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "このプラットフォームではスクリーンショットは利用できません。",
     Script: "脚本",
     Search: "検索",
+    "Search languages": "言語を検索する",
     "Search programme": "番組を検索",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "セキュアリモート入力を開始できませんでした。もう一度試すか、スクリーンキーボードを使用してください。",
@@ -830,13 +860,14 @@ var keyStrings = {
         "EPGとロゴのプレイリストテンプレートソースを選択",
     "Select Stalker portal": "Stalkerポータルを選択",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "ブラウザでスクリーンショットのソースを選択",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ブラウザ共有ダイアログでプレーヤーのタブまたはウィンドウを選択します。",
     "Send request": "送信リクエスト",
     "Send settings": "送信設定",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "このコードをプロキシから Authorization: Bearer ヘッダーに含めて送信します。",
+    "Send to TV": "テレビに送る",
     Server: "サーバー",
     "Server address": "サーバーアドレス",
     "Server address (for example 192.168.1.20:8081)":
@@ -845,10 +876,13 @@ var keyStrings = {
     "Server URL": "サーバー URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "サーバーが利用できません。自動的に再試行します。アドレスとネットワークアクセスを確認してください。",
+    "Session closed. Start a new one from your TV when needed.":
+        "セッションが終了しました。必要に応じてテレビから新しいものを開始します。",
     Set: "適用",
     "Set parental code": "ペアレンタルコントロールコードを設定する",
     "Set timer?": "タイマーを設定しますか？",
     Settings: "設定",
+    "Settings changed while editing": "編集中に設定が変更されました",
     "Settings changed. Discovery was canceled.":
         "設定が変更されました。ディスカバリーはキャンセルされました。",
     "Settings copied": "設定をコピーしました",
@@ -858,10 +892,14 @@ var keyStrings = {
     "Settings imported": "設定をインポートしました",
     "Settings JSON": "設定 JSON",
     "Settings loaded from storage": "ストレージから設定をロード",
+    "Settings received. Restarting player...":
+        "設定を受信しました。プレーヤーを再起動しています...",
     "Settings STB": "STBの設定",
     "Settings saved": "設定を保存しました",
     "Settings saved to storage": "設定をストレージに保存しました",
     "Settings sended!": "設定を送信しました！",
+    "Settings source changed": "設定ソースが変更されました",
+    "Settings storage rejected write": "設定の保存先が書き込みを拒否しました",
     "Several command servers were found. Select one below.":
         "コマンドサーバーが複数見つかりました。以下から 1 つ選択してください。",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -917,11 +955,11 @@ var keyStrings = {
     "Starting...": "始まります…",
     Status: "ステータス",
     Stop: "ストップ",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ブラウザ共有を停止する",
     "Stop current capture": "現在のキャプチャを停止します",
     "Stop diagnostics": "診断停止",
     "Stop playback and return to live": "再生を停止してライブに戻ります",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "スクリーンショットを停止する",
     "Stream could not be played": "ストリームを再生できませんでした",
     "Stream type: %1": "ストリームタイプ：%1",
     "String for search": "検索クエリ",
@@ -933,6 +971,7 @@ var keyStrings = {
     "Switch subtitle": "字幕を切り替え",
     "Switch to this list": "このリストへ切り替える",
     "Swop URL": "スワップ URL",
+    "System language": "システム言語",
     "saved on this device": "この端末に保存されています",
     select: "選択",
     small: "小",
@@ -941,15 +980,19 @@ var keyStrings = {
     "Tabox settings": "Taboxの設定",
     "Text is too long for remote input.":
         "リモート入力するにはテキストが長すぎます。",
+    "Text is too long. Please shorten it before sending.":
+        "文章が長すぎます。短くして送信してください。",
+    "Text sent. Check your TV to confirm it appeared.":
+        "テキストを送信しました。テレビをチェックして、それが表示されていることを確認してください。",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "ブラウザのスクリーンショット撮影元の準備ができました。",
     "The command server discovery URL is invalid.":
         "コマンドサーバーディスカバリ URL が無効です。",
     "The device ID in the address is invalid.":
         "アドレス内のデバイスIDは無効です。",
     "The discovery response is invalid.": "検出応答が無効です。",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "このブラウザは、選択されたスクリーンショットのソースを識別できません。",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "このブラウザは安全に自動ペアリングできません。更新するか、コマンド サーバー設定を手動で入力します。",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -958,6 +1001,10 @@ var keyStrings = {
         "このHTTPSプレーヤーはHTTPサーバーに接続できません。 HTTPS サーバーを使用するか、HTTP 上でプレーヤーを開きます。",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "このPlayアプリにはHTTPSが必要です。プロバイダーに HTTPS プレイリストまたはサーバー URL を問い合わせてください。",
+    "This pairing link has expired. Open a new session on your TV.":
+        "このペアリングリンクの有効期限が切れています。テレビで新しいセッションを開きます。",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "この安全なセッションは利用できないか、期限切れです。テレビで新しいセッションを開き、その完全なリンクを使用します。",
     Timer: "タイマー",
     "Timer: switch to channel?": "タイマー: このチャンネルに切り替えますか?",
     "Timeshift: one minute back": "タイムシフト：1分戻る",
@@ -1005,6 +1052,8 @@ var keyStrings = {
         "アドレスにユーザー名やパスワードを含めずに、HTTP または HTTPS を使用します。",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "LEFT/RIGHT を使用してコントロールを選択し、OK を使用してアクティブにし、UP/DOWN を使用してスクロールします。",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "#以降の部分も含めた完全なリンクを使用してください。他の人と共有しないでください。",
     "Use Up / Down to scroll. Back to close.":
         "上/下でスクロールします。戻って閉じます。",
     Username: "ユーザー名",

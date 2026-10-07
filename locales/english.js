@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Skip back / forward 1 minute",
     "Background color": "Background color",
     "Background color of selected item": "Background color of selected item",
+    "Backup state changed": "Backup state changed",
     "Balance, $": "Balance, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -109,6 +110,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Black screen when switching channels",
     Blue: "Blue",
+    "Bookmark age (days): %1": "Bookmark age (days): %1",
     "Bookmark age: %1 days": "Bookmark age: %1 days",
     "Browse folders": "Browse folders",
     "Buffer Size, s": "Buffer size, s",
@@ -165,6 +167,9 @@ var keyStrings = {
     "Clear settings": "Clear settings",
     Close: "Close",
     "Close PiP": "Close PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Cloud save/load requires STB firmware (host_ott not set)",
+    "Cloud transfer failed": "Cloud transfer failed",
     Code: "Code",
     Color: "Color",
     "Color spectrum": "Color spectrum",
@@ -182,6 +187,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Compatibility runtime could not load. Reopen the player to retry.",
     "Compatible HLS": "Compatible HLS",
+    "Complete pairing link": "Complete pairing link",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configure All4you.tv in Settings -> Provider Settings",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -261,6 +267,7 @@ var keyStrings = {
         "Connect remote control to enable diagnostics.",
     "Connect this player to a command server first.":
         "Connect this player to a command server first.",
+    "Connect to TV": "Connect to TV",
     Connected: "Connected",
     "Connected. Waiting for the channel list...":
         "Connected. Waiting for the channel list...",
@@ -270,6 +277,7 @@ var keyStrings = {
         "Connecting remote diagnostics for the enabled remote control connection.",
     "Connecting remote diagnostics for this page.":
         "Connecting remote diagnostics for this page.",
+    "Connecting securely to your TV...": "Connecting securely to your TV...",
     "Connecting to Plex…": "Connecting to Plex…",
     "Connecting to Stalker portal...": "Connecting to Stalker portal…",
     "Connecting...": "Connecting…",
@@ -286,6 +294,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "Could not create a pairing request. Find the server again to retry.",
     "Could not load. Select to retry.": "Could not load. Select to retry.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Could not prepare this text. Please shorten it and try again.",
+    "Could not protect the private link. Use a different browser.":
+        "Could not protect the private link. Use a different browser.",
     "Could not save provider settings.": "Could not save provider settings.",
     "Could not save the approved command server settings.":
         "Could not save the approved command server settings.",
@@ -301,6 +313,8 @@ var keyStrings = {
     "Delete category": "Delete category",
     "Delete channel": "Delete channel",
     "Delete list": "Delete list",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.",
     "Demo — moving test pattern": "Demo — moving test pattern",
     Description: "Description",
     "Description of remote control buttons": "Remote control button guide",
@@ -382,6 +396,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Enter server number (%1).",
+    "Enter text": "Enter text",
     "Enter the access code separately, not in the server address.":
         "Enter the access code separately, not in the server address.",
     "Enter the command server IP or address.":
@@ -532,8 +547,10 @@ var keyStrings = {
     "Interface transparency": "Interface transparency",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Invalid cloud settings response",
     "Invalid protected source configuration":
         "Invalid protected source configuration",
+    "Invalid setting": "Invalid setting",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one settings",
@@ -612,6 +629,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "No programmes matched the playlist channels and dates. Check the source and device clock.",
     "No saved settings found": "No saved settings found",
+    "No supported system language. Choose a language.":
+        "No supported system language. Choose a language.",
     "Not configured": "Not configured",
     "Not found": "Not found",
     "Not reduce video when showing the list (bugfix)":
@@ -627,6 +646,8 @@ var keyStrings = {
     "not set": "not set",
     Off: "Off",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Only this TV can accept your message. The link expires after 10 minutes.",
     Open: "Open",
     "Open in PiP": "Open in PiP",
     "Open Plex sign-in page": "Open Plex sign-in page",
@@ -639,6 +660,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP host",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE settings",
+    "OTT-play remote input": "OTT-play remote input",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 is available. Download and install now?",
     "Overwrite current settings?": "Overwrite current settings?",
@@ -671,6 +693,7 @@ var keyStrings = {
     Playback: "Playback",
     "Player and device info": "Player and device information",
     "Player could not start": "Player could not start",
+    "Player default": "Player default",
     "Player info:": "Player information:",
     Playlist: "Playlist",
     "Playlist file": "Playlist file",
@@ -692,6 +715,8 @@ var keyStrings = {
     Postpaid: "Postpaid",
     PROST: "PROST",
     "PROST settings": "PROST settings",
+    "Preferred audio language": "Preferred audio language",
+    "Preferred subtitle language": "Preferred subtitle language",
     Prepaid: "Prepaid",
     "Preparing secure remote input...": "Preparing secure remote input...",
     Prev: "Previous",
@@ -776,6 +801,7 @@ var keyStrings = {
     "Resume from archive?": "Resume from archive?",
     Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
+    "Retry same message": "Retry same message",
     "Return to previous channel": "Return to the previous channel",
     Rewind: "Seek",
     "Rewind step by buttons %1/%2": "Rewind step for buttons %1/%2",
@@ -793,6 +819,8 @@ var keyStrings = {
     "Save settings and load channel list":
         "Save settings and load channel list",
     "Save settings to storage": "Save settings to storage",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Scan the QR code on your TV, or paste its complete private pairing link below.",
     "Scan this QR code with your phone to enter text.":
         "Scan this QR code with your phone to enter text.",
     "Screen sharing could not start.": "Screen sharing could not start.",
@@ -806,6 +834,7 @@ var keyStrings = {
         "Screenshots are unavailable on this platform.",
     Script: "Screenplay",
     Search: "Search",
+    "Search languages": "Search languages",
     "Search programme": "Search programme",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Secure remote input could not start. Please try again or use the on-screen keyboard.",
@@ -830,6 +859,7 @@ var keyStrings = {
     "Send settings": "Send settings",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Send this code from your proxy in the Authorization: Bearer header.",
+    "Send to TV": "Send to TV",
     Server: "Server",
     "Server address": "Server address",
     "Server address (for example 192.168.1.20:8081)":
@@ -838,10 +868,13 @@ var keyStrings = {
     "Server URL": "Server URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server unavailable. Retrying automatically; check its address and network access.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Session closed. Start a new one from your TV when needed.",
     Set: "Set",
     "Set parental code": "Set parental code",
     "Set timer?": "Set timer?",
     Settings: "Settings",
+    "Settings changed while editing": "Settings changed while editing",
     "Settings changed. Discovery was canceled.":
         "Settings changed. Discovery was canceled.",
     "Settings copied": "Settings copied",
@@ -851,10 +884,14 @@ var keyStrings = {
     "Settings imported": "Settings imported",
     "Settings JSON": "Settings JSON",
     "Settings loaded from storage": "Settings loaded from storage",
+    "Settings received. Restarting player...":
+        "Settings received. Restarting player...",
     "Settings STB": "STB settings",
     "Settings saved": "Settings saved",
     "Settings saved to storage": "Settings saved to storage",
     "Settings sended!": "Settings sent!",
+    "Settings source changed": "Settings source changed",
+    "Settings storage rejected write": "Settings storage rejected write",
     "Several command servers were found. Select one below.":
         "Several command servers were found. Select one below.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -923,6 +960,7 @@ var keyStrings = {
     "Switch subtitle": "Switch subtitles",
     "Switch to this list": "Switch to this list",
     "Swop URL": "Swop URL",
+    "System language": "System language",
     "saved on this device": "saved on this device",
     select: "select",
     small: "small",
@@ -930,6 +968,10 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox settings",
     "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long. Please shorten it before sending.":
+        "Text is too long. Please shorten it before sending.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Text sent. Check your TV to confirm it appeared.",
     "The browser screenshot source is ready.":
         "The browser screenshot source is ready.",
     "The command server discovery URL is invalid.":
@@ -947,6 +989,10 @@ var keyStrings = {
         "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "This pairing link has expired. Open a new session on your TV.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: switch to this channel?",
     "Timeshift: one minute back": "Timeshift: one minute back",
@@ -995,6 +1041,8 @@ var keyStrings = {
         "Use HTTP or HTTPS without a username or password in the address.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Use LEFT/RIGHT to select a control, OK to activate it, and UP/DOWN to scroll.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Use the full link, including the part after #. Do not share it with anyone else.",
     "Use Up / Down to scroll. Back to close.":
         "Use Up / Down to scroll. Back to close.",
     Username: "Username",

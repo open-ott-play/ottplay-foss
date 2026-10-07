@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv seaded",
     "Allow diagnostics for 10 minutes": "Laske diagnostikal 10 minutit",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Lubage ekraanipilte teha 10 minutit",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Lubage sellel serveril diagnostikaloendureid koguda ja taaskäivitage see voog või meediumipleier. Ajutine juurdepääs kestab 10 minutit. Usaldusväärne tugi jääb kättesaadavaks ka pärast taasühendamist või taaskäivitamist; iga jäädvustamine aegub ikkagi 10 minuti pärast. Kogumine peatub peidetud või võrguühenduseta olekus.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Luba sellel serveril koguda selle esiplaani seansi jaoks taasesituse, võrgu ja sisendi loendureid. Nõuab HTTPS ja serveri luba. Seiskub 10 minuti pärast, kui see on peidetud või lahti ühendatud.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Luba sellel serveril 10 minuti jooksul pilte taotleda. Pildid võivad sisaldada isiklikku teavet. Valige brauseris pleieri vahekaart või aken. Luba lõpeb uuesti laadimisel või ühenduse katkestamisel.",
     "Allowlist this Device ID":
         "Lisa selle seadme ID lubatud seadmete loendisse",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Hüppa tagasi/edasi 1 minut",
     "Background color": "Taustavärv",
     "Background color of selected item": "Valitud üksuse taustavärv",
+    "Backup state changed": "Varunduse olek muudetud",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +112,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Must ekraan kanalite vahetamisel",
     Blue: "Sinine",
+    "Bookmark age (days): %1": "Järjehoidja vanus (päevades): %1",
     "Bookmark age: %1 days": "Järjehoidja vanus: %1 päeva",
     "Browse folders": "Sirvige kaustu",
     "Buffer Size, s": "Puhvri suurus, s",
@@ -166,6 +168,9 @@ var keyStrings = {
     "Clear settings": "Tühjenda seaded",
     Close: "Sule",
     "Close PiP": "Sule PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Pilvega salvestamine/laadimine nõuab STB püsivara (host_ott pole määratud)",
+    "Cloud transfer failed": "Pilve edastamine nurjus",
     Code: "Kood",
     Color: "Värv",
     "Color spectrum": "Värvispekter",
@@ -182,6 +187,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Ühilduvuse käitusaega ei saanud laadida. Uuesti proovimiseks avage meediumipleier uuesti.",
     "Compatible HLS": "Ühildub HLS",
+    "Complete pairing link": "Täielik sidumislink",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigureerige All4you.tv jaotises Seaded -> Pakkuja sätted",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -254,22 +260,25 @@ var keyStrings = {
         "Konfigureerige Шаравоз jaotises Seaded -> Pakkuja sätted",
     Connect: "Ühendage",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Ühendage HTTPS käsuserver enne ekraanipiltide lubamist.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ekraanipiltide kasutamiseks ühendage HTTPS käsuserver.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Diagnostika lubamiseks ühendage kaugjuhtimine.",
     "Connect this player to a command server first.":
         "Ühendage see meediumipleier esmalt käsuserveriga.",
+    "Connect to TV": "Ühendage teleriga",
     Connected: "Ühendatud",
     "Connected. Waiting for the channel list...":
         "Ühendatud. Ootan kanalite loendit...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Kaugjuhtimise ühendamine annab sellele serverile loa pleieri diagnoosimiseks ja parandamiseks. Juurdepääs jääb kättesaadavaks ka pärast taaskäivitamist ja lõpeb ühenduse katkestamisel. Iga diagnostiline jäädvustamine on piiratud 10 minutiga.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Kaugdiagnostika ühendamine lubatud kaugjuhtimise ühenduse jaoks.",
     "Connecting remote diagnostics for this page.":
         "Selle lehe kaugdiagnostika ühendamine.",
+    "Connecting securely to your TV...":
+        "Turvaline ühendamine teie teleriga...",
     "Connecting to Plex…": "Ühenduse loomine võrguga Plex…",
     "Connecting to Stalker portal...": "Stalkeri portaaliga ühenduse loomine…",
     "Connecting...": "Ühendamine…",
@@ -288,6 +297,10 @@ var keyStrings = {
         "Sidumistaotlust ei saanud luua. Uuesti proovimiseks leidke server uuesti.",
     "Could not load. Select to retry.":
         "Ei saanud laadida. Valige uuesti proovimiseks.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Seda teksti ei saanud ette valmistada. Palun lühendage seda ja proovige uuesti.",
+    "Could not protect the private link. Use a different browser.":
+        "Privaatset linki ei saanud kaitsta. Kasutage teist brauserit.",
     "Could not save provider settings.":
         "Teenusepakkuja seadeid ei õnnestunud salvestada.",
     "Could not save the approved command server settings.":
@@ -305,6 +318,8 @@ var keyStrings = {
     "Delete category": "Kustuta kategooria",
     "Delete channel": "Kustuta kanal",
     "Delete list": "Kustuta loend",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Kohaletoimetamist ei saanud kinnitada. Kontrollige oma telerit või proovige sama sõnumit uuesti enne, kui see seanss aegub.",
     "Demo — moving test pattern": "Demo — liikuv testmuster",
     Description: "Kirjeldus",
     "Description of remote control buttons": "Kaugjuhtimispuldi nupu juhend",
@@ -387,6 +402,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Sisesta Stalker-portaali URL (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Sisestage serveri number (%1).",
+    "Enter text": "Sisestage tekst",
     "Enter the access code separately, not in the server address.":
         "Sisestage pääsukood eraldi, mitte serveri aadressi.",
     "Enter the command server IP or address.":
@@ -536,8 +552,10 @@ var keyStrings = {
     "Interface transparency": "Liidese läbipaistvus",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Kehtetu kanali link! Sisestage täielik host nagu teenusepakkuja konto juhtpaneeli voos URL (nt subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Pilvesätete vastus on kehtetu",
     "Invalid protected source configuration":
         "Vale kaitstud allika konfiguratsioon",
+    "Invalid setting": "Kehtetu säte",
     "IPTV token": "IPTV märk",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one seaded",
@@ -616,6 +634,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Esitusloendi kanalitele ja kuupäevadele ei vastanud ükski saade. Kontrollige allikat ja seadme kella.",
     "No saved settings found": "Salvestatud seadeid ei leitud",
+    "No supported system language. Choose a language.":
+        "Süsteemi keelt ei toetata. Valige keel.",
     "Not configured": "Seadistamata",
     "Not found": "Ei leitud",
     "Not reduce video when showing the list (bugfix)":
@@ -631,6 +651,8 @@ var keyStrings = {
     "not set": "pole seatud",
     Off: "Väljas",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Ainult see teler saab teie sõnumi vastu võtta. Link aegub 10 minuti pärast.",
     Open: "Ava",
     "Open in PiP": "Ava PiP-režiimis",
     "Open Plex sign-in page": "Avage Plex sisselogimisleht",
@@ -643,6 +665,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP host",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE seaded",
+    "OTT-play remote input": "OTT-play kaugsisend",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 on saadaval. Laadige alla ja installige kohe?",
     "Overwrite current settings?": "Kas kirjutada praegused seaded üle?",
@@ -675,6 +698,7 @@ var keyStrings = {
     Playback: "Taasesitus",
     "Player and device info": "meediapleieri ja seadme teave",
     "Player could not start": "meediapleierit ei saanud käivitada",
+    "Player default": "Pleieri vaikevalik",
     "Player info:": "meediapleieri teave:",
     Playlist: "Esitusloend",
     "Playlist file": "Esitusloendi fail",
@@ -696,6 +720,8 @@ var keyStrings = {
     Postpaid: "Järelmaks",
     PROST: "PROST",
     "PROST settings": "PROST seaded",
+    "Preferred audio language": "Eelistatud helikeel",
+    "Preferred subtitle language": "Eelistatud subtiitrite keel",
     Prepaid: "Ettemaks",
     "Preparing secure remote input...":
         "Turvalise kaugsisendi ettevalmistamine...",
@@ -729,14 +755,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Kaugjuhtimispult (numbrinuppudeta)",
     "Remote control": "Kaugjuhtimispult",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Kaugjuhtimine annab loa diagnostikaks. Operaatori jaoks valmis.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Kaugjuhtimine annab loa diagnostikaks. Oodatakse taasühendamist.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Kaugjuhtimine võimaldab teha pleierist ekraanipilte, sealhulgas seadetest. Pildid võivad sisaldada isiklikku teavet. Otse rakenduses ekraanipiltide tegemiseks lisakinnitust ei nõuta. Brauseris tuleb pildiallikas valida selles seadmes.",
     "Remote diagnostics": "Kaugdiagnostika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Selle ühenduse jaoks kogutakse kaugdiagnostika andmeid (kuni 10 minutit seansi kohta).",
     "Remote diagnostics is collecting for this page.":
         "Selle lehe jaoks kogutakse kaugdiagnostikat.",
     "Remote diagnostics is off.": "Kaugdiagnostika on välja lülitatud.",
@@ -750,10 +776,10 @@ var keyStrings = {
         "Kaugsisend aegus. Uuesti proovimiseks avage uus seanss.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kaugsisendi seanss pole saadaval. Uuesti proovimiseks avage uus seanss.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Kaugekraanipildid",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Kaug-ekraanitõmmised on lubatud 10 minutit. Sulgege jäädvustamiseks seaded.",
+    "Remote screenshots are off.": "Kaug-ekraanipildid on välja lülitatud.",
     "Remote session expired": "Kaugseanss aegus",
     "Remote text entry": "Teksti kaugsisestus",
     "Remote text entry denied": "Teksti kaugsisestus on keelatud",
@@ -782,6 +808,7 @@ var keyStrings = {
     "Resume from archive?": "Kas jätkata arhiivist?",
     Retry: "Proovi uuesti",
     "Retry EPG download": "Proovige EPG uuesti alla laadida",
+    "Retry same message": "Proovige sama sõnumit uuesti",
     "Return to previous channel": "Eelmisele kanalile naasmine",
     Rewind: "Keri",
     "Rewind step by buttons %1/%2": "Kerimise samm nuppudega %1/%2",
@@ -799,19 +826,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Salvestage seaded ja laadige kanalite loend",
     "Save settings to storage": "Salvestage seaded salvestusruumi",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skannige oma teleris QR kood või kleepige alla selle täielik privaatne sidumislink.",
     "Scan this QR code with your phone to enter text.":
         "Teksti sisestamiseks skannige oma telefoniga see QR kood.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Ekraani jagamist ei saanud alustada.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ekraani jagamine tühistati või pole saadaval.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ekraanipildi luba ei saanud lubada.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Ekraanipildid on saadaval, kui kaugjuhtimine on ühendatud.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ekraanipildid pole sellel platvormil saadaval.",
     Script: "Stsenaarium",
     Search: "Otsi",
+    "Search languages": "Keelte otsimine",
     "Search programme": "Otsi saadet",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Turvalist kaugsisendit ei saanud käivitada. Proovige uuesti või kasutage ekraanil kuvatavat klaviatuuri.",
@@ -829,13 +859,14 @@ var keyStrings = {
         "Valige esitusloendi malli allikas EPG ja logode jaoks",
     "Select Stalker portal": "Valige Stalkeri portaal",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Valige brauseris ekraanipildi allikas",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Valige brauseri jagamise dialoogis pleieri vahekaart või aken.",
     "Send request": "Saada taotlus",
     "Send settings": "Saada seaded",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Saada see kood oma puhverserverist päises Authorization: Bearer.",
+    "Send to TV": "Saada telerisse",
     Server: "Server",
     "Server address": "Serveri aadress",
     "Server address (for example 192.168.1.20:8081)":
@@ -844,10 +875,13 @@ var keyStrings = {
     "Server URL": "Server URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server pole saadaval. Automaatne uuesti proovimine; kontrollige selle aadressi ja juurdepääsu võrgule.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Seanss on suletud. Vajadusel käivitage oma telerist uus.",
     Set: "Määra",
     "Set parental code": "Määrake vanemakood",
     "Set timer?": "Kas määrata taimer?",
     Settings: "Seaded",
+    "Settings changed while editing": "Redigeerimise ajal muudeti sätteid",
     "Settings changed. Discovery was canceled.":
         "Seadistused muudetud. Avastus tühistati.",
     "Settings copied": "Seaded on kopeeritud",
@@ -857,10 +891,15 @@ var keyStrings = {
     "Settings imported": "Seaded imporditud",
     "Settings JSON": "Seaded JSON",
     "Settings loaded from storage": "Seaded laaditi salvestusruumist",
+    "Settings received. Restarting player...":
+        "Seaded vastu võetud. Pleier taaskäivitatakse...",
     "Settings STB": "STB seaded",
     "Settings saved": "Seaded salvestatud",
     "Settings saved to storage": "Seaded salvestati salvestusruumi",
     "Settings sended!": "Seaded saadetud!",
+    "Settings source changed": "Seadete allikas muudetud",
+    "Settings storage rejected write":
+        "Seadete salvestusruumi kirjutamisest keelduti",
     "Several command servers were found. Select one below.":
         "Leiti mitu käsuserverit. Valige üks altpoolt.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -913,12 +952,12 @@ var keyStrings = {
     "Starting...": "Alustatakse…",
     Status: "Olek",
     Stop: "Peata",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Peatage brauseri jagamine",
     "Stop current capture": "Peatage praegune jäädvustamine",
     "Stop diagnostics": "Lõpetage diagnostika",
     "Stop playback and return to live":
         "Peata taasesitus ja naase otseülekandesse",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Peatage ekraanipildid",
     "Stream could not be played": "Voogu ei saanud esitada",
     "Stream type: %1": "Voo tüüp: %1",
     "String for search": "Otsingupäring",
@@ -930,6 +969,7 @@ var keyStrings = {
     "Switch subtitle": "Vaheta subtiitreid",
     "Switch to this list": "Lülitu sellele loendile",
     "Swop URL": "SWOP-i URL",
+    "System language": "Süsteemi keel",
     "saved on this device": "sellesse seadmesse salvestatud",
     select: "vali",
     small: "väike",
@@ -938,15 +978,19 @@ var keyStrings = {
     "Tabox settings": "Tabox seaded",
     "Text is too long for remote input.":
         "Tekst on kaugsisestuse jaoks liiga pikk.",
+    "Text is too long. Please shorten it before sending.":
+        "Tekst on liiga pikk. Palun lühendage seda enne saatmist.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Tekst saadetud. Kontrollige oma telerit, et veenduda, et see ilmus.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Brauseri ekraanipildi allikas on valmis.",
     "The command server discovery URL is invalid.":
         "Käsuserveri avastus URL on kehtetu.",
     "The device ID in the address is invalid.":
         "Aadressis olev seade ID on kehtetu.",
     "The discovery response is invalid.": "Avastusvastus on kehtetu.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "See brauser ei suuda tuvastada valitud ekraanipildi allikat.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Seda brauserit ei saa automaatselt turvaliselt siduda. Värskendage seda või sisestage käsuserveri sätted käsitsi.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -955,6 +999,10 @@ var keyStrings = {
         "See HTTPS meediumipleier ei saa ühendust HTTP serveriga. Kasutage HTTPS serverit või avage meediapleier HTTP kaudu.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "See Play rakendus nõuab HTTPS. Küsige oma teenusepakkujalt esitusloendit HTTPS või serverit URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "See sidumislink on aegunud. Avage oma teleris uus seanss.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "See turvaline seanss pole saadaval või on aegunud. Avage teleris uus seanss ja kasutage selle täielikku linki.",
     Timer: "Taimer",
     "Timer: switch to channel?": "Taimer: kas lülituda sellele kanalile?",
     "Timeshift: one minute back": "Ajanihe: üks minut tagasi",
@@ -1004,6 +1052,8 @@ var keyStrings = {
         "Kasutage HTTP või HTTPS ilma kasutajanime või paroolita aadressis.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Kasutage juhtnupu valimiseks nuppu VASAK/PAREM, selle aktiveerimiseks OK ja kerimiseks ÜLES/ALLA.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Kasutage täielikku linki, sealhulgas #-järgset osa. Ärge jagage seda kellegi teisega.",
     "Use Up / Down to scroll. Back to close.":
         "Kasutage kerimiseks üles/alla. Tagasi sulgemiseks.",
     Username: "Kasutajanimi",

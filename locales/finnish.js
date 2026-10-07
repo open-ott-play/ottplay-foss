@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv asetukset",
     "Allow diagnostics for 10 minutes": "Salli diagnostiikka 10 minuutiksi",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Salli kuvakaappaukset 10 minuutiksi",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Salli tämän palvelimen kerätä diagnostisia laskureita ja käynnistää tämä stream tai mediasoitin uudelleen. Väliaikainen pääsy kestää 10 minuuttia. Luotettu tuki on saatavilla uudelleen yhdistämisen tai uudelleenkäynnistyksen jälkeen; jokainen sieppaus vanhenee edelleen 10 minuutin kuluttua. Kokoelma keskeytyy piilotettuna tai offline-tilassa.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Salli tämän palvelimen kerätä toisto-, verkko- ja tulolaskurit tälle etualalla. Vaatii HTTPS ja palvelimen luvan. Pysähtyy 10 minuutin kuluttua, piilotettuna tai irrotettuna.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Anna tämän palvelimen pyytää kuvia 10 minuutin ajan. Kuvat voivat sisältää henkilökohtaisia ​​tietoja. Valitse selaimessa soittimen välilehti tai ikkuna. Lupa päättyy uudelleenlatauksen tai yhteyden katkaisun yhteydessä.",
     "Allowlist this Device ID":
         "Lisää tämän laitteen ID sallittujen luetteloon",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Hyppää taaksepäin/eteenpäin 1 minuutti",
     "Background color": "Taustaväri",
     "Background color of selected item": "Valitun kohteen taustaväri",
+    "Backup state changed": "Varmuuskopiointitila muutettu",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Musta näyttö kanavaa vaihdettaessa",
     Blue: "Sininen",
+    "Bookmark age (days): %1": "Kirjanmerkin ikä (päiviä): %1",
     "Bookmark age: %1 days": "Kirjanmerkin ikä: %1 päivää",
     "Browse folders": "Selaa kansioita",
     "Buffer Size, s": "Puskurin koko, s",
@@ -167,6 +169,9 @@ var keyStrings = {
     "Clear settings": "Tyhjennä asetukset",
     Close: "Sulje",
     "Close PiP": "Sulje PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Pilvitallennus/lataus vaatii STB-laiteohjelmiston (host_ott ei asetettu)",
+    "Cloud transfer failed": "Pilvisiirto epäonnistui",
     Code: "Koodi",
     Color: "Väri",
     "Color spectrum": "Värispektri",
@@ -185,6 +190,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Yhteensopivuuden suoritusaikaa ei voitu ladata. Avaa mediasoitin uudelleen yrittääksesi uudelleen.",
     "Compatible HLS": "Yhteensopiva HLS",
+    "Complete pairing link": "Täydellinen pariliitoslinkki",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Määritä All4you.tv kohdassa Asetukset -> Palveluntarjoajan asetukset",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -257,22 +263,25 @@ var keyStrings = {
         "Määritä Шаравоз kohdassa Asetukset -> Palveluntarjoajan asetukset",
     Connect: "Yhdistä",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Yhdistä HTTPS-komentopalvelin ennen kuin sallit kuvakaappauksia.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Yhdistä HTTPS-komentopalvelin käyttääksesi kuvakaappauksia.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Ota diagnostiikka käyttöön yhdistämällä etäohjaukseen.",
     "Connect this player to a command server first.":
         "Liitä tämä mediasoitin ensin komentopalvelimeen.",
+    "Connect to TV": "Yhdistä televisioon",
     Connected: "Yhdistetty",
     "Connected. Waiting for the channel list...":
         "Yhdistetty. Kanavalistaa odotellessa...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Etäohjauksen yhdistäminen antaa tälle palvelimelle luvan diagnosoida ja korjata soitinta. Käyttöoikeus säilyy uudelleenkäynnistyksen jälkeen ja päättyy, kun katkaiset yhteyden. Jokainen diagnostiikkatietojen keräysistunto kestää enintään 10 minuuttia.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Yhdistetään etädiagnostiikka käyttöön otettua etäohjausyhteyttä varten.",
     "Connecting remote diagnostics for this page.":
         "Yhdistetään tämän sivun etädiagnostiikkaa.",
+    "Connecting securely to your TV...":
+        "Yhdistetään turvallisesti televisioon...",
     "Connecting to Plex…": "Yhdistetään verkkoon Plex…",
     "Connecting to Stalker portal...": "Yhdistetään Stalker-portaaliin…",
     "Connecting...": "Yhdistetään…",
@@ -290,6 +299,10 @@ var keyStrings = {
         "Pariliitospyyntöä ei voitu luoda. Etsi palvelin uudelleen ja yritä uudelleen.",
     "Could not load. Select to retry.":
         "Ei voitu ladata. Yritä uudelleen valitsemalla.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Tätä tekstiä ei voitu valmistella. Lyhennä sitä ja yritä uudelleen.",
+    "Could not protect the private link. Use a different browser.":
+        "Yksityistä linkkiä ei voitu suojata. Käytä toista selainta.",
     "Could not save provider settings.":
         "Palveluntarjoajan asetusten tallentaminen epäonnistui.",
     "Could not save the approved command server settings.":
@@ -307,6 +320,8 @@ var keyStrings = {
     "Delete category": "Poista kategoria",
     "Delete channel": "Poista kanava",
     "Delete list": "Poista luettelo",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Toimitusta ei voitu vahvistaa. Tarkista televisiosi tai yritä samaa viestiä uudelleen ennen tämän istunnon päättymistä.",
     "Demo — moving test pattern": "Demo — liikkuva testikuvio",
     Description: "Kuvaus",
     "Description of remote control buttons": "Kaukosäätimen painikeopas",
@@ -388,6 +403,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Syötä Stalker-portaalin URL (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Anna palvelimen numero (%1).",
+    "Enter text": "Kirjoita tekstiä",
     "Enter the access code separately, not in the server address.":
         "Anna pääsykoodi erikseen, älä palvelimen osoitteeseen.",
     "Enter the command server IP or address.":
@@ -539,8 +555,10 @@ var keyStrings = {
     "Interface transparency": "Käyttöliittymän läpinäkyvyys",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Virheellinen kanavalinkki! Kirjoita koko isäntä kuten palveluntarjoajan tilin hallintapaneelin streamissa URL (esim. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Virheellinen pilviasetusten vastaus",
     "Invalid protected source configuration":
         "Virheellinen suojatun lähteen määritys",
+    "Invalid setting": "Virheellinen asetus",
     "IPTV token": "IPTV tunnus",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one asetukset",
@@ -619,6 +637,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Yksikään ohjelma ei vastannut soittolistan kanavia ja päivämääriä. Tarkista lähde ja laitteen kello.",
     "No saved settings found": "Tallennettuja asetuksia ei löytynyt",
+    "No supported system language. Choose a language.":
+        "Ei tuettua järjestelmäkieltä. Valitse kieli.",
     "Not configured": "Ei määritetty",
     "Not found": "Ei löytynyt",
     "Not reduce video when showing the list (bugfix)":
@@ -634,6 +654,8 @@ var keyStrings = {
     "not set": "ei asetettu",
     Off: "Pois",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Vain tämä televisio voi hyväksyä viestisi. Linkki vanhenee 10 minuutin kuluttua.",
     Open: "Avaa",
     "Open in PiP": "Avaa PiP",
     "Open Plex sign-in page": "Avaa Plex kirjautumissivu",
@@ -646,6 +668,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP -palvelin",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE asetukset",
+    "OTT-play remote input": "OTT-play-etätekstinsyöttö",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 on saatavilla. Lataa ja asenna nyt?",
     "Overwrite current settings?": "Korvaako nykyiset asetukset?",
@@ -678,6 +701,7 @@ var keyStrings = {
     Playback: "Toisto",
     "Player and device info": "mediasoittimen ja laitteen tiedot",
     "Player could not start": "mediasoitin ei voinut käynnistyä",
+    "Player default": "Soittimen oletusvalinta",
     "Player info:": "mediasoittimen tiedot:",
     Playlist: "Soittolista",
     "Playlist file": "Soittolistatiedosto",
@@ -699,6 +723,8 @@ var keyStrings = {
     Postpaid: "Jälkikäteismaksu",
     PROST: "PROST",
     "PROST settings": "PROST asetukset",
+    "Preferred audio language": "Ensisijainen äänen kieli",
+    "Preferred subtitle language": "Ensisijainen tekstityskieli",
     Prepaid: "Etukäteismaksu",
     "Preparing secure remote input...": "Valmistellaan suojattua etäsyöttöä...",
     Prev: "Edellinen",
@@ -731,14 +757,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Kaukosäädin (ei numeropainikkeita)",
     "Remote control": "Kaukosäädin",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Etäohjaus antaa luvan diagnostiikkaan. Valmiina operaattoria varten.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Etäohjaus antaa luvan diagnostiikkaan. Odotetaan yhteyden palautumista.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Etäohjaus mahdollistaa kuvakaappaukset soittimesta ja sen asetuksista. Kuvat voivat sisältää yksityisiä tietoja. Suoraan sovelluksessa tehtävä kuvakaappaus ei vaadi erillistä hyväksyntää. Selaimessa kaappauksen lähde on valittava tällä laitteella.",
     "Remote diagnostics": "Etädiagnostiikka",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Etädiagnostiikkaa kerätään tätä yhteyttä varten (enintään 10 minuuttia istuntoa kohti).",
     "Remote diagnostics is collecting for this page.":
         "Etädiagnostiikkaa kerätään tälle sivulle.",
     "Remote diagnostics is off.": "Etädiagnostiikka on pois päältä.",
@@ -752,10 +778,10 @@ var keyStrings = {
         "Kaukosyöte on vanhentunut. Avaa uusi istunto ja yritä uudelleen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Etäsyöttöistunto ei ole käytettävissä. Avaa uusi istunto ja yritä uudelleen.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Etäkuvakaappaukset",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Etäkuvakaappaukset ovat sallittuja 10 minuuttia. Sulje asetukset kaappaamista varten.",
+    "Remote screenshots are off.": "Etäkuvakaappaukset eivät ole käytössä.",
     "Remote session expired": "Etäistunto vanhentunut",
     "Remote text entry": "Tekstin etäsyöttö",
     "Remote text entry denied": "Tekstin etäsyöttö kielletty",
@@ -783,6 +809,7 @@ var keyStrings = {
     "Resume from archive?": "Jatka arkistosta?",
     Retry: "Yritä uudelleen",
     "Retry EPG download": "Yritä EPG latausta uudelleen",
+    "Retry same message": "Yritä samaa viestiä uudelleen",
     "Return to previous channel": "Paluu edelliselle kanavalle",
     Rewind: "Siirry toistokohtaan",
     "Rewind step by buttons %1/%2": "Kelausaskel painikkeilla %1/%2",
@@ -800,19 +827,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Tallenna asetukset ja lataa kanavaluettelo",
     "Save settings to storage": "Tallenna asetukset tallennustilaan",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skannaa QR-koodi televisiossasi tai liitä sen täydellinen yksityinen pariliitoslinkki alle.",
     "Scan this QR code with your phone to enter text.":
         "Skannaa tämä QR-koodi puhelimellasi kirjoittaaksesi tekstiä.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Näytön jakaminen ei käynnistynyt.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Näytön jakaminen peruutettiin tai se ei ole käytettävissä.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Kuvakaappauslupaa ei voitu ottaa käyttöön.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Kuvakaappaukset ovat käytettävissä, kun etäohjausyhteys on muodostettu.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Kuvakaappauksia ei ole saatavilla tällä alustalla.",
     Script: "Käsikirjoitus",
     Search: "Etsi",
+    "Search languages": "Hae kieliä",
     "Search programme": "Etsi ohjelma",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Suojattu etäsyöttö ei voinut käynnistyä. Yritä uudelleen tai käytä näyttönäppäimistöä.",
@@ -830,13 +860,14 @@ var keyStrings = {
         "Valitse soittolistamallin lähde EPG:lle ja logoille",
     "Select Stalker portal": "Valitse Stalker-portaali",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Valitse kuvakaappauksen lähde selaimesta",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Valitse soittimen välilehti tai ikkuna selaimen jakamisvalintaikkunassa.",
     "Send request": "Lähetä pyyntö",
     "Send settings": "Lähetä asetukset",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Lähetä tämä koodi välityspalvelimeltasi Authorization: Bearer -otsakkeessa.",
+    "Send to TV": "Lähetä televisioon",
     Server: "Palvelin",
     "Server address": "Palvelimen osoite",
     "Server address (for example 192.168.1.20:8081)":
@@ -845,10 +876,13 @@ var keyStrings = {
     "Server URL": "Palvelin URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Palvelin ei ole käytettävissä. Yritetään automaattisesti uudelleen; tarkista sen osoite ja verkkoyhteys.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Istunto päättynyt. Aloita tarvittaessa uusi televisiosta.",
     Set: "Aseta",
     "Set parental code": "Aseta vanhempien koodi",
     "Set timer?": "Aseta ajastin?",
     Settings: "Asetukset",
+    "Settings changed while editing": "Asetuksia muutettu muokkauksen aikana",
     "Settings changed. Discovery was canceled.":
         "Asetukset muutettu. Löytö peruttiin.",
     "Settings copied": "Asetukset kopioitu",
@@ -858,10 +892,15 @@ var keyStrings = {
     "Settings imported": "Asetukset tuotu",
     "Settings JSON": "Asetukset JSON",
     "Settings loaded from storage": "Asetukset ladattu tallennustilasta",
+    "Settings received. Restarting player...":
+        "Asetukset vastaanotettu. Käynnistetään soitinta uudelleen...",
     "Settings STB": "STB asetukset",
     "Settings saved": "Asetukset tallennettu",
     "Settings saved to storage": "Asetukset tallennettu tallennustilaan",
     "Settings sended!": "Asetukset lähetetty!",
+    "Settings source changed": "Asetusten lähde muutettu",
+    "Settings storage rejected write":
+        "Asetusten tallennustila hylkäsi kirjoituksen",
     "Several command servers were found. Select one below.":
         "Useita komentopalvelimia löytyi. Valitse yksi alta.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -914,12 +953,12 @@ var keyStrings = {
     "Starting...": "Alkaen…",
     Status: "Tila",
     Stop: "Pysäytä",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Lopeta selaimen jakaminen",
     "Stop current capture": "Pysäytä nykyinen sieppaus",
     "Stop diagnostics": "Lopeta diagnostiikka",
     "Stop playback and return to live":
         "Pysäytä toisto ja palaa suoraan lähetykseen",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Lopeta kuvakaappaukset",
     "Stream could not be played": "Striimiä ei voitu toistaa",
     "Stream type: %1": "Striimin tyyppi: %1",
     "String for search": "Hakukysely",
@@ -931,6 +970,7 @@ var keyStrings = {
     "Switch subtitle": "Vaihda tekstitys",
     "Switch to this list": "Vaihda tähän luetteloon",
     "Swop URL": "SWOP-URL",
+    "System language": "Järjestelmän kieli",
     "saved on this device": "tallennettu tälle laitteelle",
     select: "valitse",
     small: "pieni",
@@ -939,15 +979,19 @@ var keyStrings = {
     "Tabox settings": "Tabox asetukset",
     "Text is too long for remote input.":
         "Teksti on liian pitkä etäsyöttöä varten.",
+    "Text is too long. Please shorten it before sending.":
+        "Teksti on liian pitkä. Lyhennä sitä ennen lähettämistä.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Teksti lähetetty. Tarkista televisiostasi, että se ilmestyi.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Selaimen kuvakaappauslähde on valmis.",
     "The command server discovery URL is invalid.":
         "Komentopalvelimen etsintä URL on virheellinen.",
     "The device ID in the address is invalid.":
         "Osoitteessa oleva laite ID on virheellinen.",
     "The discovery response is invalid.": "Etsintävastaus on virheellinen.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Tämä selain ei pysty tunnistamaan valittua kuvakaappauslähdettä.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tämä selain ei voi muodostaa pariliitosta turvallisesti automaattisesti. Päivitä se tai syötä komentopalvelimen asetukset manuaalisesti.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -956,6 +1000,10 @@ var keyStrings = {
         "Tämä HTTPS-mediasoitin ei voi muodostaa yhteyttä HTTP-palvelimeen. Käytä HTTPS-palvelinta tai avaa mediasoitin HTTP:n kautta.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Tämä Play-sovellus vaatii HTTPS. Pyydä palveluntarjoajaltasi HTTPS soittolista tai palvelin URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Tämä pariliitoslinkki on vanhentunut. Avaa uusi istunto televisiossasi.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Tämä suojattu istunto ei ole käytettävissä tai se on vanhentunut. Avaa uusi istunto televisiossa ja käytä sen täydellistä linkkiä.",
     Timer: "Ajastin",
     "Timer: switch to channel?": "Ajastin: vaihtaa tälle kanavalle?",
     "Timeshift: one minute back": "Ajansiirto: minuutti taaksepäin",
@@ -1004,6 +1052,8 @@ var keyStrings = {
         "Käytä HTTP tai HTTPS ilman käyttäjätunnusta tai salasanaa osoitteessa.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Käytä VASEN/OIKEA valitaksesi säätimen, OK aktivoidaksesi sen ja YLÖS/ALAS vierittääksesi.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Käytä koko linkkiä, mukaan lukien #:n jälkeinen osa. Älä jaa sitä kenenkään muun kanssa.",
     "Use Up / Down to scroll. Back to close.":
         "Käytä ylös/alas vierittääksesi. Takaisin sulkemiseen.",
     Username: "Käyttäjätunnus",

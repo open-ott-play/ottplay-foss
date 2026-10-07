@@ -58,19 +58,20 @@ var keyStrings = {
     "All categories": "Todas as categorias",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Configurações de All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Permitir diagnóstico por 10 minutos",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Permitir capturas de tela por 10 minutos",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Permita que este servidor colete contadores de diagnóstico e reinicie este fluxo ou reprodutor. O acesso temporário dura 10 minutos. O suporte confiável permanece disponível após reconectar ou reiniciar; cada sessão de coleta termina após 10 minutos. A coleta é pausada quando o reprodutor fica oculto ou offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Permitir que este servidor colete contadores de reprodução, rede e entrada para esta sessão em primeiro plano. Requer HTTPS e permissão do servidor. Pára após 10 minutos, quando oculto ou desconectado.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Permitir que este servidor solicite imagens por 10 minutos. As imagens podem conter informações pessoais. Em um navegador, selecione a guia ou janela do player. A permissão termina ao recarregar ou desconectar.",
     "Allowlist this Device ID": "Autorizar este ID de dispositivo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Um player HTTPS não pode baixar uma fonte HTTP EPG. Use uma fonte HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Um IP sem porta usa a porta HTTP 8081. Apague o endereço ou selecione Desligar para parar.",
     "Another source sign-in is already open":
@@ -90,9 +91,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arquivo. Canal: ",
     Aspect: "Proporção da imagem",
     Audio: "Áudio",
-    Automatic: "Automatic",
+    Automatic: "Automático",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Reproduz automaticamente arquivos suportados diretamente e usa HLS compatível quando necessário.",
     alhabet: "aàáâãbcçdeéêfghiíîjklmnoòóôõpqrstuúvwxyz",
     always: "sempre",
     "and enter code": "e introduza o código",
@@ -100,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Recuar / avançar 1 minuto",
     "Background color": "Cor de fundo",
     "Background color of selected item": "Cor de fundo do item selecionado",
+    "Backup state changed": "Estado de backup alterado",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +113,7 @@ var keyStrings = {
         "Comportamento dos botões %1/%2 nas listas",
     "Black screen while switching the channel": "Ecrã preto ao mudar de canal",
     Blue: "Azul",
+    "Bookmark age (days): %1": "Idade do marcador (dias): %1",
     "Bookmark age: %1 days": "Idade do marcador: %1 dias",
     "Browse folders": "Navegar por pastas",
     "Buffer Size, s": "Tamanho do buffer, s",
@@ -154,21 +157,24 @@ var keyStrings = {
     "Channel parental control": "Controlo parental do canal",
     Channels: "Canais",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Verifique a conexão e abra suas bibliotecas Plex.",
     "Check this server's SWOP configuration.":
         "Verifique a configuração SWOP deste servidor.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Verificando a conexão do servidor Plex…",
     "Choose from": "Escolher entre",
     "Choose language": "Escolher idioma",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Escolha o servidor Plex",
     "Choose provider": "Escolher fornecedor",
     Classic: "Clássico",
     "Clear all settings?": "Apagar todas as configurações?",
     "Clear settings": "Apagar configurações",
     Close: "Fechar",
     "Close PiP": "Fechar PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Salvar/carregar na nuvem requer firmware STB (host_ott não definido)",
+    "Cloud transfer failed": "Falha na transferência para nuvem",
+    Code: "Código de acesso",
     Color: "Cor",
     "Color spectrum": "Espetro de cores",
     "Command server": "Servidor de comandos",
@@ -185,7 +191,8 @@ var keyStrings = {
     "Command server found.": "Servidor de comandos encontrado.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Não foi possível carregar os componentes de compatibilidade. Abra o leitor novamente para tentar de novo.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "HLS compatível",
+    "Complete pairing link": "O link de emparelhamento completo",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configure All4you.tv em Configurações -> Configurações do fornecedor",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -219,7 +226,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Configure OTT Prime ONLINE em Configurações -> Configurações do fornecedor",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Configure Plex em Configurações -> Configurações do provedor",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Configure POLMEDIA em Configurações -> Configurações do fornecedor",
     "Configure PROST in Settings -> Provider Settings":
@@ -258,23 +265,25 @@ var keyStrings = {
         "Configure Шаравоз em Configurações -> Configurações do fornecedor",
     Connect: "Ligar",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Conecte um servidor de comando HTTPS antes de permitir capturas de tela.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Conecte um servidor de comando HTTPS para usar capturas de tela.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Conecte o controle remoto para ativar o diagnóstico.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Conecte este reprodutor primeiro a um servidor de comando.",
+    "Connect to TV": "Conectar à TV",
     Connected: "Ligado",
     "Connected. Waiting for the channel list...":
         "Ligado. A aguardar a lista de canais…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Conectar o controle remoto autoriza este servidor a diagnosticar e reparar o player. O acesso permanece disponível após a reinicialização e termina quando você se desconecta. Cada captura de diagnóstico é limitada a 10 minutos.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Conectando diagnóstico remoto para a conexão de controle remoto habilitada.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Conectando diagnóstico remoto para esta página.",
+    "Connecting securely to your TV...": "Conectando com segurança à sua TV...",
+    "Connecting to Plex…": "Conectando a Plex…",
     "Connecting to Stalker portal...": "A ligar ao portal Stalker…",
     "Connecting...": "A ligar…",
     "Continue watching?": "Continuar a ver?",
@@ -285,12 +294,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Copie o JSON selecionado usando o comando de cópia do dispositivo",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Não foi possível conectar-se a Plex. Verifique o endereço do servidor, token e acesso à rede.",
     "Could not connect to the server.": "Não foi possível ligar ao servidor.",
     "Could not create a pairing request. Find the server again to retry.":
         "Não foi possível criar um pedido de emparelhamento. Procure novamente o servidor para voltar a tentar.",
     "Could not load. Select to retry.":
         "Não foi possível carregar. Selecione para tentar novamente.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Não foi possível preparar este texto. Por favor, encurte-o e tente novamente.",
+    "Could not protect the private link. Use a different browser.":
+        "Não foi possível proteger o link privado. Use um navegador diferente.",
     "Could not save provider settings.":
         "Não foi possível guardar as definições do fornecedor.",
     "Could not save the approved command server settings.":
@@ -308,6 +321,8 @@ var keyStrings = {
     "Delete category": "Eliminar categoria",
     "Delete channel": "Eliminar canal",
     "Delete list": "Eliminar lista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "A entrega não pôde ser confirmada. Verifique sua TV ou tente novamente a mesma mensagem antes que a sessão expire.",
     "Demo — moving test pattern": "Demonstração — padrão de teste em movimento",
     Description: "Descrição",
     "Description of remote control buttons": "Guia dos botões do comando",
@@ -321,7 +336,7 @@ var keyStrings = {
     "Diamond TV settings": "Configurações de Diamond TV",
     Director: "Realização",
     "Disable HTTP remote": "Desativar controlo HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "Desativar suporte remoto confiável",
     "Disabled by default. Enabling creates a new device access code.":
         "Desativado por predefinição. A ativação cria um novo código de acesso ao dispositivo.",
     Disconnect: "Desligar",
@@ -357,7 +372,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Introduza o nome de utilizador e a palavra-passe para aceder a este serviço.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Insira um endereço de servidor Plex válido e um token de acesso.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Introduza um endereço de servidor válido, por exemplo 192.168.1.20:8081.",
     "Enter access key for": "Introduzir chave de acesso para",
@@ -375,8 +390,8 @@ var keyStrings = {
         "Introduzir endereço MAC (ex.: 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Introduzir URL da mediateca",
     "Enter new category name": "Introduzir novo nome da categoria",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Insira o endereço do servidor Plex",
+    "Enter Plex token": "Insira o token Plex",
     "Enter Provider Code": "Introduzir código do fornecedor",
     "Enter Provider Code on PC or Phone":
         "Introduzir código do fornecedor no PC ou telefone",
@@ -391,6 +406,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Introduzir URL do portal Stalker (ex.: http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Introduza o número do servidor (%1).",
+    "Enter text": "Insira texto",
     "Enter the access code separately, not in the server address.":
         "Introduza o código de acesso separadamente, não no endereço do servidor.",
     "Enter the command server IP or address.":
@@ -415,56 +431,57 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Introduzir URL do servidor Xtream (ex.: https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Insira seu token de acesso Plex. Ele é salvo no perfil deste dispositivo.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Insira o endereço do servidor Plex, por exemplo http://192.168.1.25:32400",
     EPG: "Guia TV",
     "EPG and archive. Channel: ": "EPG e arquivo. Canal: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "O arquivo EPG ou XML é inválido.",
+    "EPG cache and wait time: %1": "Cache EPG e tempo de espera: %1",
+    "EPG cache updated: %1": "Cache EPG atualizado: %1",
+    "EPG channels: %1": "Canais EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Não foi possível iniciar o EPG. Reinicie o leitor para voltar a carregar os seus ficheiros. A reprodução será interrompida.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "Diagnóstico EPG",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "O diagnóstico EPG não pôde ser carregado. Abra-o novamente para tentar novamente.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Falha no download do EPG. Verifique a conexão, HTTPS e as permissões CORS da fonte.",
+    "EPG download time: %1": "Tempo de download EPG: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "O download do EPG expirou. Tente novamente o download.",
+    "EPG elapsed: %1": "Tempo decorrido do EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "Erro EPG. Abra Informações → Diagnóstico EPG.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG excede o limite de processamento do dispositivo. Use uma fonte menor ou um período de arquivo mais curto.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG não foi iniciado. Carregue uma lista de reprodução M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "O armazenamento local EPG não está disponível ou está cheio.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "Tempo de processamento e armazenamento de EPG: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "O processamento de EPG foi interrompido. Tente novamente e verifique o suporte do navegador.",
+    "EPG programmes: %1": "Programas EPG: %1",
+    "EPG progress: %1": "Progresso EPG: %1",
+    "EPG ready": "EPG pronto",
+    "EPG source returned HTTP %1": "A fonte EPG retornou HTTP %1",
+    "EPG source: %1": "Fonte EPG: %1",
+    "EPG stopped during: %1": "EPG parado durante: %1",
+    "EPG unavailable on this browser": "EPG indisponível neste navegador",
+    "EPG unavailable: %1": "EPG indisponível: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "Falha na atualização do EPG; usando o guia de programação salvo",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG: baixando o guia do programa...",
+    "EPG: opening local cache...": "EPG: abrindo cache local...",
+    "EPG: processing programme guide...":
+        "EPG: processando o guia de programação...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: atualizando o guia de programação salvo...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: aguardando outra aba do reprodutor...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Erro: a categoria nº %1 não existe!<br>Selecione outra categoria.",
     "ERROR!": "Erro!",
@@ -501,7 +518,7 @@ var keyStrings = {
     "Finding command servers...": "A procurar servidores de comandos...",
     "First Run Setup": "Configuração inicial",
     "Fit to screen": "Ajustar ao ecrã",
-    Folders: "Folders",
+    Folders: "Pastas",
     "Font type": "Tipo de letra",
     "For download settings file open":
         "Para transferir o ficheiro de configurações, abra",
@@ -544,8 +561,11 @@ var keyStrings = {
     "Interface transparency": "Transparência da interface",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ligação do canal inválida! Introduza o nome completo do servidor como no URL do fluxo da área de cliente (ex.: subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Resposta de configurações de nuvem inválida",
     "Invalid protected source configuration":
         "Configuração inválida da fonte protegida",
+    "Invalid setting": "Configuração inválida",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Configurações de IpStream.one",
@@ -621,10 +641,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Não foi encontrado nenhum servidor de comandos nesta rede.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Nenhum servidor Plex está disponível para esta conta.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Nenhum programa corresponde aos canais e datas da lista de reprodução. Verifique a fonte e o relógio do dispositivo.",
     "No saved settings found": "Não foram encontradas configurações guardadas",
+    "No supported system language. Choose a language.":
+        "Nenhum idioma de sistema suportado. Escolha um idioma.",
     "Not configured": "Não configurado",
     "Not found": "Não encontrado",
     "Not reduce video when showing the list (bugfix)":
@@ -640,18 +662,21 @@ var keyStrings = {
     "not set": "não definido",
     Off: "Desativado",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Somente esta TV pode aceitar sua mensagem. O link expira após 10 minutos.",
     Open: "Abrir",
     "Open in PiP": "Abrir em PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Abrir página de login do Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Abra plex.tv/link no seu telefone ou computador e digite este código.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Ou abra este link privado completo em outro dispositivo:",
+    "Original file": "Arquivo de mídia original",
     "Original text: %1": "Texto original: %1",
     "OTT / APP host": "Servidor OTT / aplicativo",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Configurações de OTT Prime ONLINE",
+    "OTT-play remote input": "Entrada remota OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 está disponível. Transferir e instalar agora?",
     "Overwrite current settings?": "Substituir as configurações atuais?",
@@ -681,9 +706,10 @@ var keyStrings = {
     "PiP window position": "Posição da janela PiP",
     "PiP window size": "Tamanho da janela PiP",
     Play: "Reproduzir",
-    Playback: "Playback",
+    Playback: "Reprodução de mídia",
     "Player and device info": "Informações do leitor e dispositivo",
     "Player could not start": "Não foi possível iniciar o leitor",
+    "Player default": "Opção predefinida do reprodutor",
     "Player info:": "Informações do leitor:",
     Playlist: "Lista de reprodução",
     "Playlist file": "Ficheiro da lista",
@@ -692,11 +718,11 @@ var keyStrings = {
     "Playlist Name": "Nome da lista",
     "Playlist URL": "URL da lista",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Falha na conexão Plex",
+    "Plex settings": "Configurações Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Falha no login do Plex. Verifique a conexão e tente novamente ou insira o endereço do servidor e o token.",
+    "Plex token": "Token Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Configurações de POLMEDIA",
     "Portal URL": "URL do portal",
@@ -705,8 +731,10 @@ var keyStrings = {
     Postpaid: "Pós-pago",
     PROST: "PROST",
     "PROST settings": "Configurações de PROST",
+    "Preferred audio language": "Idioma de áudio preferido",
+    "Preferred subtitle language": "Idioma de legenda preferido",
     Prepaid: "Pré-pago",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...": "Preparando entrada remota segura...",
     Prev: "Anterior",
     "Preview in channel list": "Pré-visualização na lista de canais",
     Previous: "Anterior",
@@ -736,31 +764,32 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Comando sem botões numéricos",
     "Remote control": "Controlo remoto",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "O controle remoto autoriza o diagnóstico. Pronto para um operador.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "O controle remoto autoriza o diagnóstico. Esperando para reconectar.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "O controle remoto inclui capturas de tela do reprodutor de mídia, incluindo suas configurações. As imagens podem conter informações privadas. O aplicativo pode capturar capturas de tela diretamente, sem aprovação extra. Em um navegador, selecione a guia ou janela a ser capturada neste dispositivo.",
+    "Remote diagnostics": "Diagnóstico remoto",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "O diagnóstico remoto está sendo coletado para esta conexão (até 10 minutos por sessão).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "O diagnóstico remoto está sendo coletado para esta página.",
+    "Remote diagnostics is off.": "O diagnóstico remoto está desativado.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "O diagnóstico remoto está pronto para um operador autorizado.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "O diagnóstico remoto não está disponível neste reprodutor.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Diagnóstico remoto interrompido. Ative-o novamente para conceder acesso.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "A entrada remota expirou. Abra uma nova sessão para tentar novamente.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "A sessão de entrada remota não está disponível. Abra uma nova sessão para tentar novamente.",
+    "Remote screenshots": "Capturas de tela remotas",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Capturas de tela remotas são permitidas por 10 minutos. Feche as configurações para capturar.",
+    "Remote screenshots are off.":
+        "As capturas de tela remotas estão desativadas.",
     "Remote session expired": "Sessão remota expirada",
     "Remote text entry": "Entrada de texto remota",
     "Remote text entry denied": "Entrada de texto remota negada",
@@ -788,7 +817,8 @@ var keyStrings = {
     "Restart stream / Live": "Reiniciar fluxo / direto",
     "Resume from archive?": "Retomar a partir do arquivo?",
     Retry: "Tentar novamente",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Tentar novamente o download do EPG",
+    "Retry same message": "Tentar novamente a mesma mensagem",
     "Return to previous channel": "Voltar ao canal anterior",
     Rewind: "Deslocar reprodução",
     "Rewind step by buttons %1/%2": "Intervalo de recuo dos botões %1/%2",
@@ -800,32 +830,36 @@ var keyStrings = {
     "Save & load channels": "Guardar e carregar canais",
     "Save and load": "Guardar e carregar",
     "Save and load channels": "Guardar e carregar canais",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Salvar e abrir biblioteca",
     "Save Settings": "Guardar configurações",
     "Save settings": "Guardar configurações",
     "Save settings and load channel list":
         "Guardar configurações e carregar lista de canais",
     "Save settings to storage": "Guardar configurações no armazenamento",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Digitalize o código QR na sua TV ou cole o link de emparelhamento privado completo abaixo.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Digitalize este código QR com seu telefone para inserir texto.",
+    "Screen sharing could not start.":
+        "Não foi possível iniciar o compartilhamento de tela.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "O compartilhamento de tela foi cancelado ou não está disponível.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Não foi possível ativar a permissão de captura de tela.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Capturas de tela estão disponíveis enquanto o controle remoto está conectado.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "As capturas de tela não estão disponíveis nesta plataforma.",
     Script: "Argumento",
     Search: "Pesquisar",
+    "Search languages": "Pesquisar idiomas",
     "Search programme": "Pesquisar programa",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "A entrada remota segura não pôde ser iniciada. Tente novamente ou use o teclado na tela.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "A entrada remota segura não pôde ser iniciada. Por favor, use o teclado na tela.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "A entrada remota segura não está disponível neste dispositivo. Use o teclado na tela.",
     "Select a stream type:<br>%1": "Selecione um tipo de fluxo:<br>%1",
     "Select category to add channel":
         "Selecionar categoria para adicionar canal",
@@ -837,13 +871,14 @@ var keyStrings = {
         "Selecionar origem do modelo de lista para EPG e logótipos",
     "Select Stalker portal": "Selecionar portal Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Selecione a fonte da captura de tela no navegador",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Selecione a guia ou janela do player na caixa de diálogo de compartilhamento do navegador.",
     "Send request": "Enviar pedido",
     "Send settings": "Enviar configurações",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Envie este código a partir do proxy no cabeçalho Authorization: Bearer.",
+    "Send to TV": "Enviar para TV",
     Server: "Servidor",
     "Server address": "Endereço do servidor",
     "Server address (for example 192.168.1.20:8081)":
@@ -852,10 +887,14 @@ var keyStrings = {
     "Server URL": "URL do servidor",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Servidor indisponível. Nova tentativa automática; verifique o endereço e o acesso à rede.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sessão encerrada. Inicie uma nova sessão na TV quando necessário.",
     Set: "Definir",
     "Set parental code": "Definir código parental",
     "Set timer?": "Definir temporizador?",
     Settings: "Configurações",
+    "Settings changed while editing":
+        "Configurações alteradas durante a edição",
     "Settings changed. Discovery was canceled.":
         "Configurações alteradas. A procura foi cancelada.",
     "Settings copied": "Configurações copiadas",
@@ -866,10 +905,15 @@ var keyStrings = {
     "Settings imported": "Configurações importadas",
     "Settings JSON": "Configurações em formato JSON",
     "Settings loaded from storage": "Configurações carregadas do armazenamento",
+    "Settings received. Restarting player...":
+        "Configurações recebidas. Reiniciando o reprodutor...",
     "Settings STB": "Configurações STB",
     "Settings saved": "Configurações guardadas",
     "Settings saved to storage": "Configurações guardadas no armazenamento",
     "Settings sended!": "Configurações enviadas!",
+    "Settings source changed": "Fonte de configurações alterada",
+    "Settings storage rejected write":
+        "O armazenamento de configurações recusou a gravação",
     "Several command servers were found. Select one below.":
         "Foram encontrados vários servidores de comandos. Selecione um abaixo.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -907,28 +951,28 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Inicie sessão novamente na fonte protegida",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Faça login em sua conta Plex e escolha um servidor. Nenhuma senha é inserida neste player.",
+    "Sign in with Plex": "Faça login com Plex",
     "Sign in: %1": "Iniciar sessão: %1",
     "Sign out of all sources": "Terminar sessão em todas as fontes",
     "Sign-in opens when you load a protected playlist.":
         "O início de sessão abre ao carregar uma lista de reprodução protegida.",
     "Sleep timer": "Temporizador de suspensão",
     "Sort channels": "Ordenar canais",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Acesso à fonte de mídia",
+    "Source sign-in required": "É necessário fazer login na fonte",
     "Source sign-in was cancelled": "O início de sessão na fonte foi cancelado",
     "Stalker Portal Provider": "Fornecedor do portal Stalker",
     "Stalker portal settings": "Configurações do portal Stalker",
     "Stalker portals": "Portais Stalker",
     "Starting...": "A iniciar…",
     Status: "Estado",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Parar",
+    "Stop browser sharing": "Parar o compartilhamento do navegador",
+    "Stop current capture": "Parar a captura atual",
+    "Stop diagnostics": "Parar diagnóstico",
     "Stop playback and return to live": "Parar reprodução e voltar ao direto",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Parar capturas de tela",
     "Stream could not be played": "Não foi possível reproduzir o fluxo",
     "Stream type: %1": "Tipo de fluxo: %1",
     "String for search": "Texto de pesquisa",
@@ -939,23 +983,29 @@ var keyStrings = {
     "Switch sound track": "Mudar faixa de áudio",
     "Switch subtitle": "Mudar legendas",
     "Switch to this list": "Mudar para esta lista",
-    "Swop URL": "Swop URL",
+    "Swop URL": "URL do Swop",
+    "System language": "Idioma do sistema",
     "saved on this device": "guardado neste dispositivo",
     select: "selecionar",
     small: "pequeno",
     system: "sistema",
     Tabox: "Tabox",
     "Tabox settings": "Configurações de Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "O texto é muito longo para entrada remota.",
+    "Text is too long. Please shorten it before sending.":
+        "O texto é muito longo. Por favor, encurte-o antes de enviar.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Texto enviado. Verifique na TV se o texto apareceu.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "A fonte da captura de tela do navegador está pronta.",
     "The command server discovery URL is invalid.":
         "O URL de descoberta do servidor de comandos é inválido.",
     "The device ID in the address is invalid.":
         "O ID do dispositivo no endereço é inválido.",
     "The discovery response is invalid.": "A resposta à procura é inválida.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Este navegador não consegue identificar a origem da captura de tela selecionada.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Este navegador não consegue efetuar um emparelhamento automático seguro. Atualize-o ou introduza manualmente as configurações do servidor de comandos.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -964,6 +1014,10 @@ var keyStrings = {
         "Este leitor HTTPS não pode ligar a um servidor HTTP. Use um servidor HTTPS ou abra o leitor por HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Esta aplicação Play exige HTTPS. Peça ao fornecedor uma lista ou URL de servidor HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Este link de emparelhamento expirou. Abra uma nova sessão na sua TV.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Esta sessão segura não está disponível ou expirou. Abra uma nova sessão na TV e utilize seu link completo.",
     Timer: "Temporizador",
     "Timer: switch to channel?": "Temporizador: mudar para este canal?",
     "Timeshift: one minute back": "Timeshift: recuar um minuto",
@@ -981,13 +1035,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Configurações de Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Confie neste servidor para suporte remoto",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "O acesso confiável não pôde ser removido do armazenamento do dispositivo.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "O diagnóstico confiável não está disponível porque não foi possível atualizar o armazenamento do dispositivo.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "O diagnóstico confiável está aguardando a reconexão deste player.",
     "Try demo": "Experimentar demonstração",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Configurações de TV DOSUG",
@@ -1008,18 +1062,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Use um endereço de servidor HTTP ou HTTPS.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Use um servidor de comando HTTPS para diagnóstico remoto.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Use HTTP ou HTTPS sem nome de utilizador nem palavra-passe no endereço.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Use ESQUERDA/DIREITA para selecionar um controlo, OK para o ativar e CIMA/BAIXO para deslocar.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Use o link completo, incluindo a parte após #. Não compartilhe com mais ninguém.",
     "Use Up / Down to scroll. Back to close.":
         "Use Cima / Baixo para rolar. Voltar para fechar.",
     Username: "Nome de utilizador",
     "Username or password is missing.":
         "Falta o nome de utilizador ou a palavra-passe.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Válido por 10 minutos. Voltar fecha esta sessão.",
     Version: "Versão",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Configurações de VIP-IP.COM",
@@ -1031,8 +1087,8 @@ var keyStrings = {
     "VPortal profiles": "Perfis VPortal",
     "VPortal request failed":
         "Não foi possível carregar o VPortal. Verifique a ligação, a chave de acesso e a disponibilidade do portal.",
-    volume: "volume",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    volume: "volume do som",
+    "Waiting for sign-in…": "Aguardando login…",
     "Wrong parental code !!!": "Código parental errado!!!",
     "Xtream Codes Provider": "Fornecedor Xtream Codes",
     "Xtream Codes settings": "Configurações Xtream Codes",

@@ -819,7 +819,8 @@ function detectedLanguage(options, code, automatic = true) {
         [],
         "Early preloading never commits a language preference"
     );
-    if (automatic) assert.equal(result.storage.ottplaylang || "", "");
+    if (automatic && !(options.storage && options.storage.ottplaylang))
+        assert.equal(result.storage.ottplaylang || "", "");
     return result;
 }
 function undetectedLanguage(options) {
@@ -1021,6 +1022,161 @@ detectedLanguage(
     },
     "_fra"
 );
+
+detectedLanguage(
+    {
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_rus", ottplaylangmode: "system" },
+    },
+    "_fra"
+);
+detectedLanguage(
+    {
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_rus", ottplaylangmode: "manual" },
+    },
+    "_rus",
+    false
+);
+undetectedLanguage({
+    navigator: { languages: ["zh-Hant"] },
+    storage: { ottplaylang: "_rus", ottplaylangmode: "system" },
+});
+detectedLanguage(
+    {
+        cookie: "ottplayStorageFallback=%5B%22ottplaylang%22%5D; ottplaylang=_rus",
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_eng" },
+    },
+    "_rus",
+    false
+);
+detectedLanguage(
+    {
+        cookie: "ottplayStorageFallback=%5B%22ottplaylangmode%22%5D; ottplaylangmode=system",
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_eng", ottplaylangmode: "manual" },
+    },
+    "_fra"
+);
+
+// Exercise the actual ES5 storage writer against a silent 4096-byte cookie
+// limit, then feed its persisted bytes into the real early boot script.
+function chunkedBootCookies(rejected) {
+    const cookies = {};
+    const saved = { ottplaylang: "_eng", ottplaylangmode: "manual" };
+    const document = {};
+    Object.defineProperty(document, "cookie", {
+        get() {
+            return Object.keys(cookies)
+                .map((key) => key + "=" + cookies[key])
+                .join("; ");
+        },
+        set(value) {
+            if (
+                Buffer.byteLength(value) > 4096 ||
+                (rejected && rejected(value))
+            )
+                return;
+            const pair = value.split(";")[0],
+                equals = pair.indexOf("="),
+                name = pair.slice(0, equals);
+            if (value.includes("1970")) delete cookies[name];
+            else cookies[name] = pair.slice(equals + 1);
+        },
+    });
+    const context = vm.createContext({
+        document,
+        localStorage: {
+            getItem(key) {
+                return Object.hasOwn(saved, key) ? saved[key] : null;
+            },
+            key(index) {
+                return Object.keys(saved)[index];
+            },
+            get length() {
+                return Object.keys(saved).length;
+            },
+            setItem() {
+                throw new Error("QuotaExceededError");
+            },
+        },
+    });
+    context.window = context;
+    const ts = require("typescript");
+    vm.runInContext(
+        ts.transpileModule(
+            fs
+                .readFileSync(
+                    path.join(__dirname, "../src/storage/index.ts"),
+                    "utf8"
+                )
+                .replace(/^export\s+/gm, ""),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.None,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText,
+        context
+    );
+    for (let i = 0; i < 8; i++)
+        context.storage.set(
+            "provider:" + i + ":" + "設定🎬".repeat(80),
+            "value"
+        );
+    context.storage.set("ottplaylang", "_rus");
+    context.storage.set("ottplaylangmode", "manual");
+    return cookies;
+}
+const marker = "ottplayStorageFallback";
+const chunkedCookies = chunkedBootCookies();
+assert(JSON.parse(decodeURIComponent(chunkedCookies[marker])).n > 1);
+const cookieHeader = (cookies) =>
+    Object.keys(cookies)
+        .map((key) => key + "=" + cookies[key])
+        .join("; ");
+function expectChunkedLanguage(cookies, language = "_rus", automatic = false) {
+    detectedLanguage(
+        {
+            cookie: cookieHeader(cookies),
+            navigator: { languages: ["fr-FR"] },
+            storage: { ottplaylang: "_eng", ottplaylangmode: "manual" },
+        },
+        language,
+        automatic
+    );
+}
+expectChunkedLanguage(chunkedCookies);
+expectChunkedLanguage(
+    { ...chunkedCookies, ottplaylangmode: "system" },
+    "_fra",
+    true
+);
+for (const corrupt of ["part", "manifest", "percent", "hash", "pending"]) {
+    const cookies = { ...chunkedCookies };
+    if (corrupt === "part") delete cookies[marker + ".0"];
+    if (corrupt === "manifest") delete cookies[marker];
+    if (corrupt === "percent") cookies[marker] = "%ZZ";
+    if (corrupt === "hash")
+        cookies[marker + ".0"] = encodeURIComponent("mismatched part");
+    if (corrupt === "pending") cookies[marker] = "pending";
+    expectChunkedLanguage(cookies);
+}
+expectChunkedLanguage({
+    [marker]: encodeURIComponent("[42]"),
+    ottplaylang: "_rus",
+});
+expectChunkedLanguage({ [marker]: "pending" }, "_fra", true);
+for (const rejected of [
+    (value) => value.startsWith(marker + ".1="),
+    (value) => value.startsWith(marker + "=%7B"),
+]) {
+    const cookies = chunkedBootCookies(rejected);
+    assert.equal(cookies[marker], "pending");
+    expectChunkedLanguage(cookies);
+}
 
 for (const storageError of ["access", "read"])
     detectedLanguage(

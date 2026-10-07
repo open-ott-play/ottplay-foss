@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv indstillinger",
     "Allow diagnostics for 10 minutes": "Tillad diagnostik i 10 minutter",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Tillad skærmbilleder i 10 minutter",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Tillad denne server at indsamle diagnostiske tællere og genstart denne stream eller medieafspiller. Midlertidig adgang varer 10 minutter. Pålidelig support forbliver tilgængelig efter genforbindelse eller genstart; hver optagelse udløber stadig efter 10 minutter. Samlingen sættes på pause, mens den er skjult eller offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Tillad denne server at indsamle afspilnings-, netværks- og inputtællere for denne forgrundssession. Kræver HTTPS og servertilladelse. Stopper efter 10 minutter, når den er skjult, eller når forbindelsen afbrydes.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Tillad denne server at anmode om billeder i 10 minutter. Billeder kan indeholde personlige oplysninger. I en browser skal du vælge afspillerfanen eller vinduet. Tilladelsen slutter ved genindlæsning eller afbrydelse.",
     "Allowlist this Device ID": "Føj dette enheds-ID til listen over tilladte",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "En HTTPS medieafspiller kan ikke downloade en HTTP EPG kilde. Brug en HTTPS-kilde.",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Spring 1 minut tilbage/frem",
     "Background color": "Baggrundsfarve",
     "Background color of selected item": "Baggrundsfarven for det valgte emne",
+    "Backup state changed": "Backup-tilstand ændret",
     "Balance, $": "Balance, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +114,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Sort skærm, når der skiftes kanal",
     Blue: "Blå",
+    "Bookmark age (days): %1": "Bogmærkealder (dage): %1",
     "Bookmark age: %1 days": "Bogmærke alder: %1 dage",
     "Browse folders": "Gennemse mapper",
     "Buffer Size, s": "Bufferstørrelse, s",
@@ -168,6 +170,9 @@ var keyStrings = {
     "Clear settings": "Ryd indstillinger",
     Close: "Luk",
     "Close PiP": "Luk PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Skylagring/indlæsning kræver STB-firmware (host_ott ikke indstillet)",
+    "Cloud transfer failed": "Skyoverførsel mislykkedes",
     Code: "Kode",
     Color: "Farve",
     "Color spectrum": "Farvespektrum",
@@ -186,6 +191,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Køretid for kompatibilitet kunne ikke indlæses. Åbn medieafspilleren igen for at prøve igen.",
     "Compatible HLS": "Kompatibel HLS",
+    "Complete pairing link": "Komplet parringslink",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurer All4you.tv i Indstillinger -> Udbyderindstillinger",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -258,22 +264,24 @@ var keyStrings = {
         "Konfigurer Шаравоз i Indstillinger -> Udbyderindstillinger",
     Connect: "Forbind",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Tilslut en HTTPS-kommandoserver, før du tillader skærmbilleder.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Tilslut en HTTPS kommandoserver for at bruge skærmbilleder.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Opret forbindelse til fjernstyring for at aktivere diagnostik.",
     "Connect this player to a command server first.":
         "Tilslut først denne medieafspiller til en kommandoserver.",
+    "Connect to TV": "Tilslut til TV",
     Connected: "Forbundet",
     "Connected. Waiting for the channel list...":
         "Forbundet. Venter på kanallisten...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Tilslutning af fjernbetjening giver denne server tilladelse til at diagnosticere og reparere afspilleren. Adgangen forbliver tilgængelig efter genstart og slutter, når du afbryder forbindelsen. Hver diagnostisk optagelse er begrænset til 10 minutter.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Tilslutning af fjerndiagnostik til den aktiverede fjernbetjeningsforbindelse.",
     "Connecting remote diagnostics for this page.":
         "Tilslutning af fjerndiagnostik for denne side.",
+    "Connecting securely to your TV...": "Sikker forbindelse til dit TV...",
     "Connecting to Plex…": "Opretter forbindelse til Plex...",
     "Connecting to Stalker portal...":
         "Opretter forbindelse til Stalker-portalen...",
@@ -293,6 +301,10 @@ var keyStrings = {
         "Kunne ikke oprette en parringsanmodning. Find serveren igen for at prøve igen.",
     "Could not load. Select to retry.":
         "Kunne ikke indlæse. Vælg for at prøve igen.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Kunne ikke forberede denne tekst. Forkort det, og prøv igen.",
+    "Could not protect the private link. Use a different browser.":
+        "Kunne ikke beskytte det private link. Brug en anden browser.",
     "Could not save provider settings.":
         "Kunne ikke gemme udbyderindstillingerne.",
     "Could not save the approved command server settings.":
@@ -310,6 +322,8 @@ var keyStrings = {
     "Delete category": "Slet kategori",
     "Delete channel": "Slet kanal",
     "Delete list": "Slet liste",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Levering kunne ikke bekræftes. Tjek dit tv, eller prøv den samme besked igen, før denne session udløber.",
     "Demo — moving test pattern": "Demo — bevægende testmønster",
     Description: "Beskrivelse",
     "Description of remote control buttons": "Knapguide til fjernbetjening",
@@ -343,7 +357,7 @@ var keyStrings = {
     "Edit channel link": "Rediger kanallink",
     "Edit playlist data": "Rediger playlistedetaljer",
     "Edit VPortal link": "Rediger VPortal link",
-    Editor: "Editor",
+    Editor: "Teksteditor",
     "Enable HTTP remote": "Aktiver HTTP fjernbetjening",
     English: "engelsk",
     "Enter a password (8 characters).": "Indtast en adgangskode (8 tegn).",
@@ -391,6 +405,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Indtast Stalker-portalens URL (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Indtast servernummer (%1).",
+    "Enter text": "Indtast tekst",
     "Enter the access code separately, not in the server address.":
         "Indtast adgangskoden separat, ikke i serveradressen.",
     "Enter the command server IP or address.":
@@ -542,8 +557,10 @@ var keyStrings = {
     "Interface transparency": "Grænsefladegennemsigtighed",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ugyldigt kanallink! Indtast hele værten som i udbyderens kontokontrolpanelstrøm URL (f.eks. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Ugyldigt svar på skyindstillinger",
     "Invalid protected source configuration":
         "Ugyldig beskyttet kildekonfiguration",
+    "Invalid setting": "Ugyldig indstilling",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one indstillinger",
@@ -623,6 +640,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ingen programmer matchede spillelistens kanaler og datoer. Tjek kilden og enhedens ur.",
     "No saved settings found": "Ingen gemte indstillinger fundet",
+    "No supported system language. Choose a language.":
+        "Intet understøttet systemsprog. Vælg et sprog.",
     "Not configured": "Ikke konfigureret",
     "Not found": "Ikke fundet",
     "Not reduce video when showing the list (bugfix)":
@@ -638,6 +657,8 @@ var keyStrings = {
     "not set": "ikke indstillet",
     Off: "Fra",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Kun dette TV kan acceptere din besked. Linket udløber efter 10 minutter.",
     Open: "Åbn",
     "Open in PiP": "Åbn i PiP",
     "Open Plex sign-in page": "Åbn Plex login-siden",
@@ -650,6 +671,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP-vært",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE indstillinger",
+    "OTT-play remote input": "OTT-play fjernindtastning",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 er tilgængelig. Vil du downloade og installere nu?",
     "Overwrite current settings?": "Vil du overskrive aktuelle indstillinger?",
@@ -682,6 +704,7 @@ var keyStrings = {
     Playback: "Afspilning",
     "Player and device info": "medieafspiller og enhedsoplysninger",
     "Player could not start": "medieafspilleren kunne ikke starte",
+    "Player default": "Afspillerens standardvalg",
     "Player info:": "medieafspiller oplysninger:",
     Playlist: "Afspilningsliste",
     "Playlist file": "Afspilningsliste fil",
@@ -703,6 +726,8 @@ var keyStrings = {
     Postpaid: "Bagudbetalt",
     PROST: "PROST",
     "PROST settings": "PROST indstillinger",
+    "Preferred audio language": "Foretrukket lydsprog",
+    "Preferred subtitle language": "Foretrukket undertekstsprog",
     Prepaid: "Forudbetalt",
     "Preparing secure remote input...": "Forbereder sikker fjerninput...",
     Prev: "Forrige",
@@ -735,14 +760,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Fjernbetjening (ingen talknapper)",
     "Remote control": "Fjernbetjening",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Fjernbetjening autoriserer diagnostik. Klar til en operatør.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Fjernbetjening autoriserer diagnostik. Venter på at oprette forbindelse igen.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Fjernstyring giver adgang til skærmbilleder af afspilleren, herunder indstillingerne. Billeder kan indeholde private oplysninger. Skærmbilleder direkte i appen kræver ikke yderligere godkendelse. I browseren skal du vælge billedkilden på denne enhed.",
     "Remote diagnostics": "Fjerndiagnostik",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Fjerndiagnostik indsamler for denne forbindelse (op til 10 minutter pr. session).",
     "Remote diagnostics is collecting for this page.":
         "Fjerndiagnostik indsamler til denne side.",
     "Remote diagnostics is off.": "Fjerndiagnostik er slået fra.",
@@ -756,10 +781,10 @@ var keyStrings = {
         "Fjernindgang er udløbet. Åbn en ny session for at prøve igen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Fjerninputsession er ikke tilgængelig. Åbn en ny session for at prøve igen.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Fjernskærmbilleder",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Fjernskærmbilleder er tilladt i 10 minutter. Luk indstillinger for at optage.",
+    "Remote screenshots are off.": "Fjernskærmbilleder er slået fra.",
     "Remote session expired": "Fjernsession udløb",
     "Remote text entry": "Fjernindtastning af tekst",
     "Remote text entry denied": "Fjernindtastning af tekst nægtet",
@@ -788,6 +813,7 @@ var keyStrings = {
     "Resume from archive?": "Genoptage fra arkiv?",
     Retry: "Prøv igen",
     "Retry EPG download": "Prøv at downloade EPG igen",
+    "Retry same message": "Prøv samme besked igen",
     "Return to previous channel": "Vend tilbage til den forrige kanal",
     Rewind: "Søg i videoen",
     "Rewind step by buttons %1/%2": "Spolingstrin for knapperne %1/%2",
@@ -805,19 +831,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Gem indstillinger og indlæs kanalliste",
     "Save settings to storage": "Gem indstillinger til lager",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Scan QR-koden på dit TV, eller indsæt dens komplette private parringslink nedenfor.",
     "Scan this QR code with your phone to enter text.":
         "Scan denne QR-kode med din telefon for at indtaste tekst.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Skærmdeling kunne ikke starte.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Skærmdeling blev annulleret eller er ikke tilgængelig.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Tilladelse til skærmbillede kunne ikke aktiveres.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Skærmbilleder er tilgængelige, mens der er forbindelse til fjernstyring.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Skærmbilleder er ikke tilgængelige på denne platform.",
     Script: "Manuskript",
     Search: "Søg",
+    "Search languages": "Søg efter sprog",
     "Search programme": "Søg program",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Sikker fjernindgang kunne ikke starte. Prøv venligst igen, eller brug skærmtastaturet.",
@@ -834,14 +863,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Vælg kilde til afspilningslisteskabelon for EPG og logoer",
     "Select Stalker portal": "Vælg Stalker-portal",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "Vælg skærmbilledekilde i browseren",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Vælg afspillerfanen eller vinduet i browserdelingsdialogen.",
     "Send request": "Send anmodning",
     "Send settings": "Send indstillinger",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Send denne kode fra din proxy i headeren Authorization: Bearer.",
+    "Send to TV": "Send til TV",
     Server: "Server",
     "Server address": "Serveradresse",
     "Server address (for example 192.168.1.20:8081)":
@@ -850,10 +879,13 @@ var keyStrings = {
     "Server URL": "Server URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Serveren er ikke tilgængelig. Forsøger automatisk igen; kontrollere dens adresse og netværksadgang.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Session afsluttet. Start en ny fra dit TV, når det er nødvendigt.",
     Set: "Indstil",
     "Set parental code": "Indstil forældrekode",
     "Set timer?": "Indstille timeren?",
     Settings: "Indstillinger",
+    "Settings changed while editing": "Indstillinger ændret under redigering",
     "Settings changed. Discovery was canceled.":
         "Indstillinger ændret. Discovery blev annulleret.",
     "Settings copied": "Indstillinger kopieret",
@@ -863,10 +895,15 @@ var keyStrings = {
     "Settings imported": "Indstillinger importeret",
     "Settings JSON": "Indstillinger JSON",
     "Settings loaded from storage": "Indstillinger indlæst fra lager",
+    "Settings received. Restarting player...":
+        "Indstillinger modtaget. Genstarter afspilleren...",
     "Settings STB": "STB indstillinger",
     "Settings saved": "Indstillinger gemt",
     "Settings saved to storage": "Indstillinger gemt på lager",
     "Settings sended!": "Indstillinger sendt!",
+    "Settings source changed": "Indstillingskilden ændret",
+    "Settings storage rejected write":
+        "Lageret til indstillinger afviste skrivningen",
     "Several command servers were found. Select one below.":
         "Der blev fundet flere kommandoservere. Vælg en nedenfor.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -919,12 +956,12 @@ var keyStrings = {
     "Starting...": "Starter...",
     Status: "Status",
     Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Stop browserdeling",
     "Stop current capture": "Stop aktuel optagelse",
     "Stop diagnostics": "Stop diagnosticering",
     "Stop playback and return to live":
         "Stop afspilning, og vend tilbage til direkte tv",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Stop skærmbilleder",
     "Stream could not be played": "Stream kunne ikke afspilles",
     "Stream type: %1": "Strømtype: %1",
     "String for search": "Søgeforespørgsel",
@@ -936,6 +973,7 @@ var keyStrings = {
     "Switch subtitle": "Skift undertekster",
     "Switch to this list": "Skift til denne liste",
     "Swop URL": "SWOP-URL",
+    "System language": "Systemsprog",
     "saved on this device": "gemt på denne enhed",
     select: "vælge",
     small: "lille",
@@ -943,15 +981,19 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox indstillinger",
     "Text is too long for remote input.": "Teksten er for lang til fjerninput.",
+    "Text is too long. Please shorten it before sending.":
+        "Teksten er for lang. Forkort det, før du sender.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Sendt tekst. Tjek dit tv for at bekræfte, at det dukkede op.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Kilden til browserens skærmbillede er klar.",
     "The command server discovery URL is invalid.":
         "Kommandoserveropdagelsen URL er ugyldig.",
     "The device ID in the address is invalid.":
         "Enheden ID i adressen er ugyldig.",
     "The discovery response is invalid.": "Opdagelsessvaret er ugyldigt.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Denne browser kan ikke identificere den valgte skærmbilledekilde.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Denne browser kan ikke sikkert parre automatisk. Opdater den, eller indtast kommandoserverindstillingerne manuelt.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -960,6 +1002,10 @@ var keyStrings = {
         "Denne HTTPS medieafspiller kan ikke oprette forbindelse til en HTTP server. Brug en HTTPS-server eller åbn medieafspilleren over HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Denne Play-app kræver HTTPS. Spørg din udbyder om en HTTPS afspilningsliste eller server URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Dette parringslink er udløbet. Åbn en ny session på dit tv.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Denne sikre session er utilgængelig eller udløbet. Åbn en ny session på TV'et, og brug dets komplette link.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: Skift til denne kanal?",
     "Timeshift: one minute back": "Tidsforskydning: et minut tilbage",
@@ -1009,6 +1055,8 @@ var keyStrings = {
         "Brug HTTP eller HTTPS uden brugernavn eller adgangskode i adressen.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Brug VENSTRE/HØJRE for at vælge en kontrol, OK for at aktivere den, og OP/NED for at rulle.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Brug hele linket, inklusive delen efter #. Del det ikke med andre.",
     "Use Up / Down to scroll. Back to close.":
         "Brug op/ned til at rulle. Tilbage for at lukke.",
     Username: "Brugernavn",

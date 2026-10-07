@@ -58,19 +58,19 @@ var keyStrings = {
     "All categories": "Všechny kategorie",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Nastavení All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Povolit diagnostiku na 10 minut",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Povolit snímky obrazovky na 10 minut",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Povolit tomuto serveru sběr diagnostických čítačů a restartování tohoto streamu nebo přehrávače. Dočasný přístup trvá 10 minut. Důvěryhodná podpora zůstává dostupná i po opětovném připojení nebo restartu; každá relace sběru dat končí po 10 minutách. Sběr se pozastaví, když je přehrávač skrytý nebo offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Umožněte tomuto serveru shromažďovat čítače přehrávání, sítě a vstupu pro tuto relaci na popředí. Vyžaduje HTTPS a oprávnění serveru. Zastaví se po 10 minutách, když je skrytý nebo když je odpojen.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Umožněte tomuto serveru požadovat obrázky po dobu 10 minut. Obrázky mohou obsahovat osobní údaje. V prohlížeči vyberte kartu nebo okno přehrávače. Oprávnění končí opětovným načtením nebo odpojením.",
     "Allowlist this Device ID": "Povolte toto ID zařízení",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Přehrávač HTTPS nemůže stáhnout zdroj HTTP EPG. Použijte zdroj HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP bez portu používá port HTTP 8081. Pro odpojení smažte adresu nebo zvolte Odpojit.",
     "Another source sign-in is already open":
@@ -89,9 +89,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archiv. Kanál: ",
     Aspect: "Poměr stran",
     Audio: "Zvuk",
-    Automatic: "Automatic",
+    Automatic: "Automaticky",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Automaticky přehrává podporované soubory přímo a v případě potřeby používá kompatibilní HLS.",
     alhabet: "aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž",
     always: "vždy",
     "and enter code": "a zadejte kód",
@@ -99,6 +99,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Zpět / vpřed o 1 minutu",
     "Background color": "Barva pozadí",
     "Background color of selected item": "Barva pozadí vybrané položky",
+    "Backup state changed": "Stav zálohy se změnil",
     "Balance, $": "Zůstatek, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -109,6 +110,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Černá obrazovka při přepínání kanálů",
     Blue: "Modrá",
+    "Bookmark age (days): %1": "Stáří záložky (dny): %1",
     "Bookmark age: %1 days": "Stáří záložky: %1 dní",
     "Browse folders": "Procházet složky",
     "Buffer Size, s": "Velikost vyrovnávací paměti, s",
@@ -150,21 +152,23 @@ var keyStrings = {
     "Channel parental control": "Rodičovská kontrola kanálu",
     Channels: "Kanály",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Zkontrolujte připojení a otevřete své knihovny Plex.",
     "Check this server's SWOP configuration.":
         "Zkontrolujte nastavení SWOP tohoto serveru.",
-    "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+    "Checking the Plex server connection…": "Kontrola připojení serveru Plex…",
     "Choose from": "Vybrat z",
     "Choose language": "Vyberte jazyk",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Vyberte server Plex",
     "Choose provider": "Vyberte poskytovatele",
     Classic: "Klasický",
     "Clear all settings?": "Smazat všechna nastavení?",
     "Clear settings": "Smazat nastavení",
     Close: "Zavřít",
     "Close PiP": "Zavřít PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Uložení/načtení do cloudu vyžaduje firmware STB (host_ott není nastaveno)",
+    "Cloud transfer failed": "Přenos do cloudu se nezdařil",
+    Code: "Přístupový kód",
     Color: "Barva",
     "Color spectrum": "Barevná paleta",
     "Command server": "Příkazový server",
@@ -181,7 +185,8 @@ var keyStrings = {
     "Command server found.": "Příkazový server nalezen.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Nepodařilo se načíst komponenty kompatibility. Otevřete přehrávač znovu.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Kompatibilní HLS",
+    "Complete pairing link": "Kompletní párovací odkaz",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nastavte All4you.tv v Nastavení -> Nastavení poskytovatele",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -215,7 +220,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Nastavte OTT Prime ONLINE v Nastavení -> Nastavení poskytovatele",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Nakonfigurujte Plex v Nastavení -> Nastavení poskytovatele",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Nastavte POLMEDIA v Nastavení -> Nastavení poskytovatele",
     "Configure PROST in Settings -> Provider Settings":
@@ -254,23 +259,25 @@ var keyStrings = {
         "Nastavte Шаравоз v Nastavení -> Nastavení poskytovatele",
     Connect: "Připojit",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Než povolíte snímky obrazovky, připojte příkazový server HTTPS.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Chcete-li používat snímky obrazovky, připojte příkazový server HTTPS.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Připojením dálkového ovládání povolte diagnostiku.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Nejprve připojte tento přehrávač k příkazovému serveru.",
+    "Connect to TV": "Připojte k televizoru",
     Connected: "Připojeno",
     "Connected. Waiting for the channel list...":
         "Připojeno. Čekání na seznam kanálů…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Připojení dálkového ovládání opravňuje tento server k diagnostice a opravě přehrávače. Přístup zůstane dostupný i po restartu a skončí po odpojení. Každé diagnostické zachycení je omezeno na 10 minut.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Připojení vzdálené diagnostiky pro aktivované připojení dálkového ovládání.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Připojování vzdálené diagnostiky pro tuto stránku.",
+    "Connecting securely to your TV...": "Bezpečné připojení k televizoru...",
+    "Connecting to Plex…": "Připojování k Plex…",
     "Connecting to Stalker portal...": "Připojování k portálu Stalker…",
     "Connecting...": "Připojování…",
     "Continue watching?": "Pokračovat ve sledování?",
@@ -281,12 +288,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Zkopírujte vybraný JSON pomocí příkazu kopírování v zařízení",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Nelze se připojit k Plex. Zkontrolujte adresu serveru, token a přístup k síti.",
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nepodařilo se vytvořit žádost o párování. Pro další pokus znovu vyhledejte server.",
     "Could not load. Select to retry.":
         "Načítání se nezdařilo. Vyberte pro opakování.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Tento text nelze připravit. Zkraťte jej a zkuste to znovu.",
+    "Could not protect the private link. Use a different browser.":
+        "Nelze ochránit soukromý odkaz. Použijte jiný prohlížeč.",
     "Could not save provider settings.":
         "Nastavení poskytovatele se nepodařilo uložit.",
     "Could not save the approved command server settings.":
@@ -304,6 +315,8 @@ var keyStrings = {
     "Delete category": "Smazat kategorii",
     "Delete channel": "Smazat kanál",
     "Delete list": "Smazat seznam",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Doručení se nepodařilo potvrdit. Zkontrolujte televizor nebo znovu odešlete stejnou zprávu před vypršením této relace.",
     "Demo — moving test pattern": "Demo — pohyblivý testovací obraz",
     Description: "Popis",
     "Description of remote control buttons": "Popis tlačítek ovladače",
@@ -317,7 +330,7 @@ var keyStrings = {
     "Diamond TV settings": "Nastavení Diamond TV",
     Director: "Režie",
     "Disable HTTP remote": "Vypnout ovládání HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "Zakažte důvěryhodnou vzdálenou podporu",
     "Disabled by default. Enabling creates a new device access code.":
         "Ve výchozím stavu vypnuto. Zapnutí vytvoří nový přístupový kód zařízení.",
     Disconnect: "Odpojit",
@@ -337,7 +350,7 @@ var keyStrings = {
     "Edit channel link": "Upravit odkaz na kanál",
     "Edit playlist data": "Upravit údaje playlistu",
     "Edit VPortal link": "Upravit odkaz VPortal",
-    Editor: "Editor",
+    Editor: "Textový editor",
     "Enable HTTP remote": "Zapnout ovládání HTTP",
     English: "Angličtina",
     "Enter a password (8 characters).": "Zadejte heslo (8 znaků).",
@@ -351,7 +364,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Pro přístup ke službě zadejte uživatelské jméno a heslo.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Zadejte platnou adresu serveru Plex a přístupový token.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Zadejte platnou adresu serveru, například 192.168.1.20:8081.",
     "Enter access key for": "Zadejte přístupový klíč pro",
@@ -368,8 +381,8 @@ var keyStrings = {
         "Zadejte MAC adresu (např. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Zadejte URL knihovny médií",
     "Enter new category name": "Zadejte nový název kategorie",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Zadejte adresu serveru Plex",
+    "Enter Plex token": "Zadejte token Plex",
     "Enter Provider Code": "Zadejte kód poskytovatele",
     "Enter Provider Code on PC or Phone":
         "Zadejte kód poskytovatele na počítači nebo telefonu",
@@ -384,6 +397,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Zadejte URL portálu Stalker (např. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Zadejte číslo serveru (%1).",
+    "Enter text": "Zadejte text",
     "Enter the access code separately, not in the server address.":
         "Zadejte přístupový kód odděleně od adresy serveru.",
     "Enter the command server IP or address.":
@@ -408,56 +422,57 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Zadejte URL serveru Xtream (např. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Zadejte svůj přístupový token Plex. Je uložena v profilu tohoto zařízení.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Zadejte adresu serveru Plex, například http://192.168.1.25:32400",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program a archiv. Kanál: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "Archiv EPG nebo XML je neplatný.",
+    "EPG cache and wait time: %1": "Mezipaměť EPG a doba čekání: %1",
+    "EPG cache updated: %1": "Aktualizace mezipaměti EPG: %1",
+    "EPG channels: %1": "Kanály EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG se nepodařilo spustit. Restartujte přehrávač, aby znovu načetl své soubory. Přehrávání se zastaví.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "Diagnostika EPG",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "Diagnostiku EPG nelze načíst. Chcete-li to zkusit znovu, otevřete jej.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Stahování EPG se nezdařilo. Zkontrolujte připojení, HTTPS a oprávnění CORS zdroje.",
+    "EPG download time: %1": "Čas stahování EPG: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Vypršel časový limit stahování EPG. Opakujte stahování.",
+    "EPG elapsed: %1": "Uplynulý čas EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "Chyba EPG. Otevřete Informace → Diagnostika EPG.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG překračuje limit zpracování zařízení. Použijte menší zdroj nebo kratší období archivu.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG se nespustil. Načtěte seznam skladeb M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
-    "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "Místní úložiště EPG je nedostupné nebo plné.",
+    "EPG processing and storage time: %1": "EPG doba zpracování a uložení: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "EPG zpracování zastaveno. Zkuste to znovu a zkontrolujte podporu prohlížeče.",
+    "EPG programmes: %1": "Programy EPG: %1",
+    "EPG progress: %1": "Průběh EPG: %1",
+    "EPG ready": "EPG připraven",
+    "EPG source returned HTTP %1": "Zdroj EPG vrátil HTTP %1",
+    "EPG source: %1": "Zdroj EPG: %1",
+    "EPG stopped during: %1": "EPG zastaveno během: %1",
+    "EPG unavailable on this browser":
+        "EPG není v tomto prohlížeči k dispozici",
+    "EPG unavailable: %1": "EPG nedostupné: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "Aktualizace EPG se nezdařila; používá se uložený programový průvodce",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG: stahování programového průvodce...",
+    "EPG: opening local cache...": "EPG: otevírání místní mezipaměti...",
+    "EPG: processing programme guide...":
+        "EPG: zpracování programového průvodce...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: aktualizace uloženého programového průvodce...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: čekání na jinou kartu přehrávače...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Chyba: Kategorie č. %1 neexistuje!<br>Vyberte jinou kategorii.",
     "ERROR!": "Chyba!",
@@ -493,7 +508,7 @@ var keyStrings = {
     "Finding command servers...": "Hledání příkazových serverů…",
     "First Run Setup": "Počáteční nastavení",
     "Fit to screen": "Přizpůsobit obrazovce",
-    Folders: "Folders",
+    Folders: "Složky",
     "Font type": "Druh písma",
     "For download settings file open": "Pro stažení souboru nastavení otevřete",
     "For enter value open": "Pro zadání hodnoty otevřete",
@@ -534,8 +549,10 @@ var keyStrings = {
     "Interface transparency": "Průhlednost rozhraní",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Neplatný odkaz na kanál! Zadejte úplný název hostitele z URL streamu v klientské sekci (např. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Neplatná odpověď nastavení cloudu",
     "Invalid protected source configuration":
         "Neplatná konfigurace chráněného zdroje",
+    "Invalid setting": "Neplatné nastavení",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Nastavení IpStream.one",
@@ -610,10 +627,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "V této síti nebyl nalezen příkazový server.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Pro tento účet nejsou k dispozici žádné servery Plex.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Žádné programy neodpovídají kanálům a datům seznamu stop. Zkontrolujte zdroj a hodiny zařízení.",
     "No saved settings found": "Uložená nastavení nebyla nalezena",
+    "No supported system language. Choose a language.":
+        "Žádný podporovaný systémový jazyk. Vyberte jazyk.",
     "Not configured": "Nenastaveno",
     "Not found": "Nenalezeno",
     "Not reduce video when showing the list (bugfix)":
@@ -629,18 +648,21 @@ var keyStrings = {
     "not set": "nenastaveno",
     Off: "Vypnuto",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Vaši zprávu může přijmout pouze tento televizor. Platnost odkazu vyprší po 10 minutách.",
     Open: "Otevřít",
     "Open in PiP": "Otevřít v PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Otevřete přihlašovací stránku Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Otevřete plex.tv/link v telefonu nebo počítači a zadejte tento kód.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Nebo otevřete tento úplný soukromý odkaz na jiném zařízení:",
+    "Original file": "Původní mediální soubor",
     "Original text: %1": "Původní text: %1",
     "OTT / APP host": "Server OTT / aplikace",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Nastavení OTT Prime ONLINE",
+    "OTT-play remote input": "Dálkový vstup OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Je k dispozici OttPlay FOSS %1. Stáhnout a nainstalovat nyní?",
     "Overwrite current settings?": "Přepsat aktuální nastavení?",
@@ -670,22 +692,23 @@ var keyStrings = {
     "PiP window position": "Umístění okna PiP",
     "PiP window size": "Velikost okna PiP",
     Play: "Přehrát",
-    Playback: "Playback",
+    Playback: "Přehrávání médií",
     "Player and device info": "Informace o přehrávači a zařízení",
     "Player could not start": "Přehrávač se nepodařilo spustit",
+    "Player default": "Výchozí volba přehrávače",
     "Player info:": "Informace o přehrávači:",
-    Playlist: "Playlist",
+    Playlist: "Seznam skladeb",
     "Playlist file": "Soubor playlistu",
     "Playlist is not loading directly...Loading via server...":
         "Playlist nelze načíst přímo. Načítání přes server…",
     "Playlist Name": "Název playlistu",
     "Playlist URL": "URL playlistu",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Připojení Plex se nezdařilo",
+    "Plex settings": "Nastavení Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Přihlášení Plex se nezdařilo. Zkontrolujte připojení a zkuste to znovu, nebo zadejte adresu serveru a token.",
+    "Plex token": "Token Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Nastavení POLMEDIA",
     "Portal URL": "URL portálu",
@@ -693,8 +716,11 @@ var keyStrings = {
     Postpaid: "Platba zpětně",
     PROST: "PROST",
     "PROST settings": "Nastavení PROST",
+    "Preferred audio language": "Preferovaný jazyk zvuku",
+    "Preferred subtitle language": "Preferovaný jazyk titulků",
     Prepaid: "Předplaceno",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Příprava zabezpečeného vzdáleného vstupu...",
     Prev: "Předchozí",
     "Preview in channel list": "Náhled v seznamu kanálů",
     Previous: "Předchozí kanál",
@@ -724,31 +750,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Ovladač bez číselných tlačítek",
     "Remote control": "Dálkové ovládání",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Dálkové ovládání autorizuje diagnostiku. Připraveno pro operátora.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Dálkové ovládání autorizuje diagnostiku. Čekání na opětovné připojení.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Dálkové ovládání obsahuje snímky obrazovky přehrávače včetně nastavení. Obrázky mohou obsahovat soukromé informace. Nativní zachycení nevyžaduje žádné další schválení. Prohlížeče vyžadují místní výběr zdroje zachycení.",
+    "Remote diagnostics": "Vzdálená diagnostika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Pro toto připojení se shromažďuje vzdálená diagnostika (až 10 minut na relaci).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Pro tuto stránku se shromažďuje vzdálená diagnostika.",
+    "Remote diagnostics is off.": "Vzdálená diagnostika je vypnutá.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Dálková diagnostika je připravena pro autorizovaného operátora.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Vzdálená diagnostika není na tomto přehrávači k dispozici.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Vzdálená diagnostika byla zastavena. Chcete-li udělit přístup, znovu jej povolte.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Platnost vzdáleného vstupu vypršela. Otevřete novou relaci a zkuste to znovu.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Relace vzdáleného vstupu není dostupná. Otevřete novou relaci a zkuste to znovu.",
+    "Remote screenshots": "Vzdálené snímky obrazovky",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Vzdálené snímky obrazovky jsou povoleny po dobu 10 minut. Chcete-li zachytit, zavřete nastavení.",
+    "Remote screenshots are off.": "Vzdálené snímky obrazovky jsou vypnuté.",
     "Remote session expired": "Platnost vzdálené relace vypršela",
     "Remote text entry": "Vzdálené zadávání textu",
     "Remote text entry denied": "Vzdálené zadávání textu bylo zamítnuto",
@@ -776,7 +802,8 @@ var keyStrings = {
     "Restart stream / Live": "Restartovat stream / živě",
     "Resume from archive?": "Pokračovat z archivu?",
     Retry: "Opakovat",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Opakujte stažení EPG",
+    "Retry same message": "Opakujte stejnou zprávu",
     "Return to previous channel": "Vrátit se na předchozí kanál",
     Rewind: "Přetáčení",
     "Rewind step by buttons %1/%2": "Krok přetáčení tlačítky %1/%2",
@@ -788,32 +815,35 @@ var keyStrings = {
     "Save & load channels": "Uložit a načíst kanály",
     "Save and load": "Uložit a načíst",
     "Save and load channels": "Uložit a načíst kanály",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Uložte a otevřete knihovnu",
     "Save Settings": "Uložit nastavení",
     "Save settings": "Uložit nastavení",
     "Save settings and load channel list":
         "Uložit nastavení a načíst seznam kanálů",
     "Save settings to storage": "Uložit nastavení do úložiště",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Naskenujte kód QR na svém televizoru nebo vložte jeho úplný soukromý odkaz na párování níže.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Naskenujte tento kód QR telefonem a zadejte text.",
+    "Screen sharing could not start.": "Sdílení obrazovky nelze spustit.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Sdílení obrazovky bylo zrušeno nebo je nedostupné.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Oprávnění ke snímku obrazovky nelze povolit.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Snímky obrazovky jsou k dispozici, když je připojeno dálkové ovládání.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Snímky obrazovky nejsou na této platformě dostupné.",
     Script: "Scénář",
     Search: "Hledat",
+    "Search languages": "Vyhledávání jazyků",
     "Search programme": "Hledat pořad",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Zabezpečený vzdálený vstup nelze spustit. Zkuste to znovu nebo použijte klávesnici na obrazovce.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Zabezpečený vzdálený vstup nelze spustit. Použijte prosím klávesnici na obrazovce.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Na tomto zařízení není k dispozici zabezpečený vzdálený vstup. Použijte klávesnici na obrazovce.",
     "Select a stream type:<br>%1": "Vyberte typ streamu:<br>%1",
     "Select category to add channel": "Vyberte kategorii pro přidání kanálu",
     "Select color": "Vyberte barvu",
@@ -824,13 +854,14 @@ var keyStrings = {
         "Vyberte šablonu playlistu pro EPG a loga",
     "Select Stalker portal": "Vybrat portál Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Vyberte zdroj snímku obrazovky v prohlížeči",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Vyberte kartu přehrávače nebo okno v dialogovém okně sdílení prohlížeče.",
     "Send request": "Odeslat požadavek",
     "Send settings": "Odeslat nastavení",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Odesílejte tento kód z proxy v hlavičce Authorization: Bearer.",
+    "Send to TV": "Odeslat do TV",
     Server: "Server",
     "Server address": "Adresa serveru",
     "Server address (for example 192.168.1.20:8081)":
@@ -839,10 +870,13 @@ var keyStrings = {
     "Server URL": "URL serveru",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server není dostupný. Pokus se automaticky opakuje; zkontrolujte adresu a přístup k síti.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Relace byla uzavřena. V případě potřeby spusťte na televizoru novou relaci.",
     Set: "Nastavit",
     "Set parental code": "Nastavte rodičovský kód",
     "Set timer?": "Nastavit časovač?",
     Settings: "Nastavení",
+    "Settings changed while editing": "Nastavení změněno během úprav",
     "Settings changed. Discovery was canceled.":
         "Nastavení se změnilo. Hledání bylo zrušeno.",
     "Settings copied": "Nastavení zkopírováno",
@@ -852,10 +886,14 @@ var keyStrings = {
     "Settings imported": "Nastavení importováno",
     "Settings JSON": "Nastavení ve formátu JSON",
     "Settings loaded from storage": "Nastavení načteno z úložiště",
+    "Settings received. Restarting player...":
+        "Nastavení přijato. Restartování přehrávače...",
     "Settings STB": "Nastavení zařízení",
     "Settings saved": "Nastavení uloženo",
     "Settings saved to storage": "Nastavení uloženo do úložiště",
     "Settings sended!": "Nastavení odesláno!",
+    "Settings source changed": "Zdroj nastavení změněn",
+    "Settings storage rejected write": "Úložiště nastavení odmítlo zápis",
     "Several command servers were found. Select one below.":
         "Bylo nalezeno několik příkazových serverů. Jeden vyberte níže.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -892,16 +930,16 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Znovu se přihlaste k chráněnému zdroji",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Přihlaste se ke svému účtu Plex a vyberte server. V tomto přehrávači není zadáno žádné heslo.",
+    "Sign in with Plex": "Přihlaste se pomocí Plex",
     "Sign in: %1": "Přihlásit se: %1",
     "Sign out of all sources": "Odhlásit se ze všech zdrojů",
     "Sign-in opens when you load a protected playlist.":
         "Přihlášení se otevře při načtení chráněného seznamu skladeb.",
     "Sleep timer": "Časovač vypnutí",
     "Sort channels": "Řadit kanály",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Přístup ke zdroji médií",
+    "Source sign-in required": "Je vyžadováno přihlášení ke zdroji",
     "Source sign-in was cancelled": "Přihlášení ke zdroji bylo zrušeno",
     "Stalker Portal Provider": "Poskytovatel portálu Stalker",
     "Stalker portal settings": "Nastavení portálu Stalker",
@@ -909,12 +947,12 @@ var keyStrings = {
     "Starting...": "Spouštění…",
     Status: "Stav",
     Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    "Stop browser sharing": "Zastavte sdílení prohlížeče",
+    "Stop current capture": "Zastavit aktuální sběr dat",
+    "Stop diagnostics": "Zastavit diagnostiku",
     "Stop playback and return to live":
         "Zastavit přehrávání a vrátit se k živému vysílání",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Zastavit snímky obrazovky",
     "Stream could not be played": "Stream se nepodařilo přehrát",
     "Stream type: %1": "Typ streamu: %1",
     "String for search": "Hledaný text",
@@ -926,15 +964,21 @@ var keyStrings = {
     "Switch subtitle": "Změnit titulky",
     "Switch to this list": "Přepnout na tento seznam",
     "Swop URL": "URL Swop",
+    "System language": "Systémový jazyk",
     "saved on this device": "uloženo v tomto zařízení",
     select: "vybrat",
     small: "malý",
     system: "systémový",
     Tabox: "Tabox",
     "Tabox settings": "Nastavení Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Text je pro vzdálený vstup příliš dlouhý.",
+    "Text is too long. Please shorten it before sending.":
+        "Text je příliš dlouhý. Před odesláním jej prosím zkraťte.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Text odeslán. Zkontrolujte svůj televizor a ověřte, že se objevil.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Zdroj snímku obrazovky prohlížeče je připraven.",
     "The command server discovery URL is invalid.":
         "URL pro hledání příkazového serveru je neplatná.",
     "The device ID in the address is invalid.":
@@ -942,7 +986,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Odpověď na požadavek vyhledávání je neplatná.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Tento prohlížeč nemůže identifikovat vybraný zdroj snímku obrazovky.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tento prohlížeč nepodporuje bezpečné automatické párování. Aktualizujte jej nebo zadejte nastavení příkazového serveru ručně.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -951,6 +995,10 @@ var keyStrings = {
         "Tento přehrávač HTTPS se nemůže připojit k serveru HTTP. Použijte server HTTPS nebo otevřete přehrávač přes HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Tato verze z Play vyžaduje HTTPS. Požádejte poskytovatele o HTTPS adresu playlistu nebo serveru.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Platnost tohoto párovacího odkazu vypršela. Otevřete na televizoru novou relaci.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Tato zabezpečená relace je nedostupná nebo vypršela její platnost. Otevřete v televizi novou relaci a použijte její úplný odkaz.",
     Timer: "Časovač",
     "Timer: switch to channel?": "Časovač: přepnout na kanál?",
     "Timeshift: one minute back": "Časový posun: o minutu zpět",
@@ -968,13 +1016,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Nastavení Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Důvěřujte tomuto serveru pro vzdálenou podporu",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Důvěryhodný přístup nelze odebrat z úložiště zařízení.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Důvěryhodná diagnostika není k dispozici, protože nebylo možné aktualizovat úložiště zařízení.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Důvěryhodná diagnostika čeká na opětovné připojení tohoto přehrávače.",
     "Try demo": "Vyzkoušet demo",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Nastavení TV DOSUG",
@@ -994,17 +1042,19 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Použijte HTTP nebo HTTPS adresu serveru.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Pro vzdálenou diagnostiku použijte příkazový server HTTPS.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Použijte HTTP nebo HTTPS bez uživatelského jména a hesla v adrese.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "VLEVO/VPRAVO — výběr prvku, OK — aktivace, NAHORU/DOLŮ — posouvání.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Použijte úplný odkaz, včetně části za #. Nesdílejte to s nikým jiným.",
     "Use Up / Down to scroll. Back to close.":
         "Posouvejte pomocí Nahoru / Dolů. Zpět zavře obrazovku.",
     Username: "Uživatelské jméno",
     "Username or password is missing.": "Chybí uživatelské jméno nebo heslo.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Platí 10 minut. Zpět zavře tuto relaci.",
     Version: "Verze",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Nastavení VIP-IP.COM",
@@ -1018,7 +1068,7 @@ var keyStrings = {
     "VPortal request failed":
         "Nepodařilo se načíst VPortal. Zkontrolujte odkaz, přístupový klíč a dostupnost portálu.",
     volume: "hlasitost",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Čekání na přihlášení…",
     "Wrong parental code !!!": "Nesprávný rodičovský kód!",
     "Xtream Codes Provider": "Poskytovatel Xtream Codes",
     "Xtream Codes settings": "Nastavení Xtream Codes",

@@ -59,19 +59,19 @@ var keyStrings = {
     "All categories": "Alla kategorier",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv-inställningar",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Tillåt diagnostik i 10 minuter",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Tillåt skärmdumpar i 10 minuter",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Tillåt den här servern att samla in diagnostikräknare och starta om strömmen eller spelaren. Tillfällig åtkomst varar i 10 minuter. Betrodd support förblir tillgänglig efter återanslutning eller omstart; varje insamling avslutas ändå efter 10 minuter. Insamlingen pausas när spelaren är dold eller offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Tillåt den här servern att samla uppspelnings-, nätverks- och inmatningsräknare för denna förgrundssession. Kräver HTTPS och serverbehörighet. Stoppar efter 10 minuter, när den är dold eller när den är frånkopplad.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Tillåt den här servern att begära bilder i 10 minuter. Bilder kan innehålla personlig information. I en webbläsare väljer du spelarfliken eller fönstret. Behörighet upphör vid omladdning eller frånkoppling.",
     "Allowlist this Device ID": "Tillåt detta enhets-ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "En HTTPS-spelare kan inte ladda ner en HTTP EPG-källa. Använd en HTTPS-källa.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "En IP-adress utan port använder HTTP-port 8081. Rensa adressen eller välj Koppla från för att stoppa.",
     "Another source sign-in is already open":
@@ -90,9 +90,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arkiv. Kanal: ",
     Aspect: "Bildförhållande",
     Audio: "Ljud",
-    Automatic: "Automatic",
+    Automatic: "Automatisk",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Automatisk spelar upp filer som stöds direkt och använder kompatibla HLS vid behov.",
     alhabet: "aàbcdeéfghijklmnopqrstuvwxyzåäö",
     always: "alltid",
     "and enter code": "och ange koden",
@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Bakåt / framåt 1 minut",
     "Background color": "Bakgrundsfärg",
     "Background color of selected item": "Bakgrundsfärg för valt objekt",
+    "Backup state changed": "Säkerhetskopiering har ändrats",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +112,7 @@ var keyStrings = {
         "Funktion för knapparna %1/%2 i listor",
     "Black screen while switching the channel": "Svart skärm vid kanalbyte",
     Blue: "Blå",
+    "Bookmark age (days): %1": "Bokmärkets ålder (dagar): %1",
     "Bookmark age: %1 days": "Bokmärkets ålder: %1 dagar",
     "Browse folders": "Bläddra bland mappar",
     "Buffer Size, s": "Buffertstorlek, s",
@@ -152,21 +154,24 @@ var keyStrings = {
     "Channel parental control": "Föräldrakontroll för kanal",
     Channels: "Kanaler",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Kontrollera anslutningen och öppna dina Plex-bibliotek.",
     "Check this server's SWOP configuration.":
         "Kontrollera den här serverns SWOP-konfiguration.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Kontrollerar Plex-serveranslutningen...",
     "Choose from": "Välj från",
     "Choose language": "Välj språk",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Välj Plex-server",
     "Choose provider": "Välj leverantör",
     Classic: "Klassisk",
     "Clear all settings?": "Rensa alla inställningar?",
     "Clear settings": "Rensa inställningar",
     Close: "Stäng",
     "Close PiP": "Stäng PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Att spara eller läsa in via molnet kräver STB-enhetens inbyggda programvara (host_ott är inte inställt)",
+    "Cloud transfer failed": "Molnöverföring misslyckades",
+    Code: "Åtkomstkod",
     Color: "Färg",
     "Color spectrum": "Färgpalett",
     "Command server": "Kommandoserver",
@@ -183,7 +188,8 @@ var keyStrings = {
     "Command server found.": "Kommandoserver hittades.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Kompatibilitetskomponenterna kunde inte läsas in. Öppna spelaren igen.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Kompatibel HLS",
+    "Complete pairing link": "Fullständig parkopplingslänk",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurera All4you.tv under Inställningar -> Leverantörsinställningar",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -217,7 +223,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Konfigurera OTT Prime ONLINE under Inställningar -> Leverantörsinställningar",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Konfigurera Plex i Inställningar -> Providerinställningar",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Konfigurera POLMEDIA under Inställningar -> Leverantörsinställningar",
     "Configure PROST in Settings -> Provider Settings":
@@ -256,23 +262,25 @@ var keyStrings = {
         "Konfigurera Шаравоз under Inställningar -> Leverantörsinställningar",
     Connect: "Anslut",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Anslut en HTTPS kommandoserver innan du tillåter skärmdumpar.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Anslut en HTTPS kommandoserver för att använda skärmdumpar.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Anslut fjärrstyrning för att aktivera diagnostik.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Anslut den här spelaren till en kommandoserver först.",
+    "Connect to TV": "Anslut till TV",
     Connected: "Ansluten",
     "Connected. Waiting for the channel list...":
         "Ansluten. Väntar på kanallistan…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "När fjärrstyrning ansluts får denna server tillåtelse att diagnostisera och reparera spelaren. Åtkomsten finns kvar efter omstart och upphör när du kopplar från. Varje insamling av diagnostikdata är begränsad till 10 minuter.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Ansluter fjärrdiagnostik för den aktiverade fjärrstyrningsanslutningen.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Ansluter fjärrdiagnostik för denna sida.",
+    "Connecting securely to your TV...": "Ansluter säkert till din TV...",
+    "Connecting to Plex…": "Ansluter till Plex...",
     "Connecting to Stalker portal...": "Ansluter till Stalker-portalen…",
     "Connecting...": "Ansluter…",
     "Continue watching?": "Fortsätta titta?",
@@ -283,12 +291,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Kopiera markerad JSON med enhetens kopieringskommando",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Kunde inte ansluta till Plex. Kontrollera serveradressen, token och nätverksåtkomst.",
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
     "Could not create a pairing request. Find the server again to retry.":
         "Kunde inte skapa en parkopplingsbegäran. Sök efter servern igen för att försöka på nytt.",
     "Could not load. Select to retry.":
         "Kunde inte ladda. Välj för att försöka igen.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Kunde inte förbereda denna text. Förkorta den och försök igen.",
+    "Could not protect the private link. Use a different browser.":
+        "Kunde inte skydda den privata länken. Använd en annan webbläsare.",
     "Could not save provider settings.":
         "Det gick inte att spara leverantörsinställningarna.",
     "Could not save the approved command server settings.":
@@ -306,6 +318,8 @@ var keyStrings = {
     "Delete category": "Ta bort kategori",
     "Delete channel": "Ta bort kanal",
     "Delete list": "Ta bort lista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Leverans kunde inte bekräftas. Kontrollera din TV eller försök med samma meddelande igen innan den här sessionen löper ut.",
     "Demo — moving test pattern": "Demo — rörlig testbild",
     Description: "Beskrivning",
     "Description of remote control buttons":
@@ -320,7 +334,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV-inställningar",
     Director: "Regissör",
     "Disable HTTP remote": "Inaktivera HTTP-fjärrkontroll",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "Inaktivera betrodd fjärrsupport",
     "Disabled by default. Enabling creates a new device access code.":
         "Inaktiverat som standard. Aktivering skapar en ny åtkomstkod för enheten.",
     Disconnect: "Koppla från",
@@ -354,7 +368,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Ange användarnamn och lösenord för att använda tjänsten.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Ange en giltig Plex-serveradress och åtkomsttoken.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Ange en giltig serveradress, t.ex. 192.168.1.20:8081.",
     "Enter access key for": "Ange åtkomstnyckel för",
@@ -371,8 +385,8 @@ var keyStrings = {
         "Ange MAC-adress (t.ex. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Ange mediebibliotekets URL",
     "Enter new category name": "Ange nytt kategorinamn",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Ange Plex serveradress",
+    "Enter Plex token": "Ange Plex-token",
     "Enter Provider Code": "Ange leverantörskod",
     "Enter Provider Code on PC or Phone":
         "Ange leverantörskod på dator eller telefon",
@@ -387,6 +401,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Ange Stalker-portalens URL (t.ex. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Ange servernumret (%1).",
+    "Enter text": "Skriv in text",
     "Enter the access code separately, not in the server address.":
         "Ange åtkomstkoden separat från serveradressen.",
     "Enter the command server IP or address.":
@@ -411,56 +426,56 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Ange Xtream-serverns URL (t.ex. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Ange din Plex-åtkomsttoken. Den sparas i den här enhetens profil.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Ange din Plex-serveradress, till exempel http://192.168.1.25:32400",
     EPG: "Programguide",
     "EPG and archive. Channel: ": "Programguide och arkiv. Kanal: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "EPG-arkivet eller XML är ogiltigt.",
+    "EPG cache and wait time: %1": "EPG cache och väntetid: %1",
+    "EPG cache updated: %1": "EPG cache uppdaterad: %1",
+    "EPG channels: %1": "EPG-kanaler: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG kunde inte startas. Starta om spelaren för att läsa in filerna igen. Uppspelningen stoppas.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG diagnostik",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "EPG-diagnostik kunde inte laddas. Öppna den igen för att försöka igen.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "EPG nedladdning misslyckades. Kontrollera anslutningen, HTTPS och källans CORS-behörigheter.",
+    "EPG download time: %1": "EPG nedladdningstid: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Tidsgräns för nedladdning av EPG. Försök att ladda ner igen.",
+    "EPG elapsed: %1": "EPG förflutit: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG-fel. Öppna Information → EPG diagnostik.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG överskrider enhetens bearbetningsgräns. Använd en mindre källa eller en kortare arkivperiod.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG har inte startat. Ladda en M3U-spellista.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG lokal lagring är inte tillgänglig eller full.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG bearbetning och lagringstid: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "EPG-behandling stoppad. Försök igen och kontrollera webbläsarstödet.",
+    "EPG programmes: %1": "EPG-program: %1",
+    "EPG progress: %1": "EPG framsteg: %1",
+    "EPG ready": "EPG redo",
+    "EPG source returned HTTP %1": "EPG källa returnerade HTTP %1",
+    "EPG source: %1": "EPG källa: %1",
+    "EPG stopped during: %1": "EPG stoppade under: %1",
+    "EPG unavailable on this browser":
+        "EPG inte tillgänglig i den här webbläsaren",
+    "EPG unavailable: %1": "EPG ej tillgänglig: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG-uppdateringen misslyckades; den sparade programguiden används",
+    "EPG: downloading programme guide...": "EPG: laddar ner programguide...",
+    "EPG: opening local cache...": "EPG: öppnar lokal cache...",
+    "EPG: processing programme guide...": "EPG: bearbetar programguiden...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: uppdaterar sparad programguide...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: väntar på en annan spelarflik...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Fel: Kategori #%1 finns inte!<br>Välj en annan kategori.",
     "ERROR!": "Fel!",
@@ -496,7 +511,7 @@ var keyStrings = {
     "Finding command servers...": "Söker efter kommandoservrar…",
     "First Run Setup": "Förstagångsinställning",
     "Fit to screen": "Anpassa till skärmen",
-    Folders: "Folders",
+    Folders: "Mappar",
     "Font type": "Typsnitt",
     "For download settings file open":
         "För att ladda ned inställningsfilen, öppna",
@@ -539,8 +554,10 @@ var keyStrings = {
     "Interface transparency": "Gränssnittets genomskinlighet",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ogiltig kanallänk! Ange hela värdnamnet från strömmens URL på kundkontot (t.ex. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Ogiltigt svar på molninställningar",
     "Invalid protected source configuration":
         "Ogiltig konfiguration för skyddad källa",
+    "Invalid setting": "Ogiltig inställning",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one-inställningar",
@@ -616,10 +633,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Ingen kommandoserver hittades i det här nätverket.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Inga Plex-servrar är tillgängliga för detta konto.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Inga program matchade spellistans kanaler och datum. Kontrollera källan och enhetens klocka.",
     "No saved settings found": "Inga sparade inställningar hittades",
+    "No supported system language. Choose a language.":
+        "Inget systemspråk som stöds. Välj ett språk.",
     "Not configured": "Inte konfigurerat",
     "Not found": "Hittades inte",
     "Not reduce video when showing the list (bugfix)":
@@ -635,18 +654,21 @@ var keyStrings = {
     "not set": "inte inställt",
     Off: "Av",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Endast denna TV kan acceptera ditt meddelande. Länken upphör att gälla efter 10 minuter.",
     Open: "Öppna",
     "Open in PiP": "Öppna i PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Öppna Plex inloggningssida",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Öppna plex.tv/link på din telefon eller dator och ange den här koden.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Eller öppna den här fullständiga privata länken på en annan enhet:",
+    "Original file": "Original mediafil",
     "Original text: %1": "Originaltext: %1",
     "OTT / APP host": "OTT- / appserver",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-inställningar",
+    "OTT-play remote input": "OTT-play fjärrinmatning",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 är tillgängligt. Ladda ned och installera nu?",
     "Overwrite current settings?": "Skriva över aktuella inställningar?",
@@ -676,9 +698,10 @@ var keyStrings = {
     "PiP window position": "PiP-fönstrets placering",
     "PiP window size": "PiP-fönstrets storlek",
     Play: "Spela",
-    Playback: "Playback",
+    Playback: "Mediauppspelning",
     "Player and device info": "Spelar- och enhetsinformation",
     "Player could not start": "Spelaren kunde inte starta",
+    "Player default": "Spelarens standardval",
     "Player info:": "Spelarinformation:",
     Playlist: "Spellista",
     "Playlist file": "Spellistefil",
@@ -687,10 +710,10 @@ var keyStrings = {
     "Playlist Name": "Spellistans namn",
     "Playlist URL": "Spellistans URL",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Plex-anslutningen misslyckades",
+    "Plex settings": "Plex-inställningar",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+        "Plex-inloggning misslyckades. Kontrollera anslutningen och försök igen, eller ange serveradress och token.",
     "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA-inställningar",
@@ -700,8 +723,10 @@ var keyStrings = {
     Postpaid: "Efterskottsbetalning",
     PROST: "PROST",
     "PROST settings": "PROST-inställningar",
+    "Preferred audio language": "Föredraget ljudspråk",
+    "Preferred subtitle language": "Föredraget undertextspråk",
     Prepaid: "Förskottsbetalning",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...": "Förbereder säker fjärrinmatning...",
     Prev: "Föregående",
     "Preview in channel list": "Förhandsvisning i kanallistan",
     Previous: "Föregående kanal",
@@ -733,31 +758,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Fjärrkontroll utan sifferknappar",
     "Remote control": "Fjärrkontroll",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Fjärrstyrning tillåter diagnostik. Redo för en operatör.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Fjärrstyrning tillåter diagnostik. Väntar på återanslutning.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Fjärrstyrning omfattar skärmbilder av spelaren, inklusive inställningarna. Bilderna kan innehålla privat information. Direkt bildinsamling i appen kräver inget extra godkännande. I webbläsare måste bildkällan väljas lokalt på enheten.",
+    "Remote diagnostics": "Fjärrdiagnostik",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Fjärrdiagnostik samlas in för denna anslutning (upp till 10 minuter per session).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Fjärrdiagnostik samlas in för den här sidan.",
+    "Remote diagnostics is off.": "Fjärrdiagnostik är avstängd.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Fjärrdiagnostik är redo för en auktoriserad operatör.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Fjärrdiagnostik är inte tillgänglig på den här spelaren.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Fjärrdiagnostik stoppad. Aktivera den igen för att ge åtkomst.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Fjärrinmatningen har gått ut. Öppna en ny session för att försöka igen.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Fjärrinmatningssession är inte tillgänglig. Öppna en ny session för att försöka igen.",
+    "Remote screenshots": "Fjärrstyrda skärmdumpar",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Fjärrstyrda skärmdumpar tillåts i 10 minuter. Stäng inställningarna för att fånga.",
+    "Remote screenshots are off.": "Fjärrstyrda skärmdumpar är avstängda.",
     "Remote session expired": "Fjärrsessionen har gått ut",
     "Remote text entry": "Fjärrinmatning av text",
     "Remote text entry denied": "Fjärrinmatning av text nekades",
@@ -785,7 +810,8 @@ var keyStrings = {
     "Restart stream / Live": "Starta om strömmen / direktsändning",
     "Resume from archive?": "Fortsätta från arkivet?",
     Retry: "Försök igen",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Försök att ladda ner EPG igen",
+    "Retry same message": "Försök med samma meddelande igen",
     "Return to previous channel": "Återgå till föregående kanal",
     Rewind: "Spola",
     "Rewind step by buttons %1/%2": "Spolningssteg för knapparna %1/%2",
@@ -797,32 +823,35 @@ var keyStrings = {
     "Save & load channels": "Spara och läs in kanaler",
     "Save and load": "Spara och läs in",
     "Save and load channels": "Spara och läs in kanaler",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Spara och öppna bibliotek",
     "Save Settings": "Spara inställningar",
     "Save settings": "Spara inställningar",
     "Save settings and load channel list":
         "Spara inställningar och läs in kanallistan",
     "Save settings to storage": "Spara inställningar i lagring",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skanna QR-koden på din TV, eller klistra in dess fullständiga privata ihopkopplingslänk nedan.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Skanna den här QR-koden med din telefon för att skriva in text.",
+    "Screen sharing could not start.": "Skärmdelning kunde inte startas.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Skärmdelning avbröts eller är inte tillgänglig.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Skärmbildsbehörighet kunde inte aktiveras.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Skärmbilder är tillgängliga när fjärrstyrning är ansluten.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Skärmdumpar är inte tillgängliga på den här plattformen.",
     Script: "Manus",
     Search: "Sök",
+    "Search languages": "Sök efter språk",
     "Search programme": "Sök program",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Säker fjärrinmatning kunde inte startas. Försök igen eller använd tangentbordet på skärmen.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Säker fjärrinmatning kunde inte startas. Använd tangentbordet på skärmen.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Säker fjärrinmatning är inte tillgänglig på den här enheten. Använd tangentbordet på skärmen.",
     "Select a stream type:<br>%1": "Välj strömtyp:<br>%1",
     "Select category to add channel": "Välj kategori att lägga till kanalen i",
     "Select color": "Välj färg",
@@ -832,14 +861,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Välj spellistemall för programguide och logotyper",
     "Select Stalker portal": "Välj Stalker-portal",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "Välj skärmdumpkälla i webbläsaren",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Välj spelarfliken eller fönstret i webbläsarens delningsdialog.",
     "Send request": "Skicka begäran",
     "Send settings": "Skicka inställningar",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Skicka koden från din proxy i rubriken Authorization: Bearer.",
+    "Send to TV": "Skicka till TV",
     Server: "Server",
     "Server address": "Serveradress",
     "Server address (for example 192.168.1.20:8081)":
@@ -848,10 +877,13 @@ var keyStrings = {
     "Server URL": "Serverns URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Servern är inte tillgänglig. Försöker igen automatiskt; kontrollera adressen och nätverksåtkomsten.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Session avslutad. Starta en ny från din TV när det behövs.",
     Set: "Ställ in",
     "Set parental code": "Ställ in föräldrakod",
     "Set timer?": "Ställa in timer?",
     Settings: "Inställningar",
+    "Settings changed while editing": "Inställningar ändrade under redigering",
     "Settings changed. Discovery was canceled.":
         "Inställningarna ändrades. Sökningen avbröts.",
     "Settings copied": "Inställningarna har kopierats",
@@ -861,10 +893,15 @@ var keyStrings = {
     "Settings imported": "Inställningarna har importerats",
     "Settings JSON": "Inställningar i JSON-format",
     "Settings loaded from storage": "Inställningar inlästa från lagring",
+    "Settings received. Restarting player...":
+        "Inställningar mottagna. Startar om spelaren...",
     "Settings STB": "Enhetsinställningar",
     "Settings saved": "Inställningarna sparades",
     "Settings saved to storage": "Inställningar sparade i lagring",
     "Settings sended!": "Inställningarna skickades!",
+    "Settings source changed": "Inställningskälla ändrad",
+    "Settings storage rejected write":
+        "Inställningslagringen nekade skrivningen",
     "Several command servers were found. Select one below.":
         "Flera kommandoservrar hittades. Välj en nedan.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -900,29 +937,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Logga in på den skyddade källan igen",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Logga in på ditt Plex-konto och välj en server. Inget lösenord har angetts i denna spelare.",
+    "Sign in with Plex": "Logga in med Plex",
     "Sign in: %1": "Logga in: %1",
     "Sign out of all sources": "Logga ut från alla källor",
     "Sign-in opens when you load a protected playlist.":
         "Inloggningen öppnas när du läser in en skyddad spellista.",
     "Sleep timer": "Insomningstimer",
     "Sort channels": "Sortera kanaler",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Åtkomst till mediakällan",
+    "Source sign-in required": "Källinloggning krävs",
     "Source sign-in was cancelled": "Inloggningen till källan avbröts",
     "Stalker Portal Provider": "Stalker-portalleverantör",
     "Stalker portal settings": "Inställningar för Stalker-portal",
     "Stalker portals": "Stalker-portaler",
     "Starting...": "Startar…",
     Status: "Status",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Stopp",
+    "Stop browser sharing": "Stoppa webbläsardelning",
+    "Stop current capture": "Stoppa pågående insamling",
+    "Stop diagnostics": "Stoppa diagnostik",
     "Stop playback and return to live":
         "Stoppa uppspelning och återgå till direktsändning",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Stoppa skärmdumpar",
     "Stream could not be played": "Strömmen kunde inte spelas upp",
     "Stream type: %1": "Strömtyp: %1",
     "String for search": "Söktext",
@@ -934,22 +971,28 @@ var keyStrings = {
     "Switch subtitle": "Byt undertext",
     "Switch to this list": "Byt till den här listan",
     "Swop URL": "Swop-URL",
+    "System language": "Systemspråk",
     "saved on this device": "sparat på den här enheten",
     select: "välj",
     small: "liten",
     system: "systemets",
     Tabox: "Tabox",
     "Tabox settings": "Tabox-inställningar",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Texten är för lång för fjärrinmatning.",
+    "Text is too long. Please shorten it before sending.":
+        "Texten är för lång. Förkorta den innan du skickar.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Texten har skickats. Kontrollera att den visas på din TV.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Källan för webbläsarens skärmdump är klar.",
     "The command server discovery URL is invalid.":
         "URL:en för att söka kommandoserver är ogiltig.",
     "The device ID in the address is invalid.":
         "Enhets-ID:t i adressen är ogiltigt.",
     "The discovery response is invalid.": "Svaret på sökningen är ogiltigt.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Den här webbläsaren kan inte identifiera den valda skärmdumpskällan.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Den här webbläsaren stöder inte säker automatisk parkoppling. Uppdatera den eller ange kommandoserverns inställningar manuellt.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -958,6 +1001,10 @@ var keyStrings = {
         "Denna HTTPS-spelare kan inte ansluta till en HTTP-server. Använd en HTTPS-server eller öppna spelaren via HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Denna Play-app kräver HTTPS. Be leverantören om en HTTPS-adress till spellistan eller servern.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Denna sammankopplingslänk har upphört att gälla. Öppna en ny session på din TV.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Denna säkra session är inte tillgänglig eller har löpt ut. Öppna en ny session på TV:n och använd hela länken till den.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: byta kanal?",
     "Timeshift: one minute back": "Tidsförskjutning: en minut bakåt",
@@ -976,13 +1023,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-inställningar",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Lita på den här servern för fjärrsupport",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Pålitlig åtkomst kunde inte tas bort från enhetslagring.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Pålitlig diagnostik är inte tillgänglig eftersom enhetslagring inte kunde uppdateras.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Pålitlig diagnostik väntar på att spelaren ska återanslutas.",
     "Try demo": "Prova demo",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG-inställningar",
@@ -1002,17 +1049,19 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Använd en HTTP- eller HTTPS-serveradress.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Använd en HTTPS kommandoserver för fjärrdiagnostik.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Använd HTTP eller HTTPS utan användarnamn eller lösenord i adressen.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Använd VÄNSTER/HÖGER för att välja, OK för att aktivera och UPP/NED för att rulla.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Använd hela länken, inklusive delen efter #. Dela det inte med någon annan.",
     "Use Up / Down to scroll. Back to close.":
         "Använd Upp / Ned för att rulla. Tillbaka för att stänga.",
     Username: "Användarnamn",
     "Username or password is missing.": "Användarnamn eller lösenord saknas.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Giltig i 10 minuter. Tillbaka stänger denna session.",
     Version: "Version",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM-inställningar",
@@ -1025,7 +1074,7 @@ var keyStrings = {
     "VPortal request failed":
         "Kunde inte läsa in VPortal. Kontrollera länken, åtkomstnyckeln och portalens tillgänglighet.",
     volume: "volym",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Väntar på inloggning...",
     "Wrong parental code !!!": "Fel föräldrakod!",
     "Xtream Codes Provider": "Xtream Codes-leverantör",
     "Xtream Codes settings": "Xtream Codes-inställningar",

@@ -1323,14 +1323,14 @@ for (const profile of ["server", "tauri"]) {
                 [
                     "english",
                     "Resume from archive?",
-                    "Bookmark age: 0 days",
+                    "Bookmark age (days): 0",
                     "Yes",
                     "No",
                 ],
                 [
                     "russian",
                     "Продолжить из архива?",
-                    "Давность закладки: 0 дн.",
+                    "Давность закладки (дни): 0",
                     "Да",
                     "Нет",
                 ],
@@ -1396,12 +1396,16 @@ for (const profile of ["server", "tauri"]) {
                         await expect(dialog).not.toContainText(
                             /<br\s*\/?\s*>/i
                         );
+                        await expect(
+                            dialog.locator(".localized-text > br")
+                        ).toHaveCount(2);
                         await expect(dialog.locator("center > br")).toHaveCount(
-                            4
+                            2
                         );
                         const lines = await dialog.evaluate((element) => {
                             const nodes = [
-                                ...element.firstElementChild.childNodes,
+                                ...element.querySelector(".localized-text")
+                                    .childNodes,
                             ].filter(
                                 (node) =>
                                     node.nodeType === Node.TEXT_NODE &&
@@ -1474,7 +1478,10 @@ for (const profile of ["server", "tauri"]) {
                 }, markup);
                 const dialog = page.locator("#dialogbox");
                 await expect(dialog).toBeVisible();
-                await expect(dialog.locator("center > br")).toHaveCount(8);
+                await expect(dialog.locator("center > br")).toHaveCount(2);
+                await expect(
+                    dialog.locator(".localized-text > br")
+                ).toHaveCount(6);
                 await expect(
                     dialog.locator("img, svg, script, br[onclick]")
                 ).toHaveCount(0);

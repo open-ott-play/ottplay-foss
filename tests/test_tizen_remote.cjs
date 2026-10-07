@@ -8,6 +8,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const { JSDOM } = require("jsdom");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 
 const root = path.resolve(__dirname, "..");
 function source(file, names) {
@@ -42,7 +44,8 @@ const adapters = {
     typescript: source("src/devices/samsung/tizen/device.ts"),
 };
 let handlers =
-    source("src/localization/assets.ts") +
+    localizationRuntime() +
+    source("src/utils/helpers.ts", ["metadataText"]) +
     source("src/core/index.ts", ["stbEventToKeyCode"]) +
     source("src/key-handler/index.ts", [
         "cancelNativeListInertia",
@@ -50,7 +53,11 @@ let handlers =
         "handleMainKey",
         "toggleMainPlayback",
     ]) +
-    source("src/index.ts", ["selectLang", "checkTauriUpdatesAfterLanguage"]) +
+    source("src/index.ts", [
+        "selectLang",
+        "loadInterfaceLanguage",
+        "checkTauriUpdatesAfterLanguage",
+    ]) +
     source("src/provider/index.ts", ["firstRun"]);
 const useBundle = process.argv.includes("--bundle");
 if (useBundle) {
@@ -95,16 +102,18 @@ if (useBundle) {
         "handleMainKey",
         "toggleMainPlayback",
         "selectLang",
+        "loadInterfaceLanguage",
         "checkTauriUpdatesAfterLanguage",
-        "languageNames",
-        "languageAssetPath",
+        "metadataText",
         "firstRun",
         "stbEventToKeyCode",
         "legacyPlayerBindings",
         "installEnglishPlayerAliases",
     ])
         includeDeclaration(name);
-    handlers = Array.from(selected.values()).join("\n");
+    handlers =
+        localizationRuntime("dist/player.js") +
+        Array.from(selected.values()).join("\n");
 }
 
 // Independent platform contract, from Samsung's Remote Control guide:
@@ -148,10 +157,18 @@ const officialCodes = {
 function fixture(code, nativeMode = "working") {
     const calls = [];
     const registered = [];
-    const elements = {};
+    const dom = new JSDOM("<!doctype html><html><body></body></html>");
+    const document = dom.window.document;
+    const elements = { body: document.body, html: document.documentElement };
     const storage = { ottplaylang: "_eng" };
     function element(id) {
-        return (elements[id] ||= { innerHTML: "", style: {} });
+        if (!elements[id]) {
+            const node = document.createElement("div");
+            node.id = id;
+            document.body.appendChild(node);
+            elements[id] = node;
+        }
+        return elements[id];
     }
     const chain = { hide() {}, is: () => false };
     const baseInit = () => {
@@ -164,11 +181,7 @@ function fixture(code, nativeMode = "working") {
         baseStbInit: baseInit,
         btnDiv: () => "",
         console: { log() {} },
-        document: {
-            body: element("body"),
-            documentElement: element("html"),
-            getElementById: element,
-        },
+        document,
         edit_dealer() {},
         edit_dealer_remote() {},
         focus() {},
@@ -178,6 +191,7 @@ function fixture(code, nativeMode = "working") {
         isSelectBox: false,
         listCaptionElement: element("listCaption"),
         listDetail: element("listDetail"),
+        listElement: element("list_window"),
         listPodval: element("listPodval"),
         loadProv(provider) {
             calls.push(["loadProv", provider]);
@@ -241,7 +255,15 @@ function fixture(code, nativeMode = "working") {
             stopPropagation() {},
         });
     }
-    return { calls, elements, key, registered, storage, w };
+    return {
+        calls,
+        close: () => dom.window.close(),
+        elements,
+        key,
+        registered,
+        storage,
+        w,
+    };
 }
 
 for (const [name, code] of Object.entries(adapters)) {
@@ -353,7 +375,9 @@ for (const [name, code] of Object.entries(adapters)) {
         broken.w.selectLang();
         broken.key(13);
         assert.equal(broken.elements.listCaption.innerHTML, "First Run Setup");
+        broken.close();
     }
+    f.close();
 }
 console.log(
     "Samsung Tizen remote keys, real UI handlers and registration failures passed (" +

@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { webcrypto } = require("node:crypto");
 const ts = require("typescript");
-function load(file, dependencies = {}) {
+function load(file, dependencies = {}, locales) {
     const source = ts.transpileModule(
         fs.readFileSync(path.join(__dirname, "..", file), "utf8"),
         {
@@ -15,11 +15,13 @@ function load(file, dependencies = {}) {
     ).outputText;
     require("acorn").parse(source, { ecmaVersion: 5 });
     const module = { exports: {} };
-    new Function("require", "module", "exports", source)(
-        (id) => dependencies[id],
-        module,
-        module.exports
-    );
+    new Function(
+        "require",
+        "module",
+        "exports",
+        "__OTT_PHONE_LOCALES__",
+        source
+    )((id) => dependencies[id], module, module.exports, locales);
     return module.exports;
 }
 const core = load("src/swop/herenow.ts");
@@ -417,6 +419,7 @@ async function main() {
                     });
                 }
             };
+            tv.__ottInterfaceLanguage = "_rus";
             const ui = load("src/swop/herenow-ui.ts", { "./herenow": core });
             async function until(predicate) {
                 const deadline = Date.now() + 2000;
@@ -450,7 +453,11 @@ async function main() {
                         "offer",
                         record.offer
                     ),
-                    { caption: "Title filter", draft: "old filter" }
+                    {
+                        caption: "Title filter",
+                        draft: "old filter",
+                        language: "_rus",
+                    }
                 );
                 record.reply = await core.hereNowSeal(phone, pairing, "reply", {
                     value: "РЕН ТВ",
@@ -533,12 +540,14 @@ async function main() {
                 offer: await core.hereNowSeal(w, first, "offer", {
                     caption: "First",
                     draft: "first draft",
+                    language: "_rus",
                 }),
             });
             records.set(second.recordId, {
                 offer: await core.hereNowSeal(w, second, "offer", {
                     caption: "Second",
                     draft: "second draft",
+                    language: "_ara",
                 }),
             });
             const dom = new JSDOM(
@@ -584,6 +593,24 @@ async function main() {
                 send(body) {
                     queueMicrotask(() => {
                         const id = this.url.split("/").pop();
+                        if (/^_(rus|ara)\.json$/.test(id)) {
+                            const {
+                                readDictionary,
+                                languageAssets,
+                            } = require("../scripts/localization-catalog.cjs");
+                            this.status = 200;
+                            this.responseText = JSON.stringify(
+                                readDictionary(
+                                    path.join(
+                                        __dirname,
+                                        "..",
+                                        languageAssets[id.slice(0, -5)]
+                                    )
+                                )
+                            );
+                            this.onload();
+                            return;
+                        }
                         if (this.method === "PATCH") {
                             writes.push({ body: JSON.parse(body), id });
                             records.set(id, {
@@ -599,7 +626,18 @@ async function main() {
                     });
                 }
             };
-            phone.require = () => phoneCore;
+            const assets = load("src/localization/assets.ts");
+            const localization = load(
+                "src/swop/phone-localization.ts",
+                { "../localization/assets": assets },
+                { _ara: "/_ara.json", _rus: "/_rus.json" }
+            );
+            phone.require = (id) =>
+                id === "./herenow"
+                    ? phoneCore
+                    : id === "./phone-localization"
+                      ? localization
+                      : assets;
             phone.exports = {};
             const source = ts.transpileModule(
                 fs.readFileSync(
@@ -628,6 +666,7 @@ async function main() {
                 phone.eval(source);
                 await until(() => !element("entry").hidden);
                 assert.equal(phone.location.hash, "");
+                assert.equal(phone.document.documentElement.lang, "ru");
                 element("value").value = '"'.repeat(4096);
                 submit();
                 assert.equal(element("value").readOnly, false);
@@ -645,14 +684,18 @@ async function main() {
                 );
                 assert.equal(phone.location.hash, "");
                 assert.equal(element("value").readOnly, false);
+                assert.equal(phone.document.documentElement.lang, "ar");
+                assert.equal(phone.document.documentElement.dir, "rtl");
                 releaseOld();
                 await new Promise((resolve) => setImmediate(resolve));
                 element("value").value = "new response";
                 submit();
+                const expectedSent =
+                    require("../scripts/localization-catalog.cjs").readDictionary(
+                        path.join(__dirname, "../locales/arabic.js")
+                    )["Text sent. Check your TV to confirm it appeared."];
                 await until(
-                    () =>
-                        element("status").textContent.indexOf("Text sent.") ===
-                        0
+                    () => element("status").textContent === expectedSent
                 );
                 assert.equal(writes.length, 1);
                 assert.equal(writes[0].id, second.recordId);

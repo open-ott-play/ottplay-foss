@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
@@ -395,23 +396,7 @@ check(
             f.mount();
             const notices = [];
             f.w.showShift = (message) => notices.push(message);
-            vm.runInContext(
-                ts
-                    .transpileModule(
-                        fs.readFileSync(
-                            require.resolve("../src/localization/index.ts"),
-                            "utf8"
-                        ),
-                        {
-                            compilerOptions: {
-                                module: ts.ModuleKind.ES2015,
-                                target: ts.ScriptTarget.ES5,
-                            },
-                        }
-                    )
-                    .outputText.replace(/^export /gm, ""),
-                f.w
-            );
+            vm.runInContext(localizationRuntime(), f.w);
             vm.runInContext(
                 fs.readFileSync(
                     require.resolve("../locales/russian.js"),

@@ -59,19 +59,19 @@ var keyStrings = {
     "All categories": "כל הקטגוריות",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "הגדרות All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "אפשר אבחון למשך 10 דקות",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "אפשר צילומי מסך למשך 10 דקות",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "אפשר לשרת זה לאסוף מוני אבחון ולהפעיל מחדש את הזרם או הנגן הזה. גישה זמנית נמשכת 10 דקות. תמיכה מהימנה נשארת זמינה לאחר חיבור מחדש או הפעלה מחדש; כל איסוף נתונים מסתיים לאחר 10 דקות. האיסוף מושהה כשהנגן מוסתר או לא מקוון.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "אפשר לשרת זה לאסוף מוני הפעלה, רשת וקלט עבור הפעלה זו בחזית. דורש HTTPS והרשאת שרת. מפסיק לאחר 10 דקות, כשהוא מוסתר או כשהוא מנותק.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "אפשר לשרת זה לבקש תמונות למשך 10 דקות. תמונות יכולות להכיל מידע אישי. בדפדפן, בחר בלשונית או בחלון הנגן. ההרשאה מסתיימת בטעינה מחדש או בניתוק.",
     "Allowlist this Device ID": "הוסף את מזהה המכשיר הזה לרשימת המורשים",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "נגן HTTPS לא יכול להוריד מקור HTTP EPG. השתמש במקור HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "כתובת IP ללא יציאה משתמשת ביציאת HTTP 8081. כדי להפסיק, נקה את הכתובת או בחר ניתוק.",
     "Another source sign-in is already open": "חלון כניסה למקור אחר כבר פתוח",
@@ -88,9 +88,9 @@ var keyStrings = {
     "Archive. Channel: ": "ארכיון. ערוץ: ",
     Aspect: "יחס תמונה",
     Audio: "שמע",
-    Automatic: "Automatic",
+    Automatic: "אוטומטי",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "אוטומטית מנגן קבצים נתמכים ישירות ומשתמש ב-HLS תואם בעת הצורך.",
     alhabet: "אבגדהוזחטיכךלמםנןסעפףצץקרשת",
     always: "תמיד",
     "and enter code": "והזן את הקוד",
@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "דלג דקה אחורה / קדימה",
     "Background color": "צבע רקע",
     "Background color of selected item": "צבע הרקע של הפריט הנבחר",
+    "Backup state changed": "מצב הגיבוי השתנה",
     "Balance, $": "יתרה, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -107,6 +108,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "פעולת הלחצנים %1/%2 ברשימות",
     "Black screen while switching the channel": "מסך שחור בעת החלפת ערוצים",
     Blue: "כחול",
+    "Bookmark age (days): %1": "גיל הסימניה (ימים): %1",
     "Bookmark age: %1 days": "גיל הסימנייה: %1 ימים",
     "Browse folders": "עיון בתיקיות",
     "Buffer Size, s": "גודל חוצץ, שנ",
@@ -147,20 +149,22 @@ var keyStrings = {
     "Channel parental control": "בקרת הורים לערוץ",
     Channels: "ערוצים",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "בדוק את החיבור ופתח את ספריות ה-Plex שלך.",
     "Check this server's SWOP configuration.": "בדקו את הגדרות SWOP של שרת זה.",
-    "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+    "Checking the Plex server connection…": "בודק את חיבור השרת Plex...",
     "Choose from": "בחר מתוך",
     "Choose language": "בחר שפה",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "בחר בשרת Plex",
     "Choose provider": "בחר ספק",
     Classic: "קלאסי",
     "Clear all settings?": "לנקות את כל ההגדרות?",
     "Clear settings": "נקה הגדרות",
     Close: "סגור",
     "Close PiP": "סגור PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "שמירה/טעינה בענן דורשת קושחה STB (host_ott לא מוגדר)",
+    "Cloud transfer failed": "העברת ענן נכשלה",
+    Code: "קוד גישה",
     Color: "צבע",
     "Color spectrum": "ספקטרום צבעים",
     "Command server": "שרת פקודות",
@@ -174,7 +178,8 @@ var keyStrings = {
     "Command server found.": "נמצא שרת פקודות.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "לא ניתן היה לטעון את רכיבי התאימות. יש לפתוח את הנגן מחדש כדי לנסות שוב.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "תואם HLS",
+    "Complete pairing link": "קישור הצימוד המלא",
     "Configure All4you.tv in Settings -> Provider Settings":
         "הגדר את All4you.tv בהגדרות -> הגדרות ספק",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -208,7 +213,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "הגדר את OTT Prime ONLINE בהגדרות -> הגדרות ספק",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "הגדר את Plex בהגדרות -> הגדרות ספק",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "הגדר את POLMEDIA בהגדרות -> הגדרות ספק",
     "Configure PROST in Settings -> Provider Settings":
@@ -247,23 +252,25 @@ var keyStrings = {
         "הגדר את Шаравоз בהגדרות -> הגדרות ספק",
     Connect: "התחבר",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "חבר שרת פקודות HTTPS לפני שתאפשר צילומי מסך.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "חבר שרת פקודות HTTPS כדי להשתמש בצילומי מסך.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "חבר שליטה מרחוק כדי לאפשר אבחון.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "חבר נגן זה לשרת פקודות תחילה.",
+    "Connect to TV": "חיבור לטלוויזיה",
     Connected: "מחובר",
     "Connected. Waiting for the channel list...":
         "מחובר. ממתין לרשימת הערוצים…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "חיבור שליטה מרחוק מאפשר לשרת זה לאבחן ולתקן את הנגן. הגישה נשארת זמינה לאחר הפעלה מחדש ומסתיימת כאשר אתה מתנתק. כל לכידת אבחון מוגבלת ל-10 דקות.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "חיבור אבחון מרחוק לחיבור השליטה מרחוק המופעל.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "חיבור אבחון מרחוק עבור דף זה.",
+    "Connecting securely to your TV...": "חיבור מאובטח לטלוויזיה שלך...",
+    "Connecting to Plex…": "מתחבר ל-Plex...",
     "Connecting to Stalker portal...": "מתחבר לפורטל Stalker…",
     "Connecting...": "מתחבר…",
     "Continue watching?": "להמשיך לצפות?",
@@ -274,11 +281,15 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "העתיקו את ה-JSON המסומן באמצעות פקודת ההעתקה של המכשיר",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "לא ניתן להתחבר ל-Plex. בדוק את כתובת השרת, האסימון והגישה לרשת.",
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
     "Could not create a pairing request. Find the server again to retry.":
         "לא ניתן ליצור בקשת צימוד. יש לחפש שוב את השרת כדי לנסות שוב.",
     "Could not load. Select to retry.": "הטעינה נכשלה. בחרו כדי לנסות שוב.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "לא ניתן היה להכין את הטקסט הזה. אנא קצר אותו ונסה שוב.",
+    "Could not protect the private link. Use a different browser.":
+        "לא ניתן להגן על הקישור הפרטי. השתמש בדפדפן אחר.",
     "Could not save provider settings.": "לא ניתן לשמור את הגדרות הספק.",
     "Could not save the approved command server settings.":
         "לא ניתן לשמור את הגדרות שרת הפקודות שאושרו.",
@@ -295,6 +306,8 @@ var keyStrings = {
     "Delete category": "מחק קטגוריה",
     "Delete channel": "מחק ערוץ",
     "Delete list": "מחק רשימה",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "לא ניתן לאשר את המסירה. בדוק את הטלוויזיה שלך, או נסה שוב את אותה הודעה לפני שההפעלה הזו יפוג.",
     "Demo — moving test pattern": "הדגמה — תבנית בדיקה נעה",
     Description: "תיאור",
     "Description of remote control buttons": "מדריך לחצני השלט",
@@ -308,7 +321,7 @@ var keyStrings = {
     "Diamond TV settings": "הגדרות Diamond TV",
     Director: "במאי",
     "Disable HTTP remote": "כיבוי שליטת HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "השבת תמיכה מרחוק מהימנה",
     "Disabled by default. Enabling creates a new device access code.":
         "כבוי כברירת מחדל. ההפעלה יוצרת קוד גישה חדש למכשיר.",
     Disconnect: "ניתוק",
@@ -342,7 +355,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "הזן שם משתמש וסיסמה כדי לגשת לשירות זה.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "הזן כתובת שרת Plex ואסימון גישה תקינים.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "הזן כתובת שרת תקינה, למשל 192.168.1.20:8081.",
     "Enter access key for": "הזן מפתח גישה עבור",
@@ -359,8 +372,8 @@ var keyStrings = {
         "הזן כתובת MAC (למשל 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "הזן כתובת ספריית מדיה",
     "Enter new category name": "הזן שם חדש לקטגוריה",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "הזן כתובת שרת Plex",
+    "Enter Plex token": "הזן אסימון Plex",
     "Enter Provider Code": "הזן קוד ספק",
     "Enter Provider Code on PC or Phone": "הזן קוד ספק במחשב או בטלפון",
     "Enter parental code": "הזן קוד הורים",
@@ -374,6 +387,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "הזן כתובת פורטל Stalker (למשל http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "יש להזין את מספר השרת (%1).",
+    "Enter text": "הזן טקסט",
     "Enter the access code separately, not in the server address.":
         "הזן את קוד הגישה בנפרד, ולא בכתובת השרת.",
     "Enter the command server IP or address.":
@@ -398,56 +412,54 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "הזן כתובת שרת Xtream (למשל https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "הזן את אסימון הגישה שלך Plex. הוא שמור בפרופיל של המכשיר הזה.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "הזן את כתובת השרת שלך Plex, למשל http://192.168.1.25:32400",
     EPG: "לוח שידורים",
     "EPG and archive. Channel: ": "לוח שידורים וארכיון. ערוץ: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "ארכיון EPG או XML אינו חוקי.",
+    "EPG cache and wait time: %1": "מטמון EPG וזמן המתנה: %1",
+    "EPG cache updated: %1": "מטמון EPG מעודכן: %1",
+    "EPG channels: %1": "ערוצי EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "לא ניתן היה להפעיל את ה־EPG. יש להפעיל מחדש את הנגן כדי לטעון מחדש את קבציו. הניגון ייעצר.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "אבחון EPG",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "אבחון EPG לא הצליח לטעון. פתח אותו שוב כדי לנסות שוב.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "הורדת EPG נכשלה. בדוק את החיבור, HTTPS והרשאות מקור CORS.",
+    "EPG download time: %1": "זמן הורדה EPG: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "זמן קצוב להורדה EPG. נסה להוריד שוב.",
+    "EPG elapsed: %1": "זמן שחלף עבור EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "שגיאה EPG. פתח מידע ← אבחון EPG.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG חורג ממגבלת העיבוד של המכשיר. השתמש במקור קטן יותר או בטווח ארכיון קצר יותר.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG לא התחיל. טען רשימת השמעה M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
-    "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "האחסון המקומי EPG אינו זמין או מלא.",
+    "EPG processing and storage time: %1": "EPG זמן עיבוד ואחסון: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "עיבוד EPG הופסק. נסה שוב ובדוק את תמיכת הדפדפן.",
+    "EPG programmes: %1": "תוכניות EPG: %1",
+    "EPG progress: %1": "התקדמות EPG: %1",
+    "EPG ready": "EPG מוכן",
+    "EPG source returned HTTP %1": "מקור EPG החזיר HTTP %1",
+    "EPG source: %1": "מקור EPG: %1",
+    "EPG stopped during: %1": "EPG נעצר במהלך: %1",
+    "EPG unavailable on this browser": "EPG אינו זמין בדפדפן זה",
+    "EPG unavailable: %1": "EPG לא זמין: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "עדכון EPG נכשל; נעשה שימוש במדריך התוכניות השמור",
+    "EPG: downloading programme guide...": "EPG: הורדת מדריך תוכניות...",
+    "EPG: opening local cache...": "EPG: פתיחת מטמון מקומי...",
+    "EPG: processing programme guide...": "EPG: עיבוד מדריך התוכניות...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: עדכון מדריך תוכניות שמור...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: ממתין ללשונית אחרת של הנגן...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "שגיאה: קטגוריה מס׳ %1 אינה קיימת!<br>יש לבחור קטגוריה אחרת.",
     "ERROR!": "שגיאה!",
@@ -481,7 +493,7 @@ var keyStrings = {
     "Finding command servers...": "חיפוש שרתי פקודות...",
     "First Run Setup": "הגדרות הפעלה ראשונה",
     "Fit to screen": "התאם למסך",
-    Folders: "Folders",
+    Folders: "תיקיות",
     "Font type": "סוג גופן",
     "For download settings file open": "כדי להוריד את קובץ ההגדרות, פתח",
     "For enter value open": "כדי להזין ערך, פתח",
@@ -522,7 +534,9 @@ var keyStrings = {
     "Interface transparency": "שקיפות הממשק",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "קישור הערוץ אינו תקין! הזן את שם המארח המלא כמו בכתובת השידור באזור האישי (למשל subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "תגובת הגדרות ענן לא חוקית",
     "Invalid protected source configuration": "הגדרות המקור המוגן אינן תקינות",
+    "Invalid setting": "הגדרה לא חוקית",
     "IPTV token": "אסימון IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "הגדרות IpStream.one",
@@ -597,10 +611,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "לא נמצא שרת פקודות ברשת זו.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "אין שרתי Plex זמינים עבור חשבון זה.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "אין תוכניות שתואמות לערוצים ולתאריכים של רשימת ההשמעה. בדוק את המקור והשעון של המכשיר.",
     "No saved settings found": "לא נמצאו הגדרות שמורות",
+    "No supported system language. Choose a language.":
+        "אין שפת מערכת נתמכת. בחר שפה.",
     "Not configured": "לא הוגדר",
     "Not found": "לא נמצא",
     "Not reduce video when showing the list (bugfix)":
@@ -616,18 +632,21 @@ var keyStrings = {
     "not set": "לא הוגדר",
     Off: "כבוי",
     Ok: "אישור",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "רק הטלוויזיה הזו יכולה לקבל את ההודעה שלך. הקישור יפוג לאחר 10 דקות.",
     Open: "פתח",
     "Open in PiP": "פתח ב-PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "פתח את דף הכניסה של Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "פתח את plex.tv/link בטלפון או במחשב שלך והזן את הקוד הזה.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "או פתחו את הקישור הפרטי המלא הזה במכשיר אחר:",
+    "Original file": "קובץ מדיה מקורי",
     "Original text: %1": "טקסט מקורי: %1",
     "OTT / APP host": "שרת OTT / יישום",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "הגדרות OTT Prime ONLINE",
+    "OTT-play remote input": "קלט מרחוק של OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 זמין. להוריד ולהתקין עכשיו?",
     "Overwrite current settings?": "לדרוס את ההגדרות הנוכחיות?",
@@ -657,9 +676,10 @@ var keyStrings = {
     "PiP window position": "מיקום חלון PiP",
     "PiP window size": "גודל חלון PiP",
     Play: "נגן",
-    Playback: "Playback",
+    Playback: "השמעת מדיה",
     "Player and device info": "פרטי הנגן והמכשיר",
     "Player could not start": "לא ניתן היה להפעיל את הנגן",
+    "Player default": "בחירת ברירת המחדל של הנגן",
     "Player info:": "פרטי הנגן:",
     Playlist: "פלייליסט",
     "Playlist file": "קובץ פלייליסט",
@@ -668,11 +688,11 @@ var keyStrings = {
     "Playlist Name": "שם פלייליסט",
     "Playlist URL": "כתובת פלייליסט",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "חיבור Plex נכשל",
+    "Plex settings": "הגדרות Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "הכניסה של Plex נכשלה. בדוק את החיבור ונסה שוב, או הזן את כתובת השרת והאסימון.",
+    "Plex token": "אסימון Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "הגדרות POLMEDIA",
     "Portal URL": "כתובת פורטל",
@@ -680,8 +700,10 @@ var keyStrings = {
     Postpaid: "תשלום בדיעבד",
     PROST: "PROST",
     "PROST settings": "הגדרות PROST",
+    "Preferred audio language": "שפת שמע מועדפת",
+    "Preferred subtitle language": "שפת כתוביות מועדפת",
     Prepaid: "תשלום מראש",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...": "הכנת קלט מרחוק מאובטח...",
     Prev: "הקודם",
     "Preview in channel list": "תצוגה מקדימה ברשימת הערוצים",
     Previous: "הקודם",
@@ -711,31 +733,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "שלט (ללא לחצני מספרים)",
     "Remote control": "שליטה מרחוק",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "שליטה מרחוק מאשרת אבחון. מוכן למפעיל.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "שליטה מרחוק מאשרת אבחון. מחכה לחיבור מחדש.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "שליטה מרחוק כוללת צילומי מסך של נגן המדיה, כולל ההגדרות שלו. תמונות עשויות להכיל מידע פרטי. האפליקציה יכולה לצלם צילומי מסך ישירות ללא אישור נוסף. בדפדפן, בחר את הכרטיסייה או החלון לצילום במכשיר זה.",
+    "Remote diagnostics": "אבחון מרחוק",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "נתוני אבחון מרחוק נאספים עבור חיבור זה (עד 10 דקות להפעלה).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "נתוני אבחון מרחוק נאספים עבור דף זה.",
+    "Remote diagnostics is off.": "אבחון מרחוק כבוי.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "אבחון מרחוק מוכן למפעיל מורשה.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "אבחון מרחוק אינו זמין בנגן זה.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "אבחון מרחוק הופסק. הפעל אותו שוב כדי להעניק גישה.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "פג תוקף קלט מרחוק. פתח הפעלה חדשה כדי לנסות שוב.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "הפעלת קלט מרחוק אינה זמינה. פתח הפעלה חדשה כדי לנסות שוב.",
+    "Remote screenshots": "צילומי מסך מרחוק",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "צילומי מסך מרחוק מותרים למשך 10 דקות. סגור הגדרות לצילום.",
+    "Remote screenshots are off.": "צילומי מסך מרחוק כבויים.",
     "Remote session expired": "תוקף ההפעלה המרוחקת פג",
     "Remote text entry": "הזנת טקסט מרחוק",
     "Remote text entry denied": "הזנת טקסט מרחוק נדחתה",
@@ -761,7 +783,8 @@ var keyStrings = {
     "Restart stream / Live": "הפעל שידור מחדש / שידור חי",
     "Resume from archive?": "להמשיך מהארכיון?",
     Retry: "נסה שוב",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "נסה שוב להוריד את EPG",
+    "Retry same message": "נסה שוב את אותה הודעה",
     "Return to previous channel": "חזור לערוץ הקודם",
     Rewind: "דלג בזמן",
     "Rewind step by buttons %1/%2": "מרווח דילוג לאחור בלחצנים %1/%2",
@@ -773,31 +796,34 @@ var keyStrings = {
     "Save & load channels": "שמור וטען ערוצים",
     "Save and load": "שמור וטען",
     "Save and load channels": "שמור וטען ערוצים",
-    "Save and open library": "Save and open library",
+    "Save and open library": "שמור ופתח ספרייה",
     "Save Settings": "שמור הגדרות",
     "Save settings": "שמור הגדרות",
     "Save settings and load channel list": "שמור הגדרות וטען רשימת ערוצים",
     "Save settings to storage": "שמור הגדרות באחסון",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "סרוק את קוד QR בטלוויזיה שלך, או הדבק את קישור הצימוד הפרטי המלא שלו למטה.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "סרוק את קוד QR זה עם הטלפון שלך כדי להזין טקסט.",
+    "Screen sharing could not start.": "שיתוף המסך לא יכול להתחיל.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "שיתוף המסך בוטל או אינו זמין.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "לא ניתן להפעיל הרשאת צילום מסך.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "צילומי מסך זמינים כאשר השליטה מרחוק מחוברת.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "צילומי מסך אינם זמינים בפלטפורמה זו.",
     Script: "תסריט",
     Search: "חיפוש",
+    "Search languages": "חיפוש שפות",
     "Search programme": "חפש תוכנית",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "לא ניתן היה להפעיל קלט מרחוק מאובטח. אנא נסה שוב או השתמש במקלדת שעל המסך.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "לא ניתן היה להפעיל קלט מרחוק מאובטח. אנא השתמש במקלדת שעל המסך.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "קלט מאובטח מרחוק אינו זמין במכשיר זה. השתמש במקלדת שעל המסך.",
     "Select a stream type:<br>%1": "בחר סוג שידור:<br>%1",
     "Select category to add channel": "בחר קטגוריה להוספת ערוץ",
     "Select color": "בחר צבע",
@@ -807,14 +833,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "בחר מקור תבנית פלייליסט ללוח שידורים ולסמלים",
     "Select Stalker portal": "בחירת פורטל Stalker",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "בחר מקור צילום מסך בדפדפן",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "בחר את כרטיסיית הנגן או החלון בתיבת הדו-שיח לשיתוף הדפדפן.",
     "Send request": "שלח בקשה",
     "Send settings": "שלח הגדרות",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "יש לשלוח קוד זה מהפרוקסי בכותרת Authorization: Bearer.",
+    "Send to TV": "שלח לטלוויזיה",
     Server: "שרת",
     "Server address": "כתובת שרת",
     "Server address (for example 192.168.1.20:8081)":
@@ -823,10 +849,13 @@ var keyStrings = {
     "Server URL": "כתובת URL של השרת",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "השרת אינו זמין. ניסיון חוזר יבוצע אוטומטית; בדוק את הכתובת ואת הגישה לרשת.",
+    "Session closed. Start a new one from your TV when needed.":
+        "ההפעלה נסגרה. התחל הפעלה חדשה בטלוויזיה בעת הצורך.",
     Set: "הגדר",
     "Set parental code": "הגדר קוד הורים",
     "Set timer?": "להגדיר טיימר?",
     Settings: "הגדרות",
+    "Settings changed while editing": "ההגדרות השתנו במהלך העריכה",
     "Settings changed. Discovery was canceled.": "ההגדרות השתנו. החיפוש בוטל.",
     "Settings copied": "ההגדרות הועתקו",
     "Settings could not be exported": "לא ניתן לייצא את ההגדרות",
@@ -835,10 +864,14 @@ var keyStrings = {
     "Settings imported": "ההגדרות יובאו",
     "Settings JSON": "הגדרות בפורמט JSON",
     "Settings loaded from storage": "ההגדרות נטענו מהאחסון",
+    "Settings received. Restarting player...":
+        "התקבלו הגדרות. מפעיל מחדש את הנגן...",
     "Settings STB": "הגדרות STB",
     "Settings saved": "ההגדרות נשמרו",
     "Settings saved to storage": "ההגדרות נשמרו באחסון",
     "Settings sended!": "ההגדרות נשלחו!",
+    "Settings source changed": "מקור ההגדרות השתנה",
+    "Settings storage rejected write": "אחסון ההגדרות דחה את הכתיבה",
     "Several command servers were found. Select one below.":
         "נמצאו כמה שרתי פקודות. יש לבחור אחד למטה.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -873,28 +906,28 @@ var keyStrings = {
     "Shuffle: On": "ערבוב: פעיל",
     "Sign in to the protected source again": "יש להיכנס שוב למקור המוגן",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "היכנס לחשבון Plex שלך ובחר שרת. לא הוזנה סיסמה בנגן זה.",
+    "Sign in with Plex": "היכנס באמצעות Plex",
     "Sign in: %1": "כניסה: %1",
     "Sign out of all sources": "יציאה מכל המקורות",
     "Sign-in opens when you load a protected playlist.":
         "חלון הכניסה נפתח בעת טעינת רשימת השמעה מוגנת.",
     "Sleep timer": "טיימר שינה",
     "Sort channels": "מיין ערוצים",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "גישה למקור המדיה",
+    "Source sign-in required": "נדרשת כניסה למקור",
     "Source sign-in was cancelled": "הכניסה למקור בוטלה",
     "Stalker Portal Provider": "ספק פורטל Stalker",
     "Stalker portal settings": "הגדרות פורטל Stalker",
     "Stalker portals": "פורטלי Stalker",
     "Starting...": "מתחיל…",
     Status: "מצב",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "עצור",
+    "Stop browser sharing": "הפסק את שיתוף הדפדפן",
+    "Stop current capture": "עצור את איסוף הנתונים הנוכחי",
+    "Stop diagnostics": "עצור את האבחון",
     "Stop playback and return to live": "הפסק ניגון וחזור לשידור חי",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "עצור צילומי מסך",
     "Stream could not be played": "לא ניתן היה להפעיל את הזרם",
     "Stream type: %1": "סוג שידור: %1",
     "String for search": "שאילתת חיפוש",
@@ -906,21 +939,26 @@ var keyStrings = {
     "Switch subtitle": "החלף כתוביות",
     "Switch to this list": "עבור לרשימה זו",
     "Swop URL": "כתובת Swop",
+    "System language": "שפת מערכת",
     "saved on this device": "נשמר במכשיר זה",
     select: "בחר",
     small: "קטן",
     system: "מערכת",
     Tabox: "Tabox",
     "Tabox settings": "הגדרות Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.": "הטקסט ארוך מדי לקלט מרחוק.",
+    "Text is too long. Please shorten it before sending.":
+        "הטקסט ארוך מדי. נא לקצר לפני השליחה.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "הטקסט נשלח. בדוק בטלוויזיה שהטקסט הופיע.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "מקור צילום המסך של הדפדפן מוכן.",
     "The command server discovery URL is invalid.":
         "כתובת ה־URL לחיפוש שרת הפקודות אינה תקינה.",
     "The device ID in the address is invalid.": "מזהה המכשיר בכתובת אינו תקין.",
     "The discovery response is invalid.": "תשובת החיפוש אינה תקינה.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "דפדפן זה אינו יכול לזהות את מקור צילום המסך שנבחר.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "דפדפן זה אינו יכול לבצע צימוד אוטומטי באופן בטוח. יש לעדכן אותו או להזין ידנית את הגדרות שרת הפקודות.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -929,6 +967,10 @@ var keyStrings = {
         "נגן HTTPS זה אינו יכול להתחבר לשרת HTTP. השתמש בשרת HTTPS או פתח את הנגן דרך HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "יישום Play זה דורש HTTPS. בקש מהספק פלייליסט או כתובת שרת ב-HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "פג תוקף קישור ההתאמה הזה. פתח הפעלה חדשה בטלוויזיה שלך.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "הפעלה מאובטחת זו אינה זמינה או שפג תוקפו. פתח הפעלה חדשה בטלוויזיה והשתמש בקישור המלא שלה.",
     Timer: "טיימר",
     "Timer: switch to channel?": "טיימר: לעבור לערוץ זה?",
     "Timeshift: one minute back": "השהיית שידור: דקה אחורה",
@@ -945,14 +987,13 @@ var keyStrings = {
     "Toggle Zoom Mode": "שנה מצב זום",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "הגדרות Top-Tv",
-    "Trust this server for remote support":
-        "Trust this server for remote support",
+    "Trust this server for remote support": "סמוך על שרת זה לתמיכה מרחוק",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "לא ניתן היה להסיר גישה מהימנה מאחסון המכשיר.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "אבחון מהימן אינו זמין מכיוון שלא ניתן היה לעדכן את אחסון המכשיר.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "אבחון מהימן ממתין לנגן זה להתחבר מחדש.",
     "Try demo": "נסה הדגמה",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "הגדרות TV DOSUG",
@@ -971,17 +1012,19 @@ var keyStrings = {
         "העדכון הותקן. הפעל מחדש את OttPlay FOSS.",
     "Use an HTTP or HTTPS server address.": "השתמש בכתובת שרת HTTP או HTTPS.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "השתמש בשרת פקודות HTTPS לאבחון מרחוק.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "השתמש ב-HTTP או HTTPS ללא שם משתמש או סיסמה בכתובת.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "השתמש בשמאל/ימין לבחירת פקד, ב-OK להפעלתו ובמעלה/מטה לגלילה.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "השתמש בקישור המלא, כולל החלק שאחרי #. אל תשתף את זה עם אף אחד אחר.",
     "Use Up / Down to scroll. Back to close.":
         "השתמשו בלמעלה / למטה לגלילה. חזרה לסגירה.",
     Username: "שם משתמש",
     "Username or password is missing.": "שם המשתמש או הסיסמה חסרים.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "תקף ל-10 דקות. לחיצה על חזרה סוגרת את ההפעלה הזו.",
     Version: "גרסה",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "הגדרות VIP-IP.COM",
@@ -994,7 +1037,7 @@ var keyStrings = {
     "VPortal request failed":
         "לא ניתן לטעון את VPortal. בדוק את הקישור, מפתח הגישה וזמינות הפורטל.",
     volume: "עוצמת קול",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "ממתין לכניסה...",
     "Wrong parental code !!!": "קוד הורים שגוי!!!",
     "Xtream Codes Provider": "ספק Xtream Codes",
     "Xtream Codes settings": "הגדרות Xtream Codes",

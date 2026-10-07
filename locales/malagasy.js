@@ -63,14 +63,15 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Avelao ny fitiliana mandritra ny 10 minitra",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Avelao ny fakana pikantsary mandritra ny 10 minitra",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Avelao ity lohamilina ity hanangona antontan'isa fitiliana sy hamerina hanomboka ity fikorianana na mpamaky ity. Maharitra 10 minitra ny fidirana vonjimaika. Mbola misy ny fanohanana azo itokisana aorian'ny fampifandraisana na fanombohana indray; mifarana aorian'ny 10 minitra foana ny fanangonana tsirairay. Miato ny fanangonana rehefa miafina ny rindranasa na tsy misy fifandraisana.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Avelao ity lohamilina ity hanangona antontan'isa momba ny fandefasana, tambajotra ary fampidirana mandritra ity fotoana isehoan'ny rindranasa ity. Ilaina ny HTTPS sy ny fahazoan-dalan'ny lohamilina. Mijanona aorian'ny 10 minitra, rehefa miafina na tapaka ny fifandraisana.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Avelao ity mpizara ity hangataka sary mandritra ny 10 minitra. Mety ahitana fampahalalana manokana ny sary. Ao amin’ny navigateur, fidio ny kiheba na varavarankelin’ny mpamaky haino aman-jery. Mifarana ny alalana rehefa averina ampidirina ny pejy na tapaka ny fifandraisana.",
     "Allowlist this Device ID":
         "Ampio amin'ny lisitra ekena ity ID fitaovana ity",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -105,6 +106,7 @@ var keyStrings = {
     "Background color": "Lokon'ny ambadika",
     "Background color of selected item":
         "Lokon'ny ambadik'ilay singa voafantina",
+    "Backup state changed": "Niova ny toetry ny backup",
     "Balance, $": "Vola sisa, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -117,6 +119,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Efijery mainty rehefa manova fantsona",
     Blue: "Manga",
+    "Bookmark age (days): %1": "Taonan'ny tsoratadidy (andro): %1",
     "Bookmark age: %1 days": "Faharetan'ny maripejy: %1 andro",
     "Browse folders": "Jereo ny lahatahiry",
     "Buffer Size, s": "Haben'ny fitadidiana vonjimaika, s",
@@ -169,11 +172,14 @@ var keyStrings = {
     "Choose language": "Safidio ny fiteny",
     "Choose Plex server": "Safidio ny lohamilina Plex",
     "Choose provider": "Safidio ny mpamatsy",
-    Classic: "Classic",
+    Classic: "Mahazatra",
     "Clear all settings?": "Fafao ny fikirakirana rehetra?",
     "Clear settings": "Fafao ny fikirakirana",
     Close: "Akatona",
     "Close PiP": "Akatona ny PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Mila rindrankajy fototra STB ny fitahirizana sy famerenana angona amin’ny rahona (host_ott tsy napetraka)",
+    "Cloud transfer failed": "Tsy nahomby ny famindrana angona amin’ny rahona",
     Code: "Kaody",
     Color: "Loko",
     "Color spectrum": "Andian-doko",
@@ -192,6 +198,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Tsy afaka naka ny rafitra fampifanarahana. Sokafy indray ny mpamaky mba hanandrana.",
     "Compatible HLS": "HLS mifanaraka",
+    "Complete pairing link": "Ny rohy fampiarahana feno",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Amboary ny All4you.tv ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -264,22 +271,25 @@ var keyStrings = {
         "Amboary ny Шаравоз ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     Connect: "Ampifandraiso",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Ampifandraiso ny mpizara baiko HTTPS alohan'ny hamelana ny pikantsary.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ampifandraiso amin'ny mpizara baiko HTTPS hampiasa pikantsary.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Ampifandraiso ny fanaraha-maso lavitra mba ahafahana manao diagnostika.",
     "Connect this player to a command server first.":
         "Ampifandraiso amin'ny lohamilina baiko aloha ity mpamaky ity.",
+    "Connect to TV": "Mifandray amin'ny fahitalavitra",
     Connected: "Mifandray",
     "Connected. Waiting for the channel list...":
         "Mifandray. Miandry ny lisitra fantsona…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Ny fampifandraisana ny fanaraha-maso lavitra dia manome alalana ity mpizara ity hijery olana sy hanamboatra ny mpamaky haino aman-jery. Mbola manan-kery ny fidirana rehefa averina alefa ilay rindranasa ary mifarana rehefa tapaka ny fifandraisana. Maharitra hatramin’ny 10 minitra ny fanangonana angona fitiliana tsirairay.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Mampifandray ny diagnostika lavitra ho an'ny fifandraisana amin'ny fanaraha-maso lavitra.",
     "Connecting remote diagnostics for this page.":
         "Mampifandray fitiliana lavitra ho an'ity pejy ity.",
+    "Connecting securely to your TV...":
+        "Mametraka fifandraisana voaaro amin’ny fahitalavitrao...",
     "Connecting to Plex…": "Mampifandray amin'ny Plex…",
     "Connecting to Stalker portal...": "Mampifandray amin'ny vavahady Stalker…",
     "Connecting...": "Mampifandray…",
@@ -298,6 +308,10 @@ var keyStrings = {
         "Tsy afaka namorona fangatahana fampifandraisana fitaovana. Tadiavo indray ny lohamilina mba hanandrana.",
     "Could not load. Select to retry.":
         "Tsy afaka naka. Safidio mba hanandrana indray.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Tsy afaka nanomana ity lahatsoratra ity. Hafohy azafady ary andramo indray.",
+    "Could not protect the private link. Use a different browser.":
+        "Tsy afaka niaro ny rohy manokana. Mampiasà navigateur hafa.",
     "Could not save provider settings.":
         "Tsy afaka nitahiry ny fikirakiran'ny mpamatsy.",
     "Could not save the approved command server settings.":
@@ -315,6 +329,8 @@ var keyStrings = {
     "Delete category": "Fafao ny sokajy",
     "Delete channel": "Fafao ny fantsona",
     "Delete list": "Fafao ny lisitra",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Tsy azo voamarina ny fanaterana. Jereo ny fahitalavitrao, na andramo indray ilay hafatra mitovy alohan'ny lany ity fotoam-pivoriana ity.",
     "Demo — moving test pattern": "Fampisehoana — sary fitsapana mihetsika",
     Description: "Famaritana",
     "Description of remote control buttons":
@@ -401,6 +417,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Ampidiro ny URL vavahady Stalker (ohatra http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Ampidiro ny laharan'ny lohamilina (%1).",
+    "Enter text": "Ampidiro lahatsoratra",
     "Enter the access code separately, not in the server address.":
         "Ampidiro misaraka ny kaody fidirana, fa tsy ao amin'ny adiresin'ny lohamilina.",
     "Enter the command server IP or address.":
@@ -559,8 +576,10 @@ var keyStrings = {
     "Interface transparency": "Fangaraharan'ny endriky ny rindranasa",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Rohy fantsona tsy manan-kery! Ampidiro ny anarana feno an'ny lohamilina araka ny URL fikorianana ao amin'ny kaontinao (ohatra subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Valin'ny firafitry ny rahona tsy mety",
     "Invalid protected source configuration":
         "Fikirakirana loharano voaaro tsy manan-kery",
+    "Invalid setting": "Fikirana tsy mety",
     "IPTV token": "Mari-pidirana IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Fikirakirana IpStream.one",
@@ -642,6 +661,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Tsy misy fandaharana mifanaraka amin'ny fantsona sy datin'ny lisitra. Jereo ny loharano sy ny famantaranandron'ny fitaovana.",
     "No saved settings found": "Tsy hita ny fikirakirana voatahiry",
+    "No supported system language. Choose a language.":
+        "Tsy misy fiteny tohanana rafitra. Misafidiana fiteny iray.",
     "Not configured": "Tsy voakirakira",
     "Not found": "Tsy hita",
     "Not reduce video when showing the list (bugfix)":
@@ -657,6 +678,8 @@ var keyStrings = {
     "not set": "mbola tsy napetraka",
     Off: "Maty",
     Ok: "Eny ary",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Ity fahitalavitra ity ihany no afaka manaiky ny hafatrao. Tapitra ny rohy rehefa afaka 10 minitra.",
     Open: "Sokafy",
     "Open in PiP": "Sokafy amin'ny PiP",
     "Open Plex sign-in page": "Sokafy ny pejy fidirana Plex",
@@ -669,6 +692,7 @@ var keyStrings = {
     "OTT / APP host": "Lohamilina OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Fikirakirana OTT Prime ONLINE",
+    "OTT-play remote input": "Fampidirana soratra lavitra amin’ny OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Misy OttPlay FOSS %1. Hisintona sy hametraka azy izao?",
     "Overwrite current settings?": "Soloina ny fikirakirana ankehitriny?",
@@ -702,6 +726,7 @@ var keyStrings = {
     Playback: "Fandefasana",
     "Player and device info": "Mombamomba ny mpamaky sy ny fitaovana",
     "Player could not start": "Tsy afaka nanomboka ny mpamaky",
+    "Player default": "Safidy mahazatra an’ilay mpamaky",
     "Player info:": "Mombamomba ny mpamaky:",
     Playlist: "Lisitra fandefasana",
     "Playlist file": "Rakitra lisitra fandefasana",
@@ -723,6 +748,8 @@ var keyStrings = {
     Postpaid: "Aloavana aorian'ny fampiasana",
     PROST: "PROST",
     "PROST settings": "Fikirakirana PROST",
+    "Preferred audio language": "Fiteny feo tiana",
+    "Preferred subtitle language": "Fiteny dikanteny tiana",
     Prepaid: "Aloavana mialoha",
     "Preparing secure remote input...":
         "Manomana fampidirana lavitra azo antoka…",
@@ -758,14 +785,14 @@ var keyStrings = {
         "Fanaraha-maso lavitra (tsy misy bokotra isa)",
     "Remote control": "Fanaraha-maso lavitra",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Ny fanaraha-maso lavitra dia manome alalana ny diagnostika. Vonona ho mpandraharaha.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Ny fanaraha-maso lavitra dia manome alalana ny diagnostika. Miandry ny hifandray indray.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Ny fanaraha-maso lavitra dia ahitana pikantsarin’ny mpamaky haino aman-jery sy ny fikirany. Mety ahitana fampahalalana manokana ny sary. Afaka maka pikantsary mivantana tsy mila fankatoavana fanampiny ilay rindranasa. Ao amin’ny navigateur dia fidio amin’ity fitaovana ity ny kiheba na varavarankely hozaraina.",
     "Remote diagnostics": "Fitiliana lavitra",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Ny diagnostika lavitra dia manangona ho an'ity fifandraisana ity (hatramin'ny 10 minitra isaky ny fivoriana).",
     "Remote diagnostics is collecting for this page.":
         "Manangona angona ho an'ity pejy ity ny fitiliana lavitra.",
     "Remote diagnostics is off.": "Maty ny fitiliana lavitra.",
@@ -779,10 +806,10 @@ var keyStrings = {
         "Tapitra ny fe-potoana fampidirana lavitra. Manokafa fotoana vaovao mba hanandrana indray.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Tsy misy ny fotoam-pampidirana lavitra. Manokafa fotoana vaovao mba hanandrana indray.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Pikantsary lavitra",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Avela mandritra ny 10 minitra ny fakana pikantsary lavitra. Akatona ny fikirana mba hahafahana maka sary.",
+    "Remote screenshots are off.": "Pikantsary lavitra dia maty.",
     "Remote session expired": "Tapitra ny fotoana lavitra",
     "Remote text entry": "Fampidirana soratra lavitra",
     "Remote text entry denied": "Nolavina ny fampidirana soratra lavitra",
@@ -811,6 +838,7 @@ var keyStrings = {
     "Resume from archive?": "Hanohy avy amin'ny tahiry?",
     Retry: "Andramo indray",
     "Retry EPG download": "Andramo indray ny fisintonana EPG",
+    "Retry same message": "Alefaso indray ilay hafatra",
     "Return to previous channel": "Miverena amin'ny fantsona teo aloha",
     Rewind: "Mifindra amin'ny fotoana ao amin'ny horonan-tsary",
     "Rewind step by buttons %1/%2": "Dingana famerenana ho an'ny bokotra %1/%2",
@@ -829,19 +857,23 @@ var keyStrings = {
         "Tehirizo ny fikirakirana ary raiso ny lisitra fantsona",
     "Save settings to storage":
         "Tehirizo ao amin'ny fitahirizana ny fikirakirana",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Vakio amin’ny fakan-tsarin’ny findainao ny kaody QR eo amin’ny fahitalavitra, na apetaho eto ambany ny rohy manokana feno hampifandraisana azy.",
     "Scan this QR code with your phone to enter text.":
         "Vakio amin'ny findainao ity kaody QR ity mba hampidirana soratra.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Tsy afaka nanomboka ny fizarana efijery.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Nofoanana na tsy misy ny fizarana efijery.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Tsy azo navela ny fahazoan-dàlana amin'ny pikantsary.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Misy pikantsary rehefa mifandray ny fanaraha-maso lavitra.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Tsy misy pikantsary amin'ity sehatra ity.",
     Script: "Soratra ho an'ny sarimihetsika",
     Search: "Mitadiava",
+    "Search languages": "Mitadiava fiteny",
     "Search programme": "Mitadiava fandaharana",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Tsy afaka nanomboka ny fampidirana lavitra azo antoka. Andramo indray na ampiasao ny fitendry eo amin'ny efijery.",
@@ -860,13 +892,14 @@ var keyStrings = {
         "Safidio ny loharanon'ny môdely lisitra fandefasana ho an'ny EPG sy famantarana",
     "Select Stalker portal": "Safidio ny vavahady Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Safidio ny loharano pikantsary ao amin'ny navigateur",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Ao amin’ny varavarankely fizarana ao amin’ny navigateur, fidio ny kiheba na varavarankelin’ny mpamaky haino aman-jery.",
     "Send request": "Alefaso ny fangatahana",
     "Send settings": "Alefaso ny fikirakirana",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Alefaso avy amin'ny lohamilina mpanelanelanao ity kaody ity ao amin'ny lohapejy Authorization: Bearer.",
+    "Send to TV": "Alefaso amin'ny fahitalavitra",
     Server: "Lohamilina",
     "Server address": "Adiresin'ny lohamilina",
     "Server address (for example 192.168.1.20:8081)":
@@ -875,10 +908,14 @@ var keyStrings = {
     "Server URL": "URL lohamilina",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Tsy misy ny lohamilina. Manandrana indray ho azy; jereo ny adiresiny sy ny fidirana amin'ny tambajotra.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Nikatona ny fivoriana. Manomboha vaovao amin'ny fahitalavitrao rehefa ilaina izany.",
     Set: "Apetraho",
     "Set parental code": "Apetraho ny kaodin'ny ray aman-dreny",
     "Set timer?": "Apetraho ny fameram-potoana?",
     Settings: "Fikirakirana",
+    "Settings changed while editing":
+        "Niova ny fikirana nandritra ny fanitsiana",
     "Settings changed. Discovery was canceled.":
         "Niova ny fikirakirana. Nofoanana ny fikarohana.",
     "Settings copied": "Voadika ny fikirakirana",
@@ -889,11 +926,16 @@ var keyStrings = {
     "Settings JSON": "JSON fikirakirana",
     "Settings loaded from storage":
         "Voaray avy amin'ny fitahirizana ny fikirakirana",
+    "Settings received. Restarting player...":
+        "Voaray ny fikirana. Averina alefa ny mpamaky haino aman-jery...",
     "Settings STB": "Fikirakirana STB",
     "Settings saved": "Voatahiry ny fikirakirana",
     "Settings saved to storage":
         "Voatahiry ao amin'ny fitahirizana ny fikirakirana",
     "Settings sended!": "Nalefa ny fikirakirana!",
+    "Settings source changed": "Niova ny loharanon'ny fika",
+    "Settings storage rejected write":
+        "Nolavin’ny fitahirizana fikirana ny fanoratana angona",
     "Several command servers were found. Select one below.":
         "Nahitana lohamilina baiko maromaro. Misafidiana iray etsy ambany.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -951,12 +993,12 @@ var keyStrings = {
     "Starting...": "Manomboka…",
     Status: "Sata",
     Stop: "Ajanony",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Atsaharo ny fizarana navigateur",
     "Stop current capture": "Atsaharo ny fanangonana ankehitriny",
     "Stop diagnostics": "Atsaharo ny fitiliana",
     "Stop playback and return to live":
         "Atsaharo ny fandefasana ary miverena amin'ny mivantana",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Atsaharo ny pikantsary",
     "Stream could not be played": "Tsy afaka nandefa ny fikorianana",
     "Stream type: %1": "Karazana fikorianana: %1",
     "String for search": "Teny fikarohana",
@@ -968,6 +1010,7 @@ var keyStrings = {
     "Switch subtitle": "Ovao ny dikanteny",
     "Switch to this list": "Mifindra amin'ity lisitra ity",
     "Swop URL": "URL SWOP",
+    "System language": "Fiteny rafitra",
     "saved on this device": "voatahiry amin'ity fitaovana ity",
     select: "misafidiana",
     small: "kely",
@@ -976,8 +1019,12 @@ var keyStrings = {
     "Tabox settings": "Fikirakirana Tabox",
     "Text is too long for remote input.":
         "Lava loatra ny soratra ho an'ny fampidirana lavitra.",
+    "Text is too long. Please shorten it before sending.":
+        "Lava loatra ny lahatsoratra. Mba hafohy aloha vao alefa.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Nalefa ny lahatsoratra. Jereo raha miseho eo amin’ny fahitalavitra ilay lahatsoratra.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Efa vonona ny loharanon'ny pikantsary navigateur.",
     "The command server discovery URL is invalid.":
         "Tsy manan-kery ny URL fikarohana lohamilina baiko.",
     "The device ID in the address is invalid.":
@@ -985,7 +1032,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Tsy manan-kery ny valin'ny fikarohana.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ity navigateur ity dia tsy afaka mamantatra ny loharanon-tsary voafantina.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tsy afaka mampifandray fitaovana ho azy amin'ny fomba azo antoka ity mpitety tranonkala ity. Havaozy izy na ampidiro an-tanana ny fikirakiran'ny lohamilina baiko.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -994,6 +1041,10 @@ var keyStrings = {
         "Tsy afaka mifandray amin'ny lohamilina HTTP ity mpamaky HTTPS ity. Mampiasà lohamilina HTTPS na sokafy amin'ny HTTP ny mpamaky.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Mitaky HTTPS ity rindranasa Play ity. Mangataha lisitra fandefasana HTTPS na URL lohamilina amin'ny mpamatsinao.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Lany daty ity rohy mampiaraka ity. Sokafy fivoriana vaovao amin'ny fahitalavitra.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ity session azo antoka ity dia tsy misy na lany daty. Sokafy fivoriana vaovao amin'ny fahitalavitra ary ampiasao ny rohy feno.",
     Timer: "Fameram-potoana",
     "Timer: switch to channel?":
         "Fameram-potoana: hifindra amin'ity fantsona ity?",
@@ -1045,6 +1096,8 @@ var keyStrings = {
         "Mampiasà HTTP na HTTPS tsy misy anaran'ny mpampiasa na tenimiafina ao amin'ny adiresy.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Ampiasao HAVIA/HAVANANA hisafidianana fanaraha-maso, ENY ARY hampandehanana azy, ary AMBONY/AMBANY hikisahana.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Ampiasao ny rohy feno, ao anatin'izany ny ampahany aorian'ny #. Aza zaraina amin'olona izany.",
     "Use Up / Down to scroll. Back to close.":
         "Ampiasao Ambony / Ambany hikisahana. Miverina mba hanakatona.",
     Username: "Anaran'ny mpampiasa",

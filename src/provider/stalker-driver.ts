@@ -58,7 +58,7 @@ function createClassicStalkerDriver(
     var config: any = {
         bulkCatalog: true,
         id: "classic-stalker",
-        language: "en",
+        language: ports.language ? ports.language() : "en",
         mac: credentials.username,
         preferHls: !ports.isDune(),
         profile: { stb_type: "MAG250" },

@@ -657,6 +657,7 @@
                 }
                 return "";
             }
+            window.__ottDetectLanguage = detectBootLanguage;
             // Same unprefixed preference used by stbGetItem, including its
             // cookie fallback when localStorage is denied. No catalog is copied.
             function loadBootLanguage(ready) {
@@ -730,16 +731,62 @@
                     _mlg: "malagasy",
                     _kin: "kinyarwanda"
                 };
-                try {
-                    if (!window.localStorage) throw new Error("storage unavailable");
-                    language = window.localStorage.getItem("ottplaylang") || "";
-                } catch (ignore) {
-                    try {
-                        var cookie = /(?:^|;\s*)ottplaylang=([^;]*)/.exec(document.cookie || "");
-                        if (cookie) language = decodeURIComponent(cookie[1]);
-                    } catch (ignored) {}
+                function storageMarkerKey(key) {
+                    return key === "ottplayStorageFallback" || key.indexOf("ottplayStorageFallback.") === 0;
                 }
-                var automatic = !language;
+                function cookieValues() {
+                    var result = Object.create(null);
+                    try {
+                        var entries = (document.cookie || "").split(";");
+                        for (var i = 0; i < entries.length; i++) {
+                            var entry = entries[i].replace(/^\s+/, ""), equals = entry.indexOf("="), key = "";
+                            if (equals <= 0) continue;
+                            try {
+                                key = decodeURIComponent(entry.slice(0, equals));
+                                result[key] = decodeURIComponent(entry.slice(equals + 1));
+                            } catch (ignore) {
+                                if (storageMarkerKey(key)) result[key] = "";
+                            }
+                        }
+                    } catch (ignore) {}
+                    return result;
+                }
+                function fallbackKeys(cookies) {
+                    var parts = Object.keys(cookies).filter(function (key) { return key.indexOf("ottplayStorageFallback.") === 0; });
+                    var marker = cookies.ottplayStorageFallback;
+                    if (marker === undefined) return parts.length ? null : [];
+                    try {
+                        var saved = JSON.parse(marker);
+                        if (Object.prototype.toString.call(saved) !== "[object Array]") {
+                            if (!saved || saved.v !== 2 || !parts.length || saved.n !== parts.length) return null;
+                            var value = "", hash = 0;
+                            for (var i = 0; i < parts.length; i++) {
+                                var part = cookies["ottplayStorageFallback." + i];
+                                if (!part) return null;
+                                value += part;
+                            }
+                            for (var j = 0; j < value.length; j++) hash = ((hash << 5) - hash + value.charCodeAt(j)) | 0;
+                            if ((hash >>> 0).toString(36) !== saved.h) return null;
+                            saved = JSON.parse(value);
+                        } else if (parts.length) return null;
+                        if (Object.prototype.toString.call(saved) !== "[object Array]") return null;
+                        for (var k = 0; k < saved.length; k++)
+                            if (typeof saved[k] !== "string" || storageMarkerKey(saved[k])) return null;
+                        return saved;
+                    } catch (ignore) { return null; }
+                }
+                var bootCookies = cookieValues(), bootOverrides = fallbackKeys(bootCookies);
+                function preference(key) {
+                    // An interrupted/rejected marker transaction must never
+                    // revive an old native preference during early startup.
+                    if (bootOverrides === null || bootOverrides.indexOf(key) !== -1) return bootCookies[key] || "";
+                    try {
+                        if (!window.localStorage) throw new Error("storage unavailable");
+                        return window.localStorage.getItem(key) || "";
+                    } catch (ignore) { return bootCookies[key] || ""; }
+                }
+                language = preference("ottplaylang");
+                var automatic = preference("ottplaylangmode") === "system" || !language;
                 if (automatic) language = detectBootLanguage();
                 if (!Object.prototype.hasOwnProperty.call(assets, language)) { ready(); return; }
                 window.__ottBootDictionary = window.keyStrings;
@@ -761,6 +808,7 @@
                     if (window.keyStrings && window.keyStrings !== window.__ottBootDictionary &&
                             typeof window.keyStrings.lang === "string") {
                         window.__ottBootLanguage = { code: language, dictionary: window.keyStrings, automatic: automatic };
+                        window.__ottInterfaceLanguage = language;
                     }
                     window.__ottBootDictionary = window.keyStrings;
                     finish();

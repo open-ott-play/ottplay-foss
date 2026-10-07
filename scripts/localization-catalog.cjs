@@ -243,9 +243,14 @@ function collectSourceKeys(repository = root) {
                     renderButtonHint: 2,
                     translate: 0,
                 }[method];
-                if (argument !== undefined)
+                if (
+                    argument !== undefined &&
+                    relative !== "src/swop/herenow-phone.ts"
+                )
                     collect(node.arguments[argument], true);
                 // Wrappers with a documented translation boundary.
+                if (relative === "src/settings/cloud.ts" && method === "fail")
+                    collect(node.arguments[0], true);
                 if (
                     (relative === "src/ui/index.ts" ||
                         relative === "src/channels/classic-search.ts") &&
@@ -434,6 +439,18 @@ function collectSourceKeys(repository = root) {
                 collect(node.right);
         });
     }
+    // The phone page ships a finite subset of these same dictionaries. Reuse
+    // the build extractor so its HTML and wrapper calls cannot drift from CI.
+    const phoneFile = path.join(repository, "src/swop/herenow-phone.ts");
+    if (fs.existsSync(phoneFile)) {
+        const { phoneKeys, PHONE_HTML } = require("./hosted-swop.cjs");
+        const ast = parse(phoneFile);
+        for (const key of phoneKeys(
+            PHONE_HTML,
+            fs.readFileSync(phoneFile, "utf8")
+        ))
+            add(key, "src/swop/herenow-phone.ts", ast);
+    }
     // Boot runs before the player translator exists, but uses the same catalog.
     const bootFile = path.join(repository, "index.html");
     if (fs.existsSync(bootFile)) {
@@ -485,8 +502,10 @@ function validateDictionary(reference, translated, file) {
             errors.push(`${file}: missing ${JSON.stringify(key)}`);
             continue;
         }
-        if (typeof translated[key] !== "string" || !translated[key].trim())
+        if (typeof translated[key] !== "string" || !translated[key].trim()) {
             errors.push(`${file}: empty ${JSON.stringify(key)}`);
+            if (typeof translated[key] !== "string") continue;
+        }
         if (
             JSON.stringify(placeholders(reference[key])) !==
             JSON.stringify(placeholders(translated[key]))
@@ -499,6 +518,22 @@ function validateDictionary(reference, translated, file) {
             JSON.stringify(htmlTags(translated[key]))
         )
             errors.push(`${file}: HTML tags differ for ${JSON.stringify(key)}`);
+        for (const marker of translated[key].match(
+            /\b0\d{3}\b|ZXQ\s*\d+\s*QXZ|ЗКСК\s*\d+\s*ККСЗ/g
+        ) || [])
+            if (!reference[key].includes(marker))
+                errors.push(
+                    `${file}: translation batch marker ${JSON.stringify(marker)} in ${JSON.stringify(key)}`
+                );
+        // These literals are copied or entered by users. Translating one makes
+        // otherwise fluent connection/setup instructions unusable.
+        for (const literal of reference[key].match(
+            /https?:\/\/[^\s)<>]+|ott approve NAME CODE|Authorization: Bearer|\/playlist\.m3u8|host_ott|OTT-play/g
+        ) || [])
+            if (!translated[key].includes(literal))
+                errors.push(
+                    `${file}: technical literal ${JSON.stringify(literal)} differs for ${JSON.stringify(key)}`
+                );
         if (
             /^\s/.test(reference[key]) !== /^\s/.test(translated[key]) ||
             /\s$/.test(reference[key]) !== /\s$/.test(translated[key])
@@ -510,6 +545,95 @@ function validateDictionary(reference, translated, file) {
     for (const key of Object.keys(translated))
         if (!Object.hasOwn(reference, key))
             errors.push(`${file}: noncanonical ${JSON.stringify(key)}`);
+    return errors;
+}
+function sameEnglishText(left, right) {
+    function normalized(value) {
+        return value
+            .replace(/<\/?[a-z][^>]*>/gi, (tag) =>
+                tag.toLowerCase().replace(/\s*\/?\s*>$/, ">")
+            )
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+    }
+    return (
+        typeof left === "string" &&
+        typeof right === "string" &&
+        normalized(left) === normalized(right)
+    );
+}
+/** Identical prose is a missing translation even when structural parity passes. */
+function validateEnglishFallbacks(reference, translated, file, allowed) {
+    const locale = path.basename(file, ".js");
+    if (locale === "english") return [];
+    const errors = [];
+    for (const [key, value] of Object.entries(reference)) {
+        if (metadataKeys.has(key) || !sameEnglishText(value, translated[key]))
+            continue;
+        const reviewed = allowed.some(
+            (entry) =>
+                entry &&
+                entry.key === key &&
+                entry.value === value &&
+                Array.isArray(entry.locales) &&
+                (entry.locales.includes("*") || entry.locales.includes(locale))
+        );
+        if (!reviewed)
+            errors.push(
+                `${file}: untranslated English ${JSON.stringify(key)}; translate it or review a genuine identical term in localization-identical.json`
+            );
+    }
+    return errors;
+}
+/** Exceptions pin the English value and exact locales; stale entries fail CI. */
+function validateIdenticalAllowlist(reference, dictionaries, entries) {
+    const errors = [],
+        seen = new Set();
+    for (const entry of entries) {
+        if (
+            !entry ||
+            typeof entry.key !== "string" ||
+            !Object.hasOwn(reference, entry.key) ||
+            metadataKeys.has(entry.key) ||
+            entry.value !== reference[entry.key] ||
+            typeof entry.reason !== "string" ||
+            entry.reason.trim().length < 10 ||
+            !Array.isArray(entry.locales) ||
+            !entry.locales.length ||
+            (entry.locales.includes("*") && entry.locales.length !== 1)
+        ) {
+            errors.push(
+                "Invalid reviewed identical-text exception: " +
+                    JSON.stringify(entry)
+            );
+            continue;
+        }
+        for (const locale of entry.locales) {
+            const id = entry.key + ":" + locale;
+            if (
+                seen.has(id) ||
+                locale === "english" ||
+                (locale !== "*" && !Object.hasOwn(dictionaries, locale))
+            )
+                errors.push(
+                    "Duplicate or unknown identical-text exception: " + id
+                );
+            seen.add(id);
+            const applicable =
+                locale === "*"
+                    ? Object.values(dictionaries)
+                    : [dictionaries[locale]];
+            if (
+                !applicable.some(
+                    (dictionary) =>
+                        dictionary &&
+                        sameEnglishText(entry.value, dictionary[entry.key])
+                )
+            )
+                errors.push("Unused identical-text exception: " + id);
+        }
+    }
     return errors;
 }
 function audit({ englishOnly = false } = {}) {
@@ -538,8 +662,17 @@ function audit({ englishOnly = false } = {}) {
                 `English catalog lacks source key ${JSON.stringify(key)} (${inventory.locations.get(key)?.[0] || "metadata"})`
             );
     const locales = filesIn(path.join(root, "locales"), /\.js$/);
+    const identical = JSON.parse(
+        fs.readFileSync(
+            path.join(root, "scripts/localization-identical.json"),
+            "utf8"
+        )
+    ).entries;
+    const dictionaries = {};
     for (const file of locales) {
         const dictionary = readDictionary(file);
+        const locale = path.basename(file, ".js");
+        if (locale !== "english") dictionaries[locale] = dictionary;
         // English is the union contract: legacy keys may not silently disappear.
         for (const key of Object.keys(dictionary))
             if (!Object.hasOwn(reference, key))
@@ -552,10 +685,19 @@ function audit({ englishOnly = false } = {}) {
                     reference,
                     dictionary,
                     path.basename(file)
+                ),
+                ...validateEnglishFallbacks(
+                    reference,
+                    dictionary,
+                    file,
+                    identical
                 )
             );
     }
     if (!englishOnly) {
+        errors.push(
+            ...validateIdenticalAllowlist(reference, dictionaries, identical)
+        );
         let codes;
         visit(parse(path.join(root, "src/index.ts")), (node) => {
             if (
@@ -653,4 +795,6 @@ module.exports = {
     placeholders,
     readDictionary,
     validateDictionary,
+    validateEnglishFallbacks,
+    validateIdenticalAllowlist,
 };

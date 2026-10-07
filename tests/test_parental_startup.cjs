@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 
 const root = path.resolve(__dirname, "..");
 const bundle = process.argv.includes("--bundle");
@@ -90,8 +91,12 @@ const modules = {
         "keyHandler",
     ],
     "src/localization/index.ts": ["translate"],
-    "src/ui/index.ts": ["confirmBox"],
-    "src/utils/helpers.ts": ["metadataText"],
+    "src/ui/index.ts": ["confirmBox", "localizedTextHtml"],
+    "src/utils/helpers.ts": [
+        "metadataText",
+        "metadataHtml",
+        "metadataImageUrl",
+    ],
 };
 const code = bundle
     ? functions("dist/player.js", Object.values(modules).flat())
@@ -227,6 +232,7 @@ function fixture({
         updateChanelInfo() {},
         useGraphicIcons: false,
     });
+    w.eval(localizationRuntime(bundle ? "dist/player.js" : undefined));
     w.eval(code);
     if (!process.argv.includes("--bundle")) attachSourceAliases(w);
     w._ = w.translate;

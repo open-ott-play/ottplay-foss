@@ -48,6 +48,9 @@ function moduleOf(file, requireFn, window) {
         "--outDir",
         emitted,
     ]);
+    // Pure search modules keep their real transitive Unicode tables. The VM
+    // stubs below are only for host/provider ports, not the search algorithm.
+    const caseless = require(path.join(emitted, "utils/caseless.js"));
     const listener = net.createServer();
     await new Promise((r) => listener.listen(0, "127.0.0.1", r));
     const port = listener.address().port;
@@ -327,13 +330,13 @@ function moduleOf(file, requireFn, window) {
             host.__ottKiosk = moduleOf(
                 "src/plugins/kiosk.ts",
                 (name) =>
-                    moduleOf(
-                        name.includes("strict-kiosk")
-                            ? "src/plugins/strict-kiosk-input.ts"
-                            : "src/utils/caseless.ts",
-                        () => {},
-                        host
-                    ),
+                    name.includes("strict-kiosk")
+                        ? moduleOf(
+                              "src/plugins/strict-kiosk-input.ts",
+                              () => {},
+                              host
+                          )
+                        : caseless,
                 host
             ).createKiosk(host);
             host.__ottKiosk.init();
@@ -381,7 +384,7 @@ function moduleOf(file, requireFn, window) {
                                 host
                             )
                           : name === "../utils/caseless"
-                            ? moduleOf("src/utils/caseless.ts", () => {}, host)
+                            ? caseless
                             : { handleCommand: dispatch };
             const execute = moduleOf(
                 "src/commands/remote-requests.ts",

@@ -63,14 +63,15 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Ba da izinin binciken matsala na minti 10",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Bada damar hotunan allo na tsawon mintuna 10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ba wannan sabar izinin tattara ƙididdigar binciken matsala da sake kunna wannan rafi ko manhajar kunnawa. Izinin wucin gadi yana ɗaukar minti 10. Tallafin da aka amince da shi yana nan bayan sake haɗawa ko sake kunnawa; kowane tattarawa har yanzu yana ƙarewa bayan minti 10. Tattarawa tana tsayawa idan an ɓoye manhajar ko babu haɗin yanar gizo.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ba wannan sabar izinin tattara ƙididdigar kunnawa, hanyar sadarwa da shigarwa yayin da wannan zaman yake a gaba. Ana buƙatar HTTPS da izinin sabar. Yana tsayawa bayan minti 10, idan an ɓoye shi ko an katse haɗin.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Bada wannan uwar garken damar neman hotuna na tsawon mintuna 10. Hotuna na iya ƙunsar bayanan sirri. A cikin mai lilo, zaɓi shafin mai kunnawa ko taga. Izinin yana ƙarewa a sake saukewa ko cire haɗin.",
     "Allowlist this Device ID":
         "Ƙara ID na wannan na'ura zuwa jerin waɗanda aka yarda",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -104,6 +105,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Tsallaka minti 1 baya / gaba",
     "Background color": "Launin bango",
     "Background color of selected item": "Launin bangon abin da aka zaɓa",
+    "Backup state changed": "An canza yanayin Ajiyayyen",
     "Balance, $": "Ragowar kuɗi, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "Aikin maɓallan %1/%2 a cikin jeri",
     "Black screen while switching the channel": "Baƙin allo yayin sauya tasha",
     Blue: "Shuɗi",
+    "Bookmark age (days): %1": "Shekarun alamar (kwanaki): %1",
     "Bookmark age: %1 days": "Tsawon lokacin alama: kwanaki %1",
     "Browse folders": "Duba manyan fayiloli",
     "Buffer Size, s": "Girman ma'ajiyar wucin gadi, sakan",
@@ -162,11 +165,14 @@ var keyStrings = {
     "Choose language": "Zaɓi harshe",
     "Choose Plex server": "Zaɓi sabar Plex",
     "Choose provider": "Zaɓi mai bada sabis",
-    Classic: "Classic",
+    Classic: "Na gargajiya",
     "Clear all settings?": "Share duk saituna?",
     "Clear settings": "Share saituna",
     Close: "Rufe",
     "Close PiP": "Rufe PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Ajiye bayanai a girgije ko loda su daga can yana buƙatar firmware na STB (ba a saita host_ott ba)",
+    "Cloud transfer failed": "Canja wurin girgije ya kasa",
     Code: "Lamba",
     Color: "Launi",
     "Color spectrum": "Bakan launuka",
@@ -184,6 +190,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Ba a iya loda tsarin daidaitawa ba. Sake buɗe manhajar kunnawa don gwadawa.",
     "Compatible HLS": "HLS mai dacewa",
+    "Complete pairing link": "Cikakkiyar hanyar haɗin haɗa na’urori",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Saita All4you.tv a Saituna -> Saitunan mai bada sabis",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -256,22 +263,24 @@ var keyStrings = {
         "Saita Шаравоз a Saituna -> Saitunan mai bada sabis",
     Connect: "Haɗa",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Haɗa uwar garken umarni na HTTPS kafin ba da izinin hotunan allo.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Haɗa uwar garken umarni na HTTPS don amfani da hotunan allo.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Haɗa sarrafawa daga nesa don kunna binciken matsaloli.",
     "Connect this player to a command server first.":
         "Da farko haɗa wannan manhajar kunnawa zuwa sabar umarni.",
+    "Connect to TV": "Haɗa zuwa TV",
     Connected: "An haɗa",
     "Connected. Waiting for the channel list...":
         "An haɗa. Ana jiran jerin tashoshi…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Haɗa sarrafawa daga nesa yana ba wa wannan uwar garken izinin bincika matsaloli da gyara mai kunnawa. Izinin yana nan bayan sake farawa kuma yana ƙarewa idan ka katse haɗin. Kowane zaman tattara bayanan bincike yana iyakance ga mintuna 10.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Haɗa bincike mai nisa don haɗin haɗin ramut da aka kunna.",
     "Connecting remote diagnostics for this page.":
         "Ana haɗa binciken matsala daga nesa don wannan shafi.",
+    "Connecting securely to your TV...": "Haɗa amintaccen zuwa TV ɗin ku...",
     "Connecting to Plex…": "Ana haɗawa da Plex…",
     "Connecting to Stalker portal...": "Ana haɗawa da tashar Stalker…",
     "Connecting...": "Ana haɗawa…",
@@ -289,6 +298,10 @@ var keyStrings = {
         "Ba a iya ƙirƙirar buƙatar haɗawa ba. Sake neman sabar don gwadawa.",
     "Could not load. Select to retry.":
         "Ba a iya lodawa ba. Zaɓa don sake gwadawa.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "An kasa shirya wannan rubutun. Da fatan za a rage shi kuma a sake gwadawa.",
+    "Could not protect the private link. Use a different browser.":
+        "Ba a iya kare hanyar haɗin sirri ba. Yi amfani da wani mai lilo.",
     "Could not save provider settings.":
         "Ba a iya ajiye saitunan mai bada sabis ba.",
     "Could not save the approved command server settings.":
@@ -306,6 +319,8 @@ var keyStrings = {
     "Delete category": "Goge rukuni",
     "Delete channel": "Goge tasha",
     "Delete list": "Goge jeri",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Ba a iya tabbatar da bayarwa ba. Duba TV ɗin ku, ko sake gwada saƙo ɗaya kafin wannan zaman ya ƙare.",
     "Demo — moving test pattern": "Gwaji — hoton gwaji mai motsi",
     Description: "Bayani",
     "Description of remote control buttons":
@@ -390,6 +405,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Shigar da URL na tashar Stalker (misali http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Shigar da lambar sabar (%1).",
+    "Enter text": "Shigar da rubutu",
     "Enter the access code separately, not in the server address.":
         "Shigar da lambar shiga dabam, ba a cikin adireshin sabar ba.",
     "Enter the command server IP or address.":
@@ -540,8 +556,10 @@ var keyStrings = {
     "Interface transparency": "Ganin bayan fuskar manhaja",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Hanyar haɗin tasha ba ta inganta ba! Shigar da cikakken mai masauki kamar a URL na rafi a asusunka (misali subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Amsar saitunan girgije mara inganci",
     "Invalid protected source configuration":
         "Saitin tushen da aka kare ba ya inganta",
+    "Invalid setting": "Saiti mara inganci",
     "IPTV token": "Alamar IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Saitunan IpStream.one",
@@ -621,6 +639,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Babu shirin da ya dace da tashoshi da kwanakin jerin kunnawa. Duba tushen da agogon na'ura.",
     "No saved settings found": "Ba a sami saitunan da aka ajiye ba",
+    "No supported system language. Choose a language.":
+        "Babu yaren tsarin da aka goyan baya. Zaɓi harshe.",
     "Not configured": "Ba a saita ba",
     "Not found": "Ba a samu ba",
     "Not reduce video when showing the list (bugfix)":
@@ -636,6 +656,8 @@ var keyStrings = {
     "not set": "ba a saita ba",
     Off: "A kashe",
     Ok: "To",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Wannan TV ɗin ne kawai zai iya karɓar saƙonku. Hanyar haɗi zai ƙare bayan minti 10.",
     Open: "Buɗe",
     "Open in PiP": "Buɗe a PiP",
     "Open Plex sign-in page": "Buɗe shafin shiga Plex",
@@ -648,6 +670,7 @@ var keyStrings = {
     "OTT / APP host": "Mai masaukin OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Saitunan OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play shigarwar nesa",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Akwai OttPlay FOSS %1. A sauke kuma a girka yanzu?",
     "Overwrite current settings?": "Maye gurbin saitunan yanzu?",
@@ -680,6 +703,7 @@ var keyStrings = {
     Playback: "Kunnawa",
     "Player and device info": "Bayanan manhajar kunnawa da na'ura",
     "Player could not start": "Manhajar kunnawa ba ta iya farawa ba",
+    "Player default": "Zaɓin tsoho na mai kunna kafofin watsa labarai",
     "Player info:": "Bayanan manhajar kunnawa:",
     Playlist: "Jerin kunnawa",
     "Playlist file": "Fayil ɗin jerin kunnawa",
@@ -701,6 +725,8 @@ var keyStrings = {
     Postpaid: "Biyan kuɗi daga baya",
     PROST: "PROST",
     "PROST settings": "Saitunan PROST",
+    "Preferred audio language": "Harshen sauti da aka fi so",
+    "Preferred subtitle language": "Harshen rubutun fassara da aka fi so",
     Prepaid: "Biyan kuɗi tun farko",
     "Preparing secure remote input...":
         "Ana shirya amintaccen shigarwa daga nesa…",
@@ -734,14 +760,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Na'urar sarrafawa (babu maɓallan lamba)",
     "Remote control": "Na'urar sarrafawa daga nesa",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Ikon nesa yana ba da izinin bincike. Shirye don mai aiki.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Ikon nesa yana ba da izinin bincike. Ana jira don sake haɗawa.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Ikon nesa ya haɗa da hotunan allo, gami da saitunan sa. Hotuna na iya ƙunsar bayanan sirri. Aikace-aikacen na iya ɗaukar hotunan allo kai tsaye ba tare da ƙarin izini ba. A cikin mai lilo, zaɓi shafin ko taga don ɗauka akan wannan na'urar.",
     "Remote diagnostics": "Binciken matsala daga nesa",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Ana tattara bincike na nesa don wannan haɗin (har zuwa minti 10 a kowane lokaci).",
     "Remote diagnostics is collecting for this page.":
         "Binciken matsala daga nesa yana tattara bayanai don wannan shafi.",
     "Remote diagnostics is off.": "Binciken matsala daga nesa yana kashe.",
@@ -755,10 +781,10 @@ var keyStrings = {
         "Lokacin shigarwa daga nesa ya ƙare. Buɗe sabon zama don sake gwadawa.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Zaman shigarwa daga nesa ba ya samuwa. Buɗe sabon zama don sake gwadawa.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Hotunan allo daga nesa",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Ana ba da izinin ɗaukar hoto mai nisa na mintuna 10. Rufe saituna don ɗauka.",
+    "Remote screenshots are off.": "An kashe ɗaukar hotunan allo daga nesa.",
     "Remote session expired": "Zaman nesa ya ƙare",
     "Remote text entry": "Shigar da rubutu daga nesa",
     "Remote text entry denied": "An hana shigar da rubutu daga nesa",
@@ -787,6 +813,7 @@ var keyStrings = {
     "Resume from archive?": "Ci gaba daga ma'ajiya?",
     Retry: "Sake gwadawa",
     "Retry EPG download": "Sake gwada sauke EPG",
+    "Retry same message": "Sake gwada saƙo iri ɗaya",
     "Return to previous channel": "Koma tashar da ta gabata",
     Rewind: "Matsa zuwa wani lokaci a bidiyo",
     "Rewind step by buttons %1/%2": "Matakin komawa baya na maɓallan %1/%2",
@@ -804,19 +831,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Ajiye saituna kuma loda jerin tashoshi",
     "Save settings to storage": "Ajiye saituna a ma'ajiya",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Duba lambar QR akan TV ɗin ku, ko liƙa cikakkiyar hanyar haɗin haɗin kai ta sirri a ƙasa.",
     "Scan this QR code with your phone to enter text.":
         "Duba wannan lambar QR da wayarka don shigar da rubutu.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Rarraba allo ya kasa farawa.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "An soke raba allo ko babu.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ba a iya kunna izinin ɗaukar hoto ba.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Ana samun hotunan kariyar allo yayin da ake haɗa ramut.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ba a samun ɗaukar hotunan allo a wannan dandali.",
     Script: "Rubutun fim",
     Search: "Nema",
+    "Search languages": "Bincika harsuna",
     "Search programme": "Nemi shiri",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Amintaccen shigarwa daga nesa bai iya farawa ba. Sake gwadawa ko yi amfani da madannan allo.",
@@ -834,13 +864,14 @@ var keyStrings = {
         "Zaɓi tushen samfurin jerin kunnawa don EPG da tambura",
     "Select Stalker portal": "Zaɓi tashar Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Zaɓi tushen hotunan allo a cikin mai lilo",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Zaɓi shafin mai kunnawa ko taga a cikin maganganun musayar burauza.",
     "Send request": "Aika buƙata",
     "Send settings": "Aika saituna",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Aika wannan lambar daga sabar wakilinka a kan Authorization: Bearer na saƙon HTTP.",
+    "Send to TV": "Aika zuwa TV",
     Server: "Sabar",
     "Server address": "Adireshin sabar",
     "Server address (for example 192.168.1.20:8081)":
@@ -849,10 +880,13 @@ var keyStrings = {
     "Server URL": "URL na sabar",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Sabar ba ta samuwa. Ana sake gwadawa ta atomatik; duba adireshinta da damar hanyar sadarwa.",
+    "Session closed. Start a new one from your TV when needed.":
+        "An rufe zama. Fara sabon daga TV ɗin ku lokacin da ake buƙata.",
     Set: "Saita",
     "Set parental code": "Saita lambar ikon iyaye",
     "Set timer?": "Saita mai ƙidayar lokaci?",
     Settings: "Saituna",
+    "Settings changed while editing": "Saituna sun canza yayin gyarawa",
     "Settings changed. Discovery was canceled.":
         "Saituna sun canza. An soke binciken sabar.",
     "Settings copied": "An kwafi saituna",
@@ -862,10 +896,14 @@ var keyStrings = {
     "Settings imported": "An shigo da saituna",
     "Settings JSON": "JSON na saituna",
     "Settings loaded from storage": "An loda saituna daga ma'ajiya",
+    "Settings received. Restarting player...":
+        "An karɓi saitunan. Ana sake kunnawa...",
     "Settings STB": "Saitunan STB",
     "Settings saved": "An ajiye saituna",
     "Settings saved to storage": "An ajiye saituna a ma'ajiya",
     "Settings sended!": "An aika saituna!",
+    "Settings source changed": "An canza tushen saituna",
+    "Settings storage rejected write": "An ƙi rubutawa ma'ajiyar saituna",
     "Several command servers were found. Select one below.":
         "An gano sabar umarni da yawa. Zaɓi ɗaya a ƙasa.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -917,12 +955,12 @@ var keyStrings = {
     "Starting...": "Ana farawa…",
     Status: "Matsayi",
     Stop: "Dakatar",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Dakatar da raba mai lilo",
     "Stop current capture": "Dakatar da tattarawar yanzu",
     "Stop diagnostics": "Dakatar da binciken matsala",
     "Stop playback and return to live":
         "Dakatar da kunnawa kuma koma kai tsaye",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Dakatar da hotunan allo",
     "Stream could not be played": "Ba a iya kunna rafin ba",
     "Stream type: %1": "Nau'in rafi: %1",
     "String for search": "Rubutun nema",
@@ -934,6 +972,7 @@ var keyStrings = {
     "Switch subtitle": "Sauya rubutun fassara",
     "Switch to this list": "Sauya zuwa wannan jeri",
     "Swop URL": "URL na SWOP",
+    "System language": "Harshen tsarin",
     "saved on this device": "an ajiye a wannan na'ura",
     select: "zaɓa",
     small: "ƙarami",
@@ -942,8 +981,12 @@ var keyStrings = {
     "Tabox settings": "Saitunan Tabox",
     "Text is too long for remote input.":
         "Rubutun ya yi tsawo sosai don shigarwa daga nesa.",
+    "Text is too long. Please shorten it before sending.":
+        "Rubutun ya yi tsayi da yawa. Da fatan za a rage shi kafin aikawa.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "An aika da rubutu. Duba TV ɗin ku don tabbatar da ya bayyana.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "An shirya tushen hoton mai lilo.",
     "The command server discovery URL is invalid.":
         "URL na neman sabar umarni ba ya inganta.",
     "The device ID in the address is invalid.":
@@ -951,7 +994,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Amsar binciken sabar ba ta inganta ba.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Wannan mai binciken ba zai iya tantance tushen hoton da aka zaɓa ba.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Wannan burauza ba ya iya haɗawa ta atomatik cikin aminci. Sabunta shi ko shigar da saitunan sabar umarni da hannu.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -960,6 +1003,10 @@ var keyStrings = {
         "Wannan manhajar kunnawa ta HTTPS ba za ta haɗu da sabar HTTP ba. Yi amfani da sabar HTTPS ko buɗe manhajar ta HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Wannan manhajar Play tana buƙatar HTTPS. Nemi jerin kunnawa na HTTPS ko URL na sabar daga mai bada sabis.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Wannan hanyar haɗin gwiwar ta ƙare. Bude sabon zama akan TV ɗin ku.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Wannan amintaccen zaman babu shi ko ya ƙare. Bude sabon zama akan TV kuma yi amfani da cikakkiyar hanyar haɗin gwiwa.",
     Timer: "Mai ƙidayar lokaci",
     "Timer: switch to channel?": "Mai ƙidayar lokaci: sauya zuwa wannan tasha?",
     "Timeshift: one minute back": "Sauyin lokaci: minti ɗaya baya",
@@ -1008,6 +1055,8 @@ var keyStrings = {
         "Yi amfani da HTTP ko HTTPS ba tare da sunan mai amfani ko kalmar sirri a adireshin ba.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Yi amfani da HAGU/DAMA don zaɓin abin sarrafawa, TO don kunna shi, SAMA/ƘASA don gungurawa.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Yi amfani da cikakken hanyar haɗin gwiwa, gami da ɓangaren bayan #. Kar a raba shi da kowa.",
     "Use Up / Down to scroll. Back to close.":
         "Yi amfani da Sama / Ƙasa don gungurawa. Komawa don rufewa.",
     Username: "Sunan mai amfani",

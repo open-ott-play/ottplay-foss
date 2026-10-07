@@ -62,14 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv sazlamalary",
     "Allow diagnostics for 10 minutes": "10 minutlyk anyklaýşa rugsat ber",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Ekran suratlaryna 10 minut rugsat beriň",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Bu serwere anyklaýyş hasaplaýjylaryny ýygnamaga we bu ýaýlymy ýa-da pleýeri täzeden işletmäge rugsat beriň. Wagtlaýyn giriş 10 minut dowam edýär. Ynamdar goldaw gaýtadan birikdirilenden ýa-da işledilenden soň hem elýeterli bolýar; her ýygnamagyň möhleti şonda-da 10 minutdan gutarýar. Sahypa gizlenende ýa-da tora birikmedik wagty ýygnamak saklanýar.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Bu serwere şu işjeň sahypa sessiýasynda görkezilişiň, toruň we girişiň hasaplaýjylaryny ýygnamaga rugsat beriň. HTTPS we serweriň rugsady gerek. 10 minutdan, sahypa gizlenende ýa-da birikme kesilende saklanýar.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Bu serwere 10 minutlap surat soramagyna rugsat beriň. Suratlarda şahsy maglumatlar bolup biler. Brauzerde pleýer goýmasyny ýa-da penjiresini saýlaň. Rugsat täzeden ýüklemek ýa-da aýyrmak bilen tamamlanýar.",
     "Allowlist this Device ID": "Bu enjam ID-sini rugsat berlen sanawa goşuň",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS pleýeri HTTP EPG çeşmesini ýükläp bilmeýär. HTTPS çeşmesini ulanyň.",
@@ -101,6 +102,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 minut yza / öňe geçir",
     "Background color": "Fon reňki",
     "Background color of selected item": "Saýlanan bölegiň fon reňki",
+    "Backup state changed": "Ätiýaçlyk nusganyň ýagdaýy üýtgedi",
     "Balance, $": "Balans, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +113,7 @@ var keyStrings = {
         "Sanawlarda %1/%2 düwmeleriniň hereketi",
     "Black screen while switching the channel": "Kanal çalşylanda gara ekran",
     Blue: "Gök",
+    "Bookmark age (days): %1": "Bellikleriň ýaşy (günler): %1",
     "Bookmark age: %1 days": "Bellik ýaşy: %1 gün",
     "Browse folders": "Bukjalara seret",
     "Buffer Size, s": "Buferiň ululygy, s",
@@ -165,6 +168,9 @@ var keyStrings = {
     "Clear settings": "Sazlamalary arassala",
     Close: "Ýap",
     "Close PiP": "PiP ýap",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Bulutda saklamak ýa-da bulutdan ýüklemek STB-niň içki programma üpjünçiligini talap edýär (host_ott sazlanmady)",
+    "Cloud transfer failed": "Bulut geçirmek şowsuz",
     Code: "Kod",
     Color: "Reňk",
     "Color spectrum": "Reňk spektri",
@@ -183,6 +189,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Gabat geliş gurşawy ýüklenmedi. Gaýtadan synanyşmak üçin pleýeri täzeden açyň.",
     "Compatible HLS": "Gabat gelýän HLS",
+    "Complete pairing link": "Doly jübüt baglanyşyk",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -255,22 +262,24 @@ var keyStrings = {
         "Шаравоз hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     Connect: "Birikdir",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Ekran suratlaryna rugsat bermezden ozal HTTPS buýruk serwerini birikdiriň.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ekran suratlaryny ulanmak üçin HTTPS buýruk serwerini birikdiriň.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Diagnostikany işjeňleşdirmek üçin uzakdan dolandyryşy birikdiriň.",
     "Connect this player to a command server first.":
         "Ilki bu pleýeri buýruk serwerine birikdiriň.",
+    "Connect to TV": "Telewizora birikdiriň",
     Connected: "Birikdirildi",
     "Connected. Waiting for the channel list...":
         "Birikdirildi. Kanallar sanawyna garaşylýar...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Uzakdan dolandyryşy birikdirmek bu serwere pleýeriň näsazlyklaryny anyklamaga we düzetmäge rugsat berýär. Elýeterlilik täzeden başladylandan soň hem saklanýar we birikmäni keseniňizde gutarýar. Anyklaýyş maglumatlaryny ýygnamagyň her sessiýasy 10 minut bilen çäklidir.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Işledilen uzakdan dolandyryş birikmesi üçin uzakdaky diagnostikany birikdirmek.",
     "Connecting remote diagnostics for this page.":
         "Bu sahypa üçin uzakdan anyklaýyş birikdirilýär.",
+    "Connecting securely to your TV...": "Telewizora howpsuz birikmek ...",
     "Connecting to Plex…": "Plex-e birikdirilýär…",
     "Connecting to Stalker portal...": "Stalker portalyna birikdirilýär…",
     "Connecting...": "Birikdirilýär…",
@@ -288,6 +297,10 @@ var keyStrings = {
         "Jübütleşdirme haýyşyny döredip bolmady. Gaýtadan synanyşmak üçin serweri täzeden tapyň.",
     "Could not load. Select to retry.":
         "Ýükläp bolmady. Gaýtadan synanyşmak üçin saýlaň.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Bu teksti taýýarlap bilmedim Gysgaldyp, gaýtadan synanyşmagyňyzy haýyş edýäris.",
+    "Could not protect the private link. Use a different browser.":
+        "Şahsy baglanyşygy gorap bolmady. Başga brauzer ulanyň.",
     "Could not save provider settings.":
         "Üpçün edijiniň sazlamalaryny saklap bolmady.",
     "Could not save the approved command server settings.":
@@ -305,6 +318,8 @@ var keyStrings = {
     "Delete category": "Kategoriýany poz",
     "Delete channel": "Kanaly poz",
     "Delete list": "Sanawy poz",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Eltip bermek tassyklanmady Telewizoryňyzy barlaň ýa-da bu sessiýa gutarmanka şol bir habary gaýtadan synanyşyň.",
     "Demo — moving test pattern": "Synag — hereket edýän synag şekili",
     Description: "Beýany",
     "Description of remote control buttons":
@@ -387,6 +402,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker portalynyň URL salgysyny giriziň (mysal üçin http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Serwer belgisini giriziň (%1).",
+    "Enter text": "Tekst giriziň",
     "Enter the access code separately, not in the server address.":
         "Giriş koduny serwer salgysynda däl-de, aýratyn giriziň.",
     "Enter the command server IP or address.":
@@ -535,8 +551,10 @@ var keyStrings = {
     "Interface transparency": "Interfeýsiň durulygy",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Kanalyň baglanyşygy nädogry! Şahsy kabinetdäki ýaýlym URL salgysynda bolşy ýaly doly host giriziň (mysal üçin subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Bulut sazlamalarynyň nädogry jogaby",
     "Invalid protected source configuration":
         "Goragly çeşmäniň sazlamasy nädogry",
+    "Invalid setting": "Nädogry sazlama",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one sazlamalary",
@@ -588,7 +606,7 @@ var keyStrings = {
     "Manual setup": "El bilen sazlamak",
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV sazlamalary",
-    Media: "Media",
+    Media: "Mediýa",
     "Media item is no longer available": "Media elementi indi elýeterli däl",
     "Media Library": "Media kitaphanasy",
     "Media Library URL": "Media kitaphanasynyň URL salgysy",
@@ -616,6 +634,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Gepleşikler oýnatma sanawynyň kanallaryna we senelerine gabat gelmedi. Çeşmäni we enjamyň sagadyny barlaň.",
     "No saved settings found": "Saklanan sazlamalar tapylmady",
+    "No supported system language. Choose a language.":
+        "Goldanýan ulgam dili ýok. Dil saýlaň.",
     "Not configured": "Sazlanmadyk",
     "Not found": "Tapylmady",
     "Not reduce video when showing the list (bugfix)":
@@ -631,6 +651,8 @@ var keyStrings = {
     "not set": "bellenmedik",
     Off: "Öçürilen",
     Ok: "Bolýar",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Habaryňyzy diňe şu telewizor kabul edip biler. Baglanyşyk 10 minutdan soň gutarýar.",
     Open: "Aç",
     "Open in PiP": "PiP tertibinde aç",
     "Open Plex sign-in page": "Plex giriş sahypasyny aç",
@@ -643,6 +665,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP hosty",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sazlamalary",
+    "OTT-play remote input": "OTT-play uzakdan giriş",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 elýeterli. Häzir ýükläp gurnamalymy?",
     "Overwrite current settings?": "Häzirki sazlamalar çalşyrylsynmy?",
@@ -675,6 +698,7 @@ var keyStrings = {
     Playback: "Oýnatmak",
     "Player and device info": "Pleýer we enjam barada maglumat",
     "Player could not start": "Pleýer işläp başlamady",
+    "Player default": "Pleýeriň deslapky saýlawy",
     "Player info:": "Pleýer barada maglumat:",
     Playlist: "Oýnatma sanawy",
     "Playlist file": "Oýnatma sanawynyň faýly",
@@ -696,6 +720,8 @@ var keyStrings = {
     Postpaid: "Soňundan tölemek",
     PROST: "PROST",
     "PROST settings": "PROST sazlamalary",
+    "Preferred audio language": "Iň gowy görülýän ses dili",
+    "Preferred subtitle language": "Iň gowy görülýän subtitr dili",
     Prepaid: "Öňünden tölemek",
     "Preparing secure remote input...": "Howpsuz uzakdan giriş taýýarlanýar...",
     Prev: "Öňki",
@@ -727,14 +753,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Pult (sanly düwmeler ýok)",
     "Remote control": "Uzakdan dolandyryş",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Uzakdan gözegçilik diagnostika ygtyýar berýär. Operator üçin taýýar.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Uzakdan gözegçilik diagnostika ygtyýar berýär. Birikmäge garaşýaryn.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Uzakdan dolandyrmak, sazlaýjylaryny goşmak bilen media pleýeriň ekran suratlaryny öz içine alýar. Suratlarda şahsy maglumatlar bolup biler. Programma, goşmaça tassyklamazdan göni ekran suratlaryny alyp biler. Brauzerde, bu enjamda surata almak üçin goýmany ýa-da penjiräni saýlaň.",
     "Remote diagnostics": "Uzakdan anyklaýyş",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Bu birikme üçin uzakdan anyklaýyş maglumatlary ýygnalýar (her sessiýada 10 minuda çenli).",
     "Remote diagnostics is collecting for this page.":
         "Uzakdan anyklaýyş bu sahypa üçin maglumat ýygnaýar.",
     "Remote diagnostics is off.": "Uzakdan anyklaýyş öçürilen.",
@@ -748,10 +774,10 @@ var keyStrings = {
         "Uzakdan girizmegiň möhleti gutardy. Gaýtadan synanyşmak üçin täze sessiýa açyň.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Uzakdan girizmek sessiýasy elýeterli däl. Gaýtadan synanyşmak üçin täze sessiýa açyň.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Uzakdaky ekran suratlary",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Uzakdaky ekran suratlaryna 10 minut rugsat berilýär. Surata almak üçin sazlamalary ýapyň.",
+    "Remote screenshots are off.": "Uzakdaky ekran suratlary öçürildi.",
     "Remote session expired": "Uzakdaky sessiýanyň möhleti gutardy",
     "Remote text entry": "Uzakdan tekst girizmek",
     "Remote text entry denied": "Uzakdan tekst girizmek ret edildi",
@@ -779,6 +805,7 @@ var keyStrings = {
     "Resume from archive?": "Arhiwden dowam edilmelimi?",
     Retry: "Gaýtadan synanyş",
     "Retry EPG download": "EPG ýüklemesini gaýtala",
+    "Retry same message": "Şol habary gaýtadan synanyşyň",
     "Return to previous channel": "Öňki kanala gaýt",
     Rewind: "Wagt boýunça geçir",
     "Rewind step by buttons %1/%2": "%1/%2 düwmeleriniň yza geçiriş ädimi",
@@ -796,19 +823,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Sazlamalary sakla we kanallar sanawyny ýükle",
     "Save settings to storage": "Sazlamalary ammara sakla",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "QR koduny telewizorda skanirläň ýa-da doly şahsy jübütleme baglanyşygyny aşakda goýuň.",
     "Scan this QR code with your phone to enter text.":
         "Tekst girizmek üçin şu QR kody telefonyňyz bilen skanirläň.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Ekrany paýlaşmak başlap bilmedi.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ekrany paýlaşmak ýatyryldy ýa-da elýeterli däl.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Skrinshot rugsady açylmady.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Uzakdan dolandyryş birikdirilende ekran suratlary bar.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Bu platformada ekran suratlary elýeterli däl.",
     Script: "Ssenariý",
     Search: "Gözle",
+    "Search languages": "Dil gözläň",
     "Search programme": "Gepleşigi gözle",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Howpsuz uzakdan girizmek başlamady. Gaýtadan synanyşyň ýa-da ekran klawiaturasyny ulanyň.",
@@ -826,13 +856,14 @@ var keyStrings = {
         "EPG we logotipler üçin oýnatma sanawynyň nusga çeşmesini saýlaň",
     "Select Stalker portal": "Stalker portalyny saýlaň",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Brauzerde skrinshot çeşmesini saýlaň",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Brauzer paýlaşmak gepleşik penjiresinde pleýer goýmasyny ýa-da penjiresini saýlaň.",
     "Send request": "Haýyş iber",
     "Send settings": "Sazlamalary iber",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Bu kody proksiňizden Authorization: Bearer sözbaşysynda iberiň.",
+    "Send to TV": "Telewizora iber",
     Server: "Serwer",
     "Server address": "Serweriň salgysy",
     "Server address (for example 192.168.1.20:8081)":
@@ -841,10 +872,13 @@ var keyStrings = {
     "Server URL": "Serweriň URL salgysy",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Serwer elýeterli däl. Awtomatiki gaýtadan synanyşylýar; salgysyny we tora girişi barlaň.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sessiýa ýapyldy. Zerur bolanda telewizoryňyzdan täzesini başlaň.",
     Set: "Belle",
     "Set parental code": "Ene-ata gözegçiligi koduny belle",
     "Set timer?": "Taýmer goýmalymy?",
     Settings: "Sazlamalar",
+    "Settings changed while editing": "Redaktirlän wagtyňyz sazlamalar üýtgedi",
     "Settings changed. Discovery was canceled.":
         "Sazlamalar üýtgedi. Gözleg ýatyryldy.",
     "Settings copied": "Sazlamalar göçürildi",
@@ -854,10 +888,14 @@ var keyStrings = {
     "Settings imported": "Sazlamalar import edildi",
     "Settings JSON": "Sazlamalaryň JSON maglumaty",
     "Settings loaded from storage": "Sazlamalar ammardan ýüklendi",
+    "Settings received. Restarting player...":
+        "Sazlamalar alyndy Pleýeri täzeden başlatmak ...",
     "Settings STB": "STB sazlamalary",
     "Settings saved": "Sazlamalar saklandy",
     "Settings saved to storage": "Sazlamalar ammara saklandy",
     "Settings sended!": "Sazlamalar iberildi!",
+    "Settings source changed": "Sazlamalaryň çeşmesi üýtgedi",
+    "Settings storage rejected write": "Sazlamalary saklamak ýazgyny ret etdi",
     "Several command servers were found. Select one below.":
         "Birnäçe buýruk serweri tapyldy. Aşakdan birini saýlaň.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -910,11 +948,11 @@ var keyStrings = {
     "Starting...": "Başlaýar…",
     Status: "Ýagdaý",
     Stop: "Duruz",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Brauzer paýlaşmagyny bes ediň",
     "Stop current capture": "Häzirki maglumat ýygnamagy duruz",
     "Stop diagnostics": "Anyklaýşy duruz",
     "Stop playback and return to live": "Oýnatmagy duruz we göni ýaýlyma gaýt",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Ekran suratlaryny duruzyň",
     "Stream could not be played": "Ýaýlymy oýnadyp bolmady",
     "Stream type: %1": "Ýaýlymyň görnüşi: %1",
     "String for search": "Gözleg soragy",
@@ -926,6 +964,7 @@ var keyStrings = {
     "Switch subtitle": "Subtitrleri çalyş",
     "Switch to this list": "Bu sanawa geç",
     "Swop URL": "Swop URL salgysy",
+    "System language": "Ulgam dili",
     "saved on this device": "bu enjamda saklanan",
     select: "saýla",
     small: "kiçi",
@@ -934,15 +973,19 @@ var keyStrings = {
     "Tabox settings": "Tabox sazlamalary",
     "Text is too long for remote input.":
         "Tekst uzakdan girizmek üçin juda uzyn.",
+    "Text is too long. Please shorten it before sending.":
+        "Tekst gaty uzyn. Ibermezden ozal gysgaldyň.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Tekst iberildi. Onuň telewizoryňyzda görünýändigini barlaň.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Brauzeriň skrinshot çeşmesi taýýar.",
     "The command server discovery URL is invalid.":
         "Buýruk serwerini gözlemegiň URL salgysy nädogry.",
     "The device ID in the address is invalid.":
         "Salgydaky enjam ID-si nädogry.",
     "The discovery response is invalid.": "Gözlegiň jogaby nädogry.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Bu brauzer saýlanan skrinshot çeşmesini kesgitläp bilmeýär.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Bu brauzer howpsuz awtomatiki jübütleşdirip bilmeýär. Ony täzeläň ýa-da buýruk serweriniň sazlamalaryny el bilen giriziň.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -951,6 +994,10 @@ var keyStrings = {
         "Bu HTTPS pleýeri HTTP serwerine birigip bilmeýär. HTTPS serwerini ulanyň ýa-da pleýeri HTTP arkaly açyň.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Bu Play programmasyna HTTPS gerek. Üpçün edijiňizden HTTPS oýnatma sanawyny ýa-da serwer URL salgysyny soraň.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Bu jübütleşigiň möhleti gutardy. Telewizoryňyzda täze sessiýa açyň.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Bu ygtybarly sessiýa elýeterli däl ýa-da möhleti gutarýar. Telewizorda täze sessiýa açyň we doly baglanyşygyny ulanyň.",
     Timer: "Taýmer",
     "Timer: switch to channel?": "Taýmer: şu kanala geçilsinmi?",
     "Timeshift: one minute back": "Wagt süýşürmek: bir minut yza",
@@ -1000,6 +1047,8 @@ var keyStrings = {
         "Salgysynda ulanyjy ady ýa-da paroly bolmadyk HTTP ýa-da HTTPS ulanyň.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Dolandyryşy saýlamak üçin ÇEP/SAG, işletmek üçin OK, süýşürmek üçin ÝOKARY/AŞAK düwmelerini ulanyň.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Doly baglanyşygy ulanyň, # -den soň bölegi. Başga biri bilen paýlaşmaň.",
     "Use Up / Down to scroll. Back to close.":
         "Süýşürmek üçin Ýokary / Aşak düwmelerini ulanyň. Ýapmak üçin Yza basyň.",
     Username: "Ulanyjy ady",
