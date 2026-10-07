@@ -64,13 +64,14 @@ var keyStrings = {
         "Ippermetti d-dijanjostika għal 10 minuti",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Ħalli ritratti tal-iskrin għal 10 minuti",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ħalli dan is-server jiġbor l-għaddijiet dijanjostiċi u jerġa’ jibda dan l-istrim jew il-plejer. L-aċċess temporanju jdum 10 minuti. L-appoġġ fdat jibqa’ disponibbli wara konnessjoni mill-ġdid jew bidu mill-ġdid; kull ġbir xorta jiskadi wara 10 minuti. Il-ġbir jieqaf temporanjament waqt li l-app tkun moħbija jew mhux konnessa.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ħalli dan is-server jiġbor l-għaddijiet tad-daqq, tan-netwerk u tal-input għal din is-sessjoni attiva fuq l-iskrin. Jeħtieġ HTTPS u permess tas-server. Jieqaf wara 10 minuti, meta l-paġna tinħeba, jew meta tinqata’ l-konnessjoni.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Ħalli dan is-server jitlob immaġini għal 10 minuti. L-immaġini jista' jkun fihom informazzjoni personali. Fil-brawżer, agħżel it-tab jew it-tieqa tal-plejer. Il-permess jintemm meta terġa' tgħabbi jew tiskonnettja.",
     "Allowlist this Device ID": "Ippermetti dan l-ID tal-apparat",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Plejer HTTPS ma jistax iniżżel sors EPG b’HTTP. Uża sors HTTPS.",
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Mur minuta lura / ’il quddiem",
     "Background color": "Kulur tal-isfond",
     "Background color of selected item": "Kulur tal-isfond tal-oġġett magħżul",
+    "Backup state changed": "L-istat tal-backup inbidel",
     "Balance, $": "Bilanċ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -114,6 +116,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Skrin iswed meta jinbidlu l-kanali",
     Blue: "Blu",
+    "Bookmark age (days): %1": "Età tal-bookmark (jiem): %1",
     "Bookmark age: %1 days": "Età tal-bookmark: %1 jiem",
     "Browse folders": "Fittex fil-fowlders",
     "Buffer Size, s": "Daqs tal-buffer, s",
@@ -164,11 +167,15 @@ var keyStrings = {
     "Choose language": "Agħżel il-lingwa",
     "Choose Plex server": "Agħżel server Plex",
     "Choose provider": "Agħżel il-fornitur",
-    Classic: "Classic",
+    Classic: "Klassiku",
     "Clear all settings?": "Tħassar l-issettjar kollu?",
     "Clear settings": "Ħassar l-issettjar",
     Close: "Agħlaq",
     "Close PiP": "Agħlaq PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Il-ħażna u t-tagħbija permezz tal-cloud jeħtieġu firmware STB (host_ott mhux issettjat)",
+    "Cloud transfer failed":
+        "It-trasferiment tad-dejta permezz tal-cloud falla",
     Code: "Kodiċi",
     Color: "Kulur",
     "Color spectrum": "Spettru tal-kuluri",
@@ -187,6 +194,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "L-ambjent ta’ kompatibbiltà ma setax jitgħabba. Erġa’ iftaħ il-plejer biex terġa’ tipprova.",
     "Compatible HLS": "HLS kompatibbli",
+    "Complete pairing link": "Il-link komplut ta' tqabbil",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ikkonfigura All4you.tv f’Issettjar → Issettjar tal-fornitur",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +267,25 @@ var keyStrings = {
         "Ikkonfigura Шаравоз f’Issettjar → Issettjar tal-fornitur",
     Connect: "Ikkonnettja",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Qabbad server tal-kmand HTTPS qabel ma tippermetti ritratti tal-iskrin.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Qabbad server tal-kmand HTTPS biex tuża ritratti tal-iskrin.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Qabbad il-kontroll mill-bogħod biex tippermetti d-dijanjostika.",
     "Connect this player to a command server first.":
         "L-ewwel qabbad dan il-plejer ma’ server tal-kmandi.",
+    "Connect to TV": "Qabbad mat-TV",
     Connected: "Konness",
     "Connected. Waiting for the channel list...":
         "Konness. Qed tistenna l-lista tal-kanali...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Il-konnessjoni tal-kontroll mill-bogħod tagħti lil dan is-server il-permess li jiddijanjostika u jsewwi l-plejer. L-aċċess jibqa’ disponibbli wara bidu mill-ġdid u jintemm meta tiskonnettja. Kull ġbir ta’ dejta dijanjostika jdum sa 10 minuti.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Konnessjoni dijanjostika remota għall-konnessjoni tal-kontroll remot attivata.",
     "Connecting remote diagnostics for this page.":
         "Qed tiġi konnessa d-dijanjostika remota għal din il-paġna.",
+    "Connecting securely to your TV...":
+        "Tqabbad b'mod sikur mat-TV tiegħek...",
     "Connecting to Plex…": "Qed issir konnessjoni ma’ Plex…",
     "Connecting to Stalker portal...":
         "Qed issir konnessjoni mal-portal Stalker…",
@@ -294,6 +305,10 @@ var keyStrings = {
         "Ma setgħetx tinħoloq talba għall-abbinament. Erġa’ sib is-server biex terġa’ tipprova.",
     "Could not load. Select to retry.":
         "Ma setax jitgħabba. Agħżel biex terġa’ tipprova.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Dan it-test ma setax jitħejja. Jekk jogħġbok qassru u erġa’ pprova.",
+    "Could not protect the private link. Use a different browser.":
+        "Ma setgħetx tipproteġi l-link privat. Uża brawżer differenti.",
     "Could not save provider settings.":
         "L-issettjar tal-fornitur ma setax jiġi ssejvjat.",
     "Could not save the approved command server settings.":
@@ -311,6 +326,8 @@ var keyStrings = {
     "Delete category": "Ħassar il-kategorija",
     "Delete channel": "Ħassar il-kanal",
     "Delete list": "Ħassar il-lista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Il-kunsinna ma setgħetx tiġi kkonfermata. Iċċekkja t-TV tiegħek, jew erġa' pprova l-istess messaġġ qabel ma tiskadi din is-sessjoni.",
     "Demo — moving test pattern": "Dimostrazzjoni — mudell tat-test jiċċaqlaq",
     Description: "Deskrizzjoni",
     "Description of remote control buttons":
@@ -393,6 +410,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Daħħal URL tal-portal Stalker (eż. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Daħħal in-numru tas-server (%1).",
+    "Enter text": "Daħħal it-test",
     "Enter the access code separately, not in the server address.":
         "Daħħal il-kodiċi tal-aċċess separatament, mhux fl-indirizz tas-server.",
     "Enter the command server IP or address.":
@@ -547,8 +565,11 @@ var keyStrings = {
     "Interface transparency": "Trasparenza tal-interfaċċa",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Link tal-kanal mhux validu! Daħħal l-isem sħiħ tal-host kif jidher fil-URL tal-istrim fil-kont (eż. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Rispons mhux validu għall-issettjar fil-cloud",
     "Invalid protected source configuration":
         "Konfigurazzjoni tas-sors protett mhux valida",
+    "Invalid setting": "Issettjar mhux validu",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Issettjar ta’ IpStream.one",
@@ -590,7 +611,7 @@ var keyStrings = {
     large: "kbir",
     left: "xellug",
     "left-bottom": "isfel fuq ix-xellug",
-    "logos...": "Logos…",
+    "logos...": "Logos tal-kanal...",
     M3U: "M3U",
     "M3U URL": "M3U URL",
     "M3U URL (fallback)": "URL M3U (riżerva)",
@@ -629,6 +650,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "L-ebda programm ma qabel mal-kanali u d-dati tal-lista tad-daqq. Iċċekkja s-sors u l-arloġġ tal-apparat.",
     "No saved settings found": "Ma nstab l-ebda issettjar issejvjat",
+    "No supported system language. Choose a language.":
+        "L-ebda lingwa tas-sistema appoġġjata. Agħżel lingwa.",
     "Not configured": "Mhux ikkonfigurat",
     "Not found": "Ma nstabx",
     "Not reduce video when showing the list (bugfix)":
@@ -644,6 +667,8 @@ var keyStrings = {
     "not set": "mhux issettjat",
     Off: "mitfi",
     Ok: "Tajjeb",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Dan it-TV biss jista' jaċċetta l-messaġġ tiegħek. Il-link tiskadi wara 10 minuti.",
     Open: "Iftaħ",
     "Open in PiP": "Iftaħ f’PiP",
     "Open Plex sign-in page": "Iftaħ il-paġna tad-dħul Plex",
@@ -656,6 +681,7 @@ var keyStrings = {
     "OTT / APP host": "Host OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Issettjar ta’ OTT Prime ONLINE",
+    "OTT-play remote input": "Dħul ta’ test mill-bogħod f’OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 huwa disponibbli. Tniżżlu u tinstallah issa?",
     "Overwrite current settings?": "Tissostitwixxi l-issettjar attwali?",
@@ -673,7 +699,7 @@ var keyStrings = {
     "Pairing was rejected or returned an invalid approval. Find the server again to retry.":
         "L-abbinament ġie miċħud jew irritorna approvazzjoni mhux valida. Erġa’ sib is-server biex terġa’ tipprova.",
     "Parental control": "Kontroll tal-ġenituri",
-    Password: "Password",
+    Password: "Kelma sigrieta",
     "Paste settings JSON": "Waħħal JSON tal-issettjar",
     Pause: "Issospendi",
     "Pause/Play": "Issospendi / Ibda d-daqq",
@@ -688,6 +714,7 @@ var keyStrings = {
     Playback: "Daqq",
     "Player and device info": "Informazzjoni tal-plejer u tal-apparat",
     "Player could not start": "Il-plejer ma setax jibda",
+    "Player default": "Għażla predefinita tal-plejer",
     "Player info:": "Informazzjoni tal-plejer:",
     Playlist: "Lista tad-daqq",
     "Playlist file": "Fajl tal-lista tad-daqq",
@@ -708,6 +735,8 @@ var keyStrings = {
     Postpaid: "Ħlas wara l-użu",
     PROST: "PROST",
     "PROST settings": "Issettjar ta’ PROST",
+    "Preferred audio language": "Lingwa awdjo preferuta",
+    "Preferred subtitle language": "Lingwa ppreferuta tas-sottotitoli",
     Prepaid: "Imħallas minn qabel",
     "Preparing secure remote input...": "Qed jitħejja dħul remot sigur...",
     Prev: "Preċedenti",
@@ -743,14 +772,14 @@ var keyStrings = {
         "Kontroll mill-bogħod (mingħajr buttuni bin-numri)",
     "Remote control": "Kontroll mill-bogħod",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Il-kontroll mill-bogħod jawtorizza d-dijanjosi. Lest għal operatur.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Il-kontroll mill-bogħod jawtorizza d-dijanjosi. Stennija biex terġa 'tikkonnettja.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Il-kontroll mill-bogħod jinkludi ritratti tal-iskrin tal-plejer u tal-issettjar tiegħu. L-immaġini jistgħu jinkludu informazzjoni privata. L-applikazzjoni tista’ tieħu dawn ir-ritratti direttament mingħajr approvazzjoni oħra. Fil-brawżer, trid tagħżel fuq dan l-apparat it-tab jew it-tieqa li trid taqsam.",
     "Remote diagnostics": "Dijanjostika remota",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Id-dijanjostika mill-bogħod qed tiġbor id-dejta għal din il-konnessjoni (sa 10 minuti għal kull sessjoni).",
     "Remote diagnostics is collecting for this page.":
         "Id-dijanjostika remota qed tiġbor data għal din il-paġna.",
     "Remote diagnostics is off.": "Id-dijanjostika remota hija mitfija.",
@@ -764,10 +793,11 @@ var keyStrings = {
         "Id-dħul remot skada. Iftaħ sessjoni ġdida biex terġa’ tipprova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Is-sessjoni tad-dħul remot mhix disponibbli. Iftaħ sessjoni ġdida biex terġa’ tipprova.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Ritratti tal-iskrin mill-bogħod",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Ir-ritratti tal-iskrin mill-bogħod huma permessi għal 10 minuti. Agħlaq l-issettjar biex ikunu jistgħu jittieħdu.",
+    "Remote screenshots are off.":
+        "Ritratti tal-iskrin mill-bogħod huma mitfija.",
     "Remote session expired": "Is-sessjoni remota skadiet",
     "Remote text entry": "Dħul tat-test mill-bogħod",
     "Remote text entry denied": "Id-dħul tat-test mill-bogħod ġie miċħud",
@@ -796,6 +826,7 @@ var keyStrings = {
     "Resume from archive?": "Tkompli mill-arkivju?",
     Retry: "Erġa’ pprova",
     "Retry EPG download": "Erġa’ pprova tniżżel EPG",
+    "Retry same message": "Erġa’ ibgħat l-istess messaġġ",
     "Return to previous channel": "Erġa’ lura għall-kanal preċedenti",
     Rewind: "Mexxi l-pożizzjoni tad-daqq",
     "Rewind step by buttons %1/%2":
@@ -814,19 +845,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Issejvja l-issettjar u għabbi l-lista tal-kanali",
     "Save settings to storage": "Issejvja l-issettjar fil-ħażna",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skennja l-kodiċi QR fuq it-TV tiegħek, jew waħħal il-link ta' tqabbil privat sħiħ tiegħu hawn taħt.",
     "Scan this QR code with your phone to enter text.":
         "Skennja dan il-kodiċi QR bit-telefon tiegħek biex iddaħħal test.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Il-qsim tal-iskrin ma setax jibda.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Il-qsim tal-iskrin ġie kkanċellat jew mhux disponibbli.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Il-permess biex jittieħdu ritratti tal-iskrin ma setax jiġi attivat.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Ritratti tal-iskrin huma disponibbli waqt li l-kontroll mill-bogħod ikun imqabbad.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ritratti tal-iskrin mhumiex disponibbli fuq din il-pjattaforma.",
     Script: "Xenarju",
     Search: "Fittex",
+    "Search languages": "Fittex lingwi",
     "Search programme": "Fittex programm",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Id-dħul remot sigur ma setax jibda. Erġa’ pprova jew uża t-tastiera fuq l-iskrin.",
@@ -844,13 +878,14 @@ var keyStrings = {
         "Agħżel sors tal-mudell tal-lista tad-daqq għal EPG u logos",
     "Select Stalker portal": "Agħżel portal Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Agħżel is-sors ta' ritratt tal-iskrin fil-brawżer",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Agħżel it-tab jew it-tieqa tal-plejer fid-djalogu tal-qsim tal-brawżer.",
     "Send request": "Ibgħat talba",
     "Send settings": "Ibgħat l-issettjar",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Ibgħat dan il-kodiċi mill-proksi tiegħek fil-header Authorization: Bearer.",
+    "Send to TV": "Ibgħat lit-TV",
     Server: "Server",
     "Server address": "Indirizz tas-server",
     "Server address (for example 192.168.1.20:8081)":
@@ -859,10 +894,13 @@ var keyStrings = {
     "Server URL": "URL tas-server",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Is-server mhux disponibbli. Se jerġa’ jipprova awtomatikament; iċċekkja l-indirizz u l-aċċess għan-netwerk.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sessjoni magħluqa. Ibda waħda ġdida mit-TV tiegħek meta jkun meħtieġ.",
     Set: "Applika",
     "Set parental code": "Issettja l-kodiċi tal-ġenituri",
     "Set timer?": "Tissettja tajmer?",
     Settings: "Issettjar",
+    "Settings changed while editing": "L-issettjar inbidel waqt l-editjar",
     "Settings changed. Discovery was canceled.":
         "L-issettjar inbidel. It-tfittxija ġiet ikkanċellata.",
     "Settings copied": "L-issettjar ġie kkupjat",
@@ -872,10 +910,15 @@ var keyStrings = {
     "Settings imported": "L-issettjar ġie importat",
     "Settings JSON": "JSON tal-issettjar",
     "Settings loaded from storage": "L-issettjar tgħabba mill-ħażna",
+    "Settings received. Restarting player...":
+        "L-issettjar ġie riċevut. Il-plejer qed jerġa’ jibda...",
     "Settings STB": "Issettjar tal-STB",
     "Settings saved": "L-issettjar ġie ssejvjat",
     "Settings saved to storage": "L-issettjar ġie ssejvjat fil-ħażna",
     "Settings sended!": "L-issettjar intbagħat!",
+    "Settings source changed": "Is-sors tal-issettjar inbidel",
+    "Settings storage rejected write":
+        "Il-ħażna tal-issettjar ċaħdet il-kitba tad-dejta",
     "Several command servers were found. Select one below.":
         "Instabu diversi servers tal-kmandi. Agħżel wieħed hawn taħt.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -929,12 +972,12 @@ var keyStrings = {
     "Starting...": "Qed jibda…",
     Status: "Stat",
     Stop: "Waqqaf",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Waqqaf il-qsim tal-brawżer",
     "Stop current capture": "Waqqaf il-ġbir attwali",
     "Stop diagnostics": "Waqqaf id-dijanjostika",
     "Stop playback and return to live":
         "Waqqaf id-daqq u erġa’ lura għax-xandira diretta",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Waqqaf ritratti tal-iskrin",
     "Stream could not be played": "L-istrim ma setax jindaqq",
     "Stream type: %1": "Tip ta’ strim: %1",
     "String for search": "Kliem tat-tfittxija",
@@ -946,6 +989,7 @@ var keyStrings = {
     "Switch subtitle": "Ibdel is-sottotitli",
     "Switch to this list": "Aqleb għal din il-lista",
     "Swop URL": "Swop URL",
+    "System language": "Lingwa tas-sistema",
     "saved on this device": "issejvjat fuq dan l-apparat",
     select: "agħżel",
     small: "żgħir",
@@ -954,8 +998,12 @@ var keyStrings = {
     "Tabox settings": "Issettjar ta’ Tabox",
     "Text is too long for remote input.":
         "It-test huwa twil wisq għad-dħul remot.",
+    "Text is too long. Please shorten it before sending.":
+        "It-test huwa twil wisq. Jekk jogħġbok qassru qabel ma tibagħtu.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Test mibgħut. Iċċekkja t-TV tiegħek biex tikkonferma li deher.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Is-sors tal-iskrin tal-brawżer huwa lest.",
     "The command server discovery URL is invalid.":
         "Il-URL tat-tfittxija tas-server tal-kmandi mhuwiex validu.",
     "The device ID in the address is invalid.":
@@ -963,7 +1011,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "It-tweġiba tat-tfittxija mhix valida.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Dan il-brawżer ma jistax jidentifika s-sors ta' ritratt tal-iskrin magħżul.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Dan il-brawżer ma jistax jagħmel abbinament awtomatiku b’mod sigur. Aġġornah jew daħħal l-issettjar tas-server tal-kmandi manwalment.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -972,6 +1020,10 @@ var keyStrings = {
         "Dan il-plejer HTTPS ma jistax jikkonnettja ma’ server HTTP. Uża server HTTPS jew iftaħ il-plejer fuq HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Din l-app Play teħtieġ HTTPS. Itlob lill-fornitur tiegħek URL HTTPS tal-lista tad-daqq jew tas-server.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Din il-link ta' tqabbil skadiet. Iftaħ sessjoni ġdida fuq it-TV tiegħek.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Din is-sessjoni sigura mhix disponibbli jew skadiet. Iftaħ sessjoni ġdida fuq it-TV u uża l-link sħiħa tagħha.",
     Timer: "Tajmer",
     "Timer: switch to channel?": "Tajmer: taqleb għal dan il-kanal?",
     "Timeshift: one minute back": "Mur minuta lura",
@@ -1021,6 +1073,8 @@ var keyStrings = {
         "Uża HTTP jew HTTPS mingħajr isem tal-utent jew password fl-indirizz.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Uża XELLUG/LEMIN biex tagħżel kontroll, OK biex tattivah, u FUQ/ISFEL biex tiskrollja.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Uża l-link sħiħa, inkluża l-parti wara #. Taqsamhiex ma' ħaddieħor.",
     "Use Up / Down to scroll. Back to close.":
         "Uża Fuq / Isfel biex tiskrollja. Lura biex tagħlaq.",
     Username: "Isem tal-utent",

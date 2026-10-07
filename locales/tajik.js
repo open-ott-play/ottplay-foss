@@ -64,13 +64,14 @@ var keyStrings = {
         "Ба ташхис барои 10 дақиқа иҷозат диҳед",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Ба скриншотҳо барои 10 дақиқа иҷозат диҳед",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ба ин сервер иҷозат диҳед, ки нишондиҳандаҳои ташхисиро ҷамъ кунад ва пахш ё плеерро аз нав оғоз намояд. Дастрасии муваққатӣ 10 дақиқа давом мекунад. Дастгирии боэътимод пас аз пайвастшавӣ ё оғози дубора дастрас мемонад; ҳар ҷамъоварӣ пас аз 10 дақиқа анҷом меёбад. Ҳангоми пинҳон будан ё қатъи шабака ҷамъоварӣ таваққуф мекунад.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ба ин сервер иҷозат диҳед, ки нишондиҳандаҳои пахш, шабака ва вурудро дар ин нишасти намоён ҷамъ кунад. HTTPS ва иҷозати сервер заруранд. Пас аз 10 дақиқа, ҳангоми пинҳоншавӣ ё қатъи пайвастшавӣ қатъ мешавад.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Ба ин сервер иҷозат диҳед, ки барои 10 дақиқа тасвирҳо дархост кунад. Тасвирҳо метавонанд маълумоти шахсӣ дошта бошанд. Дар браузер ҷадвал ё равзанаи плеерро интихоб кунед. Иҷозат ҳангоми аз нав боркунӣ ё қатъи пайвастшавӣ ба охир мерасад.",
     "Allowlist this Device ID":
         "Ин ID-и дастгоҳро ба рӯйхати иҷозатшуда илова кунед",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 дақиқа ақиб / пеш гузаронед",
     "Background color": "Ранги замина",
     "Background color of selected item": "Ранги заминаи сатри интихобшуда",
+    "Backup state changed": "Ҳолати нусхабардорӣ тағйир ёфт",
     "Balance, $": "Бақия, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Экрани сиёҳ ҳангоми иваз кардани канал",
     Blue: "Кабуд",
+    "Bookmark age (days): %1": "Синну соли хатчӯб (рӯзҳо): %1",
     "Bookmark age: %1 days": "Муҳлати нишона: %1 рӯз",
     "Browse folders": "Дидани ҷузвдонҳо",
     "Buffer Size, s": "Андозаи буфер, с",
@@ -164,11 +167,14 @@ var keyStrings = {
     "Choose language": "Забонро интихоб кунед",
     "Choose Plex server": "Сервери Plex-ро интихоб кунед",
     "Choose provider": "Таъминкунандаро интихоб кунед",
-    Classic: "Classic",
+    Classic: "Классикӣ",
     "Clear all settings?": "Ҳамаи танзимот тоза карда шаванд?",
     "Clear settings": "Танзимотро тоза кунед",
     Close: "Пӯшед",
     "Close PiP": "PiP-ро пӯшед",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Захира/боркунии абр нармафзори STB-ро талаб мекунад (host_ott муқаррар карда нашудааст)",
+    "Cloud transfer failed": "Интиқоли абр ноком шуд",
     Code: "Рамз",
     Color: "Ранг",
     "Color spectrum": "Спектри ранг",
@@ -187,6 +193,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Ҷузъҳои мутобиқат бор нашуданд. Барои кӯшиши дубора плеерро аз нав кушоед.",
     "Compatible HLS": "HLS-и мувофиқ",
+    "Complete pairing link": "Истиноди пурраи ҷуфткунӣ",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +266,25 @@ var keyStrings = {
         "Шаравоз-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     Connect: "Пайваст шавед",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Пеш аз иҷозат додани скриншотҳо сервери фармони HTTPS-ро пайваст кунед.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Барои истифодаи скриншотҳо сервери фармони HTTPS-ро пайваст кунед.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Барои фаъол кардани ташхис, идоракунии дурдастро пайваст кунед.",
     "Connect this player to a command server first.":
         "Аввал ин плеерро ба сервери фармонҳо пайваст кунед.",
+    "Connect to TV": "Ба телевизор пайваст шавед",
     Connected: "Пайваст шуд",
     "Connected. Waiting for the channel list...":
         "Пайваст шуд. Интизори рӯйхати каналҳо…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Пайваст кардани идоракунии дурдаст ба ин сервер иҷозат медиҳад, ки плеерро ташхис ва таъмир кунад. Дастрасӣ пас аз бозоғозӣ боқӣ мемонад ва вақте ки шумо пайвастшавиро қатъ мекунед, хотима меёбад. Ҳар ҷамъоварии маълумоти ташхисӣ бо 10 дақиқа маҳдуд аст.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Пайваст кардани ташхиси дурдаст барои пайвасти идоракунии дурдасти фаъол.",
     "Connecting remote diagnostics for this page.":
         "Ташхиси дурдаст барои ин саҳифа пайваст мешавад.",
+    "Connecting securely to your TV...":
+        "Ба телевизиони шумо бехатар пайваст мешавад...",
     "Connecting to Plex…": "Пайвастшавӣ ба Plex…",
     "Connecting to Stalker portal...": "Пайвастшавӣ ба портали Stalker…",
     "Connecting...": "Пайвастшавӣ…",
@@ -292,6 +302,10 @@ var keyStrings = {
         "Дархости ҷуфткунӣ сохта нашуд. Барои кӯшиши дубора серверро боз ёбед.",
     "Could not load. Select to retry.":
         "Бор нашуд. Барои кӯшиши дубора интихоб кунед.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Ин матнро омода карда натавонист. Лутфан онро кӯтоҳ кунед ва бори дигар кӯшиш кунед.",
+    "Could not protect the private link. Use a different browser.":
+        "Пайванди хусусиро ҳифз карда натавонист. Браузери дигарро истифода баред.",
     "Could not save provider settings.":
         "Танзимоти таъминкунанда захира нашуданд.",
     "Could not save the approved command server settings.":
@@ -309,6 +323,8 @@ var keyStrings = {
     "Delete category": "Гурӯҳро нест кунед",
     "Delete channel": "Каналро нест кунед",
     "Delete list": "Рӯйхатро нест кунед",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Таҳвил тасдиқ карда нашуд. Телевизиони худро санҷед ё пеш аз ба охир расидани мӯҳлати ин сессия ҳамон паёмро такрор кунед.",
     "Demo — moving test pattern": "Намоиш — тасвири санҷишии ҳаракаткунанда",
     Description: "Тавсиф",
     "Description of remote control buttons": "Роҳнамои тугмаҳои пулт",
@@ -392,6 +408,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "URL-и портали Stalker-ро ворид кунед (масалан http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Рақами серверро ворид кунед (%1).",
+    "Enter text": "Матнро ворид кунед",
     "Enter the access code separately, not in the server address.":
         "Рамзи дастрасиро алоҳида ворид кунед, на дар суроғаи сервер.",
     "Enter the command server IP or address.":
@@ -541,8 +558,10 @@ var keyStrings = {
     "Interface transparency": "Шаффофияти интерфейс",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Пайванди канал нодуруст аст! Номи пурраи мизбонро аз URL-и пахш дар ҳисоби таъминкунанда ворид кунед (масалан subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Ҷавоби танзимоти абр нодуруст",
     "Invalid protected source configuration":
         "Танзимоти манбаи ҳифзшуда нодуруст аст",
+    "Invalid setting": "Танзими нодуруст",
     "IPTV token": "Токени IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Танзимоти IpStream.one",
@@ -622,6 +641,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ягон барнома ба каналҳо ва санаҳои рӯйхати пахш мувофиқ наомад. Манбаъ ва соати дастгоҳро санҷед.",
     "No saved settings found": "Танзимоти захирашуда ёфт нашуданд",
+    "No supported system language. Choose a language.":
+        "Ягон забони системавӣ дастгирӣ намешавад. Забонеро интихоб кунед.",
     "Not configured": "Танзим нашудааст",
     "Not found": "Ёфт нашуд",
     "Not reduce video when showing the list (bugfix)":
@@ -637,6 +658,8 @@ var keyStrings = {
     "not set": "муайян нашудааст",
     Off: "Хомӯш",
     Ok: "Хуб",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Танҳо ин телевизор метавонад паёми шуморо қабул кунад. Пайванд пас аз 10 дақиқа ба охир мерасад.",
     Open: "Кушоед",
     "Open in PiP": "Дар PiP кушоед",
     "Open Plex sign-in page": "Саҳифаи воридшавии Plex-ро кушоед",
@@ -649,6 +672,7 @@ var keyStrings = {
     "OTT / APP host": "Мизбони OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Танзимоти OTT Prime ONLINE",
+    "OTT-play remote input": "Вуруди дурдасти OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 дастрас аст. Ҳозир боргирӣ ва насб карда шавад?",
     "Overwrite current settings?": "Танзимоти ҷорӣ иваз карда шаванд?",
@@ -681,6 +705,7 @@ var keyStrings = {
     Playback: "Пахш",
     "Player and device info": "Маълумоти плеер ва дастгоҳ",
     "Player could not start": "Плеер оғоз нашуд",
+    "Player default": "Интихоби пешфарзи плеер",
     "Player info:": "Маълумоти плеер:",
     Playlist: "Рӯйхати пахш",
     "Playlist file": "Файли рӯйхати пахш",
@@ -702,6 +727,8 @@ var keyStrings = {
     Postpaid: "Пардохти баъдӣ",
     PROST: "PROST",
     "PROST settings": "Танзимоти PROST",
+    "Preferred audio language": "Забони аудиоии бартарӣ",
+    "Preferred subtitle language": "Забони афзалиятноки субтитр",
     Prepaid: "Пешпардохт",
     "Preparing secure remote input...":
         "Вуруди дурдасти бехатар омода мешавад…",
@@ -735,14 +762,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Пулт (бе тугмаҳои рақамӣ)",
     "Remote control": "Идоракунии дурдаст",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Идоракунии дурдаст ба ташхис иҷозат медиҳад. Барои оператор омода аст.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Идоракунии дурдаст ба ташхис иҷозат медиҳад. Интизории дубора пайваст шудан.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Идоракунии дурдаст скриншотҳои плеери медиа, аз ҷумла танзимоти онро дар бар мегирад. Тасвирҳо метавонанд маълумоти шахсиро дар бар гиранд. Барнома метавонад бидуни тасдиқи иловагӣ скриншотҳоро мустақиман сабт кунад. Дар браузер ҷадвал ё равзанаро барои сабт кардан дар ин дастгоҳ интихоб кунед.",
     "Remote diagnostics": "Ташхиси дурдаст",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Барои ин пайвастшавӣ ташхиси дурдаст ҷамъоварӣ мешавад (то 10 дақиқа дар як сессия).",
     "Remote diagnostics is collecting for this page.":
         "Ташхиси дурдаст барои ин саҳифа маълумот ҷамъ мекунад.",
     "Remote diagnostics is off.": "Ташхиси дурдаст хомӯш аст.",
@@ -756,10 +783,10 @@ var keyStrings = {
         "Муҳлати вуруди дурдаст гузашт. Барои кӯшиши дубора нишасти нав кушоед.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Нишасти вуруди дурдаст дастрас нест. Барои кӯшиши дубора нишасти нав кушоед.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Скриншотҳои дурдаст",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Скриншотҳои дурдаст барои 10 дақиқа иҷозат дода мешаванд. Танзимотҳоро барои сабт пӯшед.",
+    "Remote screenshots are off.": "Скриншотҳои дурдаст хомӯшанд.",
     "Remote session expired": "Муҳлати нишасти дурдаст гузашт",
     "Remote text entry": "Вуруди дурдасти матн",
     "Remote text entry denied": "Вуруди дурдасти матн рад шуд",
@@ -787,6 +814,7 @@ var keyStrings = {
     "Resume from archive?": "Аз бойгонӣ идома дода шавад?",
     Retry: "Дубора кӯшиш кунед",
     "Retry EPG download": "Боргирии EPG-ро такрор кунед",
+    "Retry same message": "Худи ҳамон паёмро такрор кунед",
     "Return to previous channel": "Ба канали пешина баргардед",
     Rewind: "Ақиб / пеш гузаронед",
     "Rewind step by buttons %1/%2": "Фосилаи гузариш бо тугмаҳои %1/%2",
@@ -804,19 +832,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Танзимотро захира ва рӯйхати каналҳоро бор кунед",
     "Save settings to storage": "Танзимотро ба захира сабт кунед",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Рамзи QR-ро дар телевизиони худ скан кунед ё истиноди пурраи ҷуфткунии хусусии онро дар зер часбонед.",
     "Scan this QR code with your phone to enter text.":
         "Барои ворид кардани матн ин QR-кодро бо телефон скан кунед.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Мубодилаи экран оғоз карда нашуд.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Мубодилаи экран бекор карда шуд ё дастнорас аст.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Иҷозати скриншотро фаъол кардан мумкин нест.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Скриншотҳо ҳангоми пайваст будани идоракунии дурдаст дастрасанд.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Скриншотҳо дар ин платформа дастрас нестанд.",
     Script: "Сенария",
     Search: "Ҷустуҷӯ",
+    "Search languages": "Ҷустуҷӯи забонҳо",
     "Search programme": "Барномаро ҷустуҷӯ кунед",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Вуруди дурдасти бехатар оғоз нашуд. Дубора кӯшиш кунед ё клавиатураи экранро истифода баред.",
@@ -835,13 +866,14 @@ var keyStrings = {
         "Манбаи қолаби рӯйхати пахшро барои EPG ва нишонаҳо интихоб кунед",
     "Select Stalker portal": "Портали Stalker-ро интихоб кунед",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Дар браузер манбаи скриншотро интихоб кунед",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Дар муколамаи мубодилаи браузер ҷадвал ё равзанаи плеерро интихоб кунед.",
     "Send request": "Дархост фиристед",
     "Send settings": "Танзимотро фиристед",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Ин рамзро аз прокси дар сарлавҳаи Authorization: Bearer фиристед.",
+    "Send to TV": "Ба телевизион фиристед",
     Server: "Сервер",
     "Server address": "Суроғаи сервер",
     "Server address (for example 192.168.1.20:8081)":
@@ -850,10 +882,13 @@ var keyStrings = {
     "Server URL": "URL-и сервер",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Сервер дастрас нест. Кӯшиши дубораи худкор; суроға ва дастрасии шабакаро санҷед.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Сеанс баста шуд. Ҳангоми зарурат дар телевизори худ сеанси нав оғоз кунед.",
     Set: "Татбиқ кунед",
     "Set parental code": "Рамзи назорати волидайнро таъин кунед",
     "Set timer?": "Таймер таъин карда шавад?",
     Settings: "Танзимот",
+    "Settings changed while editing": "Танзимот ҳангоми таҳрир тағйир ёфт",
     "Settings changed. Discovery was canceled.":
         "Танзимот тағйир ёфтанд. Ҷустуҷӯ бекор шуд.",
     "Settings copied": "Танзимот нусхабардорӣ шуданд",
@@ -863,10 +898,14 @@ var keyStrings = {
     "Settings imported": "Танзимот ворид шуданд",
     "Settings JSON": "JSON-и танзимот",
     "Settings loaded from storage": "Танзимот аз захира бор шуданд",
+    "Settings received. Restarting player...":
+        "Танзимот гирифта шуд. Плеер аз нав оғоз мешавад...",
     "Settings STB": "Танзимоти STB",
     "Settings saved": "Танзимот захира шуданд",
     "Settings saved to storage": "Танзимот ба захира сабт шуданд",
     "Settings sended!": "Танзимот фиристода шуданд!",
+    "Settings source changed": "Манбаи танзимот тағир ёфт",
+    "Settings storage rejected write": "Нигоҳдории танзимот сабтро рад кард",
     "Several command servers were found. Select one below.":
         "Якчанд сервери фармонҳо ёфт шуд. Якеро дар поён интихоб кунед.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -921,12 +960,12 @@ var keyStrings = {
     "Starting...": "Оғоз…",
     Status: "Ҳолат",
     Stop: "Қатъ кунед",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Мубодилаи браузерро қатъ кунед",
     "Stop current capture": "Ҷамъоварии ҷориро қатъ кунед",
     "Stop diagnostics": "Ташхисро қатъ кунед",
     "Stop playback and return to live":
         "Пахшро қатъ кунед ва ба пахши зинда баргардед",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Скриншотҳоро қатъ кунед",
     "Stream could not be played": "Пахш иҷро нашуд",
     "Stream type: %1": "Навъи пахш: %1",
     "String for search": "Ибораи ҷустуҷӯ",
@@ -937,7 +976,8 @@ var keyStrings = {
     "Switch sound track": "Роҳи садоро иваз кунед",
     "Switch subtitle": "Зернависҳоро иваз кунед",
     "Switch to this list": "Ба ин рӯйхат гузаред",
-    "Swop URL": "Swop URL",
+    "Swop URL": "URL-и Swop",
+    "System language": "Забони система",
     "saved on this device": "дар ин дастгоҳ захира шудааст",
     select: "интихоб кунед",
     small: "хурд",
@@ -946,15 +986,19 @@ var keyStrings = {
     "Tabox settings": "Танзимоти Tabox",
     "Text is too long for remote input.":
         "Матн барои вуруди дурдаст хеле дароз аст.",
+    "Text is too long. Please shorten it before sending.":
+        "Матн хеле дароз аст. Лутфан пеш аз фиристодан онро кӯтоҳ кунед.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Матн фиристода шуд. Телевизиони худро санҷед, то пайдо шудани онро тасдиқ кунед.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Манбаи скриншоти браузер омода аст.",
     "The command server discovery URL is invalid.":
         "URL-и ҷустуҷӯи сервери фармонҳо нодуруст аст.",
     "The device ID in the address is invalid.":
         "ID-и дастгоҳ дар суроға нодуруст аст.",
     "The discovery response is invalid.": "Ҷавоби ҷустуҷӯ нодуруст аст.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ин браузер манбаи скриншоти интихобшударо муайян карда наметавонад.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ин браузер ҷуфткунии худкори бехатарро иҷро карда наметавонад. Онро нав кунед ё танзимоти сервери фармонҳоро дастӣ ворид намоед.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -963,6 +1007,10 @@ var keyStrings = {
         "Ин плеери HTTPS ба сервери HTTP пайваст шуда наметавонад. Сервери HTTPS-ро истифода баред ё плеерро тавассути HTTP кушоед.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Барномаи Play ба HTTPS ниёз дорад. Аз таъминкунанда URL-и рӯйхати пахш ё сервери HTTPS-ро талаб кунед.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Мӯҳлати ин пайванди ҷуфткунӣ гузаштааст. Дар телевизиони худ сессияи нав кушоед.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ин сеанси бехатар дастнорас аст ё мӯҳлати гузаштааст. Дар телевизион сеанси нав кушоед ва истиноди пурраи онро истифода баред.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: ба ин канал гузарем?",
     "Timeshift: one minute back": "Гузариши вақт: як дақиқа ақиб",
@@ -1012,6 +1060,8 @@ var keyStrings = {
         "HTTP ё HTTPS-ро бе номи корбар ва гузарвожа дар суроға истифода баред.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Барои интихоби идора чап/рост, барои фаъолсозӣ OK ва барои ҳаракати матн боло/поёнро истифода баред.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Истиноди пурра, аз ҷумла қисми пас аз # истифода баред. Онро бо ягон каси дигар мубодила накунед.",
     "Use Up / Down to scroll. Back to close.":
         "Барои ҳаракати матн боло / поёнро истифода баред. Барои пӯшидан Бозгаштро пахш кунед.",
     Username: "Номи корбар",

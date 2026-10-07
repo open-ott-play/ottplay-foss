@@ -59,19 +59,20 @@ var keyStrings = {
     "All categories": "Всички категории",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Настройки за All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes":
+        "Разрешаване на диагностика за 10 минути",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Разрешете екранни снимки за 10 минути",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Разрешете на този сървър да събира диагностични броячи и да рестартира този поток или плейър. Временният достъп трае 10 минути. Доверената поддръжка остава достъпна след повторно свързване или рестартиране; всяка сесия за събиране на данни приключва след 10 минути. Събирането спира временно, когато плейърът е скрит или офлайн.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Позволете на този сървър да събира броячи за възпроизвеждане, мрежа и вход за тази сесия на преден план. Изисква HTTPS и разрешение на сървъра. Спира след 10 минути, когато е скрит или когато връзката е прекъсната.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Позволете на този сървър да поиска изображения за 10 минути. Изображенията могат да съдържат лична информация. В браузър изберете раздела или прозореца на плейъра. Разрешението приключва при презареждане или прекъсване на връзката.",
     "Allowlist this Device ID": "Разрешете този ID на устройство",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "HTTPS плейър не може да изтегли HTTP EPG източник. Използвайте източник HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "За IP без порт се използва HTTP порт 8081. За спиране изчистете адреса или изберете „Прекъсване“.",
     "Another source sign-in is already open":
@@ -90,9 +91,9 @@ var keyStrings = {
     "Archive. Channel: ": "Архив. Канал: ",
     Aspect: "Съотношение на страните",
     Audio: "Звук",
-    Automatic: "Automatic",
+    Automatic: "Автоматично",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Автоматично възпроизвежда поддържаните файлове директно и използва съвместим HLS, когато е необходимо.",
     alhabet: "абвгдежзийклмнопрстуфхцчшщъьюяѝ",
     always: "винаги",
     "and enter code": "и въведете кода",
@@ -100,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Назад / напред с 1 минута",
     "Background color": "Цвят на фона",
     "Background color of selected item": "Цвят на фона на избрания елемент",
+    "Backup state changed": "Състоянието на архивиране е променено",
     "Balance, $": "Баланс, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +114,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Черен екран при смяна на канала",
     Blue: "Син",
+    "Bookmark age (days): %1": "Възраст на отметката (дни): %1",
     "Bookmark age: %1 days": "Възраст на отметката: %1 дни",
     "Browse folders": "Преглед по папки",
     "Buffer Size, s": "Размер на буфера, с",
@@ -154,21 +157,24 @@ var keyStrings = {
     "Channel parental control": "Родителски контрол на канала",
     Channels: "Канали",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Проверете връзката и отворете вашите Plex библиотеки.",
     "Check this server's SWOP configuration.":
         "Проверете настройките на SWOP за този сървър.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Проверка на връзката със сървъра Plex...",
     "Choose from": "Избор от",
     "Choose language": "Изберете език",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Изберете Plex сървър",
     "Choose provider": "Изберете доставчик",
     Classic: "Класически",
     "Clear all settings?": "Да се изтрият ли всички настройки?",
     "Clear settings": "Изтриване на настройките",
     Close: "Затвори",
     "Close PiP": "Затваряне на PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Облачно запазване/зареждане изисква STB фърмуер (host_ott не е зададен)",
+    "Cloud transfer failed": "Неуспешно прехвърляне в облак",
+    Code: "Код за достъп",
     Color: "Цвят",
     "Color spectrum": "Цветова палитра",
     "Command server": "Сървър за команди",
@@ -185,7 +191,8 @@ var keyStrings = {
     "Command server found.": "Намерен е сървър за команди.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Компонентите за съвместимост не могат да се заредят. Отворете плеъра отново.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Съвместим HLS",
+    "Complete pairing link": "Пълна връзка за сдвояване",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в Настройки -> Настройки на доставчика",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -219,7 +226,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Настройте OTT Prime ONLINE в Настройки -> Настройки на доставчика",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Конфигурирайте Plex в Настройки -> Настройки на доставчика",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Настройте POLMEDIA в Настройки -> Настройки на доставчика",
     "Configure PROST in Settings -> Provider Settings":
@@ -258,23 +265,26 @@ var keyStrings = {
         "Настройте Шаравоз в Настройки -> Настройки на доставчика",
     Connect: "Свързване",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Свържете HTTPS команден сървър, преди да разрешите екранни снимки.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Свържете HTTPS команден сървър, за да използвате екранни снимки.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Свържете дистанционното управление, за да активирате диагностиката.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Първо свържете този плейър към команден сървър.",
+    "Connect to TV": "Свързване към телевизор",
     Connected: "Свързано",
     "Connected. Waiting for the channel list...":
         "Свързано. Изчакване на списъка с канали…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Свързването на дистанционно управление упълномощава този сървър да диагностицира и поправи плейъра. Достъпът остава достъпен след рестартиране и приключва, когато прекъснете връзката. Всяко диагностично заснемане е ограничено до 10 минути.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Свързване на дистанционна диагностика за активирана връзка за дистанционно управление.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Свързване на дистанционна диагностика за тази страница.",
+    "Connecting securely to your TV...":
+        "Сигурно свързване към вашия телевизор...",
+    "Connecting to Plex…": "Свързване към Plex...",
     "Connecting to Stalker portal...": "Свързване с портала Stalker…",
     "Connecting...": "Свързване…",
     "Continue watching?": "Да продължи ли гледането?",
@@ -285,12 +295,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Копирайте избрания JSON с командата за копиране на устройството",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Не може да се свърже с Plex. Проверете адреса на сървъра, токена и достъпа до мрежата.",
     "Could not connect to the server.": "Неуспешно свързване със сървъра.",
     "Could not create a pairing request. Find the server again to retry.":
         "Неуспешно създаване на заявка за сдвояване. Потърсете сървъра отново, за да опитате пак.",
     "Could not load. Select to retry.":
         "Зареждането е неуспешно. Изберете за нов опит.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Не можах да подготвя този текст. Моля, съкратете го и опитайте отново.",
+    "Could not protect the private link. Use a different browser.":
+        "Не може да се защити личната връзка. Използвайте друг браузър.",
     "Could not save provider settings.":
         "Настройките на доставчика не могат да бъдат запазени.",
     "Could not save the approved command server settings.":
@@ -308,6 +322,8 @@ var keyStrings = {
     "Delete category": "Изтриване на категорията",
     "Delete channel": "Изтрий канал",
     "Delete list": "Изтриване на списъка",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Доставката не може да бъде потвърдена. Проверете телевизора си или опитайте отново със същото съобщение, преди тази сесия да изтече.",
     "Demo — moving test pattern": "Демо — движеща се тестова картина",
     Description: "Описание",
     "Description of remote control buttons":
@@ -322,7 +338,8 @@ var keyStrings = {
     "Diamond TV settings": "Настройки за Diamond TV",
     Director: "Режисьор",
     "Disable HTTP remote": "Изключване на HTTP дистанционно",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support":
+        "Деактивиране на надеждна отдалечена поддръжка",
     "Disabled by default. Enabling creates a new device access code.":
         "Изключено по подразбиране. При включване се създава нов код за достъп до устройството.",
     Disconnect: "Прекъсване",
@@ -356,7 +373,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Въведете потребителско име и парола за достъп до услугата.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Въведете валиден адрес на Plex сървър и токен за достъп.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Въведете валиден адрес на сървър, например 192.168.1.20:8081.",
     "Enter access key for": "Въведете ключ за достъп за",
@@ -373,8 +390,8 @@ var keyStrings = {
         "Въведете MAC адрес (напр. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Въведете URL на медиятеката",
     "Enter new category name": "Въведете ново име на категорията",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Въведете адреса на сървъра Plex",
+    "Enter Plex token": "Въведете токена Plex",
     "Enter Provider Code": "Въведете код на доставчика",
     "Enter Provider Code on PC or Phone":
         "Въведете кода на доставчика на компютър или телефон",
@@ -389,6 +406,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Въведете URL на портала Stalker (напр. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Въведете номер на сървъра (%1).",
+    "Enter text": "Въведете текст",
     "Enter the access code separately, not in the server address.":
         "Въведете кода за достъп отделно от адреса на сървъра.",
     "Enter the command server IP or address.":
@@ -413,56 +431,57 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Въведете URL на сървъра Xtream (напр. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Въведете вашия Plex токен за достъп. Той е запазен в профила на това устройство.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Въведете адреса на вашия Plex сървър, например http://192.168.1.25:32400",
     EPG: "ТВ програма",
     "EPG and archive. Channel: ": "Програма и архив. Канал: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "EPG архив или XML е невалиден.",
+    "EPG cache and wait time: %1": "EPG кеш и време за изчакване: %1",
+    "EPG cache updated: %1": "EPG кешът е актуализиран: %1",
+    "EPG channels: %1": "EPG канали: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG не можа да се стартира. Рестартирайте плейъра, за да заредите отново файловете му. Възпроизвеждането ще спре.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG диагностика",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "EPG диагностиката не можа да се зареди. Отворете го отново, за да опитате отново.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Изтеглянето на EPG е неуспешно. Проверете връзката, HTTPS и разрешенията за CORS на източника.",
+    "EPG download time: %1": "EPG Време за изтегляне: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Времето за изтегляне на EPG изтече. Опитайте отново изтеглянето.",
+    "EPG elapsed: %1": "Изминало време за EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG грешка. Отворете Информация → EPG диагностика.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG надвишава възможностите за обработка на устройството. Използвайте по-малък източник или по-кратък архивен период.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG не е стартирал. Заредете M3U плейлист.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG локалното хранилище е недостъпно или пълно.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG Време за обработка и съхранение: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "Обработката на EPG е спряна. Опитайте отново и проверете поддръжката на браузъра.",
+    "EPG programmes: %1": "EPG програми: %1",
+    "EPG progress: %1": "EPG прогрес: %1",
+    "EPG ready": "EPG готов",
+    "EPG source returned HTTP %1": "EPG източник върна HTTP %1",
+    "EPG source: %1": "EPG източник: %1",
+    "EPG stopped during: %1": "EPG спря по време на: %1",
+    "EPG unavailable on this browser": "EPG не е наличен в този браузър",
+    "EPG unavailable: %1": "EPG не е наличен: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "Неуспешна актуализация на EPG; използвайки запаметено програмно ръководство",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG: изтегляне на програмно ръководство...",
+    "EPG: opening local cache...": "EPG: отваряне на локалния кеш...",
+    "EPG: processing programme guide...":
+        "EPG: обработка на телевизионната програма...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: актуализиране на запазения програмен справочник...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: изчакване на друг раздел на плейъра...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Грешка: категория №%1 не съществува!<br>Изберете друга категория.",
     "ERROR!": "Грешка!",
@@ -499,7 +518,7 @@ var keyStrings = {
     "Finding command servers...": "Търсене на сървъри за команди…",
     "First Run Setup": "Първоначална настройка",
     "Fit to screen": "Побиране в екрана",
-    Folders: "Folders",
+    Folders: "Папки",
     "Font type": "Шрифт",
     "For download settings file open":
         "За изтегляне на файла с настройки отворете",
@@ -542,8 +561,11 @@ var keyStrings = {
     "Interface transparency": "Прозрачност на интерфейса",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Невалидна връзка към канала! Въведете пълното име на хоста от URL на потока в профила (напр. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Невалиден отговор на настройките на облака",
     "Invalid protected source configuration":
         "Невалидна конфигурация на защитения източник",
+    "Invalid setting": "Невалидна настройка",
     "IPTV token": "IPTV токен",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Настройки за IpStream.one",
@@ -618,10 +640,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "В тази мрежа не е намерен сървър за команди.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Няма налични Plex сървъри за този акаунт.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Няма програми, съответстващи на каналите и датите на плейлиста. Проверете източника и часовника на устройството.",
     "No saved settings found": "Няма намерени запазени настройки",
+    "No supported system language. Choose a language.":
+        "Няма поддържан системен език. Изберете език.",
     "Not configured": "Не е настроено",
     "Not found": "Не е намерено",
     "Not reduce video when showing the list (bugfix)":
@@ -637,18 +661,21 @@ var keyStrings = {
     "not set": "не е зададено",
     Off: "Изключено",
     Ok: "ОК",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Само този телевизор може да приеме вашето съобщение. Връзката изтича след 10 минути.",
     Open: "Отваряне",
     "Open in PiP": "Отвори в PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Отворете страницата за вход на Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Отворете plex.tv/link на вашия телефон или компютър и въведете този код.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Или отворете тази пълна частна връзка на друго устройство:",
+    "Original file": "Оригинален медиен файл",
     "Original text: %1": "Оригинален текст: %1",
     "OTT / APP host": "Сървър на OTT / приложението",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки за OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play дистанционен вход",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Налична е версия OttPlay FOSS %1. Да се изтегли и инсталира сега?",
     "Overwrite current settings?": "Да се презапишат ли текущите настройки?",
@@ -678,9 +705,10 @@ var keyStrings = {
     "PiP window position": "Позиция на прозореца PiP",
     "PiP window size": "Размер на прозореца PiP",
     Play: "Възпроизвеждане",
-    Playback: "Playback",
+    Playback: "Възпроизвеждане на мултимедия",
     "Player and device info": "Информация за плейъра и устройството",
     "Player could not start": "Плеърът не може да се стартира",
+    "Player default": "Избор по подразбиране на плейъра",
     "Player info:": "Информация за плейъра:",
     Playlist: "Плейлист",
     "Playlist file": "Файл на плейлиста",
@@ -689,11 +717,11 @@ var keyStrings = {
     "Playlist Name": "Име на плейлиста",
     "Playlist URL": "URL на плейлиста",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Plex връзката е неуспешна",
+    "Plex settings": "Настройки на Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Plex неуспешно влизане. Проверете връзката и опитайте отново или въведете адреса на сървъра и токена.",
+    "Plex token": "Plex токен",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Настройки за POLMEDIA",
     "Portal URL": "URL на портала",
@@ -701,8 +729,11 @@ var keyStrings = {
     Postpaid: "Последващо плащане",
     PROST: "PROST",
     "PROST settings": "Настройки за PROST",
+    "Preferred audio language": "Предпочитан аудио език",
+    "Preferred subtitle language": "Предпочитан език на субтитрите",
     Prepaid: "Предплатено",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Подготвя се защитено дистанционно въвеждане...",
     Prev: "Предишна",
     "Preview in channel list": "Преглед в списъка с канали",
     Previous: "Предишен канал",
@@ -732,31 +763,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Дистанционно без цифрови бутони",
     "Remote control": "Дистанционно управление",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Дистанционното управление разрешава диагностика. Готов за оператор.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Дистанционното управление разрешава диагностика. Изчакване за повторно свързване.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Дистанционното управление включва екранни снимки на плейъра, включително настройки. Изображенията може да съдържат лична информация. Нативното заснемане не се нуждае от допълнително одобрение. Браузърите изискват локален избор на източник на заснемане.",
+    "Remote diagnostics": "Дистанционна диагностика",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Събира се отдалечена диагностика за тази връзка (до 10 минути на сесия).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Дистанционната диагностика се събира за тази страница.",
+    "Remote diagnostics is off.": "Дистанционната диагностика е изключена.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Дистанционната диагностика е готова за оторизиран оператор.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Дистанционната диагностика не е налична на този плейър.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Дистанционната диагностика е спряна. Активирайте го отново, за да предоставите достъп.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Дистанционното въвеждане е изтекло. Отворете нова сесия, за да опитате отново.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Сесията за отдалечено въвеждане не е налична. Отворете нова сесия, за да опитате отново.",
+    "Remote screenshots": "Дистанционни екранни снимки",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Дистанционните екранни снимки са разрешени за 10 минути. Затворете настройките за заснемане.",
+    "Remote screenshots are off.": "Отдалечените екранни снимки са изключени.",
     "Remote session expired": "Сесията за дистанционен достъп изтече",
     "Remote text entry": "Дистанционно въвеждане на текст",
     "Remote text entry denied": "Дистанционното въвеждане на текст е забранено",
@@ -784,7 +815,8 @@ var keyStrings = {
     "Restart stream / Live": "Рестартиране на потока / на живо",
     "Resume from archive?": "Да се продължи ли от архива?",
     Retry: "Повторен опит",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Повторете изтеглянето на EPG",
+    "Retry same message": "Повторен опит със същото съобщение",
     "Return to previous channel": "Връщане към предишния канал",
     Rewind: "Превъртане",
     "Rewind step by buttons %1/%2": "Стъпка на превъртане с бутоните %1/%2",
@@ -796,32 +828,36 @@ var keyStrings = {
     "Save & load channels": "Запазване и зареждане на каналите",
     "Save and load": "Запазване и зареждане",
     "Save and load channels": "Запазване и зареждане на каналите",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Запазете и отворете библиотеката",
     "Save Settings": "Запази настройките",
     "Save settings": "Запазване на настройките",
     "Save settings and load channel list":
         "Запазване на настройките и зареждане на списъка с канали",
     "Save settings to storage": "Запазване на настройките в хранилището",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Сканирайте кода QR на вашия телевизор или поставете пълната му частна връзка за сдвояване по-долу.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Сканирайте този код QR с телефона си, за да въведете текст.",
+    "Screen sharing could not start.":
+        "Споделянето на екрана не може да започне.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Споделянето на екрана е отменено или не е достъпно.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Разрешението за екранна снимка не може да бъде активирано.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Екранните снимки са налични, докато дистанционното управление е свързано.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Екранните снимки не са налични на тази платформа.",
     Script: "Сценарий",
     Search: "Търсене",
+    "Search languages": "Търсене на езици",
     "Search programme": "Търсене на предаване",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Сигурният дистанционен вход не може да стартира. Моля, опитайте отново или използвайте екранната клавиатура.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Сигурният дистанционен вход не може да стартира. Моля, използвайте екранната клавиатура.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Сигурното дистанционно въвеждане не е налично на това устройство. Използвайте екранната клавиатура.",
     "Select a stream type:<br>%1": "Изберете тип поток:<br>%1",
     "Select category to add channel": "Изберете категория за добавяне на канал",
     "Select color": "Изберете цвят",
@@ -832,13 +868,14 @@ var keyStrings = {
         "Изберете шаблон на плейлист за програмата и логата",
     "Select Stalker portal": "Избор на портал Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Изберете източник на екранна снимка в браузъра",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Изберете раздела или прозореца на плейъра в диалоговия прозорец за споделяне на браузъра.",
     "Send request": "Изпращане на заявка",
     "Send settings": "Изпращане на настройки",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Изпращайте този код от проксито в заглавката Authorization: Bearer.",
+    "Send to TV": "Изпрати до телевизора",
     Server: "Сървър",
     "Server address": "Адрес на сървъра",
     "Server address (for example 192.168.1.20:8081)":
@@ -847,10 +884,14 @@ var keyStrings = {
     "Server URL": "URL на сървъра",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Сървърът не е достъпен. Опитът се повтаря автоматично; проверете адреса и мрежовия достъп.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Сесията е затворена. При нужда стартирайте нова сесия от телевизора.",
     Set: "Задаване",
     "Set parental code": "Задайте родителски код",
     "Set timer?": "Да се зададе ли таймер?",
     Settings: "Настройки",
+    "Settings changed while editing":
+        "Настройките са променени по време на редактиране",
     "Settings changed. Discovery was canceled.":
         "Настройките са променени. Търсенето е отменено.",
     "Settings copied": "Настройките са копирани",
@@ -861,10 +902,15 @@ var keyStrings = {
     "Settings imported": "Настройките са импортирани",
     "Settings JSON": "Настройки във формат JSON",
     "Settings loaded from storage": "Настройките са заредени от хранилището",
+    "Settings received. Restarting player...":
+        "Настройките са получени. Плейърът се рестартира...",
     "Settings STB": "Настройки на STB",
     "Settings saved": "Настройките са запазени",
     "Settings saved to storage": "Настройките са запазени в хранилището",
     "Settings sended!": "Настройките са изпратени!",
+    "Settings source changed": "Източникът на настройките е променен",
+    "Settings storage rejected write":
+        "Записът в хранилището на настройките е отхвърлен",
     "Several command servers were found. Select one below.":
         "Намерени са няколко сървъра за команди. Изберете един по-долу.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -903,29 +949,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Влезте отново в защитения източник",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Влезте във вашия Plex акаунт и изберете сървър. В този плейър не се въвежда парола.",
+    "Sign in with Plex": "Влезте с Plex",
     "Sign in: %1": "Вход: %1",
     "Sign out of all sources": "Изход от всички източници",
     "Sign-in opens when you load a protected playlist.":
         "Прозорецът за вход се отваря при зареждане на защитен плейлист.",
     "Sleep timer": "Таймер за заспиване",
     "Sort channels": "Сортиране на канали",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Достъп до медийния източник",
+    "Source sign-in required": "Изисква се влизане в източника",
     "Source sign-in was cancelled": "Входът в източника е отменен",
     "Stalker Portal Provider": "Доставчик на портал Stalker",
     "Stalker portal settings": "Настройки на портала Stalker",
     "Stalker portals": "Портали Stalker",
     "Starting...": "Стартиране…",
     Status: "Състояние",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Стоп",
+    "Stop browser sharing": "Спрете споделянето на браузъра",
+    "Stop current capture": "Спиране на текущото събиране на данни",
+    "Stop diagnostics": "Спрете диагностиката",
     "Stop playback and return to live":
         "Спиране на възпроизвеждането и връщане на живо",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Спиране на екранни снимки",
     "Stream could not be played": "Потокът не може да се възпроизведе",
     "Stream type: %1": "Тип поток: %1",
     "String for search": "Текст за търсене",
@@ -937,15 +983,21 @@ var keyStrings = {
     "Switch subtitle": "Смяна на субтитрите",
     "Switch to this list": "Превключване към този списък",
     "Swop URL": "URL на Swop",
+    "System language": "Системен език",
     "saved on this device": "запазено на това устройство",
     select: "избор",
     small: "малък",
     system: "системен",
     Tabox: "Tabox",
     "Tabox settings": "Настройки за Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Текстът е твърде дълъг за дистанционно въвеждане.",
+    "Text is too long. Please shorten it before sending.":
+        "Текстът е твърде дълъг. Моля, съкратете го преди изпращане.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Текстът е изпратен. Проверете телевизора си, за да потвърдите, че се е появил.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Източникът на екранна снимка на браузъра е готов.",
     "The command server discovery URL is invalid.":
         "Невалиден URL за откриване на сървъра за команди.",
     "The device ID in the address is invalid.":
@@ -953,7 +1005,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Получен е невалиден отговор на заявката за търсене.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Този браузър не може да идентифицира избрания източник на екранна снимка.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Този браузър не поддържа безопасно автоматично сдвояване. Обновете го или въведете настройките на сървъра за команди ръчно.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -962,6 +1014,10 @@ var keyStrings = {
         "Този HTTPS плейър не може да се свърже с HTTP сървър. Използвайте HTTPS сървър или отворете плейъра чрез HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Тази версия от Play изисква HTTPS. Поискайте от доставчика HTTPS адрес за плейлист или сървър.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Тази връзка за сдвояване е изтекла. Отворете нова сесия на вашия телевизор.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Тази защитена сесия е недостъпна или изтекла. Отворете нова сесия на телевизора и използвайте пълната му връзка.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: да се превключи ли каналът?",
     "Timeshift: one minute back": "Отложено гледане: една минута назад",
@@ -981,13 +1037,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Настройки за Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Доверете се на този сървър за отдалечена поддръжка",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Довереният достъп не може да бъде премахнат от паметта на устройството.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Доверената диагностика не е налична, защото паметта на устройството не може да бъде актуализирана.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Доверената диагностика чака този плейър да се свърже отново.",
     "Try demo": "Изпробване на демото",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Настройки за TV DOSUG",
@@ -1008,17 +1064,19 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Използвайте HTTP или HTTPS адрес на сървъра.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Използвайте команден сървър HTTPS за отдалечена диагностика.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Използвайте HTTP или HTTPS без потребителско име и парола в адреса.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "НАЛЯВО/НАДЯСНО — избор на елемент, OK — активиране, НАГОРЕ/НАДОЛУ — превъртане.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Използвайте цялата връзка, включително частта след #. Не го споделяйте с никой друг.",
     "Use Up / Down to scroll. Back to close.":
         "Превъртайте с Нагоре / Надолу. Назад за затваряне.",
     Username: "Потребителско име",
     "Username or password is missing.": "Липсва потребителско име или парола.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Валиден за 10 минути. Назад затваря тази сесия.",
     Version: "Версия",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Настройки за VIP-IP.COM",
@@ -1031,7 +1089,7 @@ var keyStrings = {
     "VPortal request failed":
         "Неуспешно зареждане на VPortal. Проверете връзката, ключа за достъп и достъпността на портала.",
     volume: "сила на звука",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Изчакване за влизане...",
     "Wrong parental code !!!": "Грешен родителски код!!!",
     "Xtream Codes Provider": "Доставчик Xtream Codes",
     "Xtream Codes settings": "Настройки на Xtream Codes",

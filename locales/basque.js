@@ -63,13 +63,14 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Baimendu diagnostikoa 10 minutuz",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Baimendu pantaila-argazkiak 10 minutuz",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Baimendu zerbitzari honi diagnostiko-kontagailuak biltzea eta transmisio hau edo erreproduzitzailea berrabiaraztea. Aldi baterako sarbideak 10 minutu irauten du. Konfiantzazko laguntza erabilgarri geratzen da berriro konektatu edo berrabiarazi ondoren; bilketa bakoitza 10 minuturen buruan iraungitzen da. Bilketa eten egiten da aplikazioa ezkutuan edo lineaz kanpo dagoenean.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Baimendu zerbitzari honi erreprodukzio-, sare- eta sarrera-kontagailuak biltzea lehen planoko saio honetan. HTTPS eta zerbitzariaren baimena behar dira. 10 minuturen buruan, orria ezkutatzean edo deskonektatzean gelditzen da.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Baimendu zerbitzari honi 10 minutuz irudiak eskatzeko. Irudiek informazio pertsonala izan dezakete. Arakatzaile batean, hautatu erreproduzitzailearen fitxa edo leihoa. Baimena birkargatu edo deskonektatzean amaitzen da.",
     "Allowlist this Device ID": "Baimendu gailuaren ID hau",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS erreproduzitzaile batek ezin du HTTP EPG iturri bat deskargatu. Erabili HTTPS iturri bat.",
@@ -103,6 +104,7 @@ var keyStrings = {
     "Background color": "Atzeko planoaren kolorea",
     "Background color of selected item":
         "Hautatutako elementuaren atzeko planoaren kolorea",
+    "Backup state changed": "Babeskopia-egoera aldatu da",
     "Balance, $": "Saldoa, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Pantaila beltza kanalez aldatzean",
     Blue: "Urdina",
+    "Bookmark age (days): %1": "Laster-markaren adina (egunak): %1",
     "Bookmark age: %1 days": "Laster-markaren adina: %1 egun",
     "Browse folders": "Arakatu karpetak",
     "Buffer Size, s": "Bufferraren tamaina, s",
@@ -163,11 +166,14 @@ var keyStrings = {
     "Choose language": "Aukeratu hizkuntza",
     "Choose Plex server": "Aukeratu Plex zerbitzaria",
     "Choose provider": "Aukeratu hornitzailea",
-    Classic: "Classic",
+    Classic: "Klasikoa",
     "Clear all settings?": "Ezarpen guztiak garbitu?",
     "Clear settings": "Garbitu ezarpenak",
     Close: "Itxi",
     "Close PiP": "Itxi PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Hodeian gordetzeko/kargatzeko STB firmwarea behar da (host_ott ez dago ezarrita)",
+    "Cloud transfer failed": "Hodei-transferentziak huts egin du",
     Code: "Kodea",
     Color: "Kolorea",
     "Color spectrum": "Kolore-espektroa",
@@ -186,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Ezin izan da bateragarritasun-ingurunea kargatu. Ireki erreproduzitzailea berriro beste saiakera bat egiteko.",
     "Compatible HLS": "HLS bateragarria",
+    "Complete pairing link": "Parekatzeko esteka osoa",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfiguratu All4you.tv hemen: Ezarpenak → Hornitzailearen ezarpenak",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -258,22 +265,25 @@ var keyStrings = {
         "Konfiguratu Шаравоз hemen: Ezarpenak → Hornitzailearen ezarpenak",
     Connect: "Konektatu",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Konektatu HTTPS komando-zerbitzari bat pantaila-argazkiak baimendu aurretik.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Konektatu HTTPS komando-zerbitzari bat pantaila-argazkiak erabiltzeko.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Konektatu urruneko kontrola diagnostikoak gaitzeko.",
     "Connect this player to a command server first.":
         "Lehenik, konektatu erreproduzitzaile hau komando-zerbitzari batera.",
+    "Connect to TV": "Konektatu telebistara",
     Connected: "Konektatuta",
     "Connected. Waiting for the channel list...":
         "Konektatuta. Kanal-zerrendaren zain…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Urruneko kontrola konektatzeak erreproduzitzailea diagnostikatzeko eta konpontzeko baimena ematen dio zerbitzari honi. Sarbidea berrabiarazi ondoren erabilgarri izaten jarraitzen du eta deskonektatzen zarenean amaitzen da. Diagnostiko-harrapaketa bakoitza 10 minutura mugatzen da.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Gaitutako urruneko kontrolerako konexiorako urruneko diagnostikoak konektatzea.",
     "Connecting remote diagnostics for this page.":
         "Orri honetarako urruneko diagnostikoa konektatzen.",
+    "Connecting securely to your TV...":
+        "Zure telebistara modu seguruan konektatzen...",
     "Connecting to Plex…": "Plex-era konektatzen…",
     "Connecting to Stalker portal...": "Stalker atarira konektatzen…",
     "Connecting...": "Konektatzen…",
@@ -291,6 +301,10 @@ var keyStrings = {
         "Ezin izan da parekatze-eskaera sortu. Bilatu zerbitzaria berriro beste saiakera bat egiteko.",
     "Could not load. Select to retry.":
         "Ezin izan da kargatu. Hautatu berriro saiatzeko.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Ezin izan da testu hau prestatu. Mesedez, laburtu eta saiatu berriro.",
+    "Could not protect the private link. Use a different browser.":
+        "Ezin izan da esteka pribatua babestu. Erabili beste arakatzaile bat.",
     "Could not save provider settings.":
         "Ezin izan dira hornitzailearen ezarpenak gorde.",
     "Could not save the approved command server settings.":
@@ -308,6 +322,8 @@ var keyStrings = {
     "Delete category": "Ezabatu kategoria",
     "Delete channel": "Ezabatu kanala",
     "Delete list": "Ezabatu zerrenda",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Ezin izan da bidalketa baieztatu. Egiaztatu telebista edo saiatu berriro mezu bera saio hau iraungi baino lehen.",
     "Demo — moving test pattern": "Erakustaldia — probako irudi mugikorra",
     Description: "Deskribapena",
     "Description of remote control buttons": "Urrutiko agintearen botoien gida",
@@ -391,6 +407,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Sartu Stalker atariaren URLa (adib. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Sartu zerbitzariaren zenbakia (%1).",
+    "Enter text": "Sartu testua",
     "Enter the access code separately, not in the server address.":
         "Sartu sarbide-kodea bereizita, ez zerbitzariaren helbidean.",
     "Enter the command server IP or address.":
@@ -543,8 +560,10 @@ var keyStrings = {
     "Interface transparency": "Interfazearen gardentasuna",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Kanalaren esteka baliogabea da! Sartu kontuko transmisio-URLan agertzen den ostalariaren izen osoa (adib. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Hodeiko ezarpenen erantzun baliogabea",
     "Invalid protected source configuration":
         "Babestutako iturriaren konfigurazioa baliogabea da",
+    "Invalid setting": "Ezarpen baliogabea",
     "IPTV token": "IPTV tokena",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ezarpenak",
@@ -624,6 +643,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ez da zerrendako kanal eta datekin bat datorren saiorik aurkitu. Egiaztatu iturria eta gailuaren erlojua.",
     "No saved settings found": "Ez da gordetako ezarpenik aurkitu",
+    "No supported system language. Choose a language.":
+        "Ez da sistemaren hizkuntzarik onartzen. Aukeratu hizkuntza bat.",
     "Not configured": "Konfiguratu gabe",
     "Not found": "Ez da aurkitu",
     "Not reduce video when showing the list (bugfix)":
@@ -639,6 +660,8 @@ var keyStrings = {
     "not set": "ezarri gabe",
     Off: "desaktibatuta",
     Ok: "Ados",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Telebista honek bakarrik onartu dezake zure mezua. Esteka 10 minuturen buruan iraungiko da.",
     Open: "Ireki",
     "Open in PiP": "Ireki PiP moduan",
     "Open Plex sign-in page": "Ireki Plex saioa hasteko orria",
@@ -651,6 +674,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP ostalaria",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ezarpenak",
+    "OTT-play remote input": "OTT-play urrutiko sarrera",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 erabilgarri dago. Orain deskargatu eta instalatu?",
     "Overwrite current settings?": "Uneko ezarpenak gainidatzi?",
@@ -683,6 +707,7 @@ var keyStrings = {
     Playback: "Erreprodukzioa",
     "Player and device info": "Erreproduzitzailearen eta gailuaren informazioa",
     "Player could not start": "Erreproduzitzailea ezin izan da abiarazi",
+    "Player default": "Erreproduzigailuaren aukera lehenetsia",
     "Player info:": "Erreproduzitzailearen informazioa:",
     Playlist: "Erreprodukzio-zerrenda",
     "Playlist file": "Erreprodukzio-zerrendaren fitxategia",
@@ -704,6 +729,8 @@ var keyStrings = {
     Postpaid: "Erabili ondorengo ordainketa",
     PROST: "PROST",
     "PROST settings": "PROST ezarpenak",
+    "Preferred audio language": "Audio hizkuntza hobetsia",
+    "Preferred subtitle language": "Azpitituluen hizkuntza hobetsia",
     Prepaid: "Aurretiazko ordainketa",
     "Preparing secure remote input...": "Urruneko sarrera segurua prestatzen…",
     Prev: "Aurrekoa",
@@ -737,14 +764,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Urrutiko agintea (zenbaki-botoirik gabe)",
     "Remote control": "Urrutiko agintea",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Urruneko kontrolak diagnostikoak baimentzen ditu. Operadore baterako prest.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Urruneko kontrolak diagnostikoak baimentzen ditu. Berriro konektatzeko zain.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Urruneko kontrolak erreproduzitzailearen pantaila-argazkiak egiteko aukera ematen du, ezarpenak barne. Irudiek informazio pribatua izan dezakete. Aplikazioan zuzenean pantaila-argazkiak egiteko ez da beste baimenik behar. Arakatzailean, argazkien iturburua gailu honetan aukeratu behar da.",
     "Remote diagnostics": "Urruneko diagnostikoa",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Konexio honetarako urruneko diagnostikoak biltzen ari dira (saio bakoitzeko 10 minutu gehienez).",
     "Remote diagnostics is collecting for this page.":
         "Urruneko diagnostikoa orri honetako datuak biltzen ari da.",
     "Remote diagnostics is off.": "Urruneko diagnostikoa desaktibatuta dago.",
@@ -758,10 +785,11 @@ var keyStrings = {
         "Urruneko sarrera iraungi da. Ireki saio berria berriro saiatzeko.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Urruneko sarreraren saioa ez dago erabilgarri. Ireki saio berria berriro saiatzeko.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Urruneko pantaila-argazkiak",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Urruneko pantaila-argazkiak 10 minutuz onartzen dira. Itxi ezarpenak ateratzeko.",
+    "Remote screenshots are off.":
+        "Urruneko pantaila-argazkiak desaktibatuta daude.",
     "Remote session expired": "Urruneko saioa iraungi da",
     "Remote text entry": "Urruneko testu-sarrera",
     "Remote text entry denied": "Urruneko testu-sarrera ukatu da",
@@ -790,6 +818,7 @@ var keyStrings = {
     "Resume from archive?": "Artxibotik jarraitu?",
     Retry: "Saiatu berriro",
     "Retry EPG download": "Deskargatu EPG berriro",
+    "Retry same message": "Saiatu berriro mezu bera",
     "Return to previous channel": "Itzuli aurreko kanalera",
     Rewind: "Aldatu erreprodukzio-posizioa",
     "Rewind step by buttons %1/%2": "%1/%2 botoien desplazamendu-urratsa",
@@ -807,19 +836,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Gorde ezarpenak eta kargatu kanal-zerrenda",
     "Save settings to storage": "Gorde ezarpenak biltegian",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Eskaneatu QR kodea zure telebistan, edo itsatsi bere parekatzeko esteka pribatu osoa behean.",
     "Scan this QR code with your phone to enter text.":
         "Eskaneatu QR kode hau telefonoarekin testua sartzeko.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Ezin izan da pantaila partekatzen hasi.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Pantaila partekatzea bertan behera utzi da edo ez dago erabilgarri.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ezin izan da pantaila-argazkiaren baimena gaitu.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Pantaila-argazkiak eskuragarri daude urrutiko agintea konektatuta dagoen bitartean.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Pantaila-argazkiak ez daude erabilgarri plataforma honetan.",
     Script: "Gidoia",
     Search: "Bilatu",
+    "Search languages": "Bilatu hizkuntzak",
     "Search programme": "Bilatu saioa",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Urruneko sarrera segurua ezin izan da hasi. Saiatu berriro edo erabili pantailako teklatua.",
@@ -837,13 +870,14 @@ var keyStrings = {
         "Hautatu zerrenda-txantiloiaren iturria EPGrako eta logotipoetarako",
     "Select Stalker portal": "Hautatu Stalker ataria",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Hautatu pantaila-argazkiaren iturria arakatzailean",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Hautatu erreproduzitzailearen fitxa edo leihoa arakatzailea partekatzeko elkarrizketa-koadroan.",
     "Send request": "Bidali eskaera",
     "Send settings": "Bidali ezarpenak",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Bidali kode hau zure proxy zerbitzaritik Authorization: Bearer goiburuan.",
+    "Send to TV": "Bidali telebistara",
     Server: "Zerbitzaria",
     "Server address": "Zerbitzariaren helbidea",
     "Server address (for example 192.168.1.20:8081)":
@@ -852,10 +886,13 @@ var keyStrings = {
     "Server URL": "Zerbitzariaren URLa",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Zerbitzaria ez dago erabilgarri. Automatikoki berriro saiatzen; egiaztatu helbidea eta sareko sarbidea.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Saioa itxita. Hasi berri bat telebistatik behar denean.",
     Set: "Aplikatu",
     "Set parental code": "Ezarri guraso-kodea",
     "Set timer?": "Tenporizadorea ezarri?",
     Settings: "Ezarpenak",
+    "Settings changed while editing": "Ezarpenak aldatu dira editatzean",
     "Settings changed. Discovery was canceled.":
         "Ezarpenak aldatu dira. Bilaketa bertan behera utzi da.",
     "Settings copied": "Ezarpenak kopiatuta",
@@ -865,10 +902,15 @@ var keyStrings = {
     "Settings imported": "Ezarpenak inportatuta",
     "Settings JSON": "Ezarpenen JSONa",
     "Settings loaded from storage": "Ezarpenak biltegitik kargatu dira",
+    "Settings received. Restarting player...":
+        "Ezarpenak jaso. Erreproduzitzailea berrabiarazten...",
     "Settings STB": "STB ezarpenak",
     "Settings saved": "Ezarpenak gordeta",
     "Settings saved to storage": "Ezarpenak biltegian gordeta",
     "Settings sended!": "Ezarpenak bidalita!",
+    "Settings source changed": "Ezarpenen iturria aldatu da",
+    "Settings storage rejected write":
+        "Ezarpenen biltegiak idazteko eskaera baztertu du",
     "Several command servers were found. Select one below.":
         "Hainbat komando-zerbitzari aurkitu dira. Hautatu bat behean.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -923,12 +965,12 @@ var keyStrings = {
     "Starting...": "Abiarazten…",
     Status: "Egoera",
     Stop: "Gelditu",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Utzi arakatzailea partekatzea",
     "Stop current capture": "Gelditu uneko bilketa",
     "Stop diagnostics": "Gelditu diagnostikoa",
     "Stop playback and return to live":
         "Gelditu erreprodukzioa eta itzuli zuzenekora",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Gelditu pantaila-argazkiak",
     "Stream could not be played": "Ezin izan da transmisioa erreproduzitu",
     "Stream type: %1": "Transmisio mota: %1",
     "String for search": "Bilaketa-testua",
@@ -940,6 +982,7 @@ var keyStrings = {
     "Switch subtitle": "Aldatu azpitituluak",
     "Switch to this list": "Aldatu zerrenda honetara",
     "Swop URL": "Swop URL",
+    "System language": "Sistemaren hizkuntza",
     "saved on this device": "gailu honetan gordeta",
     select: "hautatu",
     small: "txikia",
@@ -948,8 +991,12 @@ var keyStrings = {
     "Tabox settings": "Tabox ezarpenak",
     "Text is too long for remote input.":
         "Testua luzeegia da urruneko sarrerarako.",
+    "Text is too long. Please shorten it before sending.":
+        "Testua luzeegia da. Mesedez, laburtu bidali aurretik.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Testua bidali da. Begiratu telebista testua agertu dela egiaztatzeko.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Arakatzailearen pantaila-argazkiaren iturria prest dago.",
     "The command server discovery URL is invalid.":
         "Komando-zerbitzaria bilatzeko URLa baliogabea da.",
     "The device ID in the address is invalid.":
@@ -957,7 +1004,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Bilaketaren erantzuna baliogabea da.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Arakatzaile honek ezin du hautatutako pantaila-argazkiaren iturburua identifikatu.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Nabigatzaile hau ezin da automatikoki eta modu seguruan parekatu. Eguneratu edo sartu komando-zerbitzariaren ezarpenak eskuz.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -966,6 +1013,10 @@ var keyStrings = {
         "HTTPS erreproduzitzaile hau ezin da HTTP zerbitzari batera konektatu. Erabili HTTPS zerbitzaria edo ireki erreproduzitzailea HTTP bidez.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Play aplikazio honek HTTPS behar du. Eskatu hornitzaileari HTTPS erreprodukzio-zerrenda edo zerbitzariaren URLa.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Parekatzeko esteka hau iraungi da. Ireki saio berri bat zure telebistan.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Saio seguru hau ez dago erabilgarri edo iraungi da. Ireki saio berri bat telebistan eta erabili bere esteka osoa.",
     Timer: "Tenporizadorea",
     "Timer: switch to channel?": "Tenporizadorea: kanal honetara aldatu?",
     "Timeshift: one minute back": "Egin minutu bat atzera",
@@ -1014,6 +1065,8 @@ var keyStrings = {
         "Erabili HTTP edo HTTPS, helbidean erabiltzaile-izenik edo pasahitzik gabe.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Erabili EZKERRA/ESKUINA kontrol bat hautatzeko, OK aktibatzeko eta GORA/BEHERA korritzeko.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Erabili esteka osoa, # ondorengo zatia barne. Ez partekatu beste inorekin.",
     "Use Up / Down to scroll. Back to close.":
         "Erabili Gora/Behera korritzeko. Atzera ixteko.",
     Username: "Erabiltzaile-izena",

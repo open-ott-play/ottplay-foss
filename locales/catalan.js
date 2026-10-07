@@ -63,13 +63,14 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Permet el diagnòstic durant 10 minuts",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Permet captures de pantalla durant 10 minuts",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Permet que aquest servidor reculli comptadors de diagnòstic i reiniciï aquesta transmissió o el reproductor. L’accés temporal dura 10 minuts. L’assistència de confiança continua disponible després de tornar a connectar o reiniciar; cada recollida caduca igualment al cap de 10 minuts. La recollida es pausa quan l’aplicació està oculta o sense connexió.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Permet que aquest servidor reculli comptadors de reproducció, xarxa i entrada durant aquesta sessió en primer pla. Calen HTTPS i permís del servidor. S’atura al cap de 10 minuts, en ocultar la pàgina o en desconnectar-se.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Permet que aquest servidor sol·liciti imatges durant 10 minuts. Les imatges poden contenir informació personal. En un navegador, seleccioneu la pestanya o la finestra del reproductor. El permís acaba en tornar a carregar o desconnectar.",
     "Allowlist this Device ID": "Autoritza aquest ID de dispositiu",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Un reproductor HTTPS no pot baixar una font EPG HTTP. Utilitza una font HTTPS.",
@@ -103,6 +104,7 @@ var keyStrings = {
     "Background color": "Color de fons",
     "Background color of selected item":
         "Color de fons de l’element seleccionat",
+    "Backup state changed": "L'estat de la còpia de seguretat ha canviat",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -115,6 +117,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Pantalla negra en canviar de canal",
     Blue: "Blau",
+    "Bookmark age (days): %1": "Edat del marcador (dies): %1",
     "Bookmark age: %1 days": "Antiguitat del marcador: %1 dies",
     "Browse folders": "Explora les carpetes",
     "Buffer Size, s": "Mida de la memòria intermèdia, s",
@@ -166,11 +169,14 @@ var keyStrings = {
     "Choose language": "Tria l’idioma",
     "Choose Plex server": "Tria un servidor Plex",
     "Choose provider": "Tria un proveïdor",
-    Classic: "Classic",
+    Classic: "Clàssic",
     "Clear all settings?": "Vols esborrar tota la configuració?",
     "Clear settings": "Esborra la configuració",
     Close: "Tanca",
     "Close PiP": "Tanca PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Desar/carregar al núvol requereix firmware STB (host_ott no configurat)",
+    "Cloud transfer failed": "La transferència al núvol ha fallat",
     Code: "Codi",
     Color: "Color",
     "Color spectrum": "Espectre de colors",
@@ -189,6 +195,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "No s’ha pogut carregar l’entorn de compatibilitat. Torna a obrir el reproductor per tornar-ho a provar.",
     "Compatible HLS": "HLS compatible",
+    "Complete pairing link": "Enllaç d'aparellament complet",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configura All4you.tv a Configuració → Configuració del proveïdor",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -261,22 +268,25 @@ var keyStrings = {
         "Configura Шаравоз a Configuració → Configuració del proveïdor",
     Connect: "Connecta",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Connecteu un servidor d'ordres HTTPS abans de permetre les captures de pantalla.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Connecteu un servidor d'ordres HTTPS per utilitzar captures de pantalla.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Connecteu el control remot per activar el diagnòstic.",
     "Connect this player to a command server first.":
         "Connecta primer aquest reproductor a un servidor d’ordres.",
+    "Connect to TV": "Connecta't al televisor",
     Connected: "Connectat",
     "Connected. Waiting for the channel list...":
         "Connectat. S’espera la llista de canals…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "La connexió del control remot autoritza aquest servidor a diagnosticar i reparar el reproductor. L'accés roman disponible després de reiniciar i finalitza quan us desconnecteu. Cada captura de diagnòstic està limitada a 10 minuts.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "S’estan connectant els diagnòstics remots per a la connexió de control remot habilitada.",
     "Connecting remote diagnostics for this page.":
         "S’està connectant el diagnòstic remot per a aquesta pàgina.",
+    "Connecting securely to your TV...":
+        "S'està connectant de manera segura al televisor...",
     "Connecting to Plex…": "S’està connectant a Plex…",
     "Connecting to Stalker portal...": "S’està connectant al portal Stalker…",
     "Connecting...": "S’està connectant…",
@@ -294,6 +304,10 @@ var keyStrings = {
         "No s’ha pogut crear una sol·licitud d’aparellament. Torna a cercar el servidor per provar-ho de nou.",
     "Could not load. Select to retry.":
         "No s’ha pogut carregar. Selecciona-ho per tornar-ho a provar.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "No s'ha pogut preparar aquest text. Si us plau, escurça-ho i torna-ho a provar.",
+    "Could not protect the private link. Use a different browser.":
+        "No s'ha pogut protegir l'enllaç privat. Utilitzeu un navegador diferent.",
     "Could not save provider settings.":
         "No s’ha pogut desar la configuració del proveïdor.",
     "Could not save the approved command server settings.":
@@ -311,6 +325,8 @@ var keyStrings = {
     "Delete category": "Suprimeix la categoria",
     "Delete channel": "Suprimeix el canal",
     "Delete list": "Suprimeix la llista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "No s'ha pogut confirmar l'entrega. Comprova el teu televisor o torna a provar el mateix missatge abans que caduqui aquesta sessió.",
     "Demo — moving test pattern": "Demostració — patró de prova en moviment",
     Description: "Descripció",
     "Description of remote control buttons": "Guia dels botons del comandament",
@@ -396,6 +412,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Introdueix l’URL del portal Stalker (p. ex. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Introdueix el número del servidor (%1).",
+    "Enter text": "Introduïu text",
     "Enter the access code separately, not in the server address.":
         "Introdueix el codi d’accés per separat, no a l’adreça del servidor.",
     "Enter the command server IP or address.":
@@ -542,7 +559,7 @@ var keyStrings = {
     ID: "ID",
     "Import settings": "Importa la configuració",
     "In live mode: <br/>": "En mode en directe:<br/>",
-    Info: "Info",
+    Info: "Informació",
     "Infobar display timeout, s":
         "Temps de visualització de la barra d’informació, s",
     "Infobar settings": "Configuració de la barra d’informació",
@@ -553,8 +570,11 @@ var keyStrings = {
     "Interface transparency": "Transparència de la interfície",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Enllaç del canal no vàlid! Introdueix el nom complet de l’amfitrió que figura a l’URL de transmissió del compte (p. ex. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Resposta de configuració del núvol no vàlida",
     "Invalid protected source configuration":
         "Configuració de la font protegida no vàlida",
+    "Invalid setting": "Configuració no vàlida",
     "IPTV token": "Testimoni IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Configuració de IpStream.one",
@@ -637,6 +657,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Cap programa coincideix amb els canals i les dates de la llista. Comprova la font i el rellotge del dispositiu.",
     "No saved settings found": "No s’ha trobat cap configuració desada",
+    "No supported system language. Choose a language.":
+        "No s'admet cap idioma del sistema. Trieu un idioma.",
     "Not configured": "Sense configurar",
     "Not found": "No s’ha trobat",
     "Not reduce video when showing the list (bugfix)":
@@ -652,6 +674,8 @@ var keyStrings = {
     "not set": "sense definir",
     Off: "desactivat",
     Ok: "D’acord",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Només aquest televisor pot acceptar el vostre missatge. L'enllaç caduca al cap de 10 minuts.",
     Open: "Obre",
     "Open in PiP": "Obre en PiP",
     "Open Plex sign-in page": "Obre la pàgina d’inici de sessió de Plex",
@@ -664,6 +688,7 @@ var keyStrings = {
     "OTT / APP host": "Amfitrió OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Configuració de OTT Prime ONLINE",
+    "OTT-play remote input": "Entrada remota OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 està disponible. El vols baixar i instal·lar ara?",
     "Overwrite current settings?": "Vols sobreescriure la configuració actual?",
@@ -696,6 +721,7 @@ var keyStrings = {
     Playback: "Reproducció",
     "Player and device info": "Informació del reproductor i del dispositiu",
     "Player could not start": "El reproductor no s’ha pogut iniciar",
+    "Player default": "Opció predeterminada del reproductor",
     "Player info:": "Informació del reproductor:",
     Playlist: "Llista de reproducció",
     "Playlist file": "Fitxer de llista de reproducció",
@@ -717,6 +743,8 @@ var keyStrings = {
     Postpaid: "Postpagament",
     PROST: "PROST",
     "PROST settings": "Configuració de PROST",
+    "Preferred audio language": "Idioma d'àudio preferit",
+    "Preferred subtitle language": "Idioma preferit dels subtítols",
     Prepaid: "Prepagament",
     "Preparing secure remote input...":
         "S’està preparant l’entrada remota segura…",
@@ -750,14 +778,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Comandament (sense botons numèrics)",
     "Remote control": "Comandament a distància",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "El control remot autoritza els diagnòstics. Preparat per a un operador.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "El control remot autoritza els diagnòstics. Esperant per tornar a connectar.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "El control remot inclou captures de pantalla del reproductor, inclosa la configuració. Les imatges poden contenir informació privada. La captura nativa no necessita aprovació addicional. Els navegadors requereixen una selecció local de la font de captura.",
     "Remote diagnostics": "Diagnòstic remot",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "S'estan recopilant diagnòstics remots per a aquesta connexió (fins a 10 minuts per sessió).",
     "Remote diagnostics is collecting for this page.":
         "El diagnòstic remot està recollint dades d’aquesta pàgina.",
     "Remote diagnostics is off.": "El diagnòstic remot està desactivat.",
@@ -771,10 +799,11 @@ var keyStrings = {
         "L’entrada remota ha caducat. Obre una sessió nova per tornar-ho a provar.",
     "Remote input session is unavailable. Open a new session to try again.":
         "La sessió d’entrada remota no està disponible. Obre una sessió nova per tornar-ho a provar.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Captures de pantalla remotes",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Les captures de pantalla a distància es permeten durant 10 minuts. Tanca la configuració per capturar.",
+    "Remote screenshots are off.":
+        "Les captures de pantalla remotes estan desactivades.",
     "Remote session expired": "La sessió remota ha caducat",
     "Remote text entry": "Entrada de text remota",
     "Remote text entry denied": "Entrada de text remota denegada",
@@ -803,6 +832,7 @@ var keyStrings = {
     "Resume from archive?": "Vols continuar des de l’arxiu?",
     Retry: "Torna-ho a provar",
     "Retry EPG download": "Torna a baixar l’EPG",
+    "Retry same message": "Torneu a provar el mateix missatge",
     "Return to previous channel": "Torna al canal anterior",
     Rewind: "Desplaça la reproducció",
     "Rewind step by buttons %1/%2": "Pas de desplaçament dels botons %1/%2",
@@ -820,19 +850,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Desa la configuració i carrega la llista de canals",
     "Save settings to storage": "Desa la configuració a l’emmagatzematge",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Escaneja el codi QR al teu televisor o enganxa el seu enllaç privat complet a continuació.",
     "Scan this QR code with your phone to enter text.":
         "Escaneja aquest codi QR amb el telèfon per introduir text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "No s'ha pogut iniciar la compartició de pantalla.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "La compartició de pantalla s'ha cancel·lat o no està disponible.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "No s'ha pogut activar el permís de captura de pantalla.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Les captures de pantalla estan disponibles mentre el control remot està connectat.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Les captures de pantalla no estan disponibles en aquesta plataforma.",
     Script: "Guió",
     Search: "Cerca",
+    "Search languages": "Cerca idiomes",
     "Search programme": "Cerca un programa",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "No s’ha pogut iniciar l’entrada remota segura. Torna-ho a provar o utilitza el teclat en pantalla.",
@@ -851,13 +885,14 @@ var keyStrings = {
         "Selecciona la font de la plantilla de la llista per a l’EPG i els logotips",
     "Select Stalker portal": "Selecciona un portal Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Seleccioneu la font de la captura de pantalla al navegador",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Seleccioneu la pestanya o la finestra del reproductor al diàleg per compartir el navegador.",
     "Send request": "Envia la sol·licitud",
     "Send settings": "Envia la configuració",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Envia aquest codi des del servidor intermediari a la capçalera Authorization: Bearer.",
+    "Send to TV": "Envia a la televisió",
     Server: "Servidor",
     "Server address": "Adreça del servidor",
     "Server address (for example 192.168.1.20:8081)":
@@ -866,10 +901,14 @@ var keyStrings = {
     "Server URL": "URL del servidor",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Servidor no disponible. Es torna a provar automàticament; comprova l’adreça i l’accés a la xarxa.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sessió tancada. Inicieu-ne una de nova des del televisor quan calgui.",
     Set: "Aplica",
     "Set parental code": "Defineix el codi parental",
     "Set timer?": "Vols definir un temporitzador?",
     Settings: "Configuració",
+    "Settings changed while editing":
+        "La configuració ha canviat durant l'edició",
     "Settings changed. Discovery was canceled.":
         "La configuració ha canviat. S’ha cancel·lat la cerca.",
     "Settings copied": "Configuració copiada",
@@ -881,10 +920,15 @@ var keyStrings = {
     "Settings JSON": "JSON de configuració",
     "Settings loaded from storage":
         "Configuració carregada de l’emmagatzematge",
+    "Settings received. Restarting player...":
+        "Configuració rebuda. S'està reiniciant el reproductor...",
     "Settings STB": "Configuració de l’STB",
     "Settings saved": "Configuració desada",
     "Settings saved to storage": "Configuració desada a l’emmagatzematge",
     "Settings sended!": "Configuració enviada!",
+    "Settings source changed": "La font de configuració ha canviat",
+    "Settings storage rejected write":
+        "L’emmagatzematge de configuració ha rebutjat l’escriptura",
     "Several command servers were found. Select one below.":
         "S’han trobat diversos servidors d’ordres. Selecciona’n un a continuació.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -941,12 +985,12 @@ var keyStrings = {
     "Starting...": "S’està iniciant…",
     Status: "Estat",
     Stop: "Atura",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Atura l'ús compartit del navegador",
     "Stop current capture": "Atura la recollida actual",
     "Stop diagnostics": "Atura el diagnòstic",
     "Stop playback and return to live":
         "Atura la reproducció i torna al directe",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Atura les captures de pantalla",
     "Stream could not be played": "No s’ha pogut reproduir la transmissió",
     "Stream type: %1": "Tipus de transmissió: %1",
     "String for search": "Text de cerca",
@@ -958,6 +1002,7 @@ var keyStrings = {
     "Switch subtitle": "Canvia els subtítols",
     "Switch to this list": "Canvia a aquesta llista",
     "Swop URL": "Swop URL",
+    "System language": "Idioma del sistema",
     "saved on this device": "desat en aquest dispositiu",
     select: "selecciona",
     small: "petit",
@@ -966,15 +1011,19 @@ var keyStrings = {
     "Tabox settings": "Configuració de Tabox",
     "Text is too long for remote input.":
         "El text és massa llarg per a l’entrada remota.",
+    "Text is too long. Please shorten it before sending.":
+        "El text és massa llarg. Si us plau, escurça'l abans d'enviar-lo.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Text enviat. Comproveu el vostre televisor per confirmar que ha aparegut.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "La font de la captura de pantalla del navegador està preparada.",
     "The command server discovery URL is invalid.":
         "L’URL de cerca del servidor d’ordres no és vàlid.",
     "The device ID in the address is invalid.":
         "L’ID del dispositiu a l’adreça no és vàlid.",
     "The discovery response is invalid.": "La resposta de cerca no és vàlida.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Aquest navegador no pot identificar la font de captura de pantalla seleccionada.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Aquest navegador no pot aparellar-se automàticament de manera segura. Actualitza’l o introdueix manualment la configuració del servidor d’ordres.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -983,6 +1032,10 @@ var keyStrings = {
         "Aquest reproductor HTTPS no es pot connectar a un servidor HTTP. Utilitza un servidor HTTPS o obre el reproductor mitjançant HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Aquesta aplicació Play requereix HTTPS. Demana al proveïdor una llista o un URL de servidor HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Aquest enllaç de vinculació ha caducat. Obre una sessió nova al teu televisor.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Aquesta sessió segura no està disponible o ha caducat. Obriu una sessió nova al televisor i utilitzeu el seu enllaç complet.",
     Timer: "Temporitzador",
     "Timer: switch to channel?": "Temporitzador: vols canviar a aquest canal?",
     "Timeshift: one minute back": "Retrocedeix un minut",
@@ -1032,6 +1085,8 @@ var keyStrings = {
         "Utilitza HTTP o HTTPS sense nom d’usuari ni contrasenya a l’adreça.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Utilitza ESQUERRA/DRETA per seleccionar un control, OK per activar-lo i AMUNT/AVALL per desplaçar-te.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Utilitzeu l'enllaç complet, inclosa la part després de #. No ho compartiu amb ningú més.",
     "Use Up / Down to scroll. Back to close.":
         "Utilitza Amunt/Avall per desplaçar-te. Enrere per tancar.",
     Username: "Nom d’usuari",

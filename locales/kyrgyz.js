@@ -64,13 +64,14 @@ var keyStrings = {
         "Диагностикага 10 мүнөткө уруксат берүү",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Скриншотторго 10 мүнөткө уруксат бериңиз",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Бул серверге диагностикалык көрсөткүчтөрдү чогултууга жана агымды же ойноткучту кайра иштетүүгө уруксат бериңиз. Убактылуу кирүү 10 мүнөткө созулат. Ишенимдүү колдоо кайра туташкандан же кайра иштеткенден кийин жеткиликтүү бойдон калат; ар бир чогултуу 10 мүнөттөн кийин аяктайт. Барак жашырылганда же тармак өчкөндө чогултуу токтойт.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Бул серверге ушул көрүнүп турган сеанс үчүн ойнотуу, тармак жана киргизүү көрсөткүчтөрүн чогултууга уруксат бериңиз. HTTPS жана сервердин уруксаты талап кылынат. 10 мүнөттөн кийин, барак жашырылганда же байланыш үзүлгөндө токтойт.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Бул серверге 10 мүнөткө сүрөттөрдү суроого уруксат бериңиз. Сүрөттөр жеке маалыматты камтышы мүмкүн. Браузерден ойноткучтун өтмөгүн же терезени тандаңыз. Уруксат кайра жүктөлгөндө же ажыратылганда бүтөт.",
     "Allowlist this Device ID":
         "Бул түзмөктүн ID-син уруксат берилген тизмеге кошуу",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 мүнөт артка / алдыга жылдыруу",
     "Background color": "Фондун түсү",
     "Background color of selected item": "Тандалган саптын фонунун түсү",
+    "Backup state changed": "Камдык көчүрмөнүн абалы өзгөрдү",
     "Balance, $": "Баланс, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -114,6 +116,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Канал алмаштырганда кара экран",
     Blue: "Көк",
+    "Bookmark age (days): %1": "Закладка түзүлгөндөн бери (күн): %1",
     "Bookmark age: %1 days": "Белгинин жашы: %1 күн",
     "Browse folders": "Папкаларды кароо",
     "Buffer Size, s": "Буфердин көлөмү, сек",
@@ -164,11 +167,14 @@ var keyStrings = {
     "Choose language": "Тилди тандоо",
     "Choose Plex server": "Plex серверин тандоо",
     "Choose provider": "Провайдерди тандоо",
-    Classic: "Classic",
+    Classic: "Классикалык",
     "Clear all settings?": "Бардык жөндөөлөр тазалансынбы?",
     "Clear settings": "Жөндөөлөрдү тазалоо",
     Close: "Жабуу",
     "Close PiP": "PiP жабуу",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Булутту сактоо/жүктөө STB микропрограммасын талап кылат (host_ott орнотулган эмес)",
+    "Cloud transfer failed": "Булуттан өткөрүү ишке ашкан жок",
     Code: "Код",
     Color: "Түс",
     "Color spectrum": "Түс спектри",
@@ -187,6 +193,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Шайкештик компоненттери жүктөлгөн жок. Кайра аракет кылуу үчүн ойноткучту кайра ачыңыз.",
     "Compatible HLS": "Шайкеш HLS",
+    "Complete pairing link": "Толук жупташтыруу шилтемеси",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv кызматын Жөндөөлөр -> Провайдердин жөндөөлөрү бөлүмүнөн жөндөңүз",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +266,24 @@ var keyStrings = {
         "Шаравоз кызматын Жөндөөлөр -> Провайдердин жөндөөлөрү бөлүмүнөн жөндөңүз",
     Connect: "Туташуу",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Скриншотторго уруксат берүүдөн мурун HTTPS буйрук серверин туташтырыңыз.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Скриншотторду колдонуу үчүн HTTPS буйрук серверин туташтырыңыз.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Диагностиканы иштетүү үчүн алыстан башкарууну туташтырыңыз.",
     "Connect this player to a command server first.":
         "Адегенде ойноткучту буйрук серверине туташтырыңыз.",
+    "Connect to TV": "Сыналгыга туташуу",
     Connected: "Туташты",
     "Connected. Waiting for the channel list...":
         "Туташты. Каналдардын тизмеси күтүлүүдө…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Алыстан башкарууну туташтыруу бул серверге ойноткучту диагностикалоого жана оңдоого уруксат берет. Кирүү мүмкүнчүлүгү кайра күйгүзүлгөндөн кийин жеткиликтүү бойдон калууда жана сиз ажыратканыңызда бүтөт. Диагностикалык маалыматтарды ар бир чогултуу 10 мүнөт менен чектелген.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Иштетилген алыстан башкаруу туташуусу үчүн аралыктан диагностиканы туташтыруу.",
     "Connecting remote diagnostics for this page.":
         "Бул барак үчүн алыстан диагностика туташтырылууда.",
+    "Connecting securely to your TV...": "Сыналгыңызга коопсуз туташуу...",
     "Connecting to Plex…": "Plex менен туташууда…",
     "Connecting to Stalker portal...": "Stalker порталына туташууда…",
     "Connecting...": "Туташууда…",
@@ -292,6 +301,10 @@ var keyStrings = {
         "Жупташтыруу сурамы түзүлгөн жок. Кайра аракет кылуу үчүн серверди кайра табыңыз.",
     "Could not load. Select to retry.":
         "Жүктөлгөн жок. Кайра аракет кылуу үчүн тандаңыз.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Бул текст даярдалган жок. Сураныч, аны кыскартып, кайра аракет кылыңыз.",
+    "Could not protect the private link. Use a different browser.":
+        "Купуя шилтемени коргой алган жок. Башка браузерди колдонуңуз.",
     "Could not save provider settings.":
         "Провайдердин жөндөөлөрү сакталган жок.",
     "Could not save the approved command server settings.":
@@ -310,6 +323,8 @@ var keyStrings = {
     "Delete category": "Категорияны өчүрүү",
     "Delete channel": "Каналды өчүрүү",
     "Delete list": "Тизмени өчүрүү",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Жеткирүү ырасталган жок. Сыналгыңызды текшериңиз же бул сессиянын мөөнөтү бүткүчө ошол эле билдирүүнү кайталап көрүңүз.",
     "Demo — moving test pattern": "Демо — кыймылдуу сыноо сүрөтү",
     Description: "Сүрөттөмө",
     "Description of remote control buttons":
@@ -394,6 +409,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker порталынын URL дарегин киргизиңиз (мисалы http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Сервердин номерин киргизиңиз (%1).",
+    "Enter text": "Текстти киргизиңиз",
     "Enter the access code separately, not in the server address.":
         "Кирүү кодун сервердин дарегине кошпой, өзүнчө киргизиңиз.",
     "Enter the command server IP or address.":
@@ -547,8 +563,10 @@ var keyStrings = {
     "Interface transparency": "Интерфейстин тунуктугу",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Каналдын шилтемеси туура эмес! Жеке кабинеттеги агымдын URL дарегиндегидей толук хостту киргизиңиз (мисалы subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Булут жөндөөлөрү туура эмес жооп",
     "Invalid protected source configuration":
         "Корголгон булактын жөндөөлөрү жараксыз",
+    "Invalid setting": "Жараксыз орнотуу",
     "IPTV token": "IPTV токени",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one жөндөөлөрү",
@@ -629,6 +647,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Берүүлөр ойнотуу тизмесиндеги каналдарга жана даталарга дал келген жок. Булакты жана түзмөктүн саатын текшериңиз.",
     "No saved settings found": "Сакталган жөндөөлөр табылган жок",
+    "No supported system language. Choose a language.":
+        "Колдоого алынган система тили жок. Тилди тандаңыз.",
     "Not configured": "Жөндөлгөн эмес",
     "Not found": "Табылган жок",
     "Not reduce video when showing the list (bugfix)":
@@ -644,6 +664,8 @@ var keyStrings = {
     "not set": "коюлган эмес",
     Off: "Өчүк",
     Ok: "Макул",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Бул сыналгы гана билдирүүңүздү кабыл ала алат. Шилтеме 10 мүнөттөн кийин бүтөт.",
     Open: "Ачуу",
     "Open in PiP": "PiP режиминде ачуу",
     "Open Plex sign-in page": "Plex кирүү барагын ачуу",
@@ -656,6 +678,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP хосту",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE жөндөөлөрү",
+    "OTT-play remote input": "OTT-play алыстан киргизүү",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 жеткиликтүү. Азыр жүктөп орнотулсунбу?",
     "Overwrite current settings?": "Учурдагы жөндөөлөр алмаштырылсынбы?",
@@ -688,6 +711,7 @@ var keyStrings = {
     Playback: "Ойнотуу",
     "Player and device info": "Плеер жана түзмөк жөнүндө маалымат",
     "Player could not start": "Плеер ишке кирген жок",
+    "Player default": "Ойноткучтагы демейки тандоо",
     "Player info:": "Плеер жөнүндө маалымат:",
     Playlist: "Ойнотуу тизмеси",
     "Playlist file": "Ойнотуу тизмесинин файлы",
@@ -709,6 +733,8 @@ var keyStrings = {
     Postpaid: "Кийин төлөө",
     PROST: "PROST",
     "PROST settings": "PROST жөндөөлөрү",
+    "Preferred audio language": "Тандалган аудио тили",
+    "Preferred subtitle language": "Тандалган субтитр тили",
     Prepaid: "Алдын ала төлөө",
     "Preparing secure remote input...":
         "Коопсуз алыстан киргизүү даярдалууда...",
@@ -742,14 +768,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Пульт (сан баскычтарсыз)",
     "Remote control": "Алыстан башкаруу",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Алыстан башкаруу диагностикага уруксат берет. Операторго даяр.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Алыстан башкаруу диагностикага уруксат берет. Кайра туташуу күтүлүүдө.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Алыстан башкаруу куралы медиа ойноткучтун скриншотторун, анын ичинде анын орнотууларын камтыйт. Сүрөттөр жеке маалыматты камтышы мүмкүн. Колдонмо скриншотторду кошумча уруксатсыз эле тарта алат. Серепчиде бул түзмөктө тартуу үчүн өтмөктү же терезени тандаңыз.",
     "Remote diagnostics": "Алыстан диагностика",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Бул туташуу үчүн алыстан диагностика чогултулууда (бир сессияда 10 мүнөткө чейин).",
     "Remote diagnostics is collecting for this page.":
         "Бул барак үчүн алыстан диагностика маалымат чогултууда.",
     "Remote diagnostics is off.": "Алыстан диагностика өчүрүлгөн.",
@@ -763,10 +789,10 @@ var keyStrings = {
         "Алыстан киргизүүнүн мөөнөтү бүттү. Кайра аракет кылуу үчүн жаңы сеанс ачыңыз.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Алыстан киргизүү сеансы жеткиликсиз. Кайра аракет кылуу үчүн жаңы сеанс ачыңыз.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Алыскы скриншоттор",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Алыскы скриншотторго 10 мүнөткө уруксат берилет. Тартуу үчүн орнотууларды жабыңыз.",
+    "Remote screenshots are off.": "Алыскы скриншоттор өчүк.",
     "Remote session expired": "Алыстан сеанстын мөөнөтү бүттү",
     "Remote text entry": "Текстти алыстан киргизүү",
     "Remote text entry denied":
@@ -796,6 +822,7 @@ var keyStrings = {
     "Resume from archive?": "Архивден улантылсынбы?",
     Retry: "Кайра аракет кылуу",
     "Retry EPG download": "EPG жүктөөнү кайталоо",
+    "Retry same message": "Ошол эле билдирүүнү кайталап көрүңүз",
     "Return to previous channel": "Мурунку каналга кайтуу",
     Rewind: "Жылдыруу",
     "Rewind step by buttons %1/%2": "%1/%2 баскычтарынын жылдыруу кадамы",
@@ -813,19 +840,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Жөндөөлөрдү сактоо жана каналдар тизмесин жүктөө",
     "Save settings to storage": "Жөндөөлөрдү сактагычка сактоо",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Сыналгыңыздагы QR кодун сканерлеңиз же анын толук купуя жупташтыруу шилтемесин төмөндө чаптаңыз.",
     "Scan this QR code with your phone to enter text.":
         "Текст киргизүү үчүн бул QR кодду телефонуңуз менен сканерлеңиз.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Экранды бөлүшүү башталбай койду.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Экранды бөлүшүү жокко чыгарылды же жеткиликсиз.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Скриншот уруксаты иштетилген жок.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Скриншоттор алыстан башкаруу туташтырылган учурда жеткиликтүү.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Скриншоттор бул платформада жеткиликсиз.",
     Script: "Сценарий",
     Search: "Издөө",
+    "Search languages": "Тилдерди издөө",
     "Search programme": "Берүүнү издөө",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Коопсуз алыстан киргизүү башталган жок. Кайра аракет кылыңыз же экрандык баскычтопту колдонуңуз.",
@@ -843,13 +873,14 @@ var keyStrings = {
         "EPG жана логотиптер үчүн ойнотуу тизмесинин үлгү булагын тандаңыз",
     "Select Stalker portal": "Stalker порталын тандаңыз",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Браузерден скриншот булагын тандаңыз",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Серепчинин бөлүшүү диалогунан ойноткуч өтмөктү же терезени тандаңыз.",
     "Send request": "Сурам жөнөтүү",
     "Send settings": "Жөндөөлөрдү жөнөтүү",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Бул кодду проксиңизден Authorization: Bearer аталышында жөнөтүңүз.",
+    "Send to TV": "Телевизорго жөнөтүү",
     Server: "Сервер",
     "Server address": "Сервердин дареги",
     "Server address (for example 192.168.1.20:8081)":
@@ -858,10 +889,13 @@ var keyStrings = {
     "Server URL": "Сервердин URL дареги",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Сервер жеткиликсиз. Автоматтык кайра аракет кылынууда; дарегин жана тармак аркылуу жеткиликтүүлүгүн текшериңиз.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Сессия жабылды. Керек болгондо сыналгыңыздан жаңысын баштаңыз.",
     Set: "Коюу",
     "Set parental code": "Ата-эне көзөмөлүнүн кодун коюу",
     "Set timer?": "Таймер коюлсунбу?",
     Settings: "Жөндөөлөр",
+    "Settings changed while editing": "Орнотуулар түзөтүүдө өзгөрдү",
     "Settings changed. Discovery was canceled.":
         "Жөндөөлөр өзгөрдү. Издөө токтотулду.",
     "Settings copied": "Жөндөөлөр көчүрүлдү",
@@ -871,10 +905,15 @@ var keyStrings = {
     "Settings imported": "Жөндөөлөр импорттолду",
     "Settings JSON": "Жөндөөлөрдүн JSON маалыматы",
     "Settings loaded from storage": "Жөндөөлөр сактагычтан жүктөлдү",
+    "Settings received. Restarting player...":
+        "Орнотуулар кабыл алынды. Ойноткуч кайра иштетилүүдө...",
     "Settings STB": "STB жөндөөлөрү",
     "Settings saved": "Жөндөөлөр сакталды",
     "Settings saved to storage": "Жөндөөлөр сактагычка сакталды",
     "Settings sended!": "Жөндөөлөр жөнөтүлдү!",
+    "Settings source changed": "Орнотуулар булагы өзгөртүлдү",
+    "Settings storage rejected write":
+        "Орнотуулар сактагычы жазууну четке какты",
     "Several command servers were found. Select one below.":
         "Бир нече буйрук сервери табылды. Төмөндөн бирөөнү тандаңыз.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -927,11 +966,11 @@ var keyStrings = {
     "Starting...": "Ишке кирүүдө…",
     Status: "Абал",
     Stop: "Токтотуу",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Браузерди бөлүшүүнү токтотуу",
     "Stop current capture": "Учурдагы маалымат чогултууну токтотуу",
     "Stop diagnostics": "Диагностиканы токтотуу",
     "Stop playback and return to live": "Ойнотууну токтотуп түз эфирге кайтуу",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Скриншотторду токтотуу",
     "Stream could not be played": "Агым ойнотулган жок",
     "Stream type: %1": "Агымдын түрү: %1",
     "String for search": "Издөө сурамы",
@@ -943,6 +982,7 @@ var keyStrings = {
     "Switch subtitle": "Субтитрлерди алмаштыруу",
     "Switch to this list": "Бул тизмеге өтүү",
     "Swop URL": "Swop URL дареги",
+    "System language": "Система тили",
     "saved on this device": "бул түзмөктө сакталган",
     select: "тандоо",
     small: "кичине",
@@ -951,15 +991,19 @@ var keyStrings = {
     "Tabox settings": "Tabox жөндөөлөрү",
     "Text is too long for remote input.":
         "Текст алыстан киргизүү үчүн өтө узун.",
+    "Text is too long. Please shorten it before sending.":
+        "Текст өтө узун. Сураныч, жөнөтүүдөн мурун аны кыскартыңыз.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Текст жөнөтүлдү. Анын пайда болгонун ырастоо үчүн сыналгыңызды текшериңиз.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Браузердин скриншот булагы даяр.",
     "The command server discovery URL is invalid.":
         "Буйрук серверин издөө URL дареги жараксыз.",
     "The device ID in the address is invalid.":
         "Даректеги түзмөктүн ID коду жараксыз.",
     "The discovery response is invalid.": "Издөө жообу жараксыз.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Бул браузер тандалган скриншот булагын аныктай албайт.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Бул браузер коопсуз автоматтык жупташтырууну колдобойт. Аны жаңыртыңыз же буйрук серверинин жөндөөлөрүн кол менен киргизиңиз.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -968,6 +1012,10 @@ var keyStrings = {
         "Бул HTTPS плеер HTTP серверине туташа албайт. HTTPS серверин колдонуңуз же плеерди HTTP аркылуу ачыңыз.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Бул Play тиркемесине HTTPS керек. Провайдериңизден HTTPS ойнотуу тизмесин же сервердин URL дарегин сураңыз.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Бул жупташтыруу шилтемесинин мөөнөтү бүттү. Сыналгыңызда жаңы сеансты ачыңыз.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Бул коопсуз сеанс жеткиликсиз же мөөнөтү бүткөн. Сыналгыда жаңы сессияны ачып, анын толук шилтемесин колдонуңуз.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: бул каналга өтүлсүнбү?",
     "Timeshift: one minute back": "Убакыт жылдыруу: бир мүнөт артка",
@@ -1017,6 +1065,8 @@ var keyStrings = {
         "Даректе колдонуучунун аты же сырсөзү жок HTTP же HTTPS колдонуңуз.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Башкаруу элементин тандоо үчүн СОЛ/ОҢ, иштетүү үчүн OK, жылдыруу үчүн ӨЙДӨ/ЫЛДЫЙ баскычтарын колдонуңуз.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Толук шилтемени, анын ичинде # кийинки бөлүгүн колдонуңуз. Аны эч ким менен бөлүшпөңүз.",
     "Use Up / Down to scroll. Back to close.":
         "Жылдыруу үчүн Өйдө / Ылдый баскычтарын колдонуңуз. Жабуу үчүн Артка басыңыз.",
     Username: "Колдонуучунун аты",

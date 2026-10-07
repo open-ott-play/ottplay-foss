@@ -1,5 +1,10 @@
 import { popupActionId } from "./compatibility/legacy-names";
-import { languageAssetPath, languageNames } from "./localization/assets";
+import { applyLanguageMetadata, normalizeSearchText } from "./localization";
+import {
+    languageAssetPath,
+    languageLocaleTag,
+    languageNames,
+} from "./localization/assets";
 import { accessMediaPlugin, prepareAccessMedia } from "./plugins/access-media";
 import { createSettingsEditor } from "./settings/editor";
 import {
@@ -525,8 +530,7 @@ var TMDb: any = {
             function () {
                 return 1;
             };
-        const api_lang =
-            TMDb.la[(window as any).stbGetItem?.("ottplaylang")] || "en";
+        const api_lang = TMDb.locale();
         function renderMediaDescription(item: any): string {
             function it(val: any, title?: string): string {
                 return val
@@ -635,10 +639,14 @@ var TMDb: any = {
             data: { append_to_response: "credits", language: api_lang },
             dataType: "json",
             error: function (jqXHR: any) {
-                $("#dialogbox").html("<br>Get TMDb error!<br><br>");
+                if (TMDb.locale() !== api_lang) return;
+                $("#dialogbox").html(
+                    "<br>" + metadataText(_("Failed to load!")) + "<br><br>"
+                );
                 console.log("getTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
             success: function (data: any) {
+                if (TMDb.locale() !== api_lang) return;
                 TMDb.data = data;
                 show();
             },
@@ -647,35 +655,20 @@ var TMDb: any = {
         });
     },
     hk: 1,
-    la: {
-        _arm: "hy",
-        _aze: "az",
-        _bel: "be",
-        _bul: "bg",
-        _cze: "cs",
-        _dut: "nl",
-        _eng: "en",
-        _fra: "fr",
-        _ger: "de",
-        _gre: "el",
-        _heb: "he",
-        _hun: "hu",
-        _ind: "id",
-        _ita: "it",
-        _kaz: "kk",
-        _lat: "lv",
-        _lit: "lt",
-        _may: "ms",
-        _pol: "pl",
-        _por: "pt",
-        _rou: "ro",
-        _rus: "ru",
-        _spa: "es",
-        _swe: "sv",
-        _tur: "tr",
-        _ukr: "uk",
-        _uzb: "uz",
-        _vie: "vi",
+    locale: function (): string {
+        var language = languageLocaleTag(
+            (window as any).__ottInterfaceLanguage ||
+                stbGetItem("ottplaylang") ||
+                "_eng"
+        );
+        if (TMDb.currentLanguage !== language) {
+            TMDb.currentLanguage = language;
+            TMDb.media_type_id = "";
+            TMDb.query = "";
+            TMDb.results = [];
+            TMDb.data = null;
+        }
+        return language;
     },
     media_type_id: "",
     prepare: function () {},
@@ -689,8 +682,7 @@ var TMDb: any = {
             function (s: string) {
                 return s;
             };
-        const api_lang =
-            TMDb.la[(window as any).stbGetItem?.("ottplaylang")] || "en";
+        const api_lang = TMDb.locale();
         itr = itr || 0;
         nam = String(nam || "");
         nam = nam.replace(/["\u00AB\u00BB]/g, "");
@@ -765,10 +757,14 @@ var TMDb: any = {
             },
             dataType: "json",
             error: function (jqXHR: any) {
-                $("#dialogbox").html("<br>Search TMDb error!<br><br>");
+                if (TMDb.locale() !== api_lang) return;
+                $("#dialogbox").html(
+                    "<br>" + metadataText(_("Failed to load!")) + "<br><br>"
+                );
                 console.log("searchTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
             success: function (data: any) {
+                if (TMDb.locale() !== api_lang) return;
                 data.results = (data.results || []).filter(function (val: any) {
                     return (
                         val.media_type === "movie" || val.media_type === "tv"
@@ -1509,8 +1505,8 @@ function onPlayerStart(): void {
 // Language selection
 
 /**
- * Show the language selection list. New languages are appended so existing
- * language positions stay stable. Renders all packaged languages,
+ * Show system/manual language choices and search while preserving stored IDs.
+ * Renders all packaged languages,
  * saves the selection to stb storage, loads the corresponding language
  * JS file from /locales/{language}.js, then proceeds to loadProv() or
  * optionsList depending on duneAddSettings availability.
@@ -1524,6 +1520,54 @@ function onPlayerStart(): void {
  *   navigates to optionsList instead of loadProv / stbExit.
  * - If no language was previously selected, the launch element is hidden.
  */
+/** One bounded owner for runtime locale downloads, including late scripts. */
+function loadInterfaceLanguage(
+    code: string,
+    done: (loaded: boolean) => void
+): () => void {
+    var w = window as any,
+        request = {},
+        finished = false;
+    w.__ottLanguagePending = request;
+    w.__ottBootDictionary = w.keyStrings;
+    var previous = w.keyStrings;
+    function finish(loaded: boolean): void {
+        if (finished || w.__ottLanguagePending !== request) {
+            if (loaded) w.keyStrings = w.__ottBootDictionary;
+            return;
+        }
+        finished = true;
+        clearTimeout(timer);
+        w.__ottLanguagePending = null;
+        loaded =
+            loaded &&
+            w.keyStrings !== previous &&
+            w.keyStrings &&
+            typeof w.keyStrings.lang === "string";
+        if (!loaded) w.keyStrings = w.__ottBootDictionary;
+        else {
+            w.__ottBootDictionary = w.keyStrings;
+            applyLanguageMetadata(code);
+        }
+        done(!!loaded);
+    }
+    var timer = setTimeout(function () {
+        finish(false);
+    }, 10000);
+    getScriptDOM(
+        hostUrl + languageAssetPath(code) + "?" + PLAYER_VERSION,
+        function () {
+            finish(true);
+        },
+        function () {
+            finish(false);
+        }
+    );
+    return function () {
+        finish(false);
+    };
+}
+
 function selectLang(forceReload?: boolean): void {
     var langCodes = [
         "_eng",
@@ -1615,15 +1659,17 @@ function selectLang(forceReload?: boolean): void {
         "_mlg",
         "_kin",
     ];
-    selIndex = langCodes.indexOf(stbGetItem("ottplaylang") || "");
-    var prevSelIndex = selIndex;
     var languageHost = window as any;
-    var cancelled = false;
+    var currentCode = stbGetItem("ottplaylang") || "";
+    var cancelled = false,
+        query = "",
+        visibleCodes: string[] = [];
     var cancelLanguageLoad: (() => void) | undefined;
-    if (selIndex === -1) selIndex = 0;
-    listDataArray = langCodes.map(function (code) {
-        return languageNames[code];
-    });
+    function systemCode(): string {
+        return typeof languageHost.__ottDetectLanguage === "function"
+            ? languageHost.__ottDetectLanguage()
+            : "";
+    }
     function resumeAfterLanguage(exit?: boolean): void {
         if (typeof duneAddSettings !== "function") {
             if (exit === true) {
@@ -1633,67 +1679,109 @@ function selectLang(forceReload?: boolean): void {
                 loadProv();
                 checkTauriUpdatesAfterLanguage();
             }
-        } else if (typeof (window as any).optionsList === "function") {
-            (window as any).optionsList(selectLang);
+        } else if (typeof languageHost.optionsList === "function") {
+            languageHost.optionsList(selectLang);
             checkTauriUpdatesAfterLanguage();
         }
     }
-    getListItemFn = function (item: any, _idx: number) {
-        return "&nbsp;&nbsp;" + item;
+    function renderLanguages(): void {
+        var needle = normalizeSearchText(query);
+        visibleCodes = ["@system", "@search"].concat(
+            langCodes.filter(function (code) {
+                return (
+                    !needle ||
+                    normalizeSearchText(
+                        languageNames[code] +
+                            " " +
+                            languageLocaleTag(code) +
+                            " " +
+                            code
+                    ).indexOf(needle) !== -1
+                );
+            })
+        );
+        listDataArray = visibleCodes.map(function (code) {
+            if (code === "@system") return _("System language");
+            if (code === "@search")
+                return _("Search languages") + (query ? ": " + query : "");
+            return languageNames[code];
+        });
+        if (visibleCodes.length === 2) {
+            visibleCodes.push("@empty");
+            listDataArray.push(_("Not found"));
+        }
+        var selected =
+            stbGetItem("ottplaylangmode") === "system"
+                ? "@system"
+                : currentCode;
+        selIndex = visibleCodes.indexOf(selected);
+        if (selIndex < 0)
+            selIndex =
+                visibleCodes.length > 2 && visibleCodes[2] !== "@empty" ? 2 : 1;
+        showPage();
+    }
+    function searchLanguages(): void {
+        if (
+            languageHost.__ottLanguagePending ||
+            typeof languageHost.showEditKey !== "function"
+        )
+            return;
+        languageHost.editCaption = _("Search languages");
+        languageHost.editvar = query;
+        languageHost.setEdit = function () {
+            if (cancelled || listKeyHandlerFn !== languageKeyHandler) return;
+            query = String(languageHost.editvar || "").trim();
+            languageHost.setEdit = function () {};
+            renderLanguages();
+        };
+        languageHost.showEditKey(keys.ENTER);
+    }
+    getListItemFn = function (item: any) {
+        return "&nbsp;&nbsp;" + metadataText(item);
     };
     detailListActionFn = function () {};
-    listKeyHandlerFn = function (key: number): boolean {
+    var languageKeyHandler = function (key: number): boolean {
         switch (key) {
+            case keys.RED:
+                searchLanguages();
+                return true;
             case keys.ENTER:
-                // Only one active choice owns the dictionary. Timed-out or
-                // cancelled scripts may still execute and must restore it.
                 if (languageHost.__ottLanguagePending) return true;
-                if (prevSelIndex === selIndex && forceReload !== true) {
+                var choice = visibleCodes[selIndex];
+                if (choice === "@search") {
+                    searchLanguages();
+                    return true;
+                }
+                if (!choice || choice === "@empty") return true;
+                var automatic = choice === "@system";
+                var selectedLanguage = automatic ? systemCode() : choice;
+                if (!selectedLanguage) {
+                    infoBox(
+                        _("No supported system language. Choose a language.")
+                    );
+                    return true;
+                }
+                var selected = function (): void {
+                    cancelled = true;
+                    stbSetItem("ottplaylang", selectedLanguage);
+                    stbSetItem(
+                        "ottplaylangmode",
+                        automatic ? "system" : "manual"
+                    );
+                    applyLanguageMetadata(selectedLanguage);
                     resumeAfterLanguage();
-                } else {
-                    var selectedLanguage = langCodes[selIndex];
-                    var request = {};
-                    languageHost.__ottLanguagePending = request;
-                    languageHost.__ottBootDictionary = languageHost.keyStrings;
-                    var finish = function (loaded: boolean): void {
-                        if (languageHost.__ottLanguagePending !== request) {
-                            if (loaded)
-                                languageHost.keyStrings =
-                                    languageHost.__ottBootDictionary;
-                            return;
-                        }
-                        clearTimeout(timer);
-                        languageHost.__ottLanguagePending = null;
-                        if (!loaded || cancelled) {
-                            languageHost.keyStrings =
-                                languageHost.__ottBootDictionary;
-                            if (!cancelled) infoBox(_("Failed to load!"));
-                            return;
-                        }
-                        languageHost.__ottBootDictionary =
-                            languageHost.keyStrings;
-                        stbSetItem("ottplaylang", selectedLanguage);
-                        resumeAfterLanguage();
-                    };
-                    var timer = setTimeout(function () {
-                        finish(false);
-                    }, 10000);
-                    cancelLanguageLoad = function () {
-                        finish(false);
-                    };
-                    getScriptDOM(
-                        hostUrl +
-                            languageAssetPath(selectedLanguage) +
-                            "?" +
-                            PLAYER_VERSION,
-                        function () {
-                            finish(true);
-                        },
-                        function () {
-                            finish(false);
+                };
+                if (currentCode === selectedLanguage && forceReload !== true)
+                    selected();
+                else
+                    cancelLanguageLoad = loadInterfaceLanguage(
+                        selectedLanguage,
+                        function (loaded) {
+                            if (cancelled) return;
+                            if (loaded) selected();
+                            else infoBox(_("Failed to load!"));
                         }
                     );
-                }
                 return true;
             case keys.EXIT:
                 if (typeof duneAddSettings === "function") return false;
@@ -1705,6 +1793,7 @@ function selectLang(forceReload?: boolean): void {
         }
         return false;
     };
+    listKeyHandlerFn = languageKeyHandler;
     function setLanguageHtml(id: string, html: string): void {
         var element = document.getElementById(id);
         if (element) element.innerHTML = html;
@@ -1713,11 +1802,12 @@ function selectLang(forceReload?: boolean): void {
     setLanguageHtml("listCaption", _("Choose language"));
     setLanguageHtml(
         "listPodval",
-        renderButtonHint(keys.RETURN, strRETURN, "Close")
+        renderButtonHint(keys.RETURN, strRETURN, "Close") +
+            renderButtonHint(keys.RED, "", "Search languages")
     );
     var listPopUpEl = document.getElementById("listPopUp");
     if (listPopUpEl) listPopUpEl.style.display = "none";
-    showPage();
+    renderLanguages();
 }
 
 function startupError(
@@ -1886,9 +1976,16 @@ function loadStartupLanguage(): boolean {
             bootLanguage.code
         ) &&
         bootLanguage.dictionary === (window as any).keyStrings;
-    if (!lang && preloaded && bootLanguage.automatic) {
-        lang = String(bootLanguage.code);
-        stbSetItem("ottplaylang", lang);
+    var automatic = stbGetItem("ottplaylangmode") === "system" || !lang;
+    if (automatic) {
+        lang =
+            preloaded && bootLanguage.automatic
+                ? String(bootLanguage.code)
+                : "";
+        if (lang) {
+            stbSetItem("ottplaylang", lang);
+            stbSetItem("ottplaylangmode", "system");
+        }
     }
     var launchEl = document.getElementById("launch");
     if (!lang) {
@@ -1912,23 +2009,21 @@ function loadStartupLanguage(): boolean {
     if (preloaded && bootLanguage.code === lang) {
         // Keep the script-load callback's ordering: onStbReady must install
         // native HTTP/EPG shims before a saved provider starts its first request.
+        applyLanguageMetadata(lang);
         setTimeout(ready, 0);
         return true;
     }
     console.log("TRACE lang=" + lang + ", loading langJS");
-    getScriptDOM(
-        hostUrl + languageAssetPath(lang) + "?" + PLAYER_VERSION,
-        ready,
-        function () {
+    loadInterfaceLanguage(lang, function (loaded) {
+        if (loaded) ready();
+        else {
             var el = document.getElementById("launch");
-            if (el) {
-                el.style.display = "none";
-            }
+            if (el) el.style.display = "none";
             if (typeof (window as any).clearBootHide === "function")
                 (window as any).clearBootHide();
             selectLang(true);
         }
-    );
+    });
     return true;
 }
 
@@ -2006,8 +2101,7 @@ function onStbReady(): void {
         savedPopup.popupDetail = popupDetail.slice();
         savedPopup.ver = version;
 
-        if (!loadStartupLanguage()) return;
-
+        // Install native transports even if startup pauses for language selection.
         // Re-apply Tauri IPC override after provider script loads.
         // This ensures the getChannelEpg override persists even when provider scripts
         // attempt to reset window.getChannelEpg (as they do in loadProv → getScriptDOM callback).
@@ -2024,6 +2118,7 @@ function onStbReady(): void {
         }
 
         if (TMDb && TMDb.prepare) TMDb.prepare();
+        loadStartupLanguage();
     } catch (e) {
         startupError(document.getElementById("launch"), "onStbReady", e);
     }
@@ -4141,6 +4236,10 @@ window.settingsInterface = function (): void {
     var choice = page.choice;
     var label = page.label;
 
+    var mediaLanguageCodes = Object.keys(languageNames);
+    var mediaLanguageLabels = mediaLanguageCodes.map(function (code) {
+        return languageNames[code];
+    });
     var noyes = [label("no"), label("yes")];
     var tz = (w.arrTimezone || ["system", "0"]).slice();
     tz[0] = w._(tz[0]) || tz[0];
@@ -4152,6 +4251,20 @@ window.settingsInterface = function (): void {
                 "PLi-HD",
                 "Studio 2026",
             ]),
+            {
+                name: label("Preferred audio language"),
+                settingId: "preferredAudioLanguage",
+                settingValues: [""].concat(mediaLanguageCodes),
+                values: [label("Player default")].concat(mediaLanguageLabels),
+            },
+            {
+                name: label("Preferred subtitle language"),
+                settingId: "preferredSubtitleLanguage",
+                settingValues: ["", "off"].concat(mediaLanguageCodes),
+                values: [label("Player default"), label("Off")].concat(
+                    mediaLanguageLabels
+                ),
+            },
             choice(
                 label("Black screen while switching the channel"),
                 "stopPlay",
@@ -4275,6 +4388,14 @@ window.settingsInterface = function (): void {
     setListArrays(
         w,
         w.listArray.filter(function (row: any): boolean {
+            if (
+                row.settingId === "preferredAudioLanguage" ||
+                row.settingId === "preferredSubtitleLanguage"
+            )
+                return (
+                    !!w.__ottCoreTransport &&
+                    w.stbPlay === w.__ottCoreTransport.play
+                );
             if (row.settingId === "players") {
                 if (Array.isArray(w.stbPlayers)) row.values = w.stbPlayers;
                 return showPlayerChoice;

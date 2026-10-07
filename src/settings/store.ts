@@ -25,6 +25,13 @@ export interface SettingsWrite {
     storage: SettingStorage;
 }
 
+/** Stable application-owned failure codes; engine exceptions remain diagnostics. */
+function settingsFailure(code: string, message: string): Error {
+    var error = new Error(message);
+    (error as any).settingsCode = code;
+    return error;
+}
+
 /** Persist captured bytes without publishing runtime state or adopting another owner. */
 export function commitSettingsWrites(
     writes: SettingsWrite[],
@@ -40,13 +47,15 @@ export function commitSettingsWrites(
     });
     var attempted = 0;
     function requireCurrent(): void {
-        if (!current()) throw new Error("Settings source changed");
+        if (!current())
+            throw settingsFailure("source_changed", "Settings source changed");
     }
     function checkBefore(write: SettingsWrite): void {
         requireCurrent();
         var actual = write.storage.read();
         requireCurrent();
-        if (actual !== write.before) throw new Error("Backup state changed");
+        if (actual !== write.before)
+            throw settingsFailure("backup_changed", "Backup state changed");
     }
     try {
         requireCurrent();
@@ -61,7 +70,10 @@ export function commitSettingsWrites(
             var actual = write.storage.read();
             requireCurrent();
             if (actual !== write.after)
-                throw new Error("Settings storage rejected write");
+                throw settingsFailure(
+                    "write_rejected",
+                    "Settings storage rejected write"
+                );
         }
         requireCurrent();
     } catch (error) {
@@ -87,6 +99,7 @@ export interface SettingsDraft {
     cancel(): void;
     commit(writes?: SettingsWrite[], admitted?: () => boolean): boolean;
     error(): string;
+    errorCode(): string;
     get(id: string): any;
     set(id: string, value: any): boolean;
 }
@@ -166,6 +179,7 @@ export function createSettingsStore(
         var pending: Record<string, any> = {};
         var open = true;
         var message = "";
+        var code = "";
         schema.forEach(function (entry) {
             original[entry.id] = get(entry.id);
         });
@@ -194,6 +208,7 @@ export function createSettingsStore(
                 }
                 if (!current()) {
                     message = "Settings source changed";
+                    code = "source_changed";
                     return false;
                 }
                 var changes = Object.keys(pending).filter(function (id) {
@@ -205,13 +220,17 @@ export function createSettingsStore(
                     })
                 ) {
                     message = "Settings changed while editing";
+                    code = "concurrent_edit";
                     return false;
                 }
                 var writes: SettingsWrite[];
                 try {
                     additional.forEach(function (write) {
                         if (write.storage.read() !== write.before)
-                            throw new Error("Backup state changed");
+                            throw settingsFailure(
+                                "backup_changed",
+                                "Backup state changed"
+                            );
                     });
                     writes = additional.slice();
                     changes.forEach(function (id) {
@@ -228,9 +247,12 @@ export function createSettingsStore(
                     commitSettingsWrites(writes, current, admitted);
                 } catch (error) {
                     message = String(error);
+                    code = String((error as any)?.settingsCode || "");
                     return false;
                 }
                 open = false;
+                message = "";
+                code = "";
                 var effects: string[] = [];
                 changes.forEach(function (id) {
                     publish(id, pending[id]);
@@ -249,12 +271,16 @@ export function createSettingsStore(
                         ports.effect(name);
                     } catch (error) {
                         message = String(error);
+                        code = String((error as any)?.settingsCode || "");
                     }
                 });
                 return true;
             },
             error: function () {
                 return message;
+            },
+            errorCode: function () {
+                return code;
             },
             get: function (id) {
                 return copy(
@@ -267,9 +293,12 @@ export function createSettingsStore(
                 var entry = definitions[id];
                 if (!active() || !entry || !entry.validate(value)) {
                     message = "Invalid setting: " + id;
+                    code = "invalid_setting";
                     return false;
                 }
                 pending[id] = copy(value);
+                message = "";
+                code = "";
                 return true;
             },
         };

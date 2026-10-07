@@ -1,4 +1,5 @@
 /** Explicit codec for provider/native guide rows and the retained renderer ABI. */
+declare function normalizeSearchText(value: string): string;
 var classicGuideOwner: any = null;
 var classicGuideBindings: Record<
     string,
@@ -326,13 +327,13 @@ var classicGuideApi = {
     references: guideReferences,
     request: requestGuide,
     search: function (text: string) {
-        var query = text.toLowerCase(),
+        var query = normalizeSearchText(text),
             rows: any[] = [];
         guideOwner()
             .cached()
             .forEach(function (entry: any) {
                 entry.rows.forEach(function (row: GuideProgramme) {
-                    if (row.title.toLowerCase().indexOf(query) !== -1) {
+                    if (normalizeSearchText(row.title).indexOf(query) !== -1) {
                         var item = encodeGuide(row);
                         item.ch_id = entry.reference.id;
                         item.sourceId = entry.reference.sourceId;

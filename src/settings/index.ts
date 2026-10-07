@@ -2,6 +2,7 @@ import {
     readLegacySettingsFields,
     writeLegacySettingsFields,
 } from "../compatibility/legacy-names";
+import { languageNames } from "../localization/assets";
 /**
  * Player preferences and their persistent compatibility keys.
  *
@@ -164,6 +165,8 @@ export interface PlayerSettings {
     pipSize: number;
     players: number;
     pnFun: number;
+    preferredAudioLanguage: string;
+    preferredSubtitleLanguage: string;
     prevCount: number;
     prevFun: number;
     preview: number;
@@ -259,6 +262,8 @@ export function defaultSettings(): PlayerSettings {
         pipSize: 0,
         players: 0,
         pnFun: 0,
+        preferredAudioLanguage: "",
+        preferredSubtitleLanguage: "",
         prevCount: 2,
         prevFun: 20,
         preview: 0,
@@ -334,6 +339,16 @@ function defineSetting(
         key: key,
         scope: scope,
         validate: function (value): boolean {
+            if (rules.language)
+                return (
+                    typeof value === "string" &&
+                    (value === "" ||
+                        (rules.language === "subtitle" && value === "off") ||
+                        Object.prototype.hasOwnProperty.call(
+                            languageNames,
+                            value
+                        ))
+                );
             if (rules.list)
                 return (
                     Array.isArray(value) &&
@@ -371,6 +386,12 @@ function defineSetting(
     };
 }
 export const settingsSchema: SettingDefinition[] = [
+    defineSetting("preferredAudioLanguage", "sPreferredAudioLanguage", {
+        language: "audio",
+    }),
+    defineSetting("preferredSubtitleLanguage", "sPreferredSubtitleLanguage", {
+        language: "subtitle",
+    }),
     defineSetting(
         "noSmall",
         "sNoSmall",

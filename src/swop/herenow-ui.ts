@@ -207,6 +207,11 @@ export function openHereNowSwop(
             var offer = await hereNowSeal(w, pair, "offer", {
                 caption: caption,
                 draft: draft,
+                language:
+                    w.__ottInterfaceLanguage ||
+                    (typeof w.stbGetItem === "function" &&
+                        w.stbGetItem("ottplaylang")) ||
+                    "_eng",
             });
             if (closed || !ownsPanel()) {
                 cleanup();

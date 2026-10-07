@@ -23,7 +23,7 @@ var keyStrings = {
     "<br>Delete": "<br>Xóa",
     "<br>Down<br>": "<br>Xuống<br>",
     "<br>Live": "<br>Trực tiếp",
-    "<br>Menu": "<br>Menu",
+    "<br>Menu": "<br>Trình đơn",
     "<br>Parental<br>Control": "<br>Kiểm soát<br>của phụ huynh",
     "<br>Pause<br>": "<br>Tạm dừng<br>",
     "<br>Previous<br>channel": "<br>Kênh<br>trước",
@@ -60,19 +60,20 @@ var keyStrings = {
     "All categories": "Tất cả danh mục",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Cài đặt All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Cho phép chẩn đoán trong 10 phút",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Cho phép chụp ảnh màn hình trong 10 phút",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Cho phép máy chủ này thu thập bộ đếm chẩn đoán và khởi động lại luồng hoặc trình phát. Quyền truy cập tạm thời kéo dài 10 phút. Hỗ trợ đã được tin cậy vẫn khả dụng sau khi kết nối lại hoặc khởi động lại; mỗi lần thu thập dữ liệu vẫn kết thúc sau 10 phút. Việc thu thập tạm dừng khi trình phát bị ẩn hoặc ngoại tuyến.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Cho phép máy chủ này thu thập bộ đếm phát lại, mạng và đầu vào cho phiên nền trước này. Yêu cầu HTTPS và sự cho phép của máy chủ. Dừng sau 10 phút khi bị ẩn hoặc khi bị ngắt kết nối.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Cho phép máy chủ này yêu cầu hình ảnh trong 10 phút. Hình ảnh có thể chứa thông tin cá nhân. Trong trình duyệt, chọn tab hoặc cửa sổ trình phát. Quyền kết thúc khi tải lại hoặc ngắt kết nối.",
     "Allowlist this Device ID": "Cho phép ID thiết bị này",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Trình phát HTTPS không thể tải xuống nguồn HTTP EPG. Sử dụng nguồn HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Địa chỉ IP không có cổng sẽ dùng cổng HTTP 8081. Xóa địa chỉ hoặc chọn Ngắt kết nối để dừng.",
     "Another source sign-in is already open":
@@ -92,9 +93,9 @@ var keyStrings = {
     "Archive. Channel: ": "Lưu trữ. Kênh: ",
     Aspect: "Tỷ lệ khung hình",
     Audio: "Âm thanh",
-    Automatic: "Automatic",
+    Automatic: "Tự động",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Tự động phát trực tiếp các tệp được hỗ trợ và sử dụng HLS tương thích khi cần.",
     alhabet:
         "aàảãáạăằẳẵắặâầẩẫấậbcdđeèẻẽéẹêềểễếệghiìỉĩíịklmnoòỏõóọôồổỗốộơờởỡớợpqrstuùủũúụưừửữứựvxyỳỷỹýỵ",
     always: "luôn luôn",
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Tua lùi / tiến 1 phút",
     "Background color": "Màu nền",
     "Background color of selected item": "Màu nền mục được chọn",
+    "Backup state changed": "Trạng thái sao lưu đã thay đổi",
     "Balance, $": "Số dư, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
         "Hoạt động của nút %1/%2 trong danh sách",
     "Black screen while switching the channel": "Màn hình đen khi chuyển kênh",
     Blue: "Xanh dương",
+    "Bookmark age (days): %1": "Tuổi của dấu trang (ngày): %1",
     "Bookmark age: %1 days": "Tuổi dấu trang: %1 ngày",
     "Browse folders": "Duyệt thư mục",
     "Buffer Size, s": "Dung lượng bộ đệm, giây",
@@ -154,21 +157,24 @@ var keyStrings = {
     "Channel parental control": "Kiểm soát kênh của phụ huynh",
     Channels: "Kênh",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Kiểm tra kết nối và mở thư viện Plex của bạn.",
     "Check this server's SWOP configuration.":
         "Kiểm tra cấu hình SWOP của máy chủ này.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Đang kiểm tra kết nối máy chủ Plex…",
     "Choose from": "Chọn từ",
     "Choose language": "Chọn ngôn ngữ",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Chọn máy chủ Plex",
     "Choose provider": "Chọn nhà cung cấp",
     Classic: "Cổ điển",
     "Clear all settings?": "Xóa tất cả cài đặt?",
     "Clear settings": "Xóa cài đặt",
     Close: "Đóng",
     "Close PiP": "Đóng PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Lưu/tải đám mây yêu cầu phần mềm STB (host_ott chưa được đặt)",
+    "Cloud transfer failed": "Chuyển sang đám mây không thành công",
+    Code: "Mã truy cập",
     Color: "Màu",
     "Color spectrum": "Phổ màu",
     "Command server": "Máy chủ lệnh",
@@ -183,7 +189,8 @@ var keyStrings = {
     "Command server found.": "Đã tìm thấy máy chủ lệnh.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Không thể tải các thành phần tương thích. Hãy mở lại trình phát để thử lại.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "HLS tương thích",
+    "Complete pairing link": "Liên kết ghép nối hoàn chỉnh",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Cấu hình All4you.tv trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -217,7 +224,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Cấu hình OTT Prime ONLINE trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Định cấu hình Plex trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Cấu hình POLMEDIA trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure PROST in Settings -> Provider Settings":
@@ -256,23 +263,25 @@ var keyStrings = {
         "Cấu hình Шаравоз trong Cài đặt -> Cài đặt nhà cung cấp",
     Connect: "Kết nối",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Kết nối máy chủ lệnh HTTPS trước khi cho phép chụp ảnh màn hình.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Kết nối máy chủ lệnh HTTPS để sử dụng ảnh chụp màn hình.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Kết nối điều khiển từ xa để kích hoạt chẩn đoán.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Trước tiên hãy kết nối trình phát này với máy chủ lệnh.",
+    "Connect to TV": "Kết nối với TV",
     Connected: "Đã kết nối",
     "Connected. Waiting for the channel list...":
         "Đã kết nối. Đang chờ danh sách kênh…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Kết nối điều khiển từ xa cho phép máy chủ này chẩn đoán và sửa lỗi trình phát. Quyền truy cập được duy trì sau khi khởi động lại và kết thúc khi bạn ngắt kết nối. Mỗi lần thu thập dữ liệu chẩn đoán được giới hạn trong 10 phút.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Kết nối chẩn đoán từ xa cho kết nối điều khiển từ xa đã bật.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Kết nối chẩn đoán từ xa cho trang này.",
+    "Connecting securely to your TV...": "Kết nối an toàn với TV của bạn...",
+    "Connecting to Plex…": "Đang kết nối với Plex…",
     "Connecting to Stalker portal...": "Đang kết nối tới cổng Stalker…",
     "Connecting...": "Đang kết nối…",
     "Continue watching?": "Tiếp tục xem?",
@@ -283,11 +292,15 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Sao chép JSON đã chọn bằng lệnh sao chép trên thiết bị",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Không thể kết nối với Plex. Kiểm tra địa chỉ máy chủ, mã thông báo và quyền truy cập mạng.",
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
     "Could not create a pairing request. Find the server again to retry.":
         "Không thể tạo yêu cầu ghép nối. Hãy tìm lại máy chủ để thử lại.",
     "Could not load. Select to retry.": "Không tải được. Chọn để thử lại.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Không thể chuẩn bị văn bản này. Vui lòng rút ngắn nó và thử lại.",
+    "Could not protect the private link. Use a different browser.":
+        "Không thể bảo vệ liên kết riêng tư. Sử dụng một trình duyệt khác.",
     "Could not save provider settings.": "Không thể lưu cài đặt nhà cung cấp.",
     "Could not save the approved command server settings.":
         "Không thể lưu cài đặt máy chủ lệnh đã được phê duyệt.",
@@ -304,6 +317,8 @@ var keyStrings = {
     "Delete category": "Xóa danh mục",
     "Delete channel": "Xóa kênh",
     "Delete list": "Xóa danh sách",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Không thể xác nhận tin nhắn đã đến. Kiểm tra TV của bạn hoặc gửi lại chính tin nhắn đó trước khi phiên này hết hạn.",
     "Demo — moving test pattern": "Bản thử — hình kiểm tra chuyển động",
     Description: "Mô tả",
     "Description of remote control buttons": "Hướng dẫn nút điều khiển từ xa",
@@ -317,7 +332,7 @@ var keyStrings = {
     "Diamond TV settings": "Cài đặt Diamond TV",
     Director: "Đạo diễn",
     "Disable HTTP remote": "Tắt điều khiển từ xa HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "Tắt hỗ trợ từ xa đáng tin cậy",
     "Disabled by default. Enabling creates a new device access code.":
         "Mặc định tắt. Bật tính năng sẽ tạo mã truy cập thiết bị mới.",
     Disconnect: "Ngắt kết nối",
@@ -351,7 +366,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Nhập tên người dùng và mật khẩu để truy cập dịch vụ này.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Nhập địa chỉ máy chủ Plex hợp lệ và mã thông báo truy cập.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Nhập địa chỉ máy chủ hợp lệ, ví dụ: 192.168.1.20:8081.",
     "Enter access key for": "Nhập khóa truy cập cho",
@@ -368,8 +383,8 @@ var keyStrings = {
         "Nhập địa chỉ MAC (ví dụ: 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Nhập URL thư viện đa phương tiện",
     "Enter new category name": "Nhập tên danh mục mới",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Nhập địa chỉ máy chủ Plex",
+    "Enter Plex token": "Nhập mã thông báo Plex",
     "Enter Provider Code": "Nhập mã nhà cung cấp",
     "Enter Provider Code on PC or Phone":
         "Nhập mã nhà cung cấp trên máy tính hoặc điện thoại",
@@ -384,6 +399,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Nhập URL cổng Stalker (ví dụ: http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Nhập số máy chủ (%1).",
+    "Enter text": "Nhập văn bản",
     "Enter the access code separately, not in the server address.":
         "Nhập mã truy cập riêng, không nhập trong địa chỉ máy chủ.",
     "Enter the command server IP or address.":
@@ -408,56 +424,55 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Nhập URL máy chủ Xtream (ví dụ: https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Nhập mã thông báo truy cập Plex của bạn. Nó được lưu trong hồ sơ của thiết bị này.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Nhập địa chỉ máy chủ Plex của bạn, ví dụ http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG và lưu trữ. Kênh: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "Bản lưu trữ EPG hoặc XML không hợp lệ.",
+    "EPG cache and wait time: %1": "Bộ nhớ đệm EPG và thời gian chờ: %1",
+    "EPG cache updated: %1": "Đã cập nhật bộ đệm EPG: %1",
+    "EPG channels: %1": "Các kênh EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Không thể khởi động EPG. Hãy khởi động lại trình phát để tải lại các tệp của nó. Việc phát sẽ dừng lại.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "Chẩn đoán EPG",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "Không thể tải chẩn đoán EPG. Hãy mở lại để thử lại.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Tải xuống EPG không thành công. Kiểm tra kết nối, HTTPS và quyền CORS nguồn.",
+    "EPG download time: %1": "Thời gian tải xuống EPG: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Đã hết thời gian tải xuống EPG. Hãy thử tải xuống lại.",
+    "EPG elapsed: %1": "Thời gian EPG đã chạy: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "Lỗi EPG. Mở Thông tin → Chẩn đoán EPG.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG vượt quá giới hạn xử lý của thiết bị. Hãy dùng nguồn nhỏ hơn hoặc khoảng thời gian lưu trữ ngắn hơn.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG chưa bắt đầu. Tải danh sách phát M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
-    "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "Bộ nhớ cục bộ EPG không khả dụng hoặc đã đầy.",
+    "EPG processing and storage time: %1": "Thời gian xử lý và lưu trữ EPG: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "Quá trình xử lý EPG đã dừng. Hãy thử lại và kiểm tra sự hỗ trợ của trình duyệt.",
+    "EPG programmes: %1": "Chương trình EPG: %1",
+    "EPG progress: %1": "Tiến độ EPG: %1",
+    "EPG ready": "EPG đã sẵn sàng",
+    "EPG source returned HTTP %1": "Nguồn EPG trả về HTTP %1",
+    "EPG source: %1": "Nguồn EPG: %1",
+    "EPG stopped during: %1": "EPG dừng trong: %1",
+    "EPG unavailable on this browser": "EPG không có trên trình duyệt này",
+    "EPG unavailable: %1": "EPG không có sẵn: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "Không thể cập nhật EPG; đang dùng lịch chương trình đã lưu",
+    "EPG: downloading programme guide...": "EPG: đang tải lịch chương trình...",
+    "EPG: opening local cache...": "EPG: mở bộ đệm cục bộ...",
+    "EPG: processing programme guide...":
+        "EPG: đang xử lý lịch chương trình...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: đang cập nhật lịch chương trình đã lưu...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: đang chờ thẻ trình phát khác...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Lỗi: Danh mục #%1 không tồn tại!<br>Vui lòng chọn danh mục khác.",
     "ERROR!": "Lỗi!",
@@ -492,7 +507,7 @@ var keyStrings = {
     "Finding command servers...": "Đang tìm máy chủ lệnh...",
     "First Run Setup": "Thiết lập lần đầu",
     "Fit to screen": "Vừa màn hình",
-    Folders: "Folders",
+    Folders: "Thư mục",
     "Font type": "Kiểu chữ",
     "For download settings file open": "Để tải tệp cài đặt xuống, mở",
     "For enter value open": "Để nhập giá trị, mở",
@@ -533,8 +548,10 @@ var keyStrings = {
     "Interface transparency": "Độ trong suốt giao diện",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Liên kết kênh không hợp lệ! Nhập tên máy chủ đầy đủ như trong URL luồng ở trang tài khoản (ví dụ: subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Phản hồi cài đặt đám mây không hợp lệ",
     "Invalid protected source configuration":
         "Cấu hình nguồn được bảo vệ không hợp lệ",
+    "Invalid setting": "Cài đặt không hợp lệ",
     "IPTV token": "Mã token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Cài đặt IpStream.one",
@@ -590,7 +607,7 @@ var keyStrings = {
         "Nội dung đa phương tiện không còn khả dụng",
     "Media Library": "Thư viện đa phương tiện",
     "Media Library URL": "URL thư viện đa phương tiện",
-    Menu: "Menu",
+    Menu: "Trình đơn",
     "Menu items settings": "Cài đặt mục menu",
     "Move category down": "Chuyển danh mục xuống",
     "Move category up": "Chuyển danh mục lên",
@@ -610,10 +627,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Không tìm thấy máy chủ lệnh trên mạng này.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Không có máy chủ Plex nào cho tài khoản này.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Không có chương trình nào phù hợp với kênh và ngày của danh sách phát. Kiểm tra nguồn và đồng hồ thiết bị.",
     "No saved settings found": "Không tìm thấy cài đặt đã lưu",
+    "No supported system language. Choose a language.":
+        "Không có ngôn ngữ hệ thống được hỗ trợ. Chọn một ngôn ngữ.",
     "Not configured": "Chưa cấu hình",
     "Not found": "Không tìm thấy",
     "Not reduce video when showing the list (bugfix)":
@@ -629,18 +648,21 @@ var keyStrings = {
     "not set": "chưa đặt",
     Off: "Tắt",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Chỉ TV này mới có thể chấp nhận tin nhắn của bạn. Liên kết hết hạn sau 10 phút.",
     Open: "Mở",
     "Open in PiP": "Mở trong PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Mở trang đăng nhập Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Mở plex.tv/link trên điện thoại hoặc máy tính của bạn và nhập mã này.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Hoặc mở liên kết riêng tư hoàn chỉnh này trên một thiết bị khác:",
+    "Original file": "Tệp phương tiện gốc",
     "Original text: %1": "Văn bản gốc: %1",
     "OTT / APP host": "Máy chủ OTT / ứng dụng",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cài đặt OTT Prime ONLINE",
+    "OTT-play remote input": "Đầu vào từ xa OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Đã có OttPlay FOSS %1. Tải xuống và cài đặt ngay?",
     "Overwrite current settings?": "Ghi đè cài đặt hiện tại?",
@@ -670,9 +692,10 @@ var keyStrings = {
     "PiP window position": "Vị trí cửa sổ PiP",
     "PiP window size": "Kích thước cửa sổ PiP",
     Play: "Phát",
-    Playback: "Playback",
+    Playback: "Phát lại phương tiện",
     "Player and device info": "Thông tin trình phát và thiết bị",
     "Player could not start": "Không thể khởi động trình phát",
+    "Player default": "Lựa chọn mặc định của trình phát",
     "Player info:": "Thông tin trình phát:",
     Playlist: "Danh sách phát",
     "Playlist file": "Tệp danh sách phát",
@@ -681,11 +704,11 @@ var keyStrings = {
     "Playlist Name": "Tên danh sách phát",
     "Playlist URL": "URL danh sách phát",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Kết nối Plex không thành công",
+    "Plex settings": "Cài đặt Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Đăng nhập Plex không thành công. Hãy kiểm tra kết nối và thử lại hoặc nhập địa chỉ máy chủ và mã thông báo.",
+    "Plex token": "Mã thông báo Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Cài đặt POLMEDIA",
     "Portal URL": "URL cổng",
@@ -694,8 +717,11 @@ var keyStrings = {
     Postpaid: "Trả sau",
     PROST: "PROST",
     "PROST settings": "Cài đặt PROST",
+    "Preferred audio language": "Ngôn ngữ âm thanh ưa thích",
+    "Preferred subtitle language": "Ngôn ngữ phụ đề ưa thích",
     Prepaid: "Trả trước",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Đang chuẩn bị đầu vào từ xa an toàn...",
     Prev: "Trước",
     "Preview in channel list": "Xem trước trong danh sách kênh",
     Previous: "Trước",
@@ -725,31 +751,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Điều khiển từ xa không có nút số",
     "Remote control": "Điều khiển từ xa",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Điều khiển từ xa cho phép chẩn đoán. Sẵn sàng cho một nhà điều hành.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Điều khiển từ xa cho phép chẩn đoán. Đang chờ kết nối lại.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Điều khiển từ xa bao gồm ảnh chụp màn hình của trình phát đa phương tiện, bao gồm cả cài đặt của nó. Hình ảnh có thể chứa thông tin cá nhân. Ứng dụng có thể chụp ảnh màn hình trực tiếp mà không cần phê duyệt thêm. Trong trình duyệt, chọn tab hoặc cửa sổ để chụp trên thiết bị này.",
+    "Remote diagnostics": "Chẩn đoán từ xa",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Chẩn đoán từ xa đang được thu thập cho kết nối này (tối đa 10 phút mỗi phiên).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Trang này đang thu thập chẩn đoán từ xa.",
+    "Remote diagnostics is off.": "Chẩn đoán từ xa đã tắt.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Chẩn đoán từ xa đã sẵn sàng cho người vận hành được ủy quyền.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Chẩn đoán từ xa không khả dụng trên trình phát này.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Chẩn đoán từ xa đã dừng. Kích hoạt lại để cấp quyền truy cập.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Đầu vào từ xa đã hết hạn. Mở một phiên mới để thử lại.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Phiên nhập liệu từ xa không khả dụng. Mở một phiên mới để thử lại.",
+    "Remote screenshots": "Ảnh chụp màn hình từ xa",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Cho phép chụp ảnh màn hình từ xa trong 10 phút. Đóng cài đặt để chụp.",
+    "Remote screenshots are off.": "Ảnh chụp màn hình từ xa đã tắt.",
     "Remote session expired": "Phiên từ xa đã hết hạn",
     "Remote text entry": "Nhập văn bản từ xa",
     "Remote text entry denied": "Nhập văn bản từ xa bị từ chối",
@@ -776,7 +802,8 @@ var keyStrings = {
     "Restart stream / Live": "Khởi động lại luồng / trực tiếp",
     "Resume from archive?": "Tiếp tục từ lưu trữ?",
     Retry: "Thử lại",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Thử lại tải xuống EPG",
+    "Retry same message": "Gửi lại chính tin nhắn đó",
     "Return to previous channel": "Quay lại kênh trước",
     Rewind: "Tua",
     "Rewind step by buttons %1/%2": "Bước tua lùi của nút %1/%2",
@@ -788,31 +815,34 @@ var keyStrings = {
     "Save & load channels": "Lưu và tải kênh",
     "Save and load": "Lưu và tải",
     "Save and load channels": "Lưu và tải kênh",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Lưu và mở thư viện",
     "Save Settings": "Lưu cài đặt",
     "Save settings": "Lưu cài đặt",
     "Save settings and load channel list": "Lưu cài đặt và tải danh sách kênh",
     "Save settings to storage": "Lưu cài đặt vào bộ nhớ",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Quét mã QR trên TV của bạn hoặc dán liên kết ghép nối riêng hoàn chỉnh bên dưới.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Quét mã QR này bằng điện thoại của bạn để nhập văn bản.",
+    "Screen sharing could not start.": "Không thể bắt đầu chia sẻ màn hình.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Chia sẻ màn hình đã bị hủy hoặc không khả dụng.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Không thể bật quyền chụp ảnh màn hình.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Ảnh chụp màn hình có sẵn khi kết nối điều khiển từ xa.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ảnh chụp màn hình không có sẵn trên nền tảng này.",
     Script: "Kịch bản",
     Search: "Tìm kiếm",
+    "Search languages": "Tìm kiếm ngôn ngữ",
     "Search programme": "Tìm chương trình",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Không thể khởi động đầu vào từ xa an toàn. Vui lòng thử lại hoặc sử dụng bàn phím trên màn hình.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Không thể khởi động đầu vào từ xa an toàn. Vui lòng sử dụng bàn phím trên màn hình.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Đầu vào từ xa an toàn không khả dụng trên thiết bị này. Sử dụng bàn phím trên màn hình.",
     "Select a stream type:<br>%1": "Chọn loại luồng:<br>%1",
     "Select category to add channel": "Chọn danh mục để thêm kênh",
     "Select color": "Chọn màu",
@@ -823,13 +853,14 @@ var keyStrings = {
         "Chọn nguồn mẫu danh sách phát cho EPG và biểu trưng",
     "Select Stalker portal": "Chọn cổng Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Chọn nguồn ảnh chụp màn hình trong trình duyệt",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Chọn tab hoặc cửa sổ trình phát trong hộp thoại chia sẻ trình duyệt.",
     "Send request": "Gửi yêu cầu",
     "Send settings": "Gửi cài đặt",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Gửi mã này từ proxy của bạn trong tiêu đề Authorization: Bearer.",
+    "Send to TV": "Gửi tới TV",
     Server: "Máy chủ",
     "Server address": "Địa chỉ máy chủ",
     "Server address (for example 192.168.1.20:8081)":
@@ -838,10 +869,13 @@ var keyStrings = {
     "Server URL": "URL máy chủ",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Máy chủ không khả dụng. Sẽ tự động thử lại; hãy kiểm tra địa chỉ và kết nối mạng.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Phiên đã kết thúc. Bắt đầu một cái mới từ TV của bạn khi cần thiết.",
     Set: "Đặt",
     "Set parental code": "Đặt mã phụ huynh",
     "Set timer?": "Đặt hẹn giờ?",
     Settings: "Cài đặt",
+    "Settings changed while editing": "Cài đặt đã thay đổi trong khi chỉnh sửa",
     "Settings changed. Discovery was canceled.":
         "Cài đặt đã thay đổi. Đã hủy tìm kiếm.",
     "Settings copied": "Đã sao chép cài đặt",
@@ -851,10 +885,15 @@ var keyStrings = {
     "Settings imported": "Đã nhập cài đặt",
     "Settings JSON": "Cài đặt ở định dạng JSON",
     "Settings loaded from storage": "Đã tải cài đặt từ bộ nhớ",
+    "Settings received. Restarting player...":
+        "Đã nhận được cài đặt. Đang khởi động lại trình phát...",
     "Settings STB": "Cài đặt STB",
     "Settings saved": "Đã lưu cài đặt",
     "Settings saved to storage": "Đã lưu cài đặt vào bộ nhớ",
     "Settings sended!": "Đã gửi cài đặt!",
+    "Settings source changed": "Nguồn cài đặt đã thay đổi",
+    "Settings storage rejected write":
+        "Kho lưu trữ cài đặt đã từ chối ghi dữ liệu",
     "Several command servers were found. Select one below.":
         "Tìm thấy nhiều máy chủ lệnh. Hãy chọn một máy chủ bên dưới.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -891,28 +930,28 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Đăng nhập lại vào nguồn được bảo vệ",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Đăng nhập vào tài khoản Plex của bạn và chọn máy chủ. Không có mật khẩu nào được nhập vào trình phát này.",
+    "Sign in with Plex": "Đăng nhập bằng Plex",
     "Sign in: %1": "Đăng nhập: %1",
     "Sign out of all sources": "Đăng xuất khỏi tất cả nguồn",
     "Sign-in opens when you load a protected playlist.":
         "Cửa sổ đăng nhập mở ra khi bạn tải danh sách phát được bảo vệ.",
     "Sleep timer": "Hẹn giờ ngủ",
     "Sort channels": "Sắp xếp kênh",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Truy cập vào nguồn phương tiện",
+    "Source sign-in required": "Yêu cầu đăng nhập nguồn",
     "Source sign-in was cancelled": "Đăng nhập vào nguồn đã bị hủy",
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
     "Stalker portal settings": "Cài đặt cổng Stalker",
     "Stalker portals": "Cổng Stalker",
     "Starting...": "Đang khởi động…",
     Status: "Trạng thái",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Dừng lại",
+    "Stop browser sharing": "Dừng chia sẻ trình duyệt",
+    "Stop current capture": "Dừng thu thập dữ liệu hiện tại",
+    "Stop diagnostics": "Dừng chẩn đoán",
     "Stop playback and return to live": "Dừng phát và quay lại trực tiếp",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Dừng chụp ảnh màn hình",
     "Stream could not be played": "Không thể phát luồng",
     "Stream type: %1": "Loại luồng: %1",
     "String for search": "Nội dung tìm kiếm",
@@ -923,23 +962,28 @@ var keyStrings = {
     "Switch sound track": "Đổi luồng âm thanh",
     "Switch subtitle": "Đổi phụ đề",
     "Switch to this list": "Chuyển sang danh sách này",
-    "Swop URL": "Swop URL",
+    "Swop URL": "URL của Swop",
+    "System language": "Ngôn ngữ hệ thống",
     "saved on this device": "đã lưu trên thiết bị này",
     select: "chọn",
     small: "nhỏ",
     system: "hệ thống",
     Tabox: "Tabox",
     "Tabox settings": "Cài đặt Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.": "Văn bản quá dài để nhập từ xa.",
+    "Text is too long. Please shorten it before sending.":
+        "Văn bản quá dài. Hãy rút ngắn nó trước khi gửi.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Đã gửi tin nhắn. Kiểm tra TV của bạn để xác nhận nó đã xuất hiện.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Nguồn ảnh chụp màn hình trình duyệt đã sẵn sàng.",
     "The command server discovery URL is invalid.":
         "URL tìm máy chủ lệnh không hợp lệ.",
     "The device ID in the address is invalid.":
         "ID thiết bị trong địa chỉ không hợp lệ.",
     "The discovery response is invalid.": "Phản hồi tìm kiếm không hợp lệ.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Trình duyệt này không thể xác định nguồn ảnh chụp màn hình đã chọn.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Trình duyệt này không thể ghép nối tự động một cách an toàn. Hãy cập nhật trình duyệt hoặc nhập thủ công cài đặt máy chủ lệnh.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -948,6 +992,10 @@ var keyStrings = {
         "Trình phát HTTPS này không thể kết nối tới máy chủ HTTP. Dùng máy chủ HTTPS hoặc mở trình phát qua HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ứng dụng Play này yêu cầu HTTPS. Hãy yêu cầu nhà cung cấp cung cấp danh sách phát hoặc URL máy chủ HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Liên kết ghép nối này đã hết hạn. Mở một phiên mới trên TV của bạn.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Phiên bảo mật này không khả dụng hoặc đã hết hạn. Mở một phiên mới trên TV và sử dụng liên kết hoàn chỉnh của nó.",
     Timer: "Hẹn giờ",
     "Timer: switch to channel?": "Hẹn giờ: chuyển sang kênh này?",
     "Timeshift: one minute back": "Timeshift: lùi một phút",
@@ -965,13 +1013,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cài đặt Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Tin cậy máy chủ này để được hỗ trợ từ xa",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Không thể xóa quyền truy cập đáng tin cậy khỏi bộ nhớ thiết bị.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Chẩn đoán đáng tin cậy không khả dụng do không thể cập nhật bộ nhớ thiết bị.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Chẩn đoán đáng tin cậy đang chờ trình phát này kết nối lại.",
     "Try demo": "Dùng thử",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Cài đặt TV DOSUG",
@@ -991,17 +1039,19 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Dùng địa chỉ máy chủ HTTP hoặc HTTPS.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Sử dụng máy chủ lệnh HTTPS để chẩn đoán từ xa.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Dùng HTTP hoặc HTTPS mà không có tên người dùng hay mật khẩu trong địa chỉ.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Dùng TRÁI/PHẢI để chọn điều khiển, OK để kích hoạt và LÊN/XUỐNG để cuộn.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Sử dụng liên kết đầy đủ, bao gồm cả phần sau #. Đừng chia sẻ nó với bất cứ ai khác.",
     "Use Up / Down to scroll. Back to close.":
         "Dùng Lên / Xuống để cuộn. Quay lại để đóng.",
     Username: "Tên người dùng",
     "Username or password is missing.": "Thiếu tên người dùng hoặc mật khẩu.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Có hiệu lực trong 10 phút. Trở lại đóng phiên này.",
     Version: "Phiên bản",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Cài đặt VIP-IP.COM",
@@ -1014,7 +1064,7 @@ var keyStrings = {
     "VPortal request failed":
         "Không thể tải VPortal. Kiểm tra liên kết, khóa truy cập và tình trạng hoạt động của cổng.",
     volume: "âm lượng",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Đang chờ đăng nhập…",
     "Wrong parental code !!!": "Mã phụ huynh không đúng!",
     "Xtream Codes Provider": "Nhà cung cấp Xtream Codes",
     "Xtream Codes settings": "Cài đặt Xtream Codes",

@@ -66,6 +66,7 @@ function cloudBundleSource(ast) {
                     bridges.push(declaration);
     return [
         namedFunction("metadataText"),
+        namedFunction("settingsFailure"),
         namedFunction("commitSettingsWrites"),
         publisher("__ottSourceIdentity"),
         publisher("__ottCloudSettingsCodec"),

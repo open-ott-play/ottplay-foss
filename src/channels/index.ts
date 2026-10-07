@@ -10,7 +10,12 @@ import {
  */
 
 import { clearPlayTimeInterval, stbIsPlaying } from "../core/index";
-import { translate as _ } from "../localization";
+import {
+    translate as _,
+    formatLocaleDateTime,
+    formatLocaleNumber,
+} from "../localization";
+import { preferredTrackIndex } from "../localization/media";
 import { settings } from "../settings/index";
 import { providerSetItem, storage } from "../storage/index";
 import { getThumbnail, time2time } from "../utils/helpers";
@@ -651,7 +656,12 @@ export function restoreContinueWatch(): boolean {
             window.confirmBox(
                 _("Resume from archive?") +
                     "<br><br>" +
-                    _("Bookmark age: %1 days", Math.floor(ageMs / 86400000)),
+                    _(
+                        "Bookmark age (days): %1",
+                        formatLocaleNumber(
+                            Math.max(0, Math.floor(ageMs / 86400000))
+                        )
+                    ),
                 playSavedArchive,
                 function () {
                     playLiveFallback();
@@ -2387,26 +2397,9 @@ function renderArchiveInfo(model: ArchiveView): void {
     else if (endTimeEl) endTimeEl.textContent = "";
 
     // Duration / current time
-    // Inline formatProgramDateTime — not re-exported from utils/helpers
-    var progStartStr = (function () {
-        var d = new Date((prog ? prog.time : position) * 1000);
-        var days = (
-            typeof _ === "function"
-                ? _("Su Mo Tu We Th Fr Sa")
-                : "Su Mo Tu We Th Fr Sa"
-        ).split(" ");
-        return (
-            days[d.getDay()] +
-            "&nbsp;" +
-            ("0" + d.getDate()).slice(-2) +
-            "." +
-            ("0" + (d.getMonth() + 1)).slice(-2) +
-            "&nbsp;" +
-            ("0" + d.getHours()).slice(-2) +
-            ":" +
-            ("0" + d.getMinutes()).slice(-2)
-        );
-    })();
+    var progStartStr = metadataText(
+        formatLocaleDateTime(prog ? prog.time : position)
+    );
     var durationEl = document.getElementById("programm_duration");
     if (durationEl && prog) {
         var arcTime = time2time(position);
@@ -2980,7 +2973,7 @@ export function searchEpgByTitle(): void {
 
     function runSearch(query: string): void {
         if (source !== w.__ottClassicGuide.source()) return;
-        var q = (query || "").toLowerCase();
+        var q = query || "";
         if (!q) {
             if (typeof w.showShift === "function")
                 w.showShift(w._("Not found"));
@@ -3342,13 +3335,38 @@ export function applyChannelPreference(
     callback: (value: number) => void
 ): void {
     if (typeof callback !== "function") return;
+    var w = window as any;
     var target = channelPreferenceTarget(arrayName);
-    if (target === undefined) return;
-    var value = (window as any).__ottChannels.preference(arrayName, target);
+    var value =
+        target === undefined
+            ? undefined
+            : w.__ottChannels.preference(arrayName, target);
     if (
         value === undefined &&
-        arrayName !== "aAspects" &&
-        arrayName !== "aZooms"
+        (arrayName === "aAudios" || arrayName === "aSubs")
+    ) {
+        var kind = arrayName === "aAudios" ? "audio" : "subtitle";
+        var backend =
+            typeof w.__ottCoreBackend === "function" && w.__ottCoreBackend();
+        var owner = backend && backend.current();
+        if (
+            owner &&
+            owner.active() &&
+            !(owner.__ottExplicitTracks && owner.__ottExplicitTracks[kind])
+        ) {
+            value = preferredTrackIndex(
+                kind,
+                kind === "audio"
+                    ? settings.preferredAudioLanguage
+                    : settings.preferredSubtitleLanguage,
+                owner.tracks(kind)
+            );
+        }
+    }
+    if (
+        value === undefined &&
+        (target === undefined ||
+            (arrayName !== "aAspects" && arrayName !== "aZooms"))
     )
         return;
     try {

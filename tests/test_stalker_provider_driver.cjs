@@ -811,7 +811,10 @@ function classicFixture(
     url = "https://portal.test/stalker_portal/c/",
     options = {}
 ) {
-    const f = fixture({ config: { mac: "02:00:00:00:00:01", portal: url } });
+    const f = fixture({
+        config: { mac: "02:00:00:00:00:01", portal: url },
+        language: options.language,
+    });
     if (options.native) f.ports.m3u = { native: () => true };
     f.driver.load((catalog, error) => {
         f.catalog = catalog;
@@ -851,6 +854,25 @@ function classicFixture(
         f.respond({ data: rows, total_items: rows.length });
     return f;
 }
+
+test("classic portal requests use the selected interface language", () => {
+    for (const language of ["ru", "ar", "nb", "fil", undefined]) {
+        for (const native of [false, true]) {
+            const f = classicFixture(undefined, { language, native });
+            assert(
+                f
+                    .request()
+                    .headers.Cookie.includes("stb_lang=" + (language || "en"))
+            );
+            f.respond({ token: "demo-token" });
+            assert(
+                f
+                    .request()
+                    .headers.Cookie.includes("stb_lang=" + (language || "en"))
+            );
+        }
+    }
+});
 
 test("classic URL forms use the shared MAG protocol through browser or native transport", () => {
     for (const url of [

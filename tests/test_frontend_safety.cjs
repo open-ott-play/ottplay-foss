@@ -493,7 +493,13 @@ test("Capacitor hides unavailable TMDb; web and Tauri retain the functional acti
     const w = fixture();
     try {
         w.eval(
-            variable("src/index.ts", "TMDb") +
+            js(
+                fs.readFileSync(
+                    path.join(root, "src/localization/assets.ts"),
+                    "utf8"
+                )
+            ) +
+                variable("src/index.ts", "TMDb") +
                 func("src/ui/index.ts", "showProgramInfo")
         );
         let calls = [];

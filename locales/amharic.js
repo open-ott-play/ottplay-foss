@@ -61,13 +61,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "ምርመራን ለ10 ደቂቃ ፍቀድ",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "ቅጽበታዊ ገጽ እይታዎችን ለ10 ደቂቃ ፍቀድ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ይህ አገልጋይ የምርመራ ቆጣሪዎችን እንዲሰበስብ እና ይህን ዥረት ወይም ማጫወቻ እንደገና እንዲጀምር ይፍቀዱለት። ጊዜያዊ መዳረሻ ለ10 ደቂቃ ይቆያል። የታመነ ድጋፍ እንደገና ከተገናኘ ወይም እንደገና ከተጀመረ በኋላም ይገኛል፤ እያንዳንዱ የመረጃ መሰብሰብ ክፍለ ጊዜ ግን ከ10 ደቂቃ በኋላ ያበቃል። ገጹ ሲደበቅ ወይም ከመስመር ውጭ ሲሆን መረጃ መሰብሰብ ለጊዜው ይቆማል።",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ገጹ በፊት ለፊት ክፍት በሆነበት በዚህ ክፍለ ጊዜ፣ ይህ አገልጋይ የመልሶ ማጫወት፣ የአውታረ መረብ እና የግቤት ቆጣሪዎችን እንዲሰበስብ ይፍቀዱለት። HTTPS እና የአገልጋይ ፈቃድ ያስፈልጋል። ከ10 ደቂቃ በኋላ፣ ገጹ ሲደበቅ ወይም ግንኙነቱ ሲቋረጥ ይቆማል።",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "ይህ አገልጋይ ለ10 ደቂቃ ምስሎችን እንዲጠይቅ ይፍቀዱለት። ምስሎች የግል መረጃ ሊይዙ ይችላሉ። በአሳሽ ውስጥ የማጫወቻ ትርን ወይም መስኮቱን ይምረጡ. ፍቃድ እንደገና ሲጫን ወይም ሲቋረጥ ያበቃል።",
     "Allowlist this Device ID": "ይህን የመሣሪያ ID ወደ የተፈቀዱ ዝርዝር ያክሉ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "የHTTPS ሚዲያ ማጫወቻ የHTTP EPG ምንጭ ማውረድ አይችልም። የHTTPS ምንጭ ተጠቀም።",
@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 ደቂቃ ወደ ኋላ / ወደ ፊት ዝለል",
     "Background color": "የጀርባ ቀለም",
     "Background color of selected item": "የተመረጠው ንጥል የጀርባ ቀለም",
+    "Backup state changed": "የመጠባበቂያ ሁኔታ ተለውጧል",
     "Balance, $": "ቀሪ ሂሳብ፣ $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -107,6 +108,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "በዝርዝሮች ውስጥ የ%1/%2 አዝራሮች ባህሪ",
     "Black screen while switching the channel": "ሰርጥ ሲቀየር ጥቁር ማያ ገጽ",
     Blue: "ሰማያዊ",
+    "Bookmark age (days): %1": "የዕልባት ዕድሜ (ቀናት)፡ %1",
     "Bookmark age: %1 days": "የዕልባት ዕድሜ፦ %1 ቀናት",
     "Browse folders": "አቃፊዎችን አስስ",
     "Buffer Size, s": "የቋት መጠን፣ ሰከንድ",
@@ -154,11 +156,14 @@ var keyStrings = {
     "Choose language": "ቋንቋ ምረጥ",
     "Choose Plex server": "የPlex አገልጋይ ምረጥ",
     "Choose provider": "አቅራቢ ምረጥ",
-    Classic: "Classic",
+    Classic: "የተለመደ",
     "Clear all settings?": "ሁሉንም ቅንብሮች ማጥፋት ይፈልጋሉ?",
     "Clear settings": "ቅንብሮችን አጥፋ",
     Close: "ዝጋ",
     "Close PiP": "PiP ዝጋ",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "በክላውድ ለማስቀመጥ ወይም ለመጫን የSTB ፍርምዌር ያስፈልጋል (host_ott አልተዋቀረም)",
+    "Cloud transfer failed": "የደመና ማስተላለፍ አልተሳካም።",
     Code: "ኮድ",
     Color: "ቀለም",
     "Color spectrum": "የቀለም ህብረቀለም",
@@ -174,6 +179,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "የተኳኋኝነት ማስኬጃው ሊጫን አልቻለም። እንደገና ለመሞከር ማጫወቻውን ዳግም ይክፈቱ።",
     "Compatible HLS": "ተስማሚ HLS",
+    "Complete pairing link": "የተሟላ የማጣመሪያ አገናኝ",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tvን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -246,22 +252,25 @@ var keyStrings = {
         "Шаравозን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     Connect: "አገናኝ",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ቅጽበታዊ ገጽ እይታዎችን ከመፍቀዱ በፊት የHTTPS ትዕዛዝ አገልጋይ ያገናኙ።",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ቅጽበታዊ ገጽ እይታዎችን ለመጠቀም የHTTPS ትዕዛዝ አገልጋይ ያገናኙ።",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ምርመራን ለማንቃት የርቀት መቆጣጠሪያን ያገናኙ።",
     "Connect this player to a command server first.":
         "ይህን ማጫወቻ መጀመሪያ ከትእዛዝ አገልጋይ ጋር ያገናኙ።",
+    "Connect to TV": "ከቲቪ ጋር ይገናኙ",
     Connected: "ተገናኝቷል",
     "Connected. Waiting for the channel list...":
         "ተገናኝቷል። የሰርጥ ዝርዝሩን በመጠበቅ ላይ…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "የርቀት መቆጣጠሪያን ማገናኘት ይህ አገልጋይ ማጫወቻውን እንዲመረምር እና እንዲጠግን ይፈቅድለታል። ዳግም ከተጀመረ በኋላ መዳረሻ እንዳለ ይቆያል እና ግንኙነቱን ሲያቋርጡ ያበቃል። እያንዳንዱ የምርመራ ቀረጻ ለ 10 ደቂቃዎች የተገደበ ነው.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ለነቃው የርቀት መቆጣጠሪያ ግንኙነት የርቀት ምርመራዎችን ማገናኘት።",
     "Connecting remote diagnostics for this page.":
         "ለዚህ ገጽ የርቀት ምርመራን በማገናኘት ላይ።",
+    "Connecting securely to your TV...":
+        "ደህንነቱ በተጠበቀ ሁኔታ ከእርስዎ ቲቪ ጋር በመገናኘት ላይ...",
     "Connecting to Plex…": "ከPlex ጋር በመገናኘት ላይ…",
     "Connecting to Stalker portal...": "ከStalker ፖርታል ጋር በመገናኘት ላይ…",
     "Connecting...": "በመገናኘት ላይ…",
@@ -278,6 +287,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "የማጣመር ጥያቄ መፍጠር አልተቻለም። እንደገና ለመሞከር አገልጋዩን ዳግም ይፈልጉ።",
     "Could not load. Select to retry.": "መጫን አልተቻለም። እንደገና ለመሞከር ይምረጡ።",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ይህን ጽሑፍ ማዘጋጀት አልተቻለም። እባክዎ ያሳጥሩት እና እንደገና ይሞክሩ።",
+    "Could not protect the private link. Use a different browser.":
+        "የግል ማገናኛን መጠበቅ አልተቻለም። የተለየ አሳሽ ይጠቀሙ።",
     "Could not save provider settings.": "የአቅራቢ ቅንብሮችን ማስቀመጥ አልተቻለም።",
     "Could not save the approved command server settings.":
         "የጸደቁትን የትእዛዝ አገልጋይ ቅንብሮች ማስቀመጥ አልተቻለም።",
@@ -292,6 +305,8 @@ var keyStrings = {
     "Delete category": "ምድብ ሰርዝ",
     "Delete channel": "ሰርጥ ሰርዝ",
     "Delete list": "ዝርዝር ሰርዝ",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ማቅረቡ ሊረጋገጥ አልቻለም። ይህ ክፍለ ጊዜ ከማለፉ በፊት የእርስዎን ቲቪ ይመልከቱ፣ ወይም ተመሳሳይ መልእክት እንደገና ይሞክሩ።",
     "Demo — moving test pattern": "ማሳያ — ተንቀሳቃሽ የሙከራ ምስል",
     Description: "መግለጫ",
     "Description of remote control buttons": "የርቀት መቆጣጠሪያ አዝራሮች መመሪያ",
@@ -371,6 +386,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "የStalker ፖርታል URL ያስገቡ (ለምሳሌ http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "የአገልጋይ ቁጥር ያስገቡ (%1)።",
+    "Enter text": "ጽሑፍ ያስገቡ",
     "Enter the access code separately, not in the server address.":
         "የመዳረሻ ኮዱን ከአገልጋይ አድራሻው ለይተው ያስገቡ።",
     "Enter the command server IP or address.": "የትእዛዝ አገልጋዩን IP ወይም አድራሻ ያስገቡ።",
@@ -514,7 +530,9 @@ var keyStrings = {
     "Interface transparency": "የበይነገጽ ግልጽነት",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ልክ ያልሆነ የሰርጥ አገናኝ! በአቅራቢዎ መለያ ያለውን የዥረት URL ሙሉ አስተናጋጅ ስም ያስገቡ (ለምሳሌ subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "ልክ ያልሆነ የደመና ቅንብሮች ምላሽ",
     "Invalid protected source configuration": "ልክ ያልሆነ የተጠበቀ ምንጭ ውቅር",
+    "Invalid setting": "ልክ ያልሆነ ቅንብር",
     "IPTV token": "የIPTV ማስመሰያ",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "የIpStream.one ቅንብሮች",
@@ -593,6 +611,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ከአጫዋች ዝርዝሩ ሰርጦች እና ቀናት ጋር የሚዛመዱ ፕሮግራሞች አልተገኙም። ምንጩን እና የመሣሪያውን ሰዓት ያረጋግጡ።",
     "No saved settings found": "የተቀመጡ ቅንብሮች አልተገኙም",
+    "No supported system language. Choose a language.":
+        "ምንም የሚደገፍ የሥርዓት ቋንቋ የለም። ቋንቋ ይምረጡ።",
     "Not configured": "አልተዋቀረም",
     "Not found": "አልተገኘም",
     "Not reduce video when showing the list (bugfix)":
@@ -608,6 +628,8 @@ var keyStrings = {
     "not set": "አልተወሰነም",
     Off: "ጠፍቷል",
     Ok: "እሺ",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "መልእክትዎን የሚቀበለው ይህ ቲቪ ብቻ ነው። አገናኙ ከ10 ደቂቃ በኋላ ጊዜው ያልፍበታል።",
     Open: "ክፈት",
     "Open in PiP": "በPiP ክፈት",
     "Open Plex sign-in page": "የPlex መግቢያ ገጽ ክፈት",
@@ -620,6 +642,7 @@ var keyStrings = {
     "OTT / APP host": "የOTT / APP አስተናጋጅ",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "የOTT Prime ONLINE ቅንብሮች",
+    "OTT-play remote input": "OTT-play የርቀት ግቤት",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ይገኛል። አሁን ማውረድ እና መጫን ይፈልጋሉ?",
     "Overwrite current settings?": "ያሉትን ቅንብሮች መተካት ይፈልጋሉ?",
@@ -652,6 +675,7 @@ var keyStrings = {
     Playback: "መልሶ ማጫወት",
     "Player and device info": "የማጫወቻ እና የመሣሪያ መረጃ",
     "Player could not start": "ማጫወቻው መጀመር አልቻለም",
+    "Player default": "የማጫወቻው ነባሪ ምርጫ",
     "Player info:": "የማጫወቻ መረጃ፦",
     Playlist: "አጫዋች ዝርዝር",
     "Playlist file": "የአጫዋች ዝርዝር ፋይል",
@@ -673,6 +697,8 @@ var keyStrings = {
     Postpaid: "ከአገልግሎት በኋላ ክፍያ",
     PROST: "PROST",
     "PROST settings": "የPROST ቅንብሮች",
+    "Preferred audio language": "ተመራጭ የድምጽ ቋንቋ",
+    "Preferred subtitle language": "ተመራጭ የግርጌ ጽሑፍ ቋንቋ",
     Prepaid: "ቅድመ ክፍያ",
     "Preparing secure remote input...": "ደህንነቱ የተጠበቀ የርቀት ግቤት በማዘጋጀት ላይ…",
     Prev: "ቀዳሚ",
@@ -703,14 +729,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "የርቀት መቆጣጠሪያ (የቁጥር አዝራሮች የሉም)",
     "Remote control": "የርቀት መቆጣጠሪያ",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "የርቀት መቆጣጠሪያ ምርመራን ይፈቅዳል። ለኦፕሬተር ዝግጁ።",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "የርቀት መቆጣጠሪያ ምርመራን ይፈቅዳል። እንደገና ለመገናኘት በመጠበቅ ላይ።",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "የርቀት መቆጣጠሪያ ቅንብሮችን ጨምሮ የማጫወቻውን ቅጽበታዊ ገጽ እይታዎች ያካትታል። ምስሎች የግል መረጃ ሊይዙ ይችላሉ። መተግበሪያው በቀጥታ ገጽ እይታ ለማንሳት ተጨማሪ ፈቃድ አያስፈልገውም። በአሳሽ ውስጥ በዚህ መሣሪያ ላይ የሚጋራውን ትር ወይም መስኮት መምረጥ ያስፈልጋል።",
     "Remote diagnostics": "የርቀት ምርመራ",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ለዚህ ግንኙነት የርቀት ምርመራ እየተሰበሰበ ነው (በክፍለ ጊዜ እስከ 10 ደቂቃ)።",
     "Remote diagnostics is collecting for this page.":
         "የርቀት ምርመራ ለዚህ ገጽ መረጃ እየሰበሰበ ነው።",
     "Remote diagnostics is off.": "የርቀት ምርመራ ጠፍቷል።",
@@ -724,10 +750,10 @@ var keyStrings = {
         "የርቀት ግቤት ጊዜ አልፏል። ዳግም ለመሞከር አዲስ ክፍለ ጊዜ ይክፈቱ።",
     "Remote input session is unavailable. Open a new session to try again.":
         "የርቀት ግቤት ክፍለ ጊዜ አይገኝም። ዳግም ለመሞከር አዲስ ክፍለ ጊዜ ይክፈቱ።",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "የርቀት ቅጽበታዊ ገጽ እይታዎች",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "የርቀት ቅጽበታዊ ገጽ እይታዎች ለ10 ደቂቃዎች ይፈቀዳሉ። ለማንሳት ቅንብሮችን ዝጋ።",
+    "Remote screenshots are off.": "የርቀት ቅጽበታዊ ገጽ እይታዎች ጠፍተዋል።",
     "Remote session expired": "የርቀት ክፍለ ጊዜ ጊዜው አልፏል",
     "Remote text entry": "የርቀት ጽሑፍ ግቤት",
     "Remote text entry denied": "የርቀት ጽሑፍ ግቤት ተከልክሏል",
@@ -753,6 +779,7 @@ var keyStrings = {
     "Resume from archive?": "ከማህደር መቀጠል ይፈልጋሉ?",
     Retry: "እንደገና ሞክር",
     "Retry EPG download": "የEPG ማውረድን እንደገና ሞክር",
+    "Retry same message": "ተመሳሳይ መልእክት እንደገና ይሞክሩ",
     "Return to previous channel": "ወደ ቀደመው ሰርጥ ተመለስ",
     Rewind: "በቪዲዮው ውስጥ ወደ አንድ ጊዜ ሂድ",
     "Rewind step by buttons %1/%2": "የ%1/%2 አዝራሮች የመመለስ ደረጃ",
@@ -769,19 +796,22 @@ var keyStrings = {
     "Save settings": "ቅንብሮችን አስቀምጥ",
     "Save settings and load channel list": "ቅንብሮችን አስቀምጥ እና የሰርጥ ዝርዝር ጫን",
     "Save settings to storage": "ቅንብሮችን በማከማቻ አስቀምጥ",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "የQR ኮድ በቲቪዎ ላይ ይቃኙ ወይም የተሟላውን የግል ማጣመሪያ ማገናኛ ከዚህ በታች ይለጥፉ።",
     "Scan this QR code with your phone to enter text.":
         "ጽሑፍ ለማስገባት ይህን QR ኮድ በስልክዎ ይቃኙ።",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ስክሪን ማጋራት ሊጀመር አልቻለም።",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "ስክሪን ማጋራት ተሰርዟል ወይም የለም።",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "የቅጽበታዊ ገጽ እይታ ፈቃድ ሊነቃ አልቻለም።",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "የርቀት መቆጣጠሪያ ሲገናኝ ቅጽበታዊ ገጽ እይታዎች ይገኛሉ።",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ቅጽበታዊ ገጽ እይታዎች በዚህ መድረክ ላይ አይገኙም።",
     Script: "የፊልም ጽሑፍ",
     Search: "ፈልግ",
+    "Search languages": "ቋንቋዎችን ይፈልጉ",
     "Search programme": "ፕሮግራም ፈልግ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ደህንነቱ የተጠበቀ የርቀት ግቤት መጀመር አልቻለም። ዳግም ይሞክሩ ወይም የማያ ገጽ ቁልፍ ሰሌዳ ይጠቀሙ።",
@@ -798,14 +828,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ለEPG እና አርማዎች የአጫዋች ዝርዝር አብነት ምንጭ ይምረጡ",
     "Select Stalker portal": "የStalker ፖርታል ምረጥ",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "በአሳሽ ውስጥ የቅጽበታዊ ገጽ እይታ ምንጭን ይምረጡ",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "በአሳሽ መጋሪያ ንግግር ውስጥ የማጫወቻ ትርን ወይም መስኮትን ይምረጡ።",
     "Send request": "ጥያቄ ላክ",
     "Send settings": "ቅንብሮችን ላክ",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "ይህን ኮድ ከተኪ አገልጋይዎ በAuthorization: Bearer ራስጌ ውስጥ ይላኩ።",
+    "Send to TV": "ወደ ቲቪ ላክ",
     Server: "አገልጋይ",
     "Server address": "የአገልጋይ አድራሻ",
     "Server address (for example 192.168.1.20:8081)":
@@ -814,10 +844,13 @@ var keyStrings = {
     "Server URL": "የአገልጋይ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "አገልጋዩ አይገኝም። በራስ-ሰር እንደገና እየተሞከረ ነው፤ አድራሻውን እና የአውታረ መረብ መዳረሻውን ያረጋግጡ።",
+    "Session closed. Start a new one from your TV when needed.":
+        "ክፍለ ጊዜ ተዘግቷል። ሲያስፈልግ ከቲቪዎ አዲስ ይጀምሩ።",
     Set: "አዘጋጅ",
     "Set parental code": "የወላጅ ቁጥጥር ኮድ አዘጋጅ",
     "Set timer?": "ሰዓት ቆጣሪ አዘጋጅ?",
     Settings: "ቅንብሮች",
+    "Settings changed while editing": "በማርትዕ ጊዜ ቅንጅቶች ተለውጠዋል",
     "Settings changed. Discovery was canceled.": "ቅንብሮች ተቀይረዋል። ፍለጋው ተሰርዟል።",
     "Settings copied": "ቅንብሮች ተቀድተዋል",
     "Settings could not be exported": "ቅንብሮችን ወደ ውጭ መላክ አልተቻለም",
@@ -826,10 +859,14 @@ var keyStrings = {
     "Settings imported": "ቅንብሮች ገብተዋል",
     "Settings JSON": "የቅንብሮች JSON",
     "Settings loaded from storage": "ቅንብሮች ከማከማቻ ተጭነዋል",
+    "Settings received. Restarting player...":
+        "ቅንብሮች ተቀብለዋል። ማጫወቻ ዳግም በማስጀመር ላይ...",
     "Settings STB": "የSTB ቅንብሮች",
     "Settings saved": "ቅንብሮች ተቀምጠዋል",
     "Settings saved to storage": "ቅንብሮች በማከማቻ ተቀምጠዋል",
     "Settings sended!": "ቅንብሮች ተልከዋል!",
+    "Settings source changed": "የቅንብሮች ምንጭ ተቀይሯል።",
+    "Settings storage rejected write": "የቅንብሮች ማከማቻው የመጻፍ ጥያቄውን አልተቀበለም።",
     "Several command servers were found. Select one below.":
         "ብዙ የትእዛዝ አገልጋዮች ተገኝተዋል። ከታች አንዱን ይምረጡ።",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -881,11 +918,11 @@ var keyStrings = {
     "Starting...": "በመጀመር ላይ…",
     Status: "ሁኔታ",
     Stop: "አቁም",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "አሳሽ ማጋራትን ያቁሙ",
     "Stop current capture": "የአሁኑን መረጃ መሰብሰብ አቁም",
     "Stop diagnostics": "ምርመራን አቁም",
     "Stop playback and return to live": "መልሶ ማጫወትን አቁም እና ወደ ቀጥታ ስርጭት ተመለስ",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "ቅጽበታዊ ገጽ እይታዎችን ያቁሙ",
     "Stream could not be played": "ዥረቱን ማጫወት አልተቻለም",
     "Stream type: %1": "የዥረት ዓይነት፦ %1",
     "String for search": "የፍለጋ ጥያቄ",
@@ -897,6 +934,7 @@ var keyStrings = {
     "Switch subtitle": "የግርጌ ጽሑፎችን ቀይር",
     "Switch to this list": "ወደዚህ ዝርዝር ቀይር",
     "Swop URL": "የSWOP URL",
+    "System language": "የስርዓት ቋንቋ",
     "saved on this device": "በዚህ መሣሪያ ተቀምጧል",
     select: "ምረጥ",
     small: "ትንሽ",
@@ -904,14 +942,17 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "የTabox ቅንብሮች",
     "Text is too long for remote input.": "ጽሑፉ ለርቀት ግቤት በጣም ረጅም ነው።",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "ጽሑፍ በጣም ረጅም ነው። እባክዎን ከመላክዎ በፊት ያሳጥሩት።",
+    "Text sent. Check your TV to confirm it appeared.":
+        "ጽሑፍ ተልኳል። መታየቱን ለማረጋገጥ ቲቪዎን ይፈትሹ።",
+    "The browser screenshot source is ready.": "የአሳሽ ቅጽበታዊ ገጽ እይታ ምንጭ ዝግጁ ነው።",
     "The command server discovery URL is invalid.":
         "የትእዛዝ አገልጋይ ፍለጋ URL ልክ አይደለም።",
     "The device ID in the address is invalid.": "በአድራሻው ያለው የመሣሪያ ID ልክ አይደለም።",
     "The discovery response is invalid.": "የፍለጋው ምላሽ ልክ አይደለም።",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ይህ አሳሽ የተመረጠውን የቅጽበታዊ ገጽ እይታ ምንጭ መለየት አይችልም።",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ይህ አሳሽ በደህና በራስ-ሰር ማጣመር አይችልም። ያዘምኑት ወይም የትእዛዝ አገልጋይ ቅንብሮችን በእጅ ያስገቡ።",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -920,6 +961,10 @@ var keyStrings = {
         "ይህ የHTTPS ማጫወቻ ከHTTP አገልጋይ ጋር መገናኘት አይችልም። የHTTPS አገልጋይ ይጠቀሙ ወይም ማጫወቻውን በHTTP ይክፈቱ።",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ይህ የPlay መተግበሪያ HTTPS ይፈልጋል። የHTTPS አጫዋች ዝርዝር ወይም የአገልጋይ URL ከአቅራቢዎ ይጠይቁ።",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ይህ የማጣመሪያ ማገናኛ ጊዜው አልፎበታል። በቲቪዎ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ።",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ይህ ደህንነቱ የተጠበቀ ክፍለ ጊዜ አይገኝም ወይም ጊዜው አልፎበታል። በቴሌቪዥኑ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ እና ሙሉውን ማገናኛ ይጠቀሙ።",
     Timer: "ሰዓት ቆጣሪ",
     "Timer: switch to channel?": "ሰዓት ቆጣሪ፦ ወደዚህ ሰርጥ ቀይር?",
     "Timeshift: one minute back": "የጊዜ ማስተላለፍ፦ አንድ ደቂቃ ወደ ኋላ",
@@ -966,6 +1011,8 @@ var keyStrings = {
         "በአድራሻው ውስጥ የተጠቃሚ ስም ወይም የይለፍ ቃል ሳይኖር HTTP ወይም HTTPS ይጠቀሙ።",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "መቆጣጠሪያ ለመምረጥ ግራ/ቀኝ፣ ለማንቃት እሺ፣ ለማሸብለል ላይ/ታች ይጠቀሙ።",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "ሙሉውን ሊንክ ይጠቀሙ ከ# በኋላ ያለውን ክፍል ጨምሮ። ለሌላ ሰው አታካፍለው።",
     "Use Up / Down to scroll. Back to close.":
         "ለማሸብለል ላይ / ታች ይጠቀሙ። ለመዝጋት ተመለስ ይጫኑ።",
     Username: "የተጠቃሚ ስም",

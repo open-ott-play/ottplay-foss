@@ -60,19 +60,19 @@ var keyStrings = {
     "All categories": "Összes kategória",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv beállításai",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Diagnosztika engedélyezése 10 percre",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Képernyőképek engedélyezése 10 percre",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Engedélyezze a szervernek a diagnosztikai számlálók gyűjtését és az adatfolyam vagy a lejátszó újraindítását. Az ideiglenes hozzáférés 10 percig tart. A megbízható támogatás újracsatlakozás vagy újraindítás után is elérhető; minden adatgyűjtés 10 perc után véget ér. A gyűjtés szünetel, ha a lejátszó rejtett vagy offline állapotban van.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Engedélyezi ennek a szervernek, hogy lejátszási, hálózati és bemeneti számlálókat gyűjtsön ehhez az előtérben. HTTPS és szerverengedély szükséges. 10 perc után leáll, ha rejtve van, vagy ha leválasztják.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Engedélyezze a szervernek, hogy képeket kérjen 10 percig. A képek személyes adatokat tartalmazhatnak. A böngészőben válassza ki a lejátszó lapot vagy ablakot. Az engedély újratöltéskor vagy leválasztáskor lejár.",
     "Allowlist this Device ID": "Eszközazonosító engedélyezése",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Egy HTTPS lejátszó nem tölthet le HTTP EPG forrást. Használjon HTTPS forrást.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Port nélküli IP-cím esetén a HTTP-port 8081. A leállításhoz törölje a címet, vagy válassza a Leválasztás lehetőséget.",
     "Another source sign-in is already open":
@@ -91,9 +91,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archívum. Csatorna: ",
     Aspect: "Képarány",
     Audio: "Hang",
-    Automatic: "Automatic",
+    Automatic: "Automatikus",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Az automatikus lejátszás közvetlenül lejátssza a támogatott fájlokat, és szükség esetén a kompatibilis HLS-t használja.",
     alhabet: "aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz",
     always: "mindig",
     "and enter code": "és adja meg a kódot",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 perc ugrás vissza / előre",
     "Background color": "Háttérszín",
     "Background color of selected item": "Kijelölt elem háttérszíne",
+    "Backup state changed": "A biztonsági mentés állapota megváltozott",
     "Balance, $": "Egyenleg, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Fekete képernyő csatornaváltáskor",
     Blue: "Kék",
+    "Bookmark age (days): %1": "A könyvjelző kora (nap): %1",
     "Bookmark age: %1 days": "Könyvjelző kora: %1 nap",
     "Browse folders": "Böngészés mappák szerint",
     "Buffer Size, s": "Puffer mérete, s",
@@ -153,21 +155,24 @@ var keyStrings = {
     "Channel parental control": "Csatorna szülői felügyelete",
     Channels: "Csatornák",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Ellenőrizze a kapcsolatot, és nyissa meg a Plex könyvtárait.",
     "Check this server's SWOP configuration.":
         "Ellenőrizze a kiszolgáló SWOP-beállításait.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "A Plex szerverkapcsolat ellenőrzése…",
     "Choose from": "Választás innen",
     "Choose language": "Nyelv kiválasztása",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Válassza a Plex szervert",
     "Choose provider": "Szolgáltató kiválasztása",
     Classic: "Klasszikus",
     "Clear all settings?": "Törli az összes beállítást?",
     "Clear settings": "Beállítások törlése",
     Close: "Bezár",
     "Close PiP": "PiP bezárása",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "A felhőalapú mentéshez/betöltéshez STB firmware szükséges (a host_ott nincs beállítva)",
+    "Cloud transfer failed": "A felhőalapú átvitel sikertelen",
+    Code: "Hozzáférési kód",
     Color: "Szín",
     "Color spectrum": "Színspektrum",
     "Command server": "Parancskiszolgáló",
@@ -184,7 +189,8 @@ var keyStrings = {
     "Command server found.": "Parancskiszolgáló megtalálva.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "A kompatibilitási összetevők nem tölthetők be. Nyissa meg újra a lejátszót.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Kompatibilis HLS",
+    "Complete pairing link": "A teljes párosítási hivatkozás",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Állítsa be ezt: All4you.tv, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -218,7 +224,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Állítsa be ezt: OTT Prime ONLINE, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Konfigurálja a Plex-t a Beállítások -> Szolgáltatói beállítások menüpontban",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Állítsa be ezt: POLMEDIA, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure PROST in Settings -> Provider Settings":
@@ -257,23 +263,25 @@ var keyStrings = {
         "Állítsa be ezt: Шаравоз, a Beállítások -> Szolgáltató beállításai menüben",
     Connect: "Csatlakozás",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "A képernyőképek engedélyezése előtt csatlakoztasson egy HTTPS parancskiszolgálót.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Képernyőképek használatához csatlakoztasson egy HTTPS parancskiszolgálót.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Csatlakoztassa a távvezérlést a diagnosztika engedélyezéséhez.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Először csatlakoztassa ezt a lejátszót egy parancskiszolgálóhoz.",
+    "Connect to TV": "Csatlakoztatás TV-hez",
     Connected: "Csatlakoztatva",
     "Connected. Waiting for the channel list...":
         "Csatlakoztatva. Várakozás a csatornalistára…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "A távvezérlés csatlakoztatása felhatalmazza ezt a szervert a lejátszó diagnosztizálására és javítására. A hozzáférés az újraindítás után is elérhető marad, és a kapcsolat bontása után megszűnik. Minden diagnosztikai rögzítés 10 percre korlátozódik.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Távdiagnosztika csatlakoztatása az engedélyezett távvezérlő csatlakozáshoz.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Távoli diagnosztika csatlakoztatása ehhez az oldalhoz.",
+    "Connecting securely to your TV...": "Biztonságos csatlakozás a TV-hez...",
+    "Connecting to Plex…": "Csatlakozás a Plex-hez…",
     "Connecting to Stalker portal...": "Csatlakozás a Stalker portálhoz…",
     "Connecting...": "Csatlakozás…",
     "Continue watching?": "Folytatja a nézést?",
@@ -284,13 +292,17 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Másolja ki a kijelölt JSON-t az eszköz másolási parancsával",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Nem sikerült csatlakozni a Plex-hez. Ellenőrizze a szerver címét, a tokent és a hálózati hozzáférést.",
     "Could not connect to the server.":
         "Nem sikerült csatlakozni a kiszolgálóhoz.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nem sikerült párosítási kérelmet létrehozni. Az újrapróbálkozáshoz keresse meg ismét a kiszolgálót.",
     "Could not load. Select to retry.":
         "Nem sikerült betölteni. Válassza az újrapróbálkozáshoz.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Nem sikerült elkészíteni ezt a szöveget. Kérjük, rövidítse le, és próbálja újra.",
+    "Could not protect the private link. Use a different browser.":
+        "Nem sikerült védeni a privát hivatkozást. Használjon másik böngészőt.",
     "Could not save provider settings.":
         "Nem sikerült menteni a szolgáltató beállításait.",
     "Could not save the approved command server settings.":
@@ -308,6 +320,8 @@ var keyStrings = {
     "Delete category": "Kategória törlése",
     "Delete channel": "Csatorna törlése",
     "Delete list": "Lista törlése",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "A kézbesítést nem sikerült megerősíteni. Ellenőrizze a tévét, vagy küldje újra ugyanazt az üzenetet, mielőtt ez a munkamenet lejár.",
     "Demo — moving test pattern": "Bemutató — mozgó tesztábra",
     Description: "Leírás",
     "Description of remote control buttons": "Távirányítógombok útmutatója",
@@ -321,7 +335,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV beállításai",
     Director: "Rendező",
     "Disable HTTP remote": "HTTP-távirányítás kikapcsolása",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "A megbízható távoli támogatás letiltása",
     "Disabled by default. Enabling creates a new device access code.":
         "Alapértelmezés szerint kikapcsolva. A bekapcsolás új eszköz-hozzáférési kódot hoz létre.",
     Disconnect: "Leválasztás",
@@ -356,7 +370,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "A szolgáltatás eléréséhez adja meg a felhasználónevet és a jelszót.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Adjon meg egy érvényes Plex szervercímet és hozzáférési tokent.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Adjon meg érvényes kiszolgálócímet, például: 192.168.1.20:8081.",
     "Enter access key for": "Adja meg a hozzáférési kulcsot ehhez:",
@@ -374,8 +388,8 @@ var keyStrings = {
         "Adja meg a MAC-címet (pl. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Adja meg a médiatár URL-t",
     "Enter new category name": "Adja meg a kategória új nevét",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Adja meg a Plex szerver címét",
+    "Enter Plex token": "Írja be a Plex tokent",
     "Enter Provider Code": "Adja meg a szolgáltató kódját",
     "Enter Provider Code on PC or Phone":
         "Adja meg a szolgáltató kódját számítógépen vagy telefonon",
@@ -390,6 +404,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Adja meg a Stalker portál URL-címét (pl. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Adja meg a szerver számát (%1).",
+    "Enter text": "Szöveg beírása",
     "Enter the access code separately, not in the server address.":
         "A hozzáférési kódot külön adja meg, ne a kiszolgáló címében.",
     "Enter the command server IP or address.":
@@ -414,56 +429,56 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Adja meg az Xtream-kiszolgáló URL-címét (pl. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Adja meg a Plex hozzáférési tokenjét. A rendszer az eszköz profiljába menti.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Adja meg a Plex szerver címét, például http://192.168.1.25:32400",
     EPG: "Műsorújság",
     "EPG and archive. Channel: ": "Műsorújság és archívum. Csatorna: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "A EPG archívum vagy a XML érvénytelen.",
+    "EPG cache and wait time: %1": "EPG gyorsítótár és várakozási idő: %1",
+    "EPG cache updated: %1": "EPG gyorsítótár frissítve: %1",
+    "EPG channels: %1": "EPG csatornák: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Az EPG nem indult el. Indítsa újra a lejátszót a fájlok újbóli betöltéséhez. A lejátszás leáll.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG diagnosztika",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "A EPG diagnosztika nem tölthető be. Nyissa meg újra az újrapróbálkozáshoz.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "EPG letöltése sikertelen. Ellenőrizze a kapcsolatot, a HTTPS és a forrás CORS engedélyeket.",
+    "EPG download time: %1": "EPG letöltési idő: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "EPG letöltési időtúllépés történt. Próbálja újra a letöltést.",
+    "EPG elapsed: %1": "EPG eltelt idő: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG hiba. Nyissa meg az Információ → EPG diagnosztika lehetőséget.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "Az EPG meghaladja az eszköz feldolgozási korlátját. Használjon kisebb forrást vagy rövidebb archív időszakot.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "A EPG nem indult el. Tölts be egy M3U lejátszási listát.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "A EPG helyi tárhely nem elérhető vagy megtelt.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG feldolgozási és tárolási idő: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "A EPG feldolgozás leállt. Próbálja újra, és ellenőrizze a böngésző támogatását.",
+    "EPG programmes: %1": "EPG programok: %1",
+    "EPG progress: %1": "EPG előrehaladás: %1",
+    "EPG ready": "EPG kész",
+    "EPG source returned HTTP %1": "EPG forrás visszaadott HTTP %1",
+    "EPG source: %1": "EPG forrás: %1",
+    "EPG stopped during: %1": "EPG leállt a következő időszakban: %1",
+    "EPG unavailable on this browser":
+        "A EPG nem érhető el ebben a böngészőben",
+    "EPG unavailable: %1": "EPG nem elérhető: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG frissítés sikertelen; a mentett műsorfüzet használatával",
+    "EPG: downloading programme guide...": "EPG: műsorfüzet letöltése...",
+    "EPG: opening local cache...": "EPG: helyi gyorsítótár megnyitása...",
+    "EPG: processing programme guide...": "EPG: műsorfüzet feldolgozása...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: mentett műsorfüzet frissítése...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: várakozás egy másik lejátszólapra...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Hiba: A(z) %1. kategória nem létezik!<br>Válasszon másik kategóriát.",
     "ERROR!": "Hiba!",
@@ -499,7 +514,7 @@ var keyStrings = {
     "Finding command servers...": "Parancskiszolgálók keresése...",
     "First Run Setup": "Első indítás beállításai",
     "Fit to screen": "Képernyőhöz igazítás",
-    Folders: "Folders",
+    Folders: "Mappák",
     "Font type": "Betűtípus",
     "For download settings file open":
         "A beállításfájl letöltéséhez nyissa meg:",
@@ -542,8 +557,10 @@ var keyStrings = {
     "Interface transparency": "Felület átlátszósága",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Érvénytelen csatornahivatkozás! Adja meg a teljes gépnevet az ügyfélfiók adatfolyamának URL-címéből (pl. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Érvénytelen felhőbeállítási válasz",
     "Invalid protected source configuration":
         "Érvénytelen védettforrás-konfiguráció",
+    "Invalid setting": "Érvénytelen beállítás",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one beállításai",
@@ -619,10 +636,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Ezen a hálózaton nem található parancskiszolgáló.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Ehhez a fiókhoz nem érhető el Plex szerver.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Egyetlen program sem felelt meg a lejátszási listában szereplő csatornáknak és dátumoknak. Ellenőrizze a forrást és az eszköz óráját.",
     "No saved settings found": "Nem találhatók mentett beállítások",
+    "No supported system language. Choose a language.":
+        "Nincs támogatott rendszernyelv. Válasszon nyelvet.",
     "Not configured": "Nincs beállítva",
     "Not found": "Nem található",
     "Not reduce video when showing the list (bugfix)":
@@ -638,18 +657,21 @@ var keyStrings = {
     "not set": "nincs beállítva",
     Off: "Ki",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Csak ez a TV fogadja el az üzenetét. A link 10 perc múlva lejár.",
     Open: "Megnyitás",
     "Open in PiP": "Megnyitás PiP-ben",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Nyissa meg a Plex bejelentkezési oldalt",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Nyissa meg a plex.tv/link-t telefonján vagy számítógépén, és írja be ezt a kódot.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Vagy nyissa meg ezt a teljes privát hivatkozást egy másik eszközön:",
+    "Original file": "Eredeti médiafájl",
     "Original text: %1": "Eredeti szöveg: %1",
     "OTT / APP host": "OTT- / alkalmazáskiszolgáló",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE beállításai",
+    "OTT-play remote input": "OTT-play távoli szövegbevitel",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Elérhető az OttPlay FOSS %1. Letölti és telepíti most?",
     "Overwrite current settings?": "Felülírja a jelenlegi beállításokat?",
@@ -679,9 +701,10 @@ var keyStrings = {
     "PiP window position": "PiP-ablak helye",
     "PiP window size": "PiP-ablak mérete",
     Play: "Lejátszás",
-    Playback: "Playback",
+    Playback: "Médialejátszás",
     "Player and device info": "Lejátszó- és eszközinformációk",
     "Player could not start": "A lejátszó nem indítható el",
+    "Player default": "A lejátszó alapértelmezett választása",
     "Player info:": "Lejátszóinformációk:",
     Playlist: "Lejátszási lista",
     "Playlist file": "Playlist fájl",
@@ -690,10 +713,10 @@ var keyStrings = {
     "Playlist Name": "Playlist neve",
     "Playlist URL": "Lejátszási lista URL-címe",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "A Plex csatlakozás sikertelen",
+    "Plex settings": "Plex beállítások",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
+        "Plex bejelentkezés sikertelen. Ellenőrizze a kapcsolatot, és próbálkozzon újra, vagy adja meg a szerver címét és a tokent.",
     "Plex token": "Plex token",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA beállításai",
@@ -703,8 +726,11 @@ var keyStrings = {
     Postpaid: "Utólag fizetett",
     PROST: "PROST",
     "PROST settings": "PROST beállításai",
+    "Preferred audio language": "Előnyben részesített hangnyelv",
+    "Preferred subtitle language": "Előnyben részesített feliratnyelv",
     Prepaid: "Előre fizetett",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Biztonságos távoli bevitel előkészítése...",
     Prev: "Előző",
     "Preview in channel list": "Előnézet a csatornalistában",
     Previous: "Előző",
@@ -735,31 +761,32 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Távirányító (számgombok nélkül)",
     "Remote control": "Távirányítás",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "A távvezérlés engedélyezi a diagnosztikát. Készen áll az operátorra.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "A távvezérlés engedélyezi a diagnosztikát. Várakozás az újracsatlakozásra.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "A távvezérlés képernyőképeket tartalmaz a médialejátszóról, beleértve annak beállításait. A képek személyes adatokat tartalmazhatnak. Az alkalmazás külön jóváhagyás nélkül is képes képernyőképeket készíteni. A böngészőben válassza ki az eszközön rögzíteni kívánt lapot vagy ablakot.",
+    "Remote diagnostics": "Távdiagnosztika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Távoli diagnosztikát gyűjt ehhez a kapcsolathoz (munkamenetenként legfeljebb 10 perc).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "A távdiagnosztikát gyűjti ehhez az oldalhoz.",
+    "Remote diagnostics is off.": "A távdiagnosztika ki van kapcsolva.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "A távdiagnosztika készen áll a jogosult kezelő számára.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "A távdiagnosztika nem érhető el ezen a lejátszón.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "A távdiagnosztika leállt. Engedélyezze újra a hozzáférés megadásához.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "A távoli bemenet lejárt. Nyisson meg egy új munkamenetet az újrapróbálkozáshoz.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "A távoli beviteli munkamenet nem érhető el. Nyisson meg egy új munkamenetet az újrapróbálkozáshoz.",
+    "Remote screenshots": "Távoli képernyőképek",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "A távoli képernyőképek 10 percig engedélyezettek. A képernyőképek készítéséhez zárja be a beállításokat.",
+    "Remote screenshots are off.":
+        "A távoli képernyőképek ki vannak kapcsolva.",
     "Remote session expired": "A távoli munkamenet lejárt",
     "Remote text entry": "Távoli szövegbevitel",
     "Remote text entry denied": "Távoli szövegbevitel megtagadva",
@@ -787,7 +814,8 @@ var keyStrings = {
     "Restart stream / Live": "Adatfolyam újraindítása / élő",
     "Resume from archive?": "Folytatja az archívumból?",
     Retry: "Újrapróbálkozás",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Próbálja újra a EPG letöltését",
+    "Retry same message": "Próbáld újra ugyanazt az üzenetet",
     "Return to previous channel": "Visszatérés az előző csatornára",
     Rewind: "Tekerés",
     "Rewind step by buttons %1/%2": "Tekerési lépés a(z) %1/%2 gombokkal",
@@ -799,32 +827,36 @@ var keyStrings = {
     "Save & load channels": "Mentés és csatornák betöltése",
     "Save and load": "Mentés és betöltés",
     "Save and load channels": "Mentés és csatornák betöltése",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Mentés és könyvtár megnyitása",
     "Save Settings": "Beállítások mentése",
     "Save settings": "Beállítások mentése",
     "Save settings and load channel list":
         "Beállítások mentése és csatornalista betöltése",
     "Save settings to storage": "Beállítások mentése a tárhelyre",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Olvassa be a QR kódot a TV-jén, vagy illessze be a teljes privát párosítási linket alább.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Szöveg beviteléhez olvassa be ezt a QR kódot telefonjával.",
+    "Screen sharing could not start.":
+        "A képernyőmegosztást nem sikerült elindítani.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "A képernyőmegosztás megszakadt vagy nem érhető el.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "A képernyőkép engedélyezése nem engedélyezhető.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Képernyőképek érhetők el, ha a távvezérlés csatlakoztatva van.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Képernyőképek nem érhetők el ezen a platformon.",
     Script: "Forgatókönyv",
     Search: "Keresés",
+    "Search languages": "Nyelvek keresése",
     "Search programme": "Műsor keresése",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "A biztonságos távoli bemenet nem indul el. Kérjük, próbálja újra, vagy használja a képernyő-billentyűzetet.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "A biztonságos távoli bemenet nem indul el. Kérjük, használja a képernyő-billentyűzetet.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "A biztonságos távoli bemenet nem érhető el ezen az eszközön. Használja a képernyő-billentyűzetet.",
     "Select a stream type:<br>%1": "Válasszon adatfolyamtípust:<br>%1",
     "Select category to add channel":
         "Válasszon kategóriát a csatorna hozzáadásához",
@@ -836,13 +868,14 @@ var keyStrings = {
         "Válasszon lejátszásilista-sablonforrást a műsorújsághoz és a logókhoz",
     "Select Stalker portal": "Stalker-portál kiválasztása",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Válassza ki a képernyőkép forrását a böngészőben",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Válassza ki a lejátszó lapot vagy ablakot a böngészőmegosztási párbeszédpanelen.",
     "Send request": "Kérés küldése",
     "Send settings": "Beállítások küldése",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Küldje el ezt a kódot a proxyból az Authorization: Bearer fejlécben.",
+    "Send to TV": "Küldés TV-re",
     Server: "Kiszolgáló",
     "Server address": "Kiszolgáló címe",
     "Server address (for example 192.168.1.20:8081)":
@@ -851,10 +884,14 @@ var keyStrings = {
     "Server URL": "Kiszolgáló URL-címe",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "A kiszolgáló nem érhető el. Automatikus újrapróbálkozás; ellenőrizze a címet és a hálózati hozzáférést.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Munkamenet lezárva. Ha szükséges, indítson újat a TV-ről.",
     Set: "Beállítás",
     "Set parental code": "Szülői kód beállítása",
     "Set timer?": "Beállítja az időzítőt?",
     Settings: "Beállítások",
+    "Settings changed while editing":
+        "A beállítások módosultak szerkesztés közben",
     "Settings changed. Discovery was canceled.":
         "A beállítások megváltoztak. A keresés megszakadt.",
     "Settings copied": "Beállítások másolva",
@@ -864,10 +901,15 @@ var keyStrings = {
     "Settings imported": "Beállítások importálva",
     "Settings JSON": "Beállítások JSON-formátumban",
     "Settings loaded from storage": "Beállítások betöltve a tárhelyről",
+    "Settings received. Restarting player...":
+        "Beállítások érkeztek. Lejátszó újraindítása...",
     "Settings STB": "STB beállítások",
     "Settings saved": "Beállítások elmentve",
     "Settings saved to storage": "Beállítások mentve a tárhelyre",
     "Settings sended!": "Beállítások elküldve!",
+    "Settings source changed": "A beállítások forrása megváltozott",
+    "Settings storage rejected write":
+        "A beállítások tárhelyének írása elutasítva",
     "Several command servers were found. Select one below.":
         "Több parancskiszolgáló található. Válasszon egyet az alábbiak közül.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -907,29 +949,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Jelentkezzen be újra a védett forrásba",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Jelentkezzen be Plex fiókjába, és válasszon egy szervert. Ebben a lejátszóban nincs beírva jelszó.",
+    "Sign in with Plex": "Jelentkezzen be a Plex segítségével",
     "Sign in: %1": "Bejelentkezés: %1",
     "Sign out of all sources": "Kijelentkezés minden forrásból",
     "Sign-in opens when you load a protected playlist.":
         "A bejelentkezés védett lejátszási lista betöltésekor nyílik meg.",
     "Sleep timer": "Elalvásidőzítő",
     "Sort channels": "Csatornák rendezése",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Hozzáférés a médiaforráshoz",
+    "Source sign-in required": "Forrás bejelentkezés szükséges",
     "Source sign-in was cancelled": "A forrásba való bejelentkezés megszakítva",
     "Stalker Portal Provider": "Stalker portálszolgáltató",
     "Stalker portal settings": "Stalker portál beállításai",
     "Stalker portals": "Stalker portálok",
     "Starting...": "Indítás…",
     Status: "Állapot",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Állj",
+    "Stop browser sharing": "A böngészőmegosztás leállítása",
+    "Stop current capture": "Az aktuális rögzítés leállítása",
+    "Stop diagnostics": "Diagnosztika leállítása",
     "Stop playback and return to live":
         "Lejátszás leállítása és visszatérés az élő adáshoz",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Képernyőképek leállítása",
     "Stream could not be played": "A stream nem játszható le",
     "Stream type: %1": "Adatfolyam típusa: %1",
     "String for search": "Keresőkifejezés",
@@ -941,15 +983,21 @@ var keyStrings = {
     "Switch subtitle": "Felirat váltása",
     "Switch to this list": "Váltás erre a listára",
     "Swop URL": "Swop URL-cím",
+    "System language": "Rendszernyelv",
     "saved on this device": "mentve ezen az eszközön",
     select: "kiválasztás",
     small: "kicsi",
     system: "rendszer",
     Tabox: "Tabox",
     "Tabox settings": "Tabox beállításai",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "A szöveg túl hosszú a távoli bevitelhez.",
+    "Text is too long. Please shorten it before sending.":
+        "A szöveg túl hosszú. Kérjük, rövidítse le küldés előtt.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Szöveg elküldve. Ellenőrizze a TV-t, hogy megbizonyosodjon arról, hogy megjelent.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "A böngésző képernyőképének forrása készen áll.",
     "The command server discovery URL is invalid.":
         "A parancskiszolgáló keresési URL-címe érvénytelen.",
     "The device ID in the address is invalid.":
@@ -957,7 +1005,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "A keresésre kapott válasz érvénytelen.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ez a böngésző nem tudja azonosítani a kiválasztott képernyőkép forrását.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ez a böngésző nem tud biztonságosan automatikus párosítást végezni. Frissítse, vagy adja meg kézzel a parancskiszolgáló beállításait.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -966,6 +1014,10 @@ var keyStrings = {
         "Ez a HTTPS-lejátszó nem tud HTTP-kiszolgálóhoz csatlakozni. Használjon HTTPS-kiszolgálót, vagy nyissa meg a lejátszót HTTP-n keresztül.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ez a Play-alkalmazás HTTPS-t igényel. Kérjen a szolgáltatótól HTTPS-lejátszási listát vagy kiszolgáló-URL-t.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ez a párosítási hivatkozás lejárt. Nyisson meg egy új munkamenetet a tévén.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ez a biztonságos munkamenet nem érhető el vagy lejárt. Nyisson új munkamenetet a tévén, és használja a teljes hivatkozást.",
     Timer: "Időzítő",
     "Timer: switch to channel?": "Időzítő: átvált erre a csatornára?",
     "Timeshift: one minute back": "Időeltolás: egy perccel vissza",
@@ -984,13 +1036,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv beállításai",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Bízzon ebben a szerverben a távoli támogatásért",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "A megbízható hozzáférést nem sikerült eltávolítani az eszköz tárhelyéről.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "A megbízható diagnosztika nem érhető el, mert az eszköz tárhelyét nem sikerült frissíteni.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "A megbízható diagnosztika arra vár, hogy a lejátszó újracsatlakozzon.",
     "Try demo": "Bemutató kipróbálása",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG beállításai",
@@ -1010,18 +1062,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Használjon HTTP- vagy HTTPS-kiszolgálócímet.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Használjon HTTPS parancskiszolgálót a távoli diagnosztikához.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Használjon HTTP-t vagy HTTPS-t, felhasználónév és jelszó nélkül a címben.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "A BAL/JOBB gombbal válasszon vezérlőt, az OK-val aktiválja, a FEL/LE gombbal görgessen.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Használja a teljes hivatkozást, beleértve a # utáni részt is. Ne ossza meg mással.",
     "Use Up / Down to scroll. Back to close.":
         "Görgetés: Fel / Le. Bezárás: Vissza.",
     Username: "Felhasználónév",
     "Username or password is missing.":
         "Hiányzik a felhasználónév vagy a jelszó.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "10 percig érvényes. Vissza zárja ezt a munkamenetet.",
     Version: "Verzió",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM beállításai",
@@ -1034,7 +1088,7 @@ var keyStrings = {
     "VPortal request failed":
         "Nem sikerült betölteni a VPortalt. Ellenőrizze a hivatkozást, a hozzáférési kulcsot és a portál elérhetőségét.",
     volume: "hangerő",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Várakozás a bejelentkezésre…",
     "Wrong parental code !!!": "Hibás szülői kód!!!",
     "Xtream Codes Provider": "Xtream Codes szolgáltató",
     "Xtream Codes settings": "Xtream Codes beállításai",

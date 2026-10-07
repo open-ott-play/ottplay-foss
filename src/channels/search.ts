@@ -1,3 +1,4 @@
+import { normalizeSearchText } from "../localization";
 /** Optional ESM filter helpers. The classic search screen owns its own query and selection. */
 
 /** Minimal history row shape used by getFilteredHistory. */
@@ -37,11 +38,11 @@ export function searchHistoryChannel(query: string): void {
  */
 export function getFilteredHistory(): SearchHistoryEntry[] {
     if (!historySearchText) return medHistory.slice();
-    const lower = historySearchText.toLowerCase();
+    const lower = normalizeSearchText(historySearchText);
     return medHistory.filter(
         (entry) =>
-            (entry.name?.toLowerCase().includes(lower) ?? false) ||
-            (entry.title?.toLowerCase().includes(lower) ?? false)
+            normalizeSearchText(entry.name || "").indexOf(lower) >= 0 ||
+            normalizeSearchText(entry.title || "").indexOf(lower) >= 0
     );
 }
 
@@ -51,12 +52,12 @@ export function getFilteredHistory(): SearchHistoryEntry[] {
  */
 export function getFilteredChannelList(): number[] {
     if (!searchText) return curList.slice();
-    const lower = searchText.toLowerCase();
+    const lower = normalizeSearchText(searchText);
     return curList.filter((chId) => {
         const ch = channels[chId];
         return (
-            (ch?.channel_name?.toLowerCase().includes(lower) ?? false) ||
-            (ch?.name?.toLowerCase().includes(lower) ?? false)
+            normalizeSearchText(ch?.channel_name || "").indexOf(lower) >= 0 ||
+            normalizeSearchText(ch?.name || "").indexOf(lower) >= 0
         );
     });
 }

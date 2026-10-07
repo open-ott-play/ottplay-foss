@@ -61,13 +61,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "10 నిమిషాల పాటు డయాగ్నోస్టిక్‌లను అనుమతించండి",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "10 నిమిషాల పాటు స్క్రీన్‌షాట్‌లను అనుమతించండి",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "డయాగ్నస్టిక్ కౌంటర్‌లను సేకరించి, ఈ స్ట్రీమ్ లేదా ప్లేయర్‌ని రీస్టార్ట్ చేయడానికి ఈ సర్వర్‌ని అనుమతించండి. తాత్కాలిక యాక్సెస్ 10 నిమిషాలు ఉంటుంది. తిరిగి కనెక్ట్ చేసిన తర్వాత లేదా పునఃప్రారంభించిన తర్వాత విశ్వసనీయ మద్దతు అందుబాటులో ఉంటుంది; ప్రతి క్యాప్చర్ ఇప్పటికీ 10 నిమిషాల తర్వాత గడువు ముగుస్తుంది. దాచినప్పుడు లేదా ఆఫ్‌లైన్‌లో ఉన్నప్పుడు సేకరణ పాజ్ అవుతుంది.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ఈ ముందుభాగం సెషన్ కోసం ప్లేబ్యాక్, నెట్‌వర్క్ మరియు ఇన్‌పుట్ కౌంటర్‌లను సేకరించడానికి ఈ సర్వర్‌ని అనుమతించండి. HTTPS మరియు సర్వర్ అనుమతి అవసరం. 10 నిమిషాల తర్వాత, దాచినప్పుడు లేదా డిస్‌కనెక్ట్ అయినప్పుడు ఆగిపోతుంది.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "10 నిమిషాల పాటు చిత్రాలను అభ్యర్థించడానికి ఈ సర్వర్‌ని అనుమతించండి. చిత్రాలు వ్యక్తిగత సమాచారాన్ని కలిగి ఉండవచ్చు. బ్రౌజర్‌లో, ప్లేయర్ ట్యాబ్ లేదా విండోను ఎంచుకోండి. రీలోడ్ లేదా డిస్‌కనెక్ట్ చేయడంతో అనుమతి ముగుస్తుంది.",
     "Allowlist this Device ID": "ఈ పరికరాన్ని అనుమతించండి ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ప్లేయర్ HTTP EPG మూలాన్ని డౌన్‌లోడ్ చేయలేరు. HTTPS మూలాన్ని ఉపయోగించండి.",
@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 నిమిషం వెనుకకు / ముందుకు వెళ్లండి",
     "Background color": "నేపథ్య రంగు",
     "Background color of selected item": "ఎంచుకున్న అంశం యొక్క నేపథ్య రంగు",
+    "Backup state changed": "బ్యాకప్ స్థితి మార్చబడింది",
     "Balance, $": "బ్యాలెన్స్, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -107,6 +108,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "జాబితాలలోని %1/%2 బటన్‌ల ప్రవర్తన",
     "Black screen while switching the channel": "ఛానెల్‌లను మార్చేటప్పుడు బ్లాక్ స్క్రీన్",
     Blue: "నీలం",
+    "Bookmark age (days): %1": "బుక్‌మార్క్ వయస్సు (రోజులు): %1",
     "Bookmark age: %1 days": "బుక్‌మార్క్ వయస్సు: %1 రోజులు",
     "Browse folders": "ఫోల్డర్‌లను బ్రౌజ్ చేయండి",
     "Buffer Size, s": "బఫర్ పరిమాణం, s",
@@ -155,11 +157,14 @@ var keyStrings = {
     "Choose language": "భాషను ఎంచుకోండి",
     "Choose Plex server": "Plex సర్వర్‌ని ఎంచుకోండి",
     "Choose provider": "ప్రొవైడర్‌ను ఎంచుకోండి",
-    Classic: "Classic",
+    Classic: "సంప్రదాయ",
     "Clear all settings?": "అన్ని సెట్టింగ్‌లను క్లియర్ చేయాలా?",
     "Clear settings": "సెట్టింగ్‌లను క్లియర్ చేయండి",
     Close: "మూసివేయండి",
     "Close PiP": "PiPని మూసివేయండి",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "క్లౌడ్ సేవ్/లోడ్‌కి STB ఫర్మ్‌వేర్ అవసరం (host_ott సెట్ చేయబడలేదు)",
+    "Cloud transfer failed": "క్లౌడ్ బదిలీ విఫలమైంది",
     Code: "కోడ్",
     Color: "రంగు",
     "Color spectrum": "రంగు స్పెక్ట్రం",
@@ -176,6 +181,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "అనుకూలత రన్‌టైమ్ లోడ్ కాలేదు. మళ్లీ ప్రయత్నించడానికి ప్లేయర్‌ని మళ్లీ తెరవండి.",
     "Compatible HLS": "అనుకూల HLS",
+    "Complete pairing link": "పూర్తి జత లింక్",
     "Configure All4you.tv in Settings -> Provider Settings":
         "సెట్టింగులు -> ప్రొవైడర్ సెట్టింగ్‌లలో All4you.tvని కాన్ఫిగర్ చేయండి",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -248,22 +254,24 @@ var keyStrings = {
         "సెట్టింగ్‌లు -> ప్రొవైడర్ సెట్టింగ్‌లలో Шаравозని కాన్ఫిగర్ చేయండి",
     Connect: "కనెక్ట్ చేయండి",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "స్క్రీన్‌షాట్‌లను అనుమతించే ముందు HTTPS కమాండ్ సర్వర్‌ని కనెక్ట్ చేయండి.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "స్క్రీన్‌షాట్‌లను ఉపయోగించడానికి HTTPS కమాండ్ సర్వర్‌ను కనెక్ట్ చేయండి.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "విశ్లేషణలను ప్రారంభించడానికి రిమోట్ కంట్రోల్‌ని కనెక్ట్ చేయండి.",
     "Connect this player to a command server first.":
         "ముందుగా ఈ ప్లేయర్‌ని కమాండ్ సర్వర్‌కి కనెక్ట్ చేయండి.",
+    "Connect to TV": "టీవీకి కనెక్ట్ చేయండి",
     Connected: "కనెక్ట్ చేయబడింది",
     "Connected. Waiting for the channel list...":
         "కనెక్ట్ చేయబడింది. ఛానెల్ జాబితా కోసం వేచి ఉంది...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "రిమోట్ కంట్రోల్‌ను కనెక్ట్ చేయడం ద్వారా ప్లేయర్ సమస్యలను గుర్తించి సరిచేయడానికి ఈ సర్వర్‌కు అనుమతి ఇస్తారు. పునఃప్రారంభించిన తర్వాత కూడా యాక్సెస్ ఉంటుంది; కనెక్షన్‌ను నిలిపివేసినప్పుడు ముగుస్తుంది. ప్రతి విశ్లేషణ డేటా సేకరణ 10 నిమిషాలకు పరిమితం.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ప్రారంభించబడిన రిమోట్ కంట్రోల్ కనెక్షన్ కోసం రిమోట్ డయాగ్నస్టిక్‌లను కనెక్ట్ చేస్తోంది.",
     "Connecting remote diagnostics for this page.":
         "ఈ పేజీ కోసం రిమోట్ డయాగ్నస్టిక్‌లను కనెక్ట్ చేస్తోంది.",
+    "Connecting securely to your TV...": "మీ టీవీకి సురక్షితంగా కనెక్ట్ అవుతోంది...",
     "Connecting to Plex…": "Plexకి కనెక్ట్ అవుతోంది…",
     "Connecting to Stalker portal...": "Stalker పోర్టల్‌కి కనెక్ట్ అవుతోంది…",
     "Connecting...": "కనెక్ట్ అవుతోంది…",
@@ -281,6 +289,10 @@ var keyStrings = {
         "జత చేసే అభ్యర్థనను సృష్టించడం సాధ్యపడలేదు. మళ్లీ ప్రయత్నించడానికి సర్వర్‌ని మళ్లీ కనుగొనండి.",
     "Could not load. Select to retry.":
         "లోడ్ చేయడం సాధ్యపడలేదు. మళ్లీ ప్రయత్నించడానికి ఎంచుకోండి.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ఈ వచనాన్ని సిద్ధం చేయడం సాధ్యపడలేదు. దయచేసి దాన్ని కుదించి, మళ్లీ ప్రయత్నించండి.",
+    "Could not protect the private link. Use a different browser.":
+        "ప్రైవేట్ లింక్‌ను రక్షించడం సాధ్యపడలేదు. వేరే బ్రౌజర్‌ని ఉపయోగించండి.",
     "Could not save provider settings.": "ప్రొవైడర్ సెట్టింగ్‌లను సేవ్ చేయలేకపోయాము.",
     "Could not save the approved command server settings.":
         "ఆమోదించబడిన కమాండ్ సర్వర్ సెట్టింగ్‌లను సేవ్ చేయడం సాధ్యపడలేదు.",
@@ -297,6 +309,8 @@ var keyStrings = {
     "Delete category": "వర్గాన్ని తొలగించండి",
     "Delete channel": "ఛానెల్‌ని తొలగించండి",
     "Delete list": "జాబితాను తొలగించండి",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "డెలివరీ నిర్ధారించబడలేదు. మీ టీవీని తనిఖీ చేయండి లేదా ఈ సెషన్ గడువు ముగిసేలోపు అదే సందేశాన్ని మళ్లీ ప్రయత్నించండి.",
     "Demo — moving test pattern": "డెమో — కదిలే పరీక్ష నమూనా",
     Description: "వివరణ",
     "Description of remote control buttons": "రిమోట్ కంట్రోల్ బటన్ గైడ్",
@@ -376,6 +390,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker పోర్టల్ URL (ఉదా. http://your-portal/stalker_portal/c/) నమోదు చేయండి",
     "Enter server number (%1).": "సర్వర్ నంబర్ (%1) నమోదు చేయండి.",
+    "Enter text": "వచనాన్ని నమోదు చేయండి",
     "Enter the access code separately, not in the server address.":
         "యాక్సెస్ కోడ్‌ను విడిగా నమోదు చేయండి, సర్వర్ చిరునామాలో కాదు.",
     "Enter the command server IP or address.":
@@ -522,7 +537,9 @@ var keyStrings = {
     "Interface transparency": "ఇంటర్‌ఫేస్ పారదర్శకత",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "చెల్లని ఛానెల్ లింక్! మీ ప్రొవైడర్ ఖాతా పేజీలో URL స్ట్రీమ్ నుండి పూర్తి హోస్ట్ పేరును నమోదు చేయండి (ఉదాహరణకు subdomain.cdn-domain.tld ).",
+    "Invalid cloud settings response": "చెల్లని క్లౌడ్ సెట్టింగ్‌ల ప్రతిస్పందన",
     "Invalid protected source configuration": "చెల్లని రక్షిత మూల కాన్ఫిగరేషన్",
+    "Invalid setting": "చెల్లని సెట్టింగ్",
     "IPTV token": "IPTV టోకెన్",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one సెట్టింగ్‌లు",
@@ -601,6 +618,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ఏ ప్రోగ్రామ్‌లు ప్లేజాబితా ఛానెల్‌లు మరియు తేదీలతో సరిపోలలేదు. మూలం మరియు పరికర గడియారాన్ని తనిఖీ చేయండి.",
     "No saved settings found": "సేవ్ చేయబడిన సెట్టింగ్‌లు ఏవీ కనుగొనబడలేదు",
+    "No supported system language. Choose a language.":
+        "మద్దతు ఉన్న సిస్టమ్ భాష లేదు. ఒక భాషను ఎంచుకోండి.",
     "Not configured": "కాన్ఫిగర్ చేయబడలేదు",
     "Not found": "కనుగొనబడలేదు",
     "Not reduce video when showing the list (bugfix)":
@@ -615,6 +634,8 @@ var keyStrings = {
     "not set": "సెట్ చేయబడలేదు",
     Off: "ఆఫ్",
     Ok: "సరే",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "ఈ టీవీ మాత్రమే మీ సందేశాన్ని ఆమోదించగలదు. 10 నిమిషాల తర్వాత లింక్ గడువు ముగుస్తుంది.",
     Open: "తెరవండి",
     "Open in PiP": "PiPలో తెరవండి",
     "Open Plex sign-in page": "Plex సైన్-ఇన్ పేజీని తెరవండి",
@@ -627,6 +648,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP హోస్ట్",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE సెట్టింగ్‌లు",
+    "OTT-play remote input": "OTT-play రిమోట్ ఇన్‌పుట్",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 అందుబాటులో ఉంది. ఇప్పుడే డౌన్‌లోడ్ చేసి, ఇన్‌స్టాల్ చేయాలా?",
     "Overwrite current settings?": "ప్రస్తుత సెట్టింగ్‌లను ఓవర్‌రైట్ చేయాలా?",
@@ -659,6 +681,7 @@ var keyStrings = {
     Playback: "ప్లేబ్యాక్",
     "Player and device info": "ప్లేయర్ మరియు పరికర సమాచారం",
     "Player could not start": "ప్లేయర్ ప్రారంభం కాలేదు",
+    "Player default": "ప్లేయర్ డిఫాల్ట్ ఎంపిక",
     "Player info:": "ప్లేయర్ సమాచారం:",
     Playlist: "ప్లేజాబితా",
     "Playlist file": "ప్లేజాబితా ఫైల్",
@@ -680,6 +703,8 @@ var keyStrings = {
     Postpaid: "పోస్ట్‌పెయిడ్",
     PROST: "PROST",
     "PROST settings": "PROST సెట్టింగ్‌లు",
+    "Preferred audio language": "ఇష్టపడే ఆడియో భాష",
+    "Preferred subtitle language": "ప్రాధాన్య ఉపశీర్షిక భాష",
     Prepaid: "ప్రీపెయిడ్",
     "Preparing secure remote input...": "సురక్షిత రిమోట్ ఇన్‌పుట్‌ని సిద్ధం చేస్తోంది...",
     Prev: "మునుపటి",
@@ -711,14 +736,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "రిమోట్ (నంబర్ బటన్‌లు లేవు)",
     "Remote control": "రిమోట్ కంట్రోల్",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "రిమోట్ కంట్రోల్ డయాగ్నస్టిక్స్‌కు అధికారం ఇస్తుంది. ఆపరేటర్ కోసం సిద్ధంగా ఉంది.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "రిమోట్ కంట్రోల్ డయాగ్నస్టిక్స్‌కు అధికారం ఇస్తుంది. మళ్లీ కనెక్ట్ చేయడానికి వేచి ఉంది.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "రిమోట్ కంట్రోల్ దాని సెట్టింగ్‌లతో సహా మీడియా ప్లేయర్ యొక్క స్క్రీన్‌షాట్‌లను కలిగి ఉంటుంది. చిత్రాలు ప్రైవేట్ సమాచారాన్ని కలిగి ఉండవచ్చు. అప్లికేషన్ అదనపు ఆమోదం లేకుండా నేరుగా స్క్రీన్‌షాట్‌లను క్యాప్చర్ చేయగలదు. బ్రౌజర్‌లో, ఈ పరికరంలో క్యాప్చర్ చేయడానికి ట్యాబ్ లేదా విండోను ఎంచుకోండి.",
     "Remote diagnostics": "రిమోట్ డయాగ్నస్టిక్స్",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ఈ కనెక్షన్ కోసం రిమోట్ డయాగ్నస్టిక్స్ సేకరిస్తోంది (ప్రతి సెషన్‌కు 10 నిమిషాల వరకు).",
     "Remote diagnostics is collecting for this page.":
         "ఈ పేజీ కోసం రిమోట్ డయాగ్నస్టిక్స్ సేకరిస్తోంది.",
     "Remote diagnostics is off.": "రిమోట్ డయాగ్నస్టిక్స్ ఆఫ్‌లో ఉంది.",
@@ -732,10 +757,10 @@ var keyStrings = {
         "రిమోట్ ఇన్‌పుట్ గడువు ముగిసింది. మళ్లీ ప్రయత్నించడానికి కొత్త సెషన్‌ను తెరవండి.",
     "Remote input session is unavailable. Open a new session to try again.":
         "రిమోట్ ఇన్‌పుట్ సెషన్ అందుబాటులో లేదు. మళ్లీ ప్రయత్నించడానికి కొత్త సెషన్‌ను తెరవండి.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "రిమోట్ స్క్రీన్‌షాట్‌లు",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "రిమోట్ స్క్రీన్‌షాట్‌లు 10 నిమిషాల పాటు అనుమతించబడతాయి. క్యాప్చర్ చేయడానికి సెట్టింగ్‌లను మూసివేయండి.",
+    "Remote screenshots are off.": "రిమోట్ స్క్రీన్‌షాట్‌లు ఆఫ్ చేయబడ్డాయి.",
     "Remote session expired": "రిమోట్ సెషన్ గడువు ముగిసింది",
     "Remote text entry": "రిమోట్ టెక్స్ట్ ఎంట్రీ",
     "Remote text entry denied": "రిమోట్ టెక్స్ట్ ఎంట్రీ తిరస్కరించబడింది",
@@ -762,6 +787,7 @@ var keyStrings = {
     "Resume from archive?": "ఆర్కైవ్ నుండి పునఃప్రారంభించాలా?",
     Retry: "మళ్లీ ప్రయత్నించండి",
     "Retry EPG download": "EPG డౌన్‌లోడ్‌ని మళ్లీ ప్రయత్నించండి",
+    "Retry same message": "అదే సందేశాన్ని మళ్లీ ప్రయత్నించండి",
     "Return to previous channel": "మునుపటి ఛానెల్‌కి తిరిగి వెళ్లండి",
     Rewind: "ముందుకు/వెనుకకు జరపండి",
     "Rewind step by buttons %1/%2": "%1/%2 బటన్‌లతో ముందుకు/వెనుకకు జరిపే వ్యవధి",
@@ -779,19 +805,21 @@ var keyStrings = {
     "Save settings and load channel list":
         "సెట్టింగ్‌లను సేవ్ చేయండి మరియు ఛానెల్ జాబితాను లోడ్ చేయండి",
     "Save settings to storage": "సెట్టింగ్‌లను నిల్వకు సేవ్ చేయండి",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "మీ టీవీలో QR కోడ్‌ని స్కాన్ చేయండి లేదా దాని పూర్తి ప్రైవేట్ జత చేసే లింక్‌ను దిగువన అతికించండి.",
     "Scan this QR code with your phone to enter text.":
         "వచనాన్ని నమోదు చేయడానికి మీ ఫోన్‌తో ఈ QR కోడ్‌ని స్కాన్ చేయండి.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "స్క్రీన్ షేరింగ్ ప్రారంభం కాలేదు.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "స్క్రీన్ షేరింగ్ రద్దు చేయబడింది లేదా అందుబాటులో లేదు.",
+    "Screenshot permission could not be enabled.": "స్క్రీన్‌షాట్ అనుమతి ప్రారంభించబడలేదు.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "రిమోట్ కంట్రోల్ కనెక్ట్ చేయబడినప్పుడు స్క్రీన్‌షాట్‌లు అందుబాటులో ఉంటాయి.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ఈ ప్లాట్‌ఫారమ్‌లో స్క్రీన్‌షాట్‌లు అందుబాటులో లేవు.",
     Script: "స్క్రీన్ ప్లే",
     Search: "శోధన",
+    "Search languages": "భాషలను శోధించండి",
     "Search programme": "కార్యక్రమాన్ని వెతకండి",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "సురక్షిత రిమోట్ ఇన్‌పుట్ ప్రారంభం కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి లేదా ఆన్-స్క్రీన్ కీబోర్డ్‌ని ఉపయోగించండి.",
@@ -808,14 +836,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG మరియు లోగోల కోసం ప్లేజాబితా టెంప్లేట్ మూలాన్ని ఎంచుకోండి",
     "Select Stalker portal": "Stalker పోర్టల్‌ని ఎంచుకోండి",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "బ్రౌజర్‌లో స్క్రీన్‌షాట్ మూలాన్ని ఎంచుకోండి",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "బ్రౌజర్ షేరింగ్ డైలాగ్‌లో ప్లేయర్ ట్యాబ్ లేదా విండోను ఎంచుకోండి.",
     "Send request": "అభ్యర్థన పంపండి",
     "Send settings": "సెట్టింగ్‌లను పంపండి",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "మీ ప్రాక్సీ నుండి ఈ కోడ్‌ను Authorization: Bearer హెడర్‌లో పంపండి.",
+    "Send to TV": "టీవీకి పంపండి",
     Server: "సర్వర్",
     "Server address": "సర్వర్ చిరునామా",
     "Server address (for example 192.168.1.20:8081)":
@@ -824,10 +852,13 @@ var keyStrings = {
     "Server URL": "సర్వర్ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "సర్వర్ అందుబాటులో లేదు. స్వయంచాలకంగా మళ్లీ ప్రయత్నిస్తోంది; దాని చిరునామా మరియు నెట్‌వర్క్ యాక్సెస్‌ని తనిఖీ చేయండి.",
+    "Session closed. Start a new one from your TV when needed.":
+        "సెషన్ మూసివేయబడింది. అవసరమైనప్పుడు మీ టీవీ నుండి కొత్తదాన్ని ప్రారంభించండి.",
     Set: "వర్తింపజేయండి",
     "Set parental code": "తల్లిదండ్రుల కోడ్‌ను సెట్ చేయండి",
     "Set timer?": "టైమర్‌ని సెట్ చేయాలా?",
     Settings: "సెట్టింగ్‌లు",
+    "Settings changed while editing": "సవరించేటప్పుడు సెట్టింగ్‌లు మార్చబడ్డాయి",
     "Settings changed. Discovery was canceled.":
         "సెట్టింగ్‌లు మార్చబడ్డాయి. డిస్కవరీ రద్దు చేయబడింది.",
     "Settings copied": "సెట్టింగ్‌లు కాపీ చేయబడ్డాయి",
@@ -837,10 +868,14 @@ var keyStrings = {
     "Settings imported": "సెట్టింగ్‌లు దిగుమతి చేయబడ్డాయి",
     "Settings JSON": "సెట్టింగ్‌లు JSON",
     "Settings loaded from storage": "నిల్వ నుండి సెట్టింగ్‌లు లోడ్ చేయబడ్డాయి",
+    "Settings received. Restarting player...":
+        "సెట్టింగ్‌లు స్వీకరించబడ్డాయి. ప్లేయర్‌ని పునఃప్రారంభిస్తోంది...",
     "Settings STB": "STB సెట్టింగ్‌లు",
     "Settings saved": "సెట్టింగ్‌లు సేవ్ చేయబడ్డాయి",
     "Settings saved to storage": "సెట్టింగ్‌లు నిల్వకు సేవ్ చేయబడ్డాయి",
     "Settings sended!": "సెట్టింగ్‌లు పంపబడ్డాయి!",
+    "Settings source changed": "సెట్టింగ్‌ల మూలం మార్చబడింది",
+    "Settings storage rejected write": "సెట్టింగ్‌ల నిల్వ రాసే అభ్యర్థనను తిరస్కరించింది",
     "Several command servers were found. Select one below.":
         "అనేక కమాండ్ సర్వర్లు కనుగొనబడ్డాయి. దిగువన ఒకదాన్ని ఎంచుకోండి.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -892,11 +927,11 @@ var keyStrings = {
     "Starting...": "ప్రారంభం…",
     Status: "స్థితి",
     Stop: "ఆపు",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "బ్రౌజర్ షేరింగ్‌ను ఆపివేయండి",
     "Stop current capture": "ప్రస్తుత సంగ్రహాన్ని ఆపివేయండి",
     "Stop diagnostics": "విశ్లేషణలను ఆపండి",
     "Stop playback and return to live": "ప్లేబ్యాక్‌ని ఆపివేసి, ప్రత్యక్ష ప్రసారానికి తిరిగి వెళ్లండి",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "స్క్రీన్‌షాట్‌లను ఆపు",
     "Stream could not be played": "స్ట్రీమ్ ప్లే చేయడం సాధ్యపడలేదు",
     "Stream type: %1": "స్ట్రీమ్ రకం: %1",
     "String for search": "శోధన ప్రశ్న",
@@ -908,6 +943,7 @@ var keyStrings = {
     "Switch subtitle": "ఉపశీర్షికలను మార్చండి",
     "Switch to this list": "ఈ జాబితాకు మారండి",
     "Swop URL": "SWOP URL",
+    "System language": "సిస్టమ్ భాష",
     "saved on this device": "ఈ పరికరంలో సేవ్ చేయబడింది",
     select: "ఎంచుకోండి",
     small: "చిన్నది",
@@ -915,14 +951,17 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox సెట్టింగ్‌లు",
     "Text is too long for remote input.": "రిమోట్ ఇన్‌పుట్ కోసం వచనం చాలా పొడవుగా ఉంది.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "వచనం చాలా పొడవుగా ఉంది. దయచేసి పంపే ముందు దాన్ని కుదించండి.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "వచనం పంపబడింది. అది మీ టీవీలో కనిపిస్తోందో లేదో తనిఖీ చేయండి.",
+    "The browser screenshot source is ready.": "బ్రౌజర్ స్క్రీన్‌షాట్ మూలం సిద్ధంగా ఉంది.",
     "The command server discovery URL is invalid.":
         "కమాండ్ సర్వర్ ఆవిష్కరణ URL చెల్లదు.",
     "The device ID in the address is invalid.": "చిరునామాలోని ID పరికరం చెల్లదు.",
     "The discovery response is invalid.": "ఆవిష్కరణ ప్రతిస్పందన చెల్లదు.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ఈ బ్రౌజర్ ఎంచుకున్న స్క్రీన్‌షాట్ మూలాన్ని గుర్తించలేదు.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ఈ బ్రౌజర్ సురక్షితంగా స్వయంచాలకంగా జత చేయబడదు. దీన్ని నవీకరించండి లేదా కమాండ్ సర్వర్ సెట్టింగ్‌లను మాన్యువల్‌గా నమోదు చేయండి.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -931,6 +970,10 @@ var keyStrings = {
         "ఈ HTTPS ప్లేయర్ HTTP సర్వర్‌కి కనెక్ట్ కాలేదు. HTTPS సర్వర్‌ని ఉపయోగించండి లేదా HTTP ద్వారా ప్లేయర్‌ని తెరవండి.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ఈ Play యాప్‌కి HTTPS అవసరం. HTTPS ప్లేజాబితా లేదా సర్వర్ URL కోసం మీ ప్రొవైడర్‌ను అడగండి.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ఈ జత చేసే లింక్ గడువు ముగిసింది. మీ టీవీలో కొత్త సెషన్‌ను తెరవండి.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ఈ సురక్షిత సెషన్ అందుబాటులో లేదు లేదా గడువు ముగిసింది. టీవీలో కొత్త సెషన్‌ని తెరిచి, దాని పూర్తి లింక్‌ని ఉపయోగించండి.",
     Timer: "టైమర్",
     "Timer: switch to channel?": "టైమర్: ఈ ఛానెల్‌కి మారాలా?",
     "Timeshift: one minute back": "టైమ్‌షిఫ్ట్: ఒక నిమిషం వెనక్కి",
@@ -978,6 +1021,8 @@ var keyStrings = {
         "చిరునామాలో వినియోగదారు పేరు లేదా పాస్‌వర్డ్ లేకుండా HTTP లేదా HTTPSని ఉపయోగించండి.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "నియంత్రణను ఎంచుకోవడానికి ఎడమ/కుడి, దాన్ని సక్రియం చేయడానికి సరే మరియు స్క్రోల్ చేయడానికి పైకి/క్రిందికి ఉపయోగించండి.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# తర్వాత భాగంతో సహా పూర్తి లింక్‌ని ఉపయోగించండి. ఇతరులతో పంచుకోవద్దు.",
     "Use Up / Down to scroll. Back to close.":
         "స్క్రోల్ చేయడానికి పైకి / క్రిందికి ఉపయోగించండి. మూసివేయడానికి తిరిగి వెళ్ళు.",
     Username: "వినియోగదారు పేరు",

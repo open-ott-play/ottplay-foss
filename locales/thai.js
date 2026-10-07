@@ -62,13 +62,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "รอการวินิจฉัยเป็นเวลา 10 นาที",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "อนุญาตให้จับภาพหน้าจอเป็นเวลา 10 นาที",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "อนุญาตให้เซิร์ฟเวอร์นี้รวบรวมตัวนับการวินิจฉัยและรีสตาร์ทสตรีมหรือเครื่องเล่นนี้ การเข้าถึงชั่วคราวใช้เวลา 10 นาที การสนับสนุนที่เชื่อถือได้จะยังคงอยู่หลังจากเชื่อมต่อใหม่หรือรีสตาร์ท การจับแต่ละครั้งยังคงหมดอายุหลังจากผ่านไป 10 นาที คอลเลกชันหยุดชั่วคราวขณะซ่อนหรือออฟไลน์",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "อนุญาตให้เซิร์ฟเวอร์นี้รวบรวมการเล่น เครือข่าย และตัวนับอินพุตสำหรับเซสชันเบื้องหน้านี้ ต้อง HTTPS และสิทธิ์ของเซิร์ฟเวอร์ หยุดหลังจากผ่านไป 10 นาที เมื่อซ่อนไว้ หรือเมื่อไม่ได้เชื่อมต่อ",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "อนุญาตให้เซิร์ฟเวอร์นี้ขอรูปภาพเป็นเวลา 10 นาที รูปภาพอาจมีข้อมูลส่วนบุคคล ในเบราว์เซอร์ ให้เลือกแท็บเครื่องเล่นหรือหน้าต่าง การอนุญาตจะสิ้นสุดลงเมื่อโหลดซ้ำหรือตัดการเชื่อมต่อ",
     "Allowlist this Device ID": "อนุญาตอุปกรณ์นี้ ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "เครื่องเล่น HTTPS ไม่สามารถดาวน์โหลดซอร์ส HTTP EPG ได้ ใช้แหล่งที่มา HTTPS",
@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "ข้ามกลับ / ไปข้างหน้า 1 นาที",
     "Background color": "สีพื้นหลัง",
     "Background color of selected item": "สีพื้นหลังของรายการที่เลือก",
+    "Backup state changed": "สถานะการสำรองข้อมูลมีการเปลี่ยนแปลง",
     "Balance, $": "ยอดคงเหลือ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -109,6 +110,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "การทำงานของปุ่ม %1/%2 ในรายการ",
     "Black screen while switching the channel": "หน้าจอสีดำเมื่อเปลี่ยนช่อง",
     Blue: "สีฟ้า",
+    "Bookmark age (days): %1": "อายุของบุ๊กมาร์ก (วัน): %1",
     "Bookmark age: %1 days": "อายุบุ๊กมาร์ก: %1 วัน",
     "Browse folders": "เรียกดูโฟลเดอร์",
     "Buffer Size, s": "ขนาดบัฟเฟอร์,s",
@@ -159,11 +161,14 @@ var keyStrings = {
     "Choose language": "เลือกภาษา",
     "Choose Plex server": "เลือกเซิร์ฟเวอร์ Plex",
     "Choose provider": "เลือกผู้ให้บริการ",
-    Classic: "Classic",
+    Classic: "คลาสสิก",
     "Clear all settings?": "ล้างการตั้งค่าทั้งหมดหรือไม่",
     "Clear settings": "ล้างการตั้งค่า",
     Close: "ปิด",
     "Close PiP": "ปิด PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "การบันทึก/โหลดบนคลาวด์ต้องใช้เฟิร์มแวร์ STB (ไม่ได้ตั้งค่า host_ott)",
+    "Cloud transfer failed": "การถ่ายโอนคลาวด์ล้มเหลว",
     Code: "รหัส",
     Color: "สี",
     "Color spectrum": "สเปกตรัมสี",
@@ -180,6 +185,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "ไม่สามารถโหลดรันไทม์ความเข้ากันได้ เปิดโปรแกรมเล่นขึ้นมาใหม่เพื่อลองอีกครั้ง",
     "Compatible HLS": "รองรับ HLS",
+    "Complete pairing link": "ลิงค์การจับคู่ที่สมบูรณ์",
     "Configure All4you.tv in Settings -> Provider Settings":
         "กำหนดค่า All4you.tv ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -252,22 +258,24 @@ var keyStrings = {
         "กำหนดค่า Шаравоз ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     Connect: "เชื่อมต่อ",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "เชื่อมต่อเซิร์ฟเวอร์คำสั่ง HTTPS ก่อนที่จะอนุญาตภาพหน้าจอ",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "เชื่อมต่อเซิร์ฟเวอร์คำสั่ง HTTPS เพื่อใช้ภาพหน้าจอ",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "เชื่อมต่อรีโมทคอนโทรลเพื่อเปิดใช้งานการวินิจฉัย",
     "Connect this player to a command server first.":
         "เชื่อมต่อเครื่องเล่นนี้กับเซิร์ฟเวอร์คำสั่งก่อน",
+    "Connect to TV": "เชื่อมต่อกับทีวี",
     Connected: "เชื่อมต่อแล้ว",
     "Connected. Waiting for the channel list...":
         "เชื่อมต่อแล้ว กำลังรอรายการช่อง...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "การเชื่อมต่อรีโมทคอนโทรลทำให้เซิร์ฟเวอร์นี้สามารถวินิจฉัยและซ่อมแซมเครื่องเล่นได้ การเข้าถึงยังคงใช้งานได้หลังจากรีสตาร์ทและสิ้นสุดเมื่อคุณยกเลิกการเชื่อมต่อ การบันทึกเพื่อวินิจฉัยแต่ละครั้งจะถูกจำกัดไว้ที่ 10 นาที",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "การเชื่อมต่อการวินิจฉัยระยะไกลสำหรับการเชื่อมต่อรีโมทคอนโทรลที่เปิดใช้งาน",
     "Connecting remote diagnostics for this page.":
         "การเชื่อมต่อการวินิจฉัยระยะไกลสำหรับหน้านี้",
+    "Connecting securely to your TV...": "กำลังเชื่อมต่อกับทีวีของคุณอย่างปลอดภัย...",
     "Connecting to Plex…": "กำลังเชื่อมต่อกับ Plex...",
     "Connecting to Stalker portal...": "กำลังเชื่อมต่อกับพอร์ทัล Stalker...",
     "Connecting...": "กำลังเชื่อมต่อ...",
@@ -284,6 +292,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "ไม่สามารถสร้างคำขอจับคู่ได้ ค้นหาเซิร์ฟเวอร์อีกครั้งเพื่อลองอีกครั้ง",
     "Could not load. Select to retry.": "ไม่สามารถโหลดได้ เลือกเพื่อลองอีกครั้ง",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ไม่สามารถเตรียมข้อความนี้ได้ โปรดย่อให้สั้นลงแล้วลองอีกครั้ง",
+    "Could not protect the private link. Use a different browser.":
+        "ไม่สามารถป้องกันลิงก์ส่วนตัวได้ ใช้เบราว์เซอร์อื่น",
     "Could not save provider settings.": "ไม่สามารถบันทึกการตั้งค่าผู้ให้บริการได้",
     "Could not save the approved command server settings.":
         "ไม่สามารถบันทึกการตั้งค่าเซิร์ฟเวอร์คำสั่งที่ได้รับอนุมัติได้",
@@ -299,6 +311,8 @@ var keyStrings = {
     "Delete category": "ลบหมวดหมู่",
     "Delete channel": "ลบช่อง",
     "Delete list": "ลบรายการ",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ไม่สามารถยืนยันการจัดส่งได้ ตรวจสอบทีวีของคุณหรือลองข้อความเดิมอีกครั้งก่อนที่เซสชันนี้จะหมดอายุ",
     "Demo — moving test pattern": "การสาธิต — รูปแบบการทดสอบการเคลื่อนไหว",
     Description: "คำอธิบาย",
     "Description of remote control buttons": "คำแนะนำปุ่มรีโมทคอนโทรล",
@@ -379,6 +393,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "ป้อน URL ของพอร์ทัล Stalker (เช่น http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "ป้อนหมายเลขเซิร์ฟเวอร์ (%1)",
+    "Enter text": "ใส่ข้อความ",
     "Enter the access code separately, not in the server address.":
         "ป้อนรหัสการเข้าถึงแยกต่างหาก ไม่ใช่ในที่อยู่เซิร์ฟเวอร์",
     "Enter the command server IP or address.": "ป้อนเซิร์ฟเวอร์คำสั่ง IP หรือที่อยู่",
@@ -523,8 +538,10 @@ var keyStrings = {
     "Interface transparency": "อินเตอร์เฟซที่โปร่งใส",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ลิงก์ช่องไม่ถูกต้อง! เข้าโฮสต์แบบเต็มเช่นเดียวกับในสตรีมตู้ URL (เช่น subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "การตอบสนองการตั้งค่าคลาวด์ไม่ถูกต้อง",
     "Invalid protected source configuration":
         "การกำหนดค่าแหล่งที่มาที่ได้รับการป้องกันไม่ถูกต้อง",
+    "Invalid setting": "การตั้งค่าไม่ถูกต้อง",
     "IPTV token": "โทเค็น IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "การตั้งค่า IpStream.one",
@@ -603,6 +620,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ไม่มีโปรแกรมที่ตรงกับช่องและวันที่ของเพลย์ลิสต์ ตรวจสอบแหล่งที่มาและนาฬิกาของอุปกรณ์",
     "No saved settings found": "ไม่พบการตั้งค่าที่บันทึกไว้",
+    "No supported system language. Choose a language.":
+        "ไม่มีภาษาของระบบที่รองรับ เลือกภาษา",
     "Not configured": "ยังไม่ได้กำหนดค่า",
     "Not found": "ไม่พบ",
     "Not reduce video when showing the list (bugfix)":
@@ -617,6 +636,8 @@ var keyStrings = {
     "not set": "ไม่ได้ตั้งค่า",
     Off: "ปิด",
     Ok: "ตกลง",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "มีเพียงทีวีเครื่องนี้เท่านั้นที่สามารถรับข้อความของคุณได้ ลิงก์จะหมดอายุหลังจากผ่านไป 10 นาที",
     Open: "เปิด",
     "Open in PiP": "เปิดใน PiP",
     "Open Plex sign-in page": "เปิดหน้าลงชื่อเข้าใช้ Plex",
@@ -629,6 +650,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / โฮสต์แอป",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "การตั้งค่า OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play อินพุตระยะไกล",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 มีจำหน่ายแล้ว ดาวน์โหลดและติดตั้งทันที?",
     "Overwrite current settings?": "เขียนทับการตั้งค่าปัจจุบันหรือไม่?",
@@ -661,6 +683,7 @@ var keyStrings = {
     Playback: "การเล่น",
     "Player and device info": "ข้อมูลเครื่องเล่นและอุปกรณ์",
     "Player could not start": "เครื่องเล่นไม่สามารถเริ่มได้",
+    "Player default": "การเลือกเริ่มต้นของเครื่องเล่น",
     "Player info:": "ข้อมูลเครื่องเล่น:",
     Playlist: "เพลย์ลิสต์",
     "Playlist file": "ไฟล์เพลย์ลิสต์",
@@ -681,6 +704,8 @@ var keyStrings = {
     Postpaid: "ระบบรายเดือน",
     PROST: "PROST",
     "PROST settings": "การตั้งค่า PROST",
+    "Preferred audio language": "ภาษาเสียงที่ต้องการ",
+    "Preferred subtitle language": "ภาษาคำบรรยายที่ต้องการ",
     Prepaid: "แบบเติมเงิน",
     "Preparing secure remote input...": "กำลังเตรียมอินพุตระยะไกลที่ปลอดภัย...",
     Prev: "ก่อนหน้า",
@@ -711,14 +736,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "รีโมท (ไม่มีปุ่มตัวเลข)",
     "Remote control": "รีโมทคอนโทรล",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "รีโมทคอนโทรลอนุญาตให้ทำการวินิจฉัยได้ พร้อมรับผู้ปฏิบัติงาน.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "รีโมทคอนโทรลอนุญาตให้ทำการวินิจฉัยได้ กำลังรอการเชื่อมต่ออีกครั้ง",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "รีโมทคอนโทรลประกอบด้วยภาพหน้าจอของเครื่องเล่นสื่อ รวมถึงการตั้งค่าต่างๆ รูปภาพอาจมีข้อมูลส่วนตัว แอปพลิเคชันสามารถจับภาพหน้าจอได้โดยตรงโดยไม่ต้องได้รับการอนุมัติเพิ่มเติม ในเบราว์เซอร์ ให้เลือกแท็บหรือหน้าต่างที่จะจับภาพบนอุปกรณ์นี้",
     "Remote diagnostics": "การวินิจฉัยระยะไกล",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "การวินิจฉัยระยะไกลกำลังรวบรวมสำหรับการเชื่อมต่อนี้ (สูงสุด 10 นาทีต่อเซสชัน)",
     "Remote diagnostics is collecting for this page.":
         "กำลังรวบรวมการวินิจฉัยระยะไกลสำหรับหน้านี้",
     "Remote diagnostics is off.": "ปิดการวินิจฉัยระยะไกล",
@@ -732,10 +757,10 @@ var keyStrings = {
         "อินพุตระยะไกลหมดอายุ เปิดเซสชันใหม่เพื่อลองอีกครั้ง",
     "Remote input session is unavailable. Open a new session to try again.":
         "เซสชั่นการป้อนข้อมูลระยะไกลไม่พร้อมใช้งาน เปิดเซสชันใหม่เพื่อลองอีกครั้ง",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "ภาพหน้าจอระยะไกล",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "อนุญาตให้จับภาพหน้าจอระยะไกลได้เป็นเวลา 10 นาที ปิดการตั้งค่าเพื่อจับภาพ",
+    "Remote screenshots are off.": "ภาพหน้าจอระยะไกลปิดอยู่",
     "Remote session expired": "เซสชันระยะไกลหมดอายุแล้ว",
     "Remote text entry": "การป้อนข้อความระยะไกล",
     "Remote text entry denied": "การป้อนข้อความระยะไกลถูกปฏิเสธ",
@@ -763,6 +788,7 @@ var keyStrings = {
     "Resume from archive?": "ดูการออกอากาศที่ผ่านมาต่อหรือไม่",
     Retry: "ลองอีกครั้ง",
     "Retry EPG download": "ลองดาวน์โหลด EPG อีกครั้ง",
+    "Retry same message": "ลองข้อความเดิมอีกครั้ง",
     "Return to previous channel": "กลับไปยังช่องก่อนหน้า",
     Rewind: "เลื่อนย้อนกลับ / ไปข้างหน้า",
     "Rewind step by buttons %1/%2": "ขั้นตอนการกรอกลับสำหรับปุ่ม %1/%2",
@@ -779,19 +805,22 @@ var keyStrings = {
     "Save settings": "บันทึกการตั้งค่า",
     "Save settings and load channel list": "บันทึกการตั้งค่าและโหลดรายการช่อง",
     "Save settings to storage": "บันทึกการตั้งค่าลงพื้นที่เก็บข้อมูล",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "สแกนรหัส QR บนทีวีของคุณ หรือวางลิงก์การจับคู่ส่วนตัวที่สมบูรณ์ด้านล่าง",
     "Scan this QR code with your phone to enter text.":
         "สแกนรหัส QR นี้ด้วยโทรศัพท์ของคุณเพื่อป้อนข้อความ",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ไม่สามารถเริ่มการแชร์หน้าจอได้",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "การแชร์หน้าจอถูกยกเลิกหรือไม่สามารถใช้งานได้",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ไม่สามารถเปิดใช้งานการอนุญาตภาพหน้าจอได้",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "ภาพหน้าจอจะพร้อมใช้งานในขณะที่เชื่อมต่อรีโมทคอนโทรล",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ภาพหน้าจอไม่พร้อมใช้งานบนแพลตฟอร์มนี้",
     Script: "บทภาพยนตร์",
     Search: "ค้นหา",
+    "Search languages": "ค้นหาภาษา",
     "Search programme": "ค้นหารายการ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ไม่สามารถเริ่มอินพุตระยะไกลแบบปลอดภัยได้ โปรดลองอีกครั้งหรือใช้แป้นพิมพ์บนหน้าจอ",
@@ -808,14 +837,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "เลือกแหล่งเทมเพลตเพลย์ลิสต์สำหรับ EPG และโลโก้",
     "Select Stalker portal": "เลือกพอร์ทัล Stalker",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "เลือกแหล่งภาพหน้าจอในเบราว์เซอร์",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "เลือกแท็บหรือหน้าต่างของเครื่องเล่นในกล่องโต้ตอบการแชร์ของเบราว์เซอร์",
     "Send request": "ส่งคำขอ",
     "Send settings": "การตั้งค่าการส่ง",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "ส่งรหัสนี้จากพร็อกซีของคุณในส่วนหัว Authorization: Bearer",
+    "Send to TV": "ส่งไปยังทีวี",
     Server: "เซิร์ฟเวอร์",
     "Server address": "ที่อยู่เซิร์ฟเวอร์",
     "Server address (for example 192.168.1.20:8081)":
@@ -824,10 +853,13 @@ var keyStrings = {
     "Server URL": "เซิร์ฟเวอร์ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "เซิร์ฟเวอร์ไม่พร้อมใช้งาน กำลังลองใหม่โดยอัตโนมัติ ตรวจสอบที่อยู่และการเข้าถึงเครือข่าย",
+    "Session closed. Start a new one from your TV when needed.":
+        "ปิดเซสชันแล้ว เริ่มเซสชันใหม่จากทีวีของคุณเมื่อจำเป็น",
     Set: "นำไปใช้",
     "Set parental code": "ตั้งรหัสการควบคุมโดยผู้ปกครอง",
     "Set timer?": "ตั้งเวลา?",
     Settings: "การตั้งค่า",
+    "Settings changed while editing": "การตั้งค่าเปลี่ยนไปขณะแก้ไข",
     "Settings changed. Discovery was canceled.":
         "การตั้งค่ามีการเปลี่ยนแปลง การค้นพบถูกยกเลิก",
     "Settings copied": "คัดลอกการตั้งค่าแล้ว",
@@ -837,10 +869,14 @@ var keyStrings = {
     "Settings imported": "นำเข้าการตั้งค่าแล้ว",
     "Settings JSON": "การตั้งค่า JSON",
     "Settings loaded from storage": "โหลดการตั้งค่าจากที่จัดเก็บข้อมูล",
+    "Settings received. Restarting player...":
+        "ได้รับการตั้งค่าแล้ว กำลังรีสตาร์ทเครื่องเล่น...",
     "Settings STB": "การตั้งค่า STB",
     "Settings saved": "บันทึกการตั้งค่าแล้ว",
     "Settings saved to storage": "การตั้งค่าถูกบันทึกไว้ในการจัดเก็บข้อมูล",
     "Settings sended!": "ส่งการตั้งค่าแล้ว!",
+    "Settings source changed": "แหล่งการตั้งค่ามีการเปลี่ยนแปลง",
+    "Settings storage rejected write": "ที่เก็บการตั้งค่าปฏิเสธการเขียนข้อมูล",
     "Several command servers were found. Select one below.":
         "พบเซิร์ฟเวอร์คำสั่งหลายตัว เลือกหนึ่งรายการด้านล่าง",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -893,11 +929,11 @@ var keyStrings = {
     "Starting...": "กำลังเริ่ม...",
     Status: "สถานะ",
     Stop: "หยุด",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "หยุดการแชร์เบราว์เซอร์",
     "Stop current capture": "หยุดการบันทึกปัจจุบัน",
     "Stop diagnostics": "หยุดการวินิจฉัย",
     "Stop playback and return to live": "หยุดการเล่นและกลับสู่การถ่ายทอดสด",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "หยุดภาพหน้าจอ",
     "Stream could not be played": "ไม่สามารถเล่นสตรีมได้",
     "Stream type: %1": "ประเภทสตรีม: %1",
     "String for search": "คำค้นหา",
@@ -909,6 +945,7 @@ var keyStrings = {
     "Switch subtitle": "เปลี่ยนคำบรรยาย",
     "Switch to this list": "สลับไปที่รายการนี้",
     "Swop URL": "สลับ URL",
+    "System language": "ภาษาของระบบ",
     "saved on this device": "บันทึกอยู่ในอุปกรณ์นี้แล้ว",
     select: "เลือก",
     small: "ตัวเล็ก",
@@ -917,14 +954,18 @@ var keyStrings = {
     "Tabox settings": "การตั้งค่า Tabox",
     "Text is too long for remote input.":
         "ข้อความยาวเกินไปสำหรับการป้อนข้อมูลระยะไกล",
+    "Text is too long. Please shorten it before sending.":
+        "ข้อความยาวเกินไป กรุณาย่อให้สั้นลงก่อนส่ง",
+    "Text sent. Check your TV to confirm it appeared.":
+        "ส่งข้อความแล้ว ตรวจสอบทีวีของคุณเพื่อยืนยันว่าปรากฏขึ้น",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "แหล่งภาพหน้าจอของเบราว์เซอร์พร้อมแล้ว",
     "The command server discovery URL is invalid.":
         "การค้นพบเซิร์ฟเวอร์คำสั่ง URL ไม่ถูกต้อง",
     "The device ID in the address is invalid.": "อุปกรณ์ ID ในที่อยู่ไม่ถูกต้อง",
     "The discovery response is invalid.": "การตอบสนองการค้นพบไม่ถูกต้อง",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "เบราว์เซอร์นี้ไม่สามารถระบุแหล่งที่มาของภาพหน้าจอที่เลือกได้",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "เบราว์เซอร์นี้ไม่สามารถจับคู่โดยอัตโนมัติได้อย่างปลอดภัย อัปเดตหรือป้อนการตั้งค่าเซิร์ฟเวอร์คำสั่งด้วยตนเอง",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -933,6 +974,10 @@ var keyStrings = {
         "เครื่องเล่น HTTPS นี้ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ HTTP ได้ ใช้เซิร์ฟเวอร์ HTTPS หรือเปิดเครื่องเล่นผ่าน HTTP",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "แอป Play นี้ต้องใช้ HTTPS สอบถามผู้ให้บริการของคุณเกี่ยวกับเพลย์ลิสต์ HTTPS หรือเซิร์ฟเวอร์ URL",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ลิงก์การจับคู่นี้หมดอายุแล้ว เปิดเซสชันใหม่บนทีวีของคุณ",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "เซสชันที่ปลอดภัยนี้ไม่พร้อมใช้งานหรือหมดอายุแล้ว เปิดเซสชันใหม่บนทีวีและใช้ลิงก์ที่สมบูรณ์",
     Timer: "ตัวจับเวลา",
     "Timer: switch to channel?": "ตัวจับเวลา: สลับไปที่ช่องนี้หรือไม่?",
     "Timeshift: one minute back": "เลื่อนเวลาย้อนหลังหนึ่งนาที",
@@ -980,6 +1025,8 @@ var keyStrings = {
         "ใช้ HTTP หรือ HTTPS โดยไม่มีชื่อผู้ใช้หรือรหัสผ่านในที่อยู่",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ใช้ซ้าย/ขวาเพื่อเลือกตัวควบคุม ตกลง เพื่อเปิดใช้งาน และขึ้น/ลงเพื่อเลื่อน",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "ใช้ลิงค์เต็ม รวมถึงส่วนที่อยู่หลัง # ด้วย อย่าแชร์กับคนอื่น",
     "Use Up / Down to scroll. Back to close.": "ใช้ขึ้น / ลงเพื่อเลื่อน กลับมาปิด.",
     Username: "ชื่อผู้ใช้",
     "Username or password is missing.": "ชื่อผู้ใช้หรือรหัสผ่านหายไป",

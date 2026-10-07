@@ -64,13 +64,13 @@ var keyStrings = {
         "Kwe ka nchọpụta nsogbu rụọ ọrụ nkeji 10",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Kwe ka nseta ihuenyo maka nkeji iri",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Kwe ka sava a chịkọta ọnụ ọgụgụ nchọpụta nsogbu ma malitegharịa iyi a ma ọ bụ ihe ọkpụkpọ. Nnweta nwa oge na-adị nkeji 10. Nkwado a tụkwasịrị obi ka dị mgbe ejikọrọ ọzọ ma ọ bụ malitegharịa; nchịkọta ọ bụla ka na-agwụ mgbe nkeji 10 gachara. Nchịkọta na-akwụsị mgbe e zoro ngwa ahụ ma ọ bụ mgbe enweghị njikọ.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Kwe ka sava a chịkọta ọnụ ọgụgụ ọkpụkpọ, netwọk na ntinye maka oge a ngwa dị n'ihu. Achọrọ HTTPS na ikike sava. Ọ na-akwụsị mgbe nkeji 10 gachara, mgbe e zoro ya ma ọ bụ mgbe njikọ kwụsịrị.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Kwe ka ihe nkesa a rịọ onyonyo maka nkeji iri. Foto nwere ike ịnwe ozi nkeonwe. Na ihe nchọgharị, họrọ taabụ ọkpụkpọ ma ọ bụ mpio. Ikike na-agwụ na ibugharị ma ọ bụ kwupu.",
     "Allowlist this Device ID": "Tinye ID ngwaọrụ a na ndepụta ndị a kwadoro",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Ihe ọkpụkpọ HTTPS enweghị ike ibudata isi iyi EPG HTTP. Jiri isi iyi HTTPS.",
@@ -103,6 +103,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Gaa nkeji 1 azụ / n'ihu",
     "Background color": "Agba ndabere",
     "Background color of selected item": "Agba ndabere ihe ahọpụtara",
+    "Backup state changed": "Ọnọdụ ndabere gbanwere",
     "Balance, $": "Ego fọdụrụ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +114,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Ihuenyo ojii mgbe a na-agbanwe ọwa",
     Blue: "Anụnụ anụnụ",
+    "Bookmark age (days): %1": "Afọ ibe edokọbara (ụbọchị): %1",
     "Bookmark age: %1 days": "Afọ akara ibe: ụbọchị %1",
     "Browse folders": "Chọgharịa folda",
     "Buffer Size, s": "Nha ebe nchekwa nwa oge, sekọnd",
@@ -161,11 +163,14 @@ var keyStrings = {
     "Choose language": "Họrọ asụsụ",
     "Choose Plex server": "Họrọ sava Plex",
     "Choose provider": "Họrọ onye na-eweta ọrụ",
-    Classic: "Classic",
+    Classic: "Omenala",
     "Clear all settings?": "Hichapụ ntọala niile?",
     "Clear settings": "Hichapụ ntọala",
     Close: "Mechie",
     "Close PiP": "Mechie PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Ịchekwa na igwe ojii ma ọ bụ ibudata site na ya chọrọ firmware STB (edobeghị host_ott)",
+    "Cloud transfer failed": "Nbufe igwe ojii dara",
     Code: "Koodu",
     Color: "Agba",
     "Color spectrum": "Ụdịdị agba",
@@ -181,6 +186,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Enweghị ike ibugo usoro ndakọrịta. Mepee ihe ọkpụkpọ ọzọ ka ị nwaa.",
     "Compatible HLS": "HLS dabara adaba",
+    "Complete pairing link": "Njikọ njikọ zuru oke",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Hazie All4you.tv na Ntọala -> Ntọala onye na-eweta ọrụ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -253,22 +259,24 @@ var keyStrings = {
         "Hazie Шаравоз na Ntọala -> Ntọala onye na-eweta ọrụ",
     Connect: "Jikọọ",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Jikọọ ihe nkesa iwu HTTPS tupu ekwe ka nseta ihuenyo.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Jikọọ ihe nkesa iwu HTTPS ka iji nseta ihuenyo.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Jikọọ njikwa dịpụrụ adịpụ iji mee nyocha nsogbu.",
     "Connect this player to a command server first.":
         "Buru ụzọ jikọọ ihe ọkpụkpọ a na sava iwu.",
+    "Connect to TV": "Jikọọ na TV",
     Connected: "Ejikọrọ",
     "Connected. Waiting for the channel list...":
         "Ejikọrọ. Ana eche ndepụta ọwa…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Ijikọ njikwa dịpụrụ adịpụ na-enye ihe nkesa a ikike ịchọpụta nsogbu na ịrụzi ihe ọkpụkpọ. Ikike ahụ na-adịgide mgbe ịmalitegharịrị, ọ na-akwụsị mgbe ị kwụsịrị njikọ. Oge ọ bụla a na-anakọta data nyocha anaghị agafe nkeji iri.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Na-ejikọ nyocha dịpụrụ adịpụ maka njikọ njikwa dịpụrụ adịpụ agbanyere.",
     "Connecting remote diagnostics for this page.":
         "Ana ejikọ nchọpụta nsogbu dị anya maka ibe a.",
+    "Connecting securely to your TV...": "Na-ejikọ na TV gị n’ụzọ echekwara...",
     "Connecting to Plex…": "Ana ejikọ na Plex…",
     "Connecting to Stalker portal...": "Ana ejikọ na ọdụ Stalker…",
     "Connecting...": "Ana ejikọ…",
@@ -286,6 +294,10 @@ var keyStrings = {
         "Enweghị ike ịmepụta arịrịọ njikọ ngwaọrụ. Chọọ sava ọzọ ka ị nwaa.",
     "Could not load. Select to retry.":
         "Enweghị ike ibugo. Họrọ ka ị nwaa ọzọ.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Enweghị ike ịkwado ederede a. Biko belata ya wee nwaa ọzọ.",
+    "Could not protect the private link. Use a different browser.":
+        "Enweghị ike ichekwa njikọ nkeonwe. Jiri ihe nchọgharị dị iche.",
     "Could not save provider settings.":
         "Enweghị ike ichekwa ntọala onye na-eweta ọrụ.",
     "Could not save the approved command server settings.":
@@ -303,6 +315,8 @@ var keyStrings = {
     "Delete category": "Hichapụ otu",
     "Delete channel": "Hichapụ ọwa",
     "Delete list": "Hichapụ ndepụta",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Enweghị ike ịkwado nnyefe. Lelee TV gị, ma ọ bụ megharịa otu ozi ahụ tupu nnọkọ a agwụ.",
     "Demo — moving test pattern": "Nnwale — onyonyo nnwale na-emegharị",
     Description: "Nkọwa",
     "Description of remote control buttons": "Ntuziaka bọtịnụ njikwa dị anya",
@@ -386,6 +400,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Tinye URL ọdụ Stalker (dịka http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Tinye nọmba sava (%1).",
+    "Enter text": "Tinye ederede",
     "Enter the access code separately, not in the server address.":
         "Tinye koodu nnweta iche, ọ bụghị n'ime adreesị sava.",
     "Enter the command server IP or address.":
@@ -533,8 +548,11 @@ var keyStrings = {
     "Interface transparency": "Nghọta ihu ngwa",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Njikọ ọwa ezighi ezi! Tinye aha sava zuru ezu dịka ọ dị na URL iyi n'akaụntụ gị (dịka subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Nzaghachi ntọala igwe ojii na-ezighi ezi",
     "Invalid protected source configuration":
         "Nhazi isi iyi echekwara ezighi ezi",
+    "Invalid setting": "Ntọala ezighi ezi",
     "IPTV token": "Akara IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Ntọala IpStream.one",
@@ -613,6 +631,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Enweghị mmemme dabara na ọwa na ụbọchị ndepụta ọkpụkpọ. Lelee isi iyi na elekere ngwaọrụ.",
     "No saved settings found": "Achọtaghị ntọala echekwara",
+    "No supported system language. Choose a language.":
+        "Enweghị asụsụ sistemụ akwadoro. Họrọ asụsụ.",
     "Not configured": "Ahazibeghị",
     "Not found": "Achọtaghị",
     "Not reduce video when showing the list (bugfix)":
@@ -628,6 +648,8 @@ var keyStrings = {
     "not set": "etinyebeghị",
     Off: "Gbanyụrụ",
     Ok: "Ọ dị mma",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Naanị TV a nwere ike ịnara ozi gị. Njikọ ahụ ga-agwụ mgbe nkeji iri gachara.",
     Open: "Mepee",
     "Open in PiP": "Mepee na PiP",
     "Open Plex sign-in page": "Mepee ibe nbanye Plex",
@@ -640,6 +662,7 @@ var keyStrings = {
     "OTT / APP host": "Sava OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ntọala OTT Prime ONLINE",
+    "OTT-play remote input": "Ntinye ederede dịpụrụ adịpụ OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 dị. Budata ma wụnye ugbu a?",
     "Overwrite current settings?": "Dochie ntọala ugbu a?",
@@ -672,6 +695,7 @@ var keyStrings = {
     Playback: "Ọkpụkpọ",
     "Player and device info": "Ozi ihe ọkpụkpọ na ngwaọrụ",
     "Player could not start": "Ihe ọkpụkpọ enweghị ike ịmalite",
+    "Player default": "Nhọrọ ndabara nke ihe ọkpụkpọ mgbasa ozi",
     "Player info:": "Ozi ihe ọkpụkpọ:",
     Playlist: "Ndepụta ọkpụkpọ",
     "Playlist file": "Faịlụ ndepụta ọkpụkpọ",
@@ -693,6 +717,8 @@ var keyStrings = {
     Postpaid: "Ịkwụ ụgwọ mgbe eji ọrụ",
     PROST: "PROST",
     "PROST settings": "Ntọala PROST",
+    "Preferred audio language": "Asụsụ ọdịyo masịrị",
+    "Preferred subtitle language": "Asụsụ ndepụta okwu masịrị",
     Prepaid: "Ịkwụ ụgwọ tupu eji ọrụ",
     "Preparing secure remote input...":
         "Ana akwadebe ntinye dị anya echekwara…",
@@ -725,14 +751,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Njikwa dị anya (enweghị bọtịnụ nọmba)",
     "Remote control": "Njikwa dị anya",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Njikwa anya na-enye ikike nyocha. Njikere maka onye ọrụ.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Njikwa anya na-enye ikike nyocha. Na-eche ka ị jikọọ ọzọ.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Njikwa dịpụrụ adịpụ gụnyere nseta ihuenyo nke ihe ọkpụkpọ mgbasa ozi, gụnyere ntọala ya. Foto nwere ike ịnwe ozi nkeonwe. Ngwa ahụ nwere ike weghara nseta ihuenyo ozugbo na-enweghị nkwado ọzọ. N'ihe nchọgharị, họrọ taabụ ma ọ bụ mpio iji weghara na ngwaọrụ a.",
     "Remote diagnostics": "Nchọpụta nsogbu dị anya",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "A na-anakọta data nyocha dịpụrụ adịpụ maka njikọ a (ihe ruru nkeji iri kwa nnọkọ).",
     "Remote diagnostics is collecting for this page.":
         "Nchọpụta nsogbu dị anya na-achịkọta data maka ibe a.",
     "Remote diagnostics is off.": "Nchọpụta nsogbu dị anya gbanyụrụ.",
@@ -746,10 +772,10 @@ var keyStrings = {
         "Oge ntinye dị anya agwụla. Mepee nnọkọ ọhụrụ ka ị nwaa ọzọ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Nnọkọ ntinye dị anya adịghị. Mepee nnọkọ ọhụrụ ka ị nwaa ọzọ.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Nseta ihuenyo dị anya",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "A na-ahapụ nseta ihuenyo dị anya maka nkeji iri. Mechie ntọala iji weghara.",
+    "Remote screenshots are off.": "Agbanyụrụ nseta ihuenyo dị anya.",
     "Remote session expired": "Oge nnọkọ dị anya agwụla",
     "Remote text entry": "Ntinye ederede dị anya",
     "Remote text entry denied": "Ajụrụ ntinye ederede dị anya",
@@ -777,6 +803,7 @@ var keyStrings = {
     "Resume from archive?": "Gaa n'ihu site na nchekwa mmemme?",
     Retry: "Nwaa ọzọ",
     "Retry EPG download": "Nwaa nbudata EPG ọzọ",
+    "Retry same message": "Nwagharịa otu ozi ahụ",
     "Return to previous channel": "Laghachi na ọwa gara aga",
     Rewind: "Gaa n'oge dị na vidiyo",
     "Rewind step by buttons %1/%2": "Nzọụkwụ ịlaghachi azụ maka bọtịnụ %1/%2",
@@ -793,19 +820,22 @@ var keyStrings = {
     "Save settings": "Chekwaa ntọala",
     "Save settings and load channel list": "Chekwaa ntọala ma bugo ndepụta ọwa",
     "Save settings to storage": "Chekwaa ntọala na nchekwa",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Nyochaa koodu QR na TV gị, ma ọ bụ mado njikọ njikọ nzuzo zuru oke n'okpuru.",
     "Scan this QR code with your phone to enter text.":
         "Nyochaa koodu QR a na ekwentị gị ka ị tinye ederede.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Nkekọrịta ihuenyo enweghị ike ịmalite.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Kagbuo ikesa ihuenyo ma ọ bụ adịghị.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Enweghị ike ịgbanye ikike nseta ihuenyo.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Nseta ihuenyo dị mgbe ejikọrọ njikwa dịpụrụ adịpụ.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Nseta ihuenyo adịghị n’elu ikpo okwu a.",
     Script: "Edemede ihe nkiri",
     Search: "Chọọ",
+    "Search languages": "Chọọ asụsụ",
     "Search programme": "Chọọ mmemme",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Ntinye dị anya echekwara enweghị ike ịmalite. Nwaa ọzọ ma ọ bụ jiri kiiboodu ihuenyo.",
@@ -823,13 +853,14 @@ var keyStrings = {
         "Họrọ isi iyi ndebiri ndepụta ọkpụkpọ maka EPG na akara ngosi",
     "Select Stalker portal": "Họrọ ọdụ Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Họrọ isi mmalite nseta ihuenyo na ihe nchọgharị",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Họrọ taabụ ọkpụkpọ ma ọ bụ mpio dị na mkparịta ụka nkekọrịta ihe nchọgharị.",
     "Send request": "Zipụ arịrịọ",
     "Send settings": "Zipụ ntọala",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Zipụ koodu a site na sava nnọchite gị na nkụnye Authorization: Bearer.",
+    "Send to TV": "Ziga na TV",
     Server: "Sava",
     "Server address": "Adreesị sava",
     "Server address (for example 192.168.1.20:8081)":
@@ -838,10 +869,13 @@ var keyStrings = {
     "Server URL": "URL sava",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Sava adịghị. Ana anwale ọzọ na akpaaka; lelee adreesị na nnweta netwọk ya.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Emechiri nnọkọ. Malite nke ọhụrụ site na TV gị mgbe achọrọ ya.",
     Set: "Tọọ",
     "Set parental code": "Tọọ koodu nchịkwa nne na nna",
     "Set timer?": "Tọọ oge ngụkọta?",
     Settings: "Ntọala",
+    "Settings changed while editing": "Ntọala gbanwere mgbe a na-edezi",
     "Settings changed. Discovery was canceled.":
         "Ntọala agbanweela. Akagbuola ọchụchọ sava.",
     "Settings copied": "Edepụtala ntọala",
@@ -851,10 +885,14 @@ var keyStrings = {
     "Settings imported": "Ebubatala ntọala",
     "Settings JSON": "JSON ntọala",
     "Settings loaded from storage": "Ebugoro ntọala site na nchekwa",
+    "Settings received. Restarting player...":
+        "Enwetara ntọala. Na-amalitegharị ọkpụkpọ...",
     "Settings STB": "Ntọala STB",
     "Settings saved": "Echekwara ntọala",
     "Settings saved to storage": "Echekwara ntọala na nchekwa",
     "Settings sended!": "Ezipụla ntọala!",
+    "Settings source changed": "Agbanwere isi mmalite ntọala",
+    "Settings storage rejected write": "Ebe nchekwa ntọala jụrụ ide data",
     "Several command servers were found. Select one below.":
         "Achọtala ọtụtụ sava iwu. Họrọ otu n'okpuru.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -907,12 +945,12 @@ var keyStrings = {
     "Starting...": "Ana amalite…",
     Status: "Ọnọdụ",
     Stop: "Kwụsị",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Kwụsị ikesa ihe nchọgharị",
     "Stop current capture": "Kwụsị nchịkọta ugbu a",
     "Stop diagnostics": "Kwụsị nchọpụta nsogbu",
     "Stop playback and return to live":
         "Kwụsị ọkpụkpọ ma laghachi na mgbasa ozugbo",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Kwụsị nseta ihuenyo",
     "Stream could not be played": "Enweghị ike ịkpọ iyi",
     "Stream type: %1": "Ụdị iyi: %1",
     "String for search": "Ajụjụ ọchụchọ",
@@ -924,6 +962,7 @@ var keyStrings = {
     "Switch subtitle": "Gbanwee ndepụta okwu",
     "Switch to this list": "Gbanwee na ndepụta a",
     "Swop URL": "URL SWOP",
+    "System language": "Asụsụ sistemu",
     "saved on this device": "echekwara na ngwaọrụ a",
     select: "họrọ",
     small: "obere",
@@ -932,15 +971,19 @@ var keyStrings = {
     "Tabox settings": "Ntọala Tabox",
     "Text is too long for remote input.":
         "Ederede toro oke maka ntinye dị anya.",
+    "Text is too long. Please shorten it before sending.":
+        "Ederede dị ogologo. Biko belata ya tupu izipu ya.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Ederede ezigara. Lelee TV gị iji gosi na ọ pụtara.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Isi nseta ihuenyo ihe nchọgharị adịla njikere.",
     "The command server discovery URL is invalid.":
         "URL ọchụchọ sava iwu ezighi ezi.",
     "The device ID in the address is invalid.":
         "ID ngwaọrụ n'adreesị ezighi ezi.",
     "The discovery response is invalid.": "Nzaghachi ọchụchọ ezighi ezi.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Nchọgharị a enweghị ike ịmata ebe nseta ihuenyo ahọpụtara.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ihe nchọgharị a enweghị ike ijikọ ngwaọrụ na akpaaka n'ụzọ echekwara. Melite ya ma ọ bụ tinye ntọala sava iwu n'aka.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -949,6 +992,10 @@ var keyStrings = {
         "Ihe ọkpụkpọ HTTPS a enweghị ike ijikọ na sava HTTP. Jiri sava HTTPS ma ọ bụ mepee ihe ọkpụkpọ site na HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ngwa Play a chọrọ HTTPS. Rịọ onye na-eweta ọrụ maka ndepụta ọkpụkpọ HTTPS ma ọ bụ URL sava.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Njikọ njikọ a kubiela. Mepee nnọkọ ọhụrụ na TV gị.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Nnọkọ echekwara a adịghị ma ọ bụ oge ya agwụla. Mepee nnọkọ ọhụrụ na TV wee jiri njikọ ya zuru ezu.",
     Timer: "Oge ngụkọta",
     "Timer: switch to channel?": "Oge ngụkọta: gbanwee na ọwa a?",
     "Timeshift: one minute back": "Mgbanwe oge: otu nkeji azụ",
@@ -998,6 +1045,8 @@ var keyStrings = {
         "Jiri HTTP ma ọ bụ HTTPS na-enweghị aha njirimara ma ọ bụ okwuntughe n'adreesị.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Jiri AKA EKPE/AKA NRI họrọ njikwa, Ọ DỊ MMA iji rụọ ya ọrụ, ELU/ALA iji pịgharịa.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Jiri njikọ zuru ezu, gụnyere akụkụ dị n’azụ #. Ekekọrịtala ya na onye ọ bụla ọzọ.",
     "Use Up / Down to scroll. Back to close.":
         "Jiri Elu / Ala pịgharịa. Laghachi iji mechie.",
     Username: "Aha njirimara",

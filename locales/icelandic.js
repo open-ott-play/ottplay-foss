@@ -62,13 +62,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Leyfa greiningu í 10 mínútur",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Leyfa skjámyndir í 10 mínútur",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Leyfðu þessum þjóni að safna greiningarteljurum og endurræsa þennan straum eða spilarann. Tímabundinn aðgangur varir í 10 mínútur. Traust fjarþjónusta helst tiltæk eftir endurtengingu eða endurræsingu; hver söfnun rennur samt út eftir 10 mínútur. Söfnun er gerð hlé á þegar forritið er falið eða ótengt.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Leyfðu þessum þjóni að safna teljurum fyrir spilun, net og inntak meðan þessi lota er í forgrunni. HTTPS og heimild þjónsins eru nauðsynleg. Söfnun stöðvast eftir 10 mínútur, þegar síðan er falin eða tengingin rofnar.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Leyfa þessum netþjóni að biðja um myndir í 10 mínútur. Myndir geta innihaldið persónulegar upplýsingar. Í vafra skaltu velja spilaraflipann eða gluggann. Leyfi lýkur við endurhleðslu eða aftengingu.",
     "Allowlist this Device ID": "Leyfa þetta tækisauðkenni",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS-spilari getur ekki sótt HTTP-uppsprettu EPG. Notaðu HTTPS-uppsprettu.",
@@ -99,6 +99,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Fara til baka / áfram um 1 mínútu",
     "Background color": "Bakgrunnslitur",
     "Background color of selected item": "Bakgrunnslitur valins atriðis",
+    "Backup state changed": "Afritunarstöðu breytt",
     "Balance, $": "Inneign, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Svartur skjár þegar skipt er um rás",
     Blue: "Blár",
+    "Bookmark age (days): %1": "Aldur bókamerkis (dagar): %1",
     "Bookmark age: %1 days": "Aldur bókamerkis: %1 dagar",
     "Browse folders": "Fletta í möppum",
     "Buffer Size, s": "Stærð biðminnis, sek",
@@ -159,11 +161,14 @@ var keyStrings = {
     "Choose language": "Velja tungumál",
     "Choose Plex server": "Velja Plex-þjón",
     "Choose provider": "Velja þjónustuaðila",
-    Classic: "Classic",
+    Classic: "Klassískt",
     "Clear all settings?": "Hreinsa allar stillingar?",
     "Clear settings": "Hreinsa stillingar",
     Close: "Loka",
     "Close PiP": "Loka PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Vistun í skýi og hleðsla úr skýi krefst STB-fastbúnaðar (host_ott er ekki stillt)",
+    "Cloud transfer failed": "Flutningur í skýi mistókst",
     Code: "Kóði",
     Color: "Litur",
     "Color spectrum": "Litróf",
@@ -180,6 +185,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Ekki tókst að hlaða samhæfisumhverfi. Opnaðu spilarann aftur til að reyna á ný.",
     "Compatible HLS": "Samhæft HLS",
+    "Complete pairing link": "Heill pörunartengillinn",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Stilla All4you.tv í Stillingar → Stillingar þjónustuaðila",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -252,21 +258,24 @@ var keyStrings = {
         "Stilla Шаравоз í Stillingar → Stillingar þjónustuaðila",
     Connect: "Tengjast",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Tengdu HTTPS stjórnunarþjón áður en þú leyfir skjámyndir.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Tengdu HTTPS stjórnunarþjón til að nota skjámyndir.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Tengdu fjarstýringu til að virkja greiningu.",
     "Connect this player to a command server first.":
         "Tengdu þennan spilara fyrst við skipanaþjón.",
+    "Connect to TV": "Tengist við sjónvarp",
     Connected: "Tengt",
     "Connected. Waiting for the channel list...": "Tengt. Bíð eftir rásalista…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Tenging fjarstýringar veitir þessum netþjóni heimild til að greina og gera við spilarann. Aðgangur er áfram í boði eftir endurræsingu og lýkur þegar þú aftengir þig. Hver greiningartaka er takmörkuð við 10 mínútur.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Að tengja fjargreiningu fyrir virkjaða fjarstýringartengingu.",
     "Connecting remote diagnostics for this page.":
         "Tengi fjargreiningu fyrir þessa síðu.",
+    "Connecting securely to your TV...":
+        "Tengist á öruggan hátt við sjónvarpið þitt...",
     "Connecting to Plex…": "Tengist Plex…",
     "Connecting to Stalker portal...": "Tengist Stalker-gátt…",
     "Connecting...": "Tengist…",
@@ -284,6 +293,10 @@ var keyStrings = {
         "Ekki tókst að búa til pörunarbeiðni. Finndu þjóninn aftur til að reyna á ný.",
     "Could not load. Select to retry.":
         "Ekki tókst að hlaða. Veldu til að reyna aftur.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Gat ekki útbúið þennan texta. Vinsamlega styttu það og reyndu aftur.",
+    "Could not protect the private link. Use a different browser.":
+        "Gat ekki verndað einkatengilinn. Notaðu annan vafra.",
     "Could not save provider settings.":
         "Ekki tókst að vista stillingar þjónustuaðila.",
     "Could not save the approved command server settings.":
@@ -301,6 +314,8 @@ var keyStrings = {
     "Delete category": "Eyða flokki",
     "Delete channel": "Eyða rás",
     "Delete list": "Eyða lista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Ekki tókst að staðfesta afhendingu. Athugaðu sjónvarpið þitt eða reyndu sömu skilaboðin aftur áður en þessi lota rennur út.",
     "Demo — moving test pattern": "Sýnidæmi — prófunarmynstur á hreyfingu",
     Description: "Lýsing",
     "Description of remote control buttons":
@@ -384,6 +399,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Sláðu inn vefslóð Stalker-gáttar (t.d. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Sláðu inn númer þjóns (%1).",
+    "Enter text": "Sláðu inn texta",
     "Enter the access code separately, not in the server address.":
         "Sláðu aðgangskóðann inn sérstaklega, ekki í vistfang þjónsins.",
     "Enter the command server IP or address.":
@@ -530,8 +546,10 @@ var keyStrings = {
     "Interface transparency": "Gagnsæi viðmóts",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ógildur rásartengill! Sláðu inn fullt hýsilheiti úr streymisslóðinni á reikningnum (t.d. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Ógilt svar skýjastillinga",
     "Invalid protected source configuration":
         "Ógildar stillingar varinnar uppsprettu",
+    "Invalid setting": "Ógild stilling",
     "IPTV token": "IPTV-aðgangsteikn",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Stillingar fyrir IpStream.one",
@@ -610,6 +628,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Engir þættir pössuðu við rásir og dagsetningar spilunarlistans. Athugaðu uppsprettuna og klukku tækisins.",
     "No saved settings found": "Engar vistaðar stillingar fundust",
+    "No supported system language. Choose a language.":
+        "Ekkert tungumál kerfisins er stutt. Veldu tungumál.",
     "Not configured": "Ekki uppsett",
     "Not found": "Fannst ekki",
     "Not reduce video when showing the list (bugfix)":
@@ -625,6 +645,8 @@ var keyStrings = {
     "not set": "ekki stillt",
     Off: "slökkt",
     Ok: "Í lagi",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Aðeins þetta sjónvarp getur samþykkt skilaboðin þín. Tengillinn rennur út eftir 10 mínútur.",
     Open: "Opna",
     "Open in PiP": "Opna í PiP",
     "Open Plex sign-in page": "Opna innskráningarsíðu Plex",
@@ -637,6 +659,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP-hýsill",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Stillingar fyrir OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play fjarskráning texta",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 er tiltækt. Sækja og setja upp núna?",
     "Overwrite current settings?": "Skrifa yfir núverandi stillingar?",
@@ -669,6 +692,7 @@ var keyStrings = {
     Playback: "Spilun",
     "Player and device info": "Upplýsingar um spilara og tæki",
     "Player could not start": "Ekki tókst að ræsa spilara",
+    "Player default": "Sjálfgefið val spilarans",
     "Player info:": "Upplýsingar um spilara:",
     Playlist: "Spilunarlisti",
     "Playlist file": "Spilunarlistaskrá",
@@ -690,6 +714,8 @@ var keyStrings = {
     Postpaid: "Eftirágreitt",
     PROST: "PROST",
     "PROST settings": "Stillingar fyrir PROST",
+    "Preferred audio language": "Valið hljóðtungumál",
+    "Preferred subtitle language": "Ákjósanlegt textamál",
     Prepaid: "Fyrirframgreitt",
     "Preparing secure remote input...": "Undirbý öruggan fjarinnslátt…",
     Prev: "Fyrra",
@@ -722,14 +748,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Fjarstýring (án talnahnappa)",
     "Remote control": "Fjarstýring",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Fjarstýring heimilar greiningu. Tilbúið fyrir rekstraraðila.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Fjarstýring heimilar greiningu. Bíður eftir að tengjast aftur.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Fjarstýringin inniheldur skjáskot af fjölmiðlaspilaranum, þar á meðal stillingar hans. Myndir geta innihaldið persónulegar upplýsingar. Forritið getur tekið skjámyndir beint án aukasamþykkis. Í vafra skaltu velja flipann eða gluggann til að taka á þessu tæki.",
     "Remote diagnostics": "Fjargreining",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Fjargreining er að safna fyrir þessa tengingu (allt að 10 mínútur á lotu).",
     "Remote diagnostics is collecting for this page.":
         "Fjargreining safnar gögnum fyrir þessa síðu.",
     "Remote diagnostics is off.": "Slökkt er á fjargreiningu.",
@@ -743,10 +769,10 @@ var keyStrings = {
         "Fjarinnsláttur rann út. Opnaðu nýja lotu til að reyna aftur.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Fjarinnsláttarlota er ekki tiltæk. Opnaðu nýja lotu til að reyna aftur.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Fjarskjámyndir",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Fjarskjámyndir eru leyfðar í 10 mínútur. Lokaðu stillingum til að taka.",
+    "Remote screenshots are off.": "Slökkt er á fjarskjámyndum.",
     "Remote session expired": "Fjarlota rann út",
     "Remote text entry": "Fjarinnsláttur texta",
     "Remote text entry denied": "Fjarinnslætti texta hafnað",
@@ -775,6 +801,7 @@ var keyStrings = {
     "Resume from archive?": "Halda áfram úr safni?",
     Retry: "Reyna aftur",
     "Retry EPG download": "Sækja EPG aftur",
+    "Retry same message": "Reyndu aftur sömu skilaboð",
     "Return to previous channel": "Fara aftur á fyrri rás",
     Rewind: "Færa spilunarstöðu",
     "Rewind step by buttons %1/%2": "Stökk fyrir hnappa %1/%2",
@@ -792,19 +819,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Vista stillingar og hlaða rásalista",
     "Save settings to storage": "Vista stillingar í geymslu",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skannaðu QR kóðann á sjónvarpinu þínu, eða límdu allan einkapörunartengil hans hér að neðan.",
     "Scan this QR code with your phone to enter text.":
         "Skannaðu þennan QR-kóða með símanum til að slá inn texta.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Ekki tókst að hefja skjádeilingu.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Hætt var við skjádeilingu eða er ekki tiltæk.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ekki var hægt að virkja skjámyndaheimild.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Skjáskot eru fáanleg á meðan fjarstýring er tengd.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Skjámyndir eru ekki tiltækar á þessum vettvangi.",
     Script: "Handrit",
     Search: "Leita",
+    "Search languages": "Leita að tungumálum",
     "Search programme": "Leita að þætti",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Ekki tókst að ræsa öruggan fjarinnslátt. Reyndu aftur eða notaðu skjályklaborðið.",
@@ -821,14 +851,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Veldu uppsprettu sniðmáts spilunarlista fyrir EPG og rásamerki",
     "Select Stalker portal": "Veldu Stalker-gátt",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "Veldu uppruna skjámynda í vafra",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Veldu spilaraflipann eða gluggann í samnýtingarglugganum í vafranum.",
     "Send request": "Senda beiðni",
     "Send settings": "Senda stillingar",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Sendu þennan kóða frá milliþjóninum þínum í hausnum Authorization: Bearer.",
+    "Send to TV": "Senda í sjónvarp",
     Server: "Þjónn",
     "Server address": "Vistfang þjóns",
     "Server address (for example 192.168.1.20:8081)":
@@ -837,10 +867,14 @@ var keyStrings = {
     "Server URL": "Vefslóð þjóns",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Þjónn er ekki tiltækur. Reyni sjálfkrafa aftur; athugaðu vistfang og netaðgang.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Lotunni er lokið. Byrjaðu nýja lotu í sjónvarpinu þegar þörf krefur.",
     Set: "Nota",
     "Set parental code": "Stilla foreldrakóða",
     "Set timer?": "Stilla tímastilli?",
     Settings: "Stillingar",
+    "Settings changed while editing":
+        "Stillingarnar breyttust meðan á breytingum stóð",
     "Settings changed. Discovery was canceled.":
         "Stillingar breyttust. Leit var hætt.",
     "Settings copied": "Stillingar afritaðar",
@@ -850,10 +884,14 @@ var keyStrings = {
     "Settings imported": "Stillingar fluttar inn",
     "Settings JSON": "Stillinga-JSON",
     "Settings loaded from storage": "Stillingar hlaðnar úr geymslu",
+    "Settings received. Restarting player...":
+        "Stillingar mótteknar. Endurræsir spilara...",
     "Settings STB": "STB-stillingar",
     "Settings saved": "Stillingar vistaðar",
     "Settings saved to storage": "Stillingar vistaðar í geymslu",
     "Settings sended!": "Stillingar sendar!",
+    "Settings source changed": "Uppspretta stillinga breytt",
+    "Settings storage rejected write": "Stillingageymslan hafnaði skrifun",
     "Several command servers were found. Select one below.":
         "Nokkrir skipanaþjónar fundust. Veldu einn hér fyrir neðan.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -907,12 +945,12 @@ var keyStrings = {
     "Starting...": "Ræsi…",
     Status: "Staða",
     Stop: "Stöðva",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Hættu að deila vafra",
     "Stop current capture": "Stöðva núverandi söfnun",
     "Stop diagnostics": "Stöðva greiningu",
     "Stop playback and return to live":
         "Stöðva spilun og fara í beina útsendingu",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Stöðva skjámyndir",
     "Stream could not be played": "Ekki tókst að spila straum",
     "Stream type: %1": "Tegund straums: %1",
     "String for search": "Leitartexti",
@@ -923,7 +961,8 @@ var keyStrings = {
     "Switch sound track": "Skipta um hljóðrás",
     "Switch subtitle": "Skipta um skjátexta",
     "Switch to this list": "Skipta yfir á þennan lista",
-    "Swop URL": "Swop URL",
+    "Swop URL": "Swop-vefslóð",
+    "System language": "Kerfismál",
     "saved on this device": "vistað á þessu tæki",
     select: "velja",
     small: "lítið",
@@ -932,15 +971,19 @@ var keyStrings = {
     "Tabox settings": "Stillingar fyrir Tabox",
     "Text is too long for remote input.":
         "Textinn er of langur fyrir fjarinnslátt.",
+    "Text is too long. Please shorten it before sending.":
+        "Textinn er of langur. Vinsamlega styttu hana áður en þú sendir.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Texti sendur. Athugaðu sjónvarpið þitt til að staðfesta að það birtist.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Uppspretta skjámynda vafrans er tilbúin.",
     "The command server discovery URL is invalid.":
         "Vefslóð fyrir leit að skipanaþjóni er ógild.",
     "The device ID in the address is invalid.":
         "Tækisauðkennið í vistfanginu er ógilt.",
     "The discovery response is invalid.": "Svar við leit er ógilt.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Þessi vafri getur ekki borið kennsl á valda skjámyndauppsprettu.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Þessi vafri getur ekki parað sjálfkrafa á öruggan hátt. Uppfærðu hann eða sláðu inn stillingar skipanaþjóns handvirkt.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -949,6 +992,10 @@ var keyStrings = {
         "Þessi HTTPS-spilari getur ekki tengst HTTP-þjóni. Notaðu HTTPS-þjón eða opnaðu spilarann yfir HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Þetta Play-forrit krefst HTTPS. Biddu þjónustuaðilann um HTTPS-spilunarlista eða vefslóð þjóns.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Þessi pörunartengill er útrunninn. Opnaðu nýja lotu í sjónvarpinu þínu.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Þessi örugga lota er ekki tiltæk eða útrunnin. Opnaðu nýja lotu í sjónvarpinu og notaðu allan hlekkinn.",
     Timer: "Tímastillir",
     "Timer: switch to channel?": "Tímastillir: skipta yfir á þessa rás?",
     "Timeshift: one minute back": "Fara eina mínútu til baka",
@@ -997,6 +1044,8 @@ var keyStrings = {
         "Notaðu HTTP eða HTTPS án notandanafns eða lykilorðs í vistfanginu.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Notaðu VINSTRI/HÆGRI til að velja stjórnhnapp, OK til að virkja hann og UPP/NIÐUR til að skruna.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Notaðu allan hlekkinn, þar á meðal hlutann á eftir #. Ekki deila því með öðrum.",
     "Use Up / Down to scroll. Back to close.":
         "Notaðu Upp/Niður til að skruna. Til baka til að loka.",
     Username: "Notandanafn",

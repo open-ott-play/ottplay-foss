@@ -63,13 +63,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Pustite diagnostiko 10 minut",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Dovoli posnetke zaslona 10 minut",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Dovolite temu strežniku zbiranje diagnostičnih števcev in znova zaženite ta tok ali predstavnostni predvajalnik. Začasni dostop traja 10 minut. Zaupanja vredna podpora ostane na voljo po ponovnem povezovanju ali ponovnem zagonu; vsak zajem še vedno poteče po 10 minutah. Zbiranje se zaustavi, ko je skrito ali brez povezave.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Dovoli temu strežniku zbiranje števcev predvajanja, omrežja in vnosa za to sejo v ospredju. Zahteva HTTPS in dovoljenje strežnika. Ustavi se po 10 minutah, ko je skrit ali ko je povezava prekinjena.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Dovolite temu strežniku, da zahteva slike 10 minut. Slike lahko vsebujejo osebne podatke. V brskalniku izberite zavihek ali okno predvajalnika. Dovoljenje preneha ob ponovnem nalaganju ali prekinitvi povezave.",
     "Allowlist this Device ID": "Dodaj ID te naprave na seznam dovoljenih",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Medijski predvajalnik HTTPS ne more prenesti vira HTTP EPG. Uporabite vir HTTPS.",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Preskoči nazaj/naprej 1 minuto",
     "Background color": "Barva ozadja",
     "Background color of selected item": "Barva ozadja izbranega elementa",
+    "Backup state changed": "Stanje varnostne kopije spremenjeno",
     "Balance, $": "Stanje, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +112,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Črn zaslon pri preklopu kanalov",
     Blue: "Modra",
+    "Bookmark age (days): %1": "Starost zaznamka (dnevi): %1",
     "Bookmark age: %1 days": "Starost zaznamka: %1 dni",
     "Browse folders": "Brskanje po mapah",
     "Buffer Size, s": "Velikost medpomnilnika, s",
@@ -166,6 +168,9 @@ var keyStrings = {
     "Clear settings": "Počisti nastavitve",
     Close: "Zapri",
     "Close PiP": "Zapri PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Shranjevanje/nalaganje v oblak zahteva vdelano programsko opremo STB (host_ott ni nastavljen)",
+    "Cloud transfer failed": "Prenos v oblak ni uspel",
     Code: "Koda",
     Color: "barva",
     "Color spectrum": "Barvni spekter",
@@ -184,6 +189,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Združljivostnega izvajalnega okolja ni bilo mogoče naložiti. Znova odprite predvajalnik medijev, da poskusite znova.",
     "Compatible HLS": "Združljivo HLS",
+    "Complete pairing link": "Celotna povezava za seznanjanje",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurirajte All4you.tv v Nastavitve -> Nastavitve ponudnika",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -256,22 +262,24 @@ var keyStrings = {
         "Konfigurirajte Шаравоз v Nastavitve -> Nastavitve ponudnika",
     Connect: "Povežite se",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Povežite ukazni strežnik HTTPS, preden dovolite posnetke zaslona.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Povežite ukazni strežnik HTTPS za uporabo posnetkov zaslona.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Povežite oddaljeno upravljanje, da omogočite diagnostiko.",
     "Connect this player to a command server first.":
         "Najprej povežite ta medijski predvajalnik z ukaznim strežnikom.",
+    "Connect to TV": "Priključite na TV",
     Connected: "Povezan",
     "Connected. Waiting for the channel list...":
         "Povezan. Čakanje na seznam kanalov ...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Povezava oddaljenega upravljanja pooblasti ta strežnik za diagnosticiranje in popravilo predvajalnika. Dostop ostane na voljo po ponovnem zagonu in se konča, ko prekinete povezavo. Vsak zajem diagnostičnih podatkov je omejen na 10 minut.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Povezovanje oddaljene diagnostike za omogočeno povezavo oddaljenega upravljanja.",
     "Connecting remote diagnostics for this page.":
         "Povezovanje oddaljene diagnostike za to stran.",
+    "Connecting securely to your TV...": "Varna povezava s televizorjem ...",
     "Connecting to Plex…": "Povezovanje z Plex ...",
     "Connecting to Stalker portal...": "Povezovanje s portalom Stalker ...",
     "Connecting...": "Povezovanje ...",
@@ -290,6 +298,10 @@ var keyStrings = {
         "Ni bilo mogoče ustvariti zahteve za seznanjanje. Ponovno poiščite strežnik, da poskusite znova.",
     "Could not load. Select to retry.":
         "Ni bilo mogoče naložiti. Izberite za ponovni poskus.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Tega besedila ni bilo mogoče pripraviti. Skrajšajte ga in poskusite znova.",
+    "Could not protect the private link. Use a different browser.":
+        "Ni bilo mogoče zaščititi zasebne povezave. Uporabite drug brskalnik.",
     "Could not save provider settings.":
         "Nastavitev ponudnika ni bilo mogoče shraniti.",
     "Could not save the approved command server settings.":
@@ -307,6 +319,8 @@ var keyStrings = {
     "Delete category": "Izbriši kategorijo",
     "Delete channel": "Izbriši kanal",
     "Delete list": "Izbriši seznam",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Dostave ni bilo mogoče potrditi. Preverite televizor ali znova poskusite isto sporočilo, preden ta seja poteče.",
     "Demo — moving test pattern": "Demo — premični testni vzorec",
     Description: "Opis",
     "Description of remote control buttons":
@@ -391,6 +405,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Vnesite URL portala Stalker (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Vnesite številko strežnika (%1).",
+    "Enter text": "Vnesite besedilo",
     "Enter the access code separately, not in the server address.":
         "Dostopno kodo vnesite ločeno, ne v naslov strežnika.",
     "Enter the command server IP or address.":
@@ -546,8 +561,10 @@ var keyStrings = {
     "Interface transparency": "Preglednost vmesnika",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Neveljavna povezava do kanala! Vnesite polnega gostitelja kot v toku nadzorne plošče računa ponudnika URL (npr. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Neveljaven odziv na nastavitve oblaka",
     "Invalid protected source configuration":
         "Neveljavna konfiguracija zaščitenega vira",
+    "Invalid setting": "Neveljavna nastavitev",
     "IPTV token": "žeton IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "nastavitve IpStream.one",
@@ -626,6 +643,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Noben program se ni ujemal s kanali in datumi seznama predvajanja. Preverite vir in uro naprave.",
     "No saved settings found": "Ni shranjenih nastavitev",
+    "No supported system language. Choose a language.":
+        "Ni podprtega sistemskega jezika. Izberite jezik.",
     "Not configured": "Ni nastavljeno",
     "Not found": "Ni najden",
     "Not reduce video when showing the list (bugfix)":
@@ -641,6 +660,8 @@ var keyStrings = {
     "not set": "ni nastavljeno",
     Off: "Izklopljeno",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Samo ta TV lahko sprejme vaše sporočilo. Povezava poteče po 10 minutah.",
     Open: "Odpri",
     "Open in PiP": "Odpri v PiP",
     "Open Plex sign-in page": "Odprite stran za prijavo Plex",
@@ -653,6 +674,7 @@ var keyStrings = {
     "OTT / APP host": "Gostitelj OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "nastavitve OTT Prime ONLINE",
+    "OTT-play remote input": "Oddaljeni vnos OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 je na voljo. Prenesti in namestiti zdaj?",
     "Overwrite current settings?": "Želite prepisati trenutne nastavitve?",
@@ -686,6 +708,7 @@ var keyStrings = {
     "Player and device info":
         "informacije o predstavnostnem predvajalniku in napravi",
     "Player could not start": "medijskega predvajalnika ni bilo mogoče zagnati",
+    "Player default": "Privzeta izbira predvajalnika",
     "Player info:": "informacije o medijskem predvajalniku:",
     Playlist: "Seznam predvajanja",
     "Playlist file": "Datoteka seznama predvajanja",
@@ -701,12 +724,14 @@ var keyStrings = {
     "Plex token": "žeton Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "nastavitve POLMEDIA",
-    "Portal URL": "Portal URL",
+    "Portal URL": "URL portala",
     "Position shift -10 seconds after pause":
         "Po premoru premakni predvajanje 10 sekund nazaj",
     Postpaid: "Naročniško",
     PROST: "PROST",
     "PROST settings": "nastavitve PROST",
+    "Preferred audio language": "Želeni jezik zvoka",
+    "Preferred subtitle language": "Želeni jezik podnapisov",
     Prepaid: "Predplačniško",
     "Preparing secure remote input...":
         "Priprava varnega oddaljenega vnosa ...",
@@ -741,14 +766,14 @@ var keyStrings = {
         "Daljinski upravljalnik (brez številskih gumbov)",
     "Remote control": "Daljinski upravljalnik",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Oddaljeno upravljanje omogoča diagnostiko. Pripravljeno za operaterja.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Oddaljeno upravljanje omogoča diagnostiko. Čakanje na ponovno povezavo.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Oddaljeno upravljanje vključuje posnetke zaslona predvajalnika, tudi nastavitev. Slike lahko vsebujejo zasebne podatke. Zajem v aplikaciji ne potrebuje dodatne odobritve. V brskalniku morate na tej napravi izbrati vir zajema.",
     "Remote diagnostics": "Diagnostika na daljavo",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Za to povezavo se zbira oddaljena diagnostika (do 10 minut na sejo).",
     "Remote diagnostics is collecting for this page.":
         "Za to stran se zbira oddaljena diagnostika.",
     "Remote diagnostics is off.": "Daljinska diagnostika je izklopljena.",
@@ -762,10 +787,10 @@ var keyStrings = {
         "Oddaljeni vnos je potekel. Odprite novo sejo in poskusite znova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Seja oddaljenega vnosa ni na voljo. Odprite novo sejo in poskusite znova.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Oddaljeni posnetki zaslona",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Oddaljeni posnetki zaslona so dovoljeni 10 minut. Za zajem zaprite nastavitve.",
+    "Remote screenshots are off.": "Oddaljeni posnetki zaslona so izklopljeni.",
     "Remote session expired": "Oddaljena seja je potekla",
     "Remote text entry": "Oddaljeni vnos besedila",
     "Remote text entry denied": "Oddaljeni vnos besedila zavrnjen",
@@ -793,6 +818,7 @@ var keyStrings = {
     "Resume from archive?": "Nadaljujem predvajanje iz arhiva?",
     Retry: "Poskusite znova",
     "Retry EPG download": "Poskusite znova prenesti EPG",
+    "Retry same message": "Ponovno poskusite isto sporočilo",
     "Return to previous channel": "Vrnitev na prejšnji kanal",
     Rewind: "Premakni predvajanje",
     "Rewind step by buttons %1/%2": "Korak previjanja s tipkama %1/%2",
@@ -810,19 +836,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Shranite nastavitve in naložite seznam kanalov",
     "Save settings to storage": "Shranite nastavitve v shrambo",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skenirajte kodo QR na televizorju ali spodaj prilepite celotno zasebno povezavo za seznanjanje.",
     "Scan this QR code with your phone to enter text.":
         "Preberite to kodo QR s telefonom, da vnesete besedilo.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Skupne rabe zaslona ni bilo mogoče začeti.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Skupna raba zaslona je bila preklicana ali ni na voljo.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Dovoljenja za posnetek zaslona ni bilo mogoče omogočiti.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Posnetki zaslona so na voljo, dokler je oddaljeno upravljanje povezano.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Posnetki zaslona na tej platformi niso na voljo.",
     Script: "Scenarij",
     Search: "Iskanje",
+    "Search languages": "Iskanje jezikov",
     "Search programme": "Poišči oddajo",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Varnega oddaljenega vnosa ni bilo mogoče zagnati. Poskusite znova ali uporabite zaslonsko tipkovnico.",
@@ -840,13 +870,14 @@ var keyStrings = {
         "Izberite vir predloge seznama predvajanja za EPG in logotipe",
     "Select Stalker portal": "Izberite portal Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "V brskalniku izberite vir posnetka zaslona",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Izberite zavihek ali okno predvajalnika v pogovornem oknu za skupno rabo brskalnika.",
     "Send request": "Pošlji zahtevo",
     "Send settings": "Nastavitve pošiljanja",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Pošljite to kodo iz svojega posredniškega strežnika v glavi Authorization: Bearer.",
+    "Send to TV": "Pošlji na TV",
     Server: "Strežnik",
     "Server address": "Naslov strežnika",
     "Server address (for example 192.168.1.20:8081)":
@@ -855,10 +886,14 @@ var keyStrings = {
     "Server URL": "Strežnik URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Strežnik ni na voljo. Samodejni ponovni poskus; preverite njegov naslov in dostop do omrežja.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Seja zaključena. Po potrebi zaženite novo s televizorja.",
     Set: "Nastavi",
     "Set parental code": "Nastavite starševsko kodo",
     "Set timer?": "Nastaviti časovnik?",
     Settings: "nastavitve",
+    "Settings changed while editing":
+        "Nastavitve so bile spremenjene med urejanjem",
     "Settings changed. Discovery was canceled.":
         "Nastavitve spremenjene. Odkritje je bilo preklicano.",
     "Settings copied": "Nastavitve kopirane",
@@ -868,10 +903,14 @@ var keyStrings = {
     "Settings imported": "Nastavitve uvožene",
     "Settings JSON": "Nastavitve JSON",
     "Settings loaded from storage": "Nastavitve, naložene iz pomnilnika",
+    "Settings received. Restarting player...":
+        "Nastavitve prejete. Ponovni zagon predvajalnika ...",
     "Settings STB": "nastavitve STB",
     "Settings saved": "Nastavitve shranjene",
     "Settings saved to storage": "Nastavitve shranjene v shrambo",
     "Settings sended!": "Nastavitve poslane!",
+    "Settings source changed": "Vir nastavitev spremenjen",
+    "Settings storage rejected write": "Shramba nastavitev je zavrnila zapis",
     "Several command servers were found. Select one below.":
         "Najdenih je bilo več ukaznih strežnikov. Izberite eno spodaj.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -925,12 +964,12 @@ var keyStrings = {
     "Starting...": "Začetek ...",
     Status: "Stanje",
     Stop: "Ustavi",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Ustavi skupno rabo brskalnika",
     "Stop current capture": "Ustavi trenutni zajem",
     "Stop diagnostics": "Ustavi diagnostiko",
     "Stop playback and return to live":
         "Ustavi predvajanje in se vrni na prenos v živo",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Ustavi posnetke zaslona",
     "Stream could not be played": "Toka ni bilo mogoče predvajati",
     "Stream type: %1": "Vrsta toka: %1",
     "String for search": "Iskalna poizvedba",
@@ -942,6 +981,7 @@ var keyStrings = {
     "Switch subtitle": "Zamenjaj podnapise",
     "Switch to this list": "Preklopite na ta seznam",
     "Swop URL": "URL za SWOP",
+    "System language": "Jezik sistema",
     "saved on this device": "shranjeno v tej napravi",
     select: "izberite",
     small: "majhna",
@@ -950,15 +990,19 @@ var keyStrings = {
     "Tabox settings": "nastavitve Tabox",
     "Text is too long for remote input.":
         "Besedilo je predolgo za daljinski vnos.",
+    "Text is too long. Please shorten it before sending.":
+        "Besedilo je predolgo. Pred pošiljanjem ga skrajšajte.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Besedilo je poslano. Preverite televizor, da potrdite, da se je pojavil.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Vir posnetka zaslona brskalnika je pripravljen.",
     "The command server discovery URL is invalid.":
         "Odkritje ukaznega strežnika URL ni veljavno.",
     "The device ID in the address is invalid.":
         "Naprava ID v naslovu ni veljavna.",
     "The discovery response is invalid.": "Odgovor odkritja je neveljaven.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ta brskalnik ne more prepoznati izbranega vira posnetka zaslona.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ta brskalnik se ne more varno samodejno seznaniti. Posodobite ga ali ročno vnesite nastavitve ukaznega strežnika.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -967,6 +1011,10 @@ var keyStrings = {
         "Ta medijski predvajalnik HTTPS se ne more povezati s strežnikom HTTP. Uporabite strežnik HTTPS ali odprite predstavnostni predvajalnik prek HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ta aplikacija Play zahteva HTTPS. Prosite svojega ponudnika za seznam predvajanja HTTPS ali strežnik URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ta povezava za seznanjanje je potekla. Odprite novo sejo na televizorju.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ta varna seja ni na voljo ali je potekla. Odprite novo sejo na televizorju in uporabite njeno celotno povezavo.",
     Timer: "Časovnik",
     "Timer: switch to channel?": "Časovnik: preklop na ta kanal?",
     "Timeshift: one minute back": "Časovni zamik: eno minuto nazaj",
@@ -1016,6 +1064,8 @@ var keyStrings = {
         "Uporabite HTTP ali HTTPS brez uporabniškega imena ali gesla v naslovu.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Uporabite LEVO/DESNO, da izberete kontrolnik, OK, da ga aktivirate, in GOR/DOL, da se pomikate.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Uporabite celotno povezavo, vključno z delom za #. Ne delite ga z nikomer drugim.",
     "Use Up / Down to scroll. Back to close.":
         "Uporabite gor/dol za pomikanje. Nazaj na zaključek.",
     Username: "Uporabniško ime",

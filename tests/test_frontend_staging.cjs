@@ -115,6 +115,7 @@ try {
         "dist/hosted/sax-LICENSE",
         "dist/swop-input/index.html",
         "dist/swop-input/app.js",
+        "dist/swop-input/locales/rus-fixture.json",
         "stage/devices/logs/previous-build.json",
     ])
         write(name);
@@ -157,6 +158,7 @@ try {
         "hosted/sax-LICENSE",
         "swop-input/index.html",
         "swop-input/app.js",
+        "swop-input/locales/rus-fixture.json",
     ]) {
         assert.equal(
             fs.readFileSync(path.join(fixture, "stage", name), "utf8"),

@@ -11,6 +11,8 @@ const {
     languageAssetPath,
     readDictionary,
     validateDictionary,
+    validateEnglishFallbacks,
+    validateIdenticalAllowlist,
 } = require("../scripts/localization-catalog.cjs");
 const root = path.resolve(__dirname, "..");
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-localization-"));
@@ -73,6 +75,19 @@ try {
         console.log("Not a screenshot UI message");
     `
     );
+    write(
+        "src/settings/cloud.ts",
+        'fail("Cloud app-owned failure", response.detail);'
+    );
+    write(
+        "src/swop/herenow-phone.ts",
+        `
+        function say(value) { locale.label(status, value); }
+        say("Phone status");
+        locale.label(button, "Phone action");
+        locale.text("Phone text");
+    `
+    );
     write("src/settings/transfer-ui.ts", 'notice("New settings notice");');
     write(
         "index.html",
@@ -108,6 +123,11 @@ try {
         "Adapter message",
         "Provider message",
         "New settings notice",
+        "Cloud app-owned failure",
+        "Phone status",
+        "Phone action",
+        "Phone text",
+        "OTT-play remote input",
         "Discovery initial status",
         "Approve at %1",
         "Discovery failed",
@@ -148,6 +168,7 @@ try {
         { greeting: " %1 %2 ", label: "Label" },
         { greeting: "%1<br/>%2", label: "Label" },
         { greeting: " %1<br/>%2 ", label: "" },
+        { greeting: " %1<br/>%2 ", label: null },
         { greeting: " %1<br/>%2 " },
         { greeting: " %1<br/>%2 ", label: "Label", stale: "Stale" },
     ])
@@ -155,6 +176,163 @@ try {
             validateDictionary(english, translation, "broken").length,
             "Broken locale must fail"
         );
+    for (const marker of [
+        "0010",
+        "s 0009 s",
+        "─0036─",
+        "ZXQ0QXZ",
+        "ЗКСК0ККСЗ",
+    ]) {
+        assert(
+            validateDictionary(
+                { key: "Open settings" },
+                { key: marker + " Ouvrir les paramètres" },
+                "broken"
+            ).some((error) => error.includes("translation batch marker")),
+            marker
+        );
+    }
+    const setup = {
+        key: "Use https://example.org:8080/path and Authorization: Bearer; host_ott, OTT-play, ott approve NAME CODE and /playlist.m3u8.",
+    };
+    for (const token of [
+        "https://example.org:8080/path",
+        "Authorization: Bearer",
+        "host_ott",
+        "OTT-play",
+        "ott approve NAME CODE",
+        "/playlist.m3u8",
+    ]) {
+        assert(
+            validateDictionary(
+                setup,
+                { key: setup.key.replace(token, "translated") },
+                "broken"
+            ).some((error) => error.includes("technical literal")),
+            token
+        );
+    }
+    const prose = {
+        action: "Pause",
+        brand: "Plex",
+        message: "Open the player settings.",
+    };
+    const reviewed = [
+        {
+            key: "brand",
+            locales: ["*"],
+            reason: "Product name is invariant",
+            value: "Plex",
+        },
+        {
+            key: "action",
+            locales: ["french"],
+            reason: "French uses the same word",
+            value: "Pause",
+        },
+    ];
+    const translated = {
+        action: "Pause",
+        brand: "Plex",
+        message: "Ouvrez les paramètres du lecteur.",
+    };
+    assert.deepEqual(
+        validateEnglishFallbacks(prose, translated, "french.js", reviewed),
+        []
+    );
+    assert.equal(
+        validateEnglishFallbacks(prose, translated, "polish.js", reviewed)
+            .length,
+        1,
+        "Cognate exceptions apply only to reviewed locales"
+    );
+    assert.deepEqual(
+        validateIdenticalAllowlist(prose, { french: translated }, reviewed),
+        []
+    );
+    for (const message of [
+        prose.message,
+        " Open  the player settings. ",
+        "OPEN THE PLAYER SETTINGS.",
+    ]) {
+        assert.equal(
+            validateEnglishFallbacks(
+                prose,
+                { ...translated, message },
+                "french.js",
+                reviewed
+            ).length,
+            1,
+            "English prose cannot pass through whitespace changes"
+        );
+    }
+    assert.equal(
+        validateEnglishFallbacks(
+            { text: "Open settings.<br>Try again." },
+            { text: "Open settings.<BR/>Try again." },
+            "french.js",
+            []
+        ).length,
+        1,
+        "HTML serialization differences cannot hide untranslated prose"
+    );
+    assert.deepEqual(
+        validateEnglishFallbacks(prose, prose, "english.js", []),
+        []
+    );
+    assert.equal(
+        validateEnglishFallbacks(
+            { ...prose, brand: "Plex settings" },
+            { ...translated, brand: "Plex settings" },
+            "french.js",
+            reviewed
+        ).length,
+        1,
+        "A brand exception cannot conceal a new English phrase"
+    );
+    for (const exception of [
+        { ...reviewed[1], reason: "" },
+        { ...reviewed[1], locales: ["unknown"] },
+        { ...reviewed[1], locales: ["english"] },
+        { ...reviewed[1], locales: ["*", "french"] },
+        { ...reviewed[1], value: "Old spelling" },
+        { ...reviewed[1], key: "unknown" },
+        { ...reviewed[1], locales: [] },
+    ])
+        assert(
+            validateIdenticalAllowlist(prose, { french: translated }, [
+                exception,
+            ]).length
+        );
+    assert(
+        validateIdenticalAllowlist(
+            prose,
+            { french: { ...translated, action: "Interrompre" } },
+            [reviewed[1]]
+        ).length,
+        "Unused exceptions must be removed"
+    );
+    assert(
+        validateIdenticalAllowlist(prose, { french: translated }, [
+            reviewed[1],
+            reviewed[1],
+        ]).length,
+        "Duplicate exceptions must fail"
+    );
+    const { phoneKeys } = require("../scripts/hosted-swop.cjs");
+    assert.throws(
+        () => phoneKeys("", "say(provider.message);"),
+        /literal key/,
+        "Phone cannot hide a dynamic vocabulary from catalog coverage"
+    );
+    assert(!fixtureKeys.keys.has("status"));
+    assert(!fixtureKeys.keys.has("button"));
+    assert(
+        !fixtureKeys.dynamic.some(
+            (entry) => entry.file === "src/swop/herenow-phone.ts"
+        )
+    );
+
     const alphabets = JSON.parse(
         fs.readFileSync(
             path.join(root, "tests/fixtures/locale-alphabets.json"),
@@ -239,6 +417,35 @@ try {
     assert.equal(scripts.at(-1).src, "/locales/russian.js?local");
 
     const runtime = { exports: {}, window: {} };
+    const localModules = {};
+    function localizationModule(name) {
+        if (!localModules[name]) {
+            const module = {
+                exports: {},
+                require: localizationModule,
+                window: runtime.window,
+            };
+            localModules[name] = module.exports;
+            vm.runInNewContext(
+                ts.transpileModule(
+                    fs.readFileSync(
+                        path.join(root, "src/localization", name + ".ts"),
+                        "utf8"
+                    ),
+                    {
+                        compilerOptions: {
+                            module: ts.ModuleKind.CommonJS,
+                            target: ts.ScriptTarget.ES5,
+                        },
+                    }
+                ).outputText,
+                module
+            );
+        }
+        return localModules[name];
+    }
+    runtime.require = localizationModule;
+    const localeAssets = localizationModule("./assets");
     vm.runInNewContext(
         ts.transpileModule(
             fs.readFileSync(
@@ -288,11 +495,17 @@ try {
         ts.ScriptTarget.Latest,
         true
     );
+    const loadInterface = selectionSource.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            node.name.text === "loadInterfaceLanguage"
+    );
     const selectLang = selectionSource.statements.find(
         (node) =>
             ts.isFunctionDeclaration(node) && node.name.text === "selectLang"
     );
-    let savedLanguage = "_rus";
+    let savedLanguage = "_rus",
+        savedMode = "";
     let languageRequest;
     let resumed = 0;
     const messages = [];
@@ -300,6 +513,7 @@ try {
     let timerId = 0;
     const selection = {
         _: translate,
+        applyLanguageMetadata() {},
         checkTauriUpdatesAfterLanguage() {},
         clearTimeout: (id) => timers.delete(id),
         document: { getElementById: () => null },
@@ -311,7 +525,10 @@ try {
         infoBox: (message) => messages.push(message),
         keys: { ENTER: 13, EXIT: 27, RETURN: 8 },
         languageAssetPath,
-        languageNames: {},
+        languageLocaleTag: localeAssets.languageLocaleTag,
+        languageNames: localeAssets.languageNames,
+        metadataText: (value) => String(value).replace(/</g, "&lt;"),
+        normalizeSearchText: runtime.exports.normalizeSearchText,
         PLAYER_VERSION: "test",
         renderButtonHint: () => "",
         setTimeout: (callback, delay) => {
@@ -320,9 +537,11 @@ try {
             return timerId;
         },
         showPage() {},
-        stbGetItem: () => savedLanguage,
-        stbSetItem: (_key, value) => {
-            savedLanguage = value;
+        stbGetItem: (key) =>
+            key === "ottplaylangmode" ? savedMode : savedLanguage,
+        stbSetItem: (key, value) => {
+            if (key === "ottplaylangmode") savedMode = value;
+            else savedLanguage = value;
         },
         strRETURN: "BACK",
         window: {
@@ -334,11 +553,16 @@ try {
     };
     vm.createContext(selection);
     vm.runInContext(
-        ts.transpileModule(selectLang.getText(selectionSource), {}).outputText,
+        ts.transpileModule(
+            loadInterface.getText(selectionSource) +
+                "\n" +
+                selectLang.getText(selectionSource),
+            {}
+        ).outputText,
         selection
     );
     selection.selectLang();
-    selection.selIndex = 0;
+    selection.selIndex = 2;
     selection.listKeyHandlerFn(13);
     assert.match(languageRequest.url, /locales\/english\.js/);
     assert.equal(savedLanguage, "_rus");
@@ -348,6 +572,7 @@ try {
     assert.equal(savedLanguage, "_rus");
     assert.equal(resumed, 0);
     selection.listKeyHandlerFn(13);
+    selection.window.keyStrings = { lang: "fixture" };
     languageRequest.success();
     assert.equal(savedLanguage, "_eng");
     assert.equal(resumed, 1);
@@ -361,6 +586,7 @@ try {
         1,
         "Retrying the saved language waits for its dictionary"
     );
+    selection.window.keyStrings = { lang: "fixture" };
     languageRequest.success();
     assert.equal(resumed, 2);
 
@@ -369,10 +595,10 @@ try {
     savedLanguage = "_rus";
     selection.window.keyStrings = runtime.window.keyStrings;
     selection.selectLang();
-    selection.selIndex = 0;
+    selection.selIndex = 2;
     selection.listKeyHandlerFn(13);
     const cancelledLanguage = languageRequest;
-    selection.selIndex = 2;
+    selection.selIndex = 4;
     selection.listKeyHandlerFn(13);
     assert.equal(
         languageRequest,
@@ -383,7 +609,7 @@ try {
     const afterCancel = resumed;
     assert.equal(timers.size, 0, "Back releases its timeout");
     selection.selectLang();
-    selection.selIndex = 2;
+    selection.selIndex = 4;
     selection.listKeyHandlerFn(13);
     const stalledLanguage = languageRequest;
     const owner = selection.window.__ottLanguagePending;
@@ -404,7 +630,7 @@ try {
     assert.equal(timers.size, 0);
     assert.equal(savedLanguage, "_rus");
     assert.equal(messages.at(-1), translate("Failed to load!"));
-    selection.selIndex = 0;
+    selection.selIndex = 2;
     selection.listKeyHandlerFn(13);
     const newestLanguage = languageRequest;
     assert.notEqual(
@@ -419,7 +645,10 @@ try {
         selection.window.__ottLanguagePending,
         "Late load keeps newer owner"
     );
-    const englishDictionary = { "Failed to load!": "Failed to load!" };
+    const englishDictionary = {
+        "Failed to load!": "Failed to load!",
+        lang: "English",
+    };
     selection.window.keyStrings = englishDictionary;
     newestLanguage.success();
     assert.equal(savedLanguage, "_eng");
@@ -438,8 +667,10 @@ try {
             node.name.text === "loadStartupLanguage"
     );
     function startupLanguage(options = {}) {
-        let saved = options.saved || "";
-        const deferred = [];
+        let saved = options.saved || "",
+            mode = options.mode || "";
+        const deferred = [],
+            deadlines = [];
         const writes = [],
             requests = [],
             picker = [];
@@ -458,7 +689,9 @@ try {
             };
         const launch = { style: {} };
         const context = {
+            applyLanguageMetadata() {},
             checkTauriUpdatesAfterLanguage: () => updates++,
+            clearTimeout: () => {},
             console: { log() {} },
             document: { getElementById: () => launch },
             getScriptDOM: (url, success, error) =>
@@ -472,23 +705,32 @@ try {
             PLAYER_VERSION: "test",
             selectLang: (force) => picker.push(force),
             setTimeout: (callback, delay) => {
-                assert.equal(delay, 0);
-                deferred.push(callback);
+                if (delay === 0) deferred.push(callback);
+                else {
+                    assert.equal(delay, 10000);
+                    deadlines.push(callback);
+                }
             },
-            stbGetItem: () => saved,
+            stbGetItem: (key) => (key === "ottplaylangmode" ? mode : saved),
             stbSetItem: (key, value) => {
                 writes.push({ key, value });
-                saved = value;
+                if (key === "ottplaylangmode") mode = value;
+                else saved = value;
             },
             window,
         };
         vm.runInNewContext(
-            ts.transpileModule(startupFunction.getText(selectionSource), {})
-                .outputText,
+            ts.transpileModule(
+                loadInterface.getText(selectionSource) +
+                    "\n" +
+                    startupFunction.getText(selectionSource),
+                {}
+            ).outputText,
             context
         );
         const proceeded = context.loadStartupLanguage();
         return {
+            deadlines,
             deferred,
             launch,
             picker,
@@ -501,7 +743,10 @@ try {
     }
     const auto = startupLanguage({ boot: { automatic: true, code: "_rus" } });
     assert.equal(auto.proceeded, true);
-    assert.deepEqual(auto.writes, [{ key: "ottplaylang", value: "_rus" }]);
+    assert.deepEqual(auto.writes, [
+        { key: "ottplaylang", value: "_rus" },
+        { key: "ottplaylangmode", value: "system" },
+    ]);
     assert.deepEqual(auto.requests, [], "Reuse the verified boot dictionary");
     assert.equal(auto.snapshot().providers, 0, "Native shims initialize first");
     assert.equal(auto.deferred.length, 1);
@@ -547,6 +792,7 @@ try {
     assert.deepEqual(changedPreference.writes, []);
     assert.equal(changedPreference.snapshot().providers, 0);
     assert.match(changedPreference.requests[0].url, /\/locales\/french\.js\?/);
+    changedPreference.window.keyStrings = { lang: "French" };
     changedPreference.requests[0].success();
     assert.equal(changedPreference.snapshot().providers, 1);
     assert.equal(changedPreference.snapshot().saved, "_fra");
@@ -555,6 +801,355 @@ try {
     assert.deepEqual(failedSaved.picker, [true]);
     assert.deepEqual(failedSaved.writes, []);
     assert.equal(failedSaved.snapshot().saved, "_rus");
+
+    // A persisted system mode follows a changed OS preference, while legacy
+    // saved choices (no mode record) remain explicit.
+    const following = startupLanguage({
+        boot: { automatic: true, code: "_fra" },
+        mode: "system",
+        saved: "_rus",
+    });
+    assert.equal(following.snapshot().saved, "_fra");
+    assert.deepEqual(following.requests, []);
+    following.deferred[0]();
+    assert.equal(following.snapshot().providers, 1);
+    const unsupportedSystem = startupLanguage({
+        mode: "system",
+        saved: "_rus",
+    });
+    assert.deepEqual(unsupportedSystem.picker, [undefined]);
+    assert.equal(
+        unsupportedSystem.snapshot().saved,
+        "_rus",
+        "Keep the last successful language without treating it as a system match"
+    );
+    const stalledSaved = startupLanguage({ saved: "_rus" });
+    assert.equal(stalledSaved.deadlines.length, 1);
+    stalledSaved.deadlines[0]();
+    assert.deepEqual(stalledSaved.picker, [true]);
+    const retainedDictionary = stalledSaved.window.keyStrings;
+    stalledSaved.window.keyStrings = { lang: "late" };
+    stalledSaved.requests[0].success();
+    assert.equal(stalledSaved.window.keyStrings, retainedDictionary);
+    assert.equal(stalledSaved.snapshot().providers, 0);
+
+    // Native transports must be installed before either automatic startup or a
+    // first-run manual choice. Exercise the actual onStbReady + picker functions.
+    const stbReady = selectionSource.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) && node.name.text === "onStbReady"
+    );
+    for (const mode of ["auto", "unsupported", "preload-failed"]) {
+        const events = [],
+            queue = [],
+            requests = [];
+        let saved = "",
+            preference = "";
+        const noop = () => {};
+        const dictionary = { lang: "Russian" };
+        const host = {
+            __ottCommandServer: { configure: noop },
+            __ottControlDiscovery: { start: noop },
+            __ottKiosk: { init: noop },
+            __ottLocalHttpRemote: { init: noop },
+            __ottRemoteDiagnostics: {},
+            Capacitor: {},
+            clearBootHide: noop,
+            keyStrings: dictionary,
+        };
+        if (mode === "auto")
+            host.__ottBootLanguage = {
+                automatic: true,
+                code: "_rus",
+                dictionary,
+            };
+        const context = {
+            _: (value) => value,
+            applyLanguageMetadata: noop,
+            checkTauriUpdatesAfterLanguage: noop,
+            clearTimeout: noop,
+            console: { log: noop },
+            document: { getElementById: () => null },
+            getScriptDOM: (url, success, error) =>
+                requests.push({ error, success, url }),
+            hostUrl: "",
+            infoBox: noop,
+            keys: { ENTER: 13, EXIT: 27, RED: 403, RETURN: 8 },
+            languageAssetPath,
+            languageLocaleTag: localeAssets.languageLocaleTag,
+            languageNames: localeAssets.languageNames,
+            loadProv: () => events.push("provider"),
+            metadataText: String,
+            normalizeSearchText: selection.normalizeSearchText,
+            PLAYER_VERSION: "test",
+            popupActions: [],
+            popupArray: [],
+            popupDetail: [],
+            renderButtonHint: () => "",
+            savedPopup: {},
+            setTimeout: (callback, delay) => {
+                queue.push({ callback, delay });
+                return queue.length;
+            },
+            settings: {},
+            setupCapacitorCompanionShim: () => events.push("capacitorHTTP"),
+            setupStalkerPortalShim: () => events.push("stalkerHTTP"),
+            showPage: () => events.push("picker"),
+            startupError: (_el, _phase, error) => {
+                throw error;
+            },
+            stbGetItem: (key) =>
+                key === "ottplaylangmode" ? preference : saved,
+            stbSetItem: (key, value) => {
+                if (key === "ottplaylangmode") preference = value;
+                else saved = value;
+            },
+            strRETURN: "BACK",
+            TMDb: { prepare: () => events.push("tmdb") },
+            version: "test",
+            window: host,
+        };
+        for (const name of [
+            "loadSettings",
+            "installSettingsFacade",
+            "initUIReferences",
+            "setTimezone",
+            "setFontSize",
+            "setListPos",
+            "setColor",
+            "setEditor",
+            "setPipPosBuf",
+            "setSleepTimeout",
+            "closeList",
+        ])
+            context[name] = noop;
+        vm.createContext(context);
+        vm.runInContext(
+            ts.transpileModule(
+                [loadInterface, selectLang, startupFunction, stbReady]
+                    .map((node) => node.getText(selectionSource))
+                    .join("\n"),
+                {}
+            ).outputText,
+            context
+        );
+        context.onStbReady();
+        if (mode === "auto")
+            queue
+                .filter((timer) => timer.delay === 0)
+                .forEach((timer) => timer.callback());
+        else {
+            context.selIndex = 2;
+            context.listKeyHandlerFn(13);
+            host.keyStrings = { lang: "English" };
+            requests[0].success();
+        }
+        assert(
+            events.indexOf("capacitorHTTP") >= 0 &&
+                events.indexOf("capacitorHTTP") < events.indexOf("provider"),
+            mode
+        );
+        assert(
+            events.indexOf("stalkerHTTP") >= 0 &&
+                events.indexOf("stalkerHTTP") < events.indexOf("provider"),
+            mode
+        );
+        assert.equal(events.filter((event) => event === "provider").length, 1);
+    }
+
+    // Search uses the same remote/native editor, filters without saving a
+    // language, and escapes the user's query when displaying the search row.
+    savedMode = "";
+    selection.window.showEditKey = () => {};
+    selection.selectLang();
+    selection.selIndex = 1;
+    selection.listKeyHandlerFn(13);
+    assert.equal(selection.window.editCaption, translate("Search languages"));
+    selection.window.editvar = "русс";
+    selection.window.setEdit();
+    assert.deepEqual(Array.from(selection.listDataArray).slice(2), [
+        "Russian - Русский",
+    ]);
+    assert.equal(savedLanguage, "_eng");
+    selection.selIndex = 1;
+    selection.listKeyHandlerFn(13);
+    selection.window.editvar = "<missing>";
+    selection.window.setEdit();
+    assert.equal(selection.listDataArray[2], translate("Not found"));
+    assert(
+        !selection
+            .getListItemFn(selection.listDataArray[1])
+            .includes("<missing>")
+    );
+    selection.window.__ottDetectLanguage = () => "_rus";
+    selection.selectLang();
+    selection.selIndex = 0;
+    selection.listKeyHandlerFn(13);
+    selection.window.keyStrings = { lang: "Russian" };
+    languageRequest.success();
+    assert.equal(savedMode, "system");
+    assert.equal(savedLanguage, "_rus");
+    selection.selectLang();
+    selection.selIndex = 2;
+    selection.listKeyHandlerFn(13);
+    selection.window.keyStrings = { lang: "English" };
+    languageRequest.success();
+    assert.equal(savedMode, "manual");
+    assert.equal(savedLanguage, "_eng");
+
+    // A rejected system-language choice and stale editor callbacks must not
+    // change the persisted policy or a later screen's list.
+    selection.window.__ottDetectLanguage = () => "";
+    selection.selectLang();
+    selection.selIndex = 0;
+    selection.listKeyHandlerFn(13);
+    assert.equal(savedMode, "manual");
+    assert.equal(savedLanguage, "_eng");
+    selection.selIndex = 1;
+    selection.listKeyHandlerFn(13);
+    const closedSearch = selection.window.setEdit;
+    selection.listKeyHandlerFn(8);
+    selection.listDataArray = ["Later screen"];
+    selection.window.editvar = "rus";
+    closedSearch();
+    assert.deepEqual(Array.from(selection.listDataArray), ["Later screen"]);
+    selection.selectLang();
+    selection.selIndex = 1;
+    selection.listKeyHandlerFn(13);
+    const replacedSearch = selection.window.setEdit;
+    selection.selectLang();
+    const laterList = Array.from(selection.listDataArray);
+    replacedSearch();
+    assert.deepEqual(Array.from(selection.listDataArray), laterList);
+
+    const startupLocales = JSON.parse(
+        fs.readFileSync(
+            path.join(root, "tests/fixtures/startup-locales.json"),
+            "utf8"
+        )
+    );
+    const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+    const bootMatcher = html.slice(
+        html.indexOf("function detectBootLanguage()"),
+        html.indexOf("window.__ottDetectLanguage =")
+    );
+    assert.deepEqual(
+        Object.keys(localeAssets.languageMetadata).sort(),
+        Object.keys(languageAssets).sort()
+    );
+    const preferences = Object.keys(startupLocales.languages).map((tag) => [
+        tag,
+    ]);
+    for (const tag of Object.keys(startupLocales.regionalScripts))
+        preferences.push([tag], [tag, "ru-RU"]);
+    preferences.push(
+        ["zh-Hant", "en"],
+        ["sr-Latn", "fr"],
+        ["pa-Arab"],
+        ["iw"],
+        ["no"],
+        ["nb"],
+        ["kmr"],
+        ["zh-cmn-Hant"],
+        [null, 42, "RU_ru"],
+        ["ru-RU-u-nu-latn"]
+    );
+    for (const tags of preferences) {
+        const context = {
+            navigator: {},
+            window: { __ottPreferredLanguages: tags },
+        };
+        vm.runInNewContext(bootMatcher, context);
+        assert.equal(
+            localeAssets.resolveLanguagePreferences(tags),
+            context.detectBootLanguage(),
+            JSON.stringify(tags)
+        );
+    }
+    assert.equal(localeAssets.languageDirection("_ara"), "rtl");
+    assert.equal(localeAssets.languageDirection("_kur"), "ltr");
+    assert.equal(localeAssets.languageLocaleTag("constructor"), "en");
+    assert.equal(localeAssets.languageLocaleTag("_nor"), "nb");
+
+    const tmdbVariable = selectionSource.statements.find(
+        (node) =>
+            ts.isVariableStatement(node) &&
+            node.declarationList.declarations.some(
+                (decl) => decl.name.getText(selectionSource) === "TMDb"
+            )
+    );
+    const tmdbRequests = [],
+        tmdbMessages = [];
+    const tmdbDom = {
+        hide: () => tmdbDom,
+        html: (value) => {
+            tmdbMessages.push(value);
+            return tmdbDom;
+        },
+        show: () => tmdbDom,
+    };
+    const jq = () => tmdbDom;
+    jq.ajax = (request) => tmdbRequests.push(request);
+    const tmdbContext = {
+        console: { log() {} },
+        hasTmdbService: () => true,
+        languageLocaleTag: localeAssets.languageLocaleTag,
+        metadataText: String,
+        stbGetItem: () => "_eng",
+        window: {
+            _: (value) =>
+                value === "Failed to load!" ? "Не удалось загрузить!" : value,
+            $: jq,
+        },
+    };
+    vm.runInNewContext(
+        ts.transpileModule(tmdbVariable.getText(selectionSource), {})
+            .outputText,
+        tmdbContext
+    );
+    for (const code of [
+        ...Object.keys(localeAssets.languageLocales),
+        "unknown",
+    ]) {
+        tmdbContext.window.__ottInterfaceLanguage = code;
+        tmdbContext.TMDb.get("movie", 42);
+        tmdbContext.TMDb.search("Same title");
+        assert.equal(
+            tmdbRequests.at(-2).data.language,
+            localeAssets.languageLocaleTag(code)
+        );
+        assert.equal(
+            tmdbRequests.at(-1).data.language,
+            localeAssets.languageLocaleTag(code)
+        );
+    }
+    tmdbRequests.at(-2).error({ status: 503 });
+    tmdbRequests.at(-1).error({ status: 503 });
+    assert(
+        tmdbMessages
+            .slice(-2)
+            .every((message) => message.includes("Не удалось загрузить!"))
+    );
+
+    // Late responses in the previous UI language cannot repaint a dialog,
+    // populate a cache, or start another search after the language changes.
+    const oldGet = tmdbRequests.at(-2),
+        oldSearch = tmdbRequests.at(-1);
+    const priorMessageCount = tmdbMessages.length;
+    const priorRequestCount = tmdbRequests.length;
+    tmdbContext.window.__ottInterfaceLanguage = "_rus";
+    oldGet.success({ title: "Stale English title" });
+    oldGet.error({ status: 503 });
+    oldSearch.success({
+        results: [
+            { id: 42, media_type: "movie", title: "Stale English title" },
+        ],
+    });
+    oldSearch.error({ status: 503 });
+    assert.equal(tmdbMessages.length, priorMessageCount);
+    assert.equal(tmdbRequests.length, priorRequestCount);
+    assert.equal(tmdbContext.TMDb.data, null);
+    assert.deepEqual(Array.from(tmdbContext.TMDb.results), []);
 
     const reference = readDictionary(
         path.join(root, languageAssetPath("_eng"))
@@ -585,15 +1180,21 @@ try {
         "ERROR: Category #%1 does not exist!<br>Please select another category.",
     ])
         assert(Object.hasOwn(reference, key), `Audited UI key missing: ${key}`);
-    const result = audit({
-        englishOnly: process.argv.includes("--english-only"),
-    });
-    assert.deepEqual(result.errors, [], result.errors.join("\n"));
-    assert.equal(result.localeCount, 88);
-    assert.equal(result.keyCount, 831);
-    console.log(
-        `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
-    );
+    if (process.argv.includes("--runtime-only")) {
+        console.log(
+            "PASS localization runtime: loader ownership/deadlines, system/manual preferences, native initialization, remote language search and all88 metadata parity"
+        );
+    } else {
+        const result = audit({
+            englishOnly: process.argv.includes("--english-only"),
+        });
+        assert.deepEqual(result.errors, [], result.errors.join("\n"));
+        assert.equal(result.localeCount, 88);
+        assert.equal(result.keyCount, 865);
+        console.log(
+            `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
+        );
+    }
 } finally {
     fs.rmSync(fixture, { force: true, recursive: true });
 }

@@ -100,6 +100,7 @@ function fixture() {
         AUDIO_TRACKS_UPDATED: "audio",
         ERROR: "error",
         MANIFEST_PARSED: "manifest",
+        SUBTITLE_TRACKS_UPDATED: "subtitles",
     };
     Hls.ErrorTypes = { MEDIA_ERROR: "media", NETWORK_ERROR: "network" };
     Hls.isSupported = () => true;
@@ -206,6 +207,58 @@ test("HLS same-track restoration and unavailable native track APIs", () => {
     w.stbToggleAudioTrack();
     assert.equal(boxes.at(-1)[1][0], "Not found");
     w.stbToggleSubtitle();
+});
+test("HLS restores late subtitle lists only for the current stream", () => {
+    const { w, players } = fixture();
+    let restorations = 0;
+    w.applyChannelPreference = (name, callback) => {
+        if (name === "aSubs") {
+            restorations++;
+            callback(2);
+        }
+    };
+    w.playerMode = 1;
+    w.stbPlay("a.m3u8");
+    const old = players[0];
+    old.events.subtitles();
+    assert.equal(old.subtitleTrack, 1);
+    w.stbPlay("b.m3u8");
+    const count = restorations;
+    old.events.subtitles();
+    assert.equal(restorations, count);
+    players[1].events.subtitles();
+    assert.equal(restorations, count + 1);
+    assert.equal(players[1].subtitleTrack, 1);
+});
+test("native late-track listeners belong to their engine lease", () => {
+    const { w } = fixture();
+    const listeners = [];
+    w.video.textTracks = {
+        addEventListener(name, callback) {
+            assert.equal(name, "addtrack");
+            listeners.push(callback);
+        },
+        length: 0,
+        removeEventListener(name, callback) {
+            listeners.splice(listeners.indexOf(callback), 1);
+        },
+    };
+    let restores = 0;
+    w.applyChannelPreference = () => restores++;
+    w.playerMode = 0;
+    w.stbPlay("a.mp4");
+    assert.equal(listeners.length, 1);
+    const old = listeners[0];
+    old();
+    assert.equal(restores, 1);
+    w.stbPlay("b.mp4");
+    assert.equal(listeners.length, 1, "replacement removes old listener");
+    old();
+    assert.equal(restores, 1, "retained callback has no authority");
+    listeners[0]();
+    assert.equal(restores, 2);
+    w.stbStop();
+    assert.equal(listeners.length, 0);
 });
 test("PiP starts after manifest and ignores callbacks after switch/stop", () => {
     const { w, players, hidden } = fixture();

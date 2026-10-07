@@ -91,6 +91,8 @@ function createStorageAdapter(
  * Storage access can fail after detection (privacy settings, quota). Failed
  * operations switch to cookies/memory for this session and preserve readable keys.
  */
+const STORAGE_FALLBACK_KEYS = "ottplayStorageFallback";
+
 function createLocalStorageAdapter(): StorageAdapter {
     let nativeStorage: Storage | null = null;
     try {
@@ -100,6 +102,23 @@ function createLocalStorageAdapter(): StorageAdapter {
         nativeStorage = null;
     }
     const fallback = createCookieAdapter();
+    const overrides: Record<string, boolean> = Object.create(null);
+    try {
+        const saved = JSON.parse(fallback.get(STORAGE_FALLBACK_KEYS) || "[]");
+        if (Array.isArray(saved))
+            saved.forEach(function (key) {
+                if (typeof key === "string" && key !== STORAGE_FALLBACK_KEYS)
+                    overrides[key] = true;
+            });
+    } catch (_invalidMarker) {}
+    const mark = function (key: string, active: boolean): void {
+        if (active) overrides[key] = true;
+        else delete overrides[key];
+        const keys = Object.keys(overrides);
+        if (keys.length)
+            fallback.set(STORAGE_FALLBACK_KEYS, JSON.stringify(keys));
+        else fallback.del(STORAGE_FALLBACK_KEYS);
+    };
 
     // Keep readable settings when a privacy restriction or quota makes the
     // native adapter unusable. Cookie writes also have an in-memory fallback.
@@ -112,12 +131,14 @@ function createLocalStorageAdapter(): StorageAdapter {
                 const key = previous.key(i);
                 if (key != null) {
                     const value = previous.getItem(key);
-                    if (value != null) fallback.set(key, value);
+                    if (value != null && !overrides[key])
+                        fallback.set(key, value);
                 }
             }
         } catch (_error) {}
     };
     const get = function (key: string): string | null {
+        if (overrides[key]) return fallback.get(key);
         if (nativeStorage) {
             try {
                 return nativeStorage.getItem(key);
@@ -131,34 +152,53 @@ function createLocalStorageAdapter(): StorageAdapter {
         if (nativeStorage) {
             try {
                 nativeStorage.setItem(key, value);
+                if (overrides[key]) {
+                    fallback.del(key);
+                    mark(key, false);
+                }
                 return;
             } catch (_error) {
                 failover();
             }
         }
         fallback.set(key, value);
+        mark(key, true);
     };
     const del = function (key: string): void {
         if (nativeStorage) {
             try {
                 nativeStorage.removeItem(key);
+                if (overrides[key]) {
+                    fallback.del(key);
+                    mark(key, false);
+                }
                 return;
             } catch (_error) {
                 failover();
             }
         }
         fallback.del(key);
+        mark(key, true);
     };
     const clear = function (): void {
         if (nativeStorage) {
             try {
                 nativeStorage.clear();
+                Object.keys(overrides).forEach(function (key) {
+                    fallback.del(key);
+                    delete overrides[key];
+                });
+                fallback.del(STORAGE_FALLBACK_KEYS);
                 return;
             } catch (_error) {
                 failover();
             }
         }
+        const keys = Object.keys(fallback.dump());
         fallback.clear();
+        keys.forEach(function (key) {
+            mark(key, true);
+        });
     };
     const dump = function (): Record<string, string> {
         if (nativeStorage) {
@@ -171,6 +211,11 @@ function createLocalStorageAdapter(): StorageAdapter {
                         if (value != null) result[key] = value;
                     }
                 }
+                Object.keys(overrides).forEach(function (key) {
+                    const value = fallback.get(key);
+                    if (value == null) delete result[key];
+                    else result[key] = value;
+                });
                 return result;
             } catch (_error) {
                 failover();
@@ -248,6 +293,7 @@ function createCookieAdapter(): StorageAdapter {
             if (value === null) delete result[key];
             else result[key] = value;
         }
+        delete result[STORAGE_FALLBACK_KEYS];
         return result;
     };
     return createStorageAdapter(
@@ -279,17 +325,7 @@ function createCookieAdapter(): StorageAdapter {
  * player.js. A single `try/catch` wraps `window.localStorage` access.
  */
 export const storage: StorageAdapter = (() => {
-    // Detect localStorage availability (mirrors client_can.localstorage)
-    let canUseLocalStorage = false;
-    try {
-        canUseLocalStorage = !!window.localStorage;
-    } catch (_e) {
-        canUseLocalStorage = false;
-    }
-
-    var adapter = canUseLocalStorage
-        ? createLocalStorageAdapter()
-        : createCookieAdapter();
+    var adapter = createLocalStorageAdapter();
     var clear = adapter.clear;
     adapter.clear = function (): void {
         var playback = (window as any).__ottClassicPlayback;

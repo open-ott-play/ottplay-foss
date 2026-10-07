@@ -64,13 +64,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Ruhusu uchunguzi kwa dakika 10",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Ruhusu picha za skrini kwa dakika 10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ruhusu seva hii kukusanya vihesabio vya uchunguzi na kuwasha upya mtiririko huu au kicheza media. Ufikiaji wa muda hudumu dakika 10. Usaidizi unaoaminika hubakia kupatikana baada ya kuunganisha tena au kuanzisha upya; kila ukamataji bado unaisha baada ya dakika 10. Mkusanyiko husitishwa ukiwa umefichwa au nje ya mtandao.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ruhusu seva hii kukusanya vihesabio vya kucheza, mtandao na ingizo kwa kipindi hiki cha mbele. Inahitaji HTTPS na ruhusa ya seva. Inasimama baada ya dakika 10, inapofichwa, au inapokatwa.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Ruhusu seva hii kuomba picha kwa dakika 10. Picha zinaweza kuwa na taarifa binafsi. Katika kivinjari, chagua kichupo au dirisha la kichezaji cha media. Ruhusa inaisha unapopakia upya au kukata muunganisho.",
     "Allowlist this Device ID":
         "Ongeza ID ya kifaa hiki kwenye orodha inayoruhusiwa",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -104,6 +104,7 @@ var keyStrings = {
     "Background color": "Rangi ya usuli",
     "Background color of selected item":
         "Rangi ya mandharinyuma ya kipengee kilichochaguliwa",
+    "Backup state changed": "Hali ya kuhifadhi nakala imebadilishwa",
     "Balance, $": "Salio, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -114,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Skrini nyeusi wakati wa kubadilisha chaneli",
     Blue: "Bluu",
+    "Bookmark age (days): %1": "Umri wa alamisho (siku): %1",
     "Bookmark age: %1 days": "Alamisha umri: siku %1",
     "Browse folders": "Vinjari folda",
     "Buffer Size, s": "Ukubwa wa bafa, s",
@@ -169,6 +171,9 @@ var keyStrings = {
     "Clear settings": "Futa mipangilio",
     Close: "Funga",
     "Close PiP": "Funga PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Kuhifadhi au kupakia kutoka kwenye wingu kunahitaji programu dhibiti ya STB (host_ott haijawekwa)",
+    "Cloud transfer failed": "Uhamishaji wa wingu haukufaulu",
     Code: "Kanuni",
     Color: "Rangi",
     "Color spectrum": "Wigo wa rangi",
@@ -187,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Wakati wa kutekeleza uoanifu haukuweza kupakia. Fungua tena kicheza media ili ujaribu tena.",
     "Compatible HLS": "Sambamba HLS",
+    "Complete pairing link": "Kiungo kamili cha kuoanisha",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Sanidi All4you.tv katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +265,25 @@ var keyStrings = {
         "Sanidi Шаравоз katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     Connect: "Unganisha",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Unganisha seva ya amri ya HTTPS kabla ya kuruhusu picha za skrini.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Unganisha seva ya amri ya HTTPS ili kutumia picha za skrini.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Unganisha kidhibiti cha mbali ili kuwezesha uchunguzi.",
     "Connect this player to a command server first.":
         "Unganisha kicheza media hiki kwenye seva ya amri kwanza.",
+    "Connect to TV": "Unganisha kwenye TV",
     Connected: "Imeunganishwa",
     "Connected. Waiting for the channel list...":
         "Imeunganishwa. Inasubiri orodha ya kituo...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Kuunganisha udhibiti wa mbali huipa seva hii ruhusa ya kuchunguza na kurekebisha kichezaji. Ufikiaji hubaki baada ya kuwasha tena na huisha unapokata muunganisho. Kila ukusanyaji wa data za uchunguzi una kikomo cha dakika 10.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Kuunganisha uchunguzi wa mbali kwa muunganisho wa kidhibiti cha mbali kilichowezeshwa.",
     "Connecting remote diagnostics for this page.":
         "Inaunganisha uchunguzi wa mbali kwa ukurasa huu.",
+    "Connecting securely to your TV...":
+        "Inaunganisha kwa usalama kwenye TV yako...",
     "Connecting to Plex…": "Inaunganisha kwa Plex…",
     "Connecting to Stalker portal...":
         "Inaunganisha kwenye tovuti ya Stalker...",
@@ -293,6 +302,10 @@ var keyStrings = {
         "Haikuweza kuunda ombi la kuoanisha. Tafuta seva tena ili ujaribu tena.",
     "Could not load. Select to retry.":
         "Haikuweza kupakia. Chagua ili kujaribu tena.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Haikuweza kuandaa maandishi haya. Tafadhali kifupishe na ujaribu tena.",
+    "Could not protect the private link. Use a different browser.":
+        "Haikuweza kulinda kiungo cha faragha. Tumia kivinjari tofauti.",
     "Could not save provider settings.":
         "Imeshindikana kuhifadhi mipangilio ya mtoa huduma.",
     "Could not save the approved command server settings.":
@@ -310,6 +323,8 @@ var keyStrings = {
     "Delete category": "Futa kategoria",
     "Delete channel": "Futa kituo",
     "Delete list": "Futa orodha",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Uwasilishaji haukuweza kuthibitishwa. Angalia TV yako, au ujaribu tena ujumbe sawa kabla ya kipindi hiki kuisha.",
     "Demo — moving test pattern":
         "Onyesho - muundo wa jaribio la kusonga mbele",
     Description: "Maelezo",
@@ -394,6 +409,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Weka URL ya lango la Stalker (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Weka nambari ya seva (%1).",
+    "Enter text": "Weka maandishi",
     "Enter the access code separately, not in the server address.":
         "Ingiza msimbo wa ufikiaji kando, sio kwenye anwani ya seva.",
     "Enter the command server IP or address.":
@@ -546,8 +562,10 @@ var keyStrings = {
     "Interface transparency": "Uwazi wa kiolesura",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Kiungo batili cha kituo! Ingiza seva pangishi kamili kama ilivyo katika mtiririko wa dashibodi ya mtoa huduma URL (k.m. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Jibu batili la mipangilio ya wingu",
     "Invalid protected source configuration":
         "Usanidi batili wa chanzo kilicholindwa",
+    "Invalid setting": "Mpangilio batili",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one mipangilio",
@@ -627,6 +645,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Hakuna programu zinazolingana na vituo na tarehe za orodha ya kucheza. Angalia chanzo na saa ya kifaa.",
     "No saved settings found": "Hakuna mipangilio iliyohifadhiwa iliyopatikana",
+    "No supported system language. Choose a language.":
+        "Hakuna lugha ya mfumo inayotumika. Chagua lugha.",
     "Not configured": "Haijasanidiwa",
     "Not found": "Haijapatikana",
     "Not reduce video when showing the list (bugfix)":
@@ -642,6 +662,8 @@ var keyStrings = {
     "not set": "haijawekwa",
     Off: "Imezimwa",
     Ok: "Sawa",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "TV hii pekee ndiyo inaweza kukubali ujumbe wako. Kiungo kinaisha baada ya dakika 10.",
     Open: "Fungua",
     "Open in PiP": "Fungua katika PiP",
     "Open Plex sign-in page": "Fungua Plex ukurasa wa kuingia",
@@ -654,6 +676,7 @@ var keyStrings = {
     "OTT / APP host": "Seva ya OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE mipangilio",
+    "OTT-play remote input": "OTT-play ingizo la mbali",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 inapatikana. Pakua na usakinishe sasa?",
     "Overwrite current settings?": "Je, ungependa kufuta mipangilio ya sasa?",
@@ -686,6 +709,7 @@ var keyStrings = {
     Playback: "Uchezaji",
     "Player and device info": "kicheza media na habari ya kifaa",
     "Player could not start": "kicheza media haikuweza kuanza",
+    "Player default": "Chaguo-msingi la kichezaji",
     "Player info:": "habari za kicheza media:",
     Playlist: "Orodha ya kucheza",
     "Playlist file": "Faili ya orodha ya kucheza",
@@ -707,6 +731,8 @@ var keyStrings = {
     Postpaid: "Malipo baada ya matumizi",
     PROST: "PROST",
     "PROST settings": "PROST mipangilio",
+    "Preferred audio language": "Lugha ya sauti inayopendekezwa",
+    "Preferred subtitle language": "Lugha ya manukuu inayopendekezwa",
     Prepaid: "Malipo ya mapema",
     "Preparing secure remote input...":
         "Inatayarisha ingizo salama la mbali...",
@@ -740,14 +766,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Mbali (vifungo hakuna nambari)",
     "Remote control": "Udhibiti wa mbali",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Kidhibiti cha mbali huidhinisha uchunguzi. Tayari kwa opereta.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Kidhibiti cha mbali huidhinisha uchunguzi. Inasubiri kuunganisha tena.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Kidhibiti cha mbali kinajumuisha picha za skrini za kicheza media, ikijumuisha mipangilio yake. Picha zinaweza kuwa na maelezo ya faragha. Programu inaweza kupiga picha za skrini moja kwa moja bila idhini ya ziada. Katika kivinjari, chagua kichupo au dirisha la kunasa kwenye kifaa hiki.",
     "Remote diagnostics": "Utambuzi wa mbali",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Data za uchunguzi wa mbali zinakusanywa kwa muunganisho huu (hadi dakika 10 kwa kila kipindi).",
     "Remote diagnostics is collecting for this page.":
         "Uchunguzi wa mbali unakusanywa kwa ukurasa huu.",
     "Remote diagnostics is off.": "Uchunguzi wa mbali umezimwa.",
@@ -761,10 +787,10 @@ var keyStrings = {
         "Ingizo la mbali limekwisha. Fungua kipindi kipya ili ujaribu tena.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kipindi cha kuingiza data kwa mbali hakipatikani. Fungua kipindi kipya ili ujaribu tena.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Picha za skrini za mbali",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Picha za skrini za mbali zinaruhusiwa kwa dakika 10. Funga mipangilio ili kunasa.",
+    "Remote screenshots are off.": "Picha za skrini za mbali zimezimwa.",
     "Remote session expired": "Muda wa kipindi cha mbali umekwisha",
     "Remote text entry": "Ingizo la maandishi ya mbali",
     "Remote text entry denied": "Ingizo la maandishi ya mbali limekataliwa",
@@ -793,6 +819,7 @@ var keyStrings = {
     "Resume from archive?": "Ungependa kuendelea kutoka kwenye kumbukumbu?",
     Retry: "Jaribu tena",
     "Retry EPG download": "Jaribu tena kupakua EPG",
+    "Retry same message": "Jaribu tena ujumbe ule ule",
     "Return to previous channel": "Rudi kwenye kituo kilichotangulia",
     Rewind: "Sogeza muda wa video",
     "Rewind step by buttons %1/%2": "Hatua ya kurudisha nyuma kwa vitufe %1/%2",
@@ -810,19 +837,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Hifadhi mipangilio na upakie orodha ya vituo",
     "Save settings to storage": "Hifadhi mipangilio kwenye hifadhi",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Changanua msimbo wa QR kwenye TV yako, au ubandike kiungo chake kamili cha kuoanisha faragha hapa chini.",
     "Scan this QR code with your phone to enter text.":
         "Changanua msimbo huu QR kwa simu yako ili kuandika maandishi.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Kushiriki skrini hakukuweza kuanza.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ushiriki wa skrini umeghairiwa au haupatikani.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ruhusa ya kupiga picha ya skrini haikuweza kuwashwa.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Picha za skrini zinapatikana wakati kidhibiti cha mbali kimeunganishwa.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Picha za skrini hazipatikani kwenye mfumo huu.",
     Script: "Hati ya filamu",
     Search: "Tafuta",
+    "Search languages": "Tafuta lugha",
     "Search programme": "Tafuta programu",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Ingizo salama la mbali haikuweza kuanza. Tafadhali jaribu tena au tumia kibodi iliyo kwenye skrini.",
@@ -840,13 +870,14 @@ var keyStrings = {
         "Chagua chanzo cha kiolezo cha orodha ya kucheza kwa EPG na nembo",
     "Select Stalker portal": "Chagua tovuti ya Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Chagua chanzo cha picha ya skrini kwenye kivinjari",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Chagua kichupo cha kichezaji au dirisha kwenye kidirisha cha kushiriki kivinjari.",
     "Send request": "Tuma ombi",
     "Send settings": "Tuma mipangilio",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Tuma msimbo huu kutoka kwa seva yako wakilishi katika kichwa cha Authorization: Bearer.",
+    "Send to TV": "Tuma kwa TV",
     Server: "Seva",
     "Server address": "Anwani ya seva",
     "Server address (for example 192.168.1.20:8081)":
@@ -855,10 +886,14 @@ var keyStrings = {
     "Server URL": "Seva URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Seva haipatikani. Inajaribu tena kiotomatiki; angalia anwani yake na ufikiaji wa mtandao.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Kipindi kimefungwa. Anzisha mpya kutoka kwa TV yako inapohitajika.",
     Set: "Weka",
     "Set parental code": "Weka msimbo wa mzazi",
     "Set timer?": "Ungependa kuweka kipima muda?",
     Settings: "Mipangilio",
+    "Settings changed while editing":
+        "Mipangilio ilibadilishwa wakati wa kuhariri",
     "Settings changed. Discovery was canceled.":
         "Mipangilio imebadilishwa. Ugunduzi umeghairiwa.",
     "Settings copied": "Mipangilio imenakiliwa",
@@ -868,10 +903,15 @@ var keyStrings = {
     "Settings imported": "Mipangilio imeingizwa",
     "Settings JSON": "Mipangilio JSON",
     "Settings loaded from storage": "Mipangilio imepakiwa kutoka kwa hifadhi",
+    "Settings received. Restarting player...":
+        "Mipangilio imepokelewa. Kichezaji kinawashwa tena...",
     "Settings STB": "STB mipangilio",
     "Settings saved": "Mipangilio imehifadhiwa",
     "Settings saved to storage": "Mipangilio imehifadhiwa kwenye hifadhi",
     "Settings sended!": "Mipangilio imetumwa!",
+    "Settings source changed": "Chanzo cha mipangilio kimebadilishwa",
+    "Settings storage rejected write":
+        "Hifadhi ya mipangilio imekataa kuandika",
     "Several command servers were found. Select one below.":
         "Seva kadhaa za amri zilipatikana. Chagua moja hapa chini.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -925,12 +965,12 @@ var keyStrings = {
     "Starting...": "Inaanza...",
     Status: "Hali",
     Stop: "Simamisha",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Acha kushiriki kivinjari",
     "Stop current capture": "Acha kukamata kwa sasa",
     "Stop diagnostics": "Acha uchunguzi",
     "Stop playback and return to live":
         "Simamisha uchezaji na urudi kwenye matangazo ya moja kwa moja",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Simamisha picha za skrini",
     "Stream could not be played": "Mtiririko haukuweza kuchezwa",
     "Stream type: %1": "Aina ya mtiririko: %1",
     "String for search": "Swali la utafutaji",
@@ -942,6 +982,7 @@ var keyStrings = {
     "Switch subtitle": "Badilisha manukuu",
     "Switch to this list": "Badili hadi kwenye orodha hii",
     "Swop URL": "URL ya SWOP",
+    "System language": "Lugha ya mfumo",
     "saved on this device": "imehifadhiwa kwenye kifaa hiki",
     select: "chagua",
     small: "ndogo",
@@ -950,15 +991,19 @@ var keyStrings = {
     "Tabox settings": "Tabox mipangilio",
     "Text is too long for remote input.":
         "Maandishi ni marefu sana kwa ingizo la mbali.",
+    "Text is too long. Please shorten it before sending.":
+        "Maandishi ni marefu sana. Tafadhali kifupishe kabla ya kutuma.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Maandishi yametumwa. Angalia TV yako ili uthibitishe kuwa inaonekana.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Chanzo cha picha ya skrini ya kivinjari kiko tayari.",
     "The command server discovery URL is invalid.":
         "Ugunduzi wa seva ya amri URL ni batili.",
     "The device ID in the address is invalid.":
         "Kifaa ID katika anwani ni batili.",
     "The discovery response is invalid.": "Jibu la ugunduzi ni batili.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Kivinjari hiki hakiwezi kutambua chanzo kilichochaguliwa cha picha ya skrini.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Kivinjari hiki hakiwezi kuoanisha kiotomatiki kwa usalama. Isasishe au ingiza mipangilio ya seva ya amri kwa mikono.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -967,6 +1012,10 @@ var keyStrings = {
         "Kicheza media HTTPS hiki hakiwezi kuunganisha kwa seva ya HTTP. Tumia seva ya HTTPS au fungua kicheza media kupitia HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Programu hii ya Google Play inahitaji HTTPS. Uliza mtoa huduma wako HTTPS orodha ya kucheza au seva URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Kiungo hiki cha kuoanisha kimeisha muda wake. Fungua kipindi kipya kwenye TV yako.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Kipindi hiki salama hakipatikani au muda wake umekwisha. Fungua kipindi kipya kwenye TV na utumie kiungo chake kamili.",
     Timer: "Kipima muda",
     "Timer: switch to channel?":
         "Kipima muda: ungependa kubadilisha hadi kituo hiki?",
@@ -1017,6 +1066,8 @@ var keyStrings = {
         "Tumia HTTP au HTTPS bila jina la mtumiaji au nenosiri katika anwani.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Tumia KUSHOTO/KULIA ili kuchagua kidhibiti, SAWA ili kuiwasha, na JUU/ CHINI kusogeza.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Tumia kiungo kamili, ikijumuisha sehemu baada ya #. Usiishiriki na mtu mwingine yeyote.",
     "Use Up / Down to scroll. Back to close.":
         "Tumia Juu / Chini kusogeza. Rudi kwa karibu.",
     Username: "Jina la mtumiaji",

@@ -8,7 +8,7 @@
     },
     {
       "file": "src/channels/index.ts",
-      "expression": "_(\"Resume from archive?\") + \"<br><br>\" + _(\"Bookmark age: %1 days\", Math.floor(ageMs / 86400000))",
+      "expression": "_(\"Resume from archive?\") + \"<br><br>\" + _(\"Bookmark age (days): %1\", formatLocaleNumber(Math.max(0, Math.floor(ageMs / 86400000))))",
       "reason": "Already-translated constituent labels plus runtime data or markup; nested literal calls are scanned independently."
     },
     {
@@ -270,6 +270,11 @@
       "file": "src/index.ts",
       "expression": "view.message",
       "reason": "Screenshot status messages are the finite message declarations/assignments and failGrant arguments in remote-screenshot.ts, all extracted by localization-catalog.cjs; image bytes and protocol errors never enter this UI translation boundary."
+    },
+    {
+      "file": "src/settings/cloud.ts",
+      "expression": "message",
+      "reason": "Cloud fail forwards only app-owned first-argument keys from finite call sites scanned by localization-catalog.cjs; escaped server details are separate and are not translation keys."
     }
   ]
 }

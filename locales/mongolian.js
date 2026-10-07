@@ -63,13 +63,14 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Оношилгоог 10 минут зөвшөөрөх",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Дэлгэцийн агшинг 10 минутын турш зөвшөөрнө",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Энэ серверт оношилгооны тоолуур цуглуулах, энэ урсгал эсвэл тоглуулагчийг дахин эхлүүлэхийг зөвшөөрнө үү. Түр хандалт 10 минут үргэлжилнэ. Итгэмжлэгдсэн тусламж дахин холбогдох эсвэл эхлүүлсний дараа ч боломжтой байна; цуглуулалт бүр 10 минутын дараа дуусна. Хуудас нуугдсан эсвэл сүлжээгүй үед цуглуулалтыг түр зогсооно.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Энэ серверт нүүрэнд байгаа энэ хуудасны сешнд тоглуулалт, сүлжээ болон оролтын тоолуур цуглуулахыг зөвшөөрнө үү. HTTPS болон серверийн зөвшөөрөл шаардлагатай. 10 минутын дараа, хуудас нуугдах эсвэл холболт тасрахад зогсоно.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Энэ серверт 10 минутын турш зураг авахыг зөвшөөрнө үү. Зураг нь хувийн мэдээллийг агуулж болно. Хөтөч дээр тоглуулагчийн таб эсвэл цонхыг сонгоно уу. Дахин ачаалах эсвэл салгаснаар зөвшөөрөл дуусна.",
     "Allowlist this Device ID":
         "Энэ төхөөрөмжийн ID-г зөвшөөрөгдсөн жагсаалтад нэмэх",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 минут ухраах / урагшлуулах",
     "Background color": "Дэвсгэрийн өнгө",
     "Background color of selected item": "Сонгосон зүйлийн дэвсгэрийн өнгө",
+    "Backup state changed": "Нөөцлөлтийн төлөв өөрчлөгдсөн",
     "Balance, $": "Үлдэгдэл, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -114,6 +116,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Суваг солих үед хар дэлгэц харуулах",
     Blue: "Цэнхэр",
+    "Bookmark age (days): %1": "Хавчуургын нас (өдөр): %1",
     "Bookmark age: %1 days": "Хавчуургын нас: %1 өдөр",
     "Browse folders": "Хавтас үзэх",
     "Buffer Size, s": "Буферийн хэмжээ, с",
@@ -169,6 +172,9 @@ var keyStrings = {
     "Clear settings": "Тохиргоог арилгах",
     Close: "Хаах",
     "Close PiP": "PiP хаах",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Үүлэн хадгалах/ачаалахад STB програм хангамж шаардлагатай (host_ott тохируулаагүй)",
+    "Cloud transfer failed": "Үүлэн дамжуулалт амжилтгүй боллоо",
     Code: "Код",
     Color: "Өнгө",
     "Color spectrum": "Өнгөний спектр",
@@ -186,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Нийцлийн орчин ачаалагдсангүй. Дахин оролдохын тулд тоглуулагчийг дахин нээнэ үү.",
     "Compatible HLS": "Нийцтэй HLS",
+    "Complete pairing link": "Бүрэн хослуулах холбоос",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт All4you.tv-ийг тохируулна уу",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -258,22 +265,25 @@ var keyStrings = {
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт Шаравоз-ийг тохируулна уу",
     Connect: "Холбох",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Дэлгэцийн агшинг зөвшөөрөхөөс өмнө HTTPS командын серверийг холбоно уу.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Дэлгэцийн агшинг ашиглахын тулд HTTPS командын серверийг холбоно уу.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Оношлогоог идэвхжүүлэхийн тулд алсын удирдлагатай холбоно уу.",
     "Connect this player to a command server first.":
         "Эхлээд энэ тоглуулагчийг тушаалын серверт холбоно уу.",
+    "Connect to TV": "ТВ-тэй холбогдоно уу",
     Connected: "Холбогдсон",
     "Connected. Waiting for the channel list...":
         "Холбогдсон. Сувгийн жагсаалтыг хүлээж байна...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Алсын удирдлагын холболт нь энэ серверт тоглуулагчийн асуудлыг оношлох, засах эрх олгоно. Дахин асаасны дараа хандалт хэвээр үлдэж, холболтыг салгахад дуусна. Оношлогооны өгөгдөл цуглуулах нэг удаагийн сесс 10 минутаас хэтрэхгүй.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Идэвхжүүлсэн алсын удирдлагатай холболтын алсын оношлогоог холбож байна.",
     "Connecting remote diagnostics for this page.":
         "Энэ хуудсанд алсын оношилгоог холбож байна.",
+    "Connecting securely to your TV...":
+        "ТВ-тэй хамгаалалттай холболт үүсгэж байна...",
     "Connecting to Plex…": "Plex-т холбогдож байна…",
     "Connecting to Stalker portal...": "Stalker порталд холбогдож байна…",
     "Connecting...": "Холбогдож байна…",
@@ -291,6 +301,10 @@ var keyStrings = {
         "Хослуулах хүсэлт үүсгэж чадсангүй. Дахин оролдохын тулд серверийг дахин олно уу.",
     "Could not load. Select to retry.":
         "Ачаалж чадсангүй. Дахин оролдохын тулд сонгоно уу.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Энэ текстийг бэлтгэж чадсангүй. Үүнийг богиносгоод дахин оролдоно уу.",
+    "Could not protect the private link. Use a different browser.":
+        "Хувийн холбоосыг хамгаалж чадсангүй. Өөр хөтөч ашиглана уу.",
     "Could not save provider settings.":
         "Үйлчилгээ үзүүлэгчийн тохиргоог хадгалж чадсангүй.",
     "Could not save the approved command server settings.":
@@ -308,6 +322,8 @@ var keyStrings = {
     "Delete category": "Ангилал устгах",
     "Delete channel": "Суваг устгах",
     "Delete list": "Жагсаалт устгах",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Хүргэлтийг баталгаажуулж чадсангүй. Телевизээ шалгана уу эсвэл энэ сесс дуусахаас өмнө ижил мессежийг дахин илгээнэ үү.",
     "Demo — moving test pattern": "Демо — хөдөлгөөнт туршилтын дүрс",
     Description: "Тайлбар",
     "Description of remote control buttons": "Удирдлагын товчны заавар",
@@ -392,6 +408,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker порталын URL-г оруулна уу (жишээ нь http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Серверийн дугаарыг оруулна уу (%1).",
+    "Enter text": "Текст оруулна уу",
     "Enter the access code separately, not in the server address.":
         "Хандалтын кодыг серверийн хаягт биш, тусад нь оруулна уу.",
     "Enter the command server IP or address.":
@@ -545,8 +562,10 @@ var keyStrings = {
     "Interface transparency": "Интерфэйсийн тунгалаг байдал",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Сувгийн холбоос буруу! Хувийн кабинетын урсгалын URL дахь хостыг бүтнээр нь оруулна уу (жишээ нь subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Клоуд тохиргооны хариу буруу байна",
     "Invalid protected source configuration":
         "Хамгаалагдсан эх сурвалжийн тохиргоо буруу",
+    "Invalid setting": "Буруу тохиргоо",
     "IPTV token": "IPTV токен",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one-ийн тохиргоо",
@@ -626,6 +645,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Нэвтрүүлэг тоглуулах жагсаалтын суваг, огноотой таарсангүй. Эх сурвалж болон төхөөрөмжийн цагийг шалгана уу.",
     "No saved settings found": "Хадгалсан тохиргоо олдсонгүй",
+    "No supported system language. Choose a language.":
+        "Системийн хэлийг дэмждэггүй. Хэл сонгоно уу.",
     "Not configured": "Тохируулаагүй",
     "Not found": "Олдсонгүй",
     "Not reduce video when showing the list (bugfix)":
@@ -641,6 +662,8 @@ var keyStrings = {
     "not set": "тохируулаагүй",
     Off: "Унтраалттай",
     Ok: "За",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Зөвхөн энэ ТВ таны мессежийг хүлээн авах боломжтой. Холбоос 10 минутын дараа дуусна.",
     Open: "Нээх",
     "Open in PiP": "PiP горимд нээх",
     "Open Plex sign-in page": "Plex нэвтрэх хуудас нээх",
@@ -653,6 +676,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP хост",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-ийн тохиргоо",
+    "OTT-play remote input": "OTT-play алсын оролт",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 бэлэн байна. Одоо татаж суулгах уу?",
     "Overwrite current settings?": "Одоогийн тохиргоог дарж бичих үү?",
@@ -685,6 +709,7 @@ var keyStrings = {
     Playback: "Тоглуулалт",
     "Player and device info": "Тоглуулагч ба төхөөрөмжийн мэдээлэл",
     "Player could not start": "Тоглуулагч эхэлж чадсангүй",
+    "Player default": "Тоглуулагчийн үндсэн сонголт",
     "Player info:": "Тоглуулагчийн мэдээлэл:",
     Playlist: "Тоглуулах жагсаалт",
     "Playlist file": "Тоглуулах жагсаалтын файл",
@@ -706,6 +731,8 @@ var keyStrings = {
     Postpaid: "Дараа төлөх",
     PROST: "PROST",
     "PROST settings": "PROST-ийн тохиргоо",
+    "Preferred audio language": "Давуу хэрэглэх дууны хэл",
+    "Preferred subtitle language": "Давуу хэрэглэх хадмалын хэл",
     Prepaid: "Урьдчилан төлөх",
     "Preparing secure remote input...":
         "Алсаас аюулгүй оруулахыг бэлтгэж байна...",
@@ -739,14 +766,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Удирдлага (тоон товчгүй)",
     "Remote control": "Алсын удирдлага",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Алсын удирдлага нь оношлогоо хийхийг зөвшөөрдөг. Оператор авахад бэлэн.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Алсын удирдлага нь оношлогоо хийхийг зөвшөөрдөг. Дахин холбогдохыг хүлээж байна.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Алсын удирдлага нь медиа тоглуулагчийн дэлгэцийн агшин, түүний дотор тохиргоог агуулдаг. Зураг нь хувийн мэдээллийг агуулж болно. Энэхүү програм нь нэмэлт зөвшөөрөлгүйгээр шууд дэлгэцийн агшинг авах боломжтой. Хөтөч дээр энэ төхөөрөмж дээр зураг авах цонх эсвэл табыг сонгоно уу.",
     "Remote diagnostics": "Алсын оношилгоо",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Энэ холболтын оношлогооны өгөгдлийг цуглуулж байна (нэг сессэд 10 минут хүртэл).",
     "Remote diagnostics is collecting for this page.":
         "Алсын оношилгоо энэ хуудасны мэдээллийг цуглуулж байна.",
     "Remote diagnostics is off.": "Алсын оношилгоо унтраалттай.",
@@ -760,10 +787,10 @@ var keyStrings = {
         "Алсаас оруулах хугацаа дууссан. Дахин оролдохын тулд шинэ сешн нээнэ үү.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Алсаас оруулах сешн боломжгүй. Дахин оролдохын тулд шинэ сешн нээнэ үү.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Алсын дэлгэцийн агшин",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Дэлгэцийн зургийг алсаас авахыг 10 минутын турш зөвшөөрсөн. Зураг авахын тулд тохиргооны цонхыг хаана уу.",
+    "Remote screenshots are off.": "Алсын дэлгэцийн агшинг унтраасан байна.",
     "Remote session expired": "Алсын сешний хугацаа дууссан",
     "Remote text entry": "Алсаас текст оруулах",
     "Remote text entry denied": "Алсаас текст оруулахыг хориглосон",
@@ -791,6 +818,7 @@ var keyStrings = {
     "Resume from archive?": "Архиваас үргэлжлүүлэх үү?",
     Retry: "Дахин оролдох",
     "Retry EPG download": "EPG дахин татах",
+    "Retry same message": "Ижил мессежийг дахин илгээх",
     "Return to previous channel": "Өмнөх сувагт буцах",
     Rewind: "Хугацаагаар шилжих",
     "Rewind step by buttons %1/%2": "%1/%2 товчны ухраах алхам",
@@ -808,19 +836,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Тохиргоог хадгалаад сувгийн жагсаалтыг ачаалах",
     "Save settings to storage": "Тохиргоог хадгалах санд хадгалах",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "ТВ дээрээ QR кодыг сканнердах юм уу эсвэл доор нь бүрэн хувийн хослуулах холбоосыг буулгана уу.",
     "Scan this QR code with your phone to enter text.":
         "Текст оруулахын тулд энэ QR кодыг утсаараа уншуулна уу.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Дэлгэц хуваалцахыг эхлүүлж чадсангүй.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Дэлгэц хуваалцахыг цуцалсан эсвэл боломжгүй байна.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Дэлгэцийн зургийн зөвшөөрлийг идэвхжүүлж чадсангүй.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Алсын удирдлага холбогдсон үед дэлгэцийн агшинг авах боломжтой.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Дэлгэцийн агшинг энэ платформ дээр ашиглах боломжгүй.",
     Script: "Кино зохиол",
     Search: "Хайх",
+    "Search languages": "Хэл хайх",
     "Search programme": "Нэвтрүүлэг хайх",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Алсаас аюулгүй оруулж эхэлсэнгүй. Дахин оролдох эсвэл дэлгэцийн гар ашиглана уу.",
@@ -838,13 +869,14 @@ var keyStrings = {
         "EPG болон логонд тоглуулах жагсаалтын загвар эх сурвалж сонгох",
     "Select Stalker portal": "Stalker портал сонгох",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Хөтөчөөс дэлгэцийн зургийн эх сурвалжийг сонгоно уу",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Хөтөч хуваалцах цонхноос тоглуулагчийн таб эсвэл цонхыг сонгоно уу.",
     "Send request": "Хүсэлт илгээх",
     "Send settings": "Тохиргоо илгээх",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Энэ кодыг проксигоосоо Authorization: Bearer толгой хэсэгт илгээнэ үү.",
+    "Send to TV": "ТВ рүү илгээх",
     Server: "Сервер",
     "Server address": "Серверийн хаяг",
     "Server address (for example 192.168.1.20:8081)":
@@ -853,10 +885,13 @@ var keyStrings = {
     "Server URL": "Серверийн URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Сервер боломжгүй. Автоматаар дахин оролдож байна; хаяг болон сүлжээний хандалтыг шалгана уу.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Сессийг хаалаа. Шаардлагатай үед ТВ дээрээ шинэ сесс эхлүүлнэ үү.",
     Set: "Тохируулах",
     "Set parental code": "Эцэг эхийн хяналтын код тохируулах",
     "Set timer?": "Цаглуур тохируулах уу?",
     Settings: "Тохиргоо",
+    "Settings changed while editing": "Засварлах явцад тохиргоо өөрчлөгдсөн",
     "Settings changed. Discovery was canceled.":
         "Тохиргоо өөрчлөгдсөн. Хайлт цуцлагдсан.",
     "Settings copied": "Тохиргоог хуулсан",
@@ -866,10 +901,15 @@ var keyStrings = {
     "Settings imported": "Тохиргоог импортолсон",
     "Settings JSON": "Тохиргооны JSON",
     "Settings loaded from storage": "Хадгалах сангаас тохиргоо ачаалсан",
+    "Settings received. Restarting player...":
+        "Тохиргоог хүлээн авлаа. Тоглуулагчийг дахин асааж байна...",
     "Settings STB": "STB тохиргоо",
     "Settings saved": "Тохиргоо хадгалагдсан",
     "Settings saved to storage": "Тохиргоог хадгалах санд хадгалсан",
     "Settings sended!": "Тохиргоо илгээгдлээ!",
+    "Settings source changed": "Тохиргооны эх сурвалж өөрчлөгдсөн",
+    "Settings storage rejected write":
+        "Тохиргооны сан өгөгдөл бичихээс татгалзлаа",
     "Several command servers were found. Select one below.":
         "Хэд хэдэн тушаалын сервер олдсон. Доороос нэгийг сонгоно уу.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -923,12 +963,12 @@ var keyStrings = {
     "Starting...": "Эхэлж байна…",
     Status: "Төлөв",
     Stop: "Зогсоох",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Хөтөч хуваалцахыг зогсоо",
     "Stop current capture": "Одоогийн цуглуулалтыг зогсоох",
     "Stop diagnostics": "Оношилгоог зогсоох",
     "Stop playback and return to live":
         "Тоглуулалтыг зогсоогоод шууд эфирт буцах",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Дэлгэцийн агшинг зогсоо",
     "Stream could not be played": "Урсгалыг тоглуулж чадсангүй",
     "Stream type: %1": "Урсгалын төрөл: %1",
     "String for search": "Хайлтын хүсэлт",
@@ -940,6 +980,7 @@ var keyStrings = {
     "Switch subtitle": "Хадмал солих",
     "Switch to this list": "Энэ жагсаалт руу шилжих",
     "Swop URL": "Swop URL",
+    "System language": "Системийн хэл",
     "saved on this device": "энэ төхөөрөмж дээр хадгалсан",
     select: "сонгох",
     small: "жижиг",
@@ -948,15 +989,19 @@ var keyStrings = {
     "Tabox settings": "Tabox-ийн тохиргоо",
     "Text is too long for remote input.":
         "Текст алсаас оруулахад хэт урт байна.",
+    "Text is too long. Please shorten it before sending.":
+        "Текст хэт урт байна. Илгээхээсээ өмнө товчилно уу.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Текстийг илгээлээ. Текст ТВ дээр гарч ирсэн эсэхийг шалгана уу.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Хөтөчийн дэлгэцийн зургийн эх сурвалж бэлэн боллоо.",
     "The command server discovery URL is invalid.":
         "Тушаалын сервер хайх URL буруу байна.",
     "The device ID in the address is invalid.":
         "Хаяг дахь төхөөрөмжийн ID буруу байна.",
     "The discovery response is invalid.": "Хайлтын хариу буруу байна.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Энэ хөтөч сонгосон дэлгэцийн зургийн эх сурвалжийг тодорхойлж чадахгүй байна.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Энэ хөтөч автоматаар аюулгүй хослуулж чадахгүй. Үүнийг шинэчлэх эсвэл тушаалын серверийн тохиргоог гараар оруулна уу.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -965,6 +1010,10 @@ var keyStrings = {
         "Энэ HTTPS тоглуулагч HTTP серверт холбогдож чадахгүй. HTTPS сервер ашиглах эсвэл тоглуулагчийг HTTP-ээр нээнэ үү.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Энэ Play апп HTTPS шаарддаг. Үйлчилгээ үзүүлэгчээс HTTPS тоглуулах жагсаалт эсвэл серверийн URL авна уу.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Энэ холболтын хугацаа дууссан. ТВ дээрээ шинэ сесс нээнэ үү.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Энэ аюулгүй сесс боломжгүй эсвэл хугацаа нь дууссан. ТВ дээр шинэ сесс нээж, түүний бүрэн холбоосыг ашиглана уу.",
     Timer: "Цаглуур",
     "Timer: switch to channel?": "Цаглуур: энэ суваг руу шилжих үү?",
     "Timeshift: one minute back": "Хугацааны шилжилт: нэг минут ухраах",
@@ -1014,6 +1063,8 @@ var keyStrings = {
         "Хаягтаа хэрэглэгчийн нэр, нууц үг агуулаагүй HTTP эсвэл HTTPS ашиглана уу.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Удирдлага сонгоход ЗҮҮН/БАРУУН, идэвхжүүлэхэд OK, гүйлгэхэд ДЭЭШ/ДООШ товч ашиглана уу.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Бүтэн холбоосыг, түүний дотор #-ын дараах хэсгийг ашиглана уу. Үүнийг өөр хэнтэй ч бүү хуваалц.",
     "Use Up / Down to scroll. Back to close.":
         "Гүйлгэхийн тулд Дээш / Доош товч ашиглана уу. Хаахын тулд Буцах дарна уу.",
     Username: "Хэрэглэгчийн нэр",

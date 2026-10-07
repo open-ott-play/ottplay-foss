@@ -61,13 +61,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "10 ನಿಮಿಷಗಳ ಕಾಲ ರೋಗನಿರ್ಣಯವನ್ನು ಅನುಮತಿಸಿ",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "10 ನಿಮಿಷಗಳ ಕಾಲ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ಅನುಮತಿಸಿ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಕೌಂಟರ್‌ಗಳನ್ನು ಸಂಗ್ರಹಿಸಲು ಮತ್ತು ಈ ಸ್ಟ್ರೀಮ್ ಅಥವಾ ಪ್ಲೇಯರ್ ಅನ್ನು ಮರುಪ್ರಾರಂಭಿಸಲು ಈ ಸರ್ವರ್ ಅನ್ನು ಅನುಮತಿಸಿ. ತಾತ್ಕಾಲಿಕ ಪ್ರವೇಶವು 10 ನಿಮಿಷಗಳವರೆಗೆ ಇರುತ್ತದೆ. ಮರುಸಂಪರ್ಕಿಸಿದ ನಂತರ ಅಥವಾ ಮರುಪ್ರಾರಂಭಿಸಿದ ನಂತರ ವಿಶ್ವಾಸಾರ್ಹ ಬೆಂಬಲ ಲಭ್ಯವಿರುತ್ತದೆ; ಪ್ರತಿ ಕ್ಯಾಪ್ಚರ್ ಇನ್ನೂ 10 ನಿಮಿಷಗಳ ನಂತರ ಮುಕ್ತಾಯಗೊಳ್ಳುತ್ತದೆ. ಮರೆಮಾಡಿದಾಗ ಅಥವಾ ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿ ಸಂಗ್ರಹಣೆಯು ವಿರಾಮಗೊಳ್ಳುತ್ತದೆ.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ಈ ಮುಂಭಾಗದ ಸೆಶನ್‌ಗಾಗಿ ಪ್ಲೇಬ್ಯಾಕ್, ನೆಟ್‌ವರ್ಕ್ ಮತ್ತು ಇನ್‌ಪುಟ್ ಕೌಂಟರ್‌ಗಳನ್ನು ಸಂಗ್ರಹಿಸಲು ಈ ಸರ್ವರ್ ಅನ್ನು ಅನುಮತಿಸಿ. HTTPS ಮತ್ತು ಸರ್ವರ್ ಅನುಮತಿಯ ಅಗತ್ಯವಿದೆ. 10 ನಿಮಿಷಗಳ ನಂತರ, ಮರೆಮಾಡಿದಾಗ ಅಥವಾ ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಾಗ ನಿಲ್ಲುತ್ತದೆ.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "10 ನಿಮಿಷಗಳ ಕಾಲ ಚಿತ್ರಗಳನ್ನು ವಿನಂತಿಸಲು ಈ ಸರ್ವರ್ ಅನ್ನು ಅನುಮತಿಸಿ. ಚಿತ್ರಗಳು ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿರಬಹುದು. ಬ್ರೌಸರ್‌ನಲ್ಲಿ, ಪ್ಲೇಯರ್ ಟ್ಯಾಬ್ ಅಥವಾ ವಿಂಡೋವನ್ನು ಆಯ್ಕೆಮಾಡಿ. ಮರುಲೋಡ್ ಅಥವಾ ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿದಾಗ ಅನುಮತಿ ಕೊನೆಗೊಳ್ಳುತ್ತದೆ.",
     "Allowlist this Device ID": "ಈ ಸಾಧನವನ್ನು ಅನುಮತಿಸಿ ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ಪ್ಲೇಯರ್ HTTP EPG ಮೂಲವನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. HTTPS ಮೂಲವನ್ನು ಬಳಸಿ.",
@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 ನಿಮಿಷ ಹಿಂದಕ್ಕೆ / ಮುಂದಕ್ಕೆ ಹೋಗಿ",
     "Background color": "ಹಿನ್ನೆಲೆ ಬಣ್ಣ",
     "Background color of selected item": "ಆಯ್ದ ಐಟಂನ ಹಿನ್ನೆಲೆ ಬಣ್ಣ",
+    "Backup state changed": "ಬ್ಯಾಕಪ್ ಸ್ಥಿತಿಯನ್ನು ಬದಲಾಯಿಸಲಾಗಿದೆ",
     "Balance, $": "ಬ್ಯಾಲೆನ್ಸ್, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -107,6 +108,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "ಪಟ್ಟಿಗಳಲ್ಲಿ %1/%2 ಬಟನ್‌ಗಳ ವರ್ತನೆ",
     "Black screen while switching the channel": "ಚಾನೆಲ್‌ಗಳನ್ನು ಬದಲಾಯಿಸುವಾಗ ಕಪ್ಪು ಪರದೆ",
     Blue: "ನೀಲಿ",
+    "Bookmark age (days): %1": "ಬುಕ್‌ಮಾರ್ಕ್‌ನ ವಯಸ್ಸು (ದಿನಗಳು): %1",
     "Bookmark age: %1 days": "ಬುಕ್‌ಮಾರ್ಕ್ ವಯಸ್ಸು: %1 ದಿನಗಳು",
     "Browse folders": "ಫೋಲ್ಡರ್‌ಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ",
     "Buffer Size, s": "ಬಫರ್ ಗಾತ್ರ, ರು",
@@ -157,11 +159,14 @@ var keyStrings = {
     "Choose language": "ಭಾಷೆಯನ್ನು ಆರಿಸಿ",
     "Choose Plex server": "Plex ಸರ್ವರ್ ಆಯ್ಕೆಮಾಡಿ",
     "Choose provider": "ಪೂರೈಕೆದಾರರನ್ನು ಆಯ್ಕೆಮಾಡಿ",
-    Classic: "Classic",
+    Classic: "ಸಾಂಪ್ರದಾಯಿಕ",
     "Clear all settings?": "ಎಲ್ಲಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ತೆರವುಗೊಳಿಸುವುದೇ?",
     "Clear settings": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ತೆರವುಗೊಳಿಸಿ",
     Close: "ಮುಚ್ಚಿ",
     "Close PiP": "PiP ಮುಚ್ಚಿ",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ಕ್ಲೌಡ್ ಸೇವ್/ಲೋಡ್‌ಗೆ STB ಫರ್ಮ್‌ವೇರ್ ಅಗತ್ಯವಿದೆ (host_ott ಹೊಂದಿಸಲಾಗಿಲ್ಲ)",
+    "Cloud transfer failed": "ಮೇಘ ವರ್ಗಾವಣೆ ವಿಫಲವಾಗಿದೆ",
     Code: "ಕೋಡ್",
     Color: "ಬಣ್ಣ",
     "Color spectrum": "ಬಣ್ಣ ವರ್ಣಪಟಲ",
@@ -178,6 +183,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "ಹೊಂದಾಣಿಕೆ ರನ್ಟೈಮ್ ಅನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಮರುಪ್ರಯತ್ನಿಸಲು ಪ್ಲೇಯರ್ನನ್ನು ಪುನಃ ತೆರೆಯಿರಿ.",
     "Compatible HLS": "ಹೊಂದಾಣಿಕೆಯ HLS",
+    "Complete pairing link": "ಸಂಪೂರ್ಣ ಜೋಡಣೆ ಲಿಂಕ್",
     "Configure All4you.tv in Settings -> Provider Settings":
         "ಸೆಟ್ಟಿಂಗ್‌ಗಳು -> ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ All4you.tv ಅನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಿ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -250,22 +256,24 @@ var keyStrings = {
         "ಸೆಟ್ಟಿಂಗ್‌ಗಳು -> ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ Шаравоз ಅನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಿ",
     Connect: "ಸಂಪರ್ಕಿಸಿ",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ಅನುಮತಿಸುವ ಮೊದಲು HTTPS ಕಮಾಂಡ್ ಸರ್ವರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ಬಳಸಲು HTTPS ಕಮಾಂಡ್ ಸರ್ವರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲು ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.",
     "Connect this player to a command server first.":
         "ಈ ಪ್ಲೇಯರ್ ಅನ್ನು ಮೊದಲು ಕಮಾಂಡ್ ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.",
+    "Connect to TV": "ಟಿವಿಗೆ ಸಂಪರ್ಕಪಡಿಸಿ",
     Connected: "ಸಂಪರ್ಕಗೊಂಡಿದೆ",
     "Connected. Waiting for the channel list...":
         "ಸಂಪರ್ಕಗೊಂಡಿದೆ. ಚಾನಲ್ ಪಟ್ಟಿಗಾಗಿ ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "ದೂರನಿಯಂತ್ರಣಕ್ಕೆ ಸಂಪರ್ಕಿಸುವುದರಿಂದ ಪ್ಲೇಯರ್‌ನ ಸಮಸ್ಯೆಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಸರಿಪಡಿಸಲು ಈ ಸರ್ವರ್‌ಗೆ ಅನುಮತಿ ನೀಡಲಾಗುತ್ತದೆ. ಮರುಪ್ರಾರಂಭಿಸಿದ ನಂತರವೂ ಪ್ರವೇಶ ಲಭ್ಯವಿರುತ್ತದೆ; ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿದಾಗ ಅದು ಕೊನೆಗೊಳ್ಳುತ್ತದೆ. ಪರಿಶೀಲನಾ ದತ್ತಾಂಶ ಸಂಗ್ರಹಣೆಯ ಪ್ರತಿ ಅವಧಿ 10 ನಿಮಿಷಗಳಿಗೆ ಸೀಮಿತವಾಗಿರುತ್ತದೆ.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ಸಕ್ರಿಯಗೊಳಿಸಲಾದ ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಸಂಪರ್ಕಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.",
     "Connecting remote diagnostics for this page.":
         "ಈ ಪುಟಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ.",
+    "Connecting securely to your TV...": "ನಿಮ್ಮ ಟಿವಿಗೆ ಸುರಕ್ಷಿತವಾಗಿ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ...",
     "Connecting to Plex…": "Plex ಗೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…",
     "Connecting to Stalker portal...": "Stalker ಪೋರ್ಟಲ್‌ಗೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ...",
     "Connecting...": "ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ...",
@@ -282,6 +290,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "ಜೋಡಿಸುವ ವಿನಂತಿಯನ್ನು ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮರುಪ್ರಯತ್ನಿಸಲು ಸರ್ವರ್ ಅನ್ನು ಮತ್ತೆ ಹುಡುಕಿ.",
     "Could not load. Select to retry.": "ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಮರುಪ್ರಯತ್ನಿಸಲು ಆಯ್ಕೆಮಾಡಿ.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ಈ ಪಠ್ಯವನ್ನು ಸಿದ್ಧಪಡಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಅದನ್ನು ಚಿಕ್ಕದಾಗಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "Could not protect the private link. Use a different browser.":
+        "ಖಾಸಗಿ ಲಿಂಕ್ ಅನ್ನು ರಕ್ಷಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಬೇರೆ ಬ್ರೌಸರ್ ಬಳಸಿ.",
     "Could not save provider settings.": "ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ.",
     "Could not save the approved command server settings.":
         "ಅನುಮೋದಿತ ಕಮಾಂಡ್ ಸರ್ವರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ.",
@@ -298,6 +310,8 @@ var keyStrings = {
     "Delete category": "ವರ್ಗವನ್ನು ಅಳಿಸಿ",
     "Delete channel": "ಚಾನಲ್ ಅಳಿಸಿ",
     "Delete list": "ಪಟ್ಟಿಯನ್ನು ಅಳಿಸಿ",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ವಿತರಣೆಯನ್ನು ದೃಢೀಕರಿಸಲಾಗಲಿಲ್ಲ. ನಿಮ್ಮ ಟಿವಿಯನ್ನು ಪರಿಶೀಲಿಸಿ ಅಥವಾ ಈ ಸೆಶನ್ ಅವಧಿ ಮುಗಿಯುವ ಮೊದಲು ಅದೇ ಸಂದೇಶವನ್ನು ಮರುಪ್ರಯತ್ನಿಸಿ.",
     "Demo — moving test pattern": "ಡೆಮೊ — ಚಲಿಸುವ ಪರೀಕ್ಷಾ ಮಾದರಿ",
     Description: "ವಿವರಣೆ",
     "Description of remote control buttons": "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಬಟನ್ ಮಾರ್ಗದರ್ಶಿ",
@@ -377,6 +391,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker ಪೋರ್ಟಲ್‌ನ URL ನಮೂದಿಸಿ (ಉದಾ. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "ಸರ್ವರ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ (%1).",
+    "Enter text": "ಪಠ್ಯವನ್ನು ನಮೂದಿಸಿ",
     "Enter the access code separately, not in the server address.":
         "ಪ್ರವೇಶ ಕೋಡ್ ಅನ್ನು ಪ್ರತ್ಯೇಕವಾಗಿ ನಮೂದಿಸಿ, ಸರ್ವರ್ ವಿಳಾಸದಲ್ಲಿ ಅಲ್ಲ.",
     "Enter the command server IP or address.":
@@ -525,7 +540,9 @@ var keyStrings = {
     "Interface transparency": "ಇಂಟರ್ಫೇಸ್ ಪಾರದರ್ಶಕತೆ",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ಅಮಾನ್ಯ ಚಾನಲ್ ಲಿಂಕ್! ನಿಮ್ಮ ಪೂರೈಕೆದಾರರ ಖಾತೆ ಪುಟದಲ್ಲಿ URL ಸ್ಟ್ರೀಮ್‌ನಿಂದ ಸಂಪೂರ್ಣ ಹೋಸ್ಟ್ ಹೆಸರನ್ನು ನಮೂದಿಸಿ (ಉದಾಹರಣೆಗೆ subdomain.cdn-domain.tld ).",
+    "Invalid cloud settings response": "ಅಮಾನ್ಯ ಕ್ಲೌಡ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳ ಪ್ರತಿಕ್ರಿಯೆ",
     "Invalid protected source configuration": "ಅಮಾನ್ಯ ಸಂರಕ್ಷಿತ ಮೂಲ ಕಾನ್ಫಿಗರೇಶನ್",
+    "Invalid setting": "ಅಮಾನ್ಯ ಸೆಟ್ಟಿಂಗ್",
     "IPTV token": "IPTV ಟೋಕನ್",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
@@ -605,6 +622,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ಯಾವುದೇ ಕಾರ್ಯಕ್ರಮಗಳು ಪ್ಲೇಪಟ್ಟಿ ಚಾನಲ್‌ಗಳು ಮತ್ತು ದಿನಾಂಕಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ. ಮೂಲ ಮತ್ತು ಸಾಧನ ಗಡಿಯಾರವನ್ನು ಪರಿಶೀಲಿಸಿ.",
     "No saved settings found": "ಯಾವುದೇ ಉಳಿಸಿದ ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
+    "No supported system language. Choose a language.":
+        "ಯಾವುದೇ ಬೆಂಬಲಿತ ಸಿಸ್ಟಂ ಭಾಷೆ ಇಲ್ಲ. ಒಂದು ಭಾಷೆಯನ್ನು ಆರಿಸಿ.",
     "Not configured": "ಸಂರಚಿಸಲಾಗಿಲ್ಲ",
     "Not found": "ಕಂಡುಬಂದಿಲ್ಲ",
     "Not reduce video when showing the list (bugfix)":
@@ -620,6 +639,8 @@ var keyStrings = {
     "not set": "ಹೊಂದಿಸಲಾಗಿಲ್ಲ",
     Off: "ಆಫ್",
     Ok: "ಸರಿ",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "ಈ ಟಿವಿ ಮಾತ್ರ ನಿಮ್ಮ ಸಂದೇಶವನ್ನು ಸ್ವೀಕರಿಸುತ್ತದೆ. 10 ನಿಮಿಷಗಳ ನಂತರ ಲಿಂಕ್ ಅವಧಿ ಮೀರುತ್ತದೆ.",
     Open: "ತೆರೆಯಿರಿ",
     "Open in PiP": "PiP ನಲ್ಲಿ ತೆರೆಯಿರಿ",
     "Open Plex sign-in page": "Plex ಸೈನ್-ಇನ್ ಪುಟವನ್ನು ತೆರೆಯಿರಿ",
@@ -632,6 +653,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP ಹೋಸ್ಟ್",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "OTT-play remote input": "OTT-play ರಿಮೋಟ್ ಇನ್‌ಪುಟ್",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ಲಭ್ಯವಿದೆ. ಇದೀಗ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ ಮತ್ತು ಸ್ಥಾಪಿಸಬೇಕೆ?",
     "Overwrite current settings?": "ಪ್ರಸ್ತುತ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಓವರ್‌ರೈಟ್ ಮಾಡುವುದೇ?",
@@ -664,6 +686,7 @@ var keyStrings = {
     Playback: "ಪ್ಲೇಬ್ಯಾಕ್",
     "Player and device info": "ಪ್ಲೇಯರ್ ಮತ್ತು ಸಾಧನದ ಮಾಹಿತಿ",
     "Player could not start": "ಪ್ಲೇಯರ್ನು ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
+    "Player default": "ಪ್ಲೇಯರ್‌ನ ಪೂರ್ವನಿಯೋಜಿತ ಆಯ್ಕೆ",
     "Player info:": "ಪ್ಲೇಯರ್ರ ಮಾಹಿತಿ:",
     Playlist: "ಪ್ಲೇಪಟ್ಟಿ",
     "Playlist file": "ಪ್ಲೇಪಟ್ಟಿ ಫೈಲ್",
@@ -685,6 +708,8 @@ var keyStrings = {
     Postpaid: "ಪೋಸ್ಟ್ಪೇಯ್ಡ್",
     PROST: "PROST",
     "PROST settings": "PROST ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "Preferred audio language": "ಆದ್ಯತೆಯ ಆಡಿಯೋ ಭಾಷೆ",
+    "Preferred subtitle language": "ಆದ್ಯತೆಯ ಉಪಶೀರ್ಷಿಕೆ ಭಾಷೆ",
     Prepaid: "ಪ್ರಿಪೇಯ್ಡ್",
     "Preparing secure remote input...":
         "ಸುರಕ್ಷಿತ ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಅನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ...",
@@ -716,14 +741,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "ರಿಮೋಟ್ (ಸಂಖ್ಯೆಯ ಬಟನ್‌ಗಳಿಲ್ಲ)",
     "Remote control": "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಅಧಿಕೃತಗೊಳಿಸುತ್ತದೆ. ಆಪರೇಟರ್‌ಗೆ ಸಿದ್ಧವಾಗಿದೆ.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಅನ್ನು ಅಧಿಕೃತಗೊಳಿಸುತ್ತದೆ. ಮರುಸಂಪರ್ಕಿಸಲು ನಿರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಅದರ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಒಳಗೊಂಡಂತೆ ಮೀಡಿಯಾ ಪ್ಲೇಯರ್‌ನ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ಒಳಗೊಂಡಿದೆ. ಚಿತ್ರಗಳು ಖಾಸಗಿ ಮಾಹಿತಿಯನ್ನು ಒಳಗೊಂಡಿರಬಹುದು. ಅಪ್ಲಿಕೇಶನ್ ಹೆಚ್ಚುವರಿ ಅನುಮೋದನೆಯಿಲ್ಲದೆ ನೇರವಾಗಿ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ಸೆರೆಹಿಡಿಯಬಹುದು. ಬ್ರೌಸರ್‌ನಲ್ಲಿ, ಈ ಸಾಧನದಲ್ಲಿ ಸೆರೆಹಿಡಿಯಲು ಟ್ಯಾಬ್ ಅಥವಾ ವಿಂಡೋವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
     "Remote diagnostics": "ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ಈ ಸಂಪರ್ಕಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಸಂಗ್ರಹಿಸುತ್ತಿದೆ (ಪ್ರತಿ ಸೆಷನ್‌ಗೆ 10 ನಿಮಿಷಗಳವರೆಗೆ).",
     "Remote diagnostics is collecting for this page.":
         "ಈ ಪುಟಕ್ಕಾಗಿ ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಸಂಗ್ರಹಿಸುತ್ತಿದೆ.",
     "Remote diagnostics is off.": "ರಿಮೋಟ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ಆಫ್ ಆಗಿದೆ.",
@@ -737,10 +762,10 @@ var keyStrings = {
         "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಅವಧಿ ಮೀರಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಸೆಷನ್ ಲಭ್ಯವಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "ರಿಮೋಟ್ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "ರಿಮೋಟ್ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು 10 ನಿಮಿಷಗಳವರೆಗೆ ಅನುಮತಿಸಲಾಗಿದೆ. ಸೆರೆಹಿಡಿಯಲು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಮುಚ್ಚಿ.",
+    "Remote screenshots are off.": "ರಿಮೋಟ್ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು ಆಫ್ ಆಗಿವೆ.",
     "Remote session expired": "ರಿಮೋಟ್ ಸೆಷನ್ ಅವಧಿ ಮುಗಿದಿದೆ",
     "Remote text entry": "ರಿಮೋಟ್ ಪಠ್ಯ ನಮೂದು",
     "Remote text entry denied": "ರಿಮೋಟ್ ಪಠ್ಯ ಪ್ರವೇಶವನ್ನು ನಿರಾಕರಿಸಲಾಗಿದೆ",
@@ -767,6 +792,7 @@ var keyStrings = {
     "Resume from archive?": "ಆರ್ಕೈವ್‌ನಿಂದ ಪುನರಾರಂಭಿಸುವುದೇ?",
     Retry: "ಮರುಪ್ರಯತ್ನಿಸಿ",
     "Retry EPG download": "EPG ಡೌನ್‌ಲೋಡ್ ಮರುಪ್ರಯತ್ನಿಸಿ",
+    "Retry same message": "ಅದೇ ಸಂದೇಶವನ್ನು ಮರುಪ್ರಯತ್ನಿಸಿ",
     "Return to previous channel": "ಹಿಂದಿನ ಚಾನಲ್‌ಗೆ ಹಿಂತಿರುಗಿ",
     Rewind: "ಮುಂದಕ್ಕೆ/ಹಿಂದಕ್ಕೆ ಸರಿಸಿ",
     "Rewind step by buttons %1/%2": "%1/%2 ಬಟನ್‌ಗಳಿಂದ ಮುಂದಕ್ಕೆ/ಹಿಂದಕ್ಕೆ ಸರಿಸುವ ಅಂತರ",
@@ -784,19 +810,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಿ ಮತ್ತು ಚಾನಲ್ ಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಿ",
     "Save settings to storage": "ಸಂಗ್ರಹಣೆಗೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಿ",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "ನಿಮ್ಮ ಟಿವಿಯಲ್ಲಿ QR ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ಅದರ ಸಂಪೂರ್ಣ ಖಾಸಗಿ ಜೋಡಣೆ ಲಿಂಕ್ ಅನ್ನು ಕೆಳಗೆ ಅಂಟಿಸಿ.",
     "Scan this QR code with your phone to enter text.":
         "ಪಠ್ಯವನ್ನು ನಮೂದಿಸಲು ನಿಮ್ಮ ಫೋನ್‌ನೊಂದಿಗೆ ಈ QR ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ಸ್ಕ್ರೀನ್ ಹಂಚಿಕೆಯನ್ನು ಪ್ರಾರಂಭಿಸಲಾಗಲಿಲ್ಲ.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "ಸ್ಕ್ರೀನ್ ಹಂಚಿಕೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ ಅಥವಾ ಲಭ್ಯವಿಲ್ಲ.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಅನುಮತಿಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಸಂಪರ್ಕಗೊಂಡಿರುವಾಗ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು ಲಭ್ಯವಿವೆ.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ಈ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್‌ನಲ್ಲಿ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ.",
     Script: "ಚಿತ್ರಕಥೆ",
     Search: "ಹುಡುಕಾಟ",
+    "Search languages": "ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ",
     "Search programme": "ಕಾರ್ಯಕ್ರಮ ಹುಡುಕಿ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ಸುರಕ್ಷಿತ ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಪ್ರಾರಂಭಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಆನ್-ಸ್ಕ್ರೀನ್ ಕೀಬೋರ್ಡ್ ಬಳಸಿ.",
@@ -813,14 +842,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ಮತ್ತು ಲೋಗೋಗಳಿಗಾಗಿ ಪ್ಲೇಪಟ್ಟಿ ಟೆಂಪ್ಲೇಟ್ ಮೂಲವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Select Stalker portal": "Stalker ಪೋರ್ಟಲ್ ಆಯ್ಕೆಮಾಡಿ",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಮೂಲವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ಬ್ರೌಸರ್ ಹಂಚಿಕೆ ಸಂವಾದದಲ್ಲಿ ಪ್ಲೇಯರ್ ಟ್ಯಾಬ್ ಅಥವಾ ವಿಂಡೋವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
     "Send request": "ವಿನಂತಿಯನ್ನು ಕಳುಹಿಸಿ",
     "Send settings": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಕಳುಹಿಸಿ",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "ನಿಮ್ಮ ಪ್ರಾಕ್ಸಿಯಿಂದ ಈ ಕೋಡ್ ಅನ್ನು Authorization: Bearer ಹೆಡರ್‌ನಲ್ಲಿ ಕಳುಹಿಸಿ.",
+    "Send to TV": "ಟಿವಿಗೆ ಕಳುಹಿಸಿ",
     Server: "ಸರ್ವರ್",
     "Server address": "ಸರ್ವರ್ ವಿಳಾಸ",
     "Server address (for example 192.168.1.20:8081)":
@@ -829,10 +858,13 @@ var keyStrings = {
     "Server URL": "ಸರ್ವರ್ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "ಸರ್ವರ್ ಲಭ್ಯವಿಲ್ಲ. ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಮರುಪ್ರಯತ್ನಿಸಲಾಗುತ್ತಿದೆ; ಅದರ ವಿಳಾಸ ಮತ್ತು ನೆಟ್ವರ್ಕ್ ಪ್ರವೇಶವನ್ನು ಪರಿಶೀಲಿಸಿ.",
+    "Session closed. Start a new one from your TV when needed.":
+        "ಸೆಷನ್ ಮುಚ್ಚಲಾಗಿದೆ. ಅಗತ್ಯವಿದ್ದಾಗ ನಿಮ್ಮ ಟಿವಿಯಿಂದ ಹೊಸದನ್ನು ಪ್ರಾರಂಭಿಸಿ.",
     Set: "ಅನ್ವಯಿಸಿ",
     "Set parental code": "ಪೋಷಕರ ಕೋಡ್ ಹೊಂದಿಸಿ",
     "Set timer?": "ಟೈಮರ್ ಹೊಂದಿಸುವುದೇ?",
     Settings: "ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "Settings changed while editing": "ಸಂಪಾದನೆ ಮಾಡುವಾಗ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಬದಲಾಯಿಸಲಾಗಿದೆ",
     "Settings changed. Discovery was canceled.":
         "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಬದಲಾಯಿಸಲಾಗಿದೆ. ಅನ್ವೇಷಣೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ.",
     "Settings copied": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ನಕಲಿಸಲಾಗಿದೆ",
@@ -842,10 +874,15 @@ var keyStrings = {
     "Settings imported": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಆಮದು ಮಾಡಲಾಗಿದೆ",
     "Settings JSON": "ಸೆಟ್ಟಿಂಗ್‌ಗಳು JSON",
     "Settings loaded from storage": "ಸಂಗ್ರಹಣೆಯಿಂದ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ",
+    "Settings received. Restarting player...":
+        "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಸ್ವೀಕರಿಸಲಾಗಿದೆ. ಪ್ಲೇಯರ್ ಅನ್ನು ಮರುಪ್ರಾರಂಭಿಸಲಾಗುತ್ತಿದೆ...",
     "Settings STB": "STB ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Settings saved": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಿದೆ",
     "Settings saved to storage": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಸಂಗ್ರಹಣೆಯಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ",
     "Settings sended!": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಕಳುಹಿಸಲಾಗಿದೆ!",
+    "Settings source changed": "ಸೆಟ್ಟಿಂಗ್‌ಗಳ ಮೂಲವನ್ನು ಬದಲಾಯಿಸಲಾಗಿದೆ",
+    "Settings storage rejected write":
+        "ಸೆಟ್ಟಿಂಗ್‌ಗಳ ಸಂಗ್ರಹಣೆಯನ್ನು ಬರೆಯುವುದನ್ನು ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
     "Several command servers were found. Select one below.":
         "ಹಲವಾರು ಕಮಾಂಡ್ ಸರ್ವರ್‌ಗಳು ಕಂಡುಬಂದಿವೆ. ಕೆಳಗೆ ಒಂದನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -897,11 +934,11 @@ var keyStrings = {
     "Starting...": "ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…",
     Status: "ಸ್ಥಿತಿ",
     Stop: "ನಿಲ್ಲಿಸಿ",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ಬ್ರೌಸರ್ ಹಂಚಿಕೆಯನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stop current capture": "ಪ್ರಸ್ತುತ ಕ್ಯಾಪ್ಚರ್ ಅನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stop diagnostics": "ಡಯಾಗ್ನೋಸ್ಟಿಕ್ಸ್ ನಿಲ್ಲಿಸಿ",
     "Stop playback and return to live": "ಪ್ಲೇಬ್ಯಾಕ್ ನಿಲ್ಲಿಸಿ ಮತ್ತು ಲೈವ್‌ಗೆ ಹಿಂತಿರುಗಿ",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stream could not be played": "ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ",
     "Stream type: %1": "ಸ್ಟ್ರೀಮ್ ಪ್ರಕಾರ: %1",
     "String for search": "ಹುಡುಕಾಟ ಪ್ರಶ್ನೆ",
@@ -913,6 +950,7 @@ var keyStrings = {
     "Switch subtitle": "ಉಪಶೀರ್ಷಿಕೆಗಳನ್ನು ಬದಲಿಸಿ",
     "Switch to this list": "ಈ ಪಟ್ಟಿಗೆ ಬದಲಿಸಿ",
     "Swop URL": "SWOP URL",
+    "System language": "ಸಿಸ್ಟಂ ಭಾಷೆ",
     "saved on this device": "ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ",
     select: "ಆಯ್ಕೆಮಾಡಿ",
     small: "ಚಿಕ್ಕದು",
@@ -920,15 +958,18 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Text is too long for remote input.": "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್‌ಗಾಗಿ ಪಠ್ಯವು ತುಂಬಾ ಉದ್ದವಾಗಿದೆ.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "ಪಠ್ಯವು ತುಂಬಾ ಉದ್ದವಾಗಿದೆ. ಕಳುಹಿಸುವ ಮೊದಲು ದಯವಿಟ್ಟು ಅದನ್ನು ಚಿಕ್ಕದಾಗಿಸಿ.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "ಪಠ್ಯವನ್ನು ಕಳುಹಿಸಲಾಗಿದೆ. ಅದು ಕಾಣಿಸಿಕೊಂಡಿದೆಯೇ ಎಂದು ನಿಮ್ಮ ಟಿವಿಯಲ್ಲಿ ಪರಿಶೀಲಿಸಿ.",
+    "The browser screenshot source is ready.": "ಬ್ರೌಸರ್ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಮೂಲ ಸಿದ್ಧವಾಗಿದೆ.",
     "The command server discovery URL is invalid.":
         "ಕಮಾಂಡ್ ಸರ್ವರ್ ಡಿಸ್ಕವರಿ URL ಅಮಾನ್ಯವಾಗಿದೆ.",
     "The device ID in the address is invalid.":
         "ವಿಳಾಸದಲ್ಲಿರುವ ID ಸಾಧನವು ಅಮಾನ್ಯವಾಗಿದೆ.",
     "The discovery response is invalid.": "ಅನ್ವೇಷಣೆಯ ಪ್ರತಿಕ್ರಿಯೆಯು ಅಮಾನ್ಯವಾಗಿದೆ.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ಈ ಬ್ರೌಸರ್ ಆಯ್ಕೆಮಾಡಿದ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಮೂಲವನ್ನು ಗುರುತಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ಈ ಬ್ರೌಸರ್ ಸುರಕ್ಷಿತವಾಗಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಜೋಡಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ಅದನ್ನು ನವೀಕರಿಸಿ ಅಥವಾ ಕಮಾಂಡ್ ಸರ್ವರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಹಸ್ತಚಾಲಿತವಾಗಿ ನಮೂದಿಸಿ.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -937,6 +978,10 @@ var keyStrings = {
         "ಈ HTTPS ಪ್ಲೇಯರ್ HTTP ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. HTTPS ಸರ್ವರ್ ಅನ್ನು ಬಳಸಿ ಅಥವಾ HTTP ಮೂಲಕ ಪ್ಲೇಯರ್ ಅನ್ನು ತೆರೆಯಿರಿ.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ಈ Play ಅಪ್ಲಿಕೇಶನ್‌ಗೆ HTTPS ಅಗತ್ಯವಿದೆ. HTTPS ಪ್ಲೇಪಟ್ಟಿ ಅಥವಾ ಸರ್ವರ್ URL ಗಾಗಿ ನಿಮ್ಮ ಪೂರೈಕೆದಾರರನ್ನು ಕೇಳಿ.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ಈ ಜೋಡಣೆ ಲಿಂಕ್ ಅವಧಿ ಮೀರಿದೆ. ನಿಮ್ಮ ಟಿವಿಯಲ್ಲಿ ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ಈ ಸುರಕ್ಷಿತ ಸೆಷನ್ ಲಭ್ಯವಿಲ್ಲ ಅಥವಾ ಅವಧಿ ಮೀರಿದೆ. ಟಿವಿಯಲ್ಲಿ ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ ಮತ್ತು ಅದರ ಸಂಪೂರ್ಣ ಲಿಂಕ್ ಬಳಸಿ.",
     Timer: "ಟೈಮರ್",
     "Timer: switch to channel?": "ಟೈಮರ್: ಈ ಚಾನಲ್‌ಗೆ ಬದಲಾಯಿಸುವುದೇ?",
     "Timeshift: one minute back": "ಟೈಮ್‌ಶಿಫ್ಟ್: ಒಂದು ನಿಮಿಷ ಹಿಂದಕ್ಕೆ",
@@ -984,6 +1029,8 @@ var keyStrings = {
         "ವಿಳಾಸದಲ್ಲಿ ಬಳಕೆದಾರಹೆಸರು ಅಥವಾ ಪಾಸ್‌ವರ್ಡ್ ಇಲ್ಲದೆ HTTP ಅಥವಾ HTTPS ಬಳಸಿ.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ನಿಯಂತ್ರಣವನ್ನು ಆಯ್ಕೆ ಮಾಡಲು ಎಡ/ಬಲ, ಅದನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲು ಸರಿ ಮತ್ತು ಸ್ಕ್ರಾಲ್ ಮಾಡಲು ಮೇಲೆ/ಕೆಳಗೆ ಬಳಸಿ.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# ನಂತರದ ಭಾಗವನ್ನು ಒಳಗೊಂಡಂತೆ ಪೂರ್ಣ ಲಿಂಕ್ ಬಳಸಿ. ಅದನ್ನು ಬೇರೆಯವರೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
     "Use Up / Down to scroll. Back to close.":
         "ಸ್ಕ್ರಾಲ್ ಮಾಡಲು ಮೇಲೆ / ಕೆಳಗೆ ಬಳಸಿ. ಮುಚ್ಚಲು ಹಿಂತಿರುಗಿ.",
     Username: "ಬಳಕೆದಾರಹೆಸರು",

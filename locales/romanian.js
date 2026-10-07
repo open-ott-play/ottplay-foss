@@ -60,19 +60,21 @@ var keyStrings = {
     "All categories": "Toate categoriile",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Setări All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes":
+        "Permite diagnosticarea timp de 10 minute",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Permite capturi de ecran timp de 10 minute",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Permiteți acestui server să colecteze contoare de diagnosticare și să repornească fluxul sau playerul. Accesul temporar durează 10 minute. Asistența de încredere rămâne disponibilă după reconectare sau repornire; fiecare sesiune de colectare se încheie după 10 minute. Colectarea se suspendă când playerul este ascuns sau offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Permiteți acestui server să colecteze contoare de redare, rețea și intrare pentru această sesiune în prim-plan. Necesită HTTPS și permisiunea de server. Se oprește după 10 minute, când este ascuns sau când este deconectat.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Permite acestui server să solicite imagini timp de 10 minute. Imaginile pot conține informații personale. Într-un browser, selectați fila sau fereastra playerului. Permisiunea se termină la reîncărcare sau deconectare.",
     "Allowlist this Device ID": "Permite acest ID de dispozitiv",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Un player HTTPS nu poate descărca o sursă HTTP EPG. Utilizați o sursă HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "O adresă IP fără port folosește portul HTTP 8081. Ștergeți adresa sau alegeți Deconectare pentru a opri.",
     "Another source sign-in is already open":
@@ -91,9 +93,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arhivă. Canal: ",
     Aspect: "Raport de aspect",
     Audio: "Audio",
-    Automatic: "Automatic",
+    Automatic: "Automat",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Redă automat fișierele acceptate direct și utilizează HLS compatibil atunci când este necesar.",
     alhabet: "aăâbcdefghiîjklmnopqrsștțuvwxyz",
     always: "întotdeauna",
     "and enter code": "și introduceți codul",
@@ -102,6 +104,7 @@ var keyStrings = {
     "Background color": "Culoare de fundal",
     "Background color of selected item":
         "Culoarea de fundal a elementului selectat",
+    "Backup state changed": "Starea copiei de rezervă sa schimbat",
     "Balance, $": "Sold, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +116,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Ecran negru la schimbarea canalelor",
     Blue: "Albastru",
+    "Bookmark age (days): %1": "Vârsta marcajului (zile): %1",
     "Bookmark age: %1 days": "Vechimea marcajului: %1 zile",
     "Browse folders": "Răsfoiește folderele",
     "Buffer Size, s": "Dimensiune buffer, s",
@@ -155,21 +159,24 @@ var keyStrings = {
     "Channel parental control": "Control parental al canalului",
     Channels: "Canale",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Verificați conexiunea și deschideți bibliotecile Plex.",
     "Check this server's SWOP configuration.":
         "Verificați configurația SWOP a acestui server.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Se verifică conexiunea la serverul Plex...",
     "Choose from": "Alege din",
     "Choose language": "Alege limba",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Alegeţi serverul Plex",
     "Choose provider": "Alege furnizorul",
     Classic: "Clasic",
     "Clear all settings?": "Ștergeți toate setările?",
     "Clear settings": "Șterge setările",
     Close: "Închide",
     "Close PiP": "Închide PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Salvarea/încărcarea în cloud necesită firmware STB (host_ott nu este setat)",
+    "Cloud transfer failed": "Transferul în cloud a eșuat",
+    Code: "Cod de acces",
     Color: "Culoare",
     "Color spectrum": "Spectru de culori",
     "Command server": "Server de comenzi",
@@ -186,7 +193,8 @@ var keyStrings = {
     "Command server found.": "Server de comenzi găsit.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Componentele de compatibilitate nu s-au putut încărca. Redeschideți playerul pentru a reîncerca.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Compatibil HLS",
+    "Complete pairing link": "Link-ul complet de asociere",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configurați All4you.tv în Setări -> Setările furnizorului",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -220,7 +228,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Configurați OTT Prime ONLINE în Setări -> Setările furnizorului",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Configurați Plex în Setări -> Setări furnizor",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Configurați POLMEDIA în Setări -> Setările furnizorului",
     "Configure PROST in Settings -> Provider Settings":
@@ -259,23 +267,26 @@ var keyStrings = {
         "Configurați Шаравоз în Setări -> Setările furnizorului",
     Connect: "Conectare",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Conectați un server de comandă HTTPS înainte de a permite capturi de ecran.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Conectați un server de comandă HTTPS pentru a utiliza capturi de ecran.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Conectaţi controlul de la distanță pentru a activa diagnosticarea.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Conectați mai întâi acest player la un server de comandă.",
+    "Connect to TV": "Conectați-vă la televizor",
     Connected: "Conectat",
     "Connected. Waiting for the channel list...":
         "Conectat. Se așteaptă lista de canale…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Conectarea controlului de la distanță autorizează acest server să diagnosticheze și să repare playerul. Accesul rămâne disponibil după repornire și se încheie când vă deconectați. Fiecare captură de diagnosticare este limitată la 10 minute.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Conectarea diagnosticării de la distanță pentru conexiunea de control de la distanță activată.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Conectarea diagnosticării la distanță pentru această pagină.",
+    "Connecting securely to your TV...":
+        "Se conectează în siguranță la televizor...",
+    "Connecting to Plex…": "Se conectează la Plex...",
     "Connecting to Stalker portal...": "Conectare la portalul Stalker…",
     "Connecting...": "Conectare…",
     "Continue watching?": "Continuați vizionarea?",
@@ -286,12 +297,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Copiați JSON-ul selectat cu comanda de copiere a dispozitivului",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Nu s-a putut conecta la Plex. Verificați adresa serverului, tokenul și accesul la rețea.",
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nu s-a putut crea o cerere de asociere. Căutați din nou serverul pentru a reîncerca.",
     "Could not load. Select to retry.":
         "Încărcarea a eșuat. Selectați pentru a reîncerca.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Nu s-a putut pregăti acest text. Vă rugăm să o scurtați și să încercați din nou.",
+    "Could not protect the private link. Use a different browser.":
+        "Nu s-a putut proteja legătura privată. Utilizați un browser diferit.",
     "Could not save provider settings.":
         "Nu s-au putut salva setările furnizorului.",
     "Could not save the approved command server settings.":
@@ -309,6 +324,8 @@ var keyStrings = {
     "Delete category": "Șterge categoria",
     "Delete channel": "Șterge canalul",
     "Delete list": "Șterge lista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Livrarea nu a putut fi confirmată. Verificați televizorul sau reîncercați același mesaj înainte ca această sesiune să expire.",
     "Demo — moving test pattern": "Demonstrație — imagine de test în mișcare",
     Description: "Descriere",
     "Description of remote control buttons": "Ghidul butoanelor telecomenzii",
@@ -322,7 +339,8 @@ var keyStrings = {
     "Diamond TV settings": "Setări Diamond TV",
     Director: "Regizor",
     "Disable HTTP remote": "Dezactivează controlul HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support":
+        "Dezactivați suportul de încredere la distanță",
     "Disabled by default. Enabling creates a new device access code.":
         "Dezactivat implicit. Activarea generează un nou cod de acces la dispozitiv.",
     Disconnect: "Deconectare",
@@ -357,7 +375,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Introduceți numele de utilizator și parola pentru a accesa acest serviciu.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Introduceți o adresă validă de server Plex și un token de acces.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Introduceți o adresă validă de server, de exemplu 192.168.1.20:8081.",
     "Enter access key for": "Introduceți cheia de acces pentru",
@@ -375,8 +393,8 @@ var keyStrings = {
         "Introduceți adresa MAC (de ex. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Introduceți URL-ul mediatecii",
     "Enter new category name": "Introduceți noul nume al categoriei",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Introduceţi adresa serverului Plex",
+    "Enter Plex token": "Introduceți jetonul Plex",
     "Enter Provider Code": "Introduceți codul furnizorului",
     "Enter Provider Code on PC or Phone":
         "Introduceți codul furnizorului pe un PC sau telefon",
@@ -392,6 +410,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Introduceți URL-ul portalului Stalker (de ex. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Introduceți numărul serverului (%1).",
+    "Enter text": "Introduceţi text",
     "Enter the access code separately, not in the server address.":
         "Introduceți codul de acces separat, nu în adresa serverului.",
     "Enter the command server IP or address.":
@@ -416,56 +435,57 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Introduceți URL-ul serverului Xtream (de ex. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Introduceți jetonul dvs. de acces Plex. Este salvat în profilul acestui dispozitiv.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Introduceți adresa serverului dvs. Plex, de exemplu http://192.168.1.25:32400",
     EPG: "Ghid TV",
     "EPG and archive. Channel: ": "EPG și arhivă. Canal: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "Arhiva EPG sau XML este nevalidă.",
+    "EPG cache and wait time: %1": "EPG cache și timp de așteptare: %1",
+    "EPG cache updated: %1": "Cache EPG actualizat: %1",
+    "EPG channels: %1": "Canale EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG nu a putut porni. Reporniți playerul pentru a-i reîncărca fișierele. Redarea se va opri.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG diagnosticare",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "Diagnosticarea EPG nu s-a putut încărca. Deschide-l din nou pentru a reîncerca.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Descărcarea EPG a eșuat. Verificați conexiunea, HTTPS și permisiunile CORS ale sursei.",
+    "EPG download time: %1": "Timp de descărcare EPG: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Descărcarea EPG a expirat. Reîncercați descărcarea.",
+    "EPG elapsed: %1": "Timp scurs pentru EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "Eroare EPG. Deschideți Informații → Diagnosticare EPG.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG depăşeşte limita de procesare a dispozitivului. Utilizați o sursă sau o fereastră de arhivă mai mică.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG nu a pornit. Încărcați o listă de redare M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG stocarea locală nu este disponibilă sau este plină.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG timp de procesare și stocare: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "Procesarea EPG a fost oprită. Reîncercați și verificați compatibilitatea cu browserul.",
+    "EPG programmes: %1": "Programe EPG: %1",
+    "EPG progress: %1": "EPG progres: %1",
+    "EPG ready": "EPG gata",
+    "EPG source returned HTTP %1": "Sursa EPG a returnat HTTP %1",
+    "EPG source: %1": "EPG sursa: %1",
+    "EPG stopped during: %1": "EPG oprit în timpul: %1",
+    "EPG unavailable on this browser": "EPG indisponibil în acest browser",
+    "EPG unavailable: %1": "EPG indisponibil: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "Actualizarea EPG a eșuat; folosind ghidul de programe salvat",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG: se descarcă ghidul programului...",
+    "EPG: opening local cache...": "EPG: se deschide memoria cache locală...",
+    "EPG: processing programme guide...":
+        "EPG: se procesează ghidul de programe...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: se actualizează ghidul de program salvat...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: se așteaptă o altă filă a playerului...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Eroare: Categoria nr. %1 nu există!<br>Selectați altă categorie.",
     "ERROR!": "Eroare!",
@@ -502,7 +522,7 @@ var keyStrings = {
     "Finding command servers...": "Se caută servere de comenzi...",
     "First Run Setup": "Configurare la prima pornire",
     "Fit to screen": "Încadrează în ecran",
-    Folders: "Folders",
+    Folders: "Foldere",
     "Font type": "Tip de font",
     "For download settings file open":
         "Pentru a descărca fișierul de setări, deschideți",
@@ -545,8 +565,10 @@ var keyStrings = {
     "Interface transparency": "Transparența interfeței",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Link de canal nevalid! Introduceți numele complet al gazdei, ca în URL-ul fluxului din cont (de ex. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Răspuns nevalid pentru setările cloud",
     "Invalid protected source configuration":
         "Configurație nevalidă a sursei protejate",
+    "Invalid setting": "Setare nevalidă",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Setări IpStream.one",
@@ -623,10 +645,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Nu s-a găsit niciun server de comenzi în această rețea.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Nu sunt disponibile servere Plex pentru acest cont.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Niciun program nu se potrivea cu canalele și datele listei de redare. Verificați sursa și ceasul dispozitivului.",
     "No saved settings found": "Nu au fost găsite setări salvate",
+    "No supported system language. Choose a language.":
+        "Nicio limbă de sistem acceptată. Alegeți o limbă.",
     "Not configured": "Neconfigurat",
     "Not found": "Nu a fost găsit",
     "Not reduce video when showing the list (bugfix)":
@@ -642,18 +666,21 @@ var keyStrings = {
     "not set": "nesetat",
     Off: "Oprit",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Numai acest televizor vă poate accepta mesajul. Linkul expiră după 10 minute.",
     Open: "Deschide",
     "Open in PiP": "Deschide în PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Deschideți pagina de conectare Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Deschideți plex.tv/link pe telefon sau computer și introduceți acest cod.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Sau deschideți acest link privat complet pe alt dispozitiv:",
+    "Original file": "Fișier media original",
     "Original text: %1": "Text original: %1",
     "OTT / APP host": "Server OTT / aplicație",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Setări OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play intrare de la distanţă",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 este disponibil. Descărcați și instalați acum?",
     "Overwrite current settings?": "Suprascrieți setările curente?",
@@ -683,22 +710,23 @@ var keyStrings = {
     "PiP window position": "Poziția ferestrei PiP",
     "PiP window size": "Dimensiunea ferestrei PiP",
     Play: "Redare",
-    Playback: "Playback",
+    Playback: "Redare media",
     "Player and device info": "Informații despre player și dispozitiv",
     "Player could not start": "Playerul nu a putut porni",
+    "Player default": "Selecția implicită a playerului",
     "Player info:": "Informații despre player:",
-    Playlist: "Playlist",
+    Playlist: "Lista de redare",
     "Playlist file": "Fișier playlist",
     "Playlist is not loading directly...Loading via server...":
         "Playlistul nu se încarcă direct...Se încarcă prin server...",
     "Playlist Name": "Nume playlist",
     "Playlist URL": "URL playlist",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Conexiunea Plex a eșuat",
+    "Plex settings": "Setări Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Autentificarea în Plex a eșuat. Verificați conexiunea și încercați din nou sau introduceți adresa serverului și tokenul de acces.",
+    "Plex token": "Jeton Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Setări POLMEDIA",
     "Portal URL": "URL portal",
@@ -706,8 +734,11 @@ var keyStrings = {
     Postpaid: "Plată ulterioară",
     PROST: "PROST",
     "PROST settings": "Setări PROST",
+    "Preferred audio language": "Limba audio preferată",
+    "Preferred subtitle language": "Limba preferată pentru subtitrare",
     Prepaid: "Preplătit",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Se pregătește intrarea de la distanță sigură...",
     Prev: "Anterior",
     "Preview in channel list": "Previzualizare în lista de canale",
     Previous: "Anterior",
@@ -738,31 +769,33 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Telecomandă (fără butoane numerice)",
     "Remote control": "Control la distanță",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Controlul de la distanță autorizează diagnosticarea. Gata pentru un operator.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Controlul de la distanță autorizează diagnosticarea. În așteptarea reconectarii.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Controlul de la distanță include capturi de ecran ale playerului media, inclusiv setările acestuia. Imaginile pot conține informații private. Aplicația poate captura capturi de ecran direct fără aprobare suplimentară. Într-un browser, selectați fila sau fereastra pentru a captura pe acest dispozitiv.",
+    "Remote diagnostics": "Diagnosticare de la distanță",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Se colectează diagnostice de la distanță pentru această conexiune (până la 10 minute pe sesiune).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Se colectează diagnostice de la distanță pentru această pagină.",
+    "Remote diagnostics is off.":
+        "Diagnosticarea la distanță este dezactivată.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Diagnosticarea la distanță este pregătită pentru un operator autorizat.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Diagnosticarea la distanță nu este disponibilă pe acest player.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Diagnosticarea de la distanță a fost oprită. Activați-l din nou pentru a acorda acces.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Intrarea de la distanță a expirat. Deschideți o nouă sesiune pentru a încerca din nou.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Sesiunea de intrare de la distanță nu este disponibilă. Deschideți o nouă sesiune pentru a încerca din nou.",
+    "Remote screenshots": "Capturi de ecran de la distanță",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Capturile de ecran de la distanță sunt permise timp de 10 minute. Închideți setările pentru a captura.",
+    "Remote screenshots are off.":
+        "Capturile de ecran de la distanță sunt dezactivate.",
     "Remote session expired": "Sesiunea de la distanță a expirat",
     "Remote text entry": "Introducerea textului de la distanță",
     "Remote text entry denied":
@@ -791,7 +824,8 @@ var keyStrings = {
     "Restart stream / Live": "Repornește fluxul / în direct",
     "Resume from archive?": "Reluați din arhivă?",
     Retry: "Reîncearcă",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Reîncercați descărcarea EPG",
+    "Retry same message": "Reîncercați același mesaj",
     "Return to previous channel": "Revino la canalul anterior",
     Rewind: "Derulare",
     "Rewind step by buttons %1/%2": "Pasul derulării cu butoanele %1/%2",
@@ -803,32 +837,36 @@ var keyStrings = {
     "Save & load channels": "Salvează și încarcă canalele",
     "Save and load": "Salvează și încarcă",
     "Save and load channels": "Salvează și încarcă canalele",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Salvați și deschideți biblioteca",
     "Save Settings": "Salvează setările",
     "Save settings": "Salvează setările",
     "Save settings and load channel list":
         "Salvează setările și încarcă lista de canale",
     "Save settings to storage": "Salvează setările în stocare",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Scanați codul QR pe televizor sau inserați linkul complet privat de asociere mai jos.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Scanați acest cod QR cu telefonul pentru a introduce text.",
+    "Screen sharing could not start.":
+        "Partajarea ecranului nu a putut începe.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Partajarea ecranului a fost anulată sau nu este disponibilă.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Permisiunea de captură de ecran nu a putut fi activată.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Capturile de ecran sunt disponibile în timp ce controlul de la distanță este conectat.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Capturile de ecran nu sunt disponibile pe această platformă.",
     Script: "Scenariu",
     Search: "Căutare",
+    "Search languages": "Căutare limbi",
     "Search programme": "Caută emisiunea",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Intrarea securizată de la distanță nu a putut porni. Vă rugăm să încercați din nou sau să utilizați tastatura de pe ecran.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Intrarea securizată de la distanță nu a putut porni. Vă rugăm să utilizați tastatura de pe ecran.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Intrarea securizată de la distanță nu este disponibilă pe acest dispozitiv. Utilizați tastatura de pe ecran.",
     "Select a stream type:<br>%1": "Alegeți tipul de flux:<br>%1",
     "Select category to add channel":
         "Selectați categoria pentru a adăuga canalul",
@@ -840,13 +878,14 @@ var keyStrings = {
         "Alegeți sursa șablonului listei de redare pentru EPG și sigle",
     "Select Stalker portal": "Selectează portalul Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Selectați sursa capturii de ecran în browser",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Selectați fila sau fereastra playerului în dialogul de partajare a browserului.",
     "Send request": "Trimite cererea",
     "Send settings": "Trimite setările",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Trimite acest cod din proxy în antetul Authorization: Bearer.",
+    "Send to TV": "Trimite la TV",
     Server: "Server",
     "Server address": "Adresa serverului",
     "Server address (for example 192.168.1.20:8081)":
@@ -856,10 +895,14 @@ var keyStrings = {
     "Server URL": "URL server",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server indisponibil. Se reîncearcă automat; verificați adresa și accesul la rețea.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sesiune închisă. Începeți o sesiune nouă de pe televizor când este necesar.",
     Set: "Setează",
     "Set parental code": "Setează codul parental",
     "Set timer?": "Setați temporizatorul?",
     Settings: "Setări",
+    "Settings changed while editing":
+        "Setările au fost modificate în timpul editării",
     "Settings changed. Discovery was canceled.":
         "Setările s-au schimbat. Căutarea a fost anulată.",
     "Settings copied": "Setări copiate",
@@ -869,10 +912,14 @@ var keyStrings = {
     "Settings imported": "Setări importate",
     "Settings JSON": "Setări în format JSON",
     "Settings loaded from storage": "Setările au fost încărcate din stocare",
+    "Settings received. Restarting player...":
+        "Setări primite. Se repornește playerul...",
     "Settings STB": "Setări STB",
     "Settings saved": "Setări salvate",
     "Settings saved to storage": "Setările au fost salvate în stocare",
     "Settings sended!": "Setări trimise!",
+    "Settings source changed": "Sursa setărilor a fost schimbată",
+    "Settings storage rejected write": "Stocarea setărilor a refuzat scrierea",
     "Several command servers were found. Select one below.":
         "S-au găsit mai multe servere de comenzi. Selectați unul mai jos.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -909,16 +956,16 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Autentificați-vă din nou la sursa protejată",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Conectați-vă la contul Plex și alegeți un server. Nu este introdusă nicio parolă în acest player.",
+    "Sign in with Plex": "Conectați-vă cu Plex",
     "Sign in: %1": "Autentificare: %1",
     "Sign out of all sources": "Deconectare de la toate sursele",
     "Sign-in opens when you load a protected playlist.":
         "Autentificarea se deschide când încărcați o listă de redare protejată.",
     "Sleep timer": "Temporizator de oprire",
     "Sort channels": "Sortează canalele",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Acces la sursa media",
+    "Source sign-in required": "Este necesară conectarea la sursă",
     "Source sign-in was cancelled": "Autentificarea la sursă a fost anulată",
     "Stalker Portal Provider": "Furnizor de portal Stalker",
     "Stalker portal settings": "Setările portalului Stalker",
@@ -926,12 +973,12 @@ var keyStrings = {
     "Starting...": "Se pornește…",
     Status: "Stare",
     Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    "Stop browser sharing": "Opriți partajarea browserului",
+    "Stop current capture": "Opriți colectarea curentă de date",
+    "Stop diagnostics": "Oprire diagnosticare",
     "Stop playback and return to live":
         "Oprește redarea și revino la transmisia în direct",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Opriți capturile de ecran",
     "Stream could not be played": "Fluxul nu a putut fi redat",
     "Stream type: %1": "Tip de flux: %1",
     "String for search": "Text de căutat",
@@ -943,22 +990,28 @@ var keyStrings = {
     "Switch subtitle": "Schimbă subtitrările",
     "Switch to this list": "Treci la această listă",
     "Swop URL": "URL Swop",
+    "System language": "Limba sistemului",
     "saved on this device": "salvat pe acest dispozitiv",
     select: "selectează",
     small: "mic",
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Setări Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Textul este prea lung pentru introducerea de la distanță.",
+    "Text is too long. Please shorten it before sending.":
+        "Textul este prea lung. Vă rugăm să îl scurtați înainte de a trimite.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Text trimis. Verificați televizorul pentru a confirma că a apărut.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Sursa capturii de ecran a browserului este gata.",
     "The command server discovery URL is invalid.":
         "URL-ul de descoperire a serverului de comenzi nu este valid.",
     "The device ID in the address is invalid.":
         "ID-ul dispozitivului din adresă este nevalid.",
     "The discovery response is invalid.": "Răspunsul la căutare nu este valid.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Acest browser nu poate identifica sursa capturii de ecran selectată.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Acest browser nu poate efectua o asociere automată în siguranță. Actualizați-l sau introduceți manual setările serverului de comenzi.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -967,6 +1020,10 @@ var keyStrings = {
         "Acest player HTTPS nu se poate conecta la un server HTTP. Folosiți un server HTTPS sau deschideți playerul prin HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Această aplicație Play necesită HTTPS. Solicitați furnizorului o listă de redare sau un URL de server HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Acest link de asociere a expirat. Deschideți o nouă sesiune pe televizor.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Această sesiune securizată este indisponibilă sau a expirat. Deschideți o nouă sesiune pe televizor și utilizați linkul complet al acesteia.",
     Timer: "Temporizator",
     "Timer: switch to channel?": "Temporizator: comutați pe acest canal?",
     "Timeshift: one minute back": "Decalaj temporal: un minut înapoi",
@@ -985,13 +1042,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Setări Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Aveți încredere în acest server pentru asistență de la distanță",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Accesul de încredere nu a putut fi eliminat din stocarea dispozitivului.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Diagnosticarea de încredere nu este disponibilă deoarece stocarea dispozitivului nu a putut fi actualizată.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Diagnosticarea de încredere așteaptă ca acest player să se reconecteze.",
     "Try demo": "Încearcă demonstrația",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Setări TV DOSUG",
@@ -1011,18 +1068,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Folosiți o adresă de server HTTP sau HTTPS.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Utilizaţi un server de comandă HTTPS pentru diagnosticare la distanţă.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Folosiți HTTP sau HTTPS fără nume de utilizator ori parolă în adresă.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Folosiți STÂNGA/DREAPTA pentru a selecta un control, OK pentru a-l activa și SUS/JOS pentru derulare.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Utilizați linkul complet, inclusiv partea de după #. Nu-l împărtăși cu nimeni altcineva.",
     "Use Up / Down to scroll. Back to close.":
         "Folosiți Sus / Jos pentru derulare. Înapoi pentru închidere.",
     Username: "Nume de utilizator",
     "Username or password is missing.":
         "Lipsește numele de utilizator sau parola.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Valabil 10 minute. Înapoi închide această sesiune.",
     Version: "Versiune",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Setări VIP-IP.COM",
@@ -1035,7 +1094,7 @@ var keyStrings = {
     "VPortal request failed":
         "VPortal nu a putut fi încărcat. Verificați linkul, cheia de acces și disponibilitatea portalului.",
     volume: "volum",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Se așteaptă conectarea...",
     "Wrong parental code !!!": "Cod parental greșit!!!",
     "Xtream Codes Provider": "Furnizor Xtream Codes",
     "Xtream Codes settings": "Setări Xtream Codes",

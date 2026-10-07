@@ -62,13 +62,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Gba àyẹ̀wò ìṣòro láàyè fún ìṣẹ́jú 10",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Gba àwòrán iboju láàyè fún ìṣẹ́jú 10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Gba sáfà yìí láàyè láti gba àwọn òǹkà àyẹ̀wò ìṣòro àti láti tún ìṣàn tàbí ẹ̀rọ ìṣeré yìí bẹ̀rẹ̀. Ìwọlé fún ìgbà díẹ̀ máa ń pé ìṣẹ́jú 10. Ìrànlọ́wọ́ tí a fọkàn tán ṣì wà lẹ́yìn títún sopọ̀ tàbí títún bẹ̀rẹ̀; gbígba dátà kọ̀ọ̀kan ṣì parí lẹ́yìn ìṣẹ́jú 10. Gbigba dátà dá dúró nígbà tí ojú ìwé bá fara sin tàbí tí kò bá sí lórí ayélujára.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Gba sáfà yìí láàyè láti gba àwọn òǹkà ìṣeré, nẹ́tíwọ́ọ̀kì àti ìtẹ̀wọlé fún sáà yìí nígbà tí ojú ìwé wà níwájú. Ó nílò HTTPS àti àṣẹ sáfà. Ó dá dúró lẹ́yìn ìṣẹ́jú 10, nígbà tí ojú ìwé fara sin, tàbí tí ìsopọ̀ bá ge.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Gba olupin yìí láàyè láti béèrè àwòrán fún ìṣẹ́jú 10. Àwòrán lè ní àlàyé ara ẹni nínú. Nínú aṣàwákiri, yan taabu tàbí fèrèsé ẹ̀rọ orin. Ìyọ̀nda yìí parí nígbà tí o bá tún ojú-ìwé ṣí tàbí gé àsopọ̀.",
     "Allowlist this Device ID": "Gba ID Ẹ̀rọ yìí láàyè",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Ẹ̀rọ ìṣeré HTTPS kò lè gba orísun EPG HTTP sílẹ̀. Lo orísun HTTPS.",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Lọ sẹ́yìn / síwájú ní ìṣẹ́jú 1",
     "Background color": "Àwọ̀ abẹ́lẹ̀",
     "Background color of selected item": "Àwọ̀ abẹ́lẹ̀ ohun tí a yàn",
+    "Backup state changed": "Ipo afẹyinti yipada",
     "Balance, $": "Iye owó tó kù, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +112,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Ibojú dúdú nígbà yíyí ìkànnì padà",
     Blue: "Búlúù",
+    "Bookmark age (days): %1": "Ọjọ ori bukumaaki (ọjọ): %1",
     "Bookmark age: %1 days": "Ọjọ́ orí àmì ìrántí: ọjọ́ %1",
     "Browse folders": "Ṣàwárí àwọn fódà",
     "Buffer Size, s": "Ìwọ̀n ibi ìpamọ́ ṣáájú ìṣeré, ìṣẹ́jú-àáyá",
@@ -159,11 +161,15 @@ var keyStrings = {
     "Choose language": "Yan èdè",
     "Choose Plex server": "Yan sáfà Plex",
     "Choose provider": "Yan olùpèsè",
-    Classic: "Classic",
+    Classic: "Àṣà ìbílẹ̀",
     "Clear all settings?": "Pa gbogbo ètò rẹ́?",
     "Clear settings": "Pa ètò rẹ́",
     Close: "Pa dé",
     "Close PiP": "Pa PiP dé",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Fífi dátà pamọ́ àti gbígbà á láti ibi ìpamọ́ orí ayélujára nílò famuwia STB (host_ott kò ṣètò)",
+    "Cloud transfer failed":
+        "Gbigbe dátà sí ibi ìpamọ́ orí ayélujára kò ṣàṣeyọrí",
     Code: "Kóòdù",
     Color: "Àwọ̀",
     "Color spectrum": "Oríṣiríṣi àwọ̀",
@@ -179,6 +185,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "A kò lè gbé ètò ìbámu wọlé. Tún ẹ̀rọ ìṣeré ṣí láti gbìyànjú lẹ́ẹ̀kan sí i.",
     "Compatible HLS": "HLS tó bá mu",
+    "Complete pairing link": "Ọna asopọ pipe",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ṣètò All4you.tv ní Ètò -> Ètò olùpèsè",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -251,22 +258,24 @@ var keyStrings = {
         "Ṣètò Шаравоз ní Ètò -> Ètò olùpèsè",
     Connect: "Sopọ̀",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "So olupin pipaṣẹ HTTPS kan pọ ṣaaju gbigba awọn àwòrán iboju laaye.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "So olupin pipaṣẹ HTTPS kan pọ lati lo awọn àwòrán iboju.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "So ìṣàkóso látọ̀nà jíjìn pọ̀ láti gba ìwádìí ìṣòro láàyè.",
     "Connect this player to a command server first.":
         "Kọ́kọ́ so ẹ̀rọ ìṣeré yìí pọ̀ mọ́ sáfà àṣẹ kan.",
+    "Connect to TV": "Sopọ si TV",
     Connected: "Ti sopọ̀",
     "Connected. Waiting for the channel list...":
         "Ti sopọ̀. Ń dúró de àkójọ ìkànnì...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Sísopọ̀ ìṣàkóso látọ̀nà jíjìn ń fún olupin yìí ní àṣẹ láti wádìí ìṣòro ẹ̀rọ orin àti láti tún un ṣe. Àṣẹ náà ṣì wà lẹ́yìn tí a bá tún ẹ̀rọ orin bẹ̀rẹ̀, ó sì parí nígbà tí o bá gé àsopọ̀. Ìkójọpọ̀ dátà ìwádìí kọ̀ọ̀kan kò ju ìṣẹ́jú 10 lọ.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Ń so ìwádìí ìṣòro pọ̀ fún àsopọ̀ ìṣàkóso látọ̀nà jíjìn tó ń ṣiṣẹ́.",
     "Connecting remote diagnostics for this page.":
         "Ń so àyẹ̀wò ìṣòro láti ọ̀nà jíjìn pọ̀ fún ojú ìwé yìí.",
+    "Connecting securely to your TV...": "Nsopọ ni aabo si TV rẹ...",
     "Connecting to Plex…": "Ń sopọ̀ mọ́ Plex…",
     "Connecting to Stalker portal...": "Ń sopọ̀ mọ́ ojú-ọ̀nà Stalker…",
     "Connecting...": "Ń sopọ̀…",
@@ -284,6 +293,10 @@ var keyStrings = {
         "A kò lè dá ìbéèrè ìsopọ̀ ẹ̀rọ sílẹ̀. Tún wá sáfà láti gbìyànjú lẹ́ẹ̀kan sí i.",
     "Could not load. Select to retry.":
         "A kò lè gbé wọlé. Yan láti tún gbìyànjú.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Ko le mura ọrọ yii silẹ. Jọwọ kuru ki o tun gbiyanju lẹẹkansi.",
+    "Could not protect the private link. Use a different browser.":
+        "Ko le daabobo ọna asopọ ikọkọ. Lo ẹrọ aṣawakiri ti o yatọ.",
     "Could not save provider settings.": "A kò lè fi ètò olùpèsè pamọ́.",
     "Could not save the approved command server settings.":
         "A kò lè fi ètò sáfà àṣẹ tí a fọwọ́ sí pamọ́.",
@@ -300,6 +313,8 @@ var keyStrings = {
     "Delete category": "Pa ẹ̀ka rẹ́",
     "Delete channel": "Pa ìkànnì rẹ́",
     "Delete list": "Pa àkójọ rẹ́",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Ifijiṣẹ ko le jẹrisi. Ṣayẹwo TV rẹ, tabi tun gbiyanju ifiranṣẹ kanna ṣaaju ki ipade yii to pari.",
     "Demo — moving test pattern": "Àfihàn — àwòrán ìdánwò tó ń rìn",
     Description: "Àpèjúwe",
     "Description of remote control buttons": "Ìtọ́sọ́nà bọ́tìnì rímóòtù",
@@ -381,6 +396,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Tẹ URL ojú-ọ̀nà Stalker (fún àpẹẹrẹ http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Tẹ nọ́ńbà sáfà (%1).",
+    "Enter text": "Tẹ ọrọ sii",
     "Enter the access code separately, not in the server address.":
         "Tẹ kóòdù ìwọlé lọ́tọ̀, má ṣe fi sínú àdírẹ́sì sáfà.",
     "Enter the command server IP or address.": "Tẹ IP tàbí àdírẹ́sì sáfà àṣẹ.",
@@ -526,8 +542,10 @@ var keyStrings = {
     "Interface transparency": "Ìhàn-kedere ojú ìṣàkóso",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ọ̀nà asopọ̀ ìkànnì kò péye! Tẹ orúkọ olùgbàlejò kíkún bí ó ṣe wà nínú URL ìṣàn nínú àkọọ́lẹ̀ (fún àpẹẹrẹ subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Idahun awọn eto awọsanma ti ko tọ",
     "Invalid protected source configuration":
         "Ètò orísun tí a dáàbò bò kò péye",
+    "Invalid setting": "Eto ti ko tọ",
     "IPTV token": "Àmi ìwọlé IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Ètò IpStream.one",
@@ -607,6 +625,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Kò sí ètò tó bá àwọn ìkànnì àti ọjọ́ àkójọ ìṣeré mu. Ṣàyẹ̀wò orísun àti aago ẹ̀rọ.",
     "No saved settings found": "A kò rí ètò tí a fi pamọ́",
+    "No supported system language. Choose a language.":
+        "Ko si ede eto atilẹyin. Yan ede kan.",
     "Not configured": "A kò tíì ṣètò",
     "Not found": "A kò rí i",
     "Not reduce video when showing the list (bugfix)":
@@ -622,6 +642,8 @@ var keyStrings = {
     "not set": "a kò tíì ṣètò",
     Off: "Pípa",
     Ok: "Ó dáa",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "TV yi nikan ni o le gba ifiranṣẹ rẹ. Ọna asopọ dopin lẹhin ìṣẹ́jú 10.",
     Open: "Ṣí",
     "Open in PiP": "Ṣí nínú PiP",
     "Open Plex sign-in page": "Ṣí ojú ìwé ìwọlé Plex",
@@ -634,6 +656,7 @@ var keyStrings = {
     "OTT / APP host": "Olùgbàlejò OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ètò OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play titẹ sii latọna jijin",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ti wà. Ṣé kí a gbà á sílẹ̀ kí a sì fi í sí ẹ̀rọ báyìí?",
     "Overwrite current settings?": "Rọ́pò ètò lọ́wọ́lọ́wọ́?",
@@ -666,6 +689,7 @@ var keyStrings = {
     Playback: "Ìṣeré mídíà",
     "Player and device info": "Ìwífún ẹ̀rọ ìṣeré àti ẹ̀rọ",
     "Player could not start": "Ẹ̀rọ ìṣeré kò lè bẹ̀rẹ̀",
+    "Player default": "Àṣàyàn àiyípadà ẹ̀rọ orin",
     "Player info:": "Ìwífún ẹ̀rọ ìṣeré:",
     Playlist: "Àkójọ ìṣeré",
     "Playlist file": "Fáìlì àkójọ ìṣeré",
@@ -687,6 +711,8 @@ var keyStrings = {
     Postpaid: "Sanwó lẹ́yìn lílò",
     PROST: "PROST",
     "PROST settings": "Ètò PROST",
+    "Preferred audio language": "Ede ohun afetigbọ ti o fẹ",
+    "Preferred subtitle language": "Ede atunkọ ti o fẹ",
     Prepaid: "Sanwó ṣáájú lílò",
     "Preparing secure remote input...":
         "Ń mú títẹ ọ̀rọ̀ láti ọ̀nà jíjìn tí ó ní ààbò ṣetán...",
@@ -720,14 +746,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Rímóòtù (láìsí bọ́tìnì nọ́ńbà)",
     "Remote control": "Ìṣàkóso láti ọ̀nà jíjìn",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Ìṣàkóso látọ̀nà jíjìn fún ìwádìí ìṣòro ní àṣẹ. Ó ti ṣetán fún olùṣàkóso.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Ìṣàkóso látọ̀nà jíjìn fún ìwádìí ìṣòro ní àṣẹ. Ń dúró láti tún sopọ̀.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Isakoṣo latọna jijin pẹlu awọn àwòrán iboju ti ẹrọ orin media, pẹlu eto rẹ. Awọn aworan le ni alaye ikọkọ ninu. Ohun elo naa le ya awọn àwòrán iboju taara laisi ifọwọsi afikun. Ninu ẹrọ aṣawakiri kan, yan taabu tabi window lati yaworan lori ẹrọ yii.",
     "Remote diagnostics": "Àyẹ̀wò ìṣòro láti ọ̀nà jíjìn",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Ń kó dátà ìwádìí ìṣòro jọ fún àsopọ̀ yìí (tó ìṣẹ́jú 10 fún ìgbà kọ̀ọ̀kan).",
     "Remote diagnostics is collecting for this page.":
         "Àyẹ̀wò ìṣòro láti ọ̀nà jíjìn ń gba dátà fún ojú ìwé yìí.",
     "Remote diagnostics is off.": "Àyẹ̀wò ìṣòro láti ọ̀nà jíjìn kò ṣiṣẹ́.",
@@ -741,10 +767,10 @@ var keyStrings = {
         "Àkókò títẹ ọ̀rọ̀ láti ọ̀nà jíjìn ti parí. Ṣí sáà tuntun láti tún gbìyànjú.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sáà títẹ ọ̀rọ̀ láti ọ̀nà jíjìn kò sí lárọ̀ọ́wọ́tó. Ṣí sáà tuntun láti tún gbìyànjú.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Awọn àwòrán iboju jijin",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Awọn àwòrán iboju jijin ni a gba laaye fun ìṣẹ́jú 10. Pa awọn eto lati yaworan.",
+    "Remote screenshots are off.": "Awọn àwòrán iboju latọna jijin wa ni pipa.",
     "Remote session expired": "Sáà láti ọ̀nà jíjìn ti parí àkókò",
     "Remote text entry": "Títẹ ọ̀rọ̀ láti ọ̀nà jíjìn",
     "Remote text entry denied": "A kọ títẹ ọ̀rọ̀ láti ọ̀nà jíjìn",
@@ -772,6 +798,7 @@ var keyStrings = {
     "Resume from archive?": "Tẹ̀síwájú láti àkójọpọ̀ àtijọ́?",
     Retry: "Tún gbìyànjú",
     "Retry EPG download": "Tún gbìyànjú gbígba EPG sílẹ̀",
+    "Retry same message": "Fi ìfiránṣẹ́ kan náà ránṣẹ́ lẹ́ẹ̀kan sí i",
     "Return to previous channel": "Padà sí ìkànnì tó ṣáájú",
     Rewind: "Lọ sí àkókò kan nínú fídíò",
     "Rewind step by buttons %1/%2": "Ìgbésẹ̀ síwájú/sẹ́yìn fún bọ́tìnì %1/%2",
@@ -789,19 +816,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Fi ètò pamọ́ kí o sì gbé àkójọ ìkànnì wọlé",
     "Save settings to storage": "Fi ètò pamọ́ sí ibi ìpamọ́",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Lo kámẹ́rà fóònù rẹ láti ka kóòdù QR lórí TV, tàbí lẹ ọ̀nà asopọ̀ ìkọ̀kọ̀ tó pé fún àsopọ̀ rẹ sí ìsàlẹ̀.",
     "Scan this QR code with your phone to enter text.":
         "Ṣàyẹ̀wò kóòdù QR yìí pẹ̀lú fóònù rẹ láti tẹ ọ̀rọ̀.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Pipin iboju ko le bẹrẹ.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Pipin iboju ti fagile tabi ko si.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Igbanilaaye àwòrán iboju ko le ṣiṣẹ.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Awọn àwòrán iboju wa nigba ti isakoṣo latọna jijin ti sopọ.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Awọn àwòrán iboju ko si lori iru ẹrọ yii.",
     Script: "Ìwé ìtàn fíìmù",
     Search: "Wá",
+    "Search languages": "Wá èdè",
     "Search programme": "Wá ètò",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Títẹ ọ̀rọ̀ láti ọ̀nà jíjìn tí ó ní ààbò kò lè bẹ̀rẹ̀. Jọ̀wọ́ tún gbìyànjú tàbí lo àtẹ bọ́tìnì lórí ibojú.",
@@ -819,13 +849,14 @@ var keyStrings = {
         "Yan orísun àwòṣe àkójọ ìṣeré fún EPG àti àwọn àmì ìdánimọ̀",
     "Select Stalker portal": "Yan ojú-ọ̀nà Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Yan orisun àwòrán iboju ni ẹrọ aṣawakiri",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Yan taabu ẹrọ orin tabi ferese ninu ibaraẹnisọrọ pinpin ẹrọ aṣawakiri.",
     "Send request": "Fi ìbéèrè ránṣẹ́",
     "Send settings": "Fi ètò ránṣẹ́",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Fi kóòdù yìí ránṣẹ́ láti aṣojú nẹ́tíwọ́ọ̀kì rẹ nínú àkọlé Authorization: Bearer.",
+    "Send to TV": "Firanṣẹ si TV",
     Server: "Sáfà",
     "Server address": "Àdírẹ́sì sáfà",
     "Server address (for example 192.168.1.20:8081)":
@@ -834,10 +865,13 @@ var keyStrings = {
     "Server URL": "URL sáfà",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Sáfà kò sí lárọ̀ọ́wọ́tó. Ń tún gbìyànjú láìfọwọ́yí; ṣàyẹ̀wò àdírẹ́sì àti ìwọlé nẹ́tíwọ́ọ̀kì rẹ̀.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Igba pipade. Bẹrẹ tuntun lati TV rẹ nigbati o nilo.",
     Set: "Mú ṣiṣẹ́",
     "Set parental code": "Ṣètò kóòdù òbí",
     "Set timer?": "Ṣètò aago?",
     Settings: "Ètò",
+    "Settings changed while editing": "Awọn eto yipada lakoko ti n ṣatunkọ",
     "Settings changed. Discovery was canceled.":
         "Ètò ti yí padà. A fagilé wíwá sáfà.",
     "Settings copied": "A ti ṣe ẹ̀dà ètò",
@@ -847,10 +881,14 @@ var keyStrings = {
     "Settings imported": "A ti gbé ètò wọlé",
     "Settings JSON": "JSON ètò",
     "Settings loaded from storage": "A ti gbé ètò láti ibi ìpamọ́ wọlé",
+    "Settings received. Restarting player...":
+        "A ti gba àwọn ètò. A ń tún ẹ̀rọ orin bẹ̀rẹ̀...",
     "Settings STB": "Ètò STB",
     "Settings saved": "A ti fi ètò pamọ́",
     "Settings saved to storage": "A ti fi ètò pamọ́ sí ibi ìpamọ́",
     "Settings sended!": "A ti fi ètò ránṣẹ́!",
+    "Settings source changed": "Orisun Eto yipada",
+    "Settings storage rejected write": "Ibi ipamọ awọn eto kọ kikọ",
     "Several command servers were found. Select one below.":
         "A rí ọ̀pọ̀ sáfà àṣẹ. Yan ọ̀kan ní ìsàlẹ̀.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -902,12 +940,12 @@ var keyStrings = {
     "Starting...": "Ń bẹ̀rẹ̀…",
     Status: "Ipò",
     Stop: "Dúró",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Duro pinpin ẹrọ lilọ kiri ayelujara",
     "Stop current capture": "Dá gbígba dátà lọ́wọ́lọ́wọ́ dúró",
     "Stop diagnostics": "Dá àyẹ̀wò ìṣòro dúró",
     "Stop playback and return to live":
         "Dá ìṣeré dúró kí o sì padà sí ìgbóhùnsáfẹ́fẹ́ tààrà",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Duro awọn àwòrán iboju",
     "Stream could not be played": "A kò lè ṣeré ìṣàn",
     "Stream type: %1": "Irú ìṣàn: %1",
     "String for search": "Ọ̀rọ̀ ìwádìí",
@@ -919,6 +957,7 @@ var keyStrings = {
     "Switch subtitle": "Yí àkọlé ìsàlẹ̀ padà",
     "Switch to this list": "Yí sí àkójọ yìí",
     "Swop URL": "URL Swop",
+    "System language": "Èdè ètò",
     "saved on this device": "tí a fi pamọ́ lórí ẹ̀rọ yìí",
     select: "yan",
     small: "kékeré",
@@ -927,14 +966,18 @@ var keyStrings = {
     "Tabox settings": "Ètò Tabox",
     "Text is too long for remote input.":
         "Ọ̀rọ̀ náà gùn jù fún títẹ láti ọ̀nà jíjìn.",
+    "Text is too long. Please shorten it before sending.":
+        "Ọrọ ti gun ju. Jọwọ kuru ṣaaju fifiranṣẹ.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "A ti fi ọ̀rọ̀ ránṣẹ́. Ṣàyẹ̀wò pé ọ̀rọ̀ náà hàn lórí TV rẹ.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Orisun àwòrán iboju ẹrọ aṣawakiri ti šetan.",
     "The command server discovery URL is invalid.":
         "URL wíwá sáfà àṣẹ kò péye.",
     "The device ID in the address is invalid.": "ID ẹ̀rọ inú àdírẹ́sì kò péye.",
     "The discovery response is invalid.": "Ìdáhùn wíwá sáfà kò péye.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ẹrọ aṣawakiri yii ko le ṣe idanimọ orisun àwòrán iboju ti o yan.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Aṣàwákiri yìí kò lè so ẹ̀rọ pọ̀ láìfọwọ́yí pẹ̀lú ààbò. Mú un dójú ìwọ̀n tàbí tẹ ètò sáfà àṣẹ pẹ̀lú ọwọ́.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -943,6 +986,10 @@ var keyStrings = {
         "Ẹ̀rọ ìṣeré HTTPS yìí kò lè sopọ̀ mọ́ sáfà HTTP. Lo sáfà HTTPS tàbí ṣí ẹ̀rọ ìṣeré lórí HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ohun èlò Play yìí nílò HTTPS. Béèrè lọ́wọ́ olùpèsè rẹ fún àkójọ ìṣeré HTTPS tàbí URL sáfà HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ọna asopọ sisopọ yii ti pari. Ṣii igba titun lori TV rẹ.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Igba aabo yii ko si tabi ti pari. Ṣii igba tuntun lori TV ki o lo ọna asopọ pipe rẹ.",
     Timer: "Aago ìṣètò",
     "Timer: switch to channel?": "Aago ìṣètò: yí sí ìkànnì yìí?",
     "Timeshift: one minute back": "Ìyípadà àkókò: ìṣẹ́jú kan sẹ́yìn",
@@ -990,6 +1037,8 @@ var keyStrings = {
         "Lo HTTP tàbí HTTPS láìsí orúkọ olùlò tàbí ọ̀rọ̀ aṣínà nínú àdírẹ́sì.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Lo ÒSÌ/Ọ̀TÚN láti yan ìṣàkóso, Ó DÁA láti mú un ṣiṣẹ́, àti ÒKÈ/ÌSÀLẸ̀ láti yí ojú ìwé.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Lo ọna asopọ kikun, pẹlu apakan lẹhin #. Maṣe pin pẹlu ẹnikẹni miiran.",
     "Use Up / Down to scroll. Back to close.":
         "Lo Òkè / Ìsàlẹ̀ láti yí ojú ìwé. Pada láti pa á dé.",
     Username: "Orúkọ olùlò",

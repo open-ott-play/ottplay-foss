@@ -61,13 +61,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "ອະນຸຍາດໃຫ້ວິນິດໄສ 10 ນາທີ",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "ອະນຸຍາດໃຫ້ຖ່າຍຮູບໜ້າຈໍເປັນເວລາ 10 ນາທີ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ອະນຸຍາດໃຫ້ເຊີບເວີນີ້ເກັບຕົວນັບວິນິດໄສ ແລະ ເລີ່ມສະຕຣີມ ຫຼື ເຄື່ອງຫຼິ້ນນີ້ຄືນ. ການເຂົ້າໃຊ້ຊົ່ວຄາວມີອາຍຸ 10 ນາທີ. ການຊ່ວຍເຫຼືອທີ່ໄວ້ໃຈຍັງໃຊ້ໄດ້ຫຼັງເຊື່ອມຕໍ່ ຫຼື ເລີ່ມຄືນ; ການເກັບແຕ່ລະຄັ້ງຍັງໝົດອາຍຸຫຼັງ 10 ນາທີ. ການເກັບຈະຢຸດຊົ່ວຄາວເມື່ອໜ້າຖືກເຊື່ອງ ຫຼື ອອບລາຍ.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ອະນຸຍາດໃຫ້ເຊີບເວີນີ້ເກັບຕົວນັບການຫຼິ້ນ, ເຄືອຂ່າຍ ແລະ ການປ້ອນໃນເຊດຊັນໜ້າທີ່ເປີດຢູ່ນີ້. ຕ້ອງມີ HTTPS ແລະ ການອະນຸຍາດຈາກເຊີບເວີ. ຈະຢຸດຫຼັງ 10 ນາທີ, ເມື່ອໜ້າຖືກເຊື່ອງ ຫຼື ຂາດການເຊື່ອມຕໍ່.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "ອະນຸຍາດໃຫ້ເຊີບເວີນີ້ຮ້ອງຂໍຮູບພາບເປັນເວລາ 10 ນາທີ. ຮູບພາບສາມາດປະກອບມີຂໍ້ມູນສ່ວນຕົວ. ໃນຕົວທ່ອງເວັບ, ເລືອກແຖບເຄື່ອງຫຼິ້ນຫຼືປ່ອງຢ້ຽມ. ການອະນຸຍາດສິ້ນສຸດເມື່ອໂຫຼດຄືນໃໝ່ ຫຼືຕັດການເຊື່ອມຕໍ່.",
     "Allowlist this Device ID": "ເພີ່ມ ID ອຸປະກອນນີ້ເຂົ້າລາຍການທີ່ອະນຸຍາດ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "ເຄື່ອງຫຼິ້ນ HTTPS ບໍ່ສາມາດດາວໂຫຼດແຫຼ່ງ EPG ແບບ HTTP. ໃຊ້ແຫຼ່ງ HTTPS.",
@@ -97,6 +97,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "ຖອຍຫຼັງ / ໄປໜ້າ 1 ນາທີ",
     "Background color": "ສີພື້ນຫຼັງ",
     "Background color of selected item": "ສີພື້ນຫຼັງຂອງລາຍການທີ່ເລືອກ",
+    "Backup state changed": "ສະຖານະສຳຮອງຖືກປ່ຽນ",
     "Balance, $": "ຍອດເຫຼືອ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -106,6 +107,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "ການເຮັດວຽກຂອງປຸ່ມ %1/%2 ໃນລາຍການ",
     "Black screen while switching the channel": "ຈໍດຳເມື່ອປ່ຽນຊ່ອງ",
     Blue: "ສີຟ້າ",
+    "Bookmark age (days): %1": "ອາຍຸຂອງບຸກມາກ (ມື້): %1",
     "Bookmark age: %1 days": "ອາຍຸບຸກມາກ: %1 ມື້",
     "Browse folders": "ເບິ່ງໂຟນເດີ",
     "Buffer Size, s": "ຂະໜາດບັບເຟີ, ວິ",
@@ -158,6 +160,9 @@ var keyStrings = {
     "Clear settings": "ລ້າງການຕັ້ງຄ່າ",
     Close: "ປິດ",
     "Close PiP": "ປິດ PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ການບັນທຶກແລະໂຫຼດຜ່ານຄລາວ ຕ້ອງການເຟີມແວ STB (ບໍ່ໄດ້ຕັ້ງ host_ott)",
+    "Cloud transfer failed": "ການໂອນ ຄລາວ ລົ້ມເຫລວ",
     Code: "ລະຫັດ",
     Color: "ສີ",
     "Color spectrum": "ສະເປັກຕຣຳສີ",
@@ -173,6 +178,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "ບໍ່ສາມາດໂຫຼດສະພາບແວດລ້ອມຄວາມເຂົ້າກັນໄດ້. ເປີດເຄື່ອງຫຼິ້ນຄືນເພື່ອລອງອີກ.",
     "Compatible HLS": "HLS ທີ່ເຂົ້າກັນໄດ້",
+    "Complete pairing link": "ການເຊື່ອມຕໍ່ການຈັບຄູ່ທີ່ສົມບູນ",
     "Configure All4you.tv in Settings -> Provider Settings":
         "ຕັ້ງຄ່າ All4you.tv ໃນ ການຕັ້ງຄ່າ -> ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -245,22 +251,24 @@ var keyStrings = {
         "ຕັ້ງຄ່າ Шаравоз ໃນ ການຕັ້ງຄ່າ -> ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ",
     Connect: "ເຊື່ອມຕໍ່",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ເຊື່ອມຕໍ່ເຄື່ອງແມ່ຂ່າຍຄໍາສັ່ງ HTTPS ກ່ອນທີ່ຈະອະນຸຍາດໃຫ້ ພາບໜ້າຈໍ.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ເຊື່ອມຕໍ່ເຊີບເວີຄຳສັ່ງ HTTPS ເພື່ອໃຊ້ຮູບໜ້າຈໍ.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ເຊື່ອມຕໍ່ການຄວບຄຸມໄລຍະໄກເພື່ອເປີດໃຊ້ການວິນິດໄສ.",
     "Connect this player to a command server first.":
         "ເຊື່ອມຕໍ່ເຄື່ອງຫຼິ້ນນີ້ກັບເຊີບເວີຄຳສັ່ງກ່ອນ.",
+    "Connect to TV": "ເຊື່ອມຕໍ່ກັບໂທລະພາບ",
     Connected: "ເຊື່ອມຕໍ່ແລ້ວ",
     "Connected. Waiting for the channel list...":
         "ເຊື່ອມຕໍ່ແລ້ວ. ກຳລັງລໍຖ້າລາຍການຊ່ອງ...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "ການເຊື່ອມຕໍ່ການຄວບຄຸມໄລຍະໄກອະນຸຍາດໃຫ້ເຊີບເວີນີ້ກວດຫາ ແລະສ້ອມແປງເຄື່ອງຫຼິ້ນ. ການ​ເຂົ້າ​ເຖິງ​ແມ່ນ​ຍັງ​ມີ​ຢູ່​ຫຼັງ​ຈາກ ເລີ່ມໃໝ່ ແລະ​ສິ້ນ​ສຸດ​ລົງ​ໃນ​ເວ​ລາ​ທີ່​ທ່ານ​ຕັດ​ການ​ເຊື່ອມ​ຕໍ່​. ແຕ່ລະການບັນທຶກການວິນິດໄສແມ່ນຈໍາກັດ 10 ນາທີ.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ການເຊື່ອມຕໍ່ການວິນິດໄສທາງໄກສໍາລັບການເຊື່ອມຕໍ່ການຄວບຄຸມໄລຍະໄກທີ່ເປີດໃຊ້.",
     "Connecting remote diagnostics for this page.":
         "ກຳລັງເຊື່ອມຕໍ່ການວິນິດໄສທາງໄກສຳລັບໜ້ານີ້.",
+    "Connecting securely to your TV...": "ກຳລັງເຊື່ອມຕໍ່ຢ່າງປອດໄພກັບໂທລະພາບຂອງທ່ານ...",
     "Connecting to Plex…": "ກຳລັງເຊື່ອມຕໍ່ Plex…",
     "Connecting to Stalker portal...": "ກຳລັງເຊື່ອມຕໍ່ພອດທັນ Stalker…",
     "Connecting...": "ກຳລັງເຊື່ອມຕໍ່…",
@@ -277,6 +285,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "ບໍ່ສາມາດສ້າງຄຳຂໍຈັບຄູ່. ຊອກຫາເຊີບເວີຄືນເພື່ອລອງອີກ.",
     "Could not load. Select to retry.": "ບໍ່ສາມາດໂຫຼດ. ເລືອກເພື່ອລອງອີກ.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ບໍ່ສາມາດກະກຽມຂໍ້ຄວາມນີ້ໄດ້. ກະລຸນາຫຍໍ້ມັນລົງແລ້ວລອງໃໝ່.",
+    "Could not protect the private link. Use a different browser.":
+        "ບໍ່ສາມາດປົກປ້ອງລິ້ງສ່ວນຕົວໄດ້. ໃຊ້ຕົວທ່ອງເວັບອື່ນ.",
     "Could not save provider settings.": "ບໍ່ສາມາດບັນທຶກການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ.",
     "Could not save the approved command server settings.":
         "ບໍ່ສາມາດບັນທຶກການຕັ້ງຄ່າເຊີບເວີຄຳສັ່ງທີ່ອະນຸມັດ.",
@@ -291,6 +303,8 @@ var keyStrings = {
     "Delete category": "ລຶບໝວດໝູ່",
     "Delete channel": "ລຶບຊ່ອງ",
     "Delete list": "ລຶບລາຍການ",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ການຈັດສົ່ງບໍ່ສາມາດຢືນຢັນໄດ້. ກວດເບິ່ງໂທລະພາບຂອງທ່ານ, ຫຼືລອງຂໍ້ຄວາມດຽວກັນອີກຄັ້ງກ່ອນທີ່ເຊສຊັນນີ້ໝົດອາຍຸ.",
     "Demo — moving test pattern": "ສາທິດ — ຮູບທົດສອບເຄື່ອນໄຫວ",
     Description: "ຄຳອະທິບາຍ",
     "Description of remote control buttons": "ຄູ່ມືປຸ່ມຣີໂໝດ",
@@ -370,6 +384,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "ປ້ອນ URL ພອດທັນ Stalker (ເຊັ່ນ http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "ປ້ອນໝາຍເລກເຊີບເວີ (%1).",
+    "Enter text": "ໃສ່ຂໍ້ຄວາມ",
     "Enter the access code separately, not in the server address.":
         "ປ້ອນລະຫັດເຂົ້າໃຊ້ແຍກຕ່າງຫາກ, ບໍ່ແມ່ນໃນທີ່ຢູ່ເຊີບເວີ.",
     "Enter the command server IP or address.": "ປ້ອນ IP ຫຼື ທີ່ຢູ່ເຊີບເວີຄຳສັ່ງ.",
@@ -512,7 +527,9 @@ var keyStrings = {
     "Interface transparency": "ຄວາມໂປ່ງໃສຂອງອິນເຕີເຟດ",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ລິ້ງຊ່ອງບໍ່ຖືກຕ້ອງ! ປ້ອນຊື່ໂຮສຄົບຖ້ວນຕາມ URL ສະຕຣີມໃນບັນຊີສ່ວນຕົວ (ເຊັ່ນ subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "ການຕອບສະໜອງການຕັ້ງຄ່າຄລາວບໍ່ຖືກຕ້ອງ",
     "Invalid protected source configuration": "ການຕັ້ງຄ່າແຫຼ່ງທີ່ປ້ອງກັນບໍ່ຖືກຕ້ອງ",
+    "Invalid setting": "ການຕັ້ງຄ່າບໍ່ຖືກຕ້ອງ",
     "IPTV token": "ໂທເຄັນ IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "ການຕັ້ງຄ່າ IpStream.one",
@@ -589,6 +606,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ບໍ່ມີລາຍການທີ່ກົງກັບຊ່ອງ ແລະ ວັນທີໃນລາຍການຫຼິ້ນ. ກວດສອບແຫຼ່ງ ແລະ ໂມງອຸປະກອນ.",
     "No saved settings found": "ບໍ່ພົບການຕັ້ງຄ່າທີ່ບັນທຶກໄວ້",
+    "No supported system language. Choose a language.":
+        "ບໍ່ມີພາສາລະບົບທີ່ຮອງຮັບ. ເລືອກພາສາ.",
     "Not configured": "ຍັງບໍ່ຕັ້ງຄ່າ",
     "Not found": "ບໍ່ພົບ",
     "Not reduce video when showing the list (bugfix)":
@@ -603,6 +622,8 @@ var keyStrings = {
     "not set": "ຍັງບໍ່ກຳນົດ",
     Off: "ປິດ",
     Ok: "ຕົກລົງ",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "ມີແຕ່ໂທລະທັດເຄື່ອງນີ້ເທົ່ານັ້ນທີ່ສາມາດຮັບເອົາຂໍ້ຄວາມຂອງທ່ານໄດ້. ລິ້ງໝົດອາຍຸຫຼັງຈາກ 10 ນາທີ.",
     Open: "ເປີດ",
     "Open in PiP": "ເປີດໃນ PiP",
     "Open Plex sign-in page": "ເປີດໜ້າເຂົ້າລະບົບ Plex",
@@ -615,6 +636,7 @@ var keyStrings = {
     "OTT / APP host": "ໂຮສ OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "ການຕັ້ງຄ່າ OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play ການປ້ອນຂໍ້ມູນທາງໄກ",
     "OttPlay FOSS %1 is available. Download and install now?":
         "ມີ OttPlay FOSS %1 ແລ້ວ. ດາວໂຫຼດ ແລະ ຕິດຕັ້ງຕອນນີ້ບໍ?",
     "Overwrite current settings?": "ຂຽນທັບການຕັ້ງຄ່າປັດຈຸບັນບໍ?",
@@ -647,6 +669,7 @@ var keyStrings = {
     Playback: "ການຫຼິ້ນ",
     "Player and device info": "ຂໍ້ມູນເຄື່ອງຫຼິ້ນ ແລະ ອຸປະກອນ",
     "Player could not start": "ເຄື່ອງຫຼິ້ນບໍ່ສາມາດເລີ່ມໄດ້",
+    "Player default": "ຄ່າເລີ່ມຕົ້ນຂອງເຄື່ອງຫຼິ້ນ",
     "Player info:": "ຂໍ້ມູນເຄື່ອງຫຼິ້ນ:",
     Playlist: "ລາຍການຫຼິ້ນ",
     "Playlist file": "ໄຟລ໌ລາຍການຫຼິ້ນ",
@@ -667,6 +690,8 @@ var keyStrings = {
     Postpaid: "ຈ່າຍພາຍຫຼັງ",
     PROST: "PROST",
     "PROST settings": "ການຕັ້ງຄ່າ PROST",
+    "Preferred audio language": "ພາສາສຽງທີ່ຕ້ອງການ",
+    "Preferred subtitle language": "ພາສາຄໍາບັນຍາຍທີ່ຕ້ອງການ",
     Prepaid: "ຈ່າຍລ່ວງໜ້າ",
     "Preparing secure remote input...": "ກຳລັງກຽມການປ້ອນທາງໄກທີ່ປອດໄພ...",
     Prev: "ກ່ອນໜ້າ",
@@ -698,14 +723,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "ຣີໂໝດ (ບໍ່ມີປຸ່ມຕົວເລກ)",
     "Remote control": "ການຄວບຄຸມທາງໄກ",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "ການຄວບຄຸມໄລຍະໄກອະນຸຍາດໃຫ້ການວິນິດໄສ. ກຽມພ້ອມສໍາລັບຜູ້ປະກອບການ.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "ການຄວບຄຸມໄລຍະໄກອະນຸຍາດໃຫ້ການວິນິດໄສ. ກຳລັງລໍຖ້າເຊື່ອມຕໍ່ຄືນໃໝ່.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "ການຄວບຄຸມໄລຍະໄກປະກອບມີພາບຫນ້າຈໍຂອງເຄື່ອງຫຼິ້ນມີເດຍ, ລວມທັງການຕັ້ງຄ່າຂອງມັນ. ຮູບພາບອາດມີຂໍ້ມູນສ່ວນຕົວ. ແອັບພລິເຄຊັນສາມາດບັນທຶກພາບໜ້າຈໍໄດ້ໂດຍກົງໂດຍບໍ່ມີການອະນຸມັດເພີ່ມເຕີມ. ໃນໂປຣແກຣມທ່ອງເວັບ, ເລືອກແຖບ ຫຼືໜ້າຈໍເພື່ອບັນທຶກໃນອຸປະກອນນີ້.",
     "Remote diagnostics": "ການວິນິດໄສທາງໄກ",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ການວິນິດໄສໄລຍະໄກກຳລັງເກັບກຳຂໍ້ມູນສໍາລັບການເຊື່ອມຕໍ່ນີ້ (ສູງສຸດ 10 ນາທີຕໍ່ເຊດຊັນ).",
     "Remote diagnostics is collecting for this page.":
         "ການວິນິດໄສທາງໄກກຳລັງເກັບຂໍ້ມູນສຳລັບໜ້ານີ້.",
     "Remote diagnostics is off.": "ປິດການວິນິດໄສທາງໄກຢູ່.",
@@ -719,10 +744,10 @@ var keyStrings = {
         "ການປ້ອນທາງໄກໝົດອາຍຸ. ເປີດເຊດຊັນໃໝ່ເພື່ອລອງອີກ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ເຊດຊັນປ້ອນທາງໄກບໍ່ພ້ອມໃຊ້. ເປີດເຊດຊັນໃໝ່ເພື່ອລອງອີກ.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "ພາບຫນ້າຈໍໄລຍະໄກ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "ພາບຫນ້າຈໍໄລຍະໄກແມ່ນອະນຸຍາດໃຫ້ໃຊ້ເວລາ 10 ນາທີ. ປິດການຕັ້ງຄ່າເພື່ອບັນທຶກ.",
+    "Remote screenshots are off.": "ພາບໜ້າຈໍຈາກໄລຍະໄກປິດຢູ່.",
     "Remote session expired": "ເຊດຊັນທາງໄກໝົດອາຍຸ",
     "Remote text entry": "ປ້ອນຂໍ້ຄວາມທາງໄກ",
     "Remote text entry denied": "ປະຕິເສດການປ້ອນຂໍ້ຄວາມທາງໄກ",
@@ -749,6 +774,7 @@ var keyStrings = {
     "Resume from archive?": "ຫຼິ້ນຕໍ່ຈາກຍ້ອນຫຼັງບໍ?",
     Retry: "ລອງອີກ",
     "Retry EPG download": "ລອງດາວໂຫຼດ EPG ອີກ",
+    "Retry same message": "ລອງຂໍ້ຄວາມດຽວກັນອີກຄັ້ງ",
     "Return to previous channel": "ກັບໄປຊ່ອງກ່ອນໜ້າ",
     Rewind: "ເລື່ອນເວລາ",
     "Rewind step by buttons %1/%2": "ໄລຍະຖອຍຫຼັງສຳລັບປຸ່ມ %1/%2",
@@ -765,19 +791,21 @@ var keyStrings = {
     "Save settings": "ບັນທຶກການຕັ້ງຄ່າ",
     "Save settings and load channel list": "ບັນທຶກການຕັ້ງຄ່າ ແລະ ໂຫຼດລາຍການຊ່ອງ",
     "Save settings to storage": "ບັນທຶກການຕັ້ງຄ່າໃສ່ບ່ອນເກັບ",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "ສະແກນລະຫັດ QR ໃນໂທລະທັດຂອງທ່ານ, ຫຼືວາງລິ້ງການຈັບຄູ່ສ່ວນຕົວທີ່ສົມບູນລົງລຸ່ມນີ້.",
     "Scan this QR code with your phone to enter text.":
         "ສະແກນລະຫັດ QR ນີ້ດ້ວຍໂທລະສັບເພື່ອປ້ອນຂໍ້ຄວາມ.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ການແບ່ງປັນໜ້າຈໍບໍ່ສາມາດເລີ່ມຕົ້ນໄດ້.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "ການແບ່ງປັນໜ້າຈໍຖືກຍົກເລີກ ຫຼືບໍ່ສາມາດນຳໃຊ້ໄດ້.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ບໍ່ສາມາດເປີດໃຊ້ການອະນຸຍາດພາບໜ້າຈໍໄດ້.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ພາບຫນ້າຈໍສາມາດໃຊ້ໄດ້ໃນຂະນະທີ່ການຄວບຄຸມໄລຍະໄກເຊື່ອມຕໍ່.",
+    "Screenshots are unavailable on this platform.": "ພາບໜ້າຈໍບໍ່ສາມາດໃຊ້ໄດ້ໃນເວທີນີ້.",
     Script: "ບົດຮູບເງົາ",
     Search: "ຄົ້ນຫາ",
+    "Search languages": "ຊອກຫາພາສາ",
     "Search programme": "ຄົ້ນຫາລາຍການ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ບໍ່ສາມາດເລີ່ມການປ້ອນທາງໄກທີ່ປອດໄພ. ລອງອີກ ຫຼື ໃຊ້ແປ້ນພິມໃນຈໍ.",
@@ -794,14 +822,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ເລືອກແຫຼ່ງແມ່ແບບລາຍການຫຼິ້ນສຳລັບ EPG ແລະ ໂລໂກ້",
     "Select Stalker portal": "ເລືອກພອດທັນ Stalker",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "ເລືອກແຫຼ່ງພາບໜ້າຈໍໃນໂປຣແກຣມທ່ອງເວັບ",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ເລືອກແຖບເຄື່ອງຫຼິ້ນ ຫຼືປ່ອງຢ້ຽມໃນກ່ອງໂຕ້ຕອບການແບ່ງປັນຂອງຕົວທ່ອງເວັບ.",
     "Send request": "ສົ່ງຄຳຂໍ",
     "Send settings": "ສົ່ງການຕັ້ງຄ່າ",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "ສົ່ງລະຫັດນີ້ຈາກພຣັອກຊີໃນສ່ວນຫົວ Authorization: Bearer.",
+    "Send to TV": "ສົ່ງໄປໂທລະທັດ",
     Server: "ເຊີບເວີ",
     "Server address": "ທີ່ຢູ່ເຊີບເວີ",
     "Server address (for example 192.168.1.20:8081)":
@@ -810,10 +838,13 @@ var keyStrings = {
     "Server URL": "URL ເຊີບເວີ",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "ເຊີບເວີບໍ່ພ້ອມໃຊ້. ກຳລັງລອງອີກອັດຕະໂນມັດ; ກວດສອບທີ່ຢູ່ ແລະ ການເຂົ້າເຖິງເຄືອຂ່າຍ.",
+    "Session closed. Start a new one from your TV when needed.":
+        "ປິດເຊດຊັນແລ້ວ. ເລີ່ມອັນໃໝ່ຈາກໂທລະທັດຂອງເຈົ້າເມື່ອຈຳເປັນ.",
     Set: "ກຳນົດ",
     "Set parental code": "ກຳນົດລະຫັດຜູ້ປົກຄອງ",
     "Set timer?": "ຕັ້ງເວລາບໍ?",
     Settings: "ການຕັ້ງຄ່າ",
+    "Settings changed while editing": "ມີການປ່ຽນແປງການຕັ້ງຄ່າໃນຂະນະທີ່ແກ້ໄຂ",
     "Settings changed. Discovery was canceled.":
         "ການຕັ້ງຄ່າປ່ຽນແລ້ວ. ຍົກເລີກການຄົ້ນຫາແລ້ວ.",
     "Settings copied": "ສຳເນົາການຕັ້ງຄ່າແລ້ວ",
@@ -823,10 +854,14 @@ var keyStrings = {
     "Settings imported": "ນຳເຂົ້າການຕັ້ງຄ່າແລ້ວ",
     "Settings JSON": "JSON ການຕັ້ງຄ່າ",
     "Settings loaded from storage": "ໂຫຼດການຕັ້ງຄ່າຈາກບ່ອນເກັບແລ້ວ",
+    "Settings received. Restarting player...":
+        "ໄດ້ຮັບການຕັ້ງຄ່າແລ້ວ. ກຳລັງຣີສະຕາດເຄື່ອງຫຼິ້ນ...",
     "Settings STB": "ການຕັ້ງຄ່າ STB",
     "Settings saved": "ບັນທຶກການຕັ້ງຄ່າແລ້ວ",
     "Settings saved to storage": "ບັນທຶກການຕັ້ງຄ່າໃສ່ບ່ອນເກັບແລ້ວ",
     "Settings sended!": "ສົ່ງການຕັ້ງຄ່າແລ້ວ!",
+    "Settings source changed": "ແຫຼ່ງການຕັ້ງຄ່າຖືກປ່ຽນ",
+    "Settings storage rejected write": "ການຕັ້ງຄ່າການເກັບຮັກສາຖືກປະຕິເສດການຂຽນ",
     "Several command servers were found. Select one below.":
         "ພົບເຊີບເວີຄຳສັ່ງຫຼາຍຕົວ. ເລືອກໜຶ່ງຕົວດ້ານລຸ່ມ.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -878,11 +913,11 @@ var keyStrings = {
     "Starting...": "ກຳລັງເລີ່ມ…",
     Status: "ສະຖານະ",
     Stop: "ຢຸດ",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ຢຸດການແບ່ງປັນຂອງຕົວທ່ອງເວັບ",
     "Stop current capture": "ຢຸດການເກັບຂໍ້ມູນປັດຈຸບັນ",
     "Stop diagnostics": "ຢຸດການວິນິດໄສ",
     "Stop playback and return to live": "ຢຸດການຫຼິ້ນ ແລະ ກັບໄປຖ່າຍທອດສົດ",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "ຢຸດພາບໜ້າຈໍ",
     "Stream could not be played": "ບໍ່ສາມາດຫຼິ້ນສະຕຣີມ",
     "Stream type: %1": "ປະເພດສະຕຣີມ: %1",
     "String for search": "ຄຳຄົ້ນຫາ",
@@ -894,6 +929,7 @@ var keyStrings = {
     "Switch subtitle": "ປ່ຽນຄຳບັນຍາຍ",
     "Switch to this list": "ປ່ຽນໄປລາຍການນີ້",
     "Swop URL": "URL Swop",
+    "System language": "ພາສາລະບົບ",
     "saved on this device": "ບັນທຶກໃນອຸປະກອນນີ້",
     select: "ເລືອກ",
     small: "ນ້ອຍ",
@@ -901,13 +937,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "ການຕັ້ງຄ່າ Tabox",
     "Text is too long for remote input.": "ຂໍ້ຄວາມຍາວເກີນໄປສຳລັບການປ້ອນທາງໄກ.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "ຂໍ້ຄວາມຍາວເກີນໄປ. ກະລຸນາຫຍໍ້ມັນກ່ອນສົ່ງ.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "ຂໍ້ຄວາມຖືກສົ່ງ. ກວດເບິ່ງໂທລະພາບຂອງທ່ານເພື່ອຢືນຢັນວ່າມັນປາກົດ.",
+    "The browser screenshot source is ready.": "ແຫຼ່ງພາບໜ້າຈໍຂອງບຣາວເຊີພ້ອມແລ້ວ.",
     "The command server discovery URL is invalid.": "URL ຄົ້ນຫາເຊີບເວີຄຳສັ່ງບໍ່ຖືກຕ້ອງ.",
     "The device ID in the address is invalid.": "ID ອຸປະກອນໃນທີ່ຢູ່ບໍ່ຖືກຕ້ອງ.",
     "The discovery response is invalid.": "ຄຳຕອບການຄົ້ນຫາບໍ່ຖືກຕ້ອງ.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ບຣາວເຊີນີ້ບໍ່ສາມາດລະບຸແຫຼ່ງທີ່ມາຂອງພາບໜ້າຈໍທີ່ເລືອກໄດ້.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ບຣາວເຊີນີ້ບໍ່ສາມາດຈັບຄູ່ອັດຕະໂນມັດຢ່າງປອດໄພ. ອັບເດດມັນ ຫຼື ປ້ອນການຕັ້ງຄ່າເຊີບເວີຄຳສັ່ງດ້ວຍຕົນເອງ.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -916,6 +955,10 @@ var keyStrings = {
         "ເຄື່ອງຫຼິ້ນ HTTPS ນີ້ບໍ່ສາມາດເຊື່ອມຕໍ່ເຊີບເວີ HTTP. ໃຊ້ເຊີບເວີ HTTPS ຫຼື ເປີດເຄື່ອງຫຼິ້ນຜ່ານ HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ແອັບ Play ນີ້ຕ້ອງໃຊ້ HTTPS. ຂໍລາຍການຫຼິ້ນ ຫຼື URL ເຊີບເວີແບບ HTTPS ຈາກຜູ້ໃຫ້ບໍລິການ.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ລິ້ງການຈັບຄູ່ນີ້ໝົດອາຍຸແລ້ວ. ເປີດເຊດຊັນໃໝ່ຢູ່ໂທລະທັດຂອງເຈົ້າ.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ເຊດຊັນທີ່ປອດໄພນີ້ບໍ່ສາມາດໃຊ້ໄດ້ ຫຼືໝົດອາຍຸແລ້ວ. ເປີດເຊດຊັນໃໝ່ໃນໂທລະທັດ ແລະໃຊ້ລິ້ງທີ່ສົມບູນຂອງມັນ.",
     Timer: "ຕົວຕັ້ງເວລາ",
     "Timer: switch to channel?": "ຕົວຕັ້ງເວລາ: ປ່ຽນໄປຊ່ອງນີ້ບໍ?",
     "Timeshift: one minute back": "ເລື່ອນເວລາ: ຖອຍຫຼັງໜຶ່ງນາທີ",
@@ -962,6 +1005,8 @@ var keyStrings = {
         "ໃຊ້ HTTP ຫຼື HTTPS ໂດຍບໍ່ມີຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານໃນທີ່ຢູ່.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ໃຊ້ ຊ້າຍ/ຂວາ ເພື່ອເລືອກຕົວຄວບຄຸມ, OK ເພື່ອເປີດໃຊ້ ແລະ ຂຶ້ນ/ລົງ ເພື່ອເລື່ອນ.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "ໃຊ້ການເຊື່ອມຕໍ່ເຕັມ, ລວມທັງສ່ວນຫຼັງຈາກ #. ຢ່າແບ່ງປັນມັນກັບຜູ້ອື່ນ.",
     "Use Up / Down to scroll. Back to close.":
         "ໃຊ້ ຂຶ້ນ / ລົງ ເພື່ອເລື່ອນ. ກົດ ກັບຄືນ ເພື່ອປິດ.",
     Username: "ຊື່ຜູ້ໃຊ້",

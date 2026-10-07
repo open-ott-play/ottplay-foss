@@ -64,13 +64,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Lejoni diagnostikimin për 10 minuta",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Lejo pamjet e ekranit për 10 minuta",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Lejoni që ky server të mbledhë të dhëna diagnostikuese dhe të rinisë transmetimin ose luajtësin. Qasja e përkohshme zgjat 10 minuta. Mbështetja e besuar mbetet e disponueshme pas rilidhjes ose rinisjes; çdo sesion i mbledhjes së të dhënave përfundon pas 10 minutash. Mbledhja pezullohet kur aplikacioni është i fshehur ose jashtë linje.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Lejoni që ky server të mbledhë numërues të riprodhimit, rrjetit dhe hyrjes gjatë këtij sesioni aktiv. Kërkohen HTTPS dhe leja e serverit. Mbledhja ndalon pas 10 minutash, kur faqja fshihet ose kur shkëputet lidhja.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Lejo që ky server të kërkojë imazhe për 10 minuta. Imazhet mund të përmbajnë informacione personale. Në një shfletues, zgjidhni skedën ose dritaren e luajtësit. Leja përfundon me ringarkimin ose shkëputjen.",
     "Allowlist this Device ID": "Shto këtë ID të pajisjes në listën e lejuar",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Një luajtës HTTPS nuk mund të shkarkojë një burim HTTP EPG. Përdorni një burim HTTPS.",
@@ -103,6 +103,7 @@ var keyStrings = {
     "Background color": "Ngjyra e sfondit",
     "Background color of selected item":
         "Ngjyra e sfondit të artikullit të zgjedhur",
+    "Backup state changed": "Gjendja e rezervimit ndryshoi",
     "Balance, $": "Bilanci, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +114,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Ekran i zi kur ndërroni kanale",
     Blue: "Blu",
+    "Bookmark age (days): %1": "Mosha e faqeshënuesit (ditë): %1",
     "Bookmark age: %1 days": "Mosha e faqerojtësit: %1 ditë",
     "Browse folders": "Shfletoni dosjet",
     "Buffer Size, s": "Madhësia e buferit, s",
@@ -164,11 +166,14 @@ var keyStrings = {
     "Choose language": "Zgjidhni gjuhën",
     "Choose Plex server": "Zgjidhni serverin Plex",
     "Choose provider": "Zgjidhni ofruesin",
-    Classic: "Classic",
+    Classic: "Klasik",
     "Clear all settings?": "Të pastrohen të gjitha cilësimet?",
     "Clear settings": "Pastro cilësimet",
     Close: "Mbyll",
     "Close PiP": "Mbylle PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Ruajtja/ngarkesa në renë kompjuterike kërkon firmuerin STB (host_ott nuk është caktuar)",
+    "Cloud transfer failed": "Transferimi në renë kompjuterike dështoi",
     Code: "Kodi",
     Color: "Ngjyra",
     "Color spectrum": "Spektri i ngjyrave",
@@ -187,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Mjedisi i përputhshmërisë nuk mund të ngarkohej. Rihapni luajtësin për të provuar përsëri.",
     "Compatible HLS": "HLS i pajtueshëm",
+    "Complete pairing link": "Lidhja e plotë e çiftimit",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfiguro All4you.tv te Cilësimet -> Cilësimet e ofruesit",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +265,25 @@ var keyStrings = {
         "Konfiguro Шаравоз te Cilësimet -> Cilësimet e ofruesit",
     Connect: "Lidhu",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Lidhni një server komandimi HTTPS përpara se të lejoni pamjet e ekranit.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Lidhni një server komandimi HTTPS për të përdorur pamjet e ekranit.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Lidhni kontrollin në distancë për të aktivizuar diagnostikimin.",
     "Connect this player to a command server first.":
         "Lidheni fillimisht këtë luajtës me një server komanda.",
+    "Connect to TV": "Lidhu me televizorin",
     Connected: "Lidhur",
     "Connected. Waiting for the channel list...":
         "Lidhur. Në pritje të listës së kanaleve...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Lidhja e kontrollit në distancë autorizon këtë server të diagnostikojë dhe riparojë luajtësin. Qasja mbetet aktive pas rinisjes dhe përfundon kur shkëputeni. Çdo mbledhje e të dhënave diagnostikuese zgjat deri në 10 minuta.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Lidhja e diagnostifikimit në distancë për lidhjen e aktivizuar të telekomandës.",
     "Connecting remote diagnostics for this page.":
         "Lidhja e diagnostifikimit në distancë për këtë faqe.",
+    "Connecting securely to your TV...":
+        "Po lidhet në mënyrë të sigurt me televizorin tuaj...",
     "Connecting to Plex…": "Po lidhet me Plex…",
     "Connecting to Stalker portal...": "Po lidhet me portalin Stalker…",
     "Connecting...": "Po lidhet…",
@@ -292,6 +301,10 @@ var keyStrings = {
         "Nuk mund të krijohej një kërkesë çiftimi. Gjeni përsëri serverin për të riprovuar.",
     "Could not load. Select to retry.":
         "Nuk mund të ngarkohej. Zgjidhni për të riprovuar.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Nuk mund ta përgatisja këtë tekst. Shkurtoje dhe provo sërish.",
+    "Could not protect the private link. Use a different browser.":
+        "Lidhja private nuk mund të mbrohej. Përdorni një shfletues tjetër.",
     "Could not save provider settings.":
         "Cilësimet e ofruesit nuk mund të ruheshin.",
     "Could not save the approved command server settings.":
@@ -310,6 +323,8 @@ var keyStrings = {
     "Delete category": "Fshi kategorinë",
     "Delete channel": "Fshi kanalin",
     "Delete list": "Fshi listën",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Dorëzimi nuk mund të konfirmohej. Kontrollo televizorin ose provo sërish të njëjtin mesazh përpara se të skadojë sesioni.",
     "Demo — moving test pattern": "Demo — model provë lëvizëse",
     Description: "Përshkrimi",
     "Description of remote control buttons":
@@ -396,6 +411,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Shkruani URL-në e portalit Stalker (p.sh. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Shkruani numrin e serverit (%1).",
+    "Enter text": "Fut tekst",
     "Enter the access code separately, not in the server address.":
         "Shkruani kodin e hyrjes veçmas, jo në adresën e serverit.",
     "Enter the command server IP or address.":
@@ -550,8 +566,11 @@ var keyStrings = {
     "Interface transparency": "Transparenca e ndërfaqes",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Lidhje kanali e pavlefshme! Shkruani emrin e plotë të hostit nga URL-ja e transmetimit në llogarinë tuaj (p.sh. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Përgjigje e pavlefshme e cilësimeve të resë kompjuterike",
     "Invalid protected source configuration":
         "Konfigurim i pavlefshëm i burimit të mbrojtur",
+    "Invalid setting": "Cilësim i pavlefshëm",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Cilësimet IpStream.one",
@@ -630,6 +649,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Asnjë program nuk përputhej me kanalet dhe datat e listës së luajtjes. Kontrolloni burimin dhe orën e pajisjes.",
     "No saved settings found": "Nuk u gjetën cilësime të ruajtura",
+    "No supported system language. Choose a language.":
+        "Nuk ka gjuhë të mbështetur të sistemit. Zgjidhni një gjuhë.",
     "Not configured": "Nuk është konfiguruar",
     "Not found": "Nuk u gjet",
     "Not reduce video when showing the list (bugfix)":
@@ -645,6 +666,8 @@ var keyStrings = {
     "not set": "nuk është vendosur",
     Off: "joaktiv",
     Ok: "Në rregull",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Vetëm ky televizor mund ta pranojë mesazhin tuaj. Lidhja skadon pas 10 minutash.",
     Open: "Hap",
     "Open in PiP": "Hapni në PiP",
     "Open Plex sign-in page": "Hapni faqen e hyrjes në Plex",
@@ -657,6 +680,7 @@ var keyStrings = {
     "OTT / APP host": "host OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Cilësimet OTT Prime ONLINE",
+    "OTT-play remote input": "Futje në distancë për OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 disponohet. Të shkarkohet dhe të instalohet tani?",
     "Overwrite current settings?": "Të mbishkruhen cilësimet aktuale?",
@@ -689,6 +713,7 @@ var keyStrings = {
     Playback: "Riprodhimi",
     "Player and device info": "luajtësi i medias dhe informacioni i pajisjes",
     "Player could not start": "luajtësi i medias nuk mund të nisej",
+    "Player default": "Parazgjedhja e luajtësit",
     "Player info:": "informacione për luajtësin e medias:",
     Playlist: "Lista e luajtjes",
     "Playlist file": "Skedari i listës së luajtjes",
@@ -710,6 +735,8 @@ var keyStrings = {
     Postpaid: "Pagesë pas përdorimit",
     PROST: "PROST",
     "PROST settings": "Cilësimet PROST",
+    "Preferred audio language": "Gjuha e preferuar audio",
+    "Preferred subtitle language": "Gjuha e preferuar e titrave",
     Prepaid: "Me parapagesë",
     "Preparing secure remote input...":
         "Përgatitja e hyrjes së sigurt në distancë...",
@@ -744,14 +771,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Telekomanda (pa butona me numra)",
     "Remote control": "Telekomanda",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Kontrolli në distancë lejon diagnostikimin. Gati për një operator.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Kontrolli në distancë lejon diagnostikimin. Në pritje të rilidhjes.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Kontrolli në distancë përfshin pamje të ekranit të luajtësit dhe cilësimeve të tij. Imazhet mund të përmbajnë të dhëna private. Aplikacioni mund të marrë pamje të ekranit drejtpërdrejt pa miratim shtesë. Në shfletues duhet të zgjidhni në këtë pajisje skedën ose dritaren që do të ndani.",
     "Remote diagnostics": "Diagnostifikimi në distancë",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Diagnostikimi në distancë po mbledh të dhëna për këtë lidhje (deri në 10 minuta për seancë).",
     "Remote diagnostics is collecting for this page.":
         "Diagnostifikimi në distancë po mbledh të dhëna për këtë faqe.",
     "Remote diagnostics is off.": "Diagnostifikimi në distancë është joaktiv.",
@@ -765,10 +792,11 @@ var keyStrings = {
         "Hyrja në distancë ka skaduar. Hap një sesion të ri për të provuar sërish.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesioni i hyrjes në distancë është i padisponueshëm. Hap një sesion të ri për të provuar sërish.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Pamjet e ekranit në distancë",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Pamjet e ekranit në distancë lejohen për 10 minuta. Mbyllni cilësimet për të kapur.",
+    "Remote screenshots are off.":
+        "Pamjet e ekranit në distancë janë joaktive.",
     "Remote session expired": "Sesioni në distancë ka skaduar",
     "Remote text entry": "Futja e tekstit në distancë",
     "Remote text entry denied": "Refuzohet futja e tekstit në distancë",
@@ -797,6 +825,7 @@ var keyStrings = {
     "Resume from archive?": "Të vazhdojë riprodhimi nga arkivi?",
     Retry: "Provo sërish",
     "Retry EPG download": "Provo sërish shkarkimin e EPG",
+    "Retry same message": "Provo sërish të njëjtin mesazh",
     "Return to previous channel": "Kthehu në kanalin e mëparshëm",
     Rewind: "Ndrysho pozicionin e riprodhimit",
     "Rewind step by buttons %1/%2": "Hapi i kthimit prapa për butonat %1/%2",
@@ -814,19 +843,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Ruani cilësimet dhe ngarkoni listën e kanaleve",
     "Save settings to storage": "Ruani cilësimet në ruajtje",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skanoni kodin QR në televizorin tuaj ose ngjitni lidhjen e plotë të çiftimit privat më poshtë.",
     "Scan this QR code with your phone to enter text.":
         "Skanoni këtë kod QR me telefonin tuaj për të futur tekst.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Ndarja e ekranit nuk mund të fillonte.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ndarja e ekranit u anulua ose nuk ofrohet.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Leja e pamjes së ekranit nuk mund të aktivizohej.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Pamjet e ekranit ofrohen kur telekomanda është e lidhur.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Pamjet e ekranit nuk ofrohen në këtë platformë.",
     Script: "Skenari",
     Search: "Kërko",
+    "Search languages": "Kërko gjuhë",
     "Search programme": "Kërko program",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Hyrja e sigurt në distancë nuk mund të nisej. Provo sërish ose përdor tastierën në ekran.",
@@ -845,13 +877,14 @@ var keyStrings = {
         "Zgjidhni burimin e shabllonit të listës së luajtjes për EPG dhe logot",
     "Select Stalker portal": "Zgjidhni portalin Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Zgjidhni burimin e pamjes së ekranit në shfletues",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Zgjidhni skedën ose dritaren e luajtësit në dialogun e ndarjes së shfletuesit.",
     "Send request": "Dërgo kërkesë",
     "Send settings": "Dërgo cilësimet",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Dërgoni këtë kod nga serveri juaj proksi në fushën e kreut Authorization: Bearer.",
+    "Send to TV": "Dërgo në TV",
     Server: "Serveri",
     "Server address": "Adresa e serverit",
     "Server address (for example 192.168.1.20:8081)":
@@ -860,10 +893,13 @@ var keyStrings = {
     "Server URL": "URL-ja e serverit",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Serveri i padisponueshëm. Riprovim automatikisht; kontrolloni adresën e tij dhe aksesin në rrjet.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Seanca u mbyll. Nisni një të ri nga televizori juaj kur është e nevojshme.",
     Set: "Zbato",
     "Set parental code": "Vendosni kodin prindëror",
     "Set timer?": "Vendos kohëmatësin?",
     Settings: "Cilësimet",
+    "Settings changed while editing": "Cilësimet ndryshuan gjatë redaktimit",
     "Settings changed. Discovery was canceled.":
         "Cilësimet ndryshuan. Zbulimi u anulua.",
     "Settings copied": "Cilësimet u kopjuan",
@@ -873,10 +909,15 @@ var keyStrings = {
     "Settings imported": "Cilësimet u importuan",
     "Settings JSON": "Cilësimet JSON",
     "Settings loaded from storage": "Cilësimet janë ngarkuar nga ruajtja",
+    "Settings received. Restarting player...":
+        "Cilësimet u morën. Rinisja e luajtësit...",
     "Settings STB": "Cilësimet STB",
     "Settings saved": "Cilësimet u ruajtën",
     "Settings saved to storage": "Cilësimet u ruajtën në ruajtje",
     "Settings sended!": "Cilësimet u dërguan!",
+    "Settings source changed": "Burimi i cilësimeve u ndryshua",
+    "Settings storage rejected write":
+        "Shkrimi i ruajtjes së cilësimeve u refuzua",
     "Several command servers were found. Select one below.":
         "U gjetën disa serverë komandash. Zgjidhni një më poshtë.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -930,12 +971,12 @@ var keyStrings = {
     "Starting...": "Duke filluar…",
     Status: "Statusi",
     Stop: "Ndalo",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Ndalo ndarjen e shfletuesit",
     "Stop current capture": "Ndalo mbledhjen aktuale të të dhënave",
     "Stop diagnostics": "Ndalo diagnostikimin",
     "Stop playback and return to live":
         "Ndalo riprodhimin dhe kthehu në transmetimin e drejtpërdrejtë",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Ndalo pamjet e ekranit",
     "Stream could not be played": "Transmetimi nuk mund të luhej",
     "Stream type: %1": "Lloji i rrjedhës: %1",
     "String for search": "Pyetja e kërkimit",
@@ -947,6 +988,7 @@ var keyStrings = {
     "Switch subtitle": "Ndërro titrat",
     "Switch to this list": "Kalo te kjo listë",
     "Swop URL": "Swop URL",
+    "System language": "Gjuha e sistemit",
     "saved on this device": "ruajtur në këtë pajisje",
     select: "zgjidhni",
     small: "i vogël",
@@ -955,8 +997,12 @@ var keyStrings = {
     "Tabox settings": "Cilësimet Tabox",
     "Text is too long for remote input.":
         "Teksti është shumë i gjatë për futje në distancë.",
+    "Text is too long. Please shorten it before sending.":
+        "Teksti është shumë i gjatë. Ju lutemi shkurtojeni përpara se ta dërgoni.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Teksti u dërgua. Kontrollo televizorin për të konfirmuar se është shfaqur.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Burimi i pamjes së ekranit të shfletuesit është gati.",
     "The command server discovery URL is invalid.":
         "URL-ja e kërkimit të serverit të komandave është e pavlefshme.",
     "The device ID in the address is invalid.":
@@ -964,7 +1010,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Përgjigja e zbulimit është e pavlefshme.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ky shfletues nuk mund të identifikojë burimin e përzgjedhur të pamjes së ekranit.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ky shfletues nuk mund të çiftohet automatikisht në mënyrë të sigurt. Përditësoni atë ose futni manualisht cilësimet e serverit të komandës.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -973,6 +1019,10 @@ var keyStrings = {
         "Ky luajtës HTTPS nuk mund të lidhet me një server HTTP. Përdorni një server HTTPS ose hapni luajtësin e mediave mbi HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ky aplikacion Play kërkon HTTPS. Kërkojini ofruesit tuaj një listë riprodhimi ose URL serveri me HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Kjo lidhje çiftimi ka skaduar. Hapni një sesion të ri në televizorin tuaj.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ky sesion i sigurt nuk disponohet ose ka skaduar. Hapni një sesion të ri në televizor dhe përdorni lidhjen e plotë të tij.",
     Timer: "Kohëmatësi",
     "Timer: switch to channel?": "Kohëmatësi: të kaloj te ky kanal?",
     "Timeshift: one minute back": "Kthehu një minutë pas",
@@ -1021,6 +1071,8 @@ var keyStrings = {
         "Përdorni HTTP ose HTTPS pa emër përdoruesi ose fjalëkalim në adresë.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Përdorni MAJTAS/DJATHTAS për të zgjedhur një kontroll, OK për ta aktivizuar dhe LART/POSHTË për të lëvizur.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Përdorni lidhjen e plotë, duke përfshirë pjesën pas #. Mos e ndani me askënd tjetër.",
     "Use Up / Down to scroll. Back to close.":
         "Përdorni Lart/Poshtë për të lëvizur. Mbrapa për ta mbyllur.",
     Username: "Emri i përdoruesit",

@@ -64,13 +64,14 @@ var keyStrings = {
         "დაუშვით დიაგნოსტიკა 10 წუთის განმავლობაში",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "დაუშვით ეკრანის ანაბეჭდები 10 წუთის განმავლობაში",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ნება მიეცით ამ სერვერს შეაგროვოს დიაგნოსტიკური მაჩვენებლები და თავიდან გაუშვას ეს ნაკადი ან პლეერი. დროებითი წვდომა 10 წუთს გრძელდება. სანდო მხარდაჭერა ხელმისაწვდომი რჩება ხელახლა დაკავშირების ან გადატვირთვის შემდეგაც; მონაცემთა შეგროვების თითოეული სესია მაინც 10 წუთში სრულდება. შეგროვება ჩერდება, როდესაც აპლიკაცია დამალულია ან ქსელთან კავშირი არ აქვს.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ნება მიეცით ამ სერვერს შეაგროვოს დაკვრის, ქსელისა და შეყვანის მაჩვენებლები ამ აქტიური სესიისთვის. საჭიროა HTTPS და სერვერის ნებართვა. შეგროვება წყდება 10 წუთის შემდეგ, გვერდის დამალვისას ან კავშირის გათიშვისას.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "ნება მიეცით ამ სერვერს, მოითხოვოს სურათები 10 წუთის განმავლობაში. სურათები შეიძლება შეიცავდეს პერსონალურ ინფორმაციას. ბრაუზერში აირჩიეთ პლეერის ჩანართი ან ფანჯარა. ნებართვა სრულდება გადატვირთვის ან გათიშვისას.",
     "Allowlist this Device ID": "დაამატეთ ამ მოწყობილობის ID დაშვებულთა სიაში",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS მედია ფლეერი ვერ ჩამოტვირთავს HTTP EPG წყაროს. გამოიყენეთ HTTPS წყარო.",
@@ -101,6 +102,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 წუთით უკან / წინ გადახტომა",
     "Background color": "ფონის ფერი",
     "Background color of selected item": "შერჩეული ელემენტის ფონის ფერი",
+    "Backup state changed": "სარეზერვო მდგომარეობა შეიცვალა",
     "Balance, $": "ნაშთი, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "შავი ეკრანი არხების გადართვისას",
     Blue: "ლურჯი",
+    "Bookmark age (days): %1": "სანიშნეების ასაკი (დღეები): %1",
     "Bookmark age: %1 days": "სანიშნეების ასაკი: %1 დღე",
     "Browse folders": "საქაღალდეების დათვალიერება",
     "Buffer Size, s": "ბუფერის ზომა, წმ",
@@ -160,11 +163,14 @@ var keyStrings = {
     "Choose language": "აირჩიეთ ენა",
     "Choose Plex server": "აირჩიეთ Plex სერვერი",
     "Choose provider": "აირჩიეთ პროვაიდერი",
-    Classic: "Classic",
+    Classic: "კლასიკური",
     "Clear all settings?": "გავასუფთავოთ ყველა პარამეტრი?",
     "Clear settings": "პარამეტრების გასუფთავება",
     Close: "დახურვა",
     "Close PiP": "დახურეთ PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ღრუბლოვანი შენახვა/ჩატვირთვა მოითხოვს STB firmware (host_ott არ არის დაყენებული)",
+    "Cloud transfer failed": "ღრუბლოვანი გადაცემა ვერ მოხერხდა",
     Code: "კოდი",
     Color: "ფერი",
     "Color spectrum": "ფერის სპექტრი",
@@ -183,6 +189,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "თავსებადობის გარემო ვერ ჩაიტვირთა. ხელახლა საცდელად თავიდან გახსენით პლეერი.",
     "Compatible HLS": "თავსებადი HLS",
+    "Complete pairing link": "სრული დაწყვილების ბმული",
     "Configure All4you.tv in Settings -> Provider Settings":
         "დააკონფიგურირეთ All4you.tv პარამეტრებში -> პროვაიდერის პარამეტრები",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -255,22 +262,25 @@ var keyStrings = {
         "Шаравоз-ის კონფიგურაცია პარამეტრებში -> პროვაიდერის პარამეტრები",
     Connect: "დაკავშირება",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "შეაერთეთ HTTPS ბრძანების სერვერი ეკრანის ანაბეჭდების დაშვებამდე.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "დააკავშირეთ HTTPS ბრძანების სერვერი ეკრანის ანაბეჭდების გამოსაყენებლად.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "დააკავშირეთ დისტანციური მართვა დიაგნოსტიკის ჩასართავად.",
     "Connect this player to a command server first.":
         "ჯერ დაუკავშირეთ ეს მედია ფლეერი ბრძანების სერვერს.",
+    "Connect to TV": "დაკავშირება ტელევიზორთან",
     Connected: "დაკავშირებულია",
     "Connected. Waiting for the channel list...":
         "დაკავშირებულია. ველოდები არხების სიას...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "დისტანციური მართვის დაკავშირება ამ სერვერს უფლებას აძლევს, შეამოწმოს და შეაკეთოს პლეერი. წვდომა გადატვირთვის შემდეგაც რჩება და კავშირის გათიშვისას სრულდება. დიაგნოსტიკური მონაცემების შეგროვების თითოეული სესია შეზღუდულია 10 წუთით.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "დისტანციური დიაგნოსტიკის დაკავშირება ჩართული დისტანციური მართვის კავშირისთვის.",
     "Connecting remote diagnostics for this page.":
         "დისტანციური დიაგნოსტიკის დაკავშირება ამ გვერდისთვის.",
+    "Connecting securely to your TV...":
+        "უსაფრთხოდ დაკავშირება თქვენს ტელევიზორთან...",
     "Connecting to Plex…": "დაკავშირება Plex…",
     "Connecting to Stalker portal...": "დაკავშირება Stalker პორტალთან…",
     "Connecting...": "დაკავშირება…",
@@ -288,6 +298,10 @@ var keyStrings = {
         "დაწყვილების მოთხოვნის შექმნა ვერ მოხერხდა. ხელახლა იპოვნეთ სერვერი ხელახლა საცდელად.",
     "Could not load. Select to retry.":
         "ვერ ჩაიტვირთა. აირჩიეთ ხელახლა საცდელად.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ამ ტექსტის მომზადება ვერ მოხერხდა. გთხოვთ, შეამციროთ ის და სცადოთ ხელახლა.",
+    "Could not protect the private link. Use a different browser.":
+        "პირადი ბმულის დაცვა ვერ მოხერხდა. გამოიყენეთ სხვა ბრაუზერი.",
     "Could not save provider settings.":
         "პროვაიდერის პარამეტრების შენახვა ვერ მოხერხდა.",
     "Could not save the approved command server settings.":
@@ -305,6 +319,8 @@ var keyStrings = {
     "Delete category": "კატეგორიის წაშლა",
     "Delete channel": "არხის წაშლა",
     "Delete list": "სიის წაშლა",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "მიწოდება ვერ დადასტურდა. შეამოწმეთ თქვენი ტელევიზორი ან ხელახლა სცადეთ იგივე შეტყობინება ამ სესიის ვადის ამოწურვამდე.",
     "Demo — moving test pattern": "დემო — მოძრავი ტესტის ნიმუში",
     Description: "აღწერა",
     "Description of remote control buttons":
@@ -388,6 +404,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "შეიყვანეთ Stalker პორტალის URL (მაგ. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "აკრიფეთ სერვერის ნომერი (%1).",
+    "Enter text": "შეიყვანეთ ტექსტი",
     "Enter the access code separately, not in the server address.":
         "ჩაწერეთ წვდომის კოდი ცალკე და არა სერვერის მისამართში.",
     "Enter the command server IP or address.":
@@ -541,8 +558,10 @@ var keyStrings = {
     "Interface transparency": "ინტერფეისის გამჭვირვალობა",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "არხის ბმული არასწორია! შეიყვანეთ პირად ანგარიშში ნაკადის URL-ში მითითებული სრული ჰოსტი (მაგ. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "ღრუბლის პარამეტრების არასწორი პასუხი",
     "Invalid protected source configuration":
         "არასწორი დაცული წყაროს კონფიგურაცია",
+    "Invalid setting": "არასწორი პარამეტრი",
     "IPTV token": "IPTV ტოკენი",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one პარამეტრები",
@@ -622,6 +641,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "არცერთი პროგრამა არ შეესაბამება დასაკრავი სიის არხებს და თარიღებს. შეამოწმეთ წყარო და მოწყობილობის საათი.",
     "No saved settings found": "შენახული პარამეტრები ვერ მოიძებნა",
+    "No supported system language. Choose a language.":
+        "არ არის მხარდაჭერილი სისტემის ენა. აირჩიეთ ენა.",
     "Not configured": "არ არის კონფიგურირებული",
     "Not found": "არ მოიძებნა",
     "Not reduce video when showing the list (bugfix)":
@@ -637,6 +658,8 @@ var keyStrings = {
     "not set": "არ არის დაყენებული",
     Off: "გამორთული",
     Ok: "კარგი",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "მხოლოდ ამ ტელევიზორს შეუძლია თქვენი შეტყობინების მიღება. ბმული იწურება 10 წუთის შემდეგ.",
     Open: "გახსნა",
     "Open in PiP": "PiP-ში გახსნა",
     "Open Plex sign-in page": "გახსენით Plex შესვლის გვერდი",
@@ -649,6 +672,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP ჰოსტი",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE პარამეტრები",
+    "OTT-play remote input": "OTT-play დისტანციური შეყვანა",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ხელმისაწვდომია. ჩამოტვირთეთ და დააინსტალირეთ ახლა?",
     "Overwrite current settings?": "გადავწეროთ მიმდინარე პარამეტრები?",
@@ -681,6 +705,7 @@ var keyStrings = {
     Playback: "დაკვრა",
     "Player and device info": "პლეერისა და მოწყობილობის ინფორმაცია",
     "Player could not start": "მედია პლეერი ვერ დაიწყო",
+    "Player default": "დამკვრელის ნაგულისხმევი არჩევანი",
     "Player info:": "მედია ფლეერის ინფორმაცია:",
     Playlist: "დასაკრავი სია",
     "Playlist file": "დასაკრავი სიის ფაილი",
@@ -702,6 +727,8 @@ var keyStrings = {
     Postpaid: "შემდგომი გადახდა",
     PROST: "PROST",
     "PROST settings": "PROST პარამეტრები",
+    "Preferred audio language": "სასურველი აუდიო ენა",
+    "Preferred subtitle language": "სასურველი სუბტიტრების ენა",
     Prepaid: "წინასწარ გადახდილი",
     "Preparing secure remote input...":
         "უსაფრთხო დისტანციური შეყვანის მომზადება...",
@@ -735,14 +762,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "დისტანციური (ნომრის ღილაკების გარეშე)",
     "Remote control": "დისტანციური მართვა",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "დისტანციური მართვა იძლევა დიაგნოსტიკის უფლებას. მზადაა ოპერატორისთვის.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "დისტანციური მართვა იძლევა დიაგნოსტიკის უფლებას. ელოდება ხელახლა დაკავშირებას.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "დისტანციური მართვა მოიცავს მედია ფლეერის ეკრანის სურათებს, მის პარამეტრებს შორის. სურათები შეიძლება შეიცავდეს პირად ინფორმაციას. აპლიკაციას შეუძლია გადაიღოს ეკრანის ანაბეჭდები პირდაპირ დამატებითი თანხმობის გარეშე. ბრაუზერში აირჩიეთ ჩანართი ან ფანჯარა ამ მოწყობილობაზე გადასაღებად.",
     "Remote diagnostics": "დისტანციური დიაგნოსტიკა",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ამ კავშირისთვის გროვდება დისტანციური დიაგნოსტიკა (თითო სესიაზე 10 წუთამდე).",
     "Remote diagnostics is collecting for this page.":
         "დისტანციური დიაგნოსტიკა ამ გვერდის მონაცემებს აგროვებს.",
     "Remote diagnostics is off.": "დისტანციური დიაგნოსტიკა გამორთულია.",
@@ -756,10 +783,10 @@ var keyStrings = {
         "დისტანციური შეყვანის ვადა ამოიწურა. გახსენით ახალი სესია ხელახლა საცდელად.",
     "Remote input session is unavailable. Open a new session to try again.":
         "დისტანციური შეყვანის სესია მიუწვდომელია. გახსენით ახალი სესია ხელახლა საცდელად.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "დისტანციური ეკრანის ანაბეჭდები",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "დისტანციური ეკრანის ანაბეჭდები დაშვებულია 10 წუთის განმავლობაში. დახურეთ პარამეტრები გადასაღებად.",
+    "Remote screenshots are off.": "დისტანციური ეკრანის ანაბეჭდები გამორთულია.",
     "Remote session expired": "დისტანციური სესიის ვადა ამოიწურა",
     "Remote text entry": "დისტანციური ტექსტის შეყვანა",
     "Remote text entry denied": "დისტანციური ტექსტის შეყვანა უარყოფილია",
@@ -788,6 +815,7 @@ var keyStrings = {
     "Resume from archive?": "გავაგრძელოთ დაკვრა არქივიდან?",
     Retry: "ხელახლა სცადეთ",
     "Retry EPG download": "ხელახლა სცადეთ EPG ჩამოტვირთვა",
+    "Retry same message": "ხელახლა სცადეთ იგივე შეტყობინება",
     "Return to previous channel": "დაბრუნება წინა არხზე",
     Rewind: "დაკვრის პოზიციის შეცვლა",
     "Rewind step by buttons %1/%2": "გადახვევის ნაბიჯი ღილაკებისთვის %1/%2",
@@ -805,19 +833,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "შეინახეთ პარამეტრები და ჩატვირთეთ არხების სია",
     "Save settings to storage": "პარამეტრების შენახვა საცავში",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "დაასკანირეთ QR კოდი თქვენს ტელევიზორზე, ან ჩასვით მისი სრული პირადი დაწყვილების ბმული ქვემოთ.",
     "Scan this QR code with your phone to enter text.":
         "დაასკანირეთ ეს QR კოდი თქვენი ტელეფონით ტექსტის შესაყვანად.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ეკრანის გაზიარება ვერ დაიწყო.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "ეკრანის გაზიარება გაუქმდა ან მიუწვდომელია.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "სკრინშოტის ნებართვის ჩართვა ვერ მოხერხდა.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "ეკრანის ანაბეჭდები ხელმისაწვდომია დისტანციური მართვის დაკავშირებისას.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ეკრანის ანაბეჭდები მიუწვდომელია ამ პლატფორმაზე.",
     Script: "სცენარი",
     Search: "ძებნა",
+    "Search languages": "ენების ძიება",
     "Search programme": "გადაცემის ძებნა",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "უსაფრთხო დისტანციური შეყვანის დაწყება ვერ მოხერხდა. გთხოვთ, სცადოთ ხელახლა ან გამოიყენეთ ეკრანის კლავიატურა.",
@@ -834,14 +865,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "აირჩიეთ დასაკრავი სიის შაბლონის წყარო EPG და ლოგოებისთვის",
     "Select Stalker portal": "აირჩიეთ Stalker პორტალი",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "აირჩიეთ ეკრანის წყარო ბრაუზერში",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "აირჩიეთ პლეერის ჩანართი ან ფანჯარა ბრაუზერის გაზიარების დიალოგში.",
     "Send request": "მოთხოვნის გაგზავნა",
     "Send settings": "პარამეტრების გაგზავნა",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "გაგზავნეთ ეს კოდი თქვენი პროქსიდან Authorization: Bearer სათაურში.",
+    "Send to TV": "ტელევიზორში გაგზავნა",
     Server: "სერვერი",
     "Server address": "სერვერის მისამართი",
     "Server address (for example 192.168.1.20:8081)":
@@ -850,10 +881,13 @@ var keyStrings = {
     "Server URL": "სერვერის URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "სერვერი მიუწვდომელია. ხელახლა ცდა ავტომატურად; შეამოწმეთ მისი მისამართი და ქსელის წვდომა.",
+    "Session closed. Start a new one from your TV when needed.":
+        "სესია დახურულია. საჭიროებისას ტელევიზორზე დაიწყეთ ახალი სესია.",
     Set: "გამოყენება",
     "Set parental code": "დააყენეთ მშობლის კოდი",
     "Set timer?": "დააყენოთ ტაიმერი?",
     Settings: "პარამეტრები",
+    "Settings changed while editing": "პარამეტრები შეიცვალა რედაქტირებისას",
     "Settings changed. Discovery was canceled.":
         "პარამეტრები შეიცვალა. აღმოჩენა გაუქმდა.",
     "Settings copied": "პარამეტრები კოპირებულია",
@@ -863,10 +897,14 @@ var keyStrings = {
     "Settings imported": "პარამეტრები იმპორტირებულია",
     "Settings JSON": "პარამეტრები JSON",
     "Settings loaded from storage": "პარამეტრები ჩატვირთულია მეხსიერებიდან",
+    "Settings received. Restarting player...":
+        "პარამეტრები მიღებულია. პლეერის გადატვირთვა...",
     "Settings STB": "STB პარამეტრები",
     "Settings saved": "პარამეტრები შენახულია",
     "Settings saved to storage": "პარამეტრები შენახულია საცავში",
     "Settings sended!": "პარამეტრები გაგზავნილია!",
+    "Settings source changed": "პარამეტრების წყარო შეიცვალა",
+    "Settings storage rejected write": "პარამეტრების საცავმა ჩაწერა უარყო",
     "Several command servers were found. Select one below.":
         "ნაპოვნია რამდენიმე ბრძანების სერვერი. აირჩიეთ ერთი ქვემოთ.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -920,12 +958,12 @@ var keyStrings = {
     "Starting...": "იწყება…",
     Status: "სტატუსი",
     Stop: "გაჩერება",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "შეაჩერე ბრაუზერის გაზიარება",
     "Stop current capture": "მონაცემთა მიმდინარე შეგროვების შეჩერება",
     "Stop diagnostics": "შეაჩერე დიაგნოსტიკა",
     "Stop playback and return to live":
         "შეაჩერე დაკვრა და დაბრუნდი პირდაპირ ეთერში",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "შეაჩერე ეკრანის ანაბეჭდები",
     "Stream could not be played": "ნაკადის დაკვრა ვერ მოხერხდა",
     "Stream type: %1": "ნაკადის ტიპი: %1",
     "String for search": "საძიებო მოთხოვნა",
@@ -936,7 +974,8 @@ var keyStrings = {
     "Switch sound track": "ხმოვანი ბილიკის შეცვლა",
     "Switch subtitle": "სუბტიტრების შეცვლა",
     "Switch to this list": "გადაერთეთ ამ სიაზე",
-    "Swop URL": "Swop URL",
+    "Swop URL": "Swop-ის URL",
+    "System language": "სისტემის ენა",
     "saved on this device": "შენახულია ამ მოწყობილობაზე",
     select: "აირჩიეთ",
     small: "პატარა",
@@ -945,15 +984,19 @@ var keyStrings = {
     "Tabox settings": "Tabox პარამეტრები",
     "Text is too long for remote input.":
         "ტექსტი ძალიან გრძელია დისტანციური შეყვანისთვის.",
+    "Text is too long. Please shorten it before sending.":
+        "ტექსტი ძალიან გრძელია. გთხოვთ, შეამოკლეთ გაგზავნამდე.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "გაგზავნილი ტექსტი. შეამოწმეთ თქვენი ტელევიზორი, რათა დაადასტუროთ, რომ ის გამოჩნდა.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "ბრაუზერის ეკრანის წყარო მზად არის.",
     "The command server discovery URL is invalid.":
         "ბრძანების სერვერის ძებნის URL არასწორია.",
     "The device ID in the address is invalid.":
         "მისამართში მოწყობილობის ID არასწორია.",
     "The discovery response is invalid.": "აღმოჩენის პასუხი არასწორია.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ამ ბრაუზერს არ შეუძლია სკრინშოტის არჩეული წყაროს ამოცნობა.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ამ ბრაუზერს არ შეუძლია უსაფრთხოდ ავტომატურად დაწყვილება. განაახლეთ იგი ან ხელით შეიყვანეთ ბრძანების სერვერის პარამეტრები.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -962,6 +1005,10 @@ var keyStrings = {
         "ეს HTTPS მედია ფლეერი ვერ დაუკავშირდება HTTP სერვერს. გამოიყენეთ HTTPS სერვერი ან გახსენით მედია ფლეერი HTTP-ზე.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ამ Play აპლიკაციას სჭირდება HTTPS. სთხოვეთ პროვაიდერს HTTPS დასაკრავი სიის ან სერვერის URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ამ დაწყვილების ბმულს ვადა გაუვიდა. გახსენით ახალი სესია თქვენს ტელევიზორზე.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ეს უსაფრთხო სესია მიუწვდომელია ან ვადაგასულია. გახსენით ახალი სესია ტელევიზორში და გამოიყენეთ მისი სრული ბმული.",
     Timer: "ტაიმერი",
     "Timer: switch to channel?": "ტაიმერი: გადაერთოთ ამ არხზე?",
     "Timeshift: one minute back": "ერთი წუთით უკან",
@@ -1010,6 +1057,8 @@ var keyStrings = {
         "გამოიყენეთ HTTP ან HTTPS მისამართის მომხმარებლის სახელის ან პაროლის გარეშე.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "გამოიყენეთ მარცხენა/მარჯვენა ღილაკები სამართავი ელემენტის ასარჩევად, OK მის გასააქტიურებლად და ზემოთ/ქვემოთ გადასახვევად.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "გამოიყენეთ სრული ბმული, # სიმბოლოს შემდეგი ნაწილის ჩათვლით. სხვას არ გაუზიაროთ.",
     "Use Up / Down to scroll. Back to close.":
         "გადასახვევად გამოიყენეთ ზემოთ/ქვემოთ ღილაკები, დასახურად — უკან.",
     Username: "მომხმარებლის სახელი",

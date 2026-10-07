@@ -50,6 +50,7 @@ interface ProviderDriverPorts {
     hash(value: string): number;
     intercept?: (url: string) => void;
     isDune(): boolean;
+    language?(): string;
     location?(): string;
     m3u?: {
         crossOrigin(): boolean;
@@ -1715,6 +1716,14 @@ function mountProviderDriver(
                     : undefined,
             isDune: function () {
                 return host.browserName() === "dune";
+            },
+            language: function () {
+                var element = host.document && host.document.documentElement;
+                var tag = element && element.lang;
+                return typeof tag === "string" &&
+                    /^[a-z]{2,3}(?:-|$)/i.test(tag)
+                    ? tag.split("-")[0].toLowerCase()
+                    : "en";
             },
             location: function () {
                 return host.location ? host.location.href : "";

@@ -119,7 +119,13 @@ const { gzipSync } = require("node:zlib");
 // Remote screenshots add a bounded capture adapter, local permission UI and
 // expiring image delivery. Reserve 13 KB raw / 4 KB gzip for this feature;
 // external dictionaries and native capture implementations remain separate.
-const BUDGET = Object.freeze({ bytes: 749450, gzipBytes: 229800 });
+// Complete localization, system/media language preferences and pinned Unicode 17
+// measure 781183 / 243307 web and 781141 / 243369 native on Node 22.23.3,
+// compared with 746380 / 228703 web and 746338 / 228765 native at 8c240190.
+// Compact ASCII varints keep normalization, grapheme and full case-fold data
+// inside the measured entry. Retain the prior absolute release reserves
+// (3070 raw / 1035 gzip), rounded up to 100 bytes; do not exclude these tables.
+const BUDGET = Object.freeze({ bytes: 784300, gzipBytes: 244500 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -179,7 +185,11 @@ const BUDGET = Object.freeze({ bytes: 749450, gzipBytes: 229800 });
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
 // Include the same screenshot feature once in the complete payload bound.
-const TOTAL_BUDGET = Object.freeze({ bytes: 855550, gzipBytes: 269000 });
+// The same localized build plus all seven provider families is 885959 / 282573
+// web and 885917 / 282635 native. Only Stalker's locale adds provider bytes
+// (+24 raw / +7 gzip). Preserve the prior 4418 raw / 976 gzip complete-payload
+// reserve, rounded up to 100 bytes, while counting every provider and table.
+const TOTAL_BUDGET = Object.freeze({ bytes: 890400, gzipBytes: 283700 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

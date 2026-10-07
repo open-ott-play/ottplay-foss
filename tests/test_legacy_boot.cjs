@@ -819,7 +819,8 @@ function detectedLanguage(options, code, automatic = true) {
         [],
         "Early preloading never commits a language preference"
     );
-    if (automatic) assert.equal(result.storage.ottplaylang || "", "");
+    if (automatic && !(options.storage && options.storage.ottplaylang))
+        assert.equal(result.storage.ottplaylang || "", "");
     return result;
 }
 function undetectedLanguage(options) {
@@ -1018,6 +1019,43 @@ detectedLanguage(
                 throw new Error("Unavailable user language");
             },
         },
+    },
+    "_fra"
+);
+
+detectedLanguage(
+    {
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_rus", ottplaylangmode: "system" },
+    },
+    "_fra"
+);
+detectedLanguage(
+    {
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_rus", ottplaylangmode: "manual" },
+    },
+    "_rus",
+    false
+);
+undetectedLanguage({
+    navigator: { languages: ["zh-Hant"] },
+    storage: { ottplaylang: "_rus", ottplaylangmode: "system" },
+});
+detectedLanguage(
+    {
+        cookie: "ottplayStorageFallback=%5B%22ottplaylang%22%5D; ottplaylang=_rus",
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_eng" },
+    },
+    "_rus",
+    false
+);
+detectedLanguage(
+    {
+        cookie: "ottplayStorageFallback=%5B%22ottplaylangmode%22%5D; ottplaylangmode=system",
+        navigator: { languages: ["fr-FR"] },
+        storage: { ottplaylang: "_eng", ottplaylangmode: "manual" },
     },
     "_fra"
 );

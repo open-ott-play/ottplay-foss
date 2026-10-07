@@ -62,13 +62,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "10 মিনিটের জন্য ডায়াগনস্টিকসের অনুমতি দিন",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "10 মিনিটের জন্য স্ক্রিনশটের অনুমতি দিন",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "এই সার্ভারটিকে ডায়াগনস্টিক কাউন্টার সংগ্রহ করতে এবং এই স্ট্রীম বা প্লেয়ারটিকে পুনরায় চালু করার অনুমতি দিন। অস্থায়ী অ্যাক্সেস 10 মিনিট স্থায়ী হয়। বিশ্বস্ত সমর্থন পুনরায় সংযোগ বা পুনরায় চালু করার পরে উপলব্ধ থাকে; প্রতিটি ক্যাপচার এখনও 10 মিনিট পরে মেয়াদ শেষ হয়. লুকানো বা অফলাইন থাকাকালীন সংগ্রহ বিরতি দেয়।",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "এই সার্ভারটিকে এই ফোরগ্রাউন্ড সেশনের জন্য প্লেব্যাক, নেটওয়ার্ক এবং ইনপুট কাউন্টার সংগ্রহ করার অনুমতি দিন। HTTPS এবং সার্ভারের অনুমতি প্রয়োজন। 10 মিনিটের পরে, লুকানো অবস্থায় বা সংযোগ বিচ্ছিন্ন হলে থামে।",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "এই সার্ভারকে 10 মিনিটের জন্য ছবি অনুরোধ করার অনুমতি দিন। ছবিতে ব্যক্তিগত তথ্য থাকতে পারে। একটি ব্রাউজারে, প্লেয়ার ট্যাব বা উইন্ডো নির্বাচন করুন। পুনরায় লোড বা সংযোগ বিচ্ছিন্ন হলে অনুমতি শেষ হয়।",
     "Allowlist this Device ID": "এই ডিভাইসটিকে অনুমতি দিন ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "একটি HTTPS প্লেয়ার একটি HTTP EPG উৎস ডাউনলোড করতে পারে না৷ একটি HTTPS উৎস ব্যবহার করুন।",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 মিনিট পিছিয়ে / এগিয়ে যান",
     "Background color": "পটভূমির রঙ",
     "Background color of selected item": "নির্বাচিত আইটেমের পটভূমির রঙ",
+    "Backup state changed": "ব্যাকআপ স্থিতি পরিবর্তিত হয়েছে৷",
     "Balance, $": "ব্যালেন্স, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "তালিকার %1/%2 বোতামগুলির আচরণ",
     "Black screen while switching the channel": "চ্যানেল স্যুইচ করার সময় কালো পর্দা",
     Blue: "নীল",
+    "Bookmark age (days): %1": "বুকমার্ক বয়স (দিন): %1",
     "Bookmark age: %1 days": "বুকমার্ক বয়স: %1 দিন",
     "Browse folders": "ফোল্ডার ব্রাউজ করুন",
     "Buffer Size, s": "বাফার সাইজ, s",
@@ -158,11 +160,14 @@ var keyStrings = {
     "Choose language": "ভাষা চয়ন করুন",
     "Choose Plex server": "Plex সার্ভার বেছে নিন",
     "Choose provider": "প্রদানকারী বেছে নিন",
-    Classic: "Classic",
+    Classic: "ধ্রুপদি",
     "Clear all settings?": "সব সেটিংস সাফ করবেন?",
     "Clear settings": "সেটিংস সাফ করুন",
     Close: "বন্ধ করুন",
     "Close PiP": "PiP বন্ধ করুন",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ক্লাউড সংরক্ষণ/লোডের জন্য STB ফার্মওয়্যার প্রয়োজন (host_ott সেট করা নেই)",
+    "Cloud transfer failed": "ক্লাউড স্থানান্তর ব্যর্থ হয়েছে৷",
     Code: "কোড",
     Color: "রঙ",
     "Color spectrum": "রঙের বর্ণালী",
@@ -178,6 +183,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "সামঞ্জস্যপূর্ণ রানটাইম লোড করা যায়নি। আবার চেষ্টা করার জন্য প্লেয়ারটি আবার খুলুন।",
     "Compatible HLS": "সামঞ্জস্যপূর্ণ HLS",
+    "Complete pairing link": "সম্পূর্ণ পেয়ারিং লিঙ্ক",
     "Configure All4you.tv in Settings -> Provider Settings":
         "সেটিংস -> প্রদানকারী সেটিংসে All4you.tv কনফিগার করুন",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -250,22 +256,24 @@ var keyStrings = {
         "সেটিংস -> প্রদানকারী সেটিংসে Шаравоз কনফিগার করুন",
     Connect: "সংযোগ করুন",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "স্ক্রিনশট নেওয়ার অনুমতি দেওয়ার আগে একটি HTTPS কমান্ড সার্ভার সংযুক্ত করুন।",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "স্ক্রিনশট ব্যবহার করতে একটি HTTPS কমান্ড সার্ভার সংযুক্ত করুন।",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ডায়াগনস্টিক সক্ষম করতে রিমোট কন্ট্রোল সংযুক্ত করুন।",
     "Connect this player to a command server first.":
         "এই প্লেয়ারটিকে প্রথমে একটি কমান্ড সার্ভারের সাথে সংযুক্ত করুন৷",
+    "Connect to TV": "টিভিতে সংযোগ করুন",
     Connected: "সংযুক্ত",
     "Connected. Waiting for the channel list...":
         "সংযুক্ত। চ্যানেল তালিকার জন্য অপেক্ষা করা হচ্ছে...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "রিমোট কন্ট্রোল কানেক্ট করা এই সার্ভারটিকে প্লেয়ারের নির্ণয় ও মেরামত করার অনুমতি দেয়। পুনঃসূচনা করার পরে অ্যাক্সেস উপলব্ধ থাকে এবং আপনি সংযোগ বিচ্ছিন্ন করলে শেষ হয়। প্রতিটি ডায়াগনস্টিক ক্যাপচার 10 মিনিটের মধ্যে সীমাবদ্ধ।",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "রিমোট কন্ট্রোল সংযোগের জন্য রিমোট ডায়াগনস্টিক সংযোগ করা।",
     "Connecting remote diagnostics for this page.":
         "এই পৃষ্ঠার জন্য দূরবর্তী ডায়াগনস্টিক সংযোগ করা হচ্ছে।",
+    "Connecting securely to your TV...": "আপনার টিভিতে নিরাপদে সংযুক্ত হচ্ছে...",
     "Connecting to Plex…": "Plex এর সাথে সংযুক্ত হচ্ছে...",
     "Connecting to Stalker portal...": "Stalker পোর্টালের সাথে সংযুক্ত হচ্ছে...",
     "Connecting...": "সংযোগ করা হচ্ছে...",
@@ -283,6 +291,10 @@ var keyStrings = {
         "একটি জোড়ার অনুরোধ তৈরি করা যায়নি। পুনরায় চেষ্টা করতে সার্ভারটি আবার খুঁজুন।",
     "Could not load. Select to retry.":
         "লোড করা যায়নি। আবার চেষ্টা করতে নির্বাচন করুন।",
+    "Could not prepare this text. Please shorten it and try again.":
+        "এই লেখাটি প্রস্তুত করা যায়নি। অনুগ্রহ করে এটি ছোট করুন এবং আবার চেষ্টা করুন।",
+    "Could not protect the private link. Use a different browser.":
+        "ব্যক্তিগত লিঙ্ক রক্ষা করতে পারেনি। একটি ভিন্ন ব্রাউজার ব্যবহার করুন.",
     "Could not save provider settings.": "প্রদানকারীর সেটিংস সংরক্ষণ করা যায়নি।",
     "Could not save the approved command server settings.":
         "অনুমোদিত কমান্ড সার্ভার সেটিংস সংরক্ষণ করা যায়নি।",
@@ -298,6 +310,8 @@ var keyStrings = {
     "Delete category": "বিভাগ মুছুন",
     "Delete channel": "চ্যানেল মুছুন",
     "Delete list": "তালিকা মুছুন",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ডেলিভারি নিশ্চিত করা যায়নি। আপনার টিভি চেক করুন, অথবা এই সেশনের মেয়াদ শেষ হওয়ার আগে একই বার্তা পুনরায় চেষ্টা করুন।",
     "Demo — moving test pattern": "ডেমো — চলমান পরীক্ষার প্যাটার্ন",
     Description: "বর্ণনা",
     "Description of remote control buttons": "রিমোট কন্ট্রোল বোতাম গাইড",
@@ -377,6 +391,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker পোর্টাল URL লিখুন (যেমন http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "সার্ভার নম্বর লিখুন (%1)।",
+    "Enter text": "পাঠ্য লিখুন",
     "Enter the access code separately, not in the server address.":
         "সার্ভার ঠিকানায় নয়, আলাদাভাবে অ্যাক্সেস কোড লিখুন।",
     "Enter the command server IP or address.": "কমান্ড সার্ভার IP বা ঠিকানা লিখুন।",
@@ -524,7 +539,9 @@ var keyStrings = {
     "Interface transparency": "ইন্টারফেসের স্বচ্ছতা",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "অবৈধ চ্যানেল লিঙ্ক! আপনার প্রদানকারী অ্যাকাউন্ট পৃষ্ঠায় URL স্ট্রীম থেকে সম্পূর্ণ হোস্টনাম লিখুন (উদাহরণস্বরূপ subdomain.cdn-domain.tld )।",
+    "Invalid cloud settings response": "অবৈধ ক্লাউড সেটিংস প্রতিক্রিয়া",
     "Invalid protected source configuration": "অবৈধ সুরক্ষিত উৎস কনফিগারেশন",
+    "Invalid setting": "অবৈধ সেটিং",
     "IPTV token": "IPTV টোকেন",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one সেটিংস",
@@ -603,6 +620,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "কোনো প্রোগ্রাম প্লেলিস্ট চ্যানেল এবং তারিখের সাথে মেলেনি। উৎস এবং ডিভাইস ঘড়ি পরীক্ষা করুন.",
     "No saved settings found": "কোনো সংরক্ষিত সেটিংস পাওয়া যায়নি",
+    "No supported system language. Choose a language.":
+        "কোন সমর্থিত সিস্টেম ভাষা নেই। একটি ভাষা চয়ন করুন.",
     "Not configured": "কনফিগার করা হয়নি",
     "Not found": "পাওয়া যায়নি",
     "Not reduce video when showing the list (bugfix)":
@@ -618,6 +637,8 @@ var keyStrings = {
     "not set": "সেট করা হয়নি",
     Off: "বন্ধ",
     Ok: "ঠিক আছে",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "শুধুমাত্র এই টিভিই আপনার বার্তা গ্রহণ করতে পারে। লিঙ্ক 10 মিনিট পরে মেয়াদ শেষ হয়.",
     Open: "খুলুন",
     "Open in PiP": "PiP এ খুলুন",
     "Open Plex sign-in page": "Plex সাইন-ইন পৃষ্ঠা খুলুন",
@@ -630,6 +651,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP হোস্ট",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE সেটিংস",
+    "OTT-play remote input": "OTT-play দূরবর্তী ইনপুট",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 উপলব্ধ। এখন ডাউনলোড করে ইন্সটল করবেন?",
     "Overwrite current settings?": "বর্তমান সেটিংস ওভাররাইট করবেন?",
@@ -662,6 +684,7 @@ var keyStrings = {
     Playback: "প্লেব্যাক",
     "Player and device info": "প্লেয়ার এবং ডিভাইসের তথ্য",
     "Player could not start": "প্লেয়ার শুরু করতে পারেনি",
+    "Player default": "প্লেয়ারের ডিফল্ট নির্বাচন",
     "Player info:": "প্লেয়ার তথ্য:",
     Playlist: "প্লেলিস্ট",
     "Playlist file": "প্লেলিস্ট ফাইল",
@@ -682,6 +705,8 @@ var keyStrings = {
     Postpaid: "পোস্টপেইড",
     PROST: "PROST",
     "PROST settings": "PROST সেটিংস",
+    "Preferred audio language": "পছন্দের অডিও ভাষা",
+    "Preferred subtitle language": "পছন্দের সাবটাইটেল ভাষা",
     Prepaid: "প্রিপেইড",
     "Preparing secure remote input...": "নিরাপদ দূরবর্তী ইনপুট প্রস্তুত করা হচ্ছে...",
     Prev: "আগের",
@@ -713,14 +738,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "রিমোট (কোন নম্বর বোতাম নেই)",
     "Remote control": "রিমোট কন্ট্রোল",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "রিমোট নিয়ন্ত্রণ ডায়াগনস্টিকের অনুমতি দেয়। একজন অপারেটরের জন্য প্রস্তুত।",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "রিমোট কন্ট্রোল ডায়াগনস্টিক অনুমোদন করে। পুনরায় সংযোগের জন্য অপেক্ষা করা হচ্ছে৷",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "রিমোট কন্ট্রোলে সেটিংস সহ প্লেয়ারের স্ক্রিনশট অন্তর্ভুক্ত থাকে। ছবিতে ব্যক্তিগত তথ্য থাকতে পারে। নেটিভ ক্যাপচারের জন্য অতিরিক্ত অনুমোদনের প্রয়োজন নেই। ব্রাউজারগুলির ক্যাপচার উত্সের একটি স্থানীয় পছন্দ প্রয়োজন৷",
     "Remote diagnostics": "দূরবর্তী ডায়াগনস্টিকস",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "এই সংযোগের জন্য রিমোট ডায়াগনস্টিকস সংগ্রহ করা হচ্ছে (প্রতি সেশনে 10 মিনিট পর্যন্ত)।",
     "Remote diagnostics is collecting for this page.":
         "এই পৃষ্ঠার জন্য রিমোট ডায়াগনস্টিকস সংগ্রহ করা হচ্ছে।",
     "Remote diagnostics is off.": "দূরবর্তী ডায়াগনস্টিক বন্ধ আছে।",
@@ -734,10 +759,10 @@ var keyStrings = {
         "রিমোট ইনপুটের মেয়াদ শেষ। আবার চেষ্টা করতে একটি নতুন অধিবেশন খুলুন.",
     "Remote input session is unavailable. Open a new session to try again.":
         "দূরবর্তী ইনপুট সেশন অনুপলব্ধ৷ আবার চেষ্টা করতে একটি নতুন অধিবেশন খুলুন.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "দূরবর্তী স্ক্রিনশট",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "দূরবর্তী স্ক্রিনশট 10 মিনিটের জন্য অনুমোদিত। ক্যাপচার করতে সেটিংস বন্ধ করুন।",
+    "Remote screenshots are off.": "দূরবর্তী স্ক্রিনশট বন্ধ আছে।",
     "Remote session expired": "দূরবর্তী সেশনের মেয়াদ শেষ হয়েছে",
     "Remote text entry": "দূরবর্তী পাঠ্য এন্ট্রি",
     "Remote text entry denied": "দূরবর্তী পাঠ্য এন্ট্রি অস্বীকৃত",
@@ -765,6 +790,7 @@ var keyStrings = {
     "Resume from archive?": "সংরক্ষণাগার থেকে পুনরায় শুরু করবেন?",
     Retry: "আবার চেষ্টা করুন",
     "Retry EPG download": "EPG ডাউনলোড পুনরায় চেষ্টা করুন",
+    "Retry same message": "একই বার্তা পুনরায় চেষ্টা করুন",
     "Return to previous channel": "আগের চ্যানেলে ফিরে যান",
     Rewind: "এগিয়ে/পিছিয়ে যান",
     "Rewind step by buttons %1/%2": "%1/%2 বোতামে এগিয়ে/পিছিয়ে যাওয়ার ব্যবধান",
@@ -782,19 +808,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "সেটিংস সংরক্ষণ করুন এবং চ্যানেল তালিকা লোড করুন",
     "Save settings to storage": "স্টোরেজে সেটিংস সংরক্ষণ করুন",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "আপনার টিভিতে QR কোডটি স্ক্যান করুন, অথবা নীচে এটির সম্পূর্ণ ব্যক্তিগত জোড়া লিঙ্ক পেস্ট করুন।",
     "Scan this QR code with your phone to enter text.":
         "পাঠ্য লিখতে আপনার ফোন দিয়ে এই QR কোডটি স্ক্যান করুন৷",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "স্ক্রীন শেয়ারিং শুরু করা যায়নি।",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "স্ক্রিন শেয়ারিং বাতিল করা হয়েছে বা অনুপলব্ধ।",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "স্ক্রিনশট অনুমতি সক্ষম করা যায়নি।",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "রিমোট কন্ট্রোল সংযুক্ত থাকা অবস্থায় স্ক্রিনশট পাওয়া যায়।",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "এই প্ল্যাটফর্মে স্ক্রিনশটগুলি অনুপলব্ধ৷",
     Script: "চিত্রনাট্য",
     Search: "অনুসন্ধান করুন",
+    "Search languages": "ভাষা অনুসন্ধান করুন",
     "Search programme": "অনুষ্ঠান খুঁজুন",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "নিরাপদ দূরবর্তী ইনপুট শুরু করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন বা অন-স্ক্রীন কীবোর্ড ব্যবহার করুন।",
@@ -811,14 +840,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG এবং লোগোগুলির জন্য প্লেলিস্ট টেমপ্লেট উত্স নির্বাচন করুন৷",
     "Select Stalker portal": "Stalker পোর্টাল নির্বাচন করুন",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "ব্রাউজারে স্ক্রিনশট উৎস নির্বাচন করুন",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ব্রাউজার শেয়ারিং ডায়ালগে প্লেয়ার ট্যাব বা উইন্ডো নির্বাচন করুন।",
     "Send request": "অনুরোধ পাঠান",
     "Send settings": "পাঠান সেটিংস",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "আপনার প্রক্সি থেকে Authorization: Bearer হেডারে এই কোডটি পাঠান।",
+    "Send to TV": "টিভিতে পাঠান",
     Server: "সার্ভার",
     "Server address": "সার্ভার ঠিকানা",
     "Server address (for example 192.168.1.20:8081)":
@@ -827,10 +856,13 @@ var keyStrings = {
     "Server URL": "সার্ভার URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "সার্ভার অনুপলব্ধ৷ স্বয়ংক্রিয়ভাবে পুনরায় চেষ্টা করা হচ্ছে; এর ঠিকানা এবং নেটওয়ার্ক অ্যাক্সেস পরীক্ষা করুন।",
+    "Session closed. Start a new one from your TV when needed.":
+        "সেশন বন্ধ। প্রয়োজনে আপনার টিভি থেকে একটি নতুন শুরু করুন।",
     Set: "প্রয়োগ করুন",
     "Set parental code": "প্যারেন্টাল কোড সেট করুন",
     "Set timer?": "টাইমার সেট করবেন?",
     Settings: "সেটিংস",
+    "Settings changed while editing": "সম্পাদনা করার সময় সেটিংস পরিবর্তিত হয়েছে৷",
     "Settings changed. Discovery was canceled.":
         "সেটিংস পরিবর্তন করা হয়েছে৷ আবিষ্কার বাতিল করা হয়েছে।",
     "Settings copied": "সেটিংস কপি করা হয়েছে",
@@ -840,10 +872,15 @@ var keyStrings = {
     "Settings imported": "সেটিংস আমদানি করা হয়েছে৷",
     "Settings JSON": "সেটিংস JSON",
     "Settings loaded from storage": "সেটিংস স্টোরেজ থেকে লোড হয়েছে",
+    "Settings received. Restarting player...":
+        "সেটিংস প্রাপ্ত। প্লেয়ার রিস্টার্ট করা হচ্ছে...",
     "Settings STB": "STB সেটিংস",
     "Settings saved": "সেটিংস সংরক্ষিত",
     "Settings saved to storage": "সেটিংস স্টোরেজে সংরক্ষিত",
     "Settings sended!": "সেটিংস পাঠানো হয়েছে!",
+    "Settings source changed": "সেটিংস উৎস পরিবর্তন করা হয়েছে",
+    "Settings storage rejected write":
+        "সেটিংসের সংরক্ষণ ব্যবস্থা লেখার অনুরোধ প্রত্যাখ্যান করেছে",
     "Several command servers were found. Select one below.":
         "বেশ কিছু কমান্ড সার্ভার পাওয়া গেছে। নীচে একটি নির্বাচন করুন.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -895,11 +932,11 @@ var keyStrings = {
     "Starting...": "শুরু হচ্ছে...",
     Status: "স্ট্যাটাস",
     Stop: "থামুন",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ব্রাউজার শেয়ার করা বন্ধ করুন",
     "Stop current capture": "বর্তমান ক্যাপচার বন্ধ করুন",
     "Stop diagnostics": "ডায়াগনস্টিক বন্ধ করুন",
     "Stop playback and return to live": "প্লেব্যাক বন্ধ করুন এবং লাইভে ফিরে আসুন",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "স্ক্রিনশট বন্ধ করুন",
     "Stream could not be played": "স্ট্রিম চালানো যাবে না",
     "Stream type: %1": "স্ট্রিমের ধরন: %1",
     "String for search": "অনুসন্ধান ক্যোয়ারী",
@@ -911,6 +948,7 @@ var keyStrings = {
     "Switch subtitle": "সাবটাইটেল পরিবর্তন করুন",
     "Switch to this list": "এই তালিকায় যান",
     "Swop URL": "SWOP URL",
+    "System language": "সিস্টেম ভাষা",
     "saved on this device": "এই ডিভাইসে সংরক্ষিত",
     select: "নির্বাচন করুন",
     small: "ছোট",
@@ -918,14 +956,17 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox সেটিংস",
     "Text is too long for remote input.": "পাঠ্যটি দূরবর্তী ইনপুটের জন্য অত্যন্ত দীর্ঘ৷",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "টেক্সট অনেক বড়। পাঠানোর আগে দয়া করে ছোট করুন।",
+    "Text sent. Check your TV to confirm it appeared.":
+        "পাঠ্য পাঠানো হয়েছে। এটি উপস্থিত হয়েছে তা নিশ্চিত করতে আপনার টিভি পরীক্ষা করুন।",
+    "The browser screenshot source is ready.": "ব্রাউজার স্ক্রিনশট উৎস প্রস্তুত।",
     "The command server discovery URL is invalid.":
         "কমান্ড সার্ভার আবিষ্কার URL অবৈধ৷",
     "The device ID in the address is invalid.": "ঠিকানায় ID ডিভাইসটি অবৈধ।",
     "The discovery response is invalid.": "আবিষ্কারের প্রতিক্রিয়া অবৈধ।",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "এই ব্রাউজারটি নির্বাচিত স্ক্রিনশট উত্স সনাক্ত করতে পারে না৷",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "এই ব্রাউজারটি নিরাপদে স্বয়ংক্রিয়ভাবে জোড়া দিতে পারে না। এটি আপডেট করুন বা ম্যানুয়ালি কমান্ড সার্ভার সেটিংস লিখুন।",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -934,6 +975,10 @@ var keyStrings = {
         "এই HTTPS প্লেয়ারটি একটি HTTP সার্ভারের সাথে সংযোগ করতে পারে না৷ একটি HTTPS সার্ভার ব্যবহার করুন বা HTTP এর উপর প্লেয়ার খুলুন।",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "এই প্লে অ্যাপটির জন্য HTTPS প্রয়োজন। আপনার প্রদানকারীকে একটি HTTPS প্লেলিস্ট বা সার্ভার URL এর জন্য জিজ্ঞাসা করুন৷",
+    "This pairing link has expired. Open a new session on your TV.":
+        "এই পেয়ারিং লিঙ্কটির মেয়াদ শেষ হয়ে গেছে। আপনার টিভিতে একটি নতুন সেশন খুলুন।",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "এই সুরক্ষিত সেশনটি অনুপলব্ধ বা মেয়াদ শেষ। টিভিতে একটি নতুন সেশন খুলুন এবং এর সম্পূর্ণ লিঙ্কটি ব্যবহার করুন।",
     Timer: "টাইমার",
     "Timer: switch to channel?": "টাইমার: এই চ্যানেলে স্যুইচ করবেন?",
     "Timeshift: one minute back": "টাইমশিফ্ট: এক মিনিট পিছিয়ে",
@@ -982,6 +1027,8 @@ var keyStrings = {
         "ঠিকানায় ব্যবহারকারীর নাম বা পাসওয়ার্ড ছাড়া HTTP বা HTTPS ব্যবহার করুন।",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "একটি নিয়ন্ত্রণ নির্বাচন করতে বাম/ডান ব্যবহার করুন, এটি সক্রিয় করতে ঠিক আছে এবং স্ক্রোল করতে UP/DOWN ব্যবহার করুন৷",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# এর পরের অংশ সহ সম্পূর্ণ লিঙ্ক ব্যবহার করুন। অন্য কারো সাথে শেয়ার করবেন না।",
     "Use Up / Down to scroll. Back to close.":
         "স্ক্রোল করতে উপরে/নীচে ব্যবহার করুন। বন্ধ করতে ফিরে যান।",
     Username: "ব্যবহারকারীর নাম",

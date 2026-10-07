@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { localizationRuntime } = require("./localization-runtime.cjs");
 const privateRuntime = require("./private-runtime.cjs");
 const {
     sourceNames,
@@ -301,6 +302,7 @@ module.exports = function guideFixture(options = {}) {
         "classic-reminders",
     ])
         privateRuntime(host, "src/guide/" + name + ".ts");
+    vm.runInContext(localizationRuntime(), host);
     vm.runInContext(code, host);
     attachSourceAliases(host);
     function dueIndependent(limit) {

@@ -63,13 +63,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "Laat diagnostiek vir 10 minute toe",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "Laat skermkiekies vir 10 minute toe",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Laat hierdie bediener toe om diagnostiese tellers te versamel en hierdie stroom of mediaspeler te herbegin. Tydelike toegang duur 10 minute. Vertroude ondersteuning bly beskikbaar na herkoppeling of herbegin; elke dataversameling verval steeds na 10 minute. Dataversameling word onderbreek wanneer die bladsy versteek of vanlyn is.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Laat hierdie bediener toe om afspeel-, netwerk- en invoertellers vir hierdie voorgrondsessie te versamel. Vereis HTTPS en bedienertoestemming. Stop na 10 minute, wanneer versteek, of wanneer ontkoppel.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Laat hierdie bediener toe om prente vir 10 minute aan te vra. Prente kan persoonlike inligting bevat. Kies die speleroortjie of -venster in 'n blaaier. Toestemming eindig met herlaai of ontkoppel.",
     "Allowlist this Device ID": "Voeg hierdie toestel-ID by die toegelate lys",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "'n HTTPS-mediaspeler kan nie 'n HTTP EPG-bron aflaai nie. Gebruik 'n HTTPS-bron.",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Spring 1 minuut terug / vorentoe",
     "Background color": "Agtergrondkleur",
     "Background color of selected item": "Agtergrondkleur van die gekose item",
+    "Backup state changed": "Rugsteunstatus verander",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Swart skerm wanneer kanale gewissel word",
     Blue: "Blou",
+    "Bookmark age (days): %1": "Boekmerkouderdom (dae): %1",
     "Bookmark age: %1 days": "Boekmerkouderdom: %1 dae",
     "Browse folders": "Blaai deur vouers",
     "Buffer Size, s": "Buffergrootte, s",
@@ -163,11 +165,14 @@ var keyStrings = {
     "Choose language": "Kies taal",
     "Choose Plex server": "Kies Plex-bediener",
     "Choose provider": "Kies verskaffer",
-    Classic: "Classic",
+    Classic: "Klassiek",
     "Clear all settings?": "Vee alle instellings uit?",
     "Clear settings": "Vee instellings uit",
     Close: "Sluit",
     "Close PiP": "Sluit PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Wolkstoor en -laai vereis STB-firmware (host_ott is nie gestel nie)",
+    "Cloud transfer failed": "Wolkoordrag het misluk",
     Code: "Kode",
     Color: "Kleur",
     "Color spectrum": "Kleurspektrum",
@@ -186,6 +191,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Die versoenbaarheidsomgewing kon nie laai nie. Maak die speler weer oop om te probeer.",
     "Compatible HLS": "Versoenbare HLS",
+    "Complete pairing link": "Volledige saambindskakel",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Stel All4you.tv op by Instellings -> Verskafferinstellings",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -258,22 +264,24 @@ var keyStrings = {
         "Stel Шаравоз op by Instellings -> Verskafferinstellings",
     Connect: "Verbind",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Koppel 'n HTTPS-opdragbediener voordat skermkiekies toegelaat word.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Koppel 'n HTTPS-opdragbediener om skermkiekies te gebruik.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Koppel afstandbeheer om diagnostiek te aktiveer.",
     "Connect this player to a command server first.":
         "Verbind hierdie speler eers met 'n opdragbediener.",
+    "Connect to TV": "Koppel aan TV",
     Connected: "Verbind",
     "Connected. Waiting for the channel list...":
         "Verbind. Wag vir die kanaallys…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Deur afstandbeheer te koppel, magtig jy hierdie bediener om die speler te diagnoseer en te herstel. Toegang bly ná herbegin beskikbaar en eindig wanneer jy ontkoppel. Elke insameling van diagnostiese data duur hoogstens 10 minute.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Verbinding van afstanddiagnostiek vir die geaktiveerde afstandbeheerverbinding.",
     "Connecting remote diagnostics for this page.":
         "Verbind afstanddiagnostiek vir hierdie bladsy.",
+    "Connecting securely to your TV...": "Koppel veilig aan jou TV...",
     "Connecting to Plex…": "Verbind met Plex…",
     "Connecting to Stalker portal...": "Verbind met Stalker-portaal…",
     "Connecting...": "Verbind tans…",
@@ -291,6 +299,10 @@ var keyStrings = {
         "Kon nie 'n koppelversoek skep nie. Soek die bediener weer om te probeer.",
     "Could not load. Select to retry.":
         "Kon nie laai nie. Kies om weer te probeer.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Kon nie hierdie teks voorberei nie. Verkort dit asseblief en probeer weer.",
+    "Could not protect the private link. Use a different browser.":
+        "Kon nie die private skakel beskerm nie. Gebruik 'n ander blaaier.",
     "Could not save provider settings.":
         "Kon nie verskafferinstellings stoor nie.",
     "Could not save the approved command server settings.":
@@ -308,6 +320,8 @@ var keyStrings = {
     "Delete category": "Verwyder kategorie",
     "Delete channel": "Verwyder kanaal",
     "Delete list": "Verwyder lys",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Aflewering kon nie bevestig word nie. Gaan jou TV na, of probeer dieselfde boodskap weer voor hierdie sessie verval.",
     "Demo — moving test pattern": "Demo — bewegende toetspatroon",
     Description: "Beskrywing",
     "Description of remote control buttons": "Gids vir afstandbeheerknoppies",
@@ -391,6 +405,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Voer Stalker-portaal-URL in (bv. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Voer bedienernommer in (%1).",
+    "Enter text": "Voer teks in",
     "Enter the access code separately, not in the server address.":
         "Voer die toegangskode afsonderlik in, nie in die bedieneradres nie.",
     "Enter the command server IP or address.":
@@ -542,8 +557,10 @@ var keyStrings = {
     "Interface transparency": "Koppelvlakdeursigtigheid",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ongeldige kanaalskakel! Voer die volledige gasheernaam soos in jou rekening se stroom-URL in (bv. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Ongeldige wolkinstellingsreaksie",
     "Invalid protected source configuration":
         "Ongeldige opstelling van beskermde bron",
+    "Invalid setting": "Ongeldige instelling",
     "IPTV token": "IPTV-toegangsteken",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one-instellings",
@@ -623,6 +640,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Geen programme stem met die snitlyskanale en datums ooreen nie. Kontroleer die bron en toestelklok.",
     "No saved settings found": "Geen gestoorde instellings gevind nie",
+    "No supported system language. Choose a language.":
+        "Geen ondersteunde stelseltaal nie. Kies 'n taal.",
     "Not configured": "Nie opgestel nie",
     "Not found": "Nie gevind nie",
     "Not reduce video when showing the list (bugfix)":
@@ -638,6 +657,8 @@ var keyStrings = {
     "not set": "nie gestel nie",
     Off: "Af",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Net hierdie TV kan jou boodskap aanvaar. Die skakel verval na 10 minute.",
     Open: "Maak oop",
     "Open in PiP": "Maak in PiP oop",
     "Open Plex sign-in page": "Maak Plex-aanmeldbladsy oop",
@@ -650,6 +671,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP-gasheer",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE-instellings",
+    "OTT-play remote input": "OTT-play-afstandinvoer",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 is beskikbaar. Wil jy dit nou aflaai en installeer?",
     "Overwrite current settings?": "Oorskryf huidige instellings?",
@@ -682,6 +704,7 @@ var keyStrings = {
     Playback: "Afspeel",
     "Player and device info": "Speler- en toestelinligting",
     "Player could not start": "Speler kon nie begin nie",
+    "Player default": "Speler se verstekkeuse",
     "Player info:": "Spelerinligting:",
     Playlist: "Snitlys",
     "Playlist file": "Snitlyslêer",
@@ -703,6 +726,8 @@ var keyStrings = {
     Postpaid: "Agterna betaal",
     PROST: "PROST",
     "PROST settings": "PROST-instellings",
+    "Preferred audio language": "Voorkeur klanktaal",
+    "Preferred subtitle language": "Voorkeuronderskriftaal",
     Prepaid: "Vooraf betaal",
     "Preparing secure remote input...": "Berei veilige afstandinvoer voor…",
     Prev: "Vorige",
@@ -735,14 +760,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Afstandbeheer (geen syferknoppies)",
     "Remote control": "Afstandbeheer",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Afstandbeheer magtig diagnostiek. Gereed vir 'n operateur.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Afstandbeheer magtig diagnostiek. Wag om weer te koppel.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Afstandbeheer sluit skermkiekies van die speler en sy instellings in. Prente kan privaat inligting bevat. Die toepassing kan skermkiekies direk sonder ekstra goedkeuring neem. Kies in die blaaier op hierdie toestel watter oortjie of venster gedeel moet word.",
     "Remote diagnostics": "Afstanddiagnostiek",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Afstanddiagnostiek versamel vir hierdie verbinding (tot 10 minute per sessie).",
     "Remote diagnostics is collecting for this page.":
         "Afstanddiagnostiek versamel data vir hierdie bladsy.",
     "Remote diagnostics is off.": "Afstanddiagnostiek is af.",
@@ -756,10 +781,10 @@ var keyStrings = {
         "Afstandinvoer het verval. Maak 'n nuwe sessie oop om weer te probeer.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Afstandinvoersessie is nie beskikbaar nie. Maak 'n nuwe sessie oop om weer te probeer.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Afgeleë skermkiekies",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Afgeleë skermkiekies word vir 10 minute toegelaat. Maak instellings toe om vas te vang.",
+    "Remote screenshots are off.": "Afgeleë skermkiekies is af.",
     "Remote session expired": "Afstandsessie het verval",
     "Remote text entry": "Teksinvoer op afstand",
     "Remote text entry denied": "Teksinvoer op afstand geweier",
@@ -788,6 +813,7 @@ var keyStrings = {
     "Resume from archive?": "Hervat vanuit argief?",
     Retry: "Probeer weer",
     "Retry EPG download": "Probeer EPG-aflaai weer",
+    "Retry same message": "Probeer dieselfde boodskap weer",
     "Return to previous channel": "Keer terug na die vorige kanaal",
     Rewind: "Spring na 'n tyd in die video",
     "Rewind step by buttons %1/%2": "Spoelstap vir knoppies %1/%2",
@@ -805,19 +831,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "Stoor instellings en laai kanaallys",
     "Save settings to storage": "Stoor instellings in berging",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skandeer die QR-kode op jou TV, of plak sy volledige private saambindskakel hieronder.",
     "Scan this QR code with your phone to enter text.":
         "Skandeer hierdie QR-kode met jou foon om teks in te voer.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "Skermdeling kon nie begin nie.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Skermdeling is gekanselleer of is nie beskikbaar nie.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Skermskoottoestemming kon nie geaktiveer word nie.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Skermskote is beskikbaar terwyl afstandbeheer gekoppel is.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Skermkiekies is nie op hierdie platform beskikbaar nie.",
     Script: "Draaiboek",
     Search: "Soek",
+    "Search languages": "Soek tale",
     "Search programme": "Soek program",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Veilige afstandinvoer kon nie begin nie. Probeer weer of gebruik die skermsleutelbord.",
@@ -835,14 +864,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Kies die snitlyssjabloonbron vir EPG en logo's",
     "Select Stalker portal": "Kies Stalker-portaal",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "Kies skermkiekiebron in blaaier",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Kies die speleroortjie of -venster in die blaaierdeeldialoog.",
     "Send request": "Stuur versoek",
     "Send settings": "Stuur instellings",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Stuur hierdie kode vanaf jou instaanbediener in die Authorization: Bearer-kopveld.",
+    "Send to TV": "Stuur na TV",
     Server: "Bediener",
     "Server address": "Bedieneradres",
     "Server address (for example 192.168.1.20:8081)":
@@ -851,10 +880,13 @@ var keyStrings = {
     "Server URL": "Bediener-URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Bediener is nie beskikbaar nie. Probeer outomaties weer; kontroleer die adres en netwerktoegang.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sessie gesluit. Begin 'n nuwe een vanaf jou TV wanneer nodig.",
     Set: "Stel",
     "Set parental code": "Stel ouerbeheerkode",
     "Set timer?": "Stel tydhouer?",
     Settings: "Instellings",
+    "Settings changed while editing": "Instellings verander tydens redigering",
     "Settings changed. Discovery was canceled.":
         "Instellings het verander. Die soektog is gekanselleer.",
     "Settings copied": "Instellings gekopieer",
@@ -864,10 +896,15 @@ var keyStrings = {
     "Settings imported": "Instellings ingevoer",
     "Settings JSON": "Instellings-JSON",
     "Settings loaded from storage": "Instellings uit berging gelaai",
+    "Settings received. Restarting player...":
+        "Instellings ontvang. Herbegin tans speler …",
     "Settings STB": "STB-instellings",
     "Settings saved": "Instellings gestoor",
     "Settings saved to storage": "Instellings in berging gestoor",
     "Settings sended!": "Instellings gestuur!",
+    "Settings source changed": "Instellingsbron verander",
+    "Settings storage rejected write":
+        "Die instellingsberging het die skryfversoek geweier.",
     "Several command servers were found. Select one below.":
         "Verskeie opdragbedieners is gevind. Kies een hieronder.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -920,12 +957,12 @@ var keyStrings = {
     "Starting...": "Begin…",
     Status: "Status",
     Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Stop blaaierdeel",
     "Stop current capture": "Stop huidige dataversameling",
     "Stop diagnostics": "Stop diagnostiek",
     "Stop playback and return to live":
         "Stop afspeel en keer terug na regstreekse uitsending",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Stop skermkiekies",
     "Stream could not be played": "Stroom kon nie afgespeel word nie",
     "Stream type: %1": "Stroomtipe: %1",
     "String for search": "Soeknavraag",
@@ -937,6 +974,7 @@ var keyStrings = {
     "Switch subtitle": "Wissel ondertitels",
     "Switch to this list": "Skakel na hierdie lys",
     "Swop URL": "SWOP-URL",
+    "System language": "Stelseltaal",
     "saved on this device": "op hierdie toestel gestoor",
     select: "kies",
     small: "klein",
@@ -944,15 +982,19 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox-instellings",
     "Text is too long for remote input.": "Teks is te lank vir afstandinvoer.",
+    "Text is too long. Please shorten it before sending.":
+        "Teks is te lank. Verkort dit asseblief voordat u dit stuur.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Teks gestuur. Gaan jou TV na om te bevestig dat dit verskyn het.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Die blaaierskermkiekiebron is gereed.",
     "The command server discovery URL is invalid.":
         "Die URL vir opdragbedienersoektog is ongeldig.",
     "The device ID in the address is invalid.":
         "Die toestel-ID in die adres is ongeldig.",
     "The discovery response is invalid.": "Die soekantwoord is ongeldig.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Hierdie blaaier kan nie die geselekteerde skermkiekiebron identifiseer nie.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Hierdie blaaier kan nie veilig outomaties koppel nie. Werk dit by of voer die opdragbedienerinstellings handmatig in.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -961,6 +1003,10 @@ var keyStrings = {
         "Hierdie HTTPS-speler kan nie met 'n HTTP-bediener verbind nie. Gebruik 'n HTTPS-bediener of maak die speler oor HTTP oop.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Hierdie Play-toepassing vereis HTTPS. Vra jou verskaffer vir 'n HTTPS-snitlys of bediener-URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Hierdie paringskakel het verval. Maak 'n nuwe sessie op jou TV oop.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Hierdie veilige sessie is onbeskikbaar of het verval. Maak 'n nuwe sessie op die TV oop en gebruik sy volledige skakel.",
     Timer: "Tydhouer",
     "Timer: switch to channel?": "Tydhouer: skakel na hierdie kanaal?",
     "Timeshift: one minute back": "Tydverskuiwing: een minuut terug",
@@ -1010,6 +1056,8 @@ var keyStrings = {
         "Gebruik HTTP of HTTPS sonder 'n gebruikersnaam of wagwoord in die adres.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gebruik LINKS/REGS om 'n beheer te kies, OK om dit te aktiveer en OP/AF om te blaai.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Gebruik die volledige skakel, insluitend die deel na #. Moenie dit met iemand anders deel nie.",
     "Use Up / Down to scroll. Back to close.":
         "Gebruik Op / Af om te blaai. Terug om te sluit.",
     Username: "Gebruikersnaam",
@@ -1028,7 +1076,7 @@ var keyStrings = {
     "VPortal profiles": "VPortal-profiele",
     "VPortal request failed":
         "Kon nie VPortal laai nie. Kontroleer die skakel, toegangsleutel en portaalbeskikbaarheid.",
-    volume: "volume",
+    volume: "klankvolume",
     "Waiting for sign-in…": "Wag vir aanmelding…",
     "Wrong parental code !!!": "Verkeerde ouerbeheerkode!",
     "Xtream Codes Provider": "Xtream Codes-verskaffer",

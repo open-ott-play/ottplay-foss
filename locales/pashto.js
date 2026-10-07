@@ -62,13 +62,14 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "د 10 دقیقو لپاره تشخیص ته اجازه ورکړئ",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "د 10 دقیقو لپاره سکرین شاټونو ته اجازه ورکړئ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "دې سرور ته اجازه ورکړئ چې تشخیصي شمېرنې راټولې کړي او دا خپرونه یا پلیر بیا پیل کړي. لنډمهاله لاسرسی 10 دقیقې دوام کوي. باوري ملاتړ له بیا نښلېدو یا بیا پیل وروسته هم شته؛ د معلوماتو هره راټولونه له 10 دقیقو وروسته پای ته رسېږي. د پاڼې د پټېدو یا د شبکې د نشتوالي پر مهال راټولونه ځنډېږي.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "دې سرور ته اجازه ورکړئ چې د دې ښکاره پاڼې په ناسته کې د غږونې، شبکې او ننوتنو شمېرنې راټولې کړي. HTTPS او د سرور اجازه اړینه ده. له 10 دقیقو وروسته، د پاڼې د پټېدو یا د اړیکې د پرې کېدو پر مهال درېږي.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "دې سرور ته اجازه ورکړئ چې د 10 دقیقو لپاره د عکسونو غوښتنه وکړي. انځورونه کولی شي شخصي معلومات ولري. په براوزر کې، د پلیر ټب یا کړکۍ غوره کړئ. اجازه د بیا پورته کولو یا منحل کیدو سره پای ته رسیږي.",
     "Allowlist this Device ID":
         "د دې وسیلې ID د اجازه لرونکو په لېست کې ورزیات کړئ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -101,6 +102,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 دقیقه شاته / مخکی پریږدئ",
     "Background color": "د شاليد رنګ",
     "Background color of selected item": "د غوره شوي توکي د شاليد رنګ",
+    "Backup state changed": "د بیک اپ حالت بدل شو",
     "Balance, $": "بیلانس، $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "تور سکرین کله چې د چینلونو بدلول",
     Blue: "نیلي",
+    "Bookmark age (days): %1": "د بک مارک عمر (ورځې): %1",
     "Bookmark age: %1 days": "د نښه کولو عمر: %1 ورځې",
     "Browse folders": "فولډرې وپلټئ",
     "Buffer Size, s": "د بفر موده، ثانیې",
@@ -164,6 +167,9 @@ var keyStrings = {
     "Clear settings": "ترتیبات پاک کړئ",
     Close: "وتړئ",
     "Close PiP": "PiP بند کړئ",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "کلاوډ خوندي کول/لوډ STB فرم ویئر ته اړتیا لري (host_ott نه دی ټاکل شوی)",
+    "Cloud transfer failed": "د کلاوډ لیږد ناکام شو",
     Code: "کوډ",
     Color: "رنګ",
     "Color spectrum": "رنګ طیف",
@@ -180,6 +186,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "د مطابقت د اجرا چاپېریال بار نه شو. د بیا هڅې لپاره پلیر بیا پرانیزئ.",
     "Compatible HLS": "مناسب HLS",
+    "Complete pairing link": "د جوړه کولو بشپړ لینک",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -252,22 +259,25 @@ var keyStrings = {
         "Шаравоз د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     Connect: "نښلول",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "د سکرین شاټونو ته اجازه ورکولو دمخه د HTTPS کمانډ سرور سره وصل کړئ.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "د سکرین شاټونو کارولو لپاره د HTTPS کمانډ سرور سره وصل کړئ.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "د تشخیص فعالولو لپاره ریموټ کنټرول وصل کړئ.",
     "Connect this player to a command server first.":
         "دا میډیا پلیر لومړی د کمانډ سرور سره وصل کړئ.",
+    "Connect to TV": "تلویزیون سره وصل شئ",
     Connected: "نښلول شوی",
     "Connected. Waiting for the channel list...":
         "نښلول شوی. د چینل لیست ته انتظار کول ...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "د ریموټ کنټرول نښلول دې سرور ته د پلیر د ستونزو د تشخیص او ترمیم اجازه ورکوي. لاسرسی د بیا پیل کولو وروسته هم پاتې کېږي او هغه وخت پای ته رسېږي چې تاسو اړیکه پرې کړئ. د تشخیصي معلوماتو هره راټولونه تر 10 دقیقو محدوده ده.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "د فعال شوي ریموټ کنټرول پیوستون لپاره د ریموټ تشخیص سره نښلول.",
     "Connecting remote diagnostics for this page.":
         "د دې پاڼې لپاره د ریموټ تشخیص سره نښلول.",
+    "Connecting securely to your TV...":
+        "ستاسو تلویزیون سره په خوندي ډول وصل کول...",
     "Connecting to Plex…": "د Plex سره نښلول…",
     "Connecting to Stalker portal...": "د Stalker پورټل سره نښلول…",
     "Connecting...": "نښلول…",
@@ -285,6 +295,10 @@ var keyStrings = {
         "د جوړه کولو غوښتنه نشي کولی. بیا د بیا هڅه کولو لپاره سرور ومومئ.",
     "Could not load. Select to retry.":
         "نشي پورته کولی. د بیا هڅه کولو لپاره غوره کړئ.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "دا متن نشي چمتو کولی. مهرباني وکړئ لنډ کړئ او بیا هڅه وکړئ.",
+    "Could not protect the private link. Use a different browser.":
+        "د شخصي لینک ساتنه نشي کولی. یو بل براوزر وکاروئ.",
     "Could not save provider settings.":
         "نشي کولی د چمتو کونکي ترتیبات خوندي کړي.",
     "Could not save the approved command server settings.":
@@ -301,6 +315,8 @@ var keyStrings = {
     "Delete category": "کټګورۍ حذف کړئ",
     "Delete channel": "چینل ړنګ کړئ",
     "Delete list": "لیست حذف کړئ",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "تحویلي تایید نشي. خپل تلویزیون وګورئ، یا د دې ناستې پای ته رسیدو دمخه ورته پیغام بیا هڅه وکړئ.",
     "Demo — moving test pattern": "ډیمو — د ازموینې نمونه حرکت کوي",
     Description: "توضیحات",
     "Description of remote control buttons": "د ریموټ کنټرول تڼۍ لارښود",
@@ -381,6 +397,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "د Stalker پورټل URL دننه کړئ (لکه http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "د سرور شمیره دننه کړئ ( %1 ).",
+    "Enter text": "متن دننه کړئ",
     "Enter the access code separately, not in the server address.":
         "د لاسرسي کوډ په جلا توګه دننه کړئ، نه په سرور پته کې.",
     "Enter the command server IP or address.":
@@ -534,7 +551,9 @@ var keyStrings = {
     "Interface transparency": "د انټرفېس روڼتیا",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ناسم چینل لینک! د خپل چمتو کونکي حساب پاڼې کې د URL جریان څخه بشپړ کوربه نوم دننه کړئ (د مثال په توګه subdomain.cdn-domain.tld).",
+    "Invalid cloud settings response": "د بادل ترتیباتو ناسم ځواب",
     "Invalid protected source configuration": "ناسم خوندي شوي سرچینې ترتیب",
+    "Invalid setting": "ناسم ترتیب",
     "IPTV token": "IPTV نښه",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ترتیبات",
@@ -614,6 +633,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "هیڅ پروګرام د پلې‌لېست چینلونو او نیټو سره سمون نه خوري. سرچینه او وسیله ساعت وګورئ.",
     "No saved settings found": "هیڅ خوندي شوي ترتیبات ونه موندل شول",
+    "No supported system language. Choose a language.":
+        "د ملاتړ وړ سیسټم ژبه نشته. یوه ژبه غوره کړئ.",
     "Not configured": "نه دی ترتیب شوی",
     "Not found": "ونه موندل شو",
     "Not reduce video when showing the list (bugfix)":
@@ -629,6 +650,8 @@ var keyStrings = {
     "not set": "نه دی ټاکل شوی",
     Off: "بند",
     Ok: "سمه ده",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "یوازې دا تلویزیون کولی شي ستاسو پیغام ومني. لینک د 10 دقیقو وروسته پای ته رسیږي.",
     Open: "پرانیزئ",
     "Open in PiP": "په PiP کې خلاص کړئ",
     "Open Plex sign-in page": "Plex د ننوتلو پاڼه پرانیزئ",
@@ -641,6 +664,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP کوربه",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ترتیبات",
+    "OTT-play remote input": "OTT-play ریموټ ان پټ",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 شتون لري. همدا اوس ډاونلوډ او نصب کړئ؟",
     "Overwrite current settings?": "اوسني ترتیبات بیا ولیکي؟",
@@ -673,6 +697,7 @@ var keyStrings = {
     Playback: "پلې بیک",
     "Player and device info": "د رسنیو پلیر او وسیله معلومات",
     "Player could not start": "میډیا پلیر نشي پیل کولی",
+    "Player default": "د پلیر اصلي ټاکنه",
     "Player info:": "د رسنیو پلیر معلومات:",
     Playlist: "پلې‌لېست",
     "Playlist file": "د پلې‌لېست فایل",
@@ -694,6 +719,8 @@ var keyStrings = {
     Postpaid: "پوسټ پیډ",
     PROST: "PROST",
     "PROST settings": "PROST ترتیبات",
+    "Preferred audio language": "غوره غږیزه ژبه",
+    "Preferred subtitle language": "غوره فرعي سرلیک ژبه",
     Prepaid: "مخکې تادیه شوی",
     "Preparing secure remote input...": "خوندي ریموټ ان پټ چمتو کول...",
     Prev: "مخکینی",
@@ -726,14 +753,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "ریموټ (د شمیرې تڼۍ نشته)",
     "Remote control": "ریموټ کنټرول",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "ریموټ کنټرول د تشخیص اجازه ورکوي. د آپریټر لپاره چمتو دی.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "ریموټ کنټرول د تشخیص اجازه ورکوي. د بیا نښلولو انتظار.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "ریموټ کنټرول د میډیا پلیر سکرین شاټونه لري، په شمول د هغې ترتیبات. انځورونه ممکن شخصي معلومات ولري. غوښتنلیک کولی شي د اضافي تصویب پرته مستقیم سکرین شاټونه ونیسي. په براوزر کې، په دې وسیله د نیولو لپاره ټب یا کړکۍ غوره کړئ.",
     "Remote diagnostics": "لیرې تشخیص",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ریموټ تشخیص د دې اړیکې لپاره راټولیږي (تر 10 دقیقو پورې په هره ناسته کې).",
     "Remote diagnostics is collecting for this page.":
         "لیرې تشخیص د دې پاڼې معلومات راټولوي.",
     "Remote diagnostics is off.": "ریموټ تشخیص بند دی.",
@@ -747,10 +774,10 @@ var keyStrings = {
         "ریموټ ان پټ پای ته ورسید. د بیا هڅه کولو لپاره نوې ناسته پرانیزئ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ریموټ ان پټ سیشن شتون نلري. د بیا هڅه کولو لپاره نوې ناسته پرانیزئ.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "ریموټ سکرین شاټونه",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "ریموټ سکرین شاټونه د 10 دقیقو لپاره اجازه لري. د نیولو لپاره تنظیمات بند کړئ.",
+    "Remote screenshots are off.": "ریموټ سکرین شاټونه بند دي.",
     "Remote session expired": "ریموټ ناسته پای ته ورسیده",
     "Remote text entry": "لرې متن داخلول",
     "Remote text entry denied": "ریموټ متن داخلول رد شول",
@@ -778,6 +805,7 @@ var keyStrings = {
     "Resume from archive?": "له آرشیف څخه غږونې ته دوام ورکړئ؟",
     Retry: "بیا هڅه وکړئ",
     "Retry EPG download": "د EPG ډاونلوډ بیا هڅه وکړئ",
+    "Retry same message": "ورته پیغام بیا هڅه وکړئ",
     "Return to previous channel": "پخواني چینل ته ورشئ",
     Rewind: "شاته / مخکې تګ",
     "Rewind step by buttons %1/%2": "د %1/%2 تڼیو لپاره د شاته وړلو ګام",
@@ -795,19 +823,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "ترتیبات خوندي کړئ او د چینل لیست پورته کړئ",
     "Save settings to storage": "ترتیبات په ذخیره کې خوندي کړئ",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "په خپل تلویزیون کې د QR کوډ سکین کړئ، یا لاندې د هغې بشپړ شخصي جوړه لینک پیسټ کړئ.",
     "Scan this QR code with your phone to enter text.":
         "دا QR کوډ د خپل تلیفون سره سکین کړئ ترڅو متن داخل کړئ.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "د سکرین شریکول پیل نشو.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "د سکرین شریکول لغوه شوي یا شتون نلري.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "د سکرین شاټ اجازه فعاله نه شوه.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "سکرین شاټونه شتون لري پداسې حال کې چې د ریموټ کنټرول سره وصل وي.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "سکرین شاټونه په دې پلیټ فارم کې شتون نلري.",
     Script: "فلم‌لیک",
     Search: "لټون",
+    "Search languages": "ژبې لټون",
     "Search programme": "پروګرام ولټوئ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "خوندي ریموټ ان پټ پیل نشو. مهرباني وکړئ بیا هڅه وکړئ یا د سکرین کیبورډ وکاروئ.",
@@ -826,13 +857,14 @@ var keyStrings = {
         "د EPG او لوګو لپاره د پلې‌لېست ټیمپلیټ سرچینه وټاکئ",
     "Select Stalker portal": "Stalker پورټل غوره کړئ",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "په براوزر کې د سکرین شاټ سرچینه غوره کړئ",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "د براوزر شریکولو ډیالوګ کې د پلیر ټب یا کړکۍ غوره کړئ.",
     "Send request": "غوښتنه واستوئ",
     "Send settings": "امستنې واستوئ",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "دا کوډ له خپل پراکسي څخه د Authorization: Bearer سرلیک کې واستوئ.",
+    "Send to TV": "تلویزیون ته واستوئ",
     Server: "سرور",
     "Server address": "د سرور پته",
     "Server address (for example 192.168.1.20:8081)":
@@ -841,10 +873,13 @@ var keyStrings = {
     "Server URL": "سرور URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "سرور شتون نلري. په اتوماتيک ډول بیا هڅه کول؛ د هغې پته او د شبکې لاسرسی وګورئ.",
+    "Session closed. Start a new one from your TV when needed.":
+        "غونډه بنده شوه. د اړتیا په وخت کې له خپل تلویزیون څخه یو نوی پیل کړئ.",
     Set: "بدلونونه پلي کړئ",
     "Set parental code": "د والدینو کوډ تنظیم کړئ",
     "Set timer?": "ټایمر تنظیم کړئ؟",
     Settings: "ترتیبات",
+    "Settings changed while editing": "د سمون پر مهال ترتیبات بدل شول",
     "Settings changed. Discovery was canceled.":
         "ترتیبات بدل شول. کشف لغوه شو.",
     "Settings copied": "ترتیبات کاپي شوي",
@@ -854,10 +889,15 @@ var keyStrings = {
     "Settings imported": "ترتیبات وارد شوي",
     "Settings JSON": "ترتیبات JSON",
     "Settings loaded from storage": "امستنې له زېرمتون څخه بار شوې",
+    "Settings received. Restarting player...":
+        "ترتیبات ترلاسه شول. پلیر بیا پیل کول...",
     "Settings STB": "STB ترتیبات",
     "Settings saved": "ترتیبات خوندي شوي",
     "Settings saved to storage": "ترتیبات په ذخیره کې خوندي شوي",
     "Settings sended!": "ترتیبات لیږل شوي!",
+    "Settings source changed": "د ترتیباتو سرچینه بدله شوه",
+    "Settings storage rejected write":
+        "د ترتیباتو زېرمتون د معلوماتو لیکل رد کړل",
     "Several command servers were found. Select one below.":
         "څو کمانډ سرورونه وموندل شول. لاندې یو غوره کړئ.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -909,12 +949,12 @@ var keyStrings = {
     "Starting...": "پیل…",
     Status: "حالت",
     Stop: "ودریږئ",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "د براوزر شریکول بند کړئ",
     "Stop current capture": "د معلوماتو اوسنۍ راټولونه ودروئ",
     "Stop diagnostics": "تشخیص بند کړئ",
     "Stop playback and return to live":
         "پلې کول ودروئ او ژوندۍ خپرونې ته لاړ شئ",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "سکرین شاټونه بند کړئ",
     "Stream could not be played": "خپرونه پلې نه شوه",
     "Stream type: %1": "د خپرونې ډول: %1",
     "String for search": "د لټون عبارت",
@@ -925,7 +965,8 @@ var keyStrings = {
     "Switch sound track": "آډیو ټریک بدل کړئ",
     "Switch subtitle": "فرعي سرلیکونه بدل کړئ",
     "Switch to this list": "دې لېست ته لاړ شئ",
-    "Swop URL": "Swop URL",
+    "Swop URL": "د Swop پته",
+    "System language": "د سیسټم ژبه",
     "saved on this device": "په دې وسیله کې خوندي شوی",
     select: "غوره کړئ",
     small: "کوچنی",
@@ -933,14 +974,18 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "د Tabox ترتیبات",
     "Text is too long for remote input.": "متن د لرې ننوتلو لپاره ډېر اوږد دی.",
+    "Text is too long. Please shorten it before sending.":
+        "متن ډیر اوږد دی. مهرباني وکړئ د لیږلو دمخه یې لنډ کړئ.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "متن لیږل شوی. خپل تلویزیون چیک کړئ ترڅو تایید کړئ چې دا څرګند شوی.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "د براوزر سکرین شاټ سرچینه چمتو ده.",
     "The command server discovery URL is invalid.":
         "د قوماندې سرور د موندلو URL ناسم دی.",
     "The device ID in the address is invalid.": "په پته کې د وسیلې ID ناسم دی.",
     "The discovery response is invalid.": "د موندلو ځواب ناسم دی.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "دا براوزر نشي کولی د ټاکل شوي سکرین شاټ سرچینه وپیژني.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "دا براوزر په خوندي ډول اتومات جوړه نه شي جوړولای. تازه یې کړئ یا د قوماندې سرور ترتیبات په لاس دننه کړئ.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -949,6 +994,10 @@ var keyStrings = {
         "دا HTTPS پلیر له HTTP سرور سره نه شي نښلېدای. HTTPS سرور وکاروئ یا پلیر د HTTP له لارې پرانیزئ.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "دا Play اپلېکېشن HTTPS ته اړتیا لري. له خپل چمتوکوونکي څخه د HTTPS پلې‌لېست یا سرور URL وغواړئ.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "د دې جوړه کولو لینک پای ته رسیدلی. په خپل تلویزیون کې نوې ناسته پرانیزئ.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "دا خوندي ناسته شتون نلري یا پای ته رسیدلی. په تلویزیون کې نوې ناسته پرانیزئ او د هغې بشپړ لینک وکاروئ.",
     Timer: "ټایمر",
     "Timer: switch to channel?": "ټایمر: دې چینل ته لاړ شو؟",
     "Timeshift: one minute back": "د وخت بدلون: یوه دقیقه شاته",
@@ -996,6 +1045,8 @@ var keyStrings = {
         "HTTP یا HTTPS وکاروئ، او په پته کې د کارن نوم یا پټنوم مه لیکئ.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "د کنټرول غوره کولو لپاره کیڼ/ښي، د فعالولو لپاره OK، او د متن خوځولو لپاره پورته/ښکته وکاروئ.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "بشپړ لینک وکاروئ، په شمول د # وروسته برخه. له بل چا سره یې مه شریکوئ.",
     "Use Up / Down to scroll. Back to close.":
         "د متن خوځولو لپاره پورته / ښکته وکاروئ. د تړلو لپاره بېرته لاړ شئ.",
     Username: "د کارن نوم",

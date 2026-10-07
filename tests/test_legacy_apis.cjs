@@ -34,9 +34,11 @@ function compile(file, names) {
 }
 
 const storageCode = compile("src/storage/index.ts");
-function storageFixture(mode, cookiesDenied = false) {
-    const saved = { original: "keep me" };
-    const cookies = { malformed: "%ZZ", valid: "stored" };
+function storageFixture(mode, cookiesDenied = false, persisted) {
+    const saved = persisted ? persisted.saved : { original: "keep me" };
+    const cookies = persisted
+        ? persisted.cookies
+        : { malformed: "%ZZ", valid: "stored" };
     const document = {};
     Object.defineProperty(document, "cookie", {
         get() {
@@ -56,6 +58,7 @@ function storageFixture(mode, cookiesDenied = false) {
     });
     const local = {
         clear() {
+            if (mode === "clear") throw new Error("SecurityError");
             for (const key of Object.keys(saved)) delete saved[key];
         },
         getItem(key) {
@@ -69,6 +72,7 @@ function storageFixture(mode, cookiesDenied = false) {
             return Object.keys(saved).length;
         },
         removeItem(key) {
+            if (mode === "remove") throw new Error("SecurityError");
             delete saved[key];
         },
         setItem(key, value) {
@@ -123,6 +127,40 @@ for (const mode of ["native", "access", "read", "write", "missing"]) {
 const cookieStorage = storageFixture("missing");
 assert.equal(cookieStorage.get("valid"), "stored");
 assert.equal(cookieStorage.get("malformed"), null);
+
+// A failed write must stay authoritative after a fresh adapter/bootstrap,
+// without exposing internal fallback bookkeeping in backups.
+const persistent = { cookies: {}, saved: { ottplaylang: "_eng" } };
+const quota = storageFixture("write", false, persistent);
+quota.set("ottplaylang", "_rus");
+quota.set("ottplaylangmode", "system");
+assert.equal(persistent.saved.ottplaylang, "_eng");
+const restarted = storageFixture("native", false, persistent);
+assert.equal(restarted.get("ottplaylang"), "_rus");
+assert.equal(restarted.get("ottplaylangmode"), "system");
+assert.equal(restarted.dump().ottplaylang, "_rus");
+assert(!Object.hasOwn(restarted.dump(), "ottplayStorageFallback"));
+restarted.set("ottplaylang", "_fra");
+assert.equal(
+    storageFixture("native", false, persistent).get("ottplaylang"),
+    "_fra"
+);
+assert.equal(
+    storageFixture("native", false, persistent).get("ottplaylangmode"),
+    "system"
+);
+const removal = storageFixture("remove", false, persistent);
+removal.del("ottplaylang");
+assert.equal(
+    storageFixture("native", false, persistent).get("ottplaylang"),
+    null
+);
+const clearing = storageFixture("clear", false, persistent);
+clearing.clear();
+assert.deepEqual(
+    Object.keys(storageFixture("native", false, persistent).dump()),
+    []
+);
 
 // ErrorEvent.error can be null (for example for opaque script failures).
 // Reporting that failure must not throw from the error handler itself.

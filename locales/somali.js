@@ -64,13 +64,14 @@ var keyStrings = {
         "Oggolow baaritaanka cilladaha muddo 10 daqiiqo ah",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Oggolow sawirrada shaashadda muddo 10 daqiiqo ah",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "U oggolow seerfarkan inuu ururiyo tiriyeyaasha baaritaanka cilladaha oo uu dib u bilaabo baahintan ama daaraha. Gelitaanka ku-meelgaarka ahi wuxuu socdaa 10 daqiiqo. Taageerada la aaminay way sii jiraysaa ka dib dib u xidhidda ama dib u bilaabidda; ururin kastana way dhammaanaysaa 10 daqiiqo ka dib. Ururintu way hakataa marka barnaamijku qarsoon yahay ama aanu khadka ku jirin.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "U oggolow seerfarkan inuu ururiyo tiriyeyaasha daarista, shabakadda iyo gelinta ee fadhigan muuqda. Waxay u baahan tahay HTTPS iyo oggolaanshaha seerfarka. Waxay joogsanaysaa 10 daqiiqo ka dib, marka la qariyo ama la gooyo xidhiidhka.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "U oggolow server-kan inuu codsado sawirro muddo 10 daqiiqo ah. Sawirradu waxay yeelan karaan xog gaar ah. Barowsarka dhexdiisa, dooro tabka ama daaqadda barnaamijka warbaahinta. Oggolaanshuhu wuxuu dhammaadaa marka bogga dib loo soo raro ama xiriirka la jaro.",
     "Allowlist this Device ID":
         "Aqoonsiga qalabkan ku dar liiska la oggol yahay",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Dib / hore ugu bood 1 daqiiqo",
     "Background color": "Midabka asalka",
     "Background color of selected item": "Midabka asalka shayga la doortay",
+    "Backup state changed": "Xaaladda kaabta ayaa isbedelay",
     "Balance, $": "Hadhaaga, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Shaashad madow marka kanaallada la beddelayo",
     Blue: "Buluug",
+    "Bookmark age (days): %1": "Da'da bookmark (maalmo): %1",
     "Bookmark age: %1 days": "Da'da calaamadda: %1 maalmood",
     "Browse folders": "Dhex mar galalka",
     "Buffer Size, s": "Cabbirka kaydka sugitaanka, ilb",
@@ -164,11 +167,14 @@ var keyStrings = {
     "Choose language": "Dooro luqad",
     "Choose Plex server": "Dooro seerfarka Plex",
     "Choose provider": "Dooro bixiye",
-    Classic: "Classic",
+    Classic: "Qaabkii hore",
     "Clear all settings?": "Ma nadiifinaysaa dhammaan dejinta?",
     "Clear settings": "Nadiifi dejinta",
     Close: "Xidh",
     "Close PiP": "Xidh PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Kaydinta/rarka daruuraha waxay u baahan tahay STB firmware (host_ott lama dejin)",
+    "Cloud transfer failed": "Wareejinta daruurtu waa fashilantay",
     Code: "Koodh",
     Color: "Midab",
     "Color spectrum": "Kala duwanaanta midabada",
@@ -187,6 +193,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Qaybta waafaqsanaanta lama soo gelin karin. Dib u fur daaraha si aad mar kale u tijaabiso.",
     "Compatible HLS": "HLS waafaqsan",
+    "Complete pairing link": "Isku xirka isku-xidhka oo dhammaystiran",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ku deji All4you.tv gudaha Dejinta -> Dejinta bixiyaha",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +266,25 @@ var keyStrings = {
         "Ku deji Шаравоз gudaha Dejinta -> Dejinta bixiyaha",
     Connect: "Ku xidh",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Ku xidh server-ka taliska HTTPS ka hor inta aanad ogolaanin sawirada.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ku xidh server-ka amarrada HTTPS si aad u isticmaasho sawirrada shaashadda.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Ku xidh kantaroolka fog si aad awood ugu yeelato ogaanshaha.",
     "Connect this player to a command server first.":
         "Marka hore daarahan ku xidh seerfar amarro.",
+    "Connect to TV": "Ku xidh TV",
     Connected: "Waa la isku xidhay",
     "Connected. Waiting for the channel list...":
         "Waa la isku xidhay. Liiska kanaallada ayaa la sugayaa...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Ku xidhidda maamulka fog waxay server-kan u oggolaanaysaa inuu baaro oo hagaajiyo barnaamijka warbaahinta. Gelitaanku wuu sii jiraa marka dib loo bilaabo, wuxuuna dhammaadaa marka aad xiriirka jarto. Ururin kasta oo xogta baaritaanka ah waxay ku kooban tahay 10 daqiiqo.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Waxaa baaritaanka fog loo xidhayaa xiriirka maamulka fog ee shaqaynaya.",
     "Connecting remote diagnostics for this page.":
         "Baaritaanka cilladaha fog ee boggan ayaa la isku xidhayaa.",
+    "Connecting securely to your TV...":
+        "Si ammaan ah ugu xidhidhiyaha TV-gaaga...",
     "Connecting to Plex…": "Plex ayaa lagu xidhayaa…",
     "Connecting to Stalker portal...":
         "Bogga adeegga Stalker ayaa lagu xidhayaa…",
@@ -293,6 +303,10 @@ var keyStrings = {
         "Codsi lammaanayn lama abuuri karin. Mar kale raadi seerfarka si aad u tijaabiso.",
     "Could not load. Select to retry.":
         "Lama soo gelin karin. Dooro si aad mar kale u tijaabiso.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Ma diyaarin karin qoraalkan. Fadlan soo koob oo mar kale isku day.",
+    "Could not protect the private link. Use a different browser.":
+        "Ma ilaalin karin xiriirka gaarka ah. Isticmaal browser kale",
     "Could not save provider settings.": "Dejinta bixiyaha lama kaydin karin.",
     "Could not save the approved command server settings.":
         "Dejinta seerfarka amarrada ee la oggolaaday lama kaydin karin.",
@@ -309,6 +323,8 @@ var keyStrings = {
     "Delete category": "Tirtir qaybta",
     "Delete channel": "Tirtir kanaalka",
     "Delete list": "Tirtir liiska",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Lama xaqiijin karin gaarsiinta. Hubi TV-gaaga, ama mar kale isku day isla farriinta ka hor inta uusan fadhigani dhicin.",
     "Demo — moving test pattern": "Tijaabo — muuqaal tijaabo oo dhaqaaqaya",
     Description: "Sharaxaad",
     "Description of remote control buttons":
@@ -390,6 +406,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Geli URL-ka bogga adeegga Stalker (tusaale http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Geli lambarka seerfarka (%1).",
+    "Enter text": "Geli qoraalka",
     "Enter the access code separately, not in the server address.":
         "Geli koodhka gelitaanka si gooni ah, hana gelin cinwaanka seerfarka.",
     "Enter the command server IP or address.":
@@ -547,8 +564,11 @@ var keyStrings = {
     "Interface transparency": "Hufnaanta isdhexgalka",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Xidhiidhka kanaalku sax ma aha! Geli magaca martigeliyaha oo dhan sida uu ugu qoran yahay URL-ka baahinta ee akoonka (tusaale subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Jawaabta habaynta daruuraha ee aan sax ahayn",
     "Invalid protected source configuration":
         "Dejinta isha la ilaaliyey sax ma aha",
+    "Invalid setting": "Dejin aan sax ahayn",
     "IPTV token": "Summadda gelitaanka IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Dejinta IpStream.one",
@@ -630,6 +650,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Lama helin barnaamijyo ku habboon kanaallada iyo taariikhaha liiska daarista. Hubi isha iyo saacadda qalabka.",
     "No saved settings found": "Dejin kaydsan lama helin",
+    "No supported system language. Choose a language.":
+        "Ma jiro luqad nidaam la taageeray. Dooro luqad",
     "Not configured": "Lama dejin",
     "Not found": "Lama helin",
     "Not reduce video when showing the list (bugfix)":
@@ -645,6 +667,8 @@ var keyStrings = {
     "not set": "lama dejin",
     Off: "Dansan",
     Ok: "Hagaag",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "TV-gan oo kaliya ayaa aqbali kara fariintaada. Xiriirku wuu dhacayaa 10 daqiiqo ka dib.",
     Open: "Fur",
     "Open in PiP": "Ku fur PiP",
     "Open Plex sign-in page": "Fur bogga gelitaanka Plex",
@@ -657,6 +681,7 @@ var keyStrings = {
     "OTT / APP host": "Martigeliyaha OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Dejinta OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play gelinta fog",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 waa la heli karaa. Ma la soo dejiyaa oo hadda la rakibaa?",
     "Overwrite current settings?": "Ma lagu dul qoraa dejinta hadda jirta?",
@@ -689,6 +714,7 @@ var keyStrings = {
     Playback: "Daarista",
     "Player and device info": "Macluumaadka daaraha iyo qalabka",
     "Player could not start": "Daaruhu wuu bilaaban waayey",
+    "Player default": "Doorashada caadiga ah ee barnaamijka warbaahinta",
     "Player info:": "Macluumaadka daaraha:",
     Playlist: "Liiska daarista",
     "Playlist file": "Faylka liiska daarista",
@@ -710,6 +736,8 @@ var keyStrings = {
     Postpaid: "Lacagta gadaal laga bixiyo",
     PROST: "PROST",
     "PROST settings": "Dejinta PROST",
+    "Preferred audio language": "Luuqadda maqalka ah ee la door biday",
+    "Preferred subtitle language": "Luuqadda hoosaadka ee la door biday",
     Prepaid: "Lacagta horay loo bixiyo",
     "Preparing secure remote input...":
         "Waxaa la diyaarinayaa gelinta fog ee sugan...",
@@ -745,14 +773,14 @@ var keyStrings = {
         "Kontoroolka fog (aan lahayn badhamo tiro leh)",
     "Remote control": "Kontoroolka fog",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Kantaroolka fog wuxuu fasaxaa ogaanshaha. Diyaar u ah hawlwadeen.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Kantaroolka fog wuxuu fasaxaa ogaanshaha. Sugaya in dib loo xidho",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Maamulka fog wuxuu ku jiraa sawirrada shaashadda barnaamijka warbaahinta, oo ay ku jiraan dejimuhu. Sawirradu waxay yeelan karaan xog gaar ah. Qabashada sawirrada gudaha abka uma baahna oggolaansho dheeraad ah. Barowsarka dhexdiisa waa inaad qalabkan ka doorataa tabka ama daaqadda laga qaadayo sawirka.",
     "Remote diagnostics": "Baaritaanka fog ee cilladaha",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Xogta baaritaanka fog ayaa loo ururinayaa xiriirkan (ugu badnaan 10 daqiiqo fadhi kasta).",
     "Remote diagnostics is collecting for this page.":
         "Baaritaanka fog ee cilladuhu wuxuu ururinayaa xogta boggan.",
     "Remote diagnostics is off.":
@@ -767,10 +795,10 @@ var keyStrings = {
         "Waqtigii gelinta fog wuu dhacay. Fur kalfadhi cusub si aad mar kale u tijaabiso.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kalfadhiga gelinta fog lama heli karo. Fur kalfadhi cusub si aad mar kale u tijaabiso.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Sawirada fogaanta",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Sawirada fogaanta waa la oggol yahay 10 daqiiqo. Xir dejinta si aad u qabato",
+    "Remote screenshots are off.": "Sawirada fogaanta ayaa dansan.",
     "Remote session expired": "Waqtigii kalfadhiga fog wuu dhacay",
     "Remote text entry": "Gelinta qoraalka ee fog",
     "Remote text entry denied": "Gelinta qoraalka ee fog waa la diiday",
@@ -798,6 +826,7 @@ var keyStrings = {
     "Resume from archive?": "Ma laga sii wadaa kaydka?",
     Retry: "Mar kale isku day",
     "Retry EPG download": "Mar kale soo deji EPG",
+    "Retry same message": "Isku day fariin isku mid ah",
     "Return to previous channel": "Ku noqo kanaalkii hore",
     Rewind: "U wareeg waqtiga",
     "Rewind step by buttons %1/%2":
@@ -816,19 +845,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Kaydi dejinta oo soo rar liiska kanaallada",
     "Save settings to storage": "Dejinta ku kaydi kaydinta",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Ka baadh summada QR ee TV-gaaga, ama ku dheji xiriiriyeheeda khaaska ah oo dhammaystiran xagga hoose.",
     "Scan this QR code with your phone to enter text.":
         "Ku sawir koodhkan QR taleefankaaga si aad qoraal u geliso.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Shaashada wadaagga waa la bilaabi waayay.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Shaashada wadaagga waa la joojiyay ama lama heli karo.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Lama hawlgelin karin oggolaanshaha sawirrada shaashadda.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Sawir-qaadista ayaa diyaar ah iyadoo koontaroolka fog uu ku xiran yahay.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Sawir-qaadista ayaan laga heli karin goobtan.",
     Script: "Qoraalka filimka",
     Search: "Raadi",
+    "Search languages": "Raadi luqadaha",
     "Search programme": "Raadi barnaamij",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Gelinta fog ee sugan way bilaaban weyday. Fadlan mar kale isku day ama isticmaal kiiboodhka shaashadda.",
@@ -845,14 +878,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "Dooro isha qaabka liiska daarista ee EPG iyo astaamaha",
     "Select Stalker portal": "Dooro bogga adeegga Stalker",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "Dooro isha shaashadda ee browserka",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Dooro tabka ama daaqadda barnaamijka warbaahinta ee sanduuqa wadaagista barowsarka.",
     "Send request": "Dir codsi",
     "Send settings": "Dir dejinta",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Ka dir koodhkan proksigaaga adigoo gelinaya madaxa Authorization: Bearer.",
+    "Send to TV": "U dir TV",
     Server: "Seerfar",
     "Server address": "Cinwaanka seerfarka",
     "Server address (for example 192.168.1.20:8081)":
@@ -861,10 +894,14 @@ var keyStrings = {
     "Server URL": "URL-ka seerfarka",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Seerfarka lama heli karo. Si toos ah ayaa mar kale loo tijaabinayaa; hubi cinwaankiisa iyo gelitaanka shabakadda.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Fadhigu wuu xidhan yahay. Ka bilow mid cusub TV-gaaga marka loo baahdo.",
     Set: "Deji",
     "Set parental code": "Deji koodhka waalidka",
     "Set timer?": "Ma la dejiyaa saacad-tiriyaha?",
     Settings: "Dejinta",
+    "Settings changed while editing":
+        "Dejinta ayaa isbedelay markii la tafatiray",
     "Settings changed. Discovery was canceled.":
         "Dejinta waa la beddelay. Raadinta waa la joojiyey.",
     "Settings copied": "Dejinta waa la koobiyeeyey",
@@ -874,10 +911,14 @@ var keyStrings = {
     "Settings imported": "Dejinta waa la soo geliyey",
     "Settings JSON": "JSON-ka dejinta",
     "Settings loaded from storage": "Dejinta waxaa laga soo raray kaydinta",
+    "Settings received. Restarting player...":
+        "Dejimihii waa la helay. Barnaamijka warbaahinta ayaa dib loo bilaabayaa...",
     "Settings STB": "Dejinta STB",
     "Settings saved": "Dejinta waa la kaydiyey",
     "Settings saved to storage": "Dejinta waxaa lagu kaydiyey kaydinta",
     "Settings sended!": "Dejinta waa la diray!",
+    "Settings source changed": "Isha dejimaha ayaa isbeddeshay",
+    "Settings storage rejected write": "Kaydka dejimuhu wuu diiday qorista",
     "Several command servers were found. Select one below.":
         "Dhowr seerfar oo amarrada qaabila ayaa la helay. Hoosta ka dooro mid.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -930,12 +971,12 @@ var keyStrings = {
     "Starting...": "Waxaa la bilaabayaa…",
     Status: "Xaaladda",
     Stop: "Jooji",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Jooji wadaagista browserka",
     "Stop current capture": "Jooji ururinta hadda socota",
     "Stop diagnostics": "Jooji baaritaanka cilladaha",
     "Stop playback and return to live":
         "Jooji daarista oo ku noqo baahinta tooska ah",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Jooji sawir-qaadista shaashadda",
     "Stream could not be played": "Baahinta waa la daari waayey",
     "Stream type: %1": "Nooca baahinta: %1",
     "String for search": "Ereyga raadinta",
@@ -947,6 +988,7 @@ var keyStrings = {
     "Switch subtitle": "Beddel qoraal-hoosaadyada",
     "Switch to this list": "U wareeg liiskan",
     "Swop URL": "URL-ka Swop",
+    "System language": "Luqadda nidaamka",
     "saved on this device": "ku kaydsan qalabkan",
     select: "dooro",
     small: "yar",
@@ -955,15 +997,19 @@ var keyStrings = {
     "Tabox settings": "Dejinta Tabox",
     "Text is too long for remote input.":
         "Qoraalku aad buu ugu dheer yahay gelinta fog.",
+    "Text is too long. Please shorten it before sending.":
+        "Qoraalku aad buu u dheer yahay. Fadlan soo gaab inta aadan dirin",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Qoraal la diray. Hubi TV-gaaga si aad u xaqiijiso inuu soo muuqday.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Isha shaashadda browserka waa diyaar.",
     "The command server discovery URL is invalid.":
         "URL-ka raadinta seerfarka amarradu sax ma aha.",
     "The device ID in the address is invalid.":
         "Aqoonsiga qalabka ee cinwaanka ku jira sax ma aha.",
     "The discovery response is invalid.": "Jawaabta raadintu sax ma aha.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Barowsarku ma aqoonsan karo isha sawirka la doortay.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Biraawsarkani si sugan iskuma lammaanayn karo. Cusboonaysii ama gacanta ku geli dejinta seerfarka amarrada.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -972,6 +1018,10 @@ var keyStrings = {
         "Daarahan HTTPS kuma xidhmi karo seerfar HTTP ah. Isticmaal seerfar HTTPS ah ama daaraha ku fur HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "App-kan Play wuxuu u baahan yahay HTTPS. Ka codso bixiyahaaga URL liiska daarista ama seerfar oo HTTPS ah.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Isku xirka lammaanaha ayaa dhacay. Ka fur fadhi cusub TV-gaaga.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Fadhigan sugan lama heli karo ama dhacay. Kalfadhi cusub ka fur TV-ga oo isticmaal xidhiidhkiisa oo dhammaystiran.",
     Timer: "Saacad-tiriye",
     "Timer: switch to channel?": "Saacad-tiriye: ma loo wareegaa kanaalkan?",
     "Timeshift: one minute back":
@@ -1023,6 +1073,8 @@ var keyStrings = {
         "Isticmaal HTTP ama HTTPS oo aan cinwaanka ku lahayn magaca isticmaalaha ama furaha sirta ah.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Isticmaal BIDIX/MIDIG si aad u doorato badhan, HAGAAG si aad u hawlgeliso, iyo KOR/HOOS si aad u rogto.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Isticmaal xiriiriyaha buuxa, oo ay ku jirto qaybta ka dambeysa #. Cid kale ha la wadaagin.",
     "Use Up / Down to scroll. Back to close.":
         "Isticmaal Kor / Hoos si aad u rogto. Dib si aad u xidho.",
     Username: "Magaca isticmaalaha",

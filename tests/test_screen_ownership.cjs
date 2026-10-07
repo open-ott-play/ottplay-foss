@@ -6,6 +6,7 @@ const ts = require("typescript");
 const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
 const { keyboardCode } = require("./helpers/localized-keyboard.cjs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 function functions(file, names) {
     const source = ts.createSourceFile(
@@ -135,11 +136,13 @@ function fixture() {
             "metadataCssUrl",
         ])
     );
+    w.eval(localizationRuntime());
     w.eval(
         functions("src/ui/index.ts", [
             "_changeEdit",
             "infoBox",
             "confirmBox",
+            "localizedTextHtml",
             "showSelectBox",
             "showShift",
             "selectValue",

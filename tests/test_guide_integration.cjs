@@ -9,6 +9,26 @@ function check(name, run) {
     console.log("PASS guide integration: " + name);
 }
 check(
+    "actual guide search uses canonical Unicode and selected-language casing",
+    () => {
+        for (const [locale, title, query] of [
+            ["_eng", "Café", "Cafe\u0301"],
+            ["_kor", "한 TV", "한"],
+            ["_tur", "IŞIK", "ışık"],
+        ]) {
+            const f = fixture(),
+                h = f.host;
+            h.__ottInterfaceLanguage = locale;
+            h.getChannelEpgCached(1, () => {});
+            f.tick();
+            f.complete([f.row(undefined, undefined, title)]);
+            const results = h.__ottClassicGuide.search(query);
+            assert.equal(results.length, 1);
+            assert.equal(results[0].name, title);
+        }
+    }
+);
+check(
     "provider response coalesces and cache values cannot mutate owned schedules",
     () => {
         const f = fixture(),

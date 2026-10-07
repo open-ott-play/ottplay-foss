@@ -41,7 +41,10 @@ vm.runInNewContext(
     }).outputText,
     helpers
 );
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const caseless = { exports: {} };
+vm.runInNewContext(localizationRuntime(), caseless);
+caseless.require = () => caseless;
 vm.runInNewContext(
     ts.transpileModule(
         fs.readFileSync(path.join(root, "src/utils/caseless.ts"), "utf8"),

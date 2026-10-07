@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Назад / вперёд на 1 минуту",
     "Background color": "Цвет фона",
     "Background color of selected item": "Цвет фона выбранного пункта",
+    "Backup state changed": "Состояние резервной копии изменилось",
     "Balance, $": "Баланс, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Чёрный экран при переключении каналов",
     Blue: "Синий",
+    "Bookmark age (days): %1": "Давность закладки (дни): %1",
     "Bookmark age: %1 days": "Давность закладки: %1 дн.",
     "Browse folders": "Просмотр по папкам",
     "Buffer Size, s": "Размер буфера, с",
@@ -165,6 +167,9 @@ var keyStrings = {
     "Clear settings": "Удалить настройки",
     Close: "Закрыть",
     "Close PiP": "Закрыть PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Для сохранения и загрузки через облако нужна прошивка STB (host_ott не задан)",
+    "Cloud transfer failed": "Не удалось передать данные через облако",
     Code: "Код",
     Color: "Цвет",
     "Color spectrum": "Цветовая палитра",
@@ -182,6 +187,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Не удалось загрузить компоненты совместимости. Откройте плеер заново.",
     "Compatible HLS": "Совместимый HLS",
+    "Complete pairing link": "Полная ссылка для подключения",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Настройте All4you.tv в разделе Настройки -> Настройки провайдера",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -261,6 +267,7 @@ var keyStrings = {
         "Подключите удалённое управление, чтобы включить диагностику.",
     "Connect this player to a command server first.":
         "Сначала подключите плеер к серверу управления.",
+    "Connect to TV": "Подключиться к телевизору",
     Connected: "Подключено",
     "Connected. Waiting for the channel list...":
         "Подключено. Ожидание списка каналов…",
@@ -270,6 +277,8 @@ var keyStrings = {
         "Подключение диагностики к серверу удалённого управления.",
     "Connecting remote diagnostics for this page.":
         "Подключение удалённой диагностики для этой страницы.",
+    "Connecting securely to your TV...":
+        "Устанавливаем защищённое соединение с телевизором...",
     "Connecting to Plex…": "Подключение к Plex…",
     "Connecting to Stalker portal...": "Подключение к порталу Stalker…",
     "Connecting...": "Подключение…",
@@ -287,6 +296,10 @@ var keyStrings = {
         "Не удалось создать запрос на сопряжение. Повторите поиск сервера, чтобы попробовать снова.",
     "Could not load. Select to retry.":
         "Не удалось загрузить. Нажмите для повтора.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Не удалось подготовить текст. Сократите его и попробуйте ещё раз.",
+    "Could not protect the private link. Use a different browser.":
+        "Не удалось защитить приватную ссылку. Используйте другой браузер.",
     "Could not save provider settings.":
         "Не удалось сохранить настройки провайдера.",
     "Could not save the approved command server settings.":
@@ -304,6 +317,8 @@ var keyStrings = {
     "Delete category": "Удалить категорию",
     "Delete channel": "Удалить канал",
     "Delete list": "Удалить список",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Не удалось подтвердить доставку. Проверьте телевизор или повторите отправку того же сообщения до окончания сеанса.",
     "Demo — moving test pattern": "Демо — испытательная таблица",
     Description: "Описание",
     "Description of remote control buttons": "Описание кнопок пульта",
@@ -387,6 +402,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Введите адрес портала Stalker (например, http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Введите номер сервера (%1).",
+    "Enter text": "Введите текст",
     "Enter the access code separately, not in the server address.":
         "Введите код доступа отдельно от адреса сервера.",
     "Enter the command server IP or address.":
@@ -536,8 +552,10 @@ var keyStrings = {
     "Interface transparency": "Прозрачность интерфейса",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Некорректная ссылка на канал! Укажите полный хост как в URL потока в кабинете (например subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Облако вернуло некорректные настройки",
     "Invalid protected source configuration":
         "Неверная конфигурация защищённого источника",
+    "Invalid setting": "Некорректное значение настройки",
     "IPTV token": "IPTV-токен",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Настройки IpStream.one",
@@ -616,6 +634,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Не найдены передачи для каналов и дат плейлиста. Проверьте источник и часы устройства.",
     "No saved settings found": "Сохранённые настройки не найдены",
+    "No supported system language. Choose a language.":
+        "Язык системы не поддерживается. Выберите язык.",
     "Not configured": "Не настроено",
     "Not found": "Не найдено",
     "Not reduce video when showing the list (bugfix)":
@@ -631,6 +651,8 @@ var keyStrings = {
     "not set": "не задано",
     Off: "Выключено",
     Ok: "ОК",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Только этот телевизор сможет получить ваше сообщение. Ссылка действует 10 минут.",
     Open: "Открыть",
     "Open in PiP": "Открыть в PiP",
     "Open Plex sign-in page": "Открыть страницу входа Plex",
@@ -643,6 +665,7 @@ var keyStrings = {
     "OTT / APP host": "Сервер OTT / приложения",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Настройки OTT Prime ONLINE",
+    "OTT-play remote input": "Удалённый ввод OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Доступен OttPlay FOSS %1. Скачать и установить сейчас?",
     "Overwrite current settings?": "Перезаписать текущие настройки?",
@@ -675,6 +698,7 @@ var keyStrings = {
     Playback: "Воспроизведение",
     "Player and device info": "Информация о плеере и устройстве",
     "Player could not start": "Не удалось запустить плеер",
+    "Player default": "По умолчанию в плеере",
     "Player info:": "Информация о плеере:",
     Playlist: "Плейлист",
     "Playlist file": "Файл плейлиста",
@@ -696,6 +720,8 @@ var keyStrings = {
     Postpaid: "Постоплата",
     PROST: "PROST",
     "PROST settings": "Настройки PROST",
+    "Preferred audio language": "Предпочитаемый язык звуковой дорожки",
+    "Preferred subtitle language": "Предпочитаемый язык субтитров",
     Prepaid: "Предоплата",
     "Preparing secure remote input...":
         "Подготовка защищённого удалённого ввода...",
@@ -780,6 +806,7 @@ var keyStrings = {
     "Resume from archive?": "Продолжить из архива?",
     Retry: "Повторить",
     "Retry EPG download": "Повторить загрузку EPG",
+    "Retry same message": "Повторить отправку сообщения",
     "Return to previous channel": "Вернуться к предыдущему каналу",
     Rewind: "Перемотка",
     "Rewind step by buttons %1/%2": "Шаг перемотки кнопками %1/%2",
@@ -797,6 +824,8 @@ var keyStrings = {
     "Save settings and load channel list":
         "Сохранить настройки и загрузить список каналов",
     "Save settings to storage": "Сохранить настройки в хранилище",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Отсканируйте QR-код на телевизоре или вставьте ниже полную приватную ссылку для подключения.",
     "Scan this QR code with your phone to enter text.":
         "Отсканируйте QR-код телефоном, чтобы ввести текст.",
     "Screen sharing could not start.": "Не удалось начать показ экрана.",
@@ -810,6 +839,7 @@ var keyStrings = {
         "На этой платформе снимки экрана недоступны.",
     Script: "Сценарий",
     Search: "Поиск",
+    "Search languages": "Поиск языков",
     "Search programme": "Поиск передачи",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Не удалось начать защищённый удалённый ввод. Повторите попытку или используйте экранную клавиатуру.",
@@ -833,6 +863,7 @@ var keyStrings = {
     "Send settings": "Отправить настройки",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Передавайте этот код из прокси в заголовке Authorization: Bearer.",
+    "Send to TV": "Отправить на телевизор",
     Server: "Сервер",
     "Server address": "Адрес сервера",
     "Server address (for example 192.168.1.20:8081)":
@@ -841,10 +872,14 @@ var keyStrings = {
     "Server URL": "Адрес сервера",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Сервер недоступен. Повторяем автоматически; проверьте адрес и доступ к сети.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Сеанс закрыт. При необходимости откройте новый на телевизоре.",
     Set: "Установить",
     "Set parental code": "Установите родительский код",
     "Set timer?": "Установить таймер?",
     Settings: "Настройки",
+    "Settings changed while editing":
+        "Настройки изменились во время редактирования",
     "Settings changed. Discovery was canceled.":
         "Настройки изменились. Поиск отменён.",
     "Settings copied": "Настройки скопированы",
@@ -854,10 +889,15 @@ var keyStrings = {
     "Settings imported": "Настройки импортированы",
     "Settings JSON": "Настройки в формате JSON",
     "Settings loaded from storage": "Настройки загружены из хранилища",
+    "Settings received. Restarting player...":
+        "Настройки получены. Перезапуск плеера...",
     "Settings STB": "Настройки устройства",
     "Settings saved": "Настройки сохранены",
     "Settings saved to storage": "Настройки сохранены в хранилище",
     "Settings sended!": "Настройки отправлены!",
+    "Settings source changed": "Источник настроек изменился",
+    "Settings storage rejected write":
+        "Не удалось записать настройки в хранилище",
     "Several command servers were found. Select one below.":
         "Найдено несколько серверов команд. Выберите один ниже.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -927,6 +967,7 @@ var keyStrings = {
     "Switch subtitle": "Сменить субтитры",
     "Switch to this list": "Переключиться на этот список",
     "Swop URL": "Адрес Swop",
+    "System language": "Язык системы",
     "saved on this device": "сохранено на этом устройстве",
     select: "выбрать",
     small: "маленький",
@@ -935,6 +976,10 @@ var keyStrings = {
     "Tabox settings": "Настройки Tabox",
     "Text is too long for remote input.":
         "Текст слишком длинный для удалённого ввода.",
+    "Text is too long. Please shorten it before sending.":
+        "Слишком длинный текст. Сократите его перед отправкой.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Текст отправлен. Проверьте, появился ли он на телевизоре.",
     "The browser screenshot source is ready.":
         "Источник снимков в браузере готов.",
     "The command server discovery URL is invalid.":
@@ -953,6 +998,10 @@ var keyStrings = {
         "Этот HTTPS-плеер не может подключиться к HTTP-серверу. Используйте HTTPS-сервер или откройте плеер по HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Для этой версии из Play требуется HTTPS. Запросите у провайдера HTTPS-адрес плейлиста или сервера.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Срок действия ссылки истёк. Откройте новый сеанс на телевизоре.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Защищённый сеанс недоступен или срок его действия истёк. Откройте новый сеанс на телевизоре и используйте полную ссылку.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: переключить канал?",
     "Timeshift: one minute back": "Таймшифт: на минуту назад",
@@ -1001,6 +1050,8 @@ var keyStrings = {
         "Используйте HTTP или HTTPS без имени пользователя и пароля в адресе.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ВЛЕВО/ВПРАВО — выбрать элемент, OK — выполнить действие, ВВЕРХ/ВНИЗ — прокрутить.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Используйте полную ссылку, включая часть после #. Никому её не передавайте.",
     "Use Up / Down to scroll. Back to close.":
         "Прокрутка — вверх и вниз. Назад — закрыть.",
     Username: "Имя пользователя",

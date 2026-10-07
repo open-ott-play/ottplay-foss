@@ -59,19 +59,20 @@ var keyStrings = {
     "All categories": "Visos kategorijos",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv nustatymai",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Leisti diagnostiką 10 minučių",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Leiskite daryti ekrano kopijas 10 minučių",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Leiskite šiam serveriui rinkti diagnostikos rodiklius ir iš naujo paleisti srautą arba grotuvą. Laikina prieiga galioja 10 minučių. Patikimo serverio pagalba išlieka pasiekiama prisijungus ar paleidus grotuvą iš naujo; kiekvienas duomenų rinkimo seansas baigiasi po 10 minučių. Rinkimas pristabdomas, kai grotuvas paslėptas arba nėra ryšio.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Leiskite šiam serveriui rinkti atkūrimo, tinklo ir įvesties rodiklius, kol šis seansas matomas ekrane. Reikia HTTPS ir serverio leidimo. Rinkimas sustoja po 10 minučių, paslėpus grotuvą arba nutraukus ryšį.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Leisti šiam serveriui 10 minučių prašyti vaizdų. Nuotraukose gali būti asmeninės informacijos. Naršyklėje pasirinkite grotuvo skirtuką arba langą. Leidimas baigiasi įkėlus iš naujo arba atsijungus.",
     "Allowlist this Device ID": "Įtraukti šį įrenginio ID į leidžiamųjų sąrašą",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "HTTPS grotuvas negali atsisiųsti HTTP EPG šaltinio. Naudokite HTTPS šaltinį.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP adresas be prievado naudoja HTTP prievadą 8081. Norėdami sustabdyti, išvalykite adresą arba pasirinkite Atsijungti.",
     "Another source sign-in is already open":
@@ -90,9 +91,9 @@ var keyStrings = {
     "Archive. Channel: ": "Archyvas. Kanalas: ",
     Aspect: "Kraštinių santykis",
     Audio: "Garsas",
-    Automatic: "Automatic",
+    Automatic: "Automatinis",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Automatiškai paleidžia palaikomus failus tiesiogiai ir, kai reikia, naudoja suderinamą HLS.",
     alhabet: "aąbcčdeęėfghiįyjklmnoprsštuųūvzž",
     always: "visada",
     "and enter code": "ir įveskite kodą",
@@ -100,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 minutę atgal / pirmyn",
     "Background color": "Fono spalva",
     "Background color of selected item": "Pasirinkto elemento fono spalva",
+    "Backup state changed": "Pakeista atsarginės kopijos būsena",
     "Balance, $": "Likutis, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +112,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Juodas ekranas perjungiant kanalus",
     Blue: "Mėlyna",
+    "Bookmark age (days): %1": "Žymės amžius (dienomis): %1",
     "Bookmark age: %1 days": "Žymelės amžius: %1 dien.",
     "Browse folders": "Naršyti aplankus",
     "Buffer Size, s": "Buferio dydis, s",
@@ -152,21 +155,23 @@ var keyStrings = {
     "Channel parental control": "Kanalo tėvų kontrolė",
     Channels: "Kanalai",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Patikrinkite ryšį ir atidarykite Plex bibliotekas.",
     "Check this server's SWOP configuration.":
         "Patikrinkite šio serverio SWOP konfigūraciją.",
-    "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+    "Checking the Plex server connection…": "Tikrinamas Plex serverio ryšys...",
     "Choose from": "Pasirinkti iš",
     "Choose language": "Pasirinkti kalbą",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Pasirinkite Plex serverį",
     "Choose provider": "Pasirinkti teikėją",
     Classic: "Klasikinė",
     "Clear all settings?": "Išvalyti visus nustatymus?",
     "Clear settings": "Išvalyti nustatymus",
     Close: "Uždaryti",
     "Close PiP": "Užverti PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Išsaugoti / įkelti debesyje reikalinga STB programinė įranga (host_ott nenustatyta)",
+    "Cloud transfer failed": "Duomenų perdavimas per debesiją nepavyko",
+    Code: "Prieigos kodas",
     Color: "Spalva",
     "Color spectrum": "Spalvų spektras",
     "Command server": "Komandų serveris",
@@ -182,7 +187,8 @@ var keyStrings = {
     "Command server found.": "Komandų serveris rastas.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Nepavyko įkelti suderinamumo komponentų. Atidarykite leistuvą iš naujo.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Suderinamas HLS",
+    "Complete pairing link": "Visa susiejimo nuoroda",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nustatykite All4you.tv skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -216,7 +222,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Nustatykite OTT Prime ONLINE skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Konfigūruokite Plex skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Nustatykite POLMEDIA skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure PROST in Settings -> Provider Settings":
@@ -255,23 +261,26 @@ var keyStrings = {
         "Nustatykite Шаравоз skiltyje Nustatymai -> Teikėjo nustatymai",
     Connect: "Prisijungti",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Prieš leisdami ekrano kopijas, prijunkite komandų serverį HTTPS.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Prijunkite HTTPS komandų serverį, kad galėtumėte naudoti ekrano kopijas.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Prisijunkite prie nuotolinio valdymo, kad įjungtumėte diagnostiką.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Pirmiausia prijunkite šį grotuvą prie komandų serverio.",
+    "Connect to TV": "Prisijungti prie televizoriaus",
     Connected: "Prisijungta",
     "Connected. Waiting for the channel list...":
         "Prisijungta. Laukiama kanalų sąrašo…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Nuotolinio valdymo ryšys suteikia šiam serveriui teisę diagnozuoti ir taisyti grotuvą. Prieiga išlieka paleidus iš naujo ir baigiasi atsijungus. Kiekvienas diagnostikos duomenų rinkimo seansas trunka ne ilgiau kaip 10 minučių.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Jungiama aktyvaus nuotolinio valdymo ryšio diagnostika.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Prijungiama šio puslapio nuotolinė diagnostika.",
+    "Connecting securely to your TV...":
+        "Saugus prijungimas prie televizoriaus...",
+    "Connecting to Plex…": "Jungiamasi prie Plex…",
     "Connecting to Stalker portal...": "Jungiamasi prie Stalker portalo…",
     "Connecting...": "Jungiamasi…",
     "Continue watching?": "Tęsti žiūrėjimą?",
@@ -282,12 +291,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Nukopijuokite pasirinktą JSON naudodami įrenginio kopijavimo komandą",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Nepavyko prisijungti prie Plex. Patikrinkite serverio adresą, prieigos raktą ir prieigą prie tinklo.",
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
     "Could not create a pairing request. Find the server again to retry.":
         "Nepavyko sukurti susiejimo užklausos. Norėdami bandyti dar kartą, iš naujo raskite serverį.",
     "Could not load. Select to retry.":
         "Įkelti nepavyko. Pasirinkite ir bandykite dar kartą.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Nepavyko parengti šio teksto. Sutrumpinkite jį ir bandykite dar kartą.",
+    "Could not protect the private link. Use a different browser.":
+        "Nepavyko apsaugoti privačios nuorodos. Naudokite kitą naršyklę.",
     "Could not save provider settings.":
         "Nepavyko išsaugoti tiekėjo nustatymų.",
     "Could not save the approved command server settings.":
@@ -305,6 +318,8 @@ var keyStrings = {
     "Delete category": "Pašalinti kategoriją",
     "Delete channel": "Ištrinti kanalą",
     "Delete list": "Pašalinti sąrašą",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Nepavyko patvirtinti pristatymo. Patikrinkite savo televizorių arba dar kartą pabandykite pateikti tą patį pranešimą, kol nesibaigs seansas.",
     "Demo — moving test pattern": "Demonstracija — judantis bandomasis vaizdas",
     Description: "Aprašymas",
     "Description of remote control buttons":
@@ -319,7 +334,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV nustatymai",
     Director: "Režisierius",
     "Disable HTTP remote": "Išjungti HTTP valdymą",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "Išjungti patikimą nuotolinį palaikymą",
     "Disabled by default. Enabling creates a new device access code.":
         "Pagal numatytuosius nustatymus išjungta. Įjungus sukuriamas naujas prieigos prie įrenginio kodas.",
     Disconnect: "Atsijungti",
@@ -354,7 +369,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Norėdami naudotis šia paslauga, įveskite naudotojo vardą ir slaptažodį.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Įveskite galiojantį Plex serverio adresą ir prieigos raktą.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Įveskite tinkamą serverio adresą, pavyzdžiui, 192.168.1.20:8081.",
     "Enter access key for": "Įveskite prieigos raktą:",
@@ -372,8 +387,8 @@ var keyStrings = {
         "Įveskite MAC adresą (pvz., 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Įveskite mediatekos URL",
     "Enter new category name": "Įveskite naują kategorijos pavadinimą",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Įveskite Plex serverio adresą",
+    "Enter Plex token": "Įveskite Plex prieigos raktą",
     "Enter Provider Code": "Įveskite teikėjo kodą",
     "Enter Provider Code on PC or Phone":
         "Įveskite teikėjo kodą kompiuteryje arba telefone",
@@ -388,6 +403,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Įveskite Stalker portalo URL (pvz., http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Įveskite serverio numerį (%1).",
+    "Enter text": "Įveskite tekstą",
     "Enter the access code separately, not in the server address.":
         "Prieigos kodą įveskite atskirai, o ne serverio adrese.",
     "Enter the command server IP or address.":
@@ -412,56 +428,55 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Įveskite Xtream serverio URL (pvz., https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Įveskite savo Plex prieigos raktą. Jis išsaugomas šio įrenginio profilyje.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Įveskite savo Plex serverio adresą, pavyzdžiui, http://192.168.1.25:32400",
     EPG: "TV programa",
     "EPG and archive. Channel: ": "EPG ir archyvas. Kanalas: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "EPG archyvas arba XML netinkamas.",
+    "EPG cache and wait time: %1": "EPG talpykla ir laukimo laikas: %1",
+    "EPG cache updated: %1": "EPG talpykla atnaujinta: %1",
+    "EPG channels: %1": "EPG kanalai: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Nepavyko paleisti EPG. Paleiskite grotuvą iš naujo, kad jo failai būtų įkelti iš naujo. Atkūrimas bus sustabdytas.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG diagnostika",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "Nepavyko įkelti EPG diagnostikos. Atidarykite ją dar kartą, kad pakartotumėte bandymą.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "EPG atsisiųsti nepavyko. Patikrinkite ryšį, HTTPS ir šaltinio CORS leidimus.",
+    "EPG download time: %1": "EPG atsisiuntimo laikas: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Baigėsi EPG atsisiuntimo laikas. Bandykite atsisiųsti dar kartą.",
+    "EPG elapsed: %1": "EPG praėjęs laikas: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG klaida. Atidarykite Informacija → EPG diagnostika.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG viršija įrenginio apdorojimo ribą. Naudokite mažesnį šaltinį arba trumpesnį archyvo laikotarpį.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG neįsijungė. Įkelkite M3U grojaraštį.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG vietinė saugykla nepasiekiama arba pilna.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG apdorojimo ir saugojimo laikas: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "EPG apdorojimas sustabdytas. Bandykite dar kartą ir patikrinkite naršyklės palaikymą.",
+    "EPG programmes: %1": "EPG laidos: %1",
+    "EPG progress: %1": "EPG pažanga: %1",
+    "EPG ready": "EPG paruošta",
+    "EPG source returned HTTP %1": "EPG šaltinis grąžino HTTP %1",
+    "EPG source: %1": "EPG šaltinis: %1",
+    "EPG stopped during: %1": "EPG sustabdymo etapas: %1",
+    "EPG unavailable on this browser": "EPG negalima naudoti šioje naršyklėje",
+    "EPG unavailable: %1": "EPG nepasiekiamas: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG atnaujinti nepavyko; naudojama išsaugota TV programa",
+    "EPG: downloading programme guide...": "EPG: atsisiunčiama TV programa...",
+    "EPG: opening local cache...": "EPG: atidaroma vietinė talpykla...",
+    "EPG: processing programme guide...": "EPG: apdorojama TV programa...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: atnaujinama išsaugota TV programa...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: laukiama kito grotuvo skirtuko...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Klaida: kategorija Nr. %1 neegzistuoja!<br>Pasirinkite kitą kategoriją.",
     "ERROR!": "Klaida!",
@@ -497,7 +512,7 @@ var keyStrings = {
     "Finding command servers...": "Ieškoma komandų serverių...",
     "First Run Setup": "Pirmojo paleidimo nustatymas",
     "Fit to screen": "Pritaikyti ekranui",
-    Folders: "Folders",
+    Folders: "Aplankai",
     "Font type": "Šriftas",
     "For download settings file open":
         "Norėdami atsisiųsti nustatymų failą, atverkite",
@@ -540,8 +555,11 @@ var keyStrings = {
     "Interface transparency": "Sąsajos permatomumas",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Netinkama kanalo nuoroda! Įveskite visą pagrindinio kompiuterio vardą, kaip paskyros srauto URL (pvz., subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Netinkamas debesies nustatymų atsakymas",
     "Invalid protected source configuration":
         "Neteisinga apsaugoto šaltinio konfigūracija",
+    "Invalid setting": "Neteisingas nustatymas",
     "IPTV token": "IPTV prieigos žetonas",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one nustatymai",
@@ -616,10 +634,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Šiame tinkle nerasta komandų serverio.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Šioje paskyroje nėra Plex serverių.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Nė viena laida neatitiko grojaraščio kanalų ir datų. Patikrinkite šaltinį ir įrenginio laikrodį.",
     "No saved settings found": "Išsaugotų nustatymų nerasta",
+    "No supported system language. Choose a language.":
+        "Nepalaikoma sistemos kalba. Pasirinkite kalbą.",
     "Not configured": "Nesukonfigūruota",
     "Not found": "Nerasta",
     "Not reduce video when showing the list (bugfix)":
@@ -635,18 +655,21 @@ var keyStrings = {
     "not set": "nenustatyta",
     Off: "Išjungta",
     Ok: "Gerai",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Tik šis televizorius gali priimti jūsų pranešimą. Nuoroda nustoja galioti po 10 minučių.",
     Open: "Atverti",
     "Open in PiP": "Atidaryti PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Atidarykite Plex prisijungimo puslapį",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Telefone arba kompiuteryje atidarykite plex.tv/link ir įveskite šį kodą.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Arba atidarykite šią visą privačią nuorodą kitame įrenginyje:",
+    "Original file": "Originalus medijos failas",
     "Original text: %1": "Originalus tekstas: %1",
     "OTT / APP host": "OTT / programos serveris",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nustatymai",
+    "OTT-play remote input": "OTT-play nuotolinė įvestis",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Yra OttPlay FOSS %1. Atsisiųsti ir įdiegti dabar?",
     "Overwrite current settings?": "Perrašyti dabartinius nustatymus?",
@@ -676,9 +699,10 @@ var keyStrings = {
     "PiP window position": "PiP lango padėtis",
     "PiP window size": "PiP lango dydis",
     Play: "Leisti",
-    Playback: "Playback",
+    Playback: "Medijos atkūrimas",
     "Player and device info": "Grotuvo ir įrenginio informacija",
     "Player could not start": "Nepavyko paleisti leistuvo",
+    "Player default": "Numatytasis grotuvo pasirinkimas",
     "Player info:": "Grotuvo informacija:",
     Playlist: "Grojaraštis",
     "Playlist file": "Grojaraščio failas",
@@ -687,11 +711,11 @@ var keyStrings = {
     "Playlist Name": "Grojaraščio pavadinimas",
     "Playlist URL": "Grojačio sąrašo URL",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Plex prijungimas nepavyko",
+    "Plex settings": "Plex nustatymai",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "nepavyko prisijungti prie Plex. Patikrinkite ryšį ir bandykite dar kartą arba įveskite serverio adresą ir prieigos raktą.",
+    "Plex token": "Plex prieigos raktas",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA nustatymai",
     "Portal URL": "Portalo URL",
@@ -699,8 +723,10 @@ var keyStrings = {
     Postpaid: "Mokėjimas po naudojimo",
     PROST: "PROST",
     "PROST settings": "PROST nustatymai",
+    "Preferred audio language": "Pageidautina garso kalba",
+    "Preferred subtitle language": "Pageidautina subtitrų kalba",
     Prepaid: "Išankstinis mokėjimas",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...": "Ruošiama saugi nuotolinė įvestis...",
     Prev: "Ankstesnis",
     "Preview in channel list": "Peržiūra kanalų sąraše",
     Previous: "Ankstesnis",
@@ -730,31 +756,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Pultas (be skaitmenų mygtukų)",
     "Remote control": "Nuotolinis valdymas",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Nuotolinis valdymas suteikia diagnostikos teisę. Paruošta operatoriui.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Nuotolinis valdymas suteikia diagnostikos teisę. Laukiama ryšio atkūrimo.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Nuotolinis valdymas apima grotuvo ir jo nustatymų ekrano kopijas. Vaizduose gali būti privačios informacijos. Programa gali fiksuoti ekraną tiesiogiai be papildomo patvirtinimo. Naršyklėje šiame įrenginyje reikia pasirinkti bendrinamą skirtuką arba langą.",
+    "Remote diagnostics": "Nuotolinė diagnostika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Šiam ryšiui renkama nuotolinė diagnostika (iki 10 minučių per seansą).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Šiam puslapiui renkama nuotolinė diagnostika.",
+    "Remote diagnostics is off.": "Nuotolinė diagnostika išjungta.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Nuotolinė diagnostika paruošta įgaliotam operatoriui.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Šiame grotuve nuotolinė diagnostika nepasiekiama.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Nuotolinė diagnostika sustabdyta. Dar kartą įjunkite, kad suteiktumėte prieigą.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Nuotolinio įvesties galiojimo laikas baigėsi. Atidarykite naują seansą ir bandykite dar kartą.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Nuotolinio įvesties seansas nepasiekiamas. Atidarykite naują seansą ir bandykite dar kartą.",
+    "Remote screenshots": "Nuotolinės ekrano kopijos",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Nuotolinės ekrano kopijos leidžiamos 10 minučių. Norėdami užfiksuoti, uždarykite nustatymus.",
+    "Remote screenshots are off.": "Nuotolinės ekrano kopijos išjungtos.",
     "Remote session expired": "Nuotolinio seanso galiojimas baigėsi",
     "Remote text entry": "Nuotolinė teksto įvestis",
     "Remote text entry denied": "Nuotolinė teksto įvestis uždrausta",
@@ -782,7 +808,8 @@ var keyStrings = {
     "Restart stream / Live": "Paleisti srautą iš naujo / tiesiogiai",
     "Resume from archive?": "Tęsti iš archyvo?",
     Retry: "Bandyti dar kartą",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Pabandykite dar kartą atsisiųsti EPG",
+    "Retry same message": "Siųsti tą patį pranešimą dar kartą",
     "Return to previous channel": "Grįžti į ankstesnį kanalą",
     Rewind: "Persukti",
     "Rewind step by buttons %1/%2": "Atsukimo žingsnis mygtukais %1/%2",
@@ -794,32 +821,35 @@ var keyStrings = {
     "Save & load channels": "Išsaugoti ir įkelti kanalus",
     "Save and load": "Išsaugoti ir įkelti",
     "Save and load channels": "Išsaugoti ir įkelti kanalus",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Išsaugokite ir atidarykite biblioteką",
     "Save Settings": "Išsaugoti nustatymus",
     "Save settings": "Išsaugoti nustatymus",
     "Save settings and load channel list":
         "Išsaugoti nustatymus ir įkelti kanalų sąrašą",
     "Save settings to storage": "Išsaugoti nustatymus saugykloje",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Nuskaitykite QR kodą televizoriuje arba įklijuokite visą privataus susiejimo nuorodą žemiau.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Telefonu nuskaitykite šį QR kodą, kad įvestumėte tekstą.",
+    "Screen sharing could not start.": "Nepavyko pradėti bendrinti ekrano.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ekrano bendrinimas buvo atšauktas arba nepasiekiamas.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ekrano kopijos leidimo įgalinti nepavyko.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Ekrano kopijos pasiekiamos, kol veikia nuotolinio valdymo ryšys.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ekrano kopijos nepasiekiamos šioje platformoje.",
     Script: "Scenarijus",
     Search: "Paieška",
+    "Search languages": "Ieškoti kalbų",
     "Search programme": "Ieškoti laidos",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Nepavyko paleisti saugios nuotolinės įvesties. Bandykite dar kartą arba naudokite ekraninę klaviatūrą.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Nepavyko paleisti saugios nuotolinės įvesties. Naudokite ekraninę klaviatūrą.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Šiame įrenginyje saugi nuotolinė įvestis nepasiekiama. Naudokite ekrano klaviatūrą.",
     "Select a stream type:<br>%1": "Pasirinkite srauto tipą:<br>%1",
     "Select category to add channel": "Pasirinkite kategoriją kanalui pridėti",
     "Select color": "Pasirinkti spalvą",
@@ -830,13 +860,14 @@ var keyStrings = {
         "Pasirinkite EPG ir logotipų grojaraščio šablono šaltinį",
     "Select Stalker portal": "Pasirinkti Stalker portalą",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Naršyklėje pasirinkite ekrano kopijos šaltinį",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Naršyklės bendrinimo dialogo lange pasirinkite grotuvo skirtuką arba langą.",
     "Send request": "Siųsti užklausą",
     "Send settings": "Siųsti nustatymus",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Siųskite šį kodą iš tarpinio serverio antraštėje Authorization: Bearer.",
+    "Send to TV": "Siųsti į televizorių",
     Server: "Serveris",
     "Server address": "Serverio adresas",
     "Server address (for example 192.168.1.20:8081)":
@@ -845,10 +876,13 @@ var keyStrings = {
     "Server URL": "Serverio URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Serveris nepasiekiamas. Automatiškai bandoma dar kartą; patikrinkite adresą ir tinklo prieigą.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sesija uždaryta. Kai reikia, pradėkite naują iš savo televizoriaus.",
     Set: "Nustatyti",
     "Set parental code": "Nustatyti tėvų kontrolės kodą",
     "Set timer?": "Nustatyti laikmatį?",
     Settings: "Nustatymai",
+    "Settings changed while editing": "Redaguojant pakeisti nustatymai",
     "Settings changed. Discovery was canceled.":
         "Nustatymai pasikeitė. Paieška atšaukta.",
     "Settings copied": "Nustatymai nukopijuoti",
@@ -858,10 +892,15 @@ var keyStrings = {
     "Settings imported": "Nustatymai importuoti",
     "Settings JSON": "Nustatymai JSON formatu",
     "Settings loaded from storage": "Nustatymai įkelti iš saugyklos",
+    "Settings received. Restarting player...":
+        "Gauti nustatymai. Iš naujo paleidžiamas grotuvas...",
     "Settings STB": "STB nustatymai",
     "Settings saved": "Nustatymai išsaugoti",
     "Settings saved to storage": "Nustatymai išsaugoti saugykloje",
     "Settings sended!": "Nustatymai išsiųsti!",
+    "Settings source changed": "Nustatymų šaltinis pakeistas",
+    "Settings storage rejected write":
+        "Nustatymų saugykla neleido įrašyti duomenų",
     "Several command servers were found. Select one below.":
         "Rasti keli komandų serveriai. Toliau pasirinkite vieną iš jų.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -897,29 +936,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Prisijunkite prie apsaugoto šaltinio iš naujo",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Prisijunkite prie savo Plex paskyros ir pasirinkite serverį. Šiame grotuve slaptažodis neįvestas.",
+    "Sign in with Plex": "Prisijunkite naudodami Plex",
     "Sign in: %1": "Prisijungti: %1",
     "Sign out of all sources": "Atsijungti nuo visų šaltinių",
     "Sign-in opens when you load a protected playlist.":
         "Prisijungimo langas atidaromas įkeliant apsaugotą grojaraštį.",
     "Sleep timer": "Miego laikmatis",
     "Sort channels": "Rikiuoti kanalus",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Prieiga prie medijos šaltinio",
+    "Source sign-in required": "Būtina prisijungti prie šaltinio",
     "Source sign-in was cancelled": "Prisijungimas prie šaltinio atšauktas",
     "Stalker Portal Provider": "Stalker portalo teikėjas",
     "Stalker portal settings": "Stalker portalo nustatymai",
     "Stalker portals": "Stalker portalai",
     "Starting...": "Paleidžiama…",
     Status: "Būsena",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Sustabdyti",
+    "Stop browser sharing": "Sustabdyti naršyklės bendrinimą",
+    "Stop current capture": "Sustabdyti dabartinį duomenų rinkimą",
+    "Stop diagnostics": "Sustabdyti diagnostiką",
     "Stop playback and return to live":
         "Sustabdyti atkūrimą ir grįžti į tiesioginę transliaciją",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Sustabdyti ekrano kopijų darymą",
     "Stream could not be played": "Nepavyko paleisti srauto",
     "Stream type: %1": "Srauto tipas: %1",
     "String for search": "Paieškos užklausa",
@@ -930,23 +969,29 @@ var keyStrings = {
     "Switch sound track": "Keisti garso takelį",
     "Switch subtitle": "Keisti subtitrus",
     "Switch to this list": "Perjungti į šį sąrašą",
-    "Swop URL": "Swop URL",
+    "Swop URL": "Swop adresas",
+    "System language": "Sistemos kalba",
     "saved on this device": "išsaugota šiame įrenginyje",
     select: "pasirinkti",
     small: "mažas",
     system: "sistemos",
     Tabox: "Tabox",
     "Tabox settings": "Tabox nustatymai",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Tekstas per ilgas nuotoliniam įvedimui.",
+    "Text is too long. Please shorten it before sending.":
+        "Tekstas per ilgas. Prieš siųsdami jį sutrumpinkite.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Tekstas išsiųstas. Patikrinkite savo televizorių, kad įsitikintumėte, jog jis pasirodė.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Naršyklės ekrano kopijos šaltinis paruoštas.",
     "The command server discovery URL is invalid.":
         "Komandų serverio paieškos URL netinkamas.",
     "The device ID in the address is invalid.":
         "Įrenginio ID adrese netinkamas.",
     "The discovery response is invalid.": "Paieškos atsakymas netinkamas.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ši naršyklė negali nustatyti pasirinkto ekrano kopijos šaltinio.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ši naršyklė negali saugiai atlikti automatinio susiejimo. Atnaujinkite ją arba įveskite komandų serverio nustatymus rankiniu būdu.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -955,6 +1000,10 @@ var keyStrings = {
         "Šis HTTPS grotuvas negali prisijungti prie HTTP serverio. Naudokite HTTPS serverį arba atverkite grotuvą per HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Šiai Play programėlei būtinas HTTPS. Paprašykite teikėjo HTTPS grojaraščio arba serverio URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ši poravimo nuoroda nebegalioja. Atidarykite naują seansą televizoriuje.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ši saugi sesija nepasiekiama arba pasibaigė. Atidarykite naują seansą televizoriuje ir naudokite visą jos nuorodą.",
     Timer: "Laikmatis",
     "Timer: switch to channel?": "Laikmatis: perjungti į šį kanalą?",
     "Timeshift: one minute back": "Laiko poslinkis: minutę atgal",
@@ -972,13 +1021,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv nustatymai",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Pasitikėkite šiuo serveriu nuotoliniam palaikymui",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Patikimos prieigos nepavyko pašalinti iš įrenginio saugyklos.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Patikima diagnostika nepasiekiama, nes nepavyko atnaujinti įrenginio saugyklos.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Patikima diagnostika laukia, kol šis grotuvas vėl prisijungs.",
     "Try demo": "Išbandyti demonstraciją",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG nustatymai",
@@ -998,18 +1047,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Naudokite HTTP arba HTTPS serverio adresą.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Nuotolinei diagnostikai naudokite HTTPS komandų serverį.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Naudokite HTTP arba HTTPS be naudotojo vardo ar slaptažodžio adrese.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "KAIRĖN/DEŠINĖN pasirinkite valdiklį, OK jį aktyvinkite, AUKŠTYN/ŽEMYN slinkite.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Naudokite visą nuorodą, įskaitant dalį po #. Nesidalinkite ja su niekuo kitu.",
     "Use Up / Down to scroll. Back to close.":
         "Slinkite mygtukais Aukštyn / Žemyn. Atgal uždaro langą.",
     Username: "Naudotojo vardas",
     "Username or password is missing.":
         "Trūksta naudotojo vardo arba slaptažodžio.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Galioja 10 minučių. Mygtukas „Atgal“ uždaro šį seansą.",
     Version: "Versija",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM nustatymai",
@@ -1022,7 +1073,7 @@ var keyStrings = {
     "VPortal request failed":
         "Nepavyko įkelti VPortal. Patikrinkite nuorodą, prieigos raktą ir portalo prieinamumą.",
     volume: "garsumas",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Laukiama prisijungimo…",
     "Wrong parental code !!!": "Neteisingas tėvų kodas!!!",
     "Xtream Codes Provider": "Xtream Codes teikėjas",
     "Xtream Codes settings": "Xtream Codes nustatymai",

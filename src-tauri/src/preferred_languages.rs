@@ -79,15 +79,20 @@ fn posix_languages(values: [String; 4]) -> Vec<String> {
         return vec!["en".into()];
     }
     let mut languages = Vec::new();
-    for (index, value) in values.iter().enumerate() {
-        for entry in value.splitn(if index == 0 { usize::MAX } else { 1 }, ':') {
-            if let Some(language) = posix_language(entry) {
-                if !languages
-                    .iter()
-                    .any(|existing: &String| existing.eq_ignore_ascii_case(&language))
-                {
-                    languages.push(language);
-                }
+    // LANGUAGE is a preference list; LC_ALL/LC_MESSAGES/LANG are overrides,
+    // not additional fallbacks after an unsupported effective message locale.
+    let preferences = if values[0].trim().is_empty() {
+        message_locale.unwrap_or("")
+    } else {
+        values[0].as_str()
+    };
+    for entry in preferences.split(':') {
+        if let Some(language) = posix_language(entry) {
+            if !languages
+                .iter()
+                .any(|existing: &String| existing.eq_ignore_ascii_case(&language))
+            {
+                languages.push(language);
             }
         }
     }
@@ -192,7 +197,7 @@ mod tests {
                 "ru_RU.UTF-8".into(),
                 "en_US.UTF-8".into(),
             ]),
-            ["sr-Latn-RS", "ru-RU", "pa-Arab-PK", "zh-TW", "en-US"]
+            ["sr-Latn-RS", "ru-RU", "pa-Arab-PK"]
         );
         assert_eq!(
             posix_language("sr_Cyrl_RS@cyrillic"),
@@ -227,15 +232,27 @@ mod tests {
             ["fr:de", "sr_RS@latin", "C", "POSIX.UTF-8"],
             ["fr:de", "", "sr_RS@latin", "C.UTF-8"],
         ] {
-            assert_eq!(
-                posix_languages(values.map(String::from)),
-                ["fr", "de", "sr-Latn-RS"]
-            );
+            assert_eq!(posix_languages(values.map(String::from)), ["fr", "de"]);
         }
         assert_eq!(
             posix_languages(["fr:de", "", "", ""].map(String::from)),
             ["fr", "de"]
         );
         assert!(posix_languages(["", "", "", ""].map(String::from)).is_empty());
+    }
+    #[test]
+    fn lower_priority_locales_are_not_language_fallbacks() {
+        assert_eq!(
+            posix_languages(["", "sr_RS@latin", "ru_RU.UTF-8", "en_US.UTF-8"].map(String::from)),
+            ["sr-Latn-RS"]
+        );
+        assert_eq!(
+            posix_languages(["", "", "zh_TW.UTF-8", "ru_RU.UTF-8"].map(String::from)),
+            ["zh-TW"]
+        );
+        assert_eq!(
+            posix_languages(["", "", "", "ru_RU.UTF-8"].map(String::from)),
+            ["ru-RU"]
+        );
     }
 }

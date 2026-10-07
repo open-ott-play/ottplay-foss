@@ -6,6 +6,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
 const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const selectorDocument = new JSDOM("").window.document;
 
@@ -931,7 +932,11 @@ if (require.main === module) {
             if (pending[id - 1]) pending[id - 1].cancelled = true;
         };
         vm.runInContext(
-            sourceFunctions("src/ui/index.ts", ["confirmBox"]),
+            localizationRuntime() +
+                sourceFunctions("src/ui/index.ts", [
+                    "confirmBox",
+                    "localizedTextHtml",
+                ]),
             vm.createContext(c)
         );
         c.stored.medHistory = JSON.stringify([

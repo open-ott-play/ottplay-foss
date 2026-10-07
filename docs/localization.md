@@ -31,8 +31,14 @@ values such as provider names and EPG metadata. New unresolved expressions fail
 the audit instead of silently becoming an untracked fallback. English remains
 the readable fallback for runtime data that is not a fixed UI key.
 
-Run `npm run test:localization` for key/placeholder/HTML/whitespace parity and
-keyboard alphabet checks. `npm run check:bundle` repeats keyboard behavior
+Run `npm run test:localization` for key/placeholder/HTML/whitespace parity,
+keyboard alphabets, Unicode behavior, media preferences and the phone page.
+English values in another language now fail the semantic audit unless the exact
+locale/key/value is reviewed in `scripts/localization-identical.json`. Shared
+exceptions are limited to brands, protocol identifiers and symbols; legitimate
+short cognates use locale-specific exceptions. A new paragraph cannot inherit
+a blanket English fallback. Cloud failure wrappers and the phone page's finite
+vocabulary are scanned at their call sites. `npm run check:bundle` repeats keyboard behavior
 against the actual ES5 bundle and verifies that server, Tauri and Capacitor
 packages retain every dictionary and the Unicode license. Browser tests in
 `npm run test:native:ui` cover remote/pointer paging and layout across Classic,
@@ -65,16 +71,46 @@ unsupported unless a later preference has a matching pack. Legacy aliases
 `iw`, `in`, `tl`, `nb`, `mo` and Kurmanji `kmr` map to their shipped catalogs.
 The resolver needs neither `Intl` nor a network service.
 
-Automatic selection is saved through the normal storage adapter only after a
-successful preload and device initialization. A newly saved manual choice takes
-precedence, and a successfully preloaded dictionary is reused without another
-download. Without a matching preference or after a preload failure/timeout,
-startup continues to the manual language picker without saving a guessed
-language. Existing saved preferences are never replaced by system settings.
-The filename allowlist is checked against the canonical asset map; English
-startup labels remain the fallback when no dictionary can load. The language picker
-serializes downloads and preserves the current dictionary on cancellation or
-failure. Tauri and Capacitor dialogs receive the player's translated labels.
+The language picker includes **System language** and a search row. Search matches
+both English and native language names and keeps selection tied to language codes
+when the results change. A first successful automatic choice enables System
+language; later launches re-evaluate the native/browser preferences. A manual
+language remains fixed until the user chooses System language. Pre-existing saved
+languages without a mode remain manual, so upgrades do not change them.
+
+`ottplaylangmode=system` records that choice; `ottplaylang` keeps the last
+successfully loaded effective language. The two are persisted only after a
+successful load. Device/native bridge initialization also runs when startup has
+to show the manual picker. Without a match or after load failure/timeout, startup
+continues to that picker. All dictionary attempts have bounded timeouts; cancelled
+or late callbacks cannot replace the current dictionary or launch twice. If
+localStorage rejects a write, the fresh cookie fallback takes precedence on the
+next launch instead of resurrecting a stale language.
+
+The filename allowlist is checked against the canonical asset map. The picker
+preserves the current dictionary on cancellation or failure. Tauri and Capacitor
+dialogs receive the player's labels. Successful activation sets the effective
+language for date/number formatting, TMDb requests and classic Stalker portal
+cookies; all 88 codes share the same metadata map. External services may return
+fallback content when they do not provide a translation.
+
+Audio and subtitle preferences are separate from interface language in managed
+player settings. **Player default** preserves the stream/engine choice; subtitles
+also offer **Off**. An existing per-channel choice wins over a language default.
+Manual selection stays in force for the current playback session, including VOD,
+and late track events cannot override it. Matching uses manifest language tags
+and common ISO 639 aliases; absent matches leave the engine choice intact.
+Subtitle matching respects known writing-system differences. These preferences
+are available to the shared HTML5/HLS/Video.js track interface; retained device
+engines without that interface keep their own controls.
+
+The hosted phone input page has a finite dictionary subset for every language.
+It first uses the browser preference, then the successful TV pairing supplies the
+player's language inside the existing encrypted offer. Only same-origin catalog
+assets can be loaded. Hashed filenames keep the page and its dictionary bytes
+consistent; late requests cannot revert a newer language. Instructions and
+statuses are translated, while the private link stays LTR and entered text uses
+its own direction.
 
 Resolve interface labels when displaying them, including retained media frames,
 provider menus and native dialogs. Placeholder arguments are literal content:
@@ -212,7 +248,7 @@ explicitly documented additions: dependent vowels, viramas, diacritics, local
 digits and punctuation. Malayalam also includes its auxiliary vowel signs and
 chillu letters; Urdu includes noon ghunna and additional hamza forms. Direct
 encoded variants such as Punjabi ਸ਼ and Bengali ড় remain reachable alongside
-their combining sequences, because channel search compares literal strings. Shaping
+their combining sequences, and channel search treats canonically equivalent spellings alike. Shaping
 controls ZWNJ/ZWJ have visible key labels. Combining marks show a dotted circle
 only on the key; inserted text retains its original logical Unicode sequence.
 The fixture preserves source expressions, additions and writing-system choices.
@@ -254,18 +290,18 @@ Thirty further languages append to the existing 58 selector positions: Georgian,
 Albanian, Bosnian, Macedonian, Icelandic, Catalan, Basque, Galician, Irish,
 Maltese, Pashto, Kurdish, Tajik, Kyrgyz, Turkmen, Mongolian, Lao, Odia,
 Assamese, Sindhi, Afrikaans, Amharic, Hausa, Yoruba, Igbo, Somali, Zulu,
-Xhosa, Malagasy and Kinyarwanda. Every pack covers the same 819 canonical keys
+Xhosa, Malagasy and Kinyarwanda. Every pack covers the same canonical keys
 and is shipped in Server, Tauri and Capacitor. These packs were drafted and
 edited with AI from the public English catalog; cached machine translations
 and existing closely related language packs were used where available. The
 same structural checks and native-speaker review limitations apply.
 
-The 13 additional remote-screenshot keys have English and Russian text. The
-remaining 86 packs currently use explicitly marked English fallback for those
-new entries; structural coverage is not a claim that these new captions have
-been translated into every language. The source scanner extracts screenshot
-status declarations/assignments and `failGrant` messages, and separately audits
-the settings page's `view.message` translation boundary.
+The screenshot, diagnostics, cloud-settings and remote-input controls are covered
+by all 88 dictionaries. Translation drafts for public UI text were checked for
+formatting, literal commands, context and remaining English prose, with separate
+agent review. Automated checks and AI review do not certify native-speaker
+fluency. The scanner extracts screenshot status assignments and `failGrant`
+messages, and audits the settings page's `view.message` boundary separately.
 
 Kurdish uses Kurmanji Latin, Sindhi uses Arabic, Tajik/Kyrgyz/Mongolian use
 Cyrillic, and Turkmen uses Latin. These choices do not represent other scripts
@@ -273,7 +309,7 @@ or language varieties. CLDR main exemplars plus documented auxiliary characters
 cover their modern alphabets. Somali includes its auxiliary vowels; Kyrgyz adds
 the auxiliary loan letters. Hausa, Yoruba and Igbo provide tone marks; Malagasy
 includes auxiliary accented letters. Both composed and decomposed spellings are
-enterable where needed for literal channel search. Odia and Assamese include
+enterable where needed for channel search. Odia and Assamese include
 direct encoded nukta letters as well as combining sequences. Sindhi offers both
 its CLDR default Arabic-Indic digits and the extended Persian digit forms.
 
@@ -286,9 +322,60 @@ Georgian uppercase input uses an explicit modern Mtavruli mapping for TV engines
 whose Unicode casing tables predate Unicode 11; visible glyphs still depend on
 the device's fonts.
 
+## Search, cursor movement and bidirectional text
+
+Channel, programme and history search use canonical Unicode normalization with
+Turkish/Azerbaijani case rules tied to the selected interface language. The common
+remote/API caseless helper preserves its locale-independent case-fold contract.
+All 1,585 default Unicode 17 C/F mappings are generated from the repository's
+pinned reference, so search casing no longer depends on the device's tables.
+Turkish/Azerbaijani tailoring is separate from default folding.
+Normalization operates on comparison keys only: names, URLs and saved input retain
+their original bytes. Accents remain significant; this is not transliteration or
+accent stripping. Compact pinned Unicode 17 tables supply canonical composition,
+decomposition and combining classes on every engine, including devices whose
+native normalization API uses older Unicode data. Hangul normalization is
+algorithmic. Regenerate them offline with
+`scripts/generate-localization-unicode.py`; source hashes and the Unicode 17
+combining-class additions are checked against the pinned inputs.
+
+The keyboard moves and deletes at grapheme boundaries. All engines use pinned
+Unicode 17 grapheme-break, extended-pictographic and Indic-conjunct properties
+with matching conformance vectors. It handles surrogate pairs, combining marks,
+Indic sequences, emoji modifiers, ZWJ sequences and regional-indicator pairs
+without consuming a following space or unrelated letter. It does not split an
+emoji into invalid UTF-16 halves. Device IMEs still own native composition.
+
+Arabic/Hebrew-script text containers use RTL direction while remote navigation and
+player geometry retain their established order. Explicit URLs and numeric IDs are
+isolated LTR; direction markers are never inserted into saved input. Dates and
+numbers use the selected locale when `Intl` is available and retain usable legacy
+formatting otherwise. Bookmark age uses a neutral “Bookmark age (days): %1” label
+so a single English plural rule is not imposed on other languages.
+
+## Bundle cost and verification
+
+On Node 22.23.3 with version 1.1.53, the complete localization change increases
+the web entry from 746,380 bytes (228,703 gzip) at `8c240190` to 781,183 bytes
+(243,307 gzip). An independent intermediate build attributes 23,186 raw bytes
+and 10,982 gzip bytes to pinned Unicode support; the remaining interface,
+startup and media-language behavior adds 11,617 raw bytes and 3,622 gzip bytes.
+The dictionaries remain external assets. All Unicode tables count inside the
+entry; all seven optional provider families count toward the complete payload.
+
+The final native entry is 781,141 bytes (243,369 gzip). Including every provider,
+the web/native totals are 885,959/885,917 raw bytes and 282,573/282,635 gzip bytes.
+The size limits retain the previous absolute release headroom, rounded upward
+to 100 bytes. Reproduce the final artifacts with `npm ci`, `npm run build` and
+`npm run check:size` on Node 22; `npm run check:bundle` also runs the pinned
+normalization/grapheme tests against the optimized entry. Long nonstarter runs
+use stable combining-class buckets to avoid quadratic reordering; conformance
+tests cover leading marks, equal-class stability and starter boundaries.
+
 ## Unicode attribution
 
-Alphabet coverage data is derived from Unicode CLDR 48.
+Alphabet coverage data is derived from Unicode CLDR 48. Canonical normalization
+and character-class data are derived from Unicode 17.0.0.
 Copyright © 1991–2025 Unicode, Inc. The upstream license also carries
 Copyright © 2004–2025 Unicode, Inc. The complete, unchanged
 [Unicode License V3](../js/licenses/Unicode-3.0.txt) accompanies the fixture and

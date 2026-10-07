@@ -60,19 +60,21 @@ var keyStrings = {
     "All categories": "Όλες οι κατηγορίες",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Ρυθμίσεις All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes":
+        "Να επιτρέπονται διαγνωστικοί έλεγχοι για 10 λεπτά",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes":
+        "Επιτρέψτε στιγμιότυπα οθόνης για 10 λεπτά",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Επιτρέψτε σε αυτόν τον διακομιστή να συλλέγει διαγνωστικούς μετρητές και να επανεκκινήσει αυτήν τη ροή ή τη συσκευή αναπαραγωγής. Η προσωρινή πρόσβαση διαρκεί 10 λεπτά. Η αξιόπιστη υποστήριξη παραμένει διαθέσιμη μετά την επανασύνδεση ή την επανεκκίνηση. κάθε λήψη εξακολουθεί να λήγει μετά από 10 λεπτά. Η συλλογή διακόπτεται όταν είναι κρυφή ή εκτός σύνδεσης.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Επιτρέψτε σε αυτόν τον διακομιστή να συλλέγει μετρητές αναπαραγωγής, δικτύου και εισόδου για αυτήν την περίοδο λειτουργίας πρώτου πλάνου. Απαιτεί HTTPS και άδεια διακομιστή. Σταματά μετά από 10 λεπτά, όταν είναι κρυφό ή όταν αποσυνδεθεί.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Επιτρέψτε σε αυτόν τον διακομιστή να ζητήσει εικόνες για 10 λεπτά. Οι εικόνες μπορεί να περιέχουν προσωπικές πληροφορίες. Σε ένα πρόγραμμα περιήγησης, επιλέξτε την καρτέλα ή το παράθυρο του προγράμματος αναπαραγωγής. Η άδεια λήγει με επαναφόρτωση ή αποσύνδεση.",
     "Allowlist this Device ID": "Επιτρέψτε αυτό το αναγνωριστικό συσκευής",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Μια συσκευή αναπαραγωγής HTTPS δεν μπορεί να πραγματοποιήσει λήψη μιας πηγής HTTP EPG. Χρησιμοποιήστε μια πηγή HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Μια IP χωρίς θύρα χρησιμοποιεί τη θύρα HTTP 8081. Διαγράψτε τη διεύθυνση ή επιλέξτε Αποσύνδεση για διακοπή.",
     "Another source sign-in is already open":
@@ -91,9 +93,9 @@ var keyStrings = {
     "Archive. Channel: ": "Αρχείο. Κανάλι: ",
     Aspect: "Αναλογία εικόνας",
     Audio: "Ήχος",
-    Automatic: "Automatic",
+    Automatic: "Αυτόματο",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Η αυτόματη λειτουργία αναπαράγει απευθείας τα υποστηριζόμενα αρχεία και χρησιμοποιεί συμβατό HLS όταν χρειάζεται.",
     alhabet: "αάβγδεέζηήθιίϊΐκλμνξοόπρσςτυύϋΰφχψωώ",
     always: "πάντα",
     "and enter code": "και εισαγάγετε τον κωδικό",
@@ -101,6 +103,8 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Πίσω / μπροστά κατά 1 λεπτό",
     "Background color": "Χρώμα φόντου",
     "Background color of selected item": "Χρώμα φόντου επιλεγμένου στοιχείου",
+    "Backup state changed":
+        "Η κατάσταση δημιουργίας αντιγράφων ασφαλείας άλλαξε",
     "Balance, $": "Υπόλοιπο, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +116,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Μαύρη οθόνη κατά την αλλαγή καναλιών",
     Blue: "Μπλε",
+    "Bookmark age (days): %1": "Ηλικία σελιδοδείκτη (ημέρες): %1",
     "Bookmark age: %1 days": "Ηλικία σελιδοδείκτη: %1 ημέρες",
     "Browse folders": "Περιήγηση σε φακέλους",
     "Buffer Size, s": "Μέγεθος buffer, s",
@@ -155,21 +160,24 @@ var keyStrings = {
     "Channel parental control": "Γονικός έλεγχος καναλιού",
     Channels: "Κανάλια",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Ελέγξτε τη σύνδεση και ανοίξτε τις βιβλιοθήκες Plex.",
     "Check this server's SWOP configuration.":
         "Ελέγξτε τη ρύθμιση SWOP αυτού του διακομιστή.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Έλεγχος της σύνδεσης διακομιστή Plex…",
     "Choose from": "Επιλογή από",
     "Choose language": "Επιλογή γλώσσας",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Επιλέξτε διακομιστή Plex",
     "Choose provider": "Επιλογή παρόχου",
     Classic: "Κλασικό",
     "Clear all settings?": "Εκκαθάριση όλων των ρυθμίσεων;",
     "Clear settings": "Εκκαθάριση ρυθμίσεων",
     Close: "Κλείσιμο",
     "Close PiP": "Κλείσιμο PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Η αποθήκευση/φόρτωση στο cloud απαιτεί υλικολογισμικό STB (δεν έχει οριστεί το host_ott)",
+    "Cloud transfer failed": "Η μεταφορά στο cloud απέτυχε",
+    Code: "Κωδικός πρόσβασης",
     Color: "Χρώμα",
     "Color spectrum": "Φάσμα χρωμάτων",
     "Command server": "Διακομιστής εντολών",
@@ -186,7 +194,8 @@ var keyStrings = {
     "Command server found.": "Βρέθηκε διακομιστής εντολών.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Δεν ήταν δυνατή η φόρτωση των στοιχείων συμβατότητας. Ανοίξτε ξανά το πρόγραμμα αναπαραγωγής.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Συμβατό HLS",
+    "Complete pairing link": "Ο πλήρης σύνδεσμος σύζευξης",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ρυθμίστε το All4you.tv από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -220,7 +229,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Ρυθμίστε το OTT Prime ONLINE από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Διαμόρφωση Plex στις Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Ρυθμίστε το POLMEDIA από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure PROST in Settings -> Provider Settings":
@@ -259,23 +268,26 @@ var keyStrings = {
         "Ρυθμίστε το Шаравоз από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     Connect: "Σύνδεση",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Συνδέστε έναν διακομιστή εντολών HTTPS πριν επιτρέψετε στιγμιότυπα οθόνης.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Συνδέστε έναν διακομιστή εντολών HTTPS για να χρησιμοποιήσετε στιγμιότυπα οθόνης.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Συνδέστε τον απομακρυσμένο έλεγχο για να ενεργοποιήσετε τα διαγνωστικά.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Συνδέστε πρώτα αυτήν τη συσκευή αναπαραγωγής σε διακομιστή εντολών.",
+    "Connect to TV": "Σύνδεση στην τηλεόραση",
     Connected: "Συνδέθηκε",
     "Connected. Waiting for the channel list...":
         "Συνδέθηκε. Αναμονή για τη λίστα καναλιών…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Η σύνδεση του τηλεχειριστηρίου εξουσιοδοτεί αυτόν τον διακομιστή να κάνει διάγνωση και να επισκευάσει τη συσκευή αναπαραγωγής. Η πρόσβαση παραμένει διαθέσιμη μετά την επανεκκίνηση και λήγει όταν αποσυνδεθείτε. Κάθε διαγνωστική λήψη περιορίζεται σε 10 λεπτά.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Σύνδεση απομακρυσμένου διαγνωστικού ελέγχου για την ενεργοποιημένη σύνδεση τηλεχειριστηρίου.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Σύνδεση απομακρυσμένων διαγνωστικών για αυτήν τη σελίδα.",
+    "Connecting securely to your TV...":
+        "Ασφαλής σύνδεση στην τηλεόρασή σας...",
+    "Connecting to Plex…": "Σύνδεση στο Plex…",
     "Connecting to Stalker portal...": "Σύνδεση στην πύλη Stalker…",
     "Connecting...": "Σύνδεση…",
     "Continue watching?": "Συνέχεια προβολής;",
@@ -286,12 +298,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Αντιγράψτε το επιλεγμένο JSON με την εντολή αντιγραφής της συσκευής σας",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Δεν ήταν δυνατή η σύνδεση στο Plex. Ελέγξτε τη διεύθυνση διακομιστή, το διακριτικό και την πρόσβαση στο δίκτυο.",
     "Could not connect to the server.": "Αδυναμία σύνδεσης στον διακομιστή.",
     "Could not create a pairing request. Find the server again to retry.":
         "Δεν ήταν δυνατή η δημιουργία αιτήματος σύζευξης. Βρείτε ξανά τον διακομιστή για να επαναλάβετε την προσπάθεια.",
     "Could not load. Select to retry.":
         "Αποτυχία φόρτωσης. Επιλέξτε για νέα προσπάθεια.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Δεν ήταν δυνατή η προετοιμασία αυτού του κειμένου. Συντομεύστε το και δοκιμάστε ξανά.",
+    "Could not protect the private link. Use a different browser.":
+        "Δεν ήταν δυνατή η προστασία του ιδιωτικού συνδέσμου. Χρησιμοποιήστε διαφορετικό πρόγραμμα περιήγησης.",
     "Could not save provider settings.":
         "Δεν ήταν δυνατή η αποθήκευση των ρυθμίσεων παρόχου.",
     "Could not save the approved command server settings.":
@@ -310,6 +326,8 @@ var keyStrings = {
     "Delete category": "Διαγραφή κατηγορίας",
     "Delete channel": "Διαγραφή καναλιού",
     "Delete list": "Διαγραφή λίστας",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Δεν ήταν δυνατή η επιβεβαίωση της παράδοσης. Ελέγξτε την τηλεόρασή σας ή δοκιμάστε ξανά το ίδιο μήνυμα πριν λήξει αυτή η περίοδος λειτουργίας.",
     "Demo — moving test pattern": "Επίδειξη — κινούμενη δοκιμαστική εικόνα",
     Description: "Περιγραφή",
     "Description of remote control buttons": "Οδηγός πλήκτρων τηλεχειριστηρίου",
@@ -323,7 +341,8 @@ var keyStrings = {
     "Diamond TV settings": "Ρυθμίσεις Diamond TV",
     Director: "Σκηνοθέτης",
     "Disable HTTP remote": "Απενεργοποίηση τηλεχειρισμού HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support":
+        "Απενεργοποιήστε την αξιόπιστη απομακρυσμένη υποστήριξη",
     "Disabled by default. Enabling creates a new device access code.":
         "Απενεργοποιημένος από προεπιλογή. Η ενεργοποίηση δημιουργεί νέο κωδικό πρόσβασης συσκευής.",
     Disconnect: "Αποσύνδεση",
@@ -360,7 +379,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Εισαγάγετε όνομα χρήστη και κωδικό πρόσβασης για πρόσβαση σε αυτή την υπηρεσία.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Εισαγάγετε μια έγκυρη διεύθυνση διακομιστή Plex και διακριτικό πρόσβασης.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Εισαγάγετε έγκυρη διεύθυνση διακομιστή, για παράδειγμα 192.168.1.20:8081.",
     "Enter access key for": "Εισαγάγετε κλειδί πρόσβασης για",
@@ -378,8 +397,8 @@ var keyStrings = {
         "Εισαγάγετε τη διεύθυνση MAC (π.χ. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Εισαγάγετε URL βιβλιοθήκης πολυμέσων",
     "Enter new category name": "Εισαγάγετε νέο όνομα κατηγορίας",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Εισαγάγετε τη διεύθυνση διακομιστή Plex",
+    "Enter Plex token": "Εισαγάγετε το διακριτικό Plex",
     "Enter Provider Code": "Εισαγάγετε τον κωδικό παρόχου",
     "Enter Provider Code on PC or Phone":
         "Εισαγάγετε τον κωδικό παρόχου από υπολογιστή ή τηλέφωνο",
@@ -395,6 +414,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Εισαγάγετε το URL της πύλης Stalker (π.χ. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Εισαγάγετε τον αριθμό διακομιστή (%1).",
+    "Enter text": "Εισαγάγετε κείμενο",
     "Enter the access code separately, not in the server address.":
         "Εισαγάγετε τον κωδικό πρόσβασης ξεχωριστά, όχι στη διεύθυνση του διακομιστή.",
     "Enter the command server IP or address.":
@@ -419,56 +439,59 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Εισαγάγετε το URL του διακομιστή Xtream (π.χ. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Εισαγάγετε το διακριτικό πρόσβασης Plex. Είναι αποθηκευμένο στο προφίλ αυτής της συσκευής.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Εισαγάγετε τη διεύθυνση διακομιστή Plex, για παράδειγμα http://192.168.1.25:32400",
     EPG: "Οδηγός TV",
     "EPG and archive. Channel: ": "EPG και αρχείο. Κανάλι: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.":
+        "Το αρχείο EPG ή το XML δεν είναι έγκυρο.",
+    "EPG cache and wait time: %1":
+        "EPG προσωρινή μνήμη και χρόνος αναμονής: %1",
+    "EPG cache updated: %1": "Η προσωρινή μνήμη EPG ενημερώθηκε: %1",
+    "EPG channels: %1": "Κανάλια EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Δεν ήταν δυνατή η εκκίνηση του EPG. Επανεκκινήστε το πρόγραμμα αναπαραγωγής για να φορτωθούν ξανά τα αρχεία του. Η αναπαραγωγή θα σταματήσει.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG διαγνωστικά",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "Δεν ήταν δυνατή η φόρτωση των διαγνωστικών EPG. Ανοίξτε το ξανά για να προσπαθήσετε ξανά.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Η λήψη του EPG απέτυχε. Ελέγξτε τη σύνδεση, τα δικαιώματα HTTPS και πηγής CORS.",
+    "EPG download time: %1": "EPG χρόνος λήψης: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Το χρονικό όριο λήψης του EPG έληξε. Δοκιμάστε ξανά τη λήψη.",
+    "EPG elapsed: %1": "Χρόνος που πέρασε για το EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "Σφάλμα EPG. Ανοίξτε Πληροφορίες → EPG διαγνωστικά.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "Το EPG υπερβαίνει το όριο επεξεργασίας της συσκευής. Χρησιμοποιήστε μικρότερη πηγή ή συντομότερη περίοδο αρχείου.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "Το EPG δεν έχει ξεκινήσει. Φορτώστε μια λίστα αναπαραγωγής M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "Η τοπική αποθήκευση EPG δεν είναι διαθέσιμη ή πλήρης.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG χρόνος επεξεργασίας και αποθήκευσης: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "Η επεξεργασία του EPG σταμάτησε. Δοκιμάστε ξανά και ελέγξτε την υποστήριξη του προγράμματος περιήγησης.",
+    "EPG programmes: %1": "Προγράμματα EPG: %1",
+    "EPG progress: %1": "EPG πρόοδος: %1",
+    "EPG ready": "EPG έτοιμο",
+    "EPG source returned HTTP %1": "Η πηγή EPG επέστρεψε HTTP %1",
+    "EPG source: %1": "EPG πηγή: %1",
+    "EPG stopped during: %1": "Το EPG σταμάτησε κατά τη διάρκεια: %1",
+    "EPG unavailable on this browser":
+        "Το EPG δεν είναι διαθέσιμο σε αυτό το πρόγραμμα περιήγησης",
+    "EPG unavailable: %1": "EPG μη διαθέσιμο: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "Η ενημέρωση EPG απέτυχε. χρησιμοποιώντας τον αποθηκευμένο οδηγό προγράμματος",
+    "EPG: downloading programme guide...": "EPG: λήψη οδηγού προγράμματος...",
+    "EPG: opening local cache...": "EPG: άνοιγμα τοπικής προσωρινής μνήμης...",
+    "EPG: processing programme guide...":
+        "EPG: επεξεργασία οδηγού προγράμματος...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: ενημέρωση αποθηκευμένου οδηγού προγράμματος...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: αναμονή για άλλη καρτέλα αναπαραγωγής...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Σφάλμα: Η κατηγορία #%1 δεν υπάρχει!<br>Επιλέξτε άλλη κατηγορία.",
     "ERROR!": "Σφάλμα!",
@@ -504,7 +527,7 @@ var keyStrings = {
     "Finding command servers...": "Αναζήτηση διακομιστών εντολών...",
     "First Run Setup": "Ρύθμιση πρώτης εκκίνησης",
     "Fit to screen": "Προσαρμογή στην οθόνη",
-    Folders: "Folders",
+    Folders: "Φάκελοι",
     "Font type": "Γραμματοσειρά",
     "For download settings file open":
         "Για λήψη του αρχείου ρυθμίσεων, ανοίξτε",
@@ -547,8 +570,10 @@ var keyStrings = {
     "Interface transparency": "Διαφάνεια περιβάλλοντος",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Μη έγκυρος σύνδεσμος καναλιού! Εισαγάγετε το πλήρες όνομα κεντρικού υπολογιστή όπως στο URL ροής του λογαριασμού (π.χ. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Μη έγκυρη απόκριση ρυθμίσεων cloud",
     "Invalid protected source configuration":
         "Μη έγκυρη διαμόρφωση προστατευμένης πηγής",
+    "Invalid setting": "Μη έγκυρη ρύθμιση",
     "IPTV token": "Διακριτικό IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Ρυθμίσεις IpStream.one",
@@ -625,10 +650,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Δεν βρέθηκε διακομιστής εντολών σε αυτό το δίκτυο.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Δεν υπάρχουν διακομιστές Plex για αυτόν τον λογαριασμό.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Κανένα πρόγραμμα δεν ταιριάζει με τα κανάλια και τις ημερομηνίες της λίστας αναπαραγωγής. Ελέγξτε την πηγή και το ρολόι της συσκευής.",
     "No saved settings found": "Δεν βρέθηκαν αποθηκευμένες ρυθμίσεις",
+    "No supported system language. Choose a language.":
+        "Δεν υποστηρίζεται γλώσσα συστήματος. Επιλέξτε μια γλώσσα.",
     "Not configured": "Δεν έχει ρυθμιστεί",
     "Not found": "Δεν βρέθηκε",
     "Not reduce video when showing the list (bugfix)":
@@ -644,18 +671,21 @@ var keyStrings = {
     "not set": "δεν έχει οριστεί",
     Off: "Ανενεργό",
     Ok: "Εντάξει",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Μόνο αυτή η τηλεόραση μπορεί να δεχτεί το μήνυμά σας. Ο σύνδεσμος λήγει μετά από 10 λεπτά.",
     Open: "Άνοιγμα",
     "Open in PiP": "Άνοιγμα σε PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Ανοίξτε τη σελίδα σύνδεσης Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Ανοίξτε το plex.tv/link στο τηλέφωνο ή τον υπολογιστή σας και εισαγάγετε αυτόν τον κωδικό.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Ή ανοίξτε αυτόν τον πλήρη ιδιωτικό σύνδεσμο σε άλλη συσκευή:",
+    "Original file": "Πρωτότυπο αρχείο πολυμέσων",
     "Original text: %1": "Αρχικό κείμενο: %1",
     "OTT / APP host": "Διακομιστής OTT / εφαρμογής",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Ρυθμίσεις OTT Prime ONLINE",
+    "OTT-play remote input": "Απομακρυσμένη είσοδος OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Το OttPlay FOSS %1 είναι διαθέσιμο. Λήψη και εγκατάσταση τώρα;",
     "Overwrite current settings?": "Αντικατάσταση των τρεχουσών ρυθμίσεων;",
@@ -685,11 +715,12 @@ var keyStrings = {
     "PiP window position": "Θέση παραθύρου PiP",
     "PiP window size": "Μέγεθος παραθύρου PiP",
     Play: "Αναπαραγωγή",
-    Playback: "Playback",
+    Playback: "Αναπαραγωγή πολυμέσων",
     "Player and device info":
         "Πληροφορίες προγράμματος αναπαραγωγής και συσκευής",
     "Player could not start":
         "Δεν ήταν δυνατή η εκκίνηση του προγράμματος αναπαραγωγής",
+    "Player default": "Προεπιλεγμένη επιλογή του προγράμματος αναπαραγωγής",
     "Player info:": "Πληροφορίες προγράμματος αναπαραγωγής:",
     Playlist: "Λίστα αναπαραγωγής",
     "Playlist file": "Αρχείο λίστας αναπαραγωγής",
@@ -698,11 +729,11 @@ var keyStrings = {
     "Playlist Name": "Όνομα λίστας αναπαραγωγής",
     "Playlist URL": "URL λίστας αναπαραγωγής",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Η σύνδεση Plex απέτυχε",
+    "Plex settings": "Ρυθμίσεις Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Η σύνδεση Plex απέτυχε. Ελέγξτε τη σύνδεση και δοκιμάστε ξανά ή εισαγάγετε τη διεύθυνση και το διακριτικό διακομιστή.",
+    "Plex token": "Plex διακριτικό",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Ρυθμίσεις POLMEDIA",
     "Portal URL": "URL πύλης",
@@ -711,8 +742,11 @@ var keyStrings = {
     Postpaid: "Εκ των υστέρων πληρωμή",
     PROST: "PROST",
     "PROST settings": "Ρυθμίσεις PROST",
+    "Preferred audio language": "Προτιμώμενη γλώσσα ήχου",
+    "Preferred subtitle language": "Προτιμώμενη γλώσσα υποτίτλων",
     Prepaid: "Προπληρωμή",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Προετοιμασία ασφαλούς απομακρυσμένης εισόδου...",
     Prev: "Προηγούμενο",
     "Preview in channel list": "Προεπισκόπηση στη λίστα καναλιών",
     Previous: "Προηγούμενο",
@@ -744,31 +778,33 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Τηλεχειριστήριο (χωρίς αριθμητικά πλήκτρα)",
     "Remote control": "Τηλεχειρισμός",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Ο απομακρυσμένος έλεγχος εξουσιοδοτεί τα διαγνωστικά. Έτοιμος για χειριστή.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Ο απομακρυσμένος έλεγχος εξουσιοδοτεί τα διαγνωστικά. Αναμονή για επανασύνδεση.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Ο απομακρυσμένος έλεγχος περιλαμβάνει στιγμιότυπα οθόνης της συσκευής αναπαραγωγής πολυμέσων, συμπεριλαμβανομένων των ρυθμίσεών της. Οι εικόνες μπορεί να περιέχουν προσωπικές πληροφορίες. Η εφαρμογή μπορεί να τραβήξει στιγμιότυπα οθόνης απευθείας χωρίς επιπλέον έγκριση. Σε ένα πρόγραμμα περιήγησης, επιλέξτε την καρτέλα ή το παράθυρο για λήψη σε αυτήν τη συσκευή.",
+    "Remote diagnostics": "Απομακρυσμένη διάγνωση",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Συλλέγονται απομακρυσμένα διαγνωστικά για αυτήν τη σύνδεση (έως 10 λεπτά ανά συνεδρία).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Γίνεται συλλογή απομακρυσμένων διαγνωστικών για αυτήν τη σελίδα.",
+    "Remote diagnostics is off.":
+        "Ο απομακρυσμένος διαγνωστικός έλεγχος είναι απενεργοποιημένος.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Ο απομακρυσμένος διαγνωστικός έλεγχος είναι έτοιμος για εξουσιοδοτημένο χειριστή.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Ο απομακρυσμένος διαγνωστικός έλεγχος δεν είναι διαθέσιμος σε αυτήν τη συσκευή αναπαραγωγής.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Ο απομακρυσμένος διαγνωστικός έλεγχος σταμάτησε. Ενεργοποιήστε το ξανά για να παραχωρήσετε πρόσβαση.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Η απομακρυσμένη είσοδος έληξε. Ανοίξτε μια νέα περίοδο λειτουργίας για να προσπαθήσετε ξανά.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Η απομακρυσμένη περίοδος εισαγωγής δεν είναι διαθέσιμη. Ανοίξτε μια νέα περίοδο λειτουργίας για να προσπαθήσετε ξανά.",
+    "Remote screenshots": "Απομακρυσμένα στιγμιότυπα οθόνης",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Τα απομακρυσμένα στιγμιότυπα οθόνης επιτρέπονται για 10 λεπτά. Κλείστε τις ρυθμίσεις για λήψη.",
+    "Remote screenshots are off.":
+        "Τα απομακρυσμένα στιγμιότυπα οθόνης είναι απενεργοποιημένα.",
     "Remote session expired": "Η απομακρυσμένη συνεδρία έληξε",
     "Remote text entry": "Απομακρυσμένη εισαγωγή κειμένου",
     "Remote text entry denied":
@@ -797,7 +833,8 @@ var keyStrings = {
     "Restart stream / Live": "Επανεκκίνηση ροής / ζωντανά",
     "Resume from archive?": "Συνέχεια από το αρχείο;",
     Retry: "Επανάληψη",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Δοκιμάστε ξανά τη λήψη του EPG",
+    "Retry same message": "Δοκιμάστε ξανά το ίδιο μήνυμα",
     "Return to previous channel": "Επιστροφή στο προηγούμενο κανάλι",
     Rewind: "Μετακίνηση",
     "Rewind step by buttons %1/%2": "Βήμα μετακίνησης με τα πλήκτρα %1/%2",
@@ -809,32 +846,36 @@ var keyStrings = {
     "Save & load channels": "Αποθήκευση και φόρτωση καναλιών",
     "Save and load": "Αποθήκευση και φόρτωση",
     "Save and load channels": "Αποθήκευση και φόρτωση καναλιών",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Αποθήκευση και άνοιγμα βιβλιοθήκης",
     "Save Settings": "Αποθήκευση ρυθμίσεων",
     "Save settings": "Αποθήκευση ρυθμίσεων",
     "Save settings and load channel list":
         "Αποθήκευση ρυθμίσεων και φόρτωση λίστας καναλιών",
     "Save settings to storage": "Αποθήκευση ρυθμίσεων στον χώρο αποθήκευσης",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Σαρώστε τον κωδικό QR στην τηλεόρασή σας ή επικολλήστε τον πλήρη σύνδεσμο ιδιωτικής σύζευξης παρακάτω.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Σαρώστε αυτόν τον κωδικό QR με το τηλέφωνό σας για να εισαγάγετε κείμενο.",
+    "Screen sharing could not start.":
+        "Δεν ήταν δυνατή η έναρξη της κοινής χρήσης οθόνης.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Η κοινή χρήση οθόνης ακυρώθηκε ή δεν είναι διαθέσιμη.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Δεν ήταν δυνατή η ενεργοποίηση της άδειας στιγμιότυπου οθόνης.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Τα στιγμιότυπα οθόνης είναι διαθέσιμα όταν είναι συνδεδεμένος ο απομακρυσμένος έλεγχος.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Τα στιγμιότυπα οθόνης δεν είναι διαθέσιμα σε αυτήν την πλατφόρμα.",
     Script: "Σενάριο",
     Search: "Αναζήτηση",
+    "Search languages": "Αναζήτηση γλωσσών",
     "Search programme": "Αναζήτηση εκπομπής",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Δεν ήταν δυνατή η εκκίνηση της ασφαλούς απομακρυσμένης εισόδου. Δοκιμάστε ξανά ή χρησιμοποιήστε το πληκτρολόγιο οθόνης.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Δεν ήταν δυνατή η εκκίνηση της ασφαλούς απομακρυσμένης εισόδου. Χρησιμοποιήστε το πληκτρολόγιο οθόνης.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Η ασφαλής απομακρυσμένη είσοδος δεν είναι διαθέσιμη σε αυτήν τη συσκευή. Χρησιμοποιήστε το πληκτρολόγιο οθόνης.",
     "Select a stream type:<br>%1": "Επιλέξτε τύπο ροής:<br>%1",
     "Select category to add channel":
         "Επιλέξτε κατηγορία για προσθήκη καναλιού",
@@ -846,13 +887,14 @@ var keyStrings = {
         "Επιλέξτε πηγή προτύπου λίστας αναπαραγωγής για EPG και λογότυπα",
     "Select Stalker portal": "Επιλογή πύλης Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Επιλέξτε πηγή στιγμιότυπου οθόνης στο πρόγραμμα περιήγησης",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Επιλέξτε την καρτέλα ή το παράθυρο του προγράμματος αναπαραγωγής στο παράθυρο διαλόγου κοινής χρήσης του προγράμματος περιήγησης.",
     "Send request": "Αποστολή αιτήματος",
     "Send settings": "Αποστολή ρυθμίσεων",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Στείλτε αυτόν τον κωδικό από τον διακομιστή μεσολάβησης στην κεφαλίδα Authorization: Bearer.",
+    "Send to TV": "Αποστολή στην τηλεόραση",
     Server: "Διακομιστής",
     "Server address": "Διεύθυνση διακομιστή",
     "Server address (for example 192.168.1.20:8081)":
@@ -861,10 +903,14 @@ var keyStrings = {
     "Server URL": "URL διακομιστή",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Ο διακομιστής δεν είναι διαθέσιμος. Γίνεται αυτόματη επανάληψη· ελέγξτε τη διεύθυνση και την πρόσβαση στο δίκτυο.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Η συνεδρία έκλεισε. Ξεκινήστε μια νέα από την τηλεόρασή σας όταν χρειάζεται.",
     Set: "Ορισμός",
     "Set parental code": "Ορισμός γονικού κωδικού",
     "Set timer?": "Ορισμός χρονοδιακόπτη;",
     Settings: "Ρυθμίσεις",
+    "Settings changed while editing":
+        "Οι ρυθμίσεις άλλαξαν κατά την επεξεργασία",
     "Settings changed. Discovery was canceled.":
         "Οι ρυθμίσεις άλλαξαν. Η αναζήτηση ακυρώθηκε.",
     "Settings copied": "Οι ρυθμίσεις αντιγράφηκαν",
@@ -875,11 +921,15 @@ var keyStrings = {
     "Settings JSON": "Ρυθμίσεις σε μορφή JSON",
     "Settings loaded from storage":
         "Οι ρυθμίσεις φορτώθηκαν από τον χώρο αποθήκευσης",
+    "Settings received. Restarting player...":
+        "Λήφθηκαν οι ρυθμίσεις. Επανεκκίνηση του προγράμματος αναπαραγωγής...",
     "Settings STB": "Ρυθμίσεις STB",
     "Settings saved": "Οι ρυθμίσεις αποθηκεύτηκαν",
     "Settings saved to storage":
         "Οι ρυθμίσεις αποθηκεύτηκαν στον χώρο αποθήκευσης",
     "Settings sended!": "Οι ρυθμίσεις στάλθηκαν!",
+    "Settings source changed": "Η πηγή ρυθμίσεων άλλαξε",
+    "Settings storage rejected write": "Η εγγραφή ρυθμίσεων απορρίφθηκε",
     "Several command servers were found. Select one below.":
         "Βρέθηκαν αρκετοί διακομιστές εντολών. Επιλέξτε έναν παρακάτω.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -916,29 +966,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Συνδεθείτε ξανά στην προστατευμένη πηγή",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Συνδεθείτε στον λογαριασμό σας Plex και επιλέξτε διακομιστή. Δεν έχει εισαχθεί κωδικός πρόσβασης σε αυτό το πρόγραμμα αναπαραγωγής.",
+    "Sign in with Plex": "Συνδεθείτε με Plex",
     "Sign in: %1": "Σύνδεση: %1",
     "Sign out of all sources": "Αποσύνδεση από όλες τις πηγές",
     "Sign-in opens when you load a protected playlist.":
         "Η σύνδεση ανοίγει όταν φορτώνετε μια προστατευμένη λίστα αναπαραγωγής.",
     "Sleep timer": "Χρονοδιακόπτης ύπνου",
     "Sort channels": "Ταξινόμηση καναλιών",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Πρόσβαση στην πηγή πολυμέσων",
+    "Source sign-in required": "Απαιτείται σύνδεση πηγής",
     "Source sign-in was cancelled": "Η σύνδεση στην πηγή ακυρώθηκε",
     "Stalker Portal Provider": "Πάροχος πύλης Stalker",
     "Stalker portal settings": "Ρυθμίσεις πύλης Stalker",
     "Stalker portals": "Πύλες Stalker",
     "Starting...": "Εκκίνηση…",
     Status: "Κατάσταση",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Σταματήστε",
+    "Stop browser sharing": "Διακοπή κοινής χρήσης προγράμματος περιήγησης",
+    "Stop current capture": "Διακοπή της τρέχουσας συλλογής δεδομένων",
+    "Stop diagnostics": "Διακοπή διαγνωστικών",
     "Stop playback and return to live":
         "Διακοπή αναπαραγωγής και επιστροφή στη ζωντανή μετάδοση",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Διακοπή στιγμιότυπων οθόνης",
     "Stream could not be played": "Δεν ήταν δυνατή η αναπαραγωγή της ροής",
     "Stream type: %1": "Τύπος ροής: %1",
     "String for search": "Όρος αναζήτησης",
@@ -950,15 +1000,21 @@ var keyStrings = {
     "Switch subtitle": "Αλλαγή υποτίτλων",
     "Switch to this list": "Μετάβαση σε αυτή τη λίστα",
     "Swop URL": "URL Swop",
+    "System language": "Γλώσσα συστήματος",
     "saved on this device": "αποθηκευμένο σε αυτή τη συσκευή",
     select: "επιλογή",
     small: "μικρό",
     system: "συστήματος",
     Tabox: "Tabox",
     "Tabox settings": "Ρυθμίσεις Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Το κείμενο είναι πολύ μεγάλο για απομακρυσμένη εισαγωγή.",
+    "Text is too long. Please shorten it before sending.":
+        "Το κείμενο είναι πολύ μεγάλο. Συντομεύστε το πριν το στείλετε.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Το κείμενο στάλθηκε. Ελέγξτε την τηλεόρασή σας για να επιβεβαιώσετε ότι εμφανίστηκε.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Η πηγή στιγμιότυπου οθόνης του προγράμματος περιήγησης είναι έτοιμη.",
     "The command server discovery URL is invalid.":
         "Το URL εντοπισμού διακομιστή εντολών δεν είναι έγκυρο.",
     "The device ID in the address is invalid.":
@@ -966,7 +1022,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Η απόκριση της αναζήτησης δεν είναι έγκυρη.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Αυτό το πρόγραμμα περιήγησης δεν μπορεί να αναγνωρίσει την επιλεγμένη πηγή στιγμιότυπου οθόνης.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Αυτό το πρόγραμμα περιήγησης δεν μπορεί να εκτελέσει ασφαλή αυτόματη σύζευξη. Ενημερώστε το ή εισαγάγετε χειροκίνητα τις ρυθμίσεις του διακομιστή εντολών.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -975,6 +1031,10 @@ var keyStrings = {
         "Αυτό το πρόγραμμα αναπαραγωγής HTTPS δεν μπορεί να συνδεθεί σε διακομιστή HTTP. Χρησιμοποιήστε διακομιστή HTTPS ή ανοίξτε το πρόγραμμα αναπαραγωγής μέσω HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Αυτή η εφαρμογή Play απαιτεί HTTPS. Ζητήστε από τον πάροχό σας λίστα αναπαραγωγής ή URL διακομιστή HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Αυτός ο σύνδεσμος σύζευξης έχει λήξει. Ανοίξτε μια νέα περίοδο λειτουργίας στην τηλεόρασή σας.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Αυτή η ασφαλής περίοδος λειτουργίας δεν είναι διαθέσιμη ή έχει λήξει. Ανοίξτε μια νέα περίοδο λειτουργίας στην τηλεόραση και χρησιμοποιήστε τον πλήρη σύνδεσμό της.",
     Timer: "Χρονοδιακόπτης",
     "Timer: switch to channel?": "Χρονοδιακόπτης: μετάβαση σε αυτό το κανάλι;",
     "Timeshift: one minute back": "Χρονική μετατόπιση: ένα λεπτό πίσω",
@@ -993,13 +1053,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ρυθμίσεις Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Εμπιστευτείτε αυτόν τον διακομιστή για απομακρυσμένη υποστήριξη",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Δεν ήταν δυνατή η κατάργηση της αξιόπιστης πρόσβασης από τον χώρο αποθήκευσης της συσκευής.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Τα αξιόπιστα διαγνωστικά δεν είναι διαθέσιμα επειδή δεν ήταν δυνατή η ενημέρωση του αποθηκευτικού χώρου της συσκευής.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Τα αξιόπιστα διαγνωστικά περιμένουν να επανασυνδεθεί αυτή η συσκευή αναπαραγωγής.",
     "Try demo": "Δοκιμή επίδειξης",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Ρυθμίσεις TV DOSUG",
@@ -1020,18 +1080,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Χρησιμοποιήστε διεύθυνση διακομιστή HTTP ή HTTPS.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Χρησιμοποιήστε έναν διακομιστή εντολών HTTPS για απομακρυσμένα διαγνωστικά.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Χρησιμοποιήστε HTTP ή HTTPS χωρίς όνομα χρήστη ή κωδικό στη διεύθυνση.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Χρησιμοποιήστε ΑΡΙΣΤΕΡΑ/ΔΕΞΙΑ για επιλογή χειριστηρίου, OK για ενεργοποίηση και ΠΑΝΩ/ΚΑΤΩ για κύλιση.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Χρησιμοποιήστε τον πλήρη σύνδεσμο, συμπεριλαμβανομένου του τμήματος μετά το #. Μην το μοιραστείτε με κανέναν άλλο.",
     "Use Up / Down to scroll. Back to close.":
         "Χρησιμοποιήστε Πάνω / Κάτω για κύλιση. Πίσω για κλείσιμο.",
     Username: "Όνομα χρήστη",
     "Username or password is missing.":
         "Λείπει το όνομα χρήστη ή ο κωδικός πρόσβασης.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Ισχύει για 10 λεπτά. Το πλήκτρο Πίσω κλείνει αυτή τη συνεδρία.",
     Version: "Έκδοση",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Ρυθμίσεις VIP-IP.COM",
@@ -1045,7 +1107,7 @@ var keyStrings = {
     "VPortal request failed":
         "Αδυναμία φόρτωσης VPortal. Ελέγξτε τον σύνδεσμο, το κλειδί πρόσβασης και τη διαθεσιμότητα της πύλης.",
     volume: "ένταση",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Αναμονή για σύνδεση…",
     "Wrong parental code !!!": "Λάθος γονικός κωδικός!!!",
     "Xtream Codes Provider": "Πάροχος Xtream Codes",
     "Xtream Codes settings": "Ρυθμίσεις Xtream Codes",

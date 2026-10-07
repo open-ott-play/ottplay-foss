@@ -62,13 +62,13 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes": "10 മിനിറ്റ് ഡയഗ്നോസ്റ്റിക്സ് അനുവദിക്കുക",
 
     // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    "Allow screenshots for 10 minutes": "10 മിനിറ്റ് സ്ക്രീൻഷോട്ടുകൾ അനുവദിക്കുക",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ഡയഗ്നോസ്റ്റിക് കൗണ്ടറുകൾ ശേഖരിക്കാനും ഈ സ്ട്രീം അല്ലെങ്കിൽ പ്ലേയർ പുനരാരംഭിക്കാനും ഈ സെർവറിനെ അനുവദിക്കുക. താൽക്കാലിക പ്രവേശനം 10 മിനിറ്റ് നീണ്ടുനിൽക്കും. വീണ്ടും കണക്‌റ്റുചെയ്യുകയോ പുനരാരംഭിക്കുകയോ ചെയ്‌തതിന് ശേഷവും വിശ്വസനീയമായ പിന്തുണ ലഭ്യമാകും; ഓരോ ക്യാപ്‌ചറും 10 മിനിറ്റിനുശേഷവും കാലഹരണപ്പെടും. മറച്ചിരിക്കുമ്പോഴോ ഓഫ്‌ലൈനിലായിരിക്കുമ്പോഴോ ശേഖരം താൽക്കാലികമായി നിർത്തുന്നു.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ഈ ഫോർഗ്രൗണ്ട് സെഷനായി പ്ലേബാക്ക്, നെറ്റ്‌വർക്ക്, ഇൻപുട്ട് കൗണ്ടറുകൾ എന്നിവ ശേഖരിക്കാൻ ഈ സെർവറിനെ അനുവദിക്കുക. HTTPS, സെർവർ അനുമതി എന്നിവ ആവശ്യമാണ്. 10 മിനിറ്റിന് ശേഷം, മറച്ചിരിക്കുമ്പോഴോ അല്ലെങ്കിൽ വിച്ഛേദിക്കുമ്പോഴോ നിർത്തുന്നു.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "10 മിനിറ്റ് ചിത്രങ്ങൾ അഭ്യർത്ഥിക്കാൻ ഈ സെർവറിനെ അനുവദിക്കുക. ചിത്രങ്ങളിൽ വ്യക്തിഗത വിവരങ്ങൾ അടങ്ങിയിരിക്കാം. ഒരു ബ്രൗസറിൽ, പ്ലേയർ ടാബ് അല്ലെങ്കിൽ വിൻഡോ തിരഞ്ഞെടുക്കുക. വീണ്ടും ലോഡുചെയ്യുമ്പോഴോ വിച്ഛേദിക്കുമ്പോഴോ അനുമതി അവസാനിക്കുന്നു.",
     "Allowlist this Device ID": "ഈ ഉപകരണം ID അനുവദിക്കുക",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "ഒരു HTTPS പ്ലേയറിന് HTTP EPG ഉറവിടം ഡൗൺലോഡ് ചെയ്യാൻ കഴിയില്ല. ഒരു HTTPS ഉറവിടം ഉപയോഗിക്കുക.",
@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 മിനിറ്റ് പിന്നോട്ട് / മുന്നോട്ട് പോകുക",
     "Background color": "പശ്ചാത്തല നിറം",
     "Background color of selected item": "തിരഞ്ഞെടുത്ത ഇനത്തിൻ്റെ പശ്ചാത്തല നിറം",
+    "Backup state changed": "ബാക്കപ്പ് നില മാറ്റി",
     "Balance, $": "ബാലൻസ്, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -109,6 +110,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "ലിസ്റ്റുകളിലെ %1/%2 ബട്ടണുകളുടെ പെരുമാറ്റം",
     "Black screen while switching the channel": "ചാനലുകൾ മാറുമ്പോൾ കറുത്ത സ്‌ക്രീൻ",
     Blue: "നീല",
+    "Bookmark age (days): %1": "ബുക്ക്‌മാർക്കിൻ്റെ പ്രായം (ദിവസങ്ങൾ): %1",
     "Bookmark age: %1 days": "ബുക്ക്മാർക്ക് പ്രായം: %1 ദിവസം",
     "Browse folders": "ഫോൾഡറുകൾ ബ്രൗസ് ചെയ്യുക",
     "Buffer Size, s": "ബഫർ വലുപ്പം, എസ്",
@@ -158,11 +160,14 @@ var keyStrings = {
     "Choose language": "ഭാഷ തിരഞ്ഞെടുക്കുക",
     "Choose Plex server": "Plex സെർവർ തിരഞ്ഞെടുക്കുക",
     "Choose provider": "ദാതാവിനെ തിരഞ്ഞെടുക്കുക",
-    Classic: "Classic",
+    Classic: "ക്ലാസിക്",
     "Clear all settings?": "എല്ലാ ക്രമീകരണങ്ങളും മായ്‌ക്കണോ?",
     "Clear settings": "ക്രമീകരണങ്ങൾ മായ്‌ക്കുക",
     Close: "അടയ്ക്കുക",
     "Close PiP": "PiP അടയ്ക്കുക",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ക്ലൗഡ് സേവ്/ലോഡിന് STB ഫേംവെയർ ആവശ്യമാണ് (host_ott സജ്ജീകരിച്ചിട്ടില്ല)",
+    "Cloud transfer failed": "ക്ലൗഡ് കൈമാറ്റം പരാജയപ്പെട്ടു",
     Code: "കോഡ്",
     Color: "നിറം",
     "Color spectrum": "വർണ്ണ സ്പെക്ട്രം",
@@ -179,6 +184,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "അനുയോജ്യത റൺടൈം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കാൻ പ്ലെയർ വീണ്ടും തുറക്കുക.",
     "Compatible HLS": "അനുയോജ്യമായ HLS",
+    "Complete pairing link": "പൂർണ്ണ ജോടിയാക്കൽ ലിങ്ക്",
     "Configure All4you.tv in Settings -> Provider Settings":
         "ക്രമീകരണങ്ങളിൽ -> ദാതാവിൻ്റെ ക്രമീകരണങ്ങളിൽ All4you.tv കോൺഫിഗർ ചെയ്യുക",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -251,22 +257,25 @@ var keyStrings = {
         "ക്രമീകരണങ്ങൾ -> ദാതാവിൻ്റെ ക്രമീകരണങ്ങളിൽ Шаравоз കോൺഫിഗർ ചെയ്യുക",
     Connect: "ബന്ധിപ്പിക്കുക",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "സ്ക്രീൻഷോട്ടുകൾ അനുവദിക്കുന്നതിന് മുമ്പ് ഒരു HTTPS കമാൻഡ് സെർവർ ബന്ധിപ്പിക്കുക.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "സ്ക്രീൻഷോട്ടുകൾ ഉപയോഗിക്കുന്നതിന് ഒരു HTTPS കമാൻഡ് സെർവർ ബന്ധിപ്പിക്കുക.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "പ്രശ്നപരിശോധന പ്രവർത്തനക്ഷമമാക്കാൻ വിദൂര നിയന്ത്രണ സേവനം ബന്ധിപ്പിക്കുക.",
     "Connect this player to a command server first.":
         "ആദ്യം ഒരു കമാൻഡ് സെർവറിലേക്ക് ഈ പ്ലെയറിനെ ബന്ധിപ്പിക്കുക.",
+    "Connect to TV": "ടിവിയിലേക്ക് കണക്റ്റ് ചെയ്യുക",
     Connected: "ബന്ധിപ്പിച്ചു",
     "Connected. Waiting for the channel list...":
         "ബന്ധിപ്പിച്ചു. ചാനൽ ലിസ്റ്റിനായി കാത്തിരിക്കുന്നു...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "വിദൂര നിയന്ത്രണ സേവനം ബന്ധിപ്പിക്കുമ്പോൾ പ്ലേയറിലെ പ്രശ്നങ്ങൾ കണ്ടെത്താനും പരിഹരിക്കാനും ഈ സെർവറിന് അനുമതി ലഭിക്കുന്നു. പുനരാരംഭിച്ച ശേഷവും അനുമതി നിലനിൽക്കും; ബന്ധം വിച്ഛേദിക്കുമ്പോൾ അവസാനിക്കും. ഓരോ പരിശോധനാ ഡാറ്റ ശേഖരണവും പരമാവധി 10 മിനിറ്റ് നീളും.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "പ്രവർത്തനക്ഷമമാക്കിയ റിമോട്ട് കൺട്രോൾ കണക്ഷനുള്ള റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ബന്ധിപ്പിക്കുന്നു.",
     "Connecting remote diagnostics for this page.":
         "ഈ പേജിനായി റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ബന്ധിപ്പിക്കുന്നു.",
+    "Connecting securely to your TV...":
+        "നിങ്ങളുടെ ടിവിയിലേക്ക് സുരക്ഷിതമായി കണക്‌റ്റ് ചെയ്യുന്നു...",
     "Connecting to Plex…": "Plex-ലേക്ക് ബന്ധിപ്പിക്കുന്നു...",
     "Connecting to Stalker portal...": "Stalker പോർട്ടലിലേക്ക് ബന്ധിപ്പിക്കുന്നു...",
     "Connecting...": "ബന്ധിപ്പിക്കുന്നു...",
@@ -284,6 +293,10 @@ var keyStrings = {
         "ജോടിയാക്കൽ അഭ്യർത്ഥന സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കാൻ സെർവർ വീണ്ടും കണ്ടെത്തുക.",
     "Could not load. Select to retry.":
         "ലോഡ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കാൻ തിരഞ്ഞെടുക്കുക.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ഈ വാചകം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. ദയവായി ഇത് ചുരുക്കി വീണ്ടും ശ്രമിക്കുക.",
+    "Could not protect the private link. Use a different browser.":
+        "സ്വകാര്യ ലിങ്ക് സംരക്ഷിക്കാൻ കഴിഞ്ഞില്ല. മറ്റൊരു ബ്രൗസർ ഉപയോഗിക്കുക.",
     "Could not save provider settings.":
         "ദാതാവിന്റെ ക്രമീകരണങ്ങൾ സംരക്ഷിക്കാൻ കഴിഞ്ഞില്ല.",
     "Could not save the approved command server settings.":
@@ -301,6 +314,8 @@ var keyStrings = {
     "Delete category": "വിഭാഗം ഇല്ലാതാക്കുക",
     "Delete channel": "ചാനൽ ഇല്ലാതാക്കുക",
     "Delete list": "ലിസ്റ്റ് ഇല്ലാതാക്കുക",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ഡെലിവറി സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല. നിങ്ങളുടെ ടിവി പരിശോധിക്കുക, അല്ലെങ്കിൽ ഈ സെഷൻ കാലഹരണപ്പെടുന്നതിന് മുമ്പ് അതേ സന്ദേശം വീണ്ടും ശ്രമിക്കുക.",
     "Demo — moving test pattern": "ഡെമോ — ചലിക്കുന്ന ടെസ്റ്റ് പാറ്റേൺ",
     Description: "വിവരണം",
     "Description of remote control buttons": "റിമോട്ട് കൺട്രോൾ ബട്ടൺ ഗൈഡ്",
@@ -381,6 +396,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker പോർട്ടൽ URL നൽകുക (ഉദാ. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "സെർവർ നമ്പർ നൽകുക (%1).",
+    "Enter text": "വാചകം നൽകുക",
     "Enter the access code separately, not in the server address.":
         "ആക്സസ് കോഡ് പ്രത്യേകം നൽകുക, സെർവർ വിലാസത്തിലല്ല.",
     "Enter the command server IP or address.":
@@ -529,7 +545,9 @@ var keyStrings = {
     "Interface transparency": "ഇൻ്റർഫേസ് സുതാര്യത",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ചാനൽ ലിങ്ക് അസാധുവാണ്! നിങ്ങളുടെ ദാതാവിൻ്റെ അക്കൗണ്ട് പേജിൽ URL സ്ട്രീമിൽ നിന്ന് പൂർണ്ണമായ ഹോസ്റ്റ്നാമം നൽകുക (ഉദാഹരണത്തിന് subdomain.cdn-domain.tld ).",
+    "Invalid cloud settings response": "അസാധുവായ ക്ലൗഡ് ക്രമീകരണ പ്രതികരണം",
     "Invalid protected source configuration": "അസാധുവായ സംരക്ഷിത ഉറവിട കോൺഫിഗറേഷൻ",
+    "Invalid setting": "അസാധുവായ ക്രമീകരണം",
     "IPTV token": "IPTV ടോക്കൺ",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ക്രമീകരണങ്ങൾ",
@@ -608,6 +626,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "പ്രോഗ്രാമുകളൊന്നും പ്ലേലിസ്റ്റ് ചാനലുകളുമായും തീയതികളുമായും പൊരുത്തപ്പെടുന്നില്ല. ഉറവിടവും ഉപകരണ ക്ലോക്കും പരിശോധിക്കുക.",
     "No saved settings found": "സംരക്ഷിച്ച ക്രമീകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല",
+    "No supported system language. Choose a language.":
+        "പിന്തുണയ്ക്കുന്ന സിസ്റ്റം ഭാഷയില്ല. ഒരു ഭാഷ തിരഞ്ഞെടുക്കുക.",
     "Not configured": "സജ്ജീകരിച്ചിട്ടില്ല",
     "Not found": "കണ്ടെത്തിയില്ല",
     "Not reduce video when showing the list (bugfix)":
@@ -623,6 +643,8 @@ var keyStrings = {
     "not set": "സജ്ജീകരിച്ചിട്ടില്ല",
     Off: "ഓഫ്",
     Ok: "ശരി",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "ഈ ടിവിക്ക് മാത്രമേ നിങ്ങളുടെ സന്ദേശം സ്വീകരിക്കാൻ കഴിയൂ. 10 മിനിറ്റിന് ശേഷം ലിങ്ക് കാലഹരണപ്പെടും.",
     Open: "തുറക്കുക",
     "Open in PiP": "PiP-ൽ തുറക്കുക",
     "Open Plex sign-in page": "Plex സൈൻ ഇൻ പേജ് തുറക്കുക",
@@ -635,6 +657,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP ഹോസ്റ്റ്",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ക്രമീകരണങ്ങൾ",
+    "OTT-play remote input": "OTT-play റിമോട്ട് ഇൻപുട്ട്",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ലഭ്യമാണ്. ഇപ്പോൾ ഡൗൺലോഡ് ചെയ്ത് ഇൻസ്റ്റാൾ ചെയ്യണോ?",
     "Overwrite current settings?": "നിലവിലെ ക്രമീകരണങ്ങൾ തിരുത്തിയെഴുതണോ?",
@@ -667,6 +690,7 @@ var keyStrings = {
     Playback: "പ്ലേബാക്ക്",
     "Player and device info": "പ്ലെയർ, ഉപകരണ വിവരങ്ങൾ",
     "Player could not start": "കളിക്കാരന് ആരംഭിക്കാനായില്ല",
+    "Player default": "പ്ലേയറിന്റെ സ്വതവേയുള്ള തിരഞ്ഞെടുപ്പ്",
     "Player info:": "പ്ലെയർ്റെ വിവരങ്ങൾ:",
     Playlist: "പ്ലേലിസ്റ്റ്",
     "Playlist file": "പ്ലേലിസ്റ്റ് ഫയൽ",
@@ -688,6 +712,8 @@ var keyStrings = {
     Postpaid: "പോസ്റ്റ്പെയ്ഡ്",
     PROST: "PROST",
     "PROST settings": "PROST ക്രമീകരണങ്ങൾ",
+    "Preferred audio language": "ഇഷ്ടപ്പെട്ട ഓഡിയോ ഭാഷ",
+    "Preferred subtitle language": "ഇഷ്ടപ്പെട്ട സബ്ടൈറ്റിൽ ഭാഷ",
     Prepaid: "പ്രീപെയ്ഡ്",
     "Preparing secure remote input...": "സുരക്ഷിത വിദൂര ഇൻപുട്ട് തയ്യാറാക്കുന്നു...",
     Prev: "മുമ്പത്തെ",
@@ -719,14 +745,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "റിമോട്ട് (നമ്പർ ബട്ടണുകൾ ഇല്ല)",
     "Remote control": "റിമോട്ട് കൺട്രോൾ",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "വിദൂര നിയന്ത്രണ സേവനം പ്രശ്നപരിശോധനയ്ക്ക് അനുമതി നൽകുന്നു. ഓപ്പറേറ്റർക്കായി തയ്യാറാണ്.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "വിദൂര നിയന്ത്രണ സേവനം പ്രശ്നപരിശോധനയ്ക്ക് അനുമതി നൽകുന്നു. വീണ്ടും ബന്ധിപ്പിക്കാൻ കാത്തിരിക്കുന്നു.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "റിമോട്ട് കൺട്രോളിൽ മീഡിയ പ്ലെയറിൻ്റെ ക്രമീകരണങ്ങൾ ഉൾപ്പെടെയുള്ള സ്ക്രീൻഷോട്ടുകൾ ഉൾപ്പെടുന്നു. ചിത്രങ്ങളിൽ സ്വകാര്യ വിവരങ്ങൾ അടങ്ങിയിരിക്കാം. അധിക അനുമതിയില്ലാതെ അപ്ലിക്കേഷന് സ്‌ക്രീൻഷോട്ടുകൾ നേരിട്ട് ക്യാപ്‌ചർ ചെയ്യാൻ കഴിയും. ഒരു ബ്രൗസറിൽ, ഈ ഉപകരണത്തിൽ ക്യാപ്‌ചർ ചെയ്യാൻ ടാബ് അല്ലെങ്കിൽ വിൻഡോ തിരഞ്ഞെടുക്കുക.",
     "Remote diagnostics": "റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ്",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ഈ ബന്ധത്തിനായി പരിശോധനാ ഡാറ്റ ശേഖരിക്കുന്നു (ഓരോ സെഷനിലും പരമാവധി 10 മിനിറ്റ്).",
     "Remote diagnostics is collecting for this page.":
         "ഈ പേജിനായി റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ശേഖരിക്കുന്നു.",
     "Remote diagnostics is off.": "റിമോട്ട് ഡയഗ്നോസ്റ്റിക്സ് ഓഫാണ്.",
@@ -740,10 +766,10 @@ var keyStrings = {
         "റിമോട്ട് ഇൻപുട്ട് കാലഹരണപ്പെട്ടു. വീണ്ടും ശ്രമിക്കാൻ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
     "Remote input session is unavailable. Open a new session to try again.":
         "റിമോട്ട് ഇൻപുട്ട് സെഷൻ ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാൻ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "റിമോട്ട് സ്ക്രീൻഷോട്ടുകൾ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "റിമോട്ട് സ്ക്രീൻഷോട്ടുകൾ 10 മിനിറ്റ് അനുവദിച്ചിരിക്കുന്നു. ക്യാപ്‌ചർ ചെയ്യാൻ ക്രമീകരണങ്ങൾ അടയ്ക്കുക.",
+    "Remote screenshots are off.": "റിമോട്ട് സ്ക്രീൻഷോട്ടുകൾ ഓഫാണ്.",
     "Remote session expired": "റിമോട്ട് സെഷൻ കാലഹരണപ്പെട്ടു",
     "Remote text entry": "റിമോട്ട് ടെക്സ്റ്റ് എൻട്രി",
     "Remote text entry denied": "റിമോട്ട് ടെക്സ്റ്റ് എൻട്രി നിരസിച്ചു",
@@ -772,6 +798,7 @@ var keyStrings = {
     "Resume from archive?": "ആർക്കൈവിൽ നിന്ന് പുനരാരംഭിക്കണോ?",
     Retry: "വീണ്ടും ശ്രമിക്കുക",
     "Retry EPG download": "EPG ഡൗൺലോഡ് ചെയ്യാൻ വീണ്ടും ശ്രമിക്കുക",
+    "Retry same message": "അതേ സന്ദേശം വീണ്ടും അയയ്‌ക്കുക",
     "Return to previous channel": "മുമ്പത്തെ ചാനലിലേക്ക് മടങ്ങുക",
     Rewind: "മുന്നോട്ട്/പിന്നോട്ട് നീക്കുക",
     "Rewind step by buttons %1/%2":
@@ -790,19 +817,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "ക്രമീകരണങ്ങൾ സംരക്ഷിച്ച് ചാനൽ ലിസ്റ്റ് ലോഡ് ചെയ്യുക",
     "Save settings to storage": "സ്റ്റോറേജിലേക്ക് ക്രമീകരണങ്ങൾ സംരക്ഷിക്കുക",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "നിങ്ങളുടെ ടിവിയിൽ QR കോഡ് സ്കാൻ ചെയ്യുക അല്ലെങ്കിൽ അതിൻ്റെ പൂർണ്ണമായ സ്വകാര്യ ജോടിയാക്കൽ ലിങ്ക് താഴെ ഒട്ടിക്കുക.",
     "Scan this QR code with your phone to enter text.":
         "ടെക്സ്റ്റ് നൽകുന്നതിന് നിങ്ങളുടെ ഫോൺ ഉപയോഗിച്ച് ഈ QR കോഡ് സ്കാൻ ചെയ്യുക.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "സ്‌ക്രീൻ പങ്കിടൽ ആരംഭിക്കാനായില്ല.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "സ്‌ക്രീൻ പങ്കിടൽ റദ്ദാക്കി അല്ലെങ്കിൽ ലഭ്യമല്ല.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "സ്ക്രീൻഷോട്ട് അനുമതി പ്രവർത്തനക്ഷമമാക്കാൻ കഴിഞ്ഞില്ല.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "റിമോട്ട് കൺട്രോൾ കണക്റ്റ് ചെയ്യുമ്പോൾ സ്ക്രീൻഷോട്ടുകൾ ലഭ്യമാണ്.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ഈ പ്ലാറ്റ്‌ഫോമിൽ സ്‌ക്രീൻഷോട്ടുകൾ ലഭ്യമല്ല.",
     Script: "തിരക്കഥ",
     Search: "തിരയുക",
+    "Search languages": "ഭാഷകൾ തിരയുക",
     "Search programme": "പരിപാടി തിരയുക",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "സുരക്ഷിത വിദൂര ഇൻപുട്ട് ആരംഭിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കിൽ ഓൺ-സ്ക്രീൻ കീബോർഡ് ഉപയോഗിക്കുക.",
@@ -819,14 +849,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG, ലോഗോകൾ എന്നിവയ്‌ക്കായി പ്ലേലിസ്റ്റ് ടെംപ്ലേറ്റ് ഉറവിടം തിരഞ്ഞെടുക്കുക",
     "Select Stalker portal": "Stalker പോർട്ടൽ തിരഞ്ഞെടുക്കുക",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "ബ്രൗസറിൽ സ്ക്രീൻഷോട്ട് ഉറവിടം തിരഞ്ഞെടുക്കുക",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ബ്രൗസർ പങ്കിടൽ ഡയലോഗിൽ പ്ലേയർ ടാബ് അല്ലെങ്കിൽ വിൻഡോ തിരഞ്ഞെടുക്കുക.",
     "Send request": "അഭ്യർത്ഥന അയയ്ക്കുക",
     "Send settings": "ക്രമീകരണങ്ങൾ അയയ്ക്കുക",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "നിങ്ങളുടെ പ്രോക്സിയിൽ നിന്ന് ഈ കോഡ് Authorization: Bearer ഹെഡറിൽ അയയ്ക്കുക.",
+    "Send to TV": "ടിവിയിലേക്ക് അയയ്‌ക്കുക",
     Server: "സെർവർ",
     "Server address": "സെർവർ വിലാസം",
     "Server address (for example 192.168.1.20:8081)":
@@ -835,10 +865,13 @@ var keyStrings = {
     "Server URL": "സെർവർ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "സെർവർ ലഭ്യമല്ല. സ്വയമേവ വീണ്ടും ശ്രമിക്കുന്നു; അതിൻ്റെ വിലാസവും നെറ്റ്‌വർക്ക് ആക്‌സസും പരിശോധിക്കുക.",
+    "Session closed. Start a new one from your TV when needed.":
+        "സെഷൻ അവസാനിപ്പിച്ചു. ആവശ്യമുള്ളപ്പോൾ നിങ്ങളുടെ ടിവിയിൽ നിന്ന് പുതിയൊരെണ്ണം ആരംഭിക്കുക.",
     Set: "പ്രയോഗിക്കുക",
     "Set parental code": "രക്ഷാകർതൃ കോഡ് സജ്ജീകരിക്കുക",
     "Set timer?": "ടൈമർ സജ്ജീകരിക്കണോ?",
     Settings: "ക്രമീകരണങ്ങൾ",
+    "Settings changed while editing": "എഡിറ്റ് ചെയ്യുമ്പോൾ ക്രമീകരണങ്ങൾ മാറ്റി",
     "Settings changed. Discovery was canceled.":
         "ക്രമീകരണങ്ങൾ മാറ്റി. കണ്ടെത്തൽ റദ്ദാക്കി.",
     "Settings copied": "ക്രമീകരണങ്ങൾ പകർത്തി",
@@ -848,10 +881,15 @@ var keyStrings = {
     "Settings imported": "ക്രമീകരണങ്ങൾ ഇറക്കുമതി ചെയ്തു",
     "Settings JSON": "ക്രമീകരണങ്ങൾ JSON",
     "Settings loaded from storage": "സ്റ്റോറേജിൽ നിന്ന് ക്രമീകരണങ്ങൾ ലോഡ് ചെയ്തു",
+    "Settings received. Restarting player...":
+        "ക്രമീകരണങ്ങൾ ലഭിച്ചു. പ്ലേയർ പുനരാരംഭിക്കുന്നു...",
     "Settings STB": "STB ക്രമീകരണങ്ങൾ",
     "Settings saved": "ക്രമീകരണങ്ങൾ സംരക്ഷിച്ചു",
     "Settings saved to storage": "ക്രമീകരണങ്ങൾ സ്റ്റോറേജിൽ സംരക്ഷിച്ചു",
     "Settings sended!": "ക്രമീകരണങ്ങൾ അയച്ചു!",
+    "Settings source changed": "ക്രമീകരണ ഉറവിടം മാറ്റി",
+    "Settings storage rejected write":
+        "ക്രമീകരണങ്ങൾ സംഭരിക്കുന്ന സംവിധാനം ഡാറ്റ എഴുതുന്നത് നിരസിച്ചു",
     "Several command servers were found. Select one below.":
         "നിരവധി കമാൻഡ് സെർവറുകൾ കണ്ടെത്തി. താഴെ ഒന്ന് തിരഞ്ഞെടുക്കുക.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -904,11 +942,11 @@ var keyStrings = {
     "Starting...": "ആരംഭിക്കുന്നു...",
     Status: "നില",
     Stop: "നിർത്തുക",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ബ്രൗസർ പങ്കിടൽ നിർത്തുക",
     "Stop current capture": "നിലവിലെ ക്യാപ്‌ചർ നിർത്തുക",
     "Stop diagnostics": "ഡയഗ്നോസ്റ്റിക്സ് നിർത്തുക",
     "Stop playback and return to live": "പ്ലേബാക്ക് നിർത്തി ലൈവിലേക്ക് മടങ്ങുക",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "സ്ക്രീൻഷോട്ടുകൾ നിർത്തുക",
     "Stream could not be played": "സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല",
     "Stream type: %1": "സ്ട്രീം തരം: %1",
     "String for search": "തിരയൽ അന്വേഷണം",
@@ -920,6 +958,7 @@ var keyStrings = {
     "Switch subtitle": "സബ്ടൈറ്റിലുകൾ മാറുക",
     "Switch to this list": "ഈ ലിസ്റ്റിലേക്ക് മാറുക",
     "Swop URL": "SWOP URL",
+    "System language": "സിസ്റ്റം ഭാഷ",
     "saved on this device": "ഈ ഉപകരണത്തിൽ സംരക്ഷിച്ചു",
     select: "തിരഞ്ഞെടുക്കുക",
     small: "ചെറുത്",
@@ -927,14 +966,17 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ക്രമീകരണങ്ങൾ",
     "Text is too long for remote input.": "ടെക്‌സ്‌റ്റ് വിദൂര ഇൻപുട്ടിന് ദൈർഘ്യമേറിയതാണ്.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "വാചകം ദൈർഘ്യമേറിയതാണ്. അയയ്ക്കുന്നതിന് മുമ്പ് ദയവായി ഇത് ചുരുക്കുക.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "ടെക്സ്റ്റ് അയച്ചു. അത് പ്രത്യക്ഷപ്പെട്ടതായി സ്ഥിരീകരിക്കാൻ നിങ്ങളുടെ ടിവി പരിശോധിക്കുക.",
+    "The browser screenshot source is ready.": "ബ്രൗസർ സ്ക്രീൻഷോട്ട് ഉറവിടം തയ്യാറാണ്.",
     "The command server discovery URL is invalid.":
         "കമാൻഡ് സെർവർ കണ്ടെത്തൽ URL അസാധുവാണ്.",
     "The device ID in the address is invalid.": "വിലാസത്തിലെ ID ഉപകരണം അസാധുവാണ്.",
     "The discovery response is invalid.": "കണ്ടെത്തൽ പ്രതികരണം അസാധുവാണ്.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ഈ ബ്രൗസറിന് തിരഞ്ഞെടുത്ത സ്ക്രീൻഷോട്ട് ഉറവിടം തിരിച്ചറിയാൻ കഴിയില്ല.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ഈ ബ്രൗസറിന് സ്വയമേവ സുരക്ഷിതമായി ജോടിയാക്കാൻ കഴിയില്ല. ഇത് അപ്ഡേറ്റ് ചെയ്യുക അല്ലെങ്കിൽ കമാൻഡ് സെർവർ ക്രമീകരണങ്ങൾ സ്വമേധയാ നൽകുക.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -943,6 +985,10 @@ var keyStrings = {
         "ഈ HTTPS പ്ലെയറിന് HTTP സെർവറിലേക്ക് കണക്റ്റുചെയ്യാൻ കഴിയില്ല. ഒരു HTTPS സെർവർ ഉപയോഗിക്കുക അല്ലെങ്കിൽ HTTP-ലൂടെ പ്ലെയർ തുറക്കുക.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ഈ പ്ലേ ആപ്പിന് HTTPS ആവശ്യമാണ്. HTTPS പ്ലേലിസ്റ്റ് അല്ലെങ്കിൽ സെർവർ URL നിങ്ങളുടെ ദാതാവിനോട് ആവശ്യപ്പെടുക.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ഈ ജോടിയാക്കൽ ലിങ്ക് കാലഹരണപ്പെട്ടു. നിങ്ങളുടെ ടിവിയിൽ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ഈ സുരക്ഷിത സെഷൻ ലഭ്യമല്ല അല്ലെങ്കിൽ കാലഹരണപ്പെട്ടു. ടിവിയിൽ ഒരു പുതിയ സെഷൻ തുറന്ന് അതിൻ്റെ പൂർണ്ണമായ ലിങ്ക് ഉപയോഗിക്കുക.",
     Timer: "ടൈമർ",
     "Timer: switch to channel?": "ടൈമർ: ഈ ചാനലിലേക്ക് മാറണോ?",
     "Timeshift: one minute back": "ടൈംഷിഫ്റ്റ്: ഒരു മിനിറ്റ് തിരികെ",
@@ -991,6 +1037,8 @@ var keyStrings = {
         "വിലാസത്തിൽ ഉപയോക്തൃനാമമോ പാസ്‌വേഡോ ഇല്ലാതെ HTTP അല്ലെങ്കിൽ HTTPS ഉപയോഗിക്കുക.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ഒരു നിയന്ത്രണം തിരഞ്ഞെടുക്കാൻ ഇടത്/വലത്, അത് സജീവമാക്കാൻ ശരി, സ്ക്രോൾ ചെയ്യാൻ മുകളിലേക്കും താഴേക്കും ഉപയോഗിക്കുക.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# ന് ശേഷമുള്ള ഭാഗം ഉൾപ്പെടെ പൂർണ്ണ ലിങ്ക് ഉപയോഗിക്കുക. അത് മറ്റാരുമായും പങ്കിടരുത്.",
     "Use Up / Down to scroll. Back to close.":
         "സ്ക്രോൾ ചെയ്യാൻ മുകളിലേക്കും താഴേക്കും ഉപയോഗിക്കുക. തിരികെ അടയ്ക്കുക.",
     Username: "ഉപയോക്തൃനാമം",

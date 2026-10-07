@@ -1,4 +1,5 @@
 /** Search owns its editor intent and stable group/channel targets, never positions. */
+declare function normalizeSearchText(value: string): string;
 function createClassicChannelSearch(host: any) {
     var sequence = 0;
     var pending: any = null;
@@ -40,7 +41,7 @@ function createClassicChannelSearch(host: any) {
                 : "";
         }
         function publish(query: string): void {
-            var lower = query.toLowerCase();
+            var lower = normalizeSearchText(query);
             var rows: number[] = [];
             var owner: any = null;
             function visible(): boolean {
@@ -188,7 +189,8 @@ function createClassicChannelSearch(host: any) {
                     return (
                         row &&
                         typeof row.channel_name === "string" &&
-                        row.channel_name.toLowerCase().indexOf(lower) >= 0
+                        normalizeSearchText(row.channel_name).indexOf(lower) >=
+                            0
                     );
                 });
                 var keys = host.keys;
