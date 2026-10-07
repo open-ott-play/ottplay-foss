@@ -60,7 +60,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv 设置",
     "Allow diagnostics for 10 minutes": "允许诊断 10 分钟",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "允许截图10分钟",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "允许该服务器收集诊断计数器并重新启动该流或播放器。临时访问持续 10 分钟。重新连接或重新启动后，可信支持仍然可用；每次捕获仍会在 10 分钟后过期。隐藏或离线时收集会暂停。",

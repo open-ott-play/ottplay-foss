@@ -61,7 +61,7 @@ var keyStrings = {
     "All4you.tv settings": "Ustawienia All4you.tv",
     "Allow diagnostics for 10 minutes": "Zezwól na diagnostykę przez 10 minut",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "Zezwalaj na zrzuty ekranu przez 10 minut",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
@@ -95,7 +95,7 @@ var keyStrings = {
     Audio: "Dźwięk",
     Automatic: "Automatyczny",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatycznie odtwarza obsługiwane pliki bezpośrednio iw razie potrzeby korzysta z kompatybilnego HLS.",
+        "Automatycznie odtwarza obsługiwane pliki bezpośrednio i w razie potrzeby korzysta z kompatybilnego HLS.",
     alhabet: "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż",
     always: "zawsze",
     "and enter code": "i wprowadź kod",

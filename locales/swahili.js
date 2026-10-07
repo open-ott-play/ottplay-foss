@@ -63,7 +63,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv mipangilio",
     "Allow diagnostics for 10 minutes": "Ruhusu uchunguzi kwa dakika 10",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Ruhusu picha za skrini kwa dakika 10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ruhusu seva hii kukusanya vihesabio vya uchunguzi na kuwasha upya mtiririko huu au kicheza media. Ufikiaji wa muda hudumu dakika 10. Usaidizi unaoaminika hubakia kupatikana baada ya kuunganisha tena au kuanzisha upya; kila ukamataji bado unaisha baada ya dakika 10. Mkusanyiko husitishwa ukiwa umefichwa au nje ya mtandao.",

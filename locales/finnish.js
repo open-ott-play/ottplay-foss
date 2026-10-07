@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv asetukset",
     "Allow diagnostics for 10 minutes": "Salli diagnostiikka 10 minuutiksi",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Salli kuvakaappaukset 10 minuutiksi",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Salli tämän palvelimen kerätä diagnostisia laskureita ja käynnistää tämä stream tai mediasoitin uudelleen. Väliaikainen pääsy kestää 10 minuuttia. Luotettu tuki on saatavilla uudelleen yhdistämisen tai uudelleenkäynnistyksen jälkeen; jokainen sieppaus vanhenee edelleen 10 minuutin kuluttua. Kokoelma keskeytyy piilotettuna tai offline-tilassa.",

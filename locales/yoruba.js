@@ -61,7 +61,7 @@ var keyStrings = {
     "All4you.tv settings": "Ètò All4you.tv",
     "Allow diagnostics for 10 minutes": "Gba àyẹ̀wò ìṣòro láàyè fún ìṣẹ́jú 10",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Gba àwòrán iboju láàyè fún ìṣẹ́jú 10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Gba sáfà yìí láàyè láti gba àwọn òǹkà àyẹ̀wò ìṣòro àti láti tún ìṣàn tàbí ẹ̀rọ ìṣeré yìí bẹ̀rẹ̀. Ìwọlé fún ìgbà díẹ̀ máa ń pé ìṣẹ́jú 10. Ìrànlọ́wọ́ tí a fọkàn tán ṣì wà lẹ́yìn títún sopọ̀ tàbí títún bẹ̀rẹ̀; gbígba dátà kọ̀ọ̀kan ṣì parí lẹ́yìn ìṣẹ́jú 10. Gbigba dátà dá dúró nígbà tí ojú ìwé bá fara sin tàbí tí kò bá sí lórí ayélujára.",

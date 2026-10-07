@@ -60,7 +60,7 @@ var keyStrings = {
     "All4you.tv settings": "ການຕັ້ງຄ່າ All4you.tv",
     "Allow diagnostics for 10 minutes": "ອະນຸຍາດໃຫ້ວິນິດໄສ 10 ນາທີ",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "ອະນຸຍາດໃຫ້ຖ່າຍຮູບໜ້າຈໍເປັນເວລາ 10 ນາທີ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ອະນຸຍາດໃຫ້ເຊີບເວີນີ້ເກັບຕົວນັບວິນິດໄສ ແລະ ເລີ່ມສະຕຣີມ ຫຼື ເຄື່ອງຫຼິ້ນນີ້ຄືນ. ການເຂົ້າໃຊ້ຊົ່ວຄາວມີອາຍຸ 10 ນາທີ. ການຊ່ວຍເຫຼືອທີ່ໄວ້ໃຈຍັງໃຊ້ໄດ້ຫຼັງເຊື່ອມຕໍ່ ຫຼື ເລີ່ມຄືນ; ການເກັບແຕ່ລະຄັ້ງຍັງໝົດອາຍຸຫຼັງ 10 ນາທີ. ການເກັບຈະຢຸດຊົ່ວຄາວເມື່ອໜ້າຖືກເຊື່ອງ ຫຼື ອອບລາຍ.",

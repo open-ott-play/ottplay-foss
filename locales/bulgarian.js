@@ -62,7 +62,7 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Разрешаване на диагностика за 10 минути",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Разрешете екранни снимки за 10 минути",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Разрешете на този сървър да събира диагностични броячи и да рестартира този поток или плейър. Временният достъп трае 10 минути. Доверената поддръжка остава достъпна след повторно свързване или рестартиране; всяка сесия за събиране на данни приключва след 10 минути. Събирането спира временно, когато плейърът е скрит или офлайн.",

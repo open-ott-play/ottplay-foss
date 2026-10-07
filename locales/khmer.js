@@ -61,7 +61,7 @@ var keyStrings = {
     "All4you.tv settings": "ការកំណត់ All4you.tv",
     "Allow diagnostics for 10 minutes": "អនុញ្ញាតការធ្វើរោគវិនិច្ឆ័យរយៈពេល 10 នាទី។",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "អនុញ្ញាតឱ្យថតអេក្រង់រយៈពេល 10 នាទី។",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "អនុញ្ញាតឱ្យម៉ាស៊ីនមេនេះប្រមូលបញ្ជរវិភាគ ហើយចាប់ផ្តើមការផ្សាយ ឬកម្មវិធីចាក់នេះឡើងវិញ។ ការចូលប្រើបណ្តោះអាសន្នមានរយៈពេល 10 នាទី។ ការគាំទ្រដែលអាចទុកចិត្តបាននៅតែមានបន្ទាប់ពីភ្ជាប់ឡើងវិញ ឬចាប់ផ្តើមឡើងវិញ។ ការចាប់យកនីមួយៗនៅតែផុតកំណត់បន្ទាប់ពី 10 នាទី។ ការប្រមូលផ្អាកខណៈពេលដែលលាក់ ឬគ្មានអ៊ីនធឺណិត។",

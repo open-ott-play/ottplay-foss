@@ -504,7 +504,7 @@
     {
       "key": "Playlist",
       "value": "Playlist",
-      "locales": ["filipino"],
+      "locales": ["filipino", "italian"],
       "reason": "Same established computing or media term in the listed languages"
     },
     {

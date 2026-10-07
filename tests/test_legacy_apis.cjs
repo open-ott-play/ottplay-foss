@@ -162,6 +162,62 @@ assert.deepEqual(
     []
 );
 
+// A quota failure snapshots readable native keys without marking every copy as
+// an override. After native storage recovers, changes must invalidate those old
+// snapshots too: a later denied-storage boot must not resurrect them.
+for (const operation of ["set", "del", "clear"]) {
+    const state = {
+        cookies: {},
+        saved: { ottplaylang: "_eng", playlist: "original playlist" },
+    };
+    const failed = storageFixture("write", false, state);
+    failed.set("preferredAudioLanguage", "_rus");
+    assert.equal(state.cookies.ottplaylang, "_eng");
+    assert.deepEqual(
+        JSON.parse(decodeURIComponent(state.cookies.ottplayStorageFallback)),
+        ["preferredAudioLanguage"],
+        "The language snapshot is unmarked; the failed write is authoritative"
+    );
+    const recovered = storageFixture("native", false, state);
+    if (operation === "set") recovered.set("ottplaylang", "_fra");
+    else if (operation === "del") recovered.del("ottplaylang");
+    else recovered.clear();
+    assert.equal(
+        recovered.get("ottplaylang"),
+        operation === "set" ? "_fra" : null
+    );
+    const denied = storageFixture("access", false, state);
+    assert.equal(
+        denied.get("ottplaylang"),
+        null,
+        operation + " must not leave a stale language for a denied-storage boot"
+    );
+    assert(!Object.hasOwn(denied.dump(), "ottplaylang"));
+    if (operation === "clear") {
+        assert.deepEqual(Object.keys(denied.dump()), []);
+        assert.deepEqual(state.saved, {});
+        assert.deepEqual(state.cookies, {});
+    } else {
+        assert.equal(denied.get("preferredAudioLanguage"), "_rus");
+        assert.equal(recovered.get("preferredAudioLanguage"), "_rus");
+        assert.equal(denied.get("playlist"), "original playlist");
+        assert.deepEqual(
+            JSON.parse(
+                decodeURIComponent(state.cookies.ottplayStorageFallback)
+            ),
+            ["preferredAudioLanguage"],
+            "Changing one native key preserves unrelated cookie overrides"
+        );
+        // A subsequent quota failure copies the current native state, so it
+        // can restore an updated value, but never a successfully deleted one.
+        storageFixture("write", false, state).set("another", "pending");
+        assert.equal(
+            storageFixture("access", false, state).get("ottplaylang"),
+            operation === "set" ? "_fra" : null
+        );
+    }
+}
+
 // ErrorEvent.error can be null (for example for opaque script failures).
 // Reporting that failure must not throw from the error handler itself.
 const reports = [];

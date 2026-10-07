@@ -60,7 +60,7 @@ var keyStrings = {
     "All4you.tv settings": "የAll4you.tv ቅንብሮች",
     "Allow diagnostics for 10 minutes": "ምርመራን ለ10 ደቂቃ ፍቀድ",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "ቅጽበታዊ ገጽ እይታዎችን ለ10 ደቂቃ ፍቀድ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ይህ አገልጋይ የምርመራ ቆጣሪዎችን እንዲሰበስብ እና ይህን ዥረት ወይም ማጫወቻ እንደገና እንዲጀምር ይፍቀዱለት። ጊዜያዊ መዳረሻ ለ10 ደቂቃ ይቆያል። የታመነ ድጋፍ እንደገና ከተገናኘ ወይም እንደገና ከተጀመረ በኋላም ይገኛል፤ እያንዳንዱ የመረጃ መሰብሰብ ክፍለ ጊዜ ግን ከ10 ደቂቃ በኋላ ያበቃል። ገጹ ሲደበቅ ወይም ከመስመር ውጭ ሲሆን መረጃ መሰብሰብ ለጊዜው ይቆማል።",

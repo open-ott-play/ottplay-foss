@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv-instellings",
     "Allow diagnostics for 10 minutes": "Laat diagnostiek vir 10 minute toe",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Laat skermkiekies vir 10 minute toe",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Laat hierdie bediener toe om diagnostiese tellers te versamel en hierdie stroom of mediaspeler te herbegin. Tydelike toegang duur 10 minute. Vertroude ondersteuning bly beskikbaar na herkoppeling of herbegin; elke dataversameling verval steeds na 10 minute. Dataversameling word onderbreek wanneer die bladsy versteek of vanlyn is.",

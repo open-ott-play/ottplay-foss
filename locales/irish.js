@@ -63,7 +63,7 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Ceadaigh diagnóisic ar feadh 10 nóiméad",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "Ceadaigh gabhálacha scáileáin ar feadh 10 nóiméad",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":

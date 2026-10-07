@@ -61,7 +61,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv ဆက်တင်များ",
     "Allow diagnostics for 10 minutes": "ရောဂါရှာဖွေမှုများကို 10 မိနစ်ခွင့်ပြုပါ။",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "ဖန်သားပြင်ဓာတ်ပုံများကို 10 မိနစ်ကြာ ခွင့်ပြုပါ။",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ဤဆာဗာအား ရောဂါရှာဖွေရေးကောင်တာများစုဆောင်းပြီး ဤထုတ်လွှင့်မှု သို့မဟုတ် ပလေယာကို ပြန်လည်စတင်ခွင့်ပြုပါ။ ယာယီဝင်ရောက်ခွင့်သည် ၁၀ မိနစ်ဖြစ်သည်။ ပြန်လည်ချိတ်ဆက်ခြင်း သို့မဟုတ် ပြန်လည်စတင်ပြီးနောက် ယုံကြည်စိတ်ချရသော ပံ့ပိုးကူညီမှုကို ဆက်လက်ရရှိနိုင်မည်ဖြစ်သည်။ ဖမ်းယူမှုတစ်ခုစီသည် 10 မိနစ်အကြာတွင်သက်တမ်းကုန်ဆုံးဆဲဖြစ်သည်။ ဝှက်ထားစဉ် သို့မဟုတ် အော့ဖ်လိုင်းတွင် စုဆောင်းမှု ခေတ္တရပ်သည်။",

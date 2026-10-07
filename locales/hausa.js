@@ -63,7 +63,7 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Ba da izinin binciken matsala na minti 10",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "Bada damar hotunan allo na tsawon mintuna 10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":

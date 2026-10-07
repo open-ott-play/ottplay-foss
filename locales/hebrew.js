@@ -61,7 +61,7 @@ var keyStrings = {
     "All4you.tv settings": "הגדרות All4you.tv",
     "Allow diagnostics for 10 minutes": "אפשר אבחון למשך 10 דקות",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "אפשר צילומי מסך למשך 10 דקות",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "אפשר לשרת זה לאסוף מוני אבחון ולהפעיל מחדש את הזרם או הנגן הזה. גישה זמנית נמשכת 10 דקות. תמיכה מהימנה נשארת זמינה לאחר חיבור מחדש או הפעלה מחדש; כל איסוף נתונים מסתיים לאחר 10 דקות. האיסוף מושהה כשהנגן מוסתר או לא מקוון.",

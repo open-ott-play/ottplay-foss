@@ -63,7 +63,7 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Να επιτρέπονται διαγνωστικοί έλεγχοι για 10 λεπτά",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "Επιτρέψτε στιγμιότυπα οθόνης για 10 λεπτά",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":

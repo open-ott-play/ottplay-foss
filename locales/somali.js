@@ -63,7 +63,7 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Oggolow baaritaanka cilladaha muddo 10 daqiiqo ah",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "Oggolow sawirrada shaashadda muddo 10 daqiiqo ah",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
@@ -193,7 +193,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Qaybta waafaqsanaanta lama soo gelin karin. Dib u fur daaraha si aad mar kale u tijaabiso.",
     "Compatible HLS": "HLS waafaqsan",
-    "Complete pairing link": "Isku xirka isku-xidhka oo dhammaystiran",
+    "Complete pairing link": "Xidhiidhka lammaanaynta oo dhammaystiran",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Ku deji All4you.tv gudaha Dejinta -> Dejinta bixiyaha",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":

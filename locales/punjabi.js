@@ -60,7 +60,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv ਸੈਟਿੰਗਾਂ",
     "Allow diagnostics for 10 minutes": "10 ਮਿੰਟਾਂ ਲਈ ਡਾਇਗਨੌਸਟਿਕਸ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "10 ਮਿੰਟਾਂ ਲਈ ਸਕ੍ਰੀਨਸ਼ੌਟਸ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ਇਸ ਸਰਵਰ ਨੂੰ ਡਾਇਗਨੌਸਟਿਕ ਕਾਊਂਟਰ ਇਕੱਠੇ ਕਰਨ ਅਤੇ ਇਸ ਸਟ੍ਰੀਮ ਜਾਂ ਪਲੇਅਰ ਨੂੰ ਮੁੜ ਚਾਲੂ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ। ਅਸਥਾਈ ਪਹੁੰਚ 10 ਮਿੰਟ ਰਹਿੰਦੀ ਹੈ। ਭਰੋਸੇਯੋਗ ਸਹਾਇਤਾ ਮੁੜ-ਕੁਨੈਕਟ ਕਰਨ ਜਾਂ ਮੁੜ-ਚਾਲੂ ਕਰਨ ਤੋਂ ਬਾਅਦ ਉਪਲਬਧ ਰਹਿੰਦੀ ਹੈ; ਹਰੇਕ ਕੈਪਚਰ ਦੀ ਮਿਆਦ ਅਜੇ ਵੀ 10 ਮਿੰਟ ਬਾਅਦ ਖਤਮ ਹੋ ਜਾਂਦੀ ਹੈ। ਲੁਕਵੇਂ ਜਾਂ ਔਫਲਾਈਨ ਹੋਣ 'ਤੇ ਸੰਗ੍ਰਹਿ ਰੁਕ ਜਾਂਦਾ ਹੈ।",

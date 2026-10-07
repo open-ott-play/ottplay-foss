@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv баптаулары",
     "Allow diagnostics for 10 minutes": "Диагностикаға 10 минут рұқсат етіңіз",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Скриншоттарға 10 минут рұқсат етіңіз",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Бұл серверге диагностикалық есептегіштерді жинауға және осы ағынды немесе ойнатқышты қайта іске қосуға рұқсат беріңіз. Уақытша рұқсат 10 минутқа созылады. Сенімді қолдау қайта қосылғаннан немесе қайта іске қосылғаннан кейін де қолжетімді; әрбір дерек жинау сеансы 10 минуттан кейін аяқталады. Ойнатқыш жасырылғанда немесе желіден ажыратылғанда дерек жинау кідіртіледі.",

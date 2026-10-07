@@ -61,7 +61,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv nustatymai",
     "Allow diagnostics for 10 minutes": "Leisti diagnostiką 10 minučių",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "Leiskite daryti ekrano kopijas 10 minučių",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":

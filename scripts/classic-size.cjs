@@ -120,7 +120,7 @@ const { gzipSync } = require("node:zlib");
 // expiring image delivery. Reserve 13 KB raw / 4 KB gzip for this feature;
 // external dictionaries and native capture implementations remain separate.
 // Complete localization, system/media language preferences and pinned Unicode 17
-// measure 781183 / 243307 web and 781141 / 243369 native on Node 22.23.3,
+// measure 781223 / 243308 web and 781181 / 243372 native on Node 22.23.3,
 // compared with 746380 / 228703 web and 746338 / 228765 native at 8c240190.
 // Compact ASCII varints keep normalization, grapheme and full case-fold data
 // inside the measured entry. Retain the prior absolute release reserves
@@ -185,8 +185,8 @@ const BUDGET = Object.freeze({ bytes: 784300, gzipBytes: 244500 });
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
 // Include the same screenshot feature once in the complete payload bound.
-// The same localized build plus all seven provider families is 885959 / 282573
-// web and 885917 / 282635 native. Only Stalker's locale adds provider bytes
+// The same localized build plus all seven provider families is 885999 / 282574
+// web and 885957 / 282638 native. Only Stalker's locale adds provider bytes
 // (+24 raw / +7 gzip). Preserve the prior 4418 raw / 976 gzip complete-payload
 // reserve, rounded up to 100 bytes, while counting every provider and table.
 const TOTAL_BUDGET = Object.freeze({ bytes: 890400, gzipBytes: 283700 });

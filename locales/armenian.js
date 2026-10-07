@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv կարգավորումներ",
     "Allow diagnostics for 10 minutes": "Թույլատրել ախտորոշումը 10 րոպե",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Թույլատրել սքրինշոթները 10 րոպե",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Թույլ տվեք այս սերվերին հավաքել ախտորոշիչ ցուցանիշներ և վերագործարկել այս հոսքը կամ նվագարկիչը։ Ժամանակավոր մուտքը տևում է 10 րոպե։ Վստահելի աջակցությունը հասանելի է մնում վերամիացումից կամ վերագործարկումից հետո, սակայն տվյալների հավաքման յուրաքանչյուր սեանս ավարտվում է 10 րոպե անց։ Տվյալների հավաքումը դադարում է, երբ էջը թաքցված է կամ ցանցից անջատված։",

@@ -60,7 +60,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv அமைப்புகள்",
     "Allow diagnostics for 10 minutes": "10 நிமிடங்களுக்கு கண்டறிய அனுமதிக்கவும்",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes":
         "ஸ்கிரீன்ஷாட்களை 10 நிமிடங்களுக்கு அனுமதிக்கவும்",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":

@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv iestatījumi",
     "Allow diagnostics for 10 minutes": "Atļaut diagnostiku uz 10 minūtēm",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Atļaut ekrānuzņēmumus uz 10 minūtēm",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Atļaujiet šim serverim vākt diagnostikas rādītājus un restartēt straumi vai atskaņotāju. Pagaidu piekļuve ilgst 10 minūtes. Uzticamā servera atbalsts paliek pieejams pēc atkārtotas savienošanās vai restartēšanas; katra datu vākšanas sesija beidzas pēc 10 minūtēm. Datu vākšana tiek apturēta, kad atskaņotājs ir paslēpts vai bezsaistē.",

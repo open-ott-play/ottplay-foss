@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "Impostazioni di All4you.tv",
     "Allow diagnostics for 10 minutes": "Consenti la diagnostica per 10 minuti",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Consenti screenshot per 10 minuti",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Consenti a questo server di raccogliere contatori diagnostici e riavviare questo flusso o lettore. L'accesso temporaneo dura 10 minuti. Il supporto affidabile rimane disponibile dopo la riconnessione o il riavvio; ogni acquisizione scade comunque dopo 10 minuti. La raccolta viene sospesa mentre è nascosta o offline.",
@@ -713,7 +713,7 @@ var keyStrings = {
     "Player could not start": "Impossibile avviare il lettore",
     "Player default": "Scelta predefinita del lettore",
     "Player info:": "Informazioni lettore:",
-    Playlist: "Elenco brani",
+    Playlist: "Playlist",
     "Playlist file": "File playlist",
     "Playlist is not loading directly...Loading via server...":
         "La playlist non si carica direttamente...Caricamento tramite server...",

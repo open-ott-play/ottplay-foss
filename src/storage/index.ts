@@ -152,8 +152,8 @@ function createLocalStorageAdapter(): StorageAdapter {
         if (nativeStorage) {
             try {
                 nativeStorage.setItem(key, value);
+                fallback.del(key);
                 if (overrides[key]) {
-                    fallback.del(key);
                     mark(key, false);
                 }
                 return;
@@ -168,8 +168,8 @@ function createLocalStorageAdapter(): StorageAdapter {
         if (nativeStorage) {
             try {
                 nativeStorage.removeItem(key);
+                fallback.del(key);
                 if (overrides[key]) {
-                    fallback.del(key);
                     mark(key, false);
                 }
                 return;
@@ -184,8 +184,10 @@ function createLocalStorageAdapter(): StorageAdapter {
         if (nativeStorage) {
             try {
                 nativeStorage.clear();
-                Object.keys(overrides).forEach(function (key) {
+                Object.keys(fallback.dump()).forEach(function (key) {
                     fallback.del(key);
+                });
+                Object.keys(overrides).forEach(function (key) {
                     delete overrides[key];
                 });
                 fallback.del(STORAGE_FALLBACK_KEYS);

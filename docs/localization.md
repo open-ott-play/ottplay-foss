@@ -357,15 +357,15 @@ so a single English plural rule is not imposed on other languages.
 ## Bundle cost and verification
 
 On Node 22.23.3 with version 1.1.53, the complete localization change increases
-the web entry from 746,380 bytes (228,703 gzip) at `8c240190` to 781,183 bytes
-(243,307 gzip). An independent intermediate build attributes 23,186 raw bytes
+the web entry from 746,380 bytes (228,703 gzip) at `8c240190` to 781,223 bytes
+(243,308 gzip). An independent intermediate build attributes 23,186 raw bytes
 and 10,982 gzip bytes to pinned Unicode support; the remaining interface,
-startup and media-language behavior adds 11,617 raw bytes and 3,622 gzip bytes.
+startup and media-language behavior adds 11,657 raw bytes and 3,623 gzip bytes.
 The dictionaries remain external assets. All Unicode tables count inside the
 entry; all seven optional provider families count toward the complete payload.
 
-The final native entry is 781,141 bytes (243,369 gzip). Including every provider,
-the web/native totals are 885,959/885,917 raw bytes and 282,573/282,635 gzip bytes.
+The final native entry is 781,181 bytes (243,372 gzip). Including every provider,
+the web/native totals are 885,999/885,957 raw bytes and 282,574/282,638 gzip bytes.
 The size limits retain the previous absolute release headroom, rounded upward
 to 100 bytes. Reproduce the final artifacts with `npm ci`, `npm run build` and
 `npm run check:size` on Node 22; `npm run check:bundle` also runs the pinned

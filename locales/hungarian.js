@@ -62,7 +62,7 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv beállításai",
     "Allow diagnostics for 10 minutes": "Diagnosztika engedélyezése 10 percre",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Képernyőképek engedélyezése 10 percre",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Engedélyezze a szervernek a diagnosztikai számlálók gyűjtését és az adatfolyam vagy a lejátszó újraindítását. Az ideiglenes hozzáférés 10 percig tart. A megbízható támogatás újracsatlakozás vagy újraindítás után is elérhető; minden adatgyűjtés 10 perc után véget ér. A gyűjtés szünetel, ha a lejátszó rejtett vagy offline állapotban van.",

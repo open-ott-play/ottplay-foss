@@ -63,7 +63,7 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Kwe ka nchọpụta nsogbu rụọ ọrụ nkeji 10",
 
-    // Remote screenshots: English fallback pending translation.
+    // Remote screenshots.
     "Allow screenshots for 10 minutes": "Kwe ka nseta ihuenyo maka nkeji iri",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Kwe ka sava a chịkọta ọnụ ọgụgụ nchọpụta nsogbu ma malitegharịa iyi a ma ọ bụ ihe ọkpụkpọ. Nnweta nwa oge na-adị nkeji 10. Nkwado a tụkwasịrị obi ka dị mgbe ejikọrọ ọzọ ma ọ bụ malitegharịa; nchịkọta ọ bụla ka na-agwụ mgbe nkeji 10 gachara. Nchịkọta na-akwụsị mgbe e zoro ngwa ahụ ma ọ bụ mgbe enweghị njikọ.",
