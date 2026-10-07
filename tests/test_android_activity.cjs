@@ -239,11 +239,11 @@ try {
             this.paused = true;
         },
         paused: true,
-        readyState: 0,
         play() {
             this.paused = false;
             return Promise.resolve();
         },
+        readyState: 0,
         removeAttribute() {},
     };
     let destroyed = 0;
@@ -289,7 +289,11 @@ try {
         w.stbPause();
         for (let i = 0; i < 2; i++) {
             vm.runInContext(scripts.MEDIA_PLAY, w);
-            assert.equal(video.paused, false, `Play at readyState ${readyState}`);
+            assert.equal(
+                video.paused,
+                false,
+                `Play at readyState ${readyState}`
+            );
             assert.equal(w.stbIsPlaying(), readyState >= 2);
         }
     }
@@ -305,7 +309,11 @@ try {
     delete w.stbResume;
     for (let i = 0; i < 2; i++) {
         vm.runInContext(scripts.MEDIA_PLAY, w);
-        assert.equal(video.paused, false, "older bundles retain the Play fallback");
+        assert.equal(
+            video.paused,
+            false,
+            "older bundles retain the Play fallback"
+        );
     }
     w.stbResume = resume;
     vm.runInContext(scripts.MEDIA_STOP, w);

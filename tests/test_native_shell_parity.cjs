@@ -1068,10 +1068,10 @@ for (const platform of Object.keys(nativeSources)) {
                 this.paused = true;
             },
             paused: true,
-            readyState: 0,
             play() {
                 this.paused = false;
             },
+            readyState: 0,
             removeAttribute() {},
         },
     };
