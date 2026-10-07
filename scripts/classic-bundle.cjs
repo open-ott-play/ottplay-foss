@@ -76,6 +76,7 @@ const CLASSIC_MODULES = [
     "build/provider/m3u-driver.js",
     "build/plugins/plex.js",
     "build/plugins/plex-auth.js",
+    "build/plugins/plex-queue.js",
     "build/provider/plex-driver.js",
     "build/provider/vportal-driver.js",
     "build/provider/drivers.js",
@@ -83,6 +84,7 @@ const CLASSIC_MODULES = [
     "build/provider/index.js",
     "build/commands/index.js",
     "build/commands/remote-profiles.js",
+    "build/commands/remote-plex.js",
     "build/commands/remote-restart.js",
     "build/commands/remote-screenshot.js",
     "build/commands/remote-archive.js",
@@ -123,6 +125,7 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     plex: [
         "build/plugins/plex.js",
         "build/plugins/plex-auth.js",
+        "build/plugins/plex-queue.js",
         "build/provider/plex-driver.js",
     ],
     stalker: ["build/provider/stalker-driver.js"],
@@ -187,6 +190,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.installCapacitorHttpTransport",
     ]),
     "build/plugins/plex-auth.js": Object.freeze(["window.__ottPlexAuth"]),
+    "build/plugins/plex-queue.js": Object.freeze([
+        "window.__ottPlexQueueFactory",
+    ]),
     "build/plugins/plex.js": Object.freeze(["window.__ottPlex"]),
     "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([

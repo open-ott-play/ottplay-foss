@@ -1552,6 +1552,11 @@ export function stbPause(): void {
     var handle = getCoreMediaBackend().current();
     if (handle) handle.pause();
 }
+/** Explicit Play must not toggle a loading or already playing lease to pause. */
+export function stbResume(): void {
+    var handle = getCoreMediaBackend().current();
+    if (handle) handle.resume();
+}
 export function stbContinue(): void {
     var handle = getCoreMediaBackend().current();
     if (!handle) return;
@@ -2724,6 +2729,7 @@ function openCoreEngineLease(
                 "pause",
                 "timeupdate",
                 "ended",
+                "error",
                 "loadedmetadata",
             ].forEach(function (name) {
                 var callback = function () {

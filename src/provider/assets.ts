@@ -14,6 +14,7 @@ var providerAssetGroups: { [kind: string]: string[][] } = {
     plex: [
         ["__ottPlex", "create", "normalize"],
         ["__ottPlexAuth", "start", "connect", "cancel"],
+        ["__ottPlexQueueFactory", "create"],
         ["__ottPlexDriver", "create", "mount", "reportLoad"],
     ],
     stalker: [["__ottStalkerDriver", "create", "mountSettings"]],
