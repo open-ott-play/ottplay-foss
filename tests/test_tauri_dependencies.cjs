@@ -6,10 +6,12 @@ const {
 
 const current = readDependencies();
 checkDependencies(current);
+let rejectedCases = 0;
 function rejects(change, message) {
     const fixture = structuredClone(current);
     change(fixture);
     assert.throws(() => checkDependencies(fixture), message);
+    rejectedCases += 1;
 }
 
 // Both direct updater updates and its transitive API updates can break the
@@ -65,5 +67,70 @@ for (const [name, version] of [
             `path = "../unreviewed/${name}"`
         );
     }, /reviewed vendor directory/);
+    const declaration = `${name} = { path = "vendor/${name}-${version}" }`;
+    rejects((f) => {
+        f.workspace = f.workspace.replace(
+            declaration,
+            `# ${declaration}\n${name} = { path = "../unreviewed/${name}" }`
+        );
+    }, /reviewed vendor directory/);
+    rejects((f) => {
+        f.workspace = f.workspace.replace(
+            declaration,
+            `${name} = { path = "../unreviewed/${name}" } # ${declaration}`
+        );
+    }, /reviewed vendor directory/);
+    rejects((f) => {
+        f.workspace = f.workspace.replace(
+            declaration,
+            `${declaration}\n${declaration}`
+        );
+    }, /duplicate patch/);
 }
-console.log("PASS Tauri dependency regression and unused/registry patch cases");
+
+rejects((f) => {
+    f.workspace = f.workspace.replace(
+        "[patch.crates-io]",
+        "# [patch.crates-io]"
+    );
+}, /one active patch.crates-io table/);
+rejects((f) => {
+    f.workspace +=
+        '\n[patch.crates-io]\nwry = { path = "../unreviewed/wry" }\n';
+}, /one active patch.crates-io table/);
+rejects((f) => {
+    f.workspace = f.workspace
+        .replace(
+            "[patch.crates-io]",
+            '# [patch.crates-io]\n# wry = { path = "vendor/wry-0.55.1" }\n[patch.crates-io]'
+        )
+        .replace(
+            'wry = { path = "vendor/wry-0.55.1" }\ntao',
+            'wry = { path = "../unreviewed/wry" }\ntao'
+        );
+}, /reviewed vendor directory/);
+rejects((f) => {
+    f.workspace = f.workspace.replace(
+        'wry = { path = "vendor/wry-0.55.1" }',
+        'wry = { path = "vendor/wry-0.55.1", path = "../unreviewed/wry" }'
+    );
+}, /single-line path-only declarations/);
+for (const quote of ['"""', "'''"]) {
+    rejects((f) => {
+        f.workspace = `[workspace.metadata]\nnotes = ${quote}\n${f.workspace}\n${quote}\n`;
+    }, /does not support multiline TOML strings/);
+}
+const commented = structuredClone(current);
+commented.workspace = commented.workspace
+    .replace(
+        "[patch.crates-io]",
+        "# [patch.crates-io]\n  [patch.crates-io] # active patches"
+    )
+    .replace(
+        'wry = { path = "vendor/wry-0.55.1" }',
+        '  wry={path="vendor/wry-0.55.1"} # reviewed patch'
+    );
+checkDependencies(commented);
+console.log(
+    `PASS Tauri dependency guard: ${rejectedCases} rejected regressions`
+);
