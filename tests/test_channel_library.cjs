@@ -547,6 +547,56 @@ for (let slot = 0; slot < 15; slot++) {
     );
 }
 {
+    let recording = false;
+    const reads = [];
+    const catalog = [true, false, true, true].map((locked, index) => ({
+        groupId: "test",
+        groupLabel: "Test",
+        id: index + 1,
+        get itemId() {
+            if (recording) reads.push("item:" + (index + 1));
+            return "item:" + (index + 1);
+        },
+        label: "Channel " + (index + 1),
+        get locked() {
+            if (recording) reads.push("locked:" + (index + 1));
+            return locked;
+        },
+    }));
+    const migrated = create(
+        {
+            current: () => true,
+            get: (key) => {
+                if (key === "parentalArray") {
+                    recording = true;
+                    return "[1]";
+                }
+                if (key === "aAspects") recording = false;
+                return null;
+            },
+            set: () => assert.fail("construction must not persist"),
+            sourceId: "legacy-read-order",
+        },
+        catalog
+    );
+    assert.deepEqual(
+        reads,
+        [
+            "locked:1",
+            "item:1",
+            "locked:2",
+            "locked:3",
+            "item:3",
+            "locked:4",
+            "item:4",
+            "item:3",
+            "item:4",
+        ],
+        "legacy exclusions must preserve short-circuit reads and map only after filtering"
+    );
+    assert.deepEqual(plain(migrated.snapshot().locks), [1]);
+}
+{
     const count = 2000;
     const catalog = Array.from({ length: count }, (_, index) => ({
         groupId: "test",

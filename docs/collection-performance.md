@@ -7,6 +7,9 @@ work that grows with the number of channels or favorites:
 - Channel lock reconciliation uses a temporary null-prototype membership index.
   Stored and migrated IDs keep their original order; explicit unlocks still win.
   The index is local to reconciliation and cannot become stale across mutations.
+  Exclusion sets live inside the deduplication call; the legacy migration index
+  is explicitly released because returned methods share its closure. This must
+  also hold after minification, which can inline an apparently isolated function.
 - Favorite merging appends invisible references to their retained neighbor's
   bucket, then appends those buckets to the result. It does not repeatedly copy
   the growing prefix. Equal reference values do not replace object identity.
