@@ -40,7 +40,7 @@ const { installDiagnosticsController } = loadSource(
     {
         "../commands/remote-restart": loadSource(
             "src/commands/remote-restart.ts",
-            {}
+            { "./remote-plex": loadSource("src/commands/remote-plex.ts", {}) }
         ),
         "./command-server": commandServer,
         "./diagnostics-permission": loadSource(

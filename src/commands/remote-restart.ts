@@ -1,3 +1,5 @@
+import { remotePlexQueue } from "./remote-plex";
+
 function remoteSettingsLocked(w: any): boolean {
     return w.__ottParental
         ? w.__ottParental.needs("providers") ||
@@ -399,8 +401,9 @@ export function executeRemoteControl(
     action: string,
     params: any,
     done: (result: any) => void,
-    afterReply?: (effect: () => void) => void
-): void {
+    afterReply?: (effect: () => void) => void,
+    expiresAt?: number
+): (() => void) | void {
     function fail(status: string, error: string): void {
         done({ data: { error: error }, status: status });
     }
@@ -454,8 +457,11 @@ export function executeRemoteControl(
             ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
             : [];
     if (action === "capabilities") {
-        if (remoteChannelStep(w, -1)) playback.push("previous_channel");
-        if (remoteChannelStep(w, 1)) playback.push("next_channel");
+        var plexQueue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
+        if (plexQueue.retained() || remoteChannelStep(w, -1))
+            playback.push("previous_channel");
+        if (plexQueue.retained() || remoteChannelStep(w, 1))
+            playback.push("next_channel");
         // Generic availability describes the selection state, not the PIN
         // policy of either neighbour. Every requested destination is checked.
         if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
@@ -474,6 +480,7 @@ export function executeRemoteControl(
             ].filter(lifecycleAvailable),
             playback: playback,
             player: remotePlayerInfo(w),
+            plex_queue: plexQueue.capability,
             screenshot: w.__ottRemoteScreenshot
                 ? w.__ottRemoteScreenshot.snapshot()
                 : { source: null, state: "unsupported" },
@@ -506,6 +513,34 @@ export function executeRemoteControl(
                         : "Channel movement accepts only an operation."
                 );
                 return;
+            }
+            if (!relative) {
+                var queue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
+                if (queue.retained()) {
+                    return queue.execute(
+                        {
+                            expires_at: expiresAt,
+                            params: {
+                                op:
+                                    operation === "next_channel"
+                                        ? "next"
+                                        : "previous",
+                                runtime: remotePlayerInfo(w).runtime,
+                            },
+                        },
+                        function (result: any) {
+                            if (result.status !== "ok") {
+                                done(result);
+                                return;
+                            }
+                            reply({
+                                dispatched: true,
+                                operation: operation,
+                                plex_queue: result.data,
+                            });
+                        }
+                    );
+                }
             }
             var selected = remoteChannelStep(
                 w,

@@ -119,7 +119,12 @@ const { gzipSync } = require("node:zlib");
 // Remote screenshots add a bounded capture adapter, local permission UI and
 // expiring image delivery. Reserve 13 KB raw / 4 KB gzip for this feature;
 // external dictionaries and native capture implementations remain separate.
-const BUDGET = Object.freeze({ bytes: 749450, gzipBytes: 229800 });
+// Explicit Plex queues keep their implementation in the optional Plex asset.
+// Node 22.23.3, level-9 gzip: web entry 750532/230056, native 750490/230118.
+// The lazy dispatcher and transactional media handoff exceed the prior caps by
+// 1082 raw / 318 gzip bytes. Increase those caps by 1650 / 600, leaving at least
+// 568 raw / 282 gzip bytes for native and candidate-version variation.
+const BUDGET = Object.freeze({ bytes: 751100, gzipBytes: 230400 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -179,7 +184,11 @@ const BUDGET = Object.freeze({ bytes: 749450, gzipBytes: 229800 });
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
 // Include the same screenshot feature once in the complete payload bound.
-const TOTAL_BUDGET = Object.freeze({ bytes: 855550, gzipBytes: 269000 });
+// Including all provider assets, explicit queues measure 862700/271732 web
+// and 862658/271794 native. The prior caps were 855550/269000: measured excess
+// is 7150 raw / 2794 gzip bytes. Add 7650 / 3100, retaining at least 500 / 306
+// bytes for native and release-version variation rather than hiding lazy code.
+const TOTAL_BUDGET = Object.freeze({ bytes: 863200, gzipBytes: 272100 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

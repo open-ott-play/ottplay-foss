@@ -401,6 +401,7 @@ function createPlexClient(
                 record = {
                     __ottMediaSequence:
                         item.type === "episode" || item.type === "track",
+                    adult: Number(item.adult) === 1 ? 1 : 0,
                     description: escaped(item.summary),
                     plexSource: source,
                     request: { path: "/library/metadata/" + id },
@@ -1243,6 +1244,39 @@ function createPlexClient(
             resolve(item, function (playable) {
                 w._playMedia(playable);
             });
+        },
+        queue: function (ids: string[], done: (result: any) => void) {
+            cancel();
+            var token = revision;
+            request(
+                "/library/metadata/" + ids.join(","),
+                {},
+                token,
+                function (data, error) {
+                    if (!data || error) return done(null);
+                    var found: { [id: string]: any } = Object.create(null);
+                    var playable: { [id: string]: boolean } =
+                        Object.create(null);
+                    items(data).forEach(function (item: any) {
+                        var media = plexRows(item && item.Media)[0];
+                        var part = media && plexRows(media.Part)[0];
+                        if (part && plexPath(part.key))
+                            playable[String(item.ratingKey)] = true;
+                    });
+                    records(data, "", {}, false).forEach(function (row: any) {
+                        var match =
+                            row.request &&
+                            /^\/library\/metadata\/([1-9][0-9]{0,19})$/.exec(
+                                row.request.path
+                            );
+                        if (match && playable[match[1]]) found[match[1]] = row;
+                    });
+                    var ordered = ids.map(function (id) {
+                        return found[id];
+                    });
+                    done(ordered.every(Boolean) ? ordered : null);
+                }
+            );
         },
         resolve: resolve,
         stableRequests: true,

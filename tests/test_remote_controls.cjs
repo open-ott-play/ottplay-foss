@@ -14,7 +14,15 @@ function emit(file) {
     acorn.parse(code, { ecmaVersion: 5 });
     return code;
 }
-const context = { exports: {} };
+const plexContext = { exports: {} };
+vm.runInNewContext(emit("src/commands/remote-plex.ts"), plexContext);
+const context = {
+    exports: {},
+    require(name) {
+        assert.equal(name, "./remote-plex");
+        return plexContext.exports;
+    },
+};
 vm.runInNewContext(emit("src/commands/remote-restart.ts"), context);
 const execute = context.exports.executeRemoteControl;
 const plain = (value) => JSON.parse(JSON.stringify(value));

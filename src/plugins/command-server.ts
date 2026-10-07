@@ -597,8 +597,20 @@ export function createCommandServer(
                                 schedule(0);
                             };
                             try {
+                                var executionItem = item;
+                                if (
+                                    item.action === "plex_queue" ||
+                                    item.action === "playback"
+                                )
+                                    executionItem = Object.assign({}, item, {
+                                        expires_at:
+                                            Math.min(
+                                                requestDeadline,
+                                                executionDeadline
+                                            ) / 1000,
+                                    });
                                 var cancelWork = execute(
-                                    item,
+                                    executionItem,
                                     finishExecution,
                                     function (effect: () => void) {
                                         if (
