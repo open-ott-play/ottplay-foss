@@ -614,7 +614,7 @@ function classicMediaRuntime(): any {
                 : null;
         if (!frame || frame.route.kind !== "catalog")
             return repeat === "one" && playable(item)
-                ? { index: 0, items: [item], repeat: repeat }
+                ? { index: 0, items: [item], placeholder: true, repeat: repeat }
                 : null;
         var items = frame.items.filter(function (row: MediaLibraryItem) {
             return (
@@ -753,67 +753,24 @@ function classicMediaRuntime(): any {
         var playback = mediaClassicPlayback;
         var sequence = playback && playback.sequence;
         if (!playback || playback.runtime !== api || !direction) return;
-        // A failed folder request can still resume the file itself. Retry
-        // its original folder when the user asks for a sibling, rather than
-        // silently swallowing every subsequent arrow press.
-        if (!sequence || !sequence.items.length) {
-            if (
-                skipRequest &&
-                skipRequest.playback === playback &&
-                skipRequest.recovering
-            ) {
-                skipRequest.offset += direction;
-                return;
-            }
-            var recoveryAdmitted = library.capture();
-            var recoveryGeneration =
-                w.__ottClassicPlayback.snapshot().generation;
-            var recoveryRevision = automaticGeneration + 1;
-            api.cancelAuto();
-            var recovery = {
-                offset: direction,
-                playback: playback,
-                recovering: true,
-            };
-            function validRecovery() {
-                var state = w.__ottClassicPlayback.snapshot();
-                return (
-                    current() &&
-                    recoveryAdmitted() &&
-                    mediaClassicPlayback === playback &&
-                    skipRequest === recovery &&
-                    automaticGeneration === recoveryRevision &&
-                    state.generation === recoveryGeneration &&
-                    state.target &&
-                    state.target.kind === "vod" &&
-                    state.target.sourceId === source &&
-                    state.target.channelId === playback.ref.itemId
-                );
-            }
-            skipRequest = recovery;
-            if (!validRecovery()) return;
-            var recoveryItem = describe([playback.payload], {
-                kind: "history",
-                title: "",
-            })[0];
-            collectFolder(recoveryItem, validRecovery, function (folder) {
-                if (!validRecovery()) return;
-                skipRequest = null;
-                if (!folder) {
-                    if (w.showShift)
-                        w.showShift(w._("Unable to load playlist"));
-                    return;
-                }
-                playback.sequence = folder.sequence;
-                skipPlayback(recovery.offset);
-            });
+        var recovering =
+            !sequence || !sequence.items.length || sequence.placeholder;
+        if (
+            recovering &&
+            skipRequest &&
+            skipRequest.playback === playback &&
+            skipRequest.recovering
+        ) {
+            skipRequest.offset += direction;
             return;
         }
-        var index =
-            (skipRequest && skipRequest.playback === playback
-                ? skipRequest.index
-                : sequence.index) + direction;
+        var index = recovering
+            ? 0
+            : (skipRequest && skipRequest.playback === playback
+                  ? skipRequest.index
+                  : sequence.index) + direction;
         if (
+            !recovering &&
             sequence.repeat === "off" &&
             (index < 0 || index >= sequence.items.length)
         )
@@ -821,6 +778,7 @@ function classicMediaRuntime(): any {
         var admitted = library.capture();
         var generation = w.__ottClassicPlayback.snapshot().generation;
         var revision = automaticGeneration + 1;
+        var request: any;
         api.cancelAuto();
         function valid() {
             var state = w.__ottClassicPlayback.snapshot();
@@ -838,11 +796,37 @@ function classicMediaRuntime(): any {
             );
         }
         if (!valid()) return;
+        // A resumed file can outlive a failed folder request. Recover its
+        // original siblings when an arrow is pressed, including Repeat One.
+        if (recovering) {
+            request = {
+                offset: direction,
+                playback: playback,
+                recovering: true,
+            };
+            skipRequest = request;
+            var saved = describe([playback.payload], {
+                kind: "history",
+                title: "",
+            })[0];
+            collectFolder(saved, valid, function (folder) {
+                if (!valid()) return;
+                skipRequest = null;
+                if (!folder) {
+                    if (w.showShift)
+                        w.showShift(w._("Unable to load playlist"));
+                    return;
+                }
+                playback.sequence = folder.sequence;
+                skipPlayback(request.offset);
+            });
+            return;
+        }
         index =
             ((index % sequence.items.length) + sequence.items.length) %
             sequence.items.length;
         if (index === sequence.index) return;
-        var request = { index: index, playback: playback };
+        request = { index: index, playback: playback };
         skipRequest = request;
         var item = sequence.items[index];
         function finish() {
@@ -1113,6 +1097,7 @@ function classicMediaRuntime(): any {
                                 title: String(playback.payload.title || ""),
                             },
                         ],
+                        placeholder: true,
                     };
                 }
                 playback.sequence.repeat = repeat;
@@ -1193,6 +1178,7 @@ function classicMediaRuntime(): any {
                             index: index,
                             items: sequence.items,
                             ordered: sequence.ordered,
+                            placeholder: sequence.placeholder,
                             repeat: mode,
                         },
                         true,

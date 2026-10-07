@@ -2884,13 +2884,14 @@ test("Full-screen Plex arrows select adjacent videos instead of the configured m
     );
 });
 
-function resumedWithoutFolder() {
+function resumedWithoutFolder(repeat) {
     const c = coldFolderResumeFixture();
+    if (repeat) c.stored["mediaRepeat.v1:" + c.__ottMedia.sourceId()] = repeat;
     const collect = c.providerMediaClient.collect;
     c.providerMediaClient.collect = (_target, done) =>
         done({ error: true, items: [] });
     assert.equal(c.__ottMedia.restoreLast(), true);
-    assert.equal(c.__ottMedia.current().sequence, null);
+    if (repeat !== "one") assert.equal(c.__ottMedia.current().sequence, null);
     c.providerMediaClient.collect = collect;
     c.deferFolder = true;
     return c;
@@ -2916,6 +2917,59 @@ test("Plex arrows recover the original folder after an unavailable startup catal
         "/library/metadata/42"
     );
     assert.equal(c.collections.length, 1, "Recovered siblings are reused");
+});
+
+test("Repeat One keeps folder recovery available after replaying the fallback item", () => {
+    const c = resumedWithoutFolder("one");
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 600,
+        type: "position",
+    });
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(
+        c.resolutions.length,
+        2,
+        "Natural completion repeats the current file"
+    );
+    c.__ottMedia.skip(1);
+    assert.equal(c.collections.length, 1);
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    assert.equal(c.__ottMedia.current().sequence.repeat, "one");
+});
+
+test("Enabling Repeat One on a file without a queue does not disable arrow recovery", () => {
+    const c = resumedWithoutFolder();
+    c.__ottMedia.cycleRepeat();
+    c.__ottMedia.skip(-1);
+    assert.equal(c.collections.length, 1);
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/41"
+    );
+    assert.equal(c.__ottMedia.current().sequence.repeat, "one");
+});
+
+test("A real one-file folder is collected once without recursive recovery", () => {
+    const c = resumedWithoutFolder("one");
+    c.folderRows = c.folderRows.filter(
+        (row) => row.request?.path === "/library/metadata/42"
+    );
+    c.__ottMedia.skip(1);
+    c.completeFolder();
+    c.__ottMedia.skip(-1);
+    assert.equal(c.collections.length, 1);
+    assert.equal(c.resolutions.length, 1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
 });
 
 test("Pending folder recovery combines arrow presses without restarting the request", () => {
