@@ -124,7 +124,10 @@ const { gzipSync } = require("node:zlib");
 // The lazy dispatcher and transactional media handoff exceed the prior caps by
 // 1082 raw / 318 gzip bytes. Increase those caps by 1650 / 600, leaving at least
 // 568 raw / 282 gzip bytes for native and candidate-version variation.
-const BUDGET = Object.freeze({ bytes: 751100, gzipBytes: 230400 });
+// Decoder-confirmed state, catalog lease preservation and recoverable native
+// errors add 560 raw / 164 gzip bytes on Node 22: web 751092 / 230220.
+// Allocate 600 / 200 to preserve the existing release-version headroom.
+const BUDGET = Object.freeze({ bytes: 751700, gzipBytes: 230600 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -188,7 +191,8 @@ const BUDGET = Object.freeze({ bytes: 751100, gzipBytes: 230400 });
 // and 862658/271794 native. The prior caps were 855550/269000: measured excess
 // is 7150 raw / 2794 gzip bytes. Add 7650 / 3100, retaining at least 500 / 306
 // bytes for native and release-version variation rather than hiding lazy code.
-const TOTAL_BUDGET = Object.freeze({ bytes: 863200, gzipBytes: 272100 });
+// Apply the same decoder-state increment once; provider assets are unchanged.
+const TOTAL_BUDGET = Object.freeze({ bytes: 863800, gzipBytes: 272300 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
