@@ -1076,3 +1076,16 @@ demonstration recordings. The helper keeps all generated media outside Git.
 Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
 
 An optional OTT server integration also exposes an existing Plex server's catalog and compatible playback through a separate NAS library entry and M3U export. See [server-side library configuration and client access](docs/synology-library.md).
+
+## Related repositories
+
+- [ottplay-core](https://github.com/open-ott-play/ottplay-core) owns the shared
+  JVM/ES5 domain logic, wire contracts and FOSS2 client. This player consumes
+  generated artifacts; follow the core delivery guide for shared changes.
+- [ottplay-android](https://github.com/open-ott-play/ottplay-android) is the separate
+  native Kotlin/Compose application, with its own installation and release identity.
+- [ottplay-control-server](https://github.com/open-ott-play/ottplay-control-server)
+  provides self-hosted remote commands; [ottplay-swop](https://github.com/open-ott-play/ottplay-swop)
+  provides an optional Worker-based text-entry transport.
+- [ottplay-web-vitrine](https://github.com/open-ott-play/ottplay-web-vitrine)
+  owns the browser demo's hosted profile, demo media and publication verification.

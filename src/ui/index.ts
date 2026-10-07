@@ -735,6 +735,14 @@ export function showChannelInfo(timeoutSec: number): void {
     clearTimeout(detailTimer);
     clearTimeout(detailScrollTimer);
     clearTimeout(infoTimeout);
+    if (w.__ottKiosk && w.__ottKiosk.strict && w.__ottKiosk.strict()) {
+        // Strict kiosk has one read-only footer, with no expandable description,
+        // seek interaction or buffering-dependent extension of its lifetime.
+        $("#descr, #progress_span").hide();
+        $infoBar.stop(true, true).show();
+        infoTimeout = setTimeout(infoBarHide, 5000);
+        return;
+    }
     if (timeoutSec === undefined) timeoutSec = 0;
     // If called with timeoutSec=1 and bar is already visible with descr hidden, just reset timeout
     if (

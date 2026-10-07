@@ -326,7 +326,14 @@ function moduleOf(file, requireFn, window) {
             };
             host.__ottKiosk = moduleOf(
                 "src/plugins/kiosk.ts",
-                (name) => moduleOf("src/utils/caseless.ts", () => {}, host),
+                (name) =>
+                    moduleOf(
+                        name.includes("strict-kiosk")
+                            ? "src/plugins/strict-kiosk-input.ts"
+                            : "src/utils/caseless.ts",
+                        () => {},
+                        host
+                    ),
                 host
             ).createKiosk(host);
             host.__ottKiosk.init();
@@ -693,14 +700,22 @@ function moduleOf(file, requireFn, window) {
         television().select(0, 1);
         assert.equal(television().kiosk.channel.id, "b");
         assert.match((await run("kiosk", "status")).stdout, /Кино/);
+        assert.match(
+            (await run("kiosk", "on", "--strict")).stdout,
+            /Strict kiosk/
+        );
+        assert.equal(television().kiosk.strict, true);
+        assert.equal(television().kiosk.channel.id, "b");
         await assert.rejects(run("provider", "demo"));
         await assert.rejects(run("profile", "1"));
         await assert.rejects(run("play", "1"));
         await run("kiosk", "set", "Первый");
         assert.equal(television().kiosk.channel.id, "a");
+        assert.equal(television().kiosk.strict, true);
         assert.equal(desktop().kiosk.state, "off");
         await run("kiosk", "off");
         assert.equal(television().kiosk.state, "off");
+        assert.equal(television().kiosk.strict, false);
         await run("kiosk", "on", "2");
         assert.equal(television().kiosk.channel.id, "b");
         await run("kiosk", "off");

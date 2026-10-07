@@ -23,6 +23,7 @@ module.exports = defineConfig({
         "nas-library.spec.cjs",
         "plex-provider.spec.cjs",
         "vportal-provider.spec.cjs",
+        "strict-kiosk.spec.cjs",
         "stalker-profiles.spec.cjs",
         "pc2-playback.spec.cjs",
         "window-controls.spec.cjs",
