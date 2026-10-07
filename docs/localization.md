@@ -336,7 +336,8 @@ accent stripping. Compact pinned Unicode 17 tables supply canonical composition,
 decomposition and combining classes on every engine, including devices whose
 native normalization API uses older Unicode data. Hangul normalization is
 algorithmic. Regenerate them offline with
-`scripts/generate-localization-unicode.py`; source hashes and the Unicode 17
+`python3.14 scripts/generate-localization-unicode.py` (Python 3.14 supplies the
+pinned `unicodedata` 16.0.0 base); source hashes and the Unicode 17
 combining-class additions are checked against the pinned inputs.
 
 The keyboard moves and deletes at grapheme boundaries. All engines use pinned

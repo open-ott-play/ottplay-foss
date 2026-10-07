@@ -1,4 +1,5 @@
 const { cloudSource } = require("./helpers/cloud-source-fixture.cjs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
@@ -25,6 +26,11 @@ const bundleAst =
           )
         : null;
 const { JSDOM } = require(path.join(root, "node_modules/jsdom"));
+const localizationCode = localizationRuntime(
+    bundleIndex >= 0
+        ? path.relative(root, path.resolve(process.argv[bundleIndex + 1]))
+        : undefined
+);
 function ast(file) {
     return (
         asts[file] ||
@@ -81,10 +87,8 @@ function fixture() {
         )
     );
     w.$.expr.filters.visible = (e) => e.style.display !== "none";
+    w.eval(localizationCode);
     if (bundleAst) {
-        w.useGraphicIcons = false;
-        w.translations = {};
-        w.eval(func("src/localization/index.ts", "translate"));
         w.eval(
             bundleAst.statements
                 .filter(
@@ -165,6 +169,7 @@ function fixture() {
             .map((n) => func("src/utils/helpers.ts", n))
             .join("\n")
     );
+    w.eval(func("src/ui/index.ts", "localizedTextHtml"));
     w.setTimeout = () => 1;
     w.clearTimeout = () => {};
     w.requestAnimationFrame = () => {};
@@ -184,6 +189,7 @@ const hostile =
 test("cloud bundle extraction selects exact closures and rejects missing dependencies", () => {
     const code = [
         "function metadataText(value) { return value; }",
+        "function settingsFailure() {}",
         "function commitSettingsWrites() {}",
         "var unrelated = 1, cloudSettingsTransfer = { send: function(){}, load: function(){} };",
         "function cloudSendSettings() { cloudSettingsTransfer.send(); }",
@@ -197,6 +203,7 @@ test("cloud bundle extraction selects exact closures and rejects missing depende
     assert.equal(extracted.includes("unrelated"), false);
     for (const name of [
         "metadataText",
+        "settingsFailure",
         "commitSettingsWrites",
         "cloudSettingsTransfer",
         "cloudSendSettings",

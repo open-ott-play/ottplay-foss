@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
@@ -419,7 +420,7 @@ test("future or malformed envelopes remain untouched and unwritable", (f) => {
     }
 });
 function language(w, name) {
-    vm.runInContext(compile("src/localization/index.ts"), w);
+    vm.runInContext(localizationRuntime(), w);
     vm.runInContext(
         fs.readFileSync(path.join(root, "locales", name + ".js"), "utf8"),
         w

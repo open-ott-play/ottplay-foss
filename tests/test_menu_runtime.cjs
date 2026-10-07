@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
@@ -22,20 +23,7 @@ const host = vm.createContext({});
 host.window = host;
 vm.runInContext("(function(){" + code + "})();", host);
 assertMenuRuntime(host.__ottMenuRegistry);
-const localization = ts
-    .transpileModule(
-        fs.readFileSync(
-            path.join(__dirname, "../src/localization/index.ts"),
-            "utf8"
-        ),
-        {
-            compilerOptions: {
-                module: ts.ModuleKind.ES2015,
-                target: ts.ScriptTarget.ES5,
-            },
-        }
-    )
-    .outputText.replace(/^export /gm, "");
+const localization = localizationRuntime();
 function language(host, name) {
     vm.runInContext(
         fs.readFileSync(

@@ -37,7 +37,7 @@ versions: 200,340 and 199,650 assertions respectively. The offline
 two local official files, validating their source hashes first. NFKC/NFKD columns provide
 canonical-normalization inputs; the player does not apply compatibility folding.
 
-The offline runtime generator requires Python's Unicode 16 database and the
+The offline runtime generator requires Python 3.14's Unicode 16 database and the
 source-hashed Unicode 17 overlay in `scripts/localization-unicode-normalization.json`.
 The 2,081 canonical decompositions and 961 compositions are unchanged; their hashes
 are checked. All 34 added combining classes are applied, giving 968 nonzero classes.
