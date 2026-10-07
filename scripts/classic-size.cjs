@@ -127,7 +127,17 @@ const { gzipSync } = require("node:zlib");
 // Decoder-confirmed state, catalog lease preservation and recoverable native
 // errors add 560 raw / 164 gzip bytes on Node 22: web 751092 / 230220.
 // Allocate 600 / 200 to preserve the existing release-version headroom.
-const BUDGET = Object.freeze({ bytes: 751700, gzipBytes: 230600 });
+// Complete localization, system/media language preferences and pinned Unicode 17
+// measure 783615 / 243951 web and 783573 / 244023 native on Node 22.23.3,
+// compared with 746380 / 228703 web and 746338 / 228765 native at 8c240190.
+// Compact ASCII varints keep normalization, grapheme and full case-fold data
+// inside the measured entry. Bounded cookie recovery uses part of the original
+// reserve; the unchanged cap leaves at least 685 raw / 477 gzip bytes at 1.1.53.
+// Do not exclude these tables or storage helpers from the measurement.
+// Merge both independent allowances from the common 749450 / 229800 base:
+// localization retains its 34850 / 14700 increment; Plex and decoder ownership
+// retain 2250 / 800. Neither feature consumes the other's release reserve.
+const BUDGET = Object.freeze({ bytes: 786550, gzipBytes: 245300 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -192,7 +202,13 @@ const BUDGET = Object.freeze({ bytes: 751700, gzipBytes: 230600 });
 // is 7150 raw / 2794 gzip bytes. Add 7650 / 3100, retaining at least 500 / 306
 // bytes for native and release-version variation rather than hiding lazy code.
 // Apply the same decoder-state increment once; provider assets are unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 863800, gzipBytes: 272300 });
+// The same localized build plus all seven provider families is 888391 / 283217
+// web and 888349 / 283289 native. Only Stalker's locale adds provider bytes
+// (+24 raw / +7 gzip). The unchanged complete-payload cap leaves at least
+// 2009 raw / 411 gzip bytes at 1.1.53, counting every provider and table.
+// From the common 855550 / 269000 base, retain localization's 34850 / 14700
+// and the complete Plex/decoder payload's 8250 / 3300 allowance exactly once.
+const TOTAL_BUDGET = Object.freeze({ bytes: 898650, gzipBytes: 287000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

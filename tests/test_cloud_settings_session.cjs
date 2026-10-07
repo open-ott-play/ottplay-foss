@@ -492,4 +492,43 @@ check(
         assert.equal(f.restarts(), 1);
     }
 );
+check(
+    "Russian cloud errors translate UI keys while escaping external details",
+    (f) => {
+        const dictionary =
+            require("../scripts/localization-catalog.cjs").readDictionary(
+                path.join(__dirname, "../locales/russian.js")
+            );
+        f.w._ = (key) => dictionary[key] || key;
+        f.w.cloudLoadSettings();
+        f.requests.at(-1).options.error({
+            responseText:
+                '<img src=x onerror="attack()"> external-server-detail',
+        });
+        assert(dictionary["Cloud transfer failed"] !== "Cloud transfer failed");
+        assert(f.html().includes(dictionary["Cloud transfer failed"]));
+        assert(!f.w.document.querySelector("#listAbout img"));
+        assert(
+            f.w.document
+                .getElementById("listAbout")
+                .textContent.includes("external-server-detail")
+        );
+    }
+);
+check("successful restore notice uses the selected dictionary", (f) => {
+    const dictionary =
+        require("../scripts/localization-catalog.cjs").readDictionary(
+            path.join(__dirname, "../locales/russian.js")
+        );
+    f.w._ = (key) => dictionary[key] || key;
+    f.deliver();
+    const key = "Settings received. Restarting player...";
+    assert(dictionary[key] && dictionary[key] !== key);
+    assert(
+        f.w.document
+            .getElementById("listAbout")
+            .textContent.includes(dictionary[key])
+    );
+    assert.equal(f.restarts(), 1);
+});
 console.log("Cloud settings session: " + passed + " scenarios passed");

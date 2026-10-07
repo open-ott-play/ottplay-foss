@@ -1,3 +1,4 @@
+import { languageNames } from "../localization/assets";
 import {
     HereNowSwopPair,
     hereNowCryptoAvailable,
@@ -8,9 +9,11 @@ import {
     hereNowSwopConfig,
     hereNowValidValue,
 } from "./herenow";
+import { createPhoneLocalization } from "./phone-localization";
 
 (function () {
     var w = window as any;
+    var locale = createPhoneLocalization(w);
     var status = document.getElementById("status")!;
     var pairing = document.getElementById("pairing") as HTMLFormElement;
     var entry = document.getElementById("entry") as HTMLFormElement;
@@ -25,7 +28,7 @@ import {
     var generation = 0;
     var expiry: any = null;
     function say(value: string): void {
-        status.textContent = value;
+        locale.label(status, value);
     }
     function forget(): void {
         generation++;
@@ -45,7 +48,7 @@ import {
     async function start(link: string): Promise<void> {
         forget();
         valueInput.readOnly = false;
-        button.textContent = "Send to TV";
+        locale.label(button, "Send to TV");
         button.disabled = false;
         sending = false;
         var revision = generation;
@@ -73,8 +76,26 @@ import {
                 !hereNowValidValue(payload.draft)
             )
                 throw new Error("invalid_message");
+            if (
+                typeof payload.language === "string" &&
+                Object.prototype.hasOwnProperty.call(
+                    languageNames,
+                    payload.language
+                )
+            ) {
+                await locale.setLanguage(
+                    payload.language,
+                    locale.browserLanguage(),
+                    function () {
+                        return generation === revision;
+                    }
+                );
+                if (generation !== revision) return;
+                if (expired()) throw new Error("expired");
+            }
+            document.getElementById("caption")!.removeAttribute("data-i18n");
             document.getElementById("caption")!.textContent =
-                payload.caption || "Enter text";
+                payload.caption || locale.text("Enter text");
             valueInput.value = payload.draft;
             loaded = true;
             entry.hidden = false;
@@ -141,7 +162,7 @@ import {
                 if (generation !== revision) return;
                 if (!reply) {
                     valueInput.readOnly = false;
-                    button.textContent = "Send to TV";
+                    locale.label(button, "Send to TV");
                     say(
                         "Could not prepare this text. Please shorten it and try again."
                     );
@@ -150,7 +171,7 @@ import {
                 say(
                     "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires."
                 );
-                button.textContent = "Retry same message";
+                locale.label(button, "Retry same message");
             } finally {
                 if (generation === revision) {
                     sending = false;
@@ -186,9 +207,10 @@ import {
         else {
             pairing.hidden = false;
             say(
-                "Scan a new QR code on your TV, or paste its complete private pairing link."
+                "Scan the QR code on your TV, or paste its complete private pairing link below."
             );
         }
     });
+    void locale.setLanguage(locale.browserLanguage());
     openFragment();
 })();

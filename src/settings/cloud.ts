@@ -105,8 +105,13 @@ var cloudSettingsTransfer = (function () {
                     )
                     .show();
         }
-        function fail(message: any): void {
-            show("ERROR:<br/>" + text(message || "Cloud transfer failed"));
+        function fail(message: string, detail?: any): void {
+            show(
+                label("ERROR!") +
+                    "<br/>" +
+                    label(message) +
+                    (detail ? "<br/>" + text(detail) : "")
+            );
         }
         function send(
             command: string,
@@ -120,7 +125,8 @@ var cloudSettingsTransfer = (function () {
                 if (finished || id !== requestId || !active()) return;
                 finished = true;
                 request = null;
-                if (error) fail(value && value.responseText);
+                if (error)
+                    fail("Cloud transfer failed", value && value.responseText);
                 else {
                     try {
                         success(value);
@@ -272,7 +278,7 @@ var cloudSettingsTransfer = (function () {
             if (!active()) return;
             if (w.__ottClassicGuide) w.__ottClassicGuide.invalidate(false);
             if (!active()) return;
-            show("OTT-Play Preferences received!<br/>Restart player...");
+            show(label("Settings received. Restarting player..."));
             if (active() && w.restart) w.restart();
         }
         function poll(code: string): void {

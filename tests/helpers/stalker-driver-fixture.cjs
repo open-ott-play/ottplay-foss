@@ -47,6 +47,7 @@ module.exports = function fixture(options = {}) {
         createLifetime: host.__ottProviderRuntime.createRegistry,
         hash: (name) => host.xxHash32S(name, true),
         isDune: () => !!options.dune,
+        language: options.language ? () => options.language : undefined,
         now: () => options.now ?? 1767225600.5,
         progress: (message) => progress.push(message),
         relay: "",

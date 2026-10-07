@@ -60,14 +60,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv ସେଟିଂସ୍",
     "Allow diagnostics for 10 minutes": "10 ମିନିଟ୍ ପାଇଁ ନିଦାନକୁ ଅନୁମତି ଦିଅନ୍ତୁ",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "10 ମିନିଟ୍ ପାଇଁ ସ୍କ୍ରିନସଟ୍ ଅନୁମତି ଦିଅନ୍ତୁ।",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ଏହି ସର୍ଭର୍‌କୁ ନିଦାନ ଗଣନା ସଂଗ୍ରହ କରିବା ଏବଂ ଏହି ଷ୍ଟ୍ରିମ୍ କିମ୍ବା ପ୍ଲେୟାର୍ ପୁନଃଆରମ୍ଭ କରିବାକୁ ଅନୁମତି ଦିଅନ୍ତୁ। ଅସ୍ଥାୟୀ ପ୍ରବେଶ 10 ମିନିଟ୍ ରହେ। ପୁନଃସଂଯୋଗ କିମ୍ବା ପୁନଃଆରମ୍ଭ ପରେ ମଧ୍ୟ ବିଶ୍ୱସ୍ତ ସହାୟତା ଉପଲବ୍ଧ ରହେ; ପ୍ରତି ସଂଗ୍ରହର ସମୟସୀମା 10 ମିନିଟ୍ ପରେ ସରେ। ପୃଷ୍ଠା ଲୁଚିଥିଲେ କିମ୍ବା ଅଫଲାଇନ୍ ଥିଲେ ସଂଗ୍ରହ ବିରାମ ହୁଏ।",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ଏହି ସକ୍ରିୟ ପୃଷ୍ଠା ଅଧିବେଶନରେ ପ୍ଲେବ୍ୟାକ୍, ନେଟୱର୍କ ଓ ଇନପୁଟ୍ ଗଣନା ସଂଗ୍ରହ କରିବାକୁ ଏହି ସର୍ଭର୍‌କୁ ଅନୁମତି ଦିଅନ୍ତୁ। HTTPS ଓ ସର୍ଭର୍ ଅନୁମତି ଆବଶ୍ୟକ। 10 ମିନିଟ୍ ପରେ, ପୃଷ୍ଠା ଲୁଚିଗଲେ କିମ୍ବା ସଂଯୋଗ ବିଚ୍ଛିନ୍ନ ହେଲେ ବନ୍ଦ ହୁଏ।",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "ଏହି ସର୍ଭରକୁ 10 ମିନିଟ୍ ପାଇଁ ପ୍ରତିଛବି ଅନୁରୋଧ କରିବାକୁ ଅନୁମତି ଦିଅନ୍ତୁ। ପ୍ରତିଛବିଗୁଡ଼ିକ ବ୍ୟକ୍ତିଗତ ସୂଚନା ଧାରଣ କରିପାରେ। ଏକ ବ୍ରାଉଜରରେ, ପ୍ଲେୟାର୍ ଟ୍ୟାବ୍ କିମ୍ବା ୱିଣ୍ଡୋ ଚୟନ କରନ୍ତୁ। ପୁନଃ ଲୋଡ୍ କିମ୍ବା ବିଚ୍ଛିନ୍ନ ହେବା ଉପରେ ଅନୁମତି ସମାପ୍ତ ହୁଏ।",
     "Allowlist this Device ID": "ଏହି ଡିଭାଇସ୍ IDକୁ ଅନୁମତିପ୍ରାପ୍ତ ତାଲିକାରେ ଯୋଡ଼ନ୍ତୁ",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ପ୍ଲେୟାର୍ HTTP EPG ଉତ୍ସ ଡାଉନଲୋଡ୍ କରିପାରିବ ନାହିଁ। HTTPS ଉତ୍ସ ବ୍ୟବହାର କରନ୍ତୁ।",
@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 ମିନିଟ୍ ପଛକୁ / ଆଗକୁ ନିଅନ୍ତୁ",
     "Background color": "ପୃଷ୍ଠଭୂମି ରଙ୍ଗ",
     "Background color of selected item": "ବଛା ଆଇଟମ୍‌ର ପୃଷ୍ଠଭୂମି ରଙ୍ଗ",
+    "Backup state changed": "ବ୍ୟାକଅପ୍ ସ୍ଥିତି ବଦଳିଗଲା।",
     "Balance, $": "ବାଲାନ୍ସ, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -107,6 +108,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "ତାଲିକାରେ %1/%2 ବଟନ୍‌ର ବ୍ୟବହାର",
     "Black screen while switching the channel": "ଚ୍ୟାନେଲ୍ ବଦଳାଇବା ବେଳେ କଳା ପରଦା",
     Blue: "ନୀଳ",
+    "Bookmark age (days): %1": "ବୁକମାର୍କର ବୟସ (ଦିନ): %1।",
     "Bookmark age: %1 days": "ବୁକମାର୍କ ବୟସ: %1 ଦିନ",
     "Browse folders": "ଫୋଲ୍ଡର୍ ଦେଖନ୍ତୁ",
     "Buffer Size, s": "ବଫର୍ ଆକାର, ସେ",
@@ -159,6 +161,9 @@ var keyStrings = {
     "Clear settings": "ସେଟିଂସ୍ ଖାଲି କରନ୍ତୁ",
     Close: "ବନ୍ଦ କରନ୍ତୁ",
     "Close PiP": "PiP ବନ୍ଦ କରନ୍ତୁ",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "କ୍ଲାଉଡ୍ ସେଭ୍ / ଲୋଡ୍ STB ଫର୍ମୱେୟାର ଆବଶ୍ୟକ କରେ (host_ott ସେଟ୍ ହୋଇନାହିଁ)",
+    "Cloud transfer failed": "କ୍ଲାଉଡ୍ ସ୍ଥାନାନ୍ତର ବିଫଳ ହେଲା।",
     Code: "କୋଡ୍",
     Color: "ରଙ୍ଗ",
     "Color spectrum": "ରଙ୍ଗ ବର୍ଣ୍ଣାଳୀ",
@@ -174,6 +179,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "ସୁସଙ୍ଗତତା ରନଟାଇମ୍ ଲୋଡ୍ ହୋଇପାରିଲା ନାହିଁ। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ପ୍ଲେୟାର୍ ପୁଣି ଖୋଲନ୍ତୁ।",
     "Compatible HLS": "ସୁସଙ୍ଗତ HLS",
+    "Complete pairing link": "ସଂପୂର୍ଣ୍ଣ ଯୋଡି ଲିଙ୍କ୍।",
     "Configure All4you.tv in Settings -> Provider Settings":
         "ସେଟିଂସ୍ -> ପ୍ରଦାନକାରୀ ସେଟିଂସ୍‌ରେ All4you.tv ବିନ୍ୟାସ କରନ୍ତୁ",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -246,22 +252,25 @@ var keyStrings = {
         "ସେଟିଂସ୍ -> ପ୍ରଦାନକାରୀ ସେଟିଂସ୍‌ରେ Шаравоз ବିନ୍ୟାସ କରନ୍ତୁ",
     Connect: "ସଂଯୋଗ କରନ୍ତୁ",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ସ୍କ୍ରିନସଟ୍ ଅନୁମତି ଦେବା ପୂର୍ବରୁ ଏକ HTTPS ନିର୍ଦ୍ଦେଶ ସର୍ଭରକୁ ସଂଯୋଗ କରନ୍ତୁ।",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ସ୍କ୍ରିନସଟ ବ୍ୟବହାର କରିବାକୁ ଏକ HTTPS ନିର୍ଦ୍ଦେଶ ସର୍ଭରକୁ ସଂଯୋଗ କରନ୍ତୁ।",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ଡାଇଗ୍ନୋଷ୍ଟିକ୍ ସକ୍ଷମ କରିବାକୁ ରିମୋଟ୍ କଣ୍ଟ୍ରୋଲ୍ ସଂଯୋଗ କରନ୍ତୁ।",
     "Connect this player to a command server first.":
         "ପ୍ରଥମେ ଏହି ପ୍ଲେୟାର୍‌କୁ ଏକ ନିର୍ଦ୍ଦେଶ ସର୍ଭର୍ ସହ ଯୋଡ଼ନ୍ତୁ।",
+    "Connect to TV": "ଟିଭି ସହିତ ସଂଯୋଗ କରନ୍ତୁ।",
     Connected: "ସଂଯୁକ୍ତ",
     "Connected. Waiting for the channel list...":
         "ସଂଯୁକ୍ତ। ଚ୍ୟାନେଲ୍ ତାଲିକା ପାଇଁ ଅପେକ୍ଷା...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "ରିମୋଟ୍ କଣ୍ଟ୍ରୋଲ୍ ସଂଯୋଗ କରିବା ପ୍ଲେୟାରର ନିରାକରଣ ଏବଂ ମରାମତି ପାଇଁ ଏହି ସର୍ଭରକୁ ଅନୁମତି ଦିଏ। ପୁନଃ ଆରମ୍ଭ ହେବା ପରେ ପ୍ରବେଶ ଉପଲବ୍ଧ ରହିଥାଏ ଏବଂ ଯେତେବେଳେ ଆପଣ ସଂଯୋଗ ବିଚ୍ଛିନ୍ନ କରନ୍ତି ସମାପ୍ତ ହୁଏ। ପ୍ରତ୍ୟେକ ଡାଇଗ୍ନୋଷ୍ଟିକ୍ କ୍ୟାପଚର୍ 10 ମିନିଟ୍ ମଧ୍ୟରେ ସୀମିତ।",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ସକ୍ଷମ ରିମୋଟ କଣ୍ଟ୍ରୋଲ ସଂଯୋଗ ପାଇଁ ସୁଦୂର ନିଦାନକୁ ସଂଯୋଗ କରିବା।",
     "Connecting remote diagnostics for this page.":
         "ଏହି ପୃଷ୍ଠା ପାଇଁ ଦୂର ନିଦାନ ସଂଯୁକ୍ତ ହେଉଛି।",
+    "Connecting securely to your TV...":
+        "ଆପଣଙ୍କର ଟିଭି ସହିତ ସୁରକ୍ଷିତ ଭାବରେ ସଂଯୋଗ ହେଉଛି ...",
     "Connecting to Plex…": "Plex ସହ ସଂଯୋଗ ହେଉଛି…",
     "Connecting to Stalker portal...": "Stalker ପୋର୍ଟାଲ୍ ସହ ସଂଯୋଗ ହେଉଛି…",
     "Connecting...": "ସଂଯୋଗ ହେଉଛି…",
@@ -278,6 +287,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "ଯୋଡ଼ିବା ଅନୁରୋଧ ସୃଷ୍ଟି ହୋଇପାରିଲା ନାହିଁ। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ସର୍ଭର୍ ପୁଣି ଖୋଜନ୍ତୁ।",
     "Could not load. Select to retry.": "ଲୋଡ୍ ହୋଇପାରିଲା ନାହିଁ। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ବାଛନ୍ତୁ।",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ଏହି ପାଠ ପ୍ରସ୍ତୁତ କରିପାରିଲା ନାହିଁ। ଦୟାକରି ଏହାକୁ ଛୋଟ କରନ୍ତୁ ଏବଂ ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।",
+    "Could not protect the private link. Use a different browser.":
+        "ବ୍ୟକ୍ତିଗତ ଲିଙ୍କକୁ ସୁରକ୍ଷା ଦେଇ ପାରିଲା ନାହିଁ। ଏକ ଭିନ୍ନ ବ୍ରାଉଜର୍ ବ୍ୟବହାର କରନ୍ତୁ।",
     "Could not save provider settings.": "ପ୍ରଦାନକାରୀ ସେଟିଂସ୍ ସଞ୍ଚୟ ହୋଇପାରିଲା ନାହିଁ।",
     "Could not save the approved command server settings.":
         "ଅନୁମୋଦିତ ନିର୍ଦ୍ଦେଶ ସର୍ଭର୍ ସେଟିଂସ୍ ସଞ୍ଚୟ ହୋଇପାରିଲା ନାହିଁ।",
@@ -292,6 +305,8 @@ var keyStrings = {
     "Delete category": "ବର୍ଗ ବିଲୋପ କରନ୍ତୁ",
     "Delete channel": "ଚ୍ୟାନେଲ୍ ବିଲୋପ କରନ୍ତୁ",
     "Delete list": "ତାଲିକା ବିଲୋପ କରନ୍ତୁ",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ବିତରଣ ନିଶ୍ଚିତ ହୋଇପାରିଲା ନାହିଁ। ଆପଣଙ୍କର ଟିଭି ଯାଞ୍ଚ କରନ୍ତୁ, କିମ୍ବା ଏହି ଅଧିବେଶନ ସମାପ୍ତ ହେବା ପୂର୍ବରୁ ସମାନ ବାର୍ତ୍ତା ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।",
     "Demo — moving test pattern": "ଡେମୋ — ଚଳନଶୀଳ ପରୀକ୍ଷା ଚିତ୍ର",
     Description: "ବର୍ଣ୍ଣନା",
     "Description of remote control buttons": "ରିମୋଟ୍ ବଟନ୍ ମାର୍ଗଦର୍ଶିକା",
@@ -372,6 +387,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker ପୋର୍ଟାଲ୍ URL ପ୍ରବେଶ କରନ୍ତୁ (ଯେପରି http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "ସର୍ଭର୍ ସଂଖ୍ୟା ପ୍ରବେଶ କରନ୍ତୁ (%1)।",
+    "Enter text": "ପାଠ ପ୍ରବେଶ କରନ୍ତୁ।",
     "Enter the access code separately, not in the server address.":
         "ପ୍ରବେଶ କୋଡ୍‌କୁ ସର୍ଭର୍ ଠିକଣାରେ ନ ଦେଇ ଅଲଗା ପ୍ରବେଶ କରନ୍ତୁ।",
     "Enter the command server IP or address.":
@@ -515,7 +531,9 @@ var keyStrings = {
     "Interface transparency": "ଇଣ୍ଟରଫେସ୍ ସ୍ୱଚ୍ଛତା",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "ଅବୈଧ ଚ୍ୟାନେଲ୍ ଲିଙ୍କ୍! ବ୍ୟକ୍ତିଗତ ଖାତାର ଷ୍ଟ୍ରିମ୍ URL ପରି ସମ୍ପୂର୍ଣ୍ଣ ହୋଷ୍ଟ ଦିଅନ୍ତୁ (ଯେପରି subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "କ୍ଲାଉଡ୍ ସେଟିଂସମୂହର ଅବୈଧ ପ୍ରତିକ୍ରିୟା",
     "Invalid protected source configuration": "ସୁରକ୍ଷିତ ଉତ୍ସ ବିନ୍ୟାସ ଅବୈଧ",
+    "Invalid setting": "ଅବୈଧ ସେଟିଂ",
     "IPTV token": "IPTV ଟୋକେନ୍",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ସେଟିଂସ୍",
@@ -594,6 +612,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "କୌଣସି କାର୍ଯ୍ୟକ୍ରମ ପ୍ଲେଲିଷ୍ଟ ଚ୍ୟାନେଲ୍ ଓ ତାରିଖ ସହ ମେଳ ଖାଇଲା ନାହିଁ। ଉତ୍ସ ଓ ଡିଭାଇସ୍ ଘଣ୍ଟା ଯାଞ୍ଚ କରନ୍ତୁ।",
     "No saved settings found": "ସଞ୍ଚିତ ସେଟିଂସ୍ ମିଳିଲା ନାହିଁ",
+    "No supported system language. Choose a language.":
+        "ସିଷ୍ଟମ୍‌ର କୌଣସି ଭାଷା ସମର୍ଥିତ ନୁହେଁ। ଏକ ଭାଷା ବାଛନ୍ତୁ।",
     "Not configured": "ବିନ୍ୟାସ ହୋଇନାହିଁ",
     "Not found": "ମିଳିଲା ନାହିଁ",
     "Not reduce video when showing the list (bugfix)":
@@ -608,6 +628,8 @@ var keyStrings = {
     "not set": "ସେଟ୍ ହୋଇନାହିଁ",
     Off: "ବନ୍ଦ",
     Ok: "ଠିକ୍ ଅଛି",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "କେବଳ ଏହି ଟିଭି ଆପଣଙ୍କ ବାର୍ତ୍ତା ଗ୍ରହଣ କରିପାରିବ। ଲିଙ୍କ୍ 10 ମିନିଟ୍ ପରେ ସମାପ୍ତ ହେବ।",
     Open: "ଖୋଲନ୍ତୁ",
     "Open in PiP": "PiPରେ ଖୋଲନ୍ତୁ",
     "Open Plex sign-in page": "Plex ସାଇନ୍-ଇନ୍ ପୃଷ୍ଠା ଖୋଲନ୍ତୁ",
@@ -620,6 +642,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP ହୋଷ୍ଟ",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ସେଟିଂସ୍",
+    "OTT-play remote input": "OTT-play ସୁଦୂର ନିବେଶ।",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ଉପଲବ୍ଧ। ଏବେ ଡାଉନଲୋଡ୍ କରି ସ୍ଥାପନ କରିବେ?",
     "Overwrite current settings?": "ବର୍ତ୍ତମାନ ସେଟିଂସ୍ ଉପରେ ଲେଖିବେ?",
@@ -652,6 +675,7 @@ var keyStrings = {
     Playback: "ପ୍ଲେବ୍ୟାକ୍",
     "Player and device info": "ପ୍ଲେୟାର୍ ଓ ଡିଭାଇସ୍ ସୂଚନା",
     "Player could not start": "ପ୍ଲେୟାର୍ ଆରମ୍ଭ ହୋଇପାରିଲା ନାହିଁ",
+    "Player default": "ପ୍ଲେୟାରର ପୂର୍ବନିର୍ଦ୍ଧାରିତ ଚୟନ",
     "Player info:": "ପ୍ଲେୟାର୍ ସୂଚନା:",
     Playlist: "ପ୍ଲେଲିଷ୍ଟ",
     "Playlist file": "ପ୍ଲେଲିଷ୍ଟ ଫାଇଲ୍",
@@ -672,6 +696,8 @@ var keyStrings = {
     Postpaid: "ପରେ ଦେୟ",
     PROST: "PROST",
     "PROST settings": "PROST ସେଟିଂସ୍",
+    "Preferred audio language": "ପସନ୍ଦିତ ଅଡିଓ ଭାଷା।",
+    "Preferred subtitle language": "ପସନ୍ଦିତ ସବ୍ଟାଇଟ୍ ଭାଷା।",
     Prepaid: "ଆଗୁଆ ଦେୟ",
     "Preparing secure remote input...": "ସୁରକ୍ଷିତ ଦୂର ଇନପୁଟ୍ ପ୍ରସ୍ତୁତ ହେଉଛି...",
     Prev: "ପୂର୍ବ",
@@ -703,14 +729,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "ରିମୋଟ୍ (ସଂଖ୍ୟା ବଟନ୍ ବିନା)",
     "Remote control": "ଦୂର ନିୟନ୍ତ୍ରଣ",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "ରିମୋଟ୍ କଣ୍ଟ୍ରୋଲ୍ ଡାଇଗ୍ନୋଷ୍ଟିକ୍ କୁ ଅନୁମତି ଦିଏ। ଏକ ଅପରେଟର୍ ପାଇଁ ପ୍ରସ୍ତୁତ।",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "ରିମୋଟ୍ କଣ୍ଟ୍ରୋଲ୍ ଡାଇଗ୍ନୋଷ୍ଟିକ୍ କୁ ଅନୁମତି ଦିଏ। ପୁନଃ ସଂଯୋଗ କରିବାକୁ ଅପେକ୍ଷା କରିଛି।",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "ରିମୋଟ କଣ୍ଟ୍ରୋଲରେ ଏହାର ସେଟିଙ୍ଗ ସହିତ ମିଡିଆ ପ୍ଲେୟାରର ସ୍କ୍ରିନସଟ ଅନ୍ତର୍ଭୁକ୍ତ। ପ୍ରତିଛବିଗୁଡ଼ିକ ବ୍ୟକ୍ତିଗତ ସୂଚନା ଧାରଣ କରିପାରେ। ଅତିରିକ୍ତ ଅନୁମୋଦନ ବିନା ଅନୁପ୍ରୟୋଗ ସିଧାସଳଖ ସ୍କ୍ରିନସଟ୍ କ୍ୟାପଚର୍ କରିପାରିବ। ଏକ ବ୍ରାଉଜରରେ, ଏହି ଡିଭାଇସରେ କ୍ୟାପଚର କରିବାକୁ ଟ୍ୟାବ୍ କିମ୍ବା ୱିଣ୍ଡୋ ଚୟନ କରନ୍ତୁ।",
     "Remote diagnostics": "ଦୂର ନିଦାନ",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ଏହି ସଂଯୋଗ ପାଇଁ ସୁଦୂର ନିଦାନ ସଂଗ୍ରହ ହେଉଛି (ପ୍ରତି ଅଧିବେଶନରେ ୧୦ ମିନିଟ୍ ପର୍ଯ୍ୟନ୍ତ)।",
     "Remote diagnostics is collecting for this page.":
         "ଦୂର ନିଦାନ ଏହି ପୃଷ୍ଠା ପାଇଁ ତଥ୍ୟ ସଂଗ୍ରହ କରୁଛି।",
     "Remote diagnostics is off.": "ଦୂର ନିଦାନ ବନ୍ଦ ଅଛି।",
@@ -724,10 +750,10 @@ var keyStrings = {
         "ଦୂର ଇନପୁଟ୍ ସମୟସୀମା ସରିଗଲା। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ନୂଆ ଅଧିବେଶନ ଖୋଲନ୍ତୁ।",
     "Remote input session is unavailable. Open a new session to try again.":
         "ଦୂର ଇନପୁଟ୍ ଅଧିବେଶନ ଉପଲବ୍ଧ ନାହିଁ। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ନୂଆ ଅଧିବେଶନ ଖୋଲନ୍ତୁ।",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "ସୁଦୂର ସ୍କ୍ରିନସଟ୍।",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "10 ମିନିଟ୍ ପାଇଁ ରିମୋଟ ସ୍କ୍ରିନସଟଗୁଡିକ ଅନୁମତିପ୍ରାପ୍ତ। କ୍ୟାପଚର କରିବାକୁ ସେଟିଂସମୂହ ବନ୍ଦ କରନ୍ତୁ।",
+    "Remote screenshots are off.": "ରିମୋଟ ସ୍କ୍ରିନସଟ ବନ୍ଦ ଅଛି।",
     "Remote session expired": "ଦୂର ଅଧିବେଶନ ସମୟସୀମା ସରିଗଲା",
     "Remote text entry": "ଦୂର ପାଠ ପ୍ରବେଶ",
     "Remote text entry denied": "ଦୂର ପାଠ ପ୍ରବେଶ ଅସ୍ୱୀକୃତ",
@@ -753,6 +779,7 @@ var keyStrings = {
     "Resume from archive?": "ଆର୍କାଇଭ୍‌ରୁ ଚଲାଇବା ଜାରି ରଖିବେ?",
     Retry: "ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ",
     "Retry EPG download": "EPG ଡାଉନଲୋଡ୍ ପୁଣି କରନ୍ତୁ",
+    "Retry same message": "ସମାନ ବାର୍ତ୍ତା ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।",
     "Return to previous channel": "ପୂର୍ବ ଚ୍ୟାନେଲ୍‌କୁ ଫେରନ୍ତୁ",
     Rewind: "ସମୟ ସ୍ଥାନ ବଦଳାନ୍ତୁ",
     "Rewind step by buttons %1/%2": "%1/%2 ବଟନ୍‌ର ପଛକୁ ଯିବା ଧାପ",
@@ -769,19 +796,22 @@ var keyStrings = {
     "Save settings": "ସେଟିଂସ୍ ସଞ୍ଚୟ କରନ୍ତୁ",
     "Save settings and load channel list": "ସେଟିଂସ୍ ସଞ୍ଚୟ କରି ଚ୍ୟାନେଲ୍ ତାଲିକା ଲୋଡ୍ କରନ୍ତୁ",
     "Save settings to storage": "ସେଟିଂସ୍ ସଞ୍ଚୟ ସ୍ଥାନରେ ରଖନ୍ତୁ",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "ଆପଣଙ୍କ ଟିଭିରେ QR କୋଡ୍ ସ୍କାନ୍ କରନ୍ତୁ, କିମ୍ବା ଏହାର ସମ୍ପୂର୍ଣ୍ଣ ବ୍ୟକ୍ତିଗତ ଯୋଡି ଲିଙ୍କ୍ ନିମ୍ନରେ ଲେପନ କରନ୍ତୁ।",
     "Scan this QR code with your phone to enter text.":
         "ପାଠ ପ୍ରବେଶ ପାଇଁ ଫୋନ୍‌ରେ ଏହି QR କୋଡ୍ ସ୍କାନ୍ କରନ୍ତୁ।",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ସ୍କ୍ରିନ୍ ଅଂଶୀଦାର ଆରମ୍ଭ ହୋଇପାରିଲା ନାହିଁ।",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "ସ୍କ୍ରିନ୍ ଅଂଶୀଦାର ବାତିଲ୍ ହେଲା କିମ୍ବା ଉପଲବ୍ଧ ନାହିଁ।",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ସ୍କ୍ରିନସଟ୍ ଅନୁମତି ସକ୍ଷମ ହୋଇପାରିଲା ନାହିଁ।",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "ରିମୋଟ କଣ୍ଟ୍ରୋଲ ସଂଯୋଗ ହୋଇଥିବାବେଳେ ସ୍କ୍ରିନସଟଗୁଡ଼ିକ ଉପଲବ୍ଧ।",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ଏହି ପ୍ଲାଟଫର୍ମରେ ସ୍କ୍ରିନସଟ୍ ଉପଲବ୍ଧ ନାହିଁ।",
     Script: "ଚିତ୍ରନାଟ୍ୟ",
     Search: "ଖୋଜନ୍ତୁ",
+    "Search languages": "ଭାଷା ଖୋଜ।",
     "Search programme": "କାର୍ଯ୍ୟକ୍ରମ ଖୋଜନ୍ତୁ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ସୁରକ୍ଷିତ ଦୂର ଇନପୁଟ୍ ଆରମ୍ଭ ହୋଇପାରିଲା ନାହିଁ। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ କିମ୍ବା ପରଦା କୀବୋର୍ଡ ବ୍ୟବହାର କରନ୍ତୁ।",
@@ -798,14 +828,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG ଓ ଲୋଗୋ ପାଇଁ ପ୍ଲେଲିଷ୍ଟ ଟେମ୍ପଲେଟ୍ ଉତ୍ସ ବାଛନ୍ତୁ",
     "Select Stalker portal": "Stalker ପୋର୍ଟାଲ୍ ବାଛନ୍ତୁ",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "ବ୍ରାଉଜରରେ ସ୍କ୍ରିନସଟ୍ ଉତ୍ସ ଚୟନ କରନ୍ତୁ।",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ବ୍ରାଉଜର୍ ଅଂଶୀଦାର ସଂଳାପରେ ପ୍ଲେୟାର୍ ଟ୍ୟାବ୍ କିମ୍ବା ୱିଣ୍ଡୋ ଚୟନ କରନ୍ତୁ।",
     "Send request": "ଅନୁରୋଧ ପଠାନ୍ତୁ",
     "Send settings": "ସେଟିଂସ୍ ପଠାନ୍ତୁ",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "ପ୍ରକ୍ସିରୁ Authorization: Bearer ହେଡର୍‌ରେ ଏହି କୋଡ୍ ପଠାନ୍ତୁ।",
+    "Send to TV": "ଟିଭି ପଠାନ୍ତୁ।",
     Server: "ସର୍ଭର୍",
     "Server address": "ସର୍ଭର୍ ଠିକଣା",
     "Server address (for example 192.168.1.20:8081)":
@@ -814,10 +844,13 @@ var keyStrings = {
     "Server URL": "ସର୍ଭର୍ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "ସର୍ଭର୍ ଉପଲବ୍ଧ ନାହିଁ। ସ୍ୱୟଂଚାଳିତ ପୁଣି ଚେଷ୍ଟା ହେଉଛି; ଠିକଣା ଓ ନେଟୱର୍କ ପ୍ରବେଶ ଯାଞ୍ଚ କରନ୍ତୁ।",
+    "Session closed. Start a new one from your TV when needed.":
+        "ଅଧିବେଶନ ବନ୍ଦ। ଆବଶ୍ୟକ ସମୟରେ ଆପଣଙ୍କ ଟିଭିରୁ ଏକ ନୂଆ ଆରମ୍ଭ କରନ୍ତୁ।",
     Set: "ସେଟ୍ କରନ୍ତୁ",
     "Set parental code": "ଅଭିଭାବକ କୋଡ୍ ସେଟ୍ କରନ୍ତୁ",
     "Set timer?": "ଟାଇମର୍ ସେଟ୍ କରିବେ?",
     Settings: "ସେଟିଂସ୍",
+    "Settings changed while editing": "ଏଡିଟ୍ କରିବା ସମୟରେ ସେଟିଂସମୂହ ବଦଳିଗଲା।",
     "Settings changed. Discovery was canceled.": "ସେଟିଂସ୍ ବଦଳିଲା। ଖୋଜା ବାତିଲ୍ ହେଲା।",
     "Settings copied": "ସେଟିଂସ୍ କପି ହେଲା",
     "Settings could not be exported": "ସେଟିଂସ୍ ରପ୍ତାନି ହୋଇପାରିଲା ନାହିଁ",
@@ -826,10 +859,14 @@ var keyStrings = {
     "Settings imported": "ସେଟିଂସ୍ ଆମଦାନି ହେଲା",
     "Settings JSON": "ସେଟିଂସ୍ JSON",
     "Settings loaded from storage": "ସଞ୍ଚୟରୁ ସେଟିଂସ୍ ଲୋଡ୍ ହେଲା",
+    "Settings received. Restarting player...":
+        "ସେଟିଂସମୂହ ମିଳିଛି। ପ୍ଲେୟାର ପୁଣି ଆରମ୍ଭ ହେଉଛି...",
     "Settings STB": "STB ସେଟିଂସ୍",
     "Settings saved": "ସେଟିଂସ୍ ସଞ୍ଚୟ ହେଲା",
     "Settings saved to storage": "ସେଟିଂସ୍ ସଞ୍ଚୟ ସ୍ଥାନରେ ରଖାଗଲା",
     "Settings sended!": "ସେଟିଂସ୍ ପଠାଗଲା!",
+    "Settings source changed": "ସେଟିଂସମୂହ ଉତ୍ସ ବଦଳିଗଲା।",
+    "Settings storage rejected write": "ସେଟିଂସମୂହ ଷ୍ଟୋରେଜ୍ ଲେଖା ପ୍ରତ୍ୟାଖ୍ୟାନ କଲା।",
     "Several command servers were found. Select one below.":
         "ଅନେକ ନିର୍ଦ୍ଦେଶ ସର୍ଭର୍ ମିଳିଲା। ତଳୁ ଗୋଟିଏ ବାଛନ୍ତୁ।",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -881,11 +918,11 @@ var keyStrings = {
     "Starting...": "ଆରମ୍ଭ ହେଉଛି…",
     Status: "ସ୍ଥିତି",
     Stop: "ବନ୍ଦ କରନ୍ତୁ",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ବ୍ରାଉଜର୍ ଅଂଶୀଦାର ବନ୍ଦ କରନ୍ତୁ।",
     "Stop current capture": "ବର୍ତ୍ତମାନ ତଥ୍ୟ ସଂଗ୍ରହ ବନ୍ଦ କରନ୍ତୁ",
     "Stop diagnostics": "ନିଦାନ ବନ୍ଦ କରନ୍ତୁ",
     "Stop playback and return to live": "ପ୍ଲେବ୍ୟାକ୍ ବନ୍ଦ କରି ସିଧା ପ୍ରସାରଣକୁ ଫେରନ୍ତୁ",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "ସ୍କ୍ରିନସଟ୍ ବନ୍ଦ କରନ୍ତୁ।",
     "Stream could not be played": "ଷ୍ଟ୍ରିମ୍ ଚଲାଇହେଲା ନାହିଁ",
     "Stream type: %1": "ଷ୍ଟ୍ରିମ୍ ପ୍ରକାର: %1",
     "String for search": "ଖୋଜା ପାଠ",
@@ -897,6 +934,7 @@ var keyStrings = {
     "Switch subtitle": "ଉପଶୀର୍ଷକ ବଦଳାନ୍ତୁ",
     "Switch to this list": "ଏହି ତାଲିକାକୁ ଯାଆନ୍ତୁ",
     "Swop URL": "Swop URL",
+    "System language": "ସିଷ୍ଟମ୍ ଭାଷା।",
     "saved on this device": "ଏହି ଡିଭାଇସ୍‌ରେ ସଞ୍ଚିତ",
     select: "ବାଛନ୍ତୁ",
     small: "ଛୋଟ",
@@ -904,13 +942,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ସେଟିଂସ୍",
     "Text is too long for remote input.": "ଦୂର ଇନପୁଟ୍ ପାଇଁ ପାଠ ଅତ୍ୟଧିକ ଲମ୍ବା।",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "ପାଠ ବହୁତ ଲମ୍ବା ଅଟେ। ପଠାଇବା ପୂର୍ବରୁ ଦୟାକରି ଏହାକୁ ଛୋଟ କରନ୍ତୁ।",
+    "Text sent. Check your TV to confirm it appeared.":
+        "ପାଠ ପଠାଯାଇଛି। ଏହା ଦେଖାଗଲା ନିଶ୍ଚିତ କରିବାକୁ ଆପଣଙ୍କର ଟିଭି ଯାଞ୍ଚ କରନ୍ତୁ।",
+    "The browser screenshot source is ready.": "ବ୍ରାଉଜର୍ ସ୍କ୍ରିନସଟ୍ ଉତ୍ସ ପ୍ରସ୍ତୁତ।",
     "The command server discovery URL is invalid.": "ନିର୍ଦ୍ଦେଶ ସର୍ଭର୍ ଖୋଜା URL ଅବୈଧ।",
     "The device ID in the address is invalid.": "ଠିକଣାରେ ଡିଭାଇସ୍ ID ଅବୈଧ।",
     "The discovery response is invalid.": "ଖୋଜା ପ୍ରତିକ୍ରିୟା ଅବୈଧ।",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ଏହି ବ୍ରାଉଜର୍ ମନୋନୀତ ସ୍କ୍ରିନସଟ୍ ଉତ୍ସକୁ ଚିହ୍ନଟ କରିପାରିବ ନାହିଁ।",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ଏହି ବ୍ରାଉଜର୍ ସୁରକ୍ଷିତ ଭାବେ ସ୍ୱୟଂଚାଳିତ ଯୋଡ଼ିପାରିବ ନାହିଁ। ଏହାକୁ ଅଦ୍ୟତନ କରନ୍ତୁ କିମ୍ବା ନିର୍ଦ୍ଦେଶ ସର୍ଭର୍ ସେଟିଂସ୍ ହାତରେ ଦିଅନ୍ତୁ।",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -919,6 +960,10 @@ var keyStrings = {
         "ଏହି HTTPS ପ୍ଲେୟାର୍ HTTP ସର୍ଭର୍ ସହ ଯୋଡ଼ିହେବ ନାହିଁ। HTTPS ସର୍ଭର୍ ବ୍ୟବହାର କରନ୍ତୁ କିମ୍ବା HTTP ମାଧ୍ୟମରେ ପ୍ଲେୟାର୍ ଖୋଲନ୍ତୁ।",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ଏହି Play ଆପ୍ ପାଇଁ HTTPS ଆବଶ୍ୟକ। ପ୍ରଦାନକାରୀଙ୍କୁ HTTPS ପ୍ଲେଲିଷ୍ଟ କିମ୍ବା ସର୍ଭର୍ URL ମାଗନ୍ତୁ।",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ଏହି ଯୋଡି ଲିଙ୍କ୍ ମିଆଦ ପୂର୍ଣ୍ଣ ହୋଇଛି। ଆପଣଙ୍କ ଟିଭିରେ ଏକ ନୂତନ ଅଧିବେଶନ ଖୋଲନ୍ତୁ।",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ଏହି ସୁରକ୍ଷିତ ଅଧିବେଶନ ଉପଲବ୍ଧ ନାହିଁ କିମ୍ବା ମିଆଦ ପୂର୍ଣ୍ଣ ହୋଇଛି। ଟିଭିରେ ଏକ ନୂତନ ଅଧିବେଶନ ଖୋଲ ଏବଂ ଏହାର ସମ୍ପୂର୍ଣ୍ଣ ଲିଙ୍କ୍ ବ୍ୟବହାର କର।",
     Timer: "ଟାଇମର୍",
     "Timer: switch to channel?": "ଟାଇମର୍: ଏହି ଚ୍ୟାନେଲ୍‌କୁ ଯିବେ?",
     "Timeshift: one minute back": "ସମୟ ସ୍ଥାନାନ୍ତର: ଏକ ମିନିଟ୍ ପଛକୁ",
@@ -966,6 +1011,8 @@ var keyStrings = {
         "ଠିକଣାରେ ବ୍ୟବହାରକାରୀ ନାମ କିମ୍ବା ପାସୱାର୍ଡ ବିନା HTTP କିମ୍ବା HTTPS ବ୍ୟବହାର କରନ୍ତୁ।",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ନିୟନ୍ତ୍ରଣ ବାଛିବାକୁ ବାମ/ଡାହାଣ, ସକ୍ରିୟ କରିବାକୁ OK ଏବଂ ସ୍କ୍ରୋଲ୍ କରିବାକୁ ଉପର/ତଳ ବ୍ୟବହାର କରନ୍ତୁ।",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# ପରେ ଅଂଶକୁ ଅନ୍ତର୍ଭୁକ୍ତ କରି ସମ୍ପୂର୍ଣ୍ଣ ଲିଙ୍କ୍ ବ୍ୟବହାର କରନ୍ତୁ। ଏହାକୁ ଅନ୍ୟ କାହା ସହିତ ଅଂଶୀଦାର କରନ୍ତୁ ନାହିଁ।",
     "Use Up / Down to scroll. Back to close.":
         "ସ୍କ୍ରୋଲ୍ ପାଇଁ ଉପର / ତଳ ବ୍ୟବହାର କରନ୍ତୁ। ବନ୍ଦ ପାଇଁ ପଛକୁ ଦବାନ୍ତୁ।",
     Username: "ବ୍ୟବହାରକାରୀ ନାମ",

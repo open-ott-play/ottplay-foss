@@ -62,14 +62,15 @@ var keyStrings = {
     "All4you.tv settings": "Mîhengên All4you.tv",
     "Allow diagnostics for 10 minutes": "Ji bo 10 deqeyan destûrê bide teşhîsê",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Ji bo 10 hûrdeman destûrê bide wêneyên ekranê",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Destûrê bidin vê pêşkêşkerê ku jimarkerên diyagnostîkê berhev bike û vê weşanê an lêdêrê ji nû ve bide destpêkirin. Gihîştina demkî 10 deqîqe didome. Piştgiriya bawermend piştî ji nû ve girêdan an destpêkirinê jî berdest dimîne; her berhevkirina daneyan piştî 10 deqîqeyan diqede. Dema rûpel veşartî an negirêdayî be, berhevkirin tê rawestandin.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Destûrê bidin vê pêşkêşkerê ku ji bo vê danişîna rûpela li pêş jimarkerên lêdanê, torê û têketinan berhev bike. HTTPS û destûra pêşkêşkerê hewce ne. Piştî 10 deqîqeyan, dema rûpel veşartî be an girêdan qut bibe, disekine.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Destûrê bide vê serverê ku 10 hûrdeman wêneyan bixwaze. Wêne dikarin agahdariya kesane hebin. Di gerokek de, tabloya bernameya lîstina medyayê an pencereyê hilbijêrin. Destûr bi ji nû ve barkirin an veqetandinê bi dawî dibe.",
     "Allowlist this Device ID":
         "ID-ya vê amûrê li lîsteya destûrdar zêde bikin",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -102,6 +103,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 hûrdem paşde / pêşde biçe",
     "Background color": "Rengê paşxanê",
     "Background color of selected item": "Rengê paşxaneya tiştê hilbijartî",
+    "Backup state changed": "Rewşa hilanînê guherî",
     "Balance, $": "Bîlanço, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Dema veguhertina kanalan ekrana reş",
     Blue: "Şîn",
+    "Bookmark age (days): %1": "Dem ji tomarkirina nîşanê ve (roj): %1",
     "Bookmark age: %1 days": "Temenê nîşankirinê: %1 roj",
     "Browse folders": "Li peldankan bigerin",
     "Buffer Size, s": "Dirêjahiya tamponê, çirke",
@@ -168,6 +171,9 @@ var keyStrings = {
     "Clear settings": "Mîhengan paqij bike",
     Close: "Bigire",
     "Close PiP": "PiP bigire",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Tomarkirin û barkirina ji ewrê firmware ya STB hewce dike (host_ott nehatiye danîn)",
+    "Cloud transfer failed": "Veguheztina ewrê têk çû",
     Code: "Kod",
     Color: "Reng",
     "Color spectrum": "Spektruma rengan",
@@ -186,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Jîngeha xebitandinê ya lihevhatinê nehat barkirin. Ji bo ceribandina nû lêdêrê ji nû ve vekin.",
     "Compatible HLS": "HLS lihevhatî",
+    "Complete pairing link": "Girêdana tevahî ya cotkirinê",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv di Mîheng -> Mîhengên dabînkerê de saz bikin",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -258,22 +265,25 @@ var keyStrings = {
         "Шаравоз di Mîheng -> Mîhengên dabînkerê de saz bikin",
     Connect: "Girêde",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Berî ku hûn wêneyên ekranê bidin, serverek fermanê ya HTTPS girêdin.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Pêşkêşkarek fermanê ya HTTPS girêdin da ku dîmenan bikar bînin.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Kontrola ji dûr ve girêdin da ku teşhîs çalak bikin.",
     "Connect this player to a command server first.":
         "Pêşî vê lêdêra medyayê bi serverek fermanê ve girêdin.",
+    "Connect to TV": "Bi TV-yê ve girêde",
     Connected: "Girêdayî",
     "Connected. Waiting for the channel list...":
         "Girêdayî. Li benda lîsteya kanalê ne...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Girêdana kontrola ji dûr ve destûr dide vê serverê ku bernameya lîstina medyayê teşhîs bike û tamîr bike. Gihîştin piştî ji nû ve destpêkirinê berdest dimîne û gava ku hûn qut dikin bi dawî dibe. Her girtina teşhîs bi 10 hûrdeman sînorkirî ye.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Girêdana teşhîsên ji dûr ve ji bo girêdana kontrola dûr a çalak.",
     "Connecting remote diagnostics for this page.":
         "Girêdana teşhîsên ji dûr ve ji bo vê rûpelê.",
+    "Connecting securely to your TV...":
+        "Bi ewlehî bi TV-ya xwe ve tê girêdan...",
     "Connecting to Plex…": "Girêdana bi Plex…",
     "Connecting to Stalker portal...": "Girêdana bi portalê Stalker…",
     "Connecting...": "Tê girêdan…",
@@ -291,6 +301,10 @@ var keyStrings = {
         "Daxwaza hevberdanê çênabe. Ji nû ve biceribînin serverê dîsa bibînin.",
     "Could not load. Select to retry.":
         "Nekarî bar bike. Hilbijêre ku ji nû ve biceribîne.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Nikaribû vê nivîsê amade bike. Ji kerema xwe wê kurt bikin û dîsa biceribînin.",
+    "Could not protect the private link. Use a different browser.":
+        "Nekarî girêdana taybet biparêze. Gerokek cûda bikar bînin.",
     "Could not save provider settings.": "Mîhengên pêşkêşker nehat tomarkirin.",
     "Could not save the approved command server settings.":
         "Mîhengên servera fermana pejirandî nehat tomarkirin.",
@@ -307,6 +321,8 @@ var keyStrings = {
     "Delete category": "Kategoriyê jê bibe",
     "Delete channel": "Kanalê jê bibe",
     "Delete list": "Lîsteyê jê bibe",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Radestkirin nehat pejirandin. Beriya ku ev danişîn biqede, TV-ya xwe kontrol bikin, an jî heman peyamê ji nû ve biceribîne.",
     "Demo — moving test pattern": "Demo - nimûneya ceribandinê ya tevgerê",
     Description: "Danasîn",
     "Description of remote control buttons": "Rêbera bişkojka kontrola dûr",
@@ -388,6 +404,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "URL-ya portala Stalker binivîsin (mînak http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Numreya pêşkêşkarê binivîse (%1).",
+    "Enter text": "Nivîsê têkeve",
     "Enter the access code separately, not in the server address.":
         "Koda gihîştinê ji hev cuda binivîse, ne di navnîşana serverê de.",
     "Enter the command server IP or address.":
@@ -539,8 +556,10 @@ var keyStrings = {
     "Interface transparency": "Zelalbûna navberê",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Girêdana kanalê nederbasdar e! Navê hostê bi tevahî wekî di URL-ya weşanê ya hesabê taybet de binivîsin (mînak subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Bersiva mîhengên ewr nederbasdar",
     "Invalid protected source configuration":
         "Veavakirina çavkaniya parastî nederbasdar",
+    "Invalid setting": "Mîhengek nederbasdar",
     "IPTV token": "Tokena IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Mîhengên IpStream.one",
@@ -619,6 +638,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Tu bername bi kanal û tarîxên lîsteya lêdanê re li hev nehat. Çavkanî û demjimêra cîhazê kontrol bikin.",
     "No saved settings found": "Mîhengên tomarkirî nehatin dîtin",
+    "No supported system language. Choose a language.":
+        "Zimanek pergalê nayê destek kirin. Zimanek hilbijêre.",
     "Not configured": "Nehatiye sazkirin",
     "Not found": "nehat dîtin",
     "Not reduce video when showing the list (bugfix)":
@@ -634,6 +655,8 @@ var keyStrings = {
     "not set": "nayê danîn",
     Off: "Girtî",
     Ok: "Baş e",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Tenê ev TV dikare peyama we qebûl bike. Girêdan piştî 10 hûrdeman diqede.",
     Open: "Veke",
     "Open in PiP": "Di PiP de veke",
     "Open Plex sign-in page": "Rûpelê têketina Plex veke",
@@ -643,9 +666,10 @@ var keyStrings = {
         "An jî vê girêdana taybet a bêkêmasî li ser amûrek din veke:",
     "Original file": "Dosyaya eslî",
     "Original text: %1": "Orjînal nivîs: %1",
-    "OTT / APP host": "OTT / APP host",
+    "OTT / APP host": "OTT / mêvandarê APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Mîhengên OTT Prime ONLINE",
+    "OTT-play remote input": "OTT-play ketina dûr",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 heye. Niha dakêşin û saz bikin?",
     "Overwrite current settings?": "Mîhengên heyî bên guhartin?",
@@ -678,6 +702,7 @@ var keyStrings = {
     Playback: "Lêdan",
     "Player and device info": "Agahdariya lêdêrê û amûrê",
     "Player could not start": "lêdêra medyayê nikarî dest pê bike",
+    "Player default": "Mîhenga xwerû ya bernameyê",
     "Player info:": "Agahdariya lêdêrê:",
     Playlist: "Lîsteya lêdanê",
     "Playlist file": "Dosya lîsteya lêdanê",
@@ -699,6 +724,8 @@ var keyStrings = {
     Postpaid: "Dayîna paşîn",
     PROST: "PROST",
     "PROST settings": "Mîhengên PROST",
+    "Preferred audio language": "Zimanê dengî yê bijarte",
+    "Preferred subtitle language": "Zimanê binnivîsê yê bijare",
     Prepaid: "Dayîna pêşîn",
     "Preparing secure remote input...": "Amadekirina têketina dûr a ewle...",
     Prev: "Berê",
@@ -731,14 +758,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Kontrola dûr (bê bişkokên hejmarê)",
     "Remote control": "Kontrola dûr",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Kontrola ji dûr ve destûrê dide teşhîskirinê. Ji bo operatorek amade ye.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Kontrola ji dûr ve destûr dide teşhîskirinê. Li benda ji nû ve girêdanê.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Kontrola ji dûr ve dîmenên bernameya lîstina medyayê, tevî mîhengên wê, vedihewîne. Dibe ku wêne agahdariya taybet hebe. Serlêdan dikare rasterast bêyî pejirandina zêde dîmenan bigire. Di gerokek de, tablo an pencereya ku li ser vê cîhazê bigire hilbijêrin.",
     "Remote diagnostics": "Teşhîsa ji dûr ve",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Teşhîsên ji dûr ve ji bo vê pêwendiyê têne berhev kirin (her danişînê heya 10 hûrdeman).",
     "Remote diagnostics is collecting for this page.":
         "Diyagnostîka ji dûr ve ji bo vê rûpelê daneyan berhev dike.",
     "Remote diagnostics is off.": "Teşhîskirina ji dûr ve neçalak e.",
@@ -752,10 +779,11 @@ var keyStrings = {
         "Ketina ji dûr ve qediya. Danişînek nû veke ku dîsa biceribîne.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Danişîna têketina ji dûr ve ne berdest e. Danişînek nû veke ku dîsa biceribîne.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Wêneyên ekranê ji dûr ve",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Ji bo 10 hûrdeman destûr li wêneyên ekranê ji dûr ve heye. Ji bo girtina wêneyê, mîhengan bigire.",
+    "Remote screenshots are off.":
+        "Girtina wêneyên ekranê ji dûr ve neçalak e.",
     "Remote session expired": "Danişîna dûr bi dawî bû",
     "Remote text entry": "Têketina nivîsê ji dûr ve",
     "Remote text entry denied": "Têketina nivîsê ji dûr ve hat red kirin",
@@ -784,6 +812,7 @@ var keyStrings = {
     "Resume from archive?": "Ji arşîvê lêdanê bidomînin?",
     Retry: "Dubare biceribîne",
     "Retry EPG download": "Daxistina EPG ji nû ve biceribîne",
+    "Retry same message": "Heman peyamê dîsa biceribîne",
     "Return to previous channel": "Vegere kanala berê",
     Rewind: "Paşve / pêşve biçe",
     "Rewind step by buttons %1/%2":
@@ -802,19 +831,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Mîhengan hilîne û lîsteya kanalê bar bike",
     "Save settings to storage": "Mîhengan di bîrgehê de tomar bike",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Koda QR li ser TV-ya xwe bişopînin, an jî lînka wê ya bêkêmasî ya hevberkirina taybet li jêr bixin.",
     "Scan this QR code with your phone to enter text.":
         "Ji bo nivîsandina nivîsê vê koda QR bi têlefona xwe skan bikin.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Parvekirina dîmenderê nikarî dest pê bike.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Parvekirina ekranê hat betalkirin an jî tune ye.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Destûra girtina wêneyên ekranê nehat çalak kirin.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Dema ku kontrola ji dûr ve girêdayî ye wêneyên ekranê hene.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Wêneyên ekranê li ser vê platformê nayên peyda kirin.",
     Script: "Senaryo",
     Search: "Lêgerîn",
+    "Search languages": "Li zimanan bigerin",
     "Search programme": "Li bernameyê bigere",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Ketina ji dûr a ewledar nikarî dest pê bike. Ji kerema xwe dîsa biceribîne an klavyeya li ser ekranê bikar bîne.",
@@ -833,13 +866,14 @@ var keyStrings = {
         "Ji bo EPG û logoyan çavkaniya şablonê lîsteya lêdanê hilbijêrin",
     "Select Stalker portal": "Portala Stalker hilbijêre",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Di gerokê de çavkaniya dîmenê hilbijêrin",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Di diyaloga parvekirina gerokê de tabloya bernameya lîstina medyayê an jî pencereyê hilbijêre.",
     "Send request": "Daxwazê bişîne",
     "Send settings": "Mîhengan bişîne",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Vê kodê ji proxy-ya xwe di sernavê Authorization: Bearer de bişînin.",
+    "Send to TV": "Ji TV re bişîne",
     Server: "Pêşkêşker",
     "Server address": "Navnîşana pêşkêşkerê",
     "Server address (for example 192.168.1.20:8081)":
@@ -848,10 +882,14 @@ var keyStrings = {
     "Server URL": "URL-ya pêşkêşkerê",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Pêşkêşker ne berdest e. Bi xweber ji nû ve tê ceribandin; navnîşan û gihîştina torê kontrol bikin.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Rûniştin hat girtin. Dema ku hewce be ji TV-ya xwe yekî nû dest pê bikin.",
     Set: "Bicîh bîne",
     "Set parental code": "Koda kontrola dêûbavan saz bike",
     "Set timer?": "Demjimêr were saz kirin?",
     Settings: "Mîheng",
+    "Settings changed while editing":
+        "Di dema guherandinê de mîheng hatin guhertin",
     "Settings changed. Discovery was canceled.":
         "Mîheng hatin guhertin. Lêgerîn hat betalkirin.",
     "Settings copied": "Mîheng hatin kopîkirin",
@@ -861,10 +899,15 @@ var keyStrings = {
     "Settings imported": "Mîheng hatin anîn",
     "Settings JSON": "JSON-ya mîhengan",
     "Settings loaded from storage": "Mîheng ji bîrgehê hatin barkirin",
+    "Settings received. Restarting player...":
+        "Mîheng hatin wergirtin. Bernameya lîstina medyayê ji nû ve dest pê dike...",
     "Settings STB": "Mîhengên STB",
     "Settings saved": "Mîheng hatin tomarkirin",
     "Settings saved to storage": "Mîheng di bîrgehê de hatin tomarkirin",
     "Settings sended!": "Mîheng hatin şandin!",
+    "Settings source changed": "Çavkaniya mîhengan guherî",
+    "Settings storage rejected write":
+        "Tomarkirina mîhengan di depoyê de hat redkirin",
     "Several command servers were found. Select one below.":
         "Çend pêşkêşkerên fermanan hatin dîtin. Li jêr yekê hilbijêrin.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -918,12 +961,12 @@ var keyStrings = {
     "Starting...": "Dest pê dike…",
     Status: "Rewş",
     Stop: "Bisekinîne",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Parvekirina gerokê rawestîne",
     "Stop current capture": "Berhevkirina daneyên heyî bisekinînin",
     "Stop diagnostics": "Diyagnostîkê bisekinîne",
     "Stop playback and return to live":
         "Lêdanê bisekinîne û vegere weşana zindî",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Girtina wêneyên ekranê rawestîne",
     "Stream could not be played": "Weşan nehat lêdan",
     "Stream type: %1": "Cureyê weşanê: %1",
     "String for search": "Gotina lêgerînê",
@@ -935,6 +978,7 @@ var keyStrings = {
     "Switch subtitle": "Binnivîsan biguherîne",
     "Switch to this list": "Derbasî vê lîsteyê bibe",
     "Swop URL": "Swop URL",
+    "System language": "Zimanê sîstemê",
     "saved on this device": "li ser vê amûrê hatiye tomarkirin",
     select: "hilbijêre",
     small: "biçûk",
@@ -943,15 +987,19 @@ var keyStrings = {
     "Tabox settings": "Mîhengên Tabox",
     "Text is too long for remote input.":
         "Nivîs ji bo têketina dûr pir dirêj e.",
+    "Text is too long. Please shorten it before sending.":
+        "Nivîs pir dirêj e. Ji kerema xwe berî şandina wê kurt bikin.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Nivîsar şandin. TV-ya xwe kontrol bikin da ku piştrast bikin ku ew xuya bû.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Çavkaniya dîmena gerokê amade ye.",
     "The command server discovery URL is invalid.":
         "URL-ya lêgerîna pêşkêşkerê fermanan nederbasdar e.",
     "The device ID in the address is invalid.":
         "ID-ya amûrê di navnîşanê de nederbasdar e.",
     "The discovery response is invalid.": "Bersiva lêgerînê nederbasdar e.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ev gerok nikare çavkaniya dîmena hilbijartî nas bike.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ev gerok nikare bi ewlehî û xweber were cotkirin. Wê nû bikin an mîhengên pêşkêşkerê fermanan bi destan binivîsin.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -960,6 +1008,10 @@ var keyStrings = {
         "Ev lêdêra HTTPS nikare bi pêşkêşkera HTTP ve girêbide. Pêşkêşkerekê HTTPS bi kar bînin an lêdêrê bi HTTP vekin.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ev sepana Play HTTPS dixwaze. Ji dabînkerê xwe lîsteyeke lêdanê an URL-ya pêşkêskerê ya HTTPS bixwazin.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ev girêdana hevberdanê qediyaye. Li ser TV-ya xwe danişînek nû vekin.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ev danişîna ewle ne berdest e an qediya ye. Li ser TV-yê rûniştinek nû vekin û girêdana wê ya bêkêmasî bikar bînin.",
     Timer: "Demjimêr",
     "Timer: switch to channel?": "Demjimêr: derbasî vê kanalê bibe?",
     "Timeshift: one minute back": "Vegera demê: deqeyek paşve",
@@ -1010,6 +1062,8 @@ var keyStrings = {
         "HTTP an HTTPS bi kar bînin, bê navê bikarhêner an şîfre di navnîşanê de.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Ji bo hilbijartina kontrolê ÇEP/RAST, ji bo çalakkirinê OK û ji bo şemitandinê JOR/JÊR bi kar bînin.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Girêdana tevahî, tevî beşa piştî # bikar bînin. Bi kesekî din re parve nekin.",
     "Use Up / Down to scroll. Back to close.":
         "Ji bo şemitandinê Jor / Jêr bi kar bînin. Ji bo girtinê Vegere.",
     Username: "Navê bikarhêner",

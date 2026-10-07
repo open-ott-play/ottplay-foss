@@ -63,14 +63,15 @@ var keyStrings = {
     "All4you.tv settings": "Iisetingi ze-All4you.tv",
     "Allow diagnostics for 10 minutes": "Vumela uxilongo kangangemizuzu eli-10",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Vumela ukuthathwa kwemifanekiso yesikrini kangangemizuzu eli-10",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Vumela le seva iqokelele izibalo zoxilongo kwaye iqale kwakhona olu sasazo okanye isidlali. Ukufikelela okwethutyana kuhlala imizuzu eli-10. Inkxaso ethembekileyo iyaqhubeka ifumaneka emva kokuqhagamshela okanye ukuqala kwakhona; uqokelelo ngalunye lusaphelelwa emva kwemizuzu eli-10. Uqokelelo luyanqumama xa iphepha lifihlakele okanye kungekho intanethi.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Vumela le seva iqokelele izibalo zokudlala, zenethiwekhi nezokufaka ngeli xesha lokusebenza iphepha livuliwe ngaphambili. Kufuneka i-HTTPS kunye nemvume yeseva. Iyema emva kwemizuzu eli-10, xa iphepha lifihlakele, okanye xa kuqhawulwe uqhagamshelo.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Vumela le seva ukuba icele imifanekiso imizuzu eli-10. Imifanekiso inokuba nolwazi lomntu. Kwibhrawuza, khetha ithebhu yomdlali okanye ifestile. Imvume iphela xa kuphinda kulayishwe okanye kuqhawulwe.",
     "Allowlist this Device ID": "Vumela esi sazisi sesixhobo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Isidlali se-HTTPS asinakukhuphela umthombo we-EPG we-HTTP. Sebenzisa umthombo we-HTTPS.",
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Tsiba umva / phambili ngomzuzu o-1",
     "Background color": "Umbala wemvelaphi",
     "Background color of selected item": "Umbala wemvelaphi yento ekhethiweyo",
+    "Backup state changed": "Imeko yogcino itshintshile",
     "Balance, $": "Imali eseleyo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -115,6 +117,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Isikrini esimnyama xa utshintsha amajelo",
     Blue: "Bhlowu",
+    "Bookmark age (days): %1": "Ubudala bebhukhmakhi (iintsuku): %1",
     "Bookmark age: %1 days": "Ubudala bebhukhmakhi: iintsuku %1",
     "Browse folders": "Khangela iifolda",
     "Buffer Size, s": "Ubungakanani besigcini sexeshana, imizuzwana",
@@ -165,11 +168,14 @@ var keyStrings = {
     "Choose language": "Khetha ulwimi",
     "Choose Plex server": "Khetha iseva ye-Plex",
     "Choose provider": "Khetha umboneleli",
-    Classic: "Classic",
+    Classic: "Yesiqhelo",
     "Clear all settings?": "Cima zonke iisetingi?",
     "Clear settings": "Cima iisetingi",
     Close: "Vala",
     "Close PiP": "Vala i-PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Ukugcina nokulayisha idatha efini kufuna i-firmware ye-STB (host_ott ayimiselwanga)",
+    "Cloud transfer failed": "Ukudluliselwa kwedatha ngelifu akuphumelelanga",
     Code: "Ikhowudi",
     Color: "Umbala",
     "Color spectrum": "Uluhlu lwemibala",
@@ -188,6 +194,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Inkqubo yokuhambelana ayikwazanga ukulayisha. Vula isidlali kwakhona ukuze uphinde uzame.",
     "Compatible HLS": "I-HLS ehambelanayo",
+    "Complete pairing link": "Ikhonkco elipheleleyo lokudibanisa",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Lungiselela i-All4you.tv ku Iisetingi -> Iisetingi zomboneleli",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -260,22 +267,25 @@ var keyStrings = {
         "Lungiselela i-Шаравоз ku Iisetingi -> Iisetingi zomboneleli",
     Connect: "Qhagamshela",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Qhagamshela iseva yomyalelo ye-HTTPS phambi kokuvumela imifanekiso yesikrini.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Qhagamshela iseva yomyalelo ye-HTTPS ukuze usebenzise imifanekiso yesikrini.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Qhagamshela inkonzo yolawulo olukude ukuze uvumele ukuxilongwa kweengxaki.",
     "Connect this player to a command server first.":
         "Qala ngokuqhagamshela esi sidlali kwiseva yemiyalelo.",
+    "Connect to TV": "Qhagamshela kwi-TV",
     Connected: "Kuqhagamshelwe",
     "Connected. Waiting for the channel list...":
         "Kuqhagamshelwe. Kulindwe uluhlu lwamajelo...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Ukuqhagamshela inkonzo yolawulo olukude kunika le seva imvume yokuxilonga nokulungisa isidlali. Ufikelelo luhlala lukhona emva kokuqalisa kwakhona, luze luphele xa uqhawula uqhagamshelo. Ukuqokelelwa kwedatha yoxilongo kwisithuba ngasinye kuthatha ukuya kwimizuzu eli-10.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Ukuqhagamshela uxilongo olukude kuqhagamshelo oluvuliweyo lolawulo olukude.",
     "Connecting remote diagnostics for this page.":
         "Kuqhagamshelwa uxilongo olukude lweli phepha.",
+    "Connecting securely to your TV...":
+        "Iqhagamshela ngokukhuselekileyo kwi-TV yakho...",
     "Connecting to Plex…": "Kuqhagamshelwa kwi-Plex…",
     "Connecting to Stalker portal...": "Kuqhagamshelwa kwiphothali ye-Stalker…",
     "Connecting...": "Kuqhagamshelwa…",
@@ -293,6 +303,10 @@ var keyStrings = {
         "Akukwazekanga ukwenza isicelo sokubhangqa. Fumana iseva kwakhona ukuze uphinde uzame.",
     "Could not load. Select to retry.":
         "Akukwazekanga ukulayisha. Khetha ukuze uzame kwakhona.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Ayikwazanga ukulungiselela esi sicatshulwa. Nceda uyenze mfutshane kwaye uzame kwakhona.",
+    "Could not protect the private link. Use a different browser.":
+        "Ayikwazanga ukukhusela ikhonkco labucala. Sebenzisa isikhangeli esahlukileyo.",
     "Could not save provider settings.":
         "Akukwazekanga ukugcina iisetingi zomboneleli.",
     "Could not save the approved command server settings.":
@@ -310,6 +324,8 @@ var keyStrings = {
     "Delete category": "Cima udidi",
     "Delete channel": "Cima ijelo",
     "Delete list": "Cima uluhlu",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Ukuhanjiswa akukwazanga kuqinisekiswa. Jonga iTV yakho, okanye uzame kwakhona umyalezo ofanayo phambi kokuba le seshini iphelelwe.",
     "Demo — moving test pattern": "Umboniso — umfanekiso wovavanyo oshukumayo",
     Description: "Inkcazelo",
     "Description of remote control buttons":
@@ -395,6 +411,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Faka i-URL yephothali ye-Stalker (umzekelo http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Faka inombolo yeseva (%1).",
+    "Enter text": "Faka umbhalo",
     "Enter the access code separately, not in the server address.":
         "Faka ikhowudi yokufikelela yodwa, ingabi kwidilesi yeseva.",
     "Enter the command server IP or address.":
@@ -553,8 +570,11 @@ var keyStrings = {
     "Interface transparency": "Ukubonakala ngaphaya kojongano",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ikhonkco lejelo alisebenzi! Faka igama elipheleleyo lomamkeli njengakwi-URL yosasazo kwiakhawunti (umzekelo subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Impendulo yemimiselo yelifu engasebenziyo",
     "Invalid protected source configuration":
         "Ulungiselelo lomthombo okhuselweyo alusebenzi",
+    "Invalid setting": "Useto olungasebenziyo",
     "IPTV token": "Ithokheni ye-IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Iisetingi ze-IpStream.one",
@@ -634,6 +654,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Akukho nkqubo zihambelana namajelo nemihla yoluhlu lokudlala. Jonga umthombo newotshi yesixhobo.",
     "No saved settings found": "Akukho zisetingi zigciniweyo zifunyenweyo",
+    "No supported system language. Choose a language.":
+        "Akukho lwimi lwenkqubo oluxhaswayo. Khetha ulwimi.",
     "Not configured": "Ayikalungiselelwa",
     "Not found": "Ayifunyenwanga",
     "Not reduce video when showing the list (bugfix)":
@@ -649,6 +671,8 @@ var keyStrings = {
     "not set": "ayisetwanga",
     Off: "Icinyiwe",
     Ok: "Kulungile",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Le TV kuphela enokwamkela umyalezo wakho. Ikhonkco liphelelwa emva kwemizuzu eyi-10.",
     Open: "Vula",
     "Open in PiP": "Vula kwi-PiP",
     "Open Plex sign-in page": "Vula iphepha lokungena kwi-Plex",
@@ -661,6 +685,7 @@ var keyStrings = {
     "OTT / APP host": "Umamkeli we-OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Iisetingi ze-OTT Prime ONLINE",
+    "OTT-play remote input": "Ukufaka umbhalo ukude kwi-OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "I-OttPlay FOSS %1 iyafumaneka. Uyikhuphele uze uyifake ngoku?",
     "Overwrite current settings?": "Bhala ngaphezulu kweesetingi zangoku?",
@@ -693,6 +718,7 @@ var keyStrings = {
     Playback: "Ukudlala",
     "Player and device info": "Ulwazi lwesidlali nesixhobo",
     "Player could not start": "Isidlali asikwazanga ukuqala",
+    "Player default": "Ukhetho olungagqibekanga lwesidlali",
     "Player info:": "Ulwazi lwesidlali:",
     Playlist: "Uluhlu lokudlala",
     "Playlist file": "Ifayile yoluhlu lokudlala",
@@ -714,6 +740,8 @@ var keyStrings = {
     Postpaid: "Hlawula emva kokusebenzisa",
     PROST: "PROST",
     "PROST settings": "Iisetingi ze-PROST",
+    "Preferred audio language": "Ulwimi oluvakalayo olukhethwayo",
+    "Preferred subtitle language": "Ulwimi lwesihlokwana olukhethwayo",
     Prepaid: "Hlawula kwangaphambili",
     "Preparing secure remote input...":
         "Kulungiselelwa ukufaka okukude okukhuselekileyo...",
@@ -747,14 +775,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Isilawuli kude (asinamaqhosha amanani)",
     "Remote control": "Ulawulo olukude",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Ulawulo olukude lugunyazisa ukuxilonga. Ulungele umsebenzisi.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Ulawulo olukude lugunyazisa ukuxilonga. Ilinde ukuqhagamshela kwakhona.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Ulawulo olukude luquka imifanekiso yesikrini yesidlali kunye noseto lwaso. Imifanekiso inokuquka ulwazi lwabucala. Usetyenziso lunokuthatha imifanekiso yesikrini ngqo ngaphandle kwenye imvume. Kwisikhangeli kufuneka ukhethe ithebhu okanye ifestile oza kwabelana ngayo kwesi sixhobo.",
     "Remote diagnostics": "Uxilongo olukude",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Idatha yoxilongo iqokelelwa kolu qhagamshelo (ukuya kwimizuzu eli-10 ngeseshoni).",
     "Remote diagnostics is collecting for this page.":
         "Uxilongo olukude luqokelela idatha yeli phepha.",
     "Remote diagnostics is off.": "Uxilongo olukude lucinyiwe.",
@@ -768,10 +796,10 @@ var keyStrings = {
         "Ukufaka okukude kuphelelwe lixesha. Vula iseshoni entsha ukuze uzame kwakhona.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Iseshoni yokufaka okukude ayifumaneki. Vula iseshoni entsha ukuze uzame kwakhona.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Imifanekiso yesikrini ekude",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Ukuthathwa kwemifanekiso yesikrini ekude kuvumelekile kangangemizuzu eli-10. Vala useto ukuze kuthathwe imifanekiso.",
+    "Remote screenshots are off.": "Imifanekiso yesikrini ekude ivaliwe.",
     "Remote session expired": "Iseshoni ekude iphelelwe lixesha",
     "Remote text entry": "Ukufaka umbhalo ukude",
     "Remote text entry denied": "Ukufaka umbhalo ukude kwaliwe",
@@ -800,6 +828,7 @@ var keyStrings = {
     "Resume from archive?": "Qhubeka kugcino lweenkqubo?",
     Retry: "Zama kwakhona",
     "Retry EPG download": "Zama ukukhuphela i-EPG kwakhona",
+    "Retry same message": "Thumela lo myalezo kwakhona",
     "Return to previous channel": "Buyela kwijelo langaphambili",
     Rewind: "Yiya kwixesha elithile kwividiyo",
     "Rewind step by buttons %1/%2": "Ubungakanani bokutsiba kumaqhosha %1/%2",
@@ -817,19 +846,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Gcina iisetingi uze ulayishe uluhlu lwamajelo",
     "Save settings to storage": "Gcina iisetingi kwindawo yogcino",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skena ikhowudi ye-QR kumabonakude wakho, okanye uncamathisele ilinki yayo epheleleyo yabucala ehambelanayo ngezantsi.",
     "Scan this QR code with your phone to enter text.":
         "Skena le khowudi ye-QR ngefowuni yakho ukuze ufake umbhalo.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Ukwabelana ngesikrini akukwazanga ukuqalisa.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ukwabelana ngesikrini kuye kwacinywa okanye akafumaneki.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ayikwazanga ukuvumela ukuthathwa kwemifanekiso yesikrini.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Imifanekiso yesikrini iyafumaneka xa inkonzo yolawulo olukude iqhagamshelwe.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Imifanekiso yesikrini ayifumaneki kweli qonga.",
     Script: "Umbhalo wefilimu",
     Search: "Khangela",
+    "Search languages": "Khangela iilwimi",
     "Search programme": "Khangela inkqubo",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Ukufaka okukude okukhuselekileyo akukwazanga ukuqala. Nceda uzame kwakhona okanye usebenzise ibhodi yezitshixo esesikrinini.",
@@ -847,13 +880,14 @@ var keyStrings = {
         "Khetha umthombo wesakhelo soluhlu lokudlala se-EPG neelogo",
     "Select Stalker portal": "Khetha iphothali ye-Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Khetha umthombo wesithombe-skrini kwisikhangeli",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Khetha ithebhu yesidlali okanye ifestile kwincoko yababini yesikhangeli sokwabelana.",
     "Send request": "Thumela isicelo",
     "Send settings": "Thumela iisetingi",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Thumela le khowudi kwiproksi yakho kwisihloko esithi Authorization: Bearer.",
+    "Send to TV": "Thumela kumabonakude",
     Server: "Iseva",
     "Server address": "Idilesi yeseva",
     "Server address (for example 192.168.1.20:8081)":
@@ -862,10 +896,13 @@ var keyStrings = {
     "Server URL": "I-URL yeseva",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Iseva ayifumaneki. Kuzanywa kwakhona ngokuzenzekelayo; jonga idilesi yayo nokufikelela kwinethiwekhi.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Iseshoni ivaliwe. Qala entsha kumabonakude wakho xa kuyimfuneko.",
     Set: "Sebenzisa",
     "Set parental code": "Seta ikhowudi yabazali",
     "Set timer?": "Seta isibali-xesha?",
     Settings: "Iisetingi",
+    "Settings changed while editing": "Useto lutshintshile ngelixa uhlela",
     "Settings changed. Discovery was canceled.":
         "Iisetingi zitshintshile. Ukufunyanwa kweseva kurhoxisiwe.",
     "Settings copied": "Iisetingi zikotshiwe",
@@ -876,10 +913,15 @@ var keyStrings = {
     "Settings imported": "Iisetingi zingenisiwe",
     "Settings JSON": "I-JSON yeesetingi",
     "Settings loaded from storage": "Iisetingi zilayishwe kwindawo yogcino",
+    "Settings received. Restarting player...":
+        "Useto lufunyenwe. Isidlali siqalisa kwakhona...",
     "Settings STB": "Iisetingi ze-STB",
     "Settings saved": "Iisetingi zigciniwe",
     "Settings saved to storage": "Iisetingi zigcinwe kwindawo yogcino",
     "Settings sended!": "Iisetingi zithunyelwe!",
+    "Settings source changed": "Umthombo wesethingi utshintshiwe",
+    "Settings storage rejected write":
+        "Ugcino loseto aluvumanga ukubhala idatha",
     "Several command servers were found. Select one below.":
         "Kufunyenwe iiseva zemiyalelo ezininzi. Khetha enye ngezantsi.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -935,12 +977,12 @@ var keyStrings = {
     "Starting...": "Kuyaqalwa…",
     Status: "Isimo",
     Stop: "Misa",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Misa ukwabelana ngesikhangeli",
     "Stop current capture": "Misa uqokelelo lwedatha lwangoku",
     "Stop diagnostics": "Misa uxilongo",
     "Stop playback and return to live":
         "Misa ukudlala uze ubuyele kusasazo ngqo",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Yeka ukuthatha imifanekiso yesikrini",
     "Stream could not be played": "Usasazo alukwazanga ukudlalwa",
     "Stream type: %1": "Uhlobo losasazo: %1",
     "String for search": "Amagama okukhangela",
@@ -952,6 +994,7 @@ var keyStrings = {
     "Switch subtitle": "Tshintsha imibhalo engezantsi",
     "Switch to this list": "Tshintshela kolu luhlu",
     "Swop URL": "I-URL ye-Swop",
+    "System language": "Ulwimi lwenkqubo",
     "saved on this device": "igcinwe kwesi sixhobo",
     select: "khetha",
     small: "encinci",
@@ -960,8 +1003,12 @@ var keyStrings = {
     "Tabox settings": "Iisetingi ze-Tabox",
     "Text is too long for remote input.":
         "Umbhalo mde kakhulu ukuba ungafakwa ukude.",
+    "Text is too long. Please shorten it before sending.":
+        "Isicatshulwa side kakhulu. Nceda uyinciphise phambi kokuba uyithumele.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Umbhalo uthunyelwe. Jonga ukuba umbhalo uyavela na kumabonakude wakho.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Umthombo wesithombe-skrini sesikhangeli silungile.",
     "The command server discovery URL is invalid.":
         "I-URL yokufunyanwa kweseva yemiyalelo ayisebenzi.",
     "The device ID in the address is invalid.":
@@ -969,7 +1016,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Impendulo yokufunyanwa kweseva ayisebenzi.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Lo mkhangeli zincwadi akakwazi ukuchonga umthombo weskrini okhethiweyo.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Esi sikhangeli asikwazi ukubhangqa ngokuzenzekelayo ngokukhuselekileyo. Sihlaziye okanye ufake iisetingi zeseva yemiyalelo ngesandla.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -978,6 +1025,10 @@ var keyStrings = {
         "Esi sidlali se-HTTPS asinakuqhagamshela kwiseva ye-HTTP. Sebenzisa iseva ye-HTTPS okanye uvule isidlali nge-HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Le app ye-Play ifuna i-HTTPS. Cela umboneleli wakho akunike uluhlu lokudlala okanye i-URL yeseva ye-HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Olu nxulumaniso lokubhangqa luphelelwe lixesha. Vula iseshini entsha kumabonakude wakho.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Le seshini ekhuselekileyo ayifumaneki okanye iphelelwe lixesha. Vula iseshoni entsha kwiTV kwaye usebenzise ikhonkco elipheleleyo.",
     Timer: "Isibali-xesha",
     "Timer: switch to channel?": "Isibali-xesha: tshintshela kweli jelo?",
     "Timeshift: one minute back": "Ukushenxisa ixesha: umzuzu omnye umva",
@@ -1027,6 +1078,8 @@ var keyStrings = {
         "Sebenzisa i-HTTP okanye i-HTTPS ngaphandle kwegama lomsebenzisi okanye lokugqitha kwidilesi.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Sebenzisa EKHOHLO/EKUNENE ukukhetha ulawulo, KULUNGILE ukulwenza lusebenze, no-PHEZULU/EZANTSI ukuskrola.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Sebenzisa ikhonkco elipheleleyo, kuquka inxalenye emva kwe-#. Musa ukwabelana ngayo nomnye umntu.",
     "Use Up / Down to scroll. Back to close.":
         "Sebenzisa Phezulu / Ezantsi ukuskrola. Buyela emva ukuvala.",
     Username: "Igama lomsebenzisi",

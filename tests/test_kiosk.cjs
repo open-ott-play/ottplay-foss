@@ -16,7 +16,10 @@ function load(file, globals = {}) {
     vm.runInNewContext(code, context);
     return context.exports;
 }
-const casing = load("src/utils/caseless.ts");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
+const unicode = {};
+vm.runInNewContext(localizationRuntime(), unicode);
+const casing = load("src/utils/caseless.ts", { require: () => unicode });
 const strictInput = load("src/plugins/strict-kiosk-input.ts");
 const { createKiosk } = load("src/plugins/kiosk.ts", {
     require: (name) => (name.includes("strict-kiosk") ? strictInput : casing),

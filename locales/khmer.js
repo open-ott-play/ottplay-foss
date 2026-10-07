@@ -61,14 +61,14 @@ var keyStrings = {
     "All4you.tv settings": "ការកំណត់ All4you.tv",
     "Allow diagnostics for 10 minutes": "អនុញ្ញាតការធ្វើរោគវិនិច្ឆ័យរយៈពេល 10 នាទី។",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "អនុញ្ញាតឱ្យថតអេក្រង់រយៈពេល 10 នាទី។",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "អនុញ្ញាតឱ្យម៉ាស៊ីនមេនេះប្រមូលបញ្ជរវិភាគ ហើយចាប់ផ្តើមការផ្សាយ ឬកម្មវិធីចាក់នេះឡើងវិញ។ ការចូលប្រើបណ្តោះអាសន្នមានរយៈពេល 10 នាទី។ ការគាំទ្រដែលអាចទុកចិត្តបាននៅតែមានបន្ទាប់ពីភ្ជាប់ឡើងវិញ ឬចាប់ផ្តើមឡើងវិញ។ ការចាប់យកនីមួយៗនៅតែផុតកំណត់បន្ទាប់ពី 10 នាទី។ ការប្រមូលផ្អាកខណៈពេលដែលលាក់ ឬគ្មានអ៊ីនធឺណិត។",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "អនុញ្ញាតឱ្យម៉ាស៊ីនមេនេះប្រមូលការចាក់សារថ្មី បណ្តាញ និងបញ្ជរបញ្ចូលសម្រាប់វគ្គខាងមុខនេះ។ ទាមទារ HTTPS និងការអនុញ្ញាតពីម៉ាស៊ីនមេ។ ឈប់បន្ទាប់ពី 10 នាទី នៅពេលលាក់ ឬនៅពេលផ្តាច់។",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "អនុញ្ញាតឱ្យម៉ាស៊ីនមេនេះស្នើសុំរូបភាពរយៈពេល 10 នាទី។ រូបភាពអាចមានព័ត៌មានផ្ទាល់ខ្លួន។ នៅក្នុងកម្មវិធីរុករក ជ្រើសរើសផ្ទាំងកម្មវិធីចាក់ ឬបង្អួច។ ការអនុញ្ញាតបញ្ចប់នៅពេលផ្ទុកឡើងវិញ ឬផ្តាច់។",
     "Allowlist this Device ID": "បញ្ជីអនុញ្ញាតឧបករណ៍នេះ ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "កម្មវិធីចាក់ HTTPS មិនអាចទាញយកប្រភព HTTP EPG បានទេ។ ប្រើប្រភព HTTPS ។",
@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "រំលងថយក្រោយ / ទៅមុខ 1 នាទី។",
     "Background color": "ពណ៌ផ្ទៃខាងក្រោយ",
     "Background color of selected item": "ពណ៌ផ្ទៃខាងក្រោយនៃធាតុដែលបានជ្រើសរើស",
+    "Backup state changed": "ស្ថានភាពបម្រុងទុកបានផ្លាស់ប្តូរ",
     "Balance, $": "សមតុល្យ $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -109,6 +110,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "ឥរិយាបថរបស់ប៊ូតុង %1/%2 នៅក្នុងបញ្ជី",
     "Black screen while switching the channel": "អេក្រង់ខ្មៅពេលប្តូរឆានែល",
     Blue: "ខៀវ",
+    "Bookmark age (days): %1": "អាយុចំណាំ (ថ្ងៃ): %1",
     "Bookmark age: %1 days": "អាយុចំណាំ៖ ថ្ងៃ %1",
     "Browse folders": "រកមើលថត",
     "Buffer Size, s": "ទំហំទ្រនាប់, s",
@@ -158,11 +160,14 @@ var keyStrings = {
     "Choose language": "ជ្រើសរើសភាសា",
     "Choose Plex server": "ជ្រើសរើសម៉ាស៊ីនមេ Plex",
     "Choose provider": "ជ្រើសរើសអ្នកផ្តល់សេវា",
-    Classic: "Classic",
+    Classic: "បែបបុរាណ",
     "Clear all settings?": "សម្អាតការកំណត់ទាំងអស់?",
     "Clear settings": "ជម្រះការកំណត់",
     Close: "បិទ",
     "Close PiP": "បិទ PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ការរក្សាទុកក្នុងក្លោដ ឬទាញយកពីក្លោដត្រូវការកម្មវិធីបង្កប់ STB (host_ott មិនត្រូវបានកំណត់)",
+    "Cloud transfer failed": "ការផ្ទេរតាមពពកបានបរាជ័យ",
     Code: "លេខកូដ",
     Color: "ពណ៌",
     "Color spectrum": "វិសាលគមពណ៌",
@@ -179,6 +184,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "ពេលវេលាដំណើរការដែលត្រូវគ្នាមិនអាចផ្ទុកបានទេ។ បើកកម្មវិធីចាក់ម្តងទៀតដើម្បីព្យាយាមម្តងទៀត។",
     "Compatible HLS": "ឆបគ្នា HLS",
+    "Complete pairing link": "តំណភ្ជាប់ផ្គូផ្គងពេញលេញ",
     "Configure All4you.tv in Settings -> Provider Settings":
         "កំណត់រចនាសម្ព័ន្ធ All4you.tv នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -251,22 +257,24 @@ var keyStrings = {
         "កំណត់រចនាសម្ព័ន្ធ Шаравоз នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     Connect: "ភ្ជាប់",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ភ្ជាប់ម៉ាស៊ីនមេពាក្យបញ្ជា HTTPS មុនពេលអនុញ្ញាតឱ្យថតអេក្រង់។",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ភ្ជាប់ម៉ាស៊ីនមេបញ្ជា HTTPS ដើម្បីប្រើរូបថតអេក្រង់។",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ភ្ជាប់ការបញ្ជាពីចម្ងាយដើម្បីបើកការវិនិច្ឆ័យ។",
     "Connect this player to a command server first.":
         "ភ្ជាប់កម្មវិធីចាក់នេះទៅម៉ាស៊ីនមេពាក្យបញ្ជាជាមុនសិន។",
+    "Connect to TV": "ភ្ជាប់ទៅទូរទស្សន៍",
     Connected: "បានភ្ជាប់",
     "Connected. Waiting for the channel list...":
         "បានភ្ជាប់។ កំពុងរង់ចាំបញ្ជីឈ្មោះឆានែល...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "ការភ្ជាប់ការបញ្ជាពីចម្ងាយផ្តល់សិទ្ធិឱ្យម៉ាស៊ីនមេនេះពិនិត្យបញ្ហា និងជួសជុលកម្មវិធីចាក់។ សិទ្ធិចូលប្រើនៅតែមានក្រោយការចាប់ផ្តើមឡើងវិញ ហើយបញ្ចប់ពេលអ្នកផ្តាច់ការតភ្ជាប់។ វគ្គប្រមូលទិន្នន័យពិនិត្យបញ្ហានីមួយៗមានរយៈពេលអតិបរមា 10 នាទី។",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ការភ្ជាប់ការវិនិច្ឆ័យពីចម្ងាយសម្រាប់ការតភ្ជាប់ឧបករណ៍បញ្ជាពីចម្ងាយដែលបានបើក។",
     "Connecting remote diagnostics for this page.":
         "ការភ្ជាប់ការវិនិច្ឆ័យពីចម្ងាយសម្រាប់ទំព័រនេះ។",
+    "Connecting securely to your TV...": "កំពុងភ្ជាប់ដោយសុវត្ថិភាពទៅទូរទស្សន៍របស់អ្នក...",
     "Connecting to Plex…": "កំពុងភ្ជាប់ទៅ Plex…",
     "Connecting to Stalker portal...": "កំពុងភ្ជាប់ទៅវិបផតថល Stalker…",
     "Connecting...": "កំពុងភ្ជាប់...",
@@ -284,6 +292,10 @@ var keyStrings = {
         "មិនអាចបង្កើតសំណើផ្គូផ្គងបានទេ។ ស្វែងរកម៉ាស៊ីនមេម្តងទៀតដើម្បីព្យាយាមម្តងទៀត។",
     "Could not load. Select to retry.":
         "មិនអាចផ្ទុកបានទេ។ ជ្រើសរើសដើម្បីព្យាយាមម្តងទៀត។",
+    "Could not prepare this text. Please shorten it and try again.":
+        "មិនអាចរៀបចំអត្ថបទនេះបានទេ។ សូម​កាត់​វា​ឱ្យ​ខ្លី ហើយ​ព្យាយាម​ម្ដង​ទៀត។",
+    "Could not protect the private link. Use a different browser.":
+        "មិនអាចការពារតំណឯកជនបានទេ។ ប្រើកម្មវិធីរុករកផ្សេង។",
     "Could not save provider settings.": "មិនអាចរក្សាទុកការកំណត់អ្នកផ្ដល់សេវាបានទេ។",
     "Could not save the approved command server settings.":
         "មិនអាចរក្សាទុកការកំណត់ម៉ាស៊ីនមេពាក្យបញ្ជាដែលបានអនុម័តទេ។",
@@ -300,6 +312,8 @@ var keyStrings = {
     "Delete category": "លុបប្រភេទ",
     "Delete channel": "លុបឆានែល",
     "Delete list": "លុបបញ្ជី",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "មិនអាចបញ្ជាក់ថាសារបានទៅដល់ទេ។ ពិនិត្យទូរទស្សន៍របស់អ្នក ឬផ្ញើសារដដែលម្តងទៀត មុនពេលវគ្គនេះផុតកំណត់។",
     "Demo — moving test pattern": "ការបង្ហាញ — ការផ្លាស់ប្តូរគំរូសាកល្បង",
     Description: "ការពិពណ៌នា",
     "Description of remote control buttons": "ការណែនាំអំពីប៊ូតុងបញ្ជាពីចម្ងាយ",
@@ -379,6 +393,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "បញ្ចូលវិបផតថល Stalker URL (ឧ. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "បញ្ចូលលេខម៉ាស៊ីនមេ (%1) ។",
+    "Enter text": "បញ្ចូលអត្ថបទ",
     "Enter the access code separately, not in the server address.":
         "បញ្ចូលលេខកូដចូលប្រើដោយឡែកពីគ្នា មិនមែននៅក្នុងអាសយដ្ឋានម៉ាស៊ីនមេទេ។",
     "Enter the command server IP or address.":
@@ -526,8 +541,10 @@ var keyStrings = {
     "Interface transparency": "តម្លាភាពនៃចំណុចប្រទាក់",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "តំណឆានែលមិនត្រឹមត្រូវ! បញ្ចូលម៉ាស៊ីនពេញលេញដូចនៅក្នុងស្ទ្រីមគណៈរដ្ឋមន្ត្រី URL (ឧ. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "ការឆ្លើយតបការកំណត់ពពកមិនត្រឹមត្រូវ",
     "Invalid protected source configuration":
         "ការកំណត់រចនាសម្ព័ន្ធប្រភពការពារមិនត្រឹមត្រូវ",
+    "Invalid setting": "ការកំណត់មិនត្រឹមត្រូវ",
     "IPTV token": "IPTV សញ្ញាសម្ងាត់",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "ការកំណត់ IpStream.one",
@@ -606,6 +623,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "គ្មានកម្មវិធីដែលត្រូវគ្នានឹងប៉ុស្តិ៍ និងកាលបរិច្ឆេទនៃបញ្ជីចាក់ទេ។ ពិនិត្យមើលប្រភព និងនាឡិកាឧបករណ៍។",
     "No saved settings found": "រកមិនឃើញការកំណត់ដែលបានរក្សាទុកទេ។",
+    "No supported system language. Choose a language.":
+        "គ្មានភាសាប្រព័ន្ធដែលគាំទ្រទេ។ ជ្រើសរើសភាសា។",
     "Not configured": "មិនទាន់បានកំណត់",
     "Not found": "រកមិនឃើញ",
     "Not reduce video when showing the list (bugfix)":
@@ -621,6 +640,8 @@ var keyStrings = {
     "not set": "មិនបានកំណត់",
     Off: "បិទ",
     Ok: "យល់ព្រម",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "មានតែទូរទស្សន៍នេះទេដែលអាចទទួលយកសាររបស់អ្នក។ តំណផុតកំណត់បន្ទាប់ពី 10 នាទី។",
     Open: "បើក",
     "Open in PiP": "បើកនៅក្នុង PiP",
     "Open Plex sign-in page": "បើកទំព័រចូល Plex",
@@ -633,6 +654,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / ម៉ាស៊ីន APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "ការកំណត់ OTT Prime ONLINE",
+    "OTT-play remote input": "ការបញ្ចូលពីចម្ងាយ OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 មាន។ ទាញយក និងដំឡើងឥឡូវនេះ?",
     "Overwrite current settings?": "សរសេរជាន់លើការកំណត់បច្ចុប្បន្ន?",
@@ -665,6 +687,7 @@ var keyStrings = {
     Playback: "ការចាក់",
     "Player and device info": "ព័ត៌មានអំពីកម្មវិធីចាក់ និងឧបករណ៍",
     "Player could not start": "កម្មវិធីចាក់មិនអាចចាប់ផ្តើមបានទេ។",
+    "Player default": "ជម្រើសលំនាំដើមរបស់កម្មវិធីចាក់",
     "Player info:": "ព័ត៌មានកម្មវិធីចាក់៖",
     Playlist: "បញ្ជីចាក់",
     "Playlist file": "ឯកសារបញ្ជីចាក់",
@@ -686,6 +709,8 @@ var keyStrings = {
     Postpaid: "បង់ប្រាក់ប្រចាំខែ",
     PROST: "PROST",
     "PROST settings": "ការកំណត់ PROST",
+    "Preferred audio language": "ភាសាអូឌីយ៉ូដែលពេញចិត្ត",
+    "Preferred subtitle language": "ភាសាចំណងជើងរងដែលពេញចិត្ត",
     Prepaid: "បង់ប្រាក់ជាមុន",
     "Preparing secure remote input...": "កំពុងរៀបចំការបញ្ចូលពីចម្ងាយដែលមានសុវត្ថិភាព...",
     Prev: "មុន។",
@@ -718,14 +743,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "ពីចម្ងាយ (គ្មានប៊ូតុងលេខ)",
     "Remote control": "ការបញ្ជាពីចម្ងាយ",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "ការបញ្ជាពីចម្ងាយអនុញ្ញាតការធ្វើរោគវិនិច្ឆ័យ។ រួចរាល់សម្រាប់ប្រតិបត្តិករ។",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "ការបញ្ជាពីចម្ងាយអនុញ្ញាតការធ្វើរោគវិនិច្ឆ័យ។ កំពុងរង់ចាំដើម្បីភ្ជាប់ឡើងវិញ។",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "ការបញ្ជាពីចម្ងាយរួមបញ្ចូលរូបថតអេក្រង់នៃកម្មវិធីចាក់មេឌៀ រួមទាំងការកំណត់របស់វា។ រូបភាពអាចមានព័ត៌មានឯកជន។ កម្មវិធីអាចថតអេក្រង់ដោយផ្ទាល់ដោយមិនមានការយល់ព្រមបន្ថែម។ នៅក្នុងកម្មវិធីរុករកតាមអ៊ីនធឺណិត សូមជ្រើសរើសផ្ទាំង ឬបង្អួចដើម្បីថតនៅលើឧបករណ៍នេះ។",
     "Remote diagnostics": "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយ",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយកំពុងប្រមូលសម្រាប់ការតភ្ជាប់នេះ (រហូតដល់ 10 នាទីក្នុងមួយវគ្គ)។",
     "Remote diagnostics is collecting for this page.":
         "ការធ្វើរោគវិនិច្ឆ័យពីចម្ងាយកំពុងប្រមូលសម្រាប់ទំព័រនេះ។",
     "Remote diagnostics is off.": "ការវិនិច្ឆ័យពីចម្ងាយត្រូវបានបិទ។",
@@ -739,10 +764,10 @@ var keyStrings = {
         "ការបញ្ចូលពីចម្ងាយបានផុតកំណត់ហើយ។ បើកវគ្គថ្មីដើម្បីព្យាយាមម្តងទៀត។",
     "Remote input session is unavailable. Open a new session to try again.":
         "សម័យបញ្ចូលពីចម្ងាយមិនអាចប្រើបានទេ។ បើកវគ្គថ្មីដើម្បីព្យាយាមម្តងទៀត។",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "រូបថតអេក្រង់ពីចម្ងាយ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "ការថតអេក្រង់ពីចម្ងាយត្រូវបានអនុញ្ញាតរយៈពេល 10 នាទី។ បិទការកំណត់ដើម្បីចាប់យក។",
+    "Remote screenshots are off.": "រូបថតអេក្រង់ពីចម្ងាយត្រូវបានបិទ។",
     "Remote session expired": "សម័យពីចម្ងាយបានផុតកំណត់",
     "Remote text entry": "ការបញ្ចូលអត្ថបទពីចម្ងាយ",
     "Remote text entry denied": "ការបញ្ចូលអត្ថបទពីចម្ងាយត្រូវបានបដិសេធ",
@@ -771,6 +796,7 @@ var keyStrings = {
     "Resume from archive?": "បន្តមើលការផ្សាយពីមុន?",
     Retry: "ព្យាយាមម្តងទៀត",
     "Retry EPG download": "ព្យាយាមទាញយក EPG ម្តងទៀត",
+    "Retry same message": "ព្យាយាមសារដដែលម្តងទៀត",
     "Return to previous channel": "ត្រឡប់ទៅឆានែលមុន។",
     Rewind: "រំកិលទៅមុខ / ថយក្រោយ",
     "Rewind step by buttons %1/%2": "ជំហានថយក្រោយសម្រាប់ប៊ូតុង %1/%2",
@@ -787,19 +813,22 @@ var keyStrings = {
     "Save settings": "រក្សាទុកការកំណត់",
     "Save settings and load channel list": "រក្សាទុកការកំណត់ និងផ្ទុកបញ្ជីឆានែល",
     "Save settings to storage": "រក្សាទុកការកំណត់ទៅកន្លែងផ្ទុក",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "ស្កែនលេខកូដ QR នៅលើទូរទស្សន៍របស់អ្នក ឬបិទភ្ជាប់តំណផ្គូផ្គងឯកជនពេញលេញរបស់វាខាងក្រោម។",
     "Scan this QR code with your phone to enter text.":
         "ស្កេនលេខកូដ QR នេះជាមួយទូរសព្ទរបស់អ្នកដើម្បីបញ្ចូលអត្ថបទ។",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "ការចែករំលែកអេក្រង់មិនអាចចាប់ផ្តើមបានទេ។",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "ការចែករំលែកអេក្រង់ត្រូវបានលុបចោល ឬមិនអាចប្រើបាន។",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ការអនុញ្ញាតការថតអេក្រង់មិនអាចបើកបានទេ។",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "រូបថតអេក្រង់អាចរកបានខណៈពេលដែលការបញ្ជាពីចម្ងាយត្រូវបានភ្ជាប់។",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "រូបថតអេក្រង់មិនមាននៅលើវេទិកានេះទេ។",
     Script: "សាច់រឿង",
     Search: "ស្វែងរក",
+    "Search languages": "ស្វែងរកភាសា",
     "Search programme": "ស្វែងរកកម្មវិធីទូរទស្សន៍",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ការបញ្ចូលពីចម្ងាយសុវត្ថិភាពមិនអាចចាប់ផ្តើមបានទេ។ សូមព្យាយាមម្តងទៀត ឬប្រើក្តារចុចលើអេក្រង់។",
@@ -816,14 +845,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "ជ្រើសរើសប្រភពគំរូបញ្ជីចាក់សម្រាប់ EPG និងឡូហ្គោ",
     "Select Stalker portal": "ជ្រើសរើសវិបផតថល Stalker",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "ជ្រើសរើសប្រភពរូបថតអេក្រង់នៅក្នុងកម្មវិធីរុករក",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ជ្រើសរើសផ្ទាំងកម្មវិធីចាក់ ឬបង្អួចនៅក្នុងប្រអប់ចែករំលែកកម្មវិធីរុករក។",
     "Send request": "ផ្ញើសំណើ",
     "Send settings": "ផ្ញើការកំណត់",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "ផ្ញើលេខកូដនេះពីប្រូកស៊ីរបស់អ្នកនៅក្នុងបឋមកថា Authorization: Bearer ។",
+    "Send to TV": "ផ្ញើទៅទូរទស្សន៍",
     Server: "ម៉ាស៊ីនមេ",
     "Server address": "អាសយដ្ឋានម៉ាស៊ីនមេ",
     "Server address (for example 192.168.1.20:8081)":
@@ -832,10 +861,13 @@ var keyStrings = {
     "Server URL": "ម៉ាស៊ីនមេ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "ម៉ាស៊ីនមេមិនអាចប្រើបានទេ។ ព្យាយាមម្តងទៀតដោយស្វ័យប្រវត្តិ; ពិនិត្យអាសយដ្ឋាន និងការចូលប្រើបណ្តាញរបស់វា។",
+    "Session closed. Start a new one from your TV when needed.":
+        "វគ្គបានបិទ។ ចាប់ផ្តើមវគ្គថ្មីនៅលើទូរទស្សន៍របស់អ្នកនៅពេលចាំបាច់។",
     Set: "អនុវត្ត",
     "Set parental code": "កំណត់លេខកូដគ្រប់គ្រងមាតាបិតា",
     "Set timer?": "កំណត់កម្មវិធីកំណត់ម៉ោង?",
     Settings: "ការកំណត់",
+    "Settings changed while editing": "ការកំណត់បានផ្លាស់ប្តូរពេលកំពុងកែសម្រួល",
     "Settings changed. Discovery was canceled.":
         "ការកំណត់បានផ្លាស់ប្តូរ។ ការរកឃើញត្រូវបានលុបចោល។",
     "Settings copied": "ការកំណត់ត្រូវបានចម្លង",
@@ -845,10 +877,14 @@ var keyStrings = {
     "Settings imported": "បាននាំចូលការកំណត់",
     "Settings JSON": "ការកំណត់ JSON",
     "Settings loaded from storage": "ការកំណត់ត្រូវបានផ្ទុកពីកន្លែងផ្ទុក",
+    "Settings received. Restarting player...":
+        "បានទទួលការកំណត់។ កំពុងចាប់ផ្តើមកម្មវិធីចាក់ឡើងវិញ...",
     "Settings STB": "ការកំណត់ STB",
     "Settings saved": "ការកំណត់ត្រូវបានរក្សាទុក",
     "Settings saved to storage": "ការកំណត់ត្រូវបានរក្សាទុកទៅក្នុងកន្លែងផ្ទុក",
     "Settings sended!": "ការកំណត់បានផ្ញើ!",
+    "Settings source changed": "ប្រភពការកំណត់បានផ្លាស់ប្តូរ",
+    "Settings storage rejected write": "ប្រព័ន្ធផ្ទុកការកំណត់បានបដិសេធការសរសេរទិន្នន័យ",
     "Several command servers were found. Select one below.":
         "ម៉ាស៊ីនមេពាក្យបញ្ជាជាច្រើនត្រូវបានរកឃើញ។ ជ្រើសរើសមួយខាងក្រោម។",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -903,12 +939,12 @@ var keyStrings = {
     "Starting...": "ចាប់ផ្តើម...",
     Status: "ស្ថានភាព",
     Stop: "ឈប់",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "បញ្ឈប់ការចែករំលែកកម្មវិធីរុករក",
     "Stop current capture": "បញ្ឈប់ការចាប់យកបច្ចុប្បន្ន",
     "Stop diagnostics": "បញ្ឈប់ការធ្វើរោគវិនិច្ឆ័យ",
     "Stop playback and return to live":
         "បញ្ឈប់ការចាក់សារថ្មី ហើយត្រលប់ទៅការផ្សាយបន្តផ្ទាល់",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "បញ្ឈប់ការថតអេក្រង់",
     "Stream could not be played": "ការស្ទ្រីមមិនអាចលេងបានទេ។",
     "Stream type: %1": "ប្រភេទស្ទ្រីម៖ %1",
     "String for search": "សំណួរស្វែងរក",
@@ -920,6 +956,7 @@ var keyStrings = {
     "Switch subtitle": "ប្ដូរចំណងជើងរង",
     "Switch to this list": "ប្តូរទៅបញ្ជីនេះ។",
     "Swop URL": "Swop URL",
+    "System language": "ភាសាប្រព័ន្ធ",
     "saved on this device": "បានរក្សាទុកនៅលើឧបករណ៍នេះ។",
     select: "ជ្រើសរើស",
     small: "តូច",
@@ -927,15 +964,19 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "ការកំណត់ Tabox",
     "Text is too long for remote input.": "អត្ថបទវែងពេកសម្រាប់ការបញ្ចូលពីចម្ងាយ។",
+    "Text is too long. Please shorten it before sending.":
+        "អត្ថបទវែងពេក។ សូម​កាត់​វា​ឱ្យ​ខ្លី​មុន​ពេល​ផ្ញើ។",
+    "Text sent. Check your TV to confirm it appeared.":
+        "អត្ថបទបានផ្ញើ។ ពិនិត្យទូរទស្សន៍របស់អ្នក ដើម្បីបញ្ជាក់ថាវាលេចចេញមក។",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "ប្រភពរូបថតអេក្រង់របស់កម្មវិធីរុករករួចរាល់ហើយ។",
     "The command server discovery URL is invalid.":
         "ការរកឃើញម៉ាស៊ីនមេពាក្យបញ្ជា URL មិនត្រឹមត្រូវទេ។",
     "The device ID in the address is invalid.":
         "ឧបករណ៍ ID នៅក្នុងអាសយដ្ឋានមិនត្រឹមត្រូវទេ។",
     "The discovery response is invalid.": "ការឆ្លើយតបនៃការរកឃើញមិនត្រឹមត្រូវទេ។",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "កម្មវិធីរុករកនេះមិនអាចកំណត់អត្តសញ្ញាណប្រភពរូបថតអេក្រង់ដែលបានជ្រើសរើសទេ។",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "កម្មវិធីរុករកនេះមិនអាចផ្គូផ្គងដោយស្វ័យប្រវត្តិដោយសុវត្ថិភាពទេ។ ធ្វើបច្ចុប្បន្នភាពវា ឬបញ្ចូលការកំណត់ម៉ាស៊ីនមេបញ្ជាដោយដៃ។",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -944,6 +985,10 @@ var keyStrings = {
         "កម្មវិធីចាក់ HTTPS នេះមិនអាចភ្ជាប់ទៅម៉ាស៊ីនមេ HTTP បានទេ។ ប្រើម៉ាស៊ីនមេ HTTPS ឬបើកកម្មវិធីចាក់នៅលើ HTTP ។",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "កម្មវិធី Play នេះទាមទារ HTTPS ។ សួរអ្នកផ្តល់សេវារបស់អ្នកសម្រាប់បញ្ជីចាក់ HTTPS ឬម៉ាស៊ីនមេ URL ។",
+    "This pairing link has expired. Open a new session on your TV.":
+        "តំណផ្គូផ្គងនេះបានផុតកំណត់ហើយ។ បើកវគ្គថ្មីនៅលើទូរទស្សន៍របស់អ្នក។",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "វគ្គសុវត្ថិភាពនេះមិនមានទេ ឬផុតកំណត់។ បើកវគ្គថ្មីនៅលើទូរទស្សន៍ ហើយប្រើតំណពេញលេញរបស់វា។",
     Timer: "កម្មវិធីកំណត់ម៉ោង",
     "Timer: switch to channel?": "កម្មវិធីកំណត់ម៉ោង៖ ប្តូរទៅឆានែលនេះ?",
     "Timeshift: one minute back": "ថយក្រោយមួយនាទី",
@@ -991,6 +1036,8 @@ var keyStrings = {
         "ប្រើ HTTP ឬ HTTPS ដោយគ្មានឈ្មោះអ្នកប្រើ ឬពាក្យសម្ងាត់នៅក្នុងអាសយដ្ឋាន។",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ប្រើឆ្វេង/ស្ដាំ ដើម្បីជ្រើសរើសវត្ថុបញ្ជា យល់ព្រម ដើម្បីដំណើរការវា ហើយឡើងលើ/ចុះក្រោម ដើម្បីរំកិល។",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "ប្រើតំណពេញលេញ រួមទាំងផ្នែកបន្ទាប់ពី #។ កុំចែករំលែកវាជាមួយអ្នកផ្សេង។",
     "Use Up / Down to scroll. Back to close.":
         "ប្រើឡើងលើ/ចុះក្រោម ដើម្បីរមូរ។ ត្រឡប់ទៅ បិទ វិញ ។",
     Username: "ឈ្មោះអ្នកប្រើប្រាស់",

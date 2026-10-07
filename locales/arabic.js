@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "إعدادات All4you.tv",
     "Allow diagnostics for 10 minutes": "السماح بالتشخيص لمدة 10 دقائق",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "السماح بلقطات الشاشة لمدة 10 دقائق",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "السماح لهذا الخادم بتجميع عدادات التشخيص وإعادة تشغيل هذا الدفق أو المشغل. الوصول المؤقت يستمر 10 دقائق. ويظل الدعم الموثوق متاحًا بعد إعادة الاتصال أو إعادة التشغيل؛ لا تزال صلاحية كل التقاط تنتهي بعد 10 دقائق. تتوقف المجموعة مؤقتًا عندما تكون مخفية أو غير متصلة بالإنترنت.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "السماح لهذا الخادم بتجميع عدادات التشغيل والشبكة والإدخال لهذه الجلسة الأمامية. يتطلب إذن HTTPS والخادم. يتوقف بعد 10 دقائق، عندما يكون مخفيًا، أو عند قطع الاتصال.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "السماح لهذا الخادم بطلب الصور لمدة 10 دقائق. يمكن أن تحتوي الصور على معلومات شخصية. في المتصفح، حدد علامة تبويب أو نافذة المشغل. ينتهي الإذن عند إعادة التحميل أو قطع الاتصال.",
     "Allowlist this Device ID": "إدراج هذا الجهاز في القائمة المسموح بها ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "لا يستطيع مشغل HTTPS تنزيل مصدر HTTP EPG. استخدم مصدر HTTPS.",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "تخطي للخلف/للأمام لمدة دقيقة واحدة",
     "Background color": "لون الخلفية",
     "Background color of selected item": "لون خلفية العنصر المحدد",
+    "Backup state changed": "تم تغيير حالة النسخ الاحتياطي",
     "Balance, $": "الرصيد، دولار",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "سلوك الأزرار %1/%2 في القوائم",
     "Black screen while switching the channel": "شاشة سوداء عند تبديل القنوات",
     Blue: "الأزرق",
+    "Bookmark age (days): %1": "عمر الإشارة المرجعية (بالأيام): %1",
     "Bookmark age: %1 days": "عمر الإشارة المرجعية: %1 أيام",
     "Browse folders": "تصفح المجلدات",
     "Buffer Size, s": "حجم المخزن المؤقت، ق",
@@ -159,11 +161,14 @@ var keyStrings = {
     "Choose language": "اختر اللغة",
     "Choose Plex server": "اختر خادم Plex",
     "Choose provider": "اختر المزود",
-    Classic: "Classic",
+    Classic: "كلاسيكي",
     "Clear all settings?": "مسح كافة الإعدادات؟",
     "Clear settings": "مسح الإعدادات",
     Close: "إغلاق",
     "Close PiP": "إغلاق PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "يتطلب الحفظ/التحميل السحابي البرامج الثابتة STB (لم يتم ضبط host_ott)",
+    "Cloud transfer failed": "فشل النقل السحابي",
     Code: "الكود",
     Color: "اللون",
     "Color spectrum": "طيف الألوان",
@@ -179,6 +184,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "تعذر تحميل وقت تشغيل التوافق. أعد فتح المشغل لإعادة المحاولة.",
     "Compatible HLS": "متوافق مع HLS",
+    "Complete pairing link": "رابط الاقتران الكامل",
     "Configure All4you.tv in Settings -> Provider Settings":
         "قم بتكوين All4you.tv في الإعدادات -> إعدادات الموفر",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -251,22 +257,24 @@ var keyStrings = {
         "قم بتكوين Шаравоз في الإعدادات -> إعدادات الموفر",
     Connect: "الاتصال",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "قم بتوصيل خادم الأوامر HTTPS قبل السماح بلقطات الشاشة.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "قم بتوصيل خادم الأوامر HTTPS لاستخدام لقطات الشاشة.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "وصّل خدمة التحكم عن بُعد لتمكين التشخيص.",
     "Connect this player to a command server first.":
         "قم بتوصيل هذا المشغل بخادم الأوامر أولاً.",
+    "Connect to TV": "الاتصال بالتلفزيون",
     Connected: "متصل",
     "Connected. Waiting for the channel list...":
         "متصل. في انتظار قائمة القنوات...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "يمنح توصيل التحكم عن بُعد هذا الخادم صلاحية تشخيص المشغّل وإصلاحه. تبقى الصلاحية بعد إعادة التشغيل وتنتهي عند قطع الاتصال. تقتصر كل عملية جمع بيانات تشخيصية على 10 دقائق.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "توصيل التشخيص عن بعد لاتصال التحكم عن بعد الممكّن.",
     "Connecting remote diagnostics for this page.":
         "توصيل التشخيص عن بعد لهذه الصفحة.",
+    "Connecting securely to your TV...": "الاتصال بشكل آمن بالتلفزيون...",
     "Connecting to Plex…": "الاتصال بـ Plex...",
     "Connecting to Stalker portal...": "الاتصال ببوابة Stalker...",
     "Connecting...": "جارٍ الاتصال…",
@@ -283,6 +291,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "تعذر إنشاء طلب الاقتران. ابحث عن الخادم مرة أخرى لإعادة المحاولة.",
     "Could not load. Select to retry.": "تعذر التحميل. حدد لإعادة المحاولة.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "تعذر إعداد هذا النص. يرجى اختصاره والمحاولة مرة أخرى.",
+    "Could not protect the private link. Use a different browser.":
+        "تعذر حماية الرابط الخاص. استخدم متصفحًا مختلفًا.",
     "Could not save provider settings.": "تعذّر حفظ إعدادات مزوّد الخدمة.",
     "Could not save the approved command server settings.":
         "لا يمكن حفظ إعدادات خادم الأوامر المعتمدة.",
@@ -299,6 +311,8 @@ var keyStrings = {
     "Delete category": "حذف الفئة",
     "Delete channel": "حذف القناة",
     "Delete list": "حذف القائمة",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "لا يمكن تأكيد التسليم. تحقق من جهاز التلفزيون الخاص بك، أو أعد محاولة إرسال نفس الرسالة قبل انتهاء صلاحية هذه الجلسة.",
     "Demo — moving test pattern": "العرض التوضيحي — نمط الاختبار المتحرك",
     Description: "الوصف",
     "Description of remote control buttons": "دليل زر التحكم عن بعد",
@@ -380,6 +394,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "أدخل بوابة Stalker URL (على سبيل المثال، http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "أدخل رقم الخادم (%1).",
+    "Enter text": "أدخل النص",
     "Enter the access code separately, not in the server address.":
         "أدخل رمز الوصول بشكل منفصل، وليس في عنوان الخادم.",
     "Enter the command server IP or address.": "أدخل أمر الخادم IP أو عنوانه.",
@@ -525,7 +540,9 @@ var keyStrings = {
     "Interface transparency": "شفافية الواجهة",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "رابط القناة غير صالح! أدخل المضيف الكامل كما هو الحال في دفق الخزانة URL (على سبيل المثال، subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "استجابة إعدادات السحابة غير صالحة",
     "Invalid protected source configuration": "تكوين المصدر المحمي غير صالح",
+    "Invalid setting": "الإعداد غير صالح",
     "IPTV token": "رمز IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "إعدادات IpStream.one",
@@ -604,6 +621,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "لا توجد برامج مطابقة لقنوات قائمة التشغيل والتواريخ. تحقق من المصدر وساعة الجهاز.",
     "No saved settings found": "لم يتم العثور على إعدادات محفوظة",
+    "No supported system language. Choose a language.":
+        "لا توجد لغة نظام معتمدة. اختر لغة.",
     "Not configured": "غير مُعدّ",
     "Not found": "غير موجود",
     "Not reduce video when showing the list (bugfix)":
@@ -619,6 +638,8 @@ var keyStrings = {
     "not set": "غير محدد",
     Off: "إيقاف",
     Ok: "موافق",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "هذا التلفزيون فقط يمكنه قبول رسالتك. تنتهي صلاحية الرابط بعد 10 دقائق.",
     Open: "افتح",
     "Open in PiP": "افتح في PiP",
     "Open Plex sign-in page": "افتح صفحة تسجيل الدخول Plex",
@@ -631,6 +652,7 @@ var keyStrings = {
     "OTT / APP host": "مضيف OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "إعدادات OTT Prime ONLINE",
+    "OTT-play remote input": "الإدخال عن بعد OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 متاح. تحميل وتثبيت الآن؟",
     "Overwrite current settings?": "هل تريد استبدال الإعدادات الحالية؟",
@@ -663,6 +685,7 @@ var keyStrings = {
     Playback: "التشغيل",
     "Player and device info": "معلومات المشغل والجهاز",
     "Player could not start": "تعذر بدء تشغيل المشغل",
+    "Player default": "الخيار الافتراضي للمشغّل",
     "Player info:": "معلومات المشغّل:",
     Playlist: "قائمة التشغيل",
     "Playlist file": "ملف قائمة التشغيل",
@@ -684,6 +707,8 @@ var keyStrings = {
     Postpaid: "الدفع الآجل",
     PROST: "PROST",
     "PROST settings": "إعدادات PROST",
+    "Preferred audio language": "لغة الصوت المفضلة",
+    "Preferred subtitle language": "لغة الترجمة المفضلة",
     Prepaid: "الدفع المسبق",
     "Preparing secure remote input...": "جارٍ تحضير الإدخال الآمن عن بعد...",
     Prev: "السابق",
@@ -715,14 +740,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "جهاز التحكم عن بعد (بدون أزرار الأرقام)",
     "Remote control": "جهاز التحكم عن بعد",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "التحكم عن بُعد يمنح صلاحية التشخيص. جاهز للمشغّل المسؤول.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "التحكم عن بُعد يمنح صلاحية التشخيص. بانتظار إعادة الاتصال.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "يشمل التحكم عن بُعد لقطات شاشة للمشغّل وإعداداته. قد تحتوي الصور على معلومات خاصة. لا يتطلب التقاط الشاشة مباشرةً من التطبيق موافقة إضافية. في المتصفح، يجب اختيار علامة التبويب أو النافذة المراد مشاركتها على هذا الجهاز.",
     "Remote diagnostics": "التشخيص عن بعد",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "يتم جمع التشخيص عن بعد لهذا الاتصال (ما يصل إلى 10 دقائق لكل جلسة).",
     "Remote diagnostics is collecting for this page.":
         "يتم جمع التشخيص عن بعد لهذه الصفحة.",
     "Remote diagnostics is off.": "تم إيقاف التشخيص عن بعد.",
@@ -736,10 +761,10 @@ var keyStrings = {
         "انتهت صلاحية الإدخال عن بعد. افتح جلسة جديدة للمحاولة مرة أخرى.",
     "Remote input session is unavailable. Open a new session to try again.":
         "جلسة الإدخال عن بعد غير متاحة. افتح جلسة جديدة للمحاولة مرة أخرى.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "لقطات الشاشة عن بعد",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "يُسمح بلقطات الشاشة عن بعد لمدة 10 دقائق. أغلق الإعدادات لالتقاطها.",
+    "Remote screenshots are off.": "تم إيقاف لقطات الشاشة عن بعد.",
     "Remote session expired": "انتهت صلاحية الجلسة البعيدة",
     "Remote text entry": "إدخال النص عن بعد",
     "Remote text entry denied": "تم رفض إدخال النص عن بعد",
@@ -767,6 +792,7 @@ var keyStrings = {
     "Resume from archive?": "استئناف مشاهدة البث الماضي؟",
     Retry: "إعادة المحاولة",
     "Retry EPG download": "إعادة محاولة تنزيل EPG",
+    "Retry same message": "أعد المحاولة بنفس الرسالة",
     "Return to previous channel": "العودة إلى القناة السابقة",
     Rewind: "تقديم / إرجاع",
     "Rewind step by buttons %1/%2": "خطوة الترجيع للأزرار %1/%2",
@@ -783,19 +809,22 @@ var keyStrings = {
     "Save settings": "حفظ الإعدادات",
     "Save settings and load channel list": "حفظ الإعدادات وتحميل قائمة القنوات",
     "Save settings to storage": "حفظ الإعدادات للتخزين",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "امسح رمز QR ضوئيًا على تلفزيونك، أو الصق رابط الاقتران الخاص الكامل الخاص به أدناه.",
     "Scan this QR code with your phone to enter text.":
         "قم بمسح رمز QR هذا ضوئيًا بهاتفك لإدخال النص.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "تعذر بدء مشاركة الشاشة.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "تم إلغاء مشاركة الشاشة أو أنها غير متوفرة.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "لا يمكن تمكين إذن لقطة الشاشة.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "تتوفر لقطات الشاشة أثناء اتصال خدمة التحكم عن بُعد.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "لقطات الشاشة غير متوفرة على هذا النظام الأساسي.",
     Script: "السيناريو",
     Search: "البحث",
+    "Search languages": "البحث عن لغة",
     "Search programme": "ابحث عن برنامج",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "تعذر بدء الإدخال الآمن عن بعد. الرجاء المحاولة مرة أخرى أو استخدام لوحة المفاتيح التي تظهر على الشاشة.",
@@ -812,14 +841,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "حدد مصدر قالب قائمة التشغيل لـ EPG والشعارات",
     "Select Stalker portal": "حدد بوابة Stalker",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "حدد مصدر لقطة الشاشة في المتصفح",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "حدد علامة تبويب أو نافذة المشغل في مربع حوار مشاركة المتصفح.",
     "Send request": "إرسال الطلب",
     "Send settings": "إعدادات الإرسال",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "أرسل هذا الرمز من الوكيل الخاص بك في رأس Authorization: Bearer.",
+    "Send to TV": "إرسال إلى التلفزيون",
     Server: "الخادم",
     "Server address": "عنوان الخادم",
     "Server address (for example 192.168.1.20:8081)":
@@ -828,10 +857,13 @@ var keyStrings = {
     "Server URL": "الخادم URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "الخادم غير متوفر. إعادة المحاولة تلقائيًا؛ تحقق من عنوانه والوصول إلى الشبكة.",
+    "Session closed. Start a new one from your TV when needed.":
+        "أُغلقت الجلسة. ابدأ جلسة جديدة من التلفزيون عند الحاجة.",
     Set: "تطبيق",
     "Set parental code": "ضبط رمز الرقابة الأبوية",
     "Set timer?": "ضبط المؤقت؟",
     Settings: "الإعدادات",
+    "Settings changed while editing": "تم تغيير الإعدادات أثناء التحرير",
     "Settings changed. Discovery was canceled.":
         "تم تغيير الإعدادات. تم إلغاء الاكتشاف.",
     "Settings copied": "تم نسخ الإعدادات",
@@ -841,10 +873,14 @@ var keyStrings = {
     "Settings imported": "تم استيراد الإعدادات",
     "Settings JSON": "إعدادات JSON",
     "Settings loaded from storage": "الإعدادات التي تم تحميلها من التخزين",
+    "Settings received. Restarting player...":
+        "تم استلام الإعدادات. جارٍ إعادة تشغيل المشغّل...",
     "Settings STB": "إعدادات STB",
     "Settings saved": "تم حفظ الإعدادات",
     "Settings saved to storage": "الإعدادات المحفوظة للتخزين",
     "Settings sended!": "تم إرسال الإعدادات!",
+    "Settings source changed": "تم تغيير مصدر الإعدادات",
+    "Settings storage rejected write": "رفض مخزن الإعدادات عملية الكتابة.",
     "Several command servers were found. Select one below.":
         "تم العثور على العديد من خوادم الأوامر. اختر واحدة أدناه.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -900,12 +936,12 @@ var keyStrings = {
     "Starting...": "البدء…",
     Status: "الحالة",
     Stop: "توقف",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "إيقاف مشاركة المتصفح",
     "Stop current capture": "إيقاف الالتقاط الحالي",
     "Stop diagnostics": "إيقاف التشخيص",
     "Stop playback and return to live":
         "إيقاف التشغيل والعودة إلى البث المباشر",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "إيقاف لقطات الشاشة",
     "Stream could not be played": "تعذر تشغيل الدفق",
     "Stream type: %1": "نوع الدفق: %1",
     "String for search": "استعلام البحث",
@@ -917,6 +953,7 @@ var keyStrings = {
     "Switch subtitle": "تبديل الترجمة",
     "Switch to this list": "قم بالتبديل إلى هذه القائمة",
     "Swop URL": "سووب URL",
+    "System language": "لغة النظام",
     "saved on this device": "المحفوظة على هذا الجهاز",
     select: "اختر",
     small: "صغير",
@@ -925,15 +962,18 @@ var keyStrings = {
     "Tabox settings": "إعدادات Tabox",
     "Text is too long for remote input.":
         "النص طويل جدًا بحيث لا يمكن إدخاله عن بعد.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "النص طويل جدًا. يرجى اختصاره قبل الإرسال.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "تم إرسال النص. تحقق من جهاز التلفزيون الخاص بك للتأكد من ظهوره.",
+    "The browser screenshot source is ready.": "مصدر لقطة شاشة المتصفح جاهز.",
     "The command server discovery URL is invalid.":
         "اكتشاف خادم الأوامر URL غير صالح.",
     "The device ID in the address is invalid.":
         "الجهاز ID الموجود في العنوان غير صالح.",
     "The discovery response is invalid.": "استجابة الاكتشاف غير صالحة.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "لا يستطيع هذا المتصفح التعرف على مصدر لقطة الشاشة المحدد.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "لا يمكن لهذا المتصفح أن يقترن تلقائيًا بشكل آمن. قم بتحديثه أو أدخل إعدادات خادم الأوامر يدويًا.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -942,6 +982,10 @@ var keyStrings = {
         "لا يمكن لمشغل HTTPS هذا الاتصال بخادم HTTP. استخدم خادم HTTPS أو افتح المشغل عبر HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "يتطلب تطبيق Play هذا وجود HTTPS. اطلب من مزود الخدمة الخاص بك الحصول على قائمة تشغيل HTTPS أو خادم URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "انتهت صلاحية رابط الاقتران هذا. افتح جلسة جديدة على جهاز التلفزيون.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "هذه الجلسة الآمنة غير متوفرة أو منتهية الصلاحية. افتح جلسة جديدة على التلفاز واستخدم رابطها الكامل.",
     Timer: "الموقت",
     "Timer: switch to channel?": "الموقت: التبديل إلى هذه القناة؟",
     "Timeshift: one minute back": "رجوع دقيقة واحدة",
@@ -989,6 +1033,8 @@ var keyStrings = {
         "استخدم HTTP أو HTTPS بدون اسم مستخدم أو كلمة مرور في العنوان.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "استخدم يسار/يمين لتحديد عنصر تحكم، وموافق لتنشيطه، وأعلى/أسفل للتمرير.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "استخدم الرابط الكامل، بما في ذلك الجزء الذي يلي #. لا تشاركها مع أي شخص آخر.",
     "Use Up / Down to scroll. Back to close.":
         "استخدم لأعلى / لأسفل للتمرير. العودة إلى الإغلاق.",
     Username: "اسم المستخدم",

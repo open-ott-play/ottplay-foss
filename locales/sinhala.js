@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv සැකසුම්",
     "Allow diagnostics for 10 minutes": "විනාඩි 10 ක් රෝග විනිශ්චයට ඉඩ දෙන්න",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "මිනිත්තු 10ක් සඳහා තිරපිටපත්වලට ඉඩ දෙන්න",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "මෙම සේවාදායකයට රෝග විනිශ්චය කවුන්ටර එකතු කර මෙම ප්‍රවාහය හෝ වාදකය නැවත ආරම්භ කිරීමට ඉඩ දෙන්න. තාවකාලික ප්රවේශය විනාඩි 10 ක් පවතී. නැවත සම්බන්ධ වීමෙන් හෝ නැවත ආරම්භ කිරීමෙන් පසු විශ්වාසනීය සහාය පවතී; සෑම ග්‍රහණයක්ම තවමත් විනාඩි 10කට පසුව කල් ඉකුත් වේ. සැඟවුණු හෝ නොබැඳි විට එකතුව විරාම කරයි.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "මෙම පෙරබිම් සැසිය සඳහා නැවත ධාවනය, ජාල සහ ආදාන කවුන්ටර එකතු කිරීමට මෙම සේවාදායකයට ඉඩ දෙන්න. HTTPS සහ සේවාදායක අවසරය අවශ්‍ය වේ. මිනිත්තු 10 කට පසු, සැඟවුණු විට හෝ විසන්ධි වූ විට නතර වේ.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "මෙම සේවාදායකයට මිනිත්තු 10ක් සඳහා පින්තූර ඉල්ලීමට ඉඩ දෙන්න. පින්තූරවල පුද්ගලික තොරතුරු අඩංගු විය හැක. බ්‍රවුසරයේ මාධ්‍ය වාදකයේ පටිත්ත හෝ කවුළුව තෝරන්න. නැවත පූරණය කිරීමෙන් හෝ විසන්ධි කිරීමෙන් අවසරය අවසන් වේ.",
     "Allowlist this Device ID": "මෙම උපාංගය ID සඳහා අවසර දෙන්න",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS ධාවකයකට HTTP EPG මූලාශ්‍රයක් බාගත නොහැක. HTTPS මූලාශ්‍රයක් භාවිතා කරන්න.",
@@ -101,6 +101,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "මිනිත්තු 1ක් පසුපසට / ඉදිරියට යන්න",
     "Background color": "පසුබිම් වර්ණය",
     "Background color of selected item": "තෝරාගත් අයිතමයේ පසුබිම් වර්ණය",
+    "Backup state changed": "උපස්ථ තත්ත්වය වෙනස් විය",
     "Balance, $": "ශේෂය, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "ලැයිස්තු වල %1/%2 බොත්තම් වල හැසිරීම",
     "Black screen while switching the channel": "නාලිකා මාරු කිරීමේදී කළු තිරය",
     Blue: "නිල්",
+    "Bookmark age (days): %1": "පිටු සලකුණෙහි වයස (දින): %1",
     "Bookmark age: %1 days": "පිටු සලකුණු වයස: %1 දින",
     "Browse folders": "ෆෝල්ඩර බ්‍රවුස් කරන්න",
     "Buffer Size, s": "බෆර ප්‍රමාණය, එස්",
@@ -159,11 +161,14 @@ var keyStrings = {
     "Choose language": "භාෂාව තෝරන්න",
     "Choose Plex server": "Plex සේවාදායකය තෝරන්න",
     "Choose provider": "සපයන්නා තෝරන්න",
-    Classic: "Classic",
+    Classic: "සාම්ප්‍රදායික",
     "Clear all settings?": "සියලු සැකසුම් හිස් කරන්නද?",
     "Clear settings": "සැකසුම් ඉවත් කරන්න",
     Close: "වසන්න",
     "Close PiP": "PiP වසන්න",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ක්ලවුඩ් වෙත සුරැකීමට හෝ එයින් පූරණය කිරීමට STB ස්ථිරාංග අවශ්‍ය වේ (host_ott සකසා නැත)",
+    "Cloud transfer failed": "ක්ලවුඩ් දත්ත හුවමාරුව අසාර්ථක විය",
     Code: "කේතය",
     Color: "වර්ණය",
     "Color spectrum": "වර්ණ වර්ණාවලිය",
@@ -180,6 +185,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "අනුකූලතා ධාවන කාලය පූරණය කළ නොහැකි විය. නැවත උත්සාහ කිරීමට වාදකය නැවත විවෘත කරන්න.",
     "Compatible HLS": "අනුකූල HLS",
+    "Complete pairing link": "සම්පූර්ණ යුගල සබැඳිය",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv සැකසීම් -> සැපයුම්කරු සැකසීම් තුළ වින්‍යාස කරන්න",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -252,22 +258,24 @@ var keyStrings = {
         "Шаравоз සැකසීම් -> සැපයුම්කරු සැකසීම් තුළ වින්‍යාස කරන්න",
     Connect: "සම්බන්ධ කරන්න",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "තිරපිටපත්වලට ඉඩ දීමට පෙර HTTPS විධාන සේවාදායකයක් සම්බන්ධ කරන්න.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "තිරපිටපත් භාවිතා කිරීමට HTTPS විධාන සේවාදායකයක් සම්බන්ධ කරන්න.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "දෝෂ විශ්ලේෂණය සබල කිරීමට දුරස්ථ පාලන සම්බන්ධතාව අරඹන්න.",
     "Connect this player to a command server first.":
         "මෙම ප්ලේයරය පළමුව විධාන සේවාදායකයකට සම්බන්ධ කරන්න.",
+    "Connect to TV": "රූපවාහිනියට සම්බන්ධ වන්න",
     Connected: "සම්බන්ධයි",
     "Connected. Waiting for the channel list...":
         "සම්බන්ධයි. නාලිකා ලැයිස්තුව සඳහා රැඳී සිටිමින්...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "දුරස්ථ පාලනය සම්බන්ධ කිරීමෙන් මාධ්‍ය වාදකයේ දෝෂ විශ්ලේෂණය කිරීමට සහ අලුත්වැඩියා කිරීමට මෙම සේවාදායකයට අවසර ලැබේ. නැවත ආරම්භ කිරීමෙන් පසුවත් ප්‍රවේශය පවතින අතර ඔබ විසන්ධි කළ විට අවසන් වේ. එක් වරක දෝෂ විශ්ලේෂණ දත්ත රැස් කිරීම මිනිත්තු 10කට සීමා වේ.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "සක්‍රිය දුරස්ථ පාලන සම්බන්ධතාව සඳහා දුරස්ථ දෝෂ විශ්ලේෂණය සම්බන්ධ කරමින්.",
     "Connecting remote diagnostics for this page.":
         "මෙම පිටුව සඳහා දුරස්ථ රෝග විනිශ්චය සම්බන්ධ කිරීම.",
+    "Connecting securely to your TV...": "ඔබේ රූපවාහිනියට ආරක්ෂිතව සම්බන්ධ වෙමින්...",
     "Connecting to Plex…": "Plex වෙත සම්බන්ධ වෙමින්...",
     "Connecting to Stalker portal...": "Stalker ද්වාරය වෙත සම්බන්ධ වෙමින්...",
     "Connecting...": "සම්බන්ධ වෙමින්...",
@@ -285,6 +293,10 @@ var keyStrings = {
         "යුගල කිරීමේ ඉල්ලීමක් තැනීමට නොහැකි විය. නැවත උත්සාහ කිරීමට සේවාදායකය නැවත සොයන්න.",
     "Could not load. Select to retry.":
         "පූරණය කළ නොහැකි විය. නැවත උත්සාහ කිරීමට තෝරන්න.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "මෙම පාඨය සකස් කිරීමට නොහැකි විය. කරුණාකර එය කෙටි කර නැවත උත්සාහ කරන්න.",
+    "Could not protect the private link. Use a different browser.":
+        "පුද්ගලික සබැඳිය ආරක්ෂා කළ නොහැක. වෙනත් බ්‍රවුසරයක් භාවිතා කරන්න.",
     "Could not save provider settings.": "සැපයුම්කරුගේ සැකසුම් සුරැකීමට නොහැකි විය.",
     "Could not save the approved command server settings.":
         "අනුමත විධාන සේවාදායක සැකසුම් සුරැකීමට නොහැකි විය.",
@@ -300,6 +312,8 @@ var keyStrings = {
     "Delete category": "කාණ්ඩය මකන්න",
     "Delete channel": "නාලිකාව මකන්න",
     "Delete list": "ලැයිස්තුව මකන්න",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "භාරදීම තහවුරු කළ නොහැකි විය. මෙම සැසිය කල් ඉකුත් වීමට පෙර ඔබේ රූපවාහිනිය පරීක්ෂා කරන්න, නැතහොත් එම පණිවිඩය නැවත උත්සාහ කරන්න.",
     "Demo — moving test pattern": "ආදර්ශනය — චලනය වන පරීක්ෂණ රටාව",
     Description: "විස්තරය",
     "Description of remote control buttons": "දුරස්ථ පාලක බොත්තම් මාර්ගෝපදේශය",
@@ -381,6 +395,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker ද්වාරය URL ඇතුළු කරන්න (උදා: http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "සේවාදායක අංකය ඇතුළත් කරන්න (%1).",
+    "Enter text": "පෙළ ඇතුළත් කරන්න",
     "Enter the access code separately, not in the server address.":
         "සේවාදායක ලිපිනයේ නොව, ප්‍රවේශ කේතය වෙන වෙනම ඇතුළත් කරන්න.",
     "Enter the command server IP or address.":
@@ -528,7 +543,9 @@ var keyStrings = {
     "Interface transparency": "අතුරු මුහුණත විනිවිදභාවය",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "වලංගු නොවන නාලිකා සබැඳියක්! කැබිනට් ප්‍රවාහයේ URL (උදා. subdomain.cdn-domain.tld) ලෙස සම්පූර්ණ ධාරකය ඇතුළු කරන්න",
+    "Invalid cloud settings response": "ක්ලවුඩ් සැකසුම් සඳහා වලංගු නොවන ප්‍රතිචාරයක් ලැබුණි",
     "Invalid protected source configuration": "වලංගු නොවන ආරක්ෂිත මූලාශ්‍ර වින්‍යාසය",
+    "Invalid setting": "වලංගු නොවන සැකසුම",
     "IPTV token": "IPTV ටෝකනය",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one සැකසුම්",
@@ -607,6 +624,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "ධාවන ලැයිස්තු නාලිකා සහ දිනයන් සමඟ කිසිදු වැඩසටහනක් නොගැලපේ. මූලාශ්රය සහ උපාංග ඔරලෝසුව පරීක්ෂා කරන්න.",
     "No saved settings found": "සුරැකි සැකසුම් කිසිවක් හමු නොවිණි",
+    "No supported system language. Choose a language.":
+        "සහය දක්වන පද්ධති භාෂාවක් නොමැත. භාෂාවක් තෝරන්න.",
     "Not configured": "වින්‍යාස කර නැත",
     "Not found": "හමු නොවීය",
     "Not reduce video when showing the list (bugfix)":
@@ -621,6 +640,8 @@ var keyStrings = {
     "not set": "සකසා නැත",
     Off: "අක්‍රිය",
     Ok: "හරි",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "මෙම රූපවාහිනියට පමණක් ඔබගේ පණිවිඩය පිළිගත හැක. සබැඳිය විනාඩි 10කට පසු කල් ඉකුත් වේ.",
     Open: "විවෘත කරන්න",
     "Open in PiP": "PiP හි විවෘතයි",
     "Open Plex sign-in page": "Plex පුරනය වීමේ පිටුව විවෘත කරන්න",
@@ -633,6 +654,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP සත්කාරක",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE සැකසුම්",
+    "OTT-play remote input": "OTT-play දුරස්ථ ආදානය",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 තිබේ. දැන් බාගත කර ස්ථාපනය කරන්නද?",
     "Overwrite current settings?": "වත්මන් සිටුවම් උඩින් ලියන්නද?",
@@ -665,6 +687,7 @@ var keyStrings = {
     Playback: "වාදනය",
     "Player and device info": "ක්රීඩකයා සහ උපාංග තොරතුරු",
     "Player could not start": "වාදකයට ආරම්භ කිරීමට නොහැකි විය",
+    "Player default": "වාදකයේ පෙරනිමි තේරීම",
     "Player info:": "වාදකයේ තොරතුරු:",
     Playlist: "ධාවන ලැයිස්තුව",
     "Playlist file": "ධාවන ලැයිස්තු ගොනුව",
@@ -686,6 +709,8 @@ var keyStrings = {
     Postpaid: "පසුගෙවුම්",
     PROST: "PROST",
     "PROST settings": "PROST සැකසුම්",
+    "Preferred audio language": "කැමති ශ්‍රව්‍ය භාෂාව",
+    "Preferred subtitle language": "කැමති උපසිරැසි භාෂාව",
     Prepaid: "පෙරගෙවුම්",
     "Preparing secure remote input...": "ආරක්ෂිත දුරස්ථ ආදානය සූදානම් කරමින්...",
     Prev: "පෙර",
@@ -717,14 +742,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "දුරස්ථ (අංක බොත්තම් නැත)",
     "Remote control": "දුරස්ථ පාලකය",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "දුරස්ථ පාලනය දෝෂ විශ්ලේෂණයට අවසර දෙයි. ක්‍රියාකරුවෙකු සඳහා සූදානම්.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "දුරස්ථ පාලනය දෝෂ විශ්ලේෂණයට අවසර දෙයි. නැවත සම්බන්ධ වීමට රැඳී සිටී.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "දුරස්ථ පාලකයට එහි සිටුවම් ඇතුළුව මාධ්‍ය වාදකයේ තිරපිටපත් ඇතුළත් වේ. පින්තූරවල පුද්ගලික තොරතුරු අඩංගු විය හැක. යෙදුමට අමතර අනුමැතියකින් තොරව තිරපිටපත් සෘජුවම ග්‍රහණය කර ගත හැක. බ්‍රවුසරයක, මෙම උපාංගය මත ග්‍රහණය කිරීමට ටැබය හෝ කවුළුව තෝරන්න.",
     "Remote diagnostics": "දුරස්ථ රෝග විනිශ්චය",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "මෙම සම්බන්ධතාව සඳහා දුරස්ථ දෝෂ විශ්ලේෂණ දත්ත රැස් කරමින් පවතී (සැසියකට උපරිම මිනිත්තු 10ක්).",
     "Remote diagnostics is collecting for this page.":
         "මෙම පිටුව සඳහා දුරස්ථ රෝග නිර්ණය එකතු කරයි.",
     "Remote diagnostics is off.": "දුරස්ථ රෝග විනිශ්චය අක්‍රියයි.",
@@ -738,10 +763,10 @@ var keyStrings = {
         "දුරස්ථ ආදානය කල් ඉකුත් විය. නැවත උත්සාහ කිරීමට නව සැසියක් විවෘත කරන්න.",
     "Remote input session is unavailable. Open a new session to try again.":
         "දුරස්ථ ආදාන සැසිය නොමැත. නැවත උත්සාහ කිරීමට නව සැසියක් විවෘත කරන්න.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "දුරස්ථ තිරපිටපත්",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "දුරස්ථ තිරපිටපත් විනාඩි 10ක් සඳහා ඉඩ දෙනු ලැබේ. අල්ලා ගැනීමට සැකසීම් වසන්න.",
+    "Remote screenshots are off.": "දුරස්ථ තිරපිටපත් අක්‍රියයි.",
     "Remote session expired": "දුරස්ථ සැසිය කල් ඉකුත් විය",
     "Remote text entry": "දුරස්ථ පෙළ ඇතුළත් කිරීම",
     "Remote text entry denied": "දුරස්ථ පෙළ ඇතුළත් කිරීම ප්‍රතික්ෂේප කරන ලදී",
@@ -769,6 +794,7 @@ var keyStrings = {
     "Resume from archive?": "පසුගිය විකාශනය නැරඹීම නැවත ආරම්භ කරන්නද?",
     Retry: "නැවත උත්සාහ කරන්න",
     "Retry EPG download": "EPG බාගැනීමට නැවත උත්සාහ කරන්න",
+    "Retry same message": "එම පණිවිඩය නැවත උත්සාහ කරන්න",
     "Return to previous channel": "පෙර නාලිකාව වෙත ආපසු යන්න",
     Rewind: "ඉදිරියට / පසුපසට යන්න",
     "Rewind step by buttons %1/%2": "බොත්තම් සඳහා ආපස්සට පියවර %1/%2",
@@ -786,19 +812,21 @@ var keyStrings = {
     "Save settings and load channel list":
         "සැකසුම් සුරකින්න සහ නාලිකා ලැයිස්තුව පූරණය කරන්න",
     "Save settings to storage": "සැකසුම් ගබඩාවට සුරකින්න",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "ඔබේ රූපවාහිනියේ QR කේතය පරිලෝකනය කරන්න, නැතහොත් එහි සම්පූර්ණ පුද්ගලික යුගල සබැඳිය පහත අලවන්න.",
     "Scan this QR code with your phone to enter text.":
         "පෙළ ඇතුළු කිරීමට මෙම QR කේතය ඔබගේ දුරකථනයෙන් පරිලෝකනය කරන්න.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "තිර බෙදාගැනීම ආරම්භ කළ නොහැකි විය.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "තිර බෙදාගැනීම අවලංගු කර හෝ ලබා ගත නොහැක.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "තිරපිටපත් අවසරය සබල කළ නොහැකි විය.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "දුරස්ථ පාලකය සම්බන්ධ කර ඇති අතරතුර තිරපිටපත් තිබේ.",
+    "Screenshots are unavailable on this platform.": "මෙම වේදිකාවේ තිරපිටපත් නොමැත.",
     Script: "තිර රචනය",
     Search: "සොයන්න",
+    "Search languages": "භාෂා සොයන්න",
     "Search programme": "වැඩසටහන සොයන්න",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "ආරක්ෂිත දුරස්ථ ආදානය ආරම්භ කළ නොහැක. කරුණාකර නැවත උත්සාහ කරන්න හෝ තිරයේ යතුරු පුවරුව භාවිතා කරන්න.",
@@ -815,14 +843,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG සහ ලාංඡන සඳහා ධාවන ලැයිස්තු අච්චු මූලාශ්‍රය තෝරන්න",
     "Select Stalker portal": "Stalker ද්වාරය තෝරන්න",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "බ්‍රවුසරයේ තිරපිටපත් මූලාශ්‍රය තෝරන්න",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "බ්‍රවුසරයේ බෙදාගැනීමේ සංවාද කොටුවෙන් මාධ්‍ය වාදකයේ පටිත්ත හෝ කවුළුව තෝරන්න.",
     "Send request": "ඉල්ලීම යවන්න",
     "Send settings": "සැකසුම් යවන්න",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "මෙම කේතය ඔබේ ප්‍රොක්සියෙන් Authorization: Bearer ශීර්ෂයෙන් යවන්න.",
+    "Send to TV": "රූපවාහිනියට යවන්න",
     Server: "සේවාදායකය",
     "Server address": "සේවාදායක ලිපිනය",
     "Server address (for example 192.168.1.20:8081)":
@@ -831,10 +859,13 @@ var keyStrings = {
     "Server URL": "සේවාදායකය URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "සේවාදායකය නොමැත. ස්වයංක්‍රීයව නැවත උත්සාහ කිරීම; එහි ලිපිනය සහ ජාල ප්රවේශය පරීක්ෂා කරන්න.",
+    "Session closed. Start a new one from your TV when needed.":
+        "සැසිය වසා ඇත. අවශ්‍ය විටෙක ඔබේ රූපවාහිනියෙන් අලුත් එකක් අරඹන්න.",
     Set: "යොදන්න",
     "Set parental code": "මාපිය පාලන කේතය සකසන්න",
     "Set timer?": "ටයිමරය සකසන්නද?",
     Settings: "සැකසුම්",
+    "Settings changed while editing": "සංස්කරණය කිරීමේදී සැකසීම් වෙනස් විය",
     "Settings changed. Discovery was canceled.":
         "සැකසීම් වෙනස් කරන ලදී. සොයාගැනීම අවලංගු කරන ලදී.",
     "Settings copied": "සැකසීම් පිටපත් කරන ලදී",
@@ -844,10 +875,14 @@ var keyStrings = {
     "Settings imported": "සැකසුම් ආනයනය කරන ලදී",
     "Settings JSON": "සැකසුම් JSON",
     "Settings loaded from storage": "ගබඩාවෙන් සිටුවම් පටවා ඇත",
+    "Settings received. Restarting player...":
+        "සැකසුම් ලැබී ඇත. වාදකය නැවත ආරම්භ කරමින්...",
     "Settings STB": "STB සැකසුම්",
     "Settings saved": "සැකසීම් සුරකින ලදී",
     "Settings saved to storage": "සැකසුම් ගබඩාවට සුරකින ලදී",
     "Settings sended!": "සැකසුම් යවන ලදී!",
+    "Settings source changed": "සැකසීම් මූලාශ්‍රය වෙනස් කරන ලදී",
+    "Settings storage rejected write": "සැකසීම් ගබඩාව ලිවීම ප්‍රතික්ෂේප විය",
     "Several command servers were found. Select one below.":
         "විධාන සේවාදායකයන් කිහිපයක් සොයා ගන්නා ලදී. පහත එකක් තෝරන්න.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -902,11 +937,11 @@ var keyStrings = {
     "Starting...": "ආරම්භ…",
     Status: "තත්ත්වය",
     Stop: "නවත්වන්න",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "බ්‍රවුසර බෙදාගැනීම නවත්වන්න",
     "Stop current capture": "වත්මන් ග්‍රහණය නවත්වන්න",
     "Stop diagnostics": "රෝග විනිශ්චය නතර කරන්න",
     "Stop playback and return to live": "නැවත ධාවනය නවත්වා සජීවීව වෙත ආපසු යන්න",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "තිරපිටපත් නවත්වන්න",
     "Stream could not be played": "ප්‍රවාහය වාදනය කළ නොහැකි විය",
     "Stream type: %1": "ප්‍රවාහ වර්ගය: %1",
     "String for search": "සෙවුම් විමසුම",
@@ -918,6 +953,7 @@ var keyStrings = {
     "Switch subtitle": "උපසිරැසි මාරු කරන්න",
     "Switch to this list": "මෙම ලැයිස්තුවට මාරු වන්න",
     "Swop URL": "URL මාරු කරන්න",
+    "System language": "පද්ධති භාෂාව",
     "saved on this device": "මෙම උපාංගයේ සුරකින ලදී",
     select: "තෝරන්න",
     small: "කුඩා",
@@ -925,14 +961,17 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox සැකසුම්",
     "Text is too long for remote input.": "දුරස්ථ ආදානය සඳහා පෙළ දිග වැඩිය.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "පෙළ දිග වැඩියි. යැවීමට පෙර කරුණාකර එය කෙටි කරන්න.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "පෙළ යවා ඇත. එය දිස් වූ බව තහවුරු කිරීමට ඔබේ රූපවාහිනිය පරීක්ෂා කරන්න.",
+    "The browser screenshot source is ready.": "බ්‍රවුසර තිරපිටපත් මූලාශ්‍රය සූදානම්.",
     "The command server discovery URL is invalid.":
         "විධාන සේවාදායක සොයාගැනීම URL වලංගු නොවේ.",
     "The device ID in the address is invalid.": "ලිපිනයෙහි ඇති ID උපාංගය වලංගු නොවේ.",
     "The discovery response is invalid.": "සොයාගැනීමේ ප්‍රතිචාරය වලංගු නැත.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "මෙම බ්‍රවුසරයට තෝරාගත් තිරපිටපත් මූලාශ්‍රය හඳුනාගත නොහැක.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "මෙම බ්‍රවුසරයට ආරක්ෂිතව ස්වයංක්‍රීයව යුගල කළ නොහැක. එය යාවත්කාලීන කරන්න හෝ විධාන සේවාදායක සැකසුම් අතින් ඇතුල් කරන්න.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -941,6 +980,10 @@ var keyStrings = {
         "මෙම HTTPS ප්ලේයරයට HTTP සේවාදායකයකට සම්බන්ධ විය නොහැක. HTTPS සේවාදායකයක් භාවිතා කරන්න හෝ HTTP හරහා වාදකය විවෘත කරන්න.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "මෙම Play යෙදුමට HTTPS අවශ්‍ය වේ. HTTPS ධාවන ලැයිස්තුවක් හෝ සේවාදායකය URL සඳහා ඔබේ සැපයුම්කරුගෙන් විමසන්න.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "මෙම යුගල සබැඳිය කල් ඉකුත් වී ඇත. ඔබගේ රූපවාහිනියේ නව සැසියක් විවෘත කරන්න.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "මෙම ආරක්ෂිත සැසිය ලබා ගත නොහැක හෝ කල් ඉකුත් වී ඇත. රූපවාහිනියේ නව සැසියක් විවෘත කර එහි සම්පූර්ණ සබැඳිය භාවිතා කරන්න.",
     Timer: "ටයිමරය",
     "Timer: switch to channel?": "ටයිමරය: මෙම නාලිකාවට මාරු වන්නද?",
     "Timeshift: one minute back": "මිනිත්තුවක් පසුපසට යන්න",
@@ -989,6 +1032,8 @@ var keyStrings = {
         "ලිපිනයෙහි පරිශීලක නාමයක් හෝ මුරපදයක් නොමැතිව HTTP හෝ HTTPS භාවිතා කරන්න.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "පාලනයක් තේරීමට වම/දකුණ, එය සක්‍රිය කිරීමට OK සහ අනුචලනය කිරීමට ඉහළ/පහළ භාවිතා කරන්න.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# න් පසු කොටස ඇතුළුව සම්පූර්ණ සබැඳිය භාවිතා කරන්න. එය වෙනත් කිසිවෙකු සමඟ බෙදා නොගන්න.",
     "Use Up / Down to scroll. Back to close.":
         "අනුචලනය කිරීමට ඉහළ / පහළ භාවිතා කරන්න. නැවත වැසීමට.",
     Username: "පරිශීලක නාමය",

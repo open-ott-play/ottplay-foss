@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const sharedCore = require("./helpers/shared-core-runtime.cjs");
 const casingCode = ts.transpileModule(
     fs.readFileSync("src/utils/caseless.ts", "utf8"),
@@ -15,11 +16,17 @@ const casingCode = ts.transpileModule(
 ).outputText;
 acorn.parse(casingCode, { ecmaVersion: 5 });
 const casingContext = vm.createContext({ exports: {} });
-// The helper needs no normalization, locale, code-point or modern string APIs.
+// The fallback needs no native normalization, locale or modern string APIs.
 vm.runInContext(
     "String.prototype.normalize = String.prototype.toLocaleLowerCase = " +
         "String.prototype.toLocaleUpperCase = String.prototype.codePointAt = " +
         "String.fromCodePoint = undefined;",
+    casingContext
+);
+vm.runInContext(localizationRuntime(), casingContext);
+casingContext.require = () => casingContext;
+vm.runInContext(
+    "String.prototype.toLowerCase = String.prototype.toUpperCase = undefined",
     casingContext
 );
 vm.runInContext(casingCode, casingContext);
@@ -391,12 +398,13 @@ function checkUnicodeReference() {
             "C/F pair U+" + point.toString(16)
         );
         assert.equal(
-            canonical(actual),
-            folded,
-            "no additional equivalence U+" + point.toString(16)
+            canonical(actual).normalize("NFD"),
+            folded.normalize("NFD"),
+            "no equivalence beyond canonical normalization U+" +
+                point.toString(16)
         );
     }
-    assert.equal(caselessKey("\ud800x\udfff"), "\ud800X\udfff");
+    assert.equal(caselessKey("\ud800x\udfff"), "\ud800x\udfff");
     console.log(
         "PASS remote Unicode 17 C/F pairs and negative equivalence: 1114112 codepoints"
     );
@@ -492,20 +500,29 @@ function checkUnicodeRequests() {
         ["İx", "ix"],
         ["ix", "İx"],
         ["café", "cafe"],
-        ["café", "cafe\u0301"],
         ["ＡＢＣ", "abc"],
         ["абв", "abv"],
         ["άλφα", "αλφα"],
         ["Maßstab", "MASSTAB"],
         ["և", "եվ"],
         ["ĳ", "ij"],
-        ["Α\u0345\u0301", "Α\u0301\u0345"],
     ]) {
         const f = unicodeRequests([title]);
         assert.equal(f.run("channels", query).data.channels.length, 0, title);
         assert.equal(f.run("programs", query).data.programs.length, 0, title);
         assert.equal(f.run("play", query).status, "rejected", title);
         assert.equal(f.played, undefined);
+    }
+    for (const [title, query] of [
+        ["Café", "Cafe\u0301"],
+        ["ড় TV", "ড় tv"],
+        ["한", "\u1112\u1161\u11ab"],
+        ["Α\u0345\u0301", "Α\u0301\u0345"],
+    ]) {
+        const f = unicodeRequests([title]);
+        assert.equal(f.run("channels", query).data.channels.length, 1, title);
+        assert.equal(f.run("programs", query).data.programs.length, 1, title);
+        assert.equal(f.run("play", query).status, "ok", title);
     }
     const ambiguous = unicodeRequests(["Straße", "STRASSE"]);
     const rejected = ambiguous.run("play", "strasse");

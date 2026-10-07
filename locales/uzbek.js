@@ -60,19 +60,21 @@ var keyStrings = {
     "All categories": "Barcha turkumlar",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv sozlamalari",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes":
+        "10 daqiqa davomida diagnostikaga ruxsat bering",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Skrinshotlarga 10 daqiqaga ruxsat bering",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Ushbu serverga diagnostika hisoblagichlarini yig‘ish va oqim yoki pleerni qayta ishga tushirishga ruxsat bering. Vaqtinchalik kirish 10 daqiqa davom etadi. Ishonchli yordam qayta ulanish yoki qayta ishga tushirishdan keyin ham mavjud bo‘ladi; har bir ma’lumot yig‘ish seansi baribir 10 daqiqadan keyin tugaydi. Pleer yashirilganda yoki tarmoq uzilganda yig‘ish pauza qilinadi.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Ushbu faol seans uchun serverga ijro, tarmoq va kiritish hisoblagichlarini yig‘ishga ruxsat bering. HTTPS va server ruxsati talab qilinadi. Yig‘ish 10 daqiqadan so‘ng, pleer yashirilganda yoki aloqa uzilganda to‘xtaydi.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Ushbu serverga 10 daqiqa davomida tasvirlarni so'rashga ruxsat bering. Rasmlar shaxsiy ma'lumotlarni o'z ichiga olishi mumkin. Brauzerda pleer yorlig'i yoki oynasini tanlang. Ruxsat qayta yuklash yoki aloqani uzish bilan tugaydi.",
     "Allowlist this Device ID": "Bu qurilma ID raqamiga ruxsat berish",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "HTTPS pleer HTTP EPG manbasini yuklab olmaydi. HTTPS manbasidan foydalaning.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "Portsiz IP manzil HTTP 8081 portidan foydalanadi. Toʻxtatish uchun manzilni tozalang yoki Uzish bandini tanlang.",
     "Another source sign-in is already open":
@@ -91,9 +93,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arxiv. Kanal: ",
     Aspect: "Tomonlar nisbati",
     Audio: "Ovoz",
-    Automatic: "Automatic",
+    Automatic: "Avtomatik",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Avtomatik qo'llab-quvvatlanadigan fayllarni to'g'ridan-to'g'ri o'ynaydi va kerak bo'lganda mos keladigan HLS dan foydalanadi.",
     alhabet: "abcdefghijklmnopqrstuvxyzʻʼ",
     always: "doim",
     "and enter code": "va kodni kiriting",
@@ -101,6 +103,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 daqiqa orqaga / oldinga oʻtish",
     "Background color": "Fon rangi",
     "Background color of selected item": "Tanlangan elementning fon rangi",
+    "Backup state changed": "Zaxira holati o'zgartirildi",
     "Balance, $": "Balans, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Kanal almashtirilganda qora ekran",
     Blue: "Koʻk",
+    "Bookmark age (days): %1": "Xatcho'pning yoshi (kunlar): %1",
     "Bookmark age: %1 days": "Xatchoʻp yoshi: %1 kun",
     "Browse folders": "Jildlar boʻyicha koʻrish",
     "Buffer Size, s": "Bufer hajmi, s",
@@ -154,21 +158,24 @@ var keyStrings = {
     "Channel parental control": "Kanal ota-ona nazorati",
     Channels: "Kanallar",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Ulanishni tekshiring va Plex kutubxonalaringizni oching.",
     "Check this server's SWOP configuration.":
         "Ushbu serverning SWOP sozlamalarini tekshiring.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Plex server ulanishi tekshirilmoqda…",
     "Choose from": "Quyidagidan tanlash",
     "Choose language": "Tilni tanlash",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Plex serverini tanlang",
     "Choose provider": "Provayderni tanlash",
     Classic: "Klassik",
     "Clear all settings?": "Barcha sozlamalar tozalansinmi?",
     "Clear settings": "Sozlamalarni tozalash",
     Close: "Yopish",
     "Close PiP": "PiP yopish",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Bulutli saqlash/yuklash STB mikrodasturini talab qiladi (host_ott sozlanmagan)",
+    "Cloud transfer failed": "Bulutli uzatish amalga oshmadi",
+    Code: "Kirish kodi",
     Color: "Rang",
     "Color spectrum": "Rang spektri",
     "Command server": "Buyruqlar serveri",
@@ -185,7 +192,8 @@ var keyStrings = {
     "Command server found.": "Buyruqlar serveri topildi.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Moslik komponentlarini yuklab bo‘lmadi. Qayta urinish uchun pleyerni yana oching.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Mos keladi HLS",
+    "Complete pairing link": "To'liq ulanish havolasi",
     "Configure All4you.tv in Settings -> Provider Settings":
         "All4you.tv uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -219,7 +227,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "OTT Prime ONLINE uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Sozlamalar -> Provayder sozlamalarida Plex ni sozlang",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "POLMEDIA uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     "Configure PROST in Settings -> Provider Settings":
@@ -258,23 +266,26 @@ var keyStrings = {
         "Шаравоз uchun Sozlamalar -> Provayder sozlamalari boʻlimidan foydalaning",
     Connect: "Ulanish",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Skrinshotlarga ruxsat berishdan oldin HTTPS buyruq serverini ulang.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Skrinshotlardan foydalanish uchun HTTPS buyruq serverini ulang.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Diagnostikani yoqish uchun masofadan boshqarishni ulang.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Avval ushbu pleerni buyruq serveriga ulang.",
+    "Connect to TV": "Televizorga ulaning",
     Connected: "Ulandi",
     "Connected. Waiting for the channel list...":
         "Ulandi. Kanallar roʻyxati kutilmoqda…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Masofadan boshqarishni ulash ushbu serverga pleer muammolarini aniqlash va tuzatishga ruxsat beradi. Kirish qayta ishga tushirilgandan keyin ham saqlanadi va aloqani uzganingizda tugaydi. Har bir diagnostika ma’lumotlarini yig‘ish seansi 10 daqiqa bilan cheklangan.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Yoqilgan masofadan boshqarish ulanishi uchun masofaviy diagnostika ulanishi.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Ushbu sahifa uchun masofaviy diagnostika ulanishi.",
+    "Connecting securely to your TV...":
+        "Televizoringizga xavfsiz ulanmoqda...",
+    "Connecting to Plex…": "Plex ga ulanmoqda…",
     "Connecting to Stalker portal...": "Stalker portaliga ulanmoqda…",
     "Connecting...": "Ulanmoqda…",
     "Continue watching?": "Tomosha davom ettirilsinmi?",
@@ -285,12 +296,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Tanlangan JSON matnidan qurilmaning nusxalash buyrug‘i yordamida nusxa oling",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Plex ga ulanib bo'lmadi. Server manzilini, tokenni va tarmoqqa kirishni tekshiring.",
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
     "Could not create a pairing request. Find the server again to retry.":
         "Juftlash soʻrovini yaratib boʻlmadi. Qayta urinish uchun serverni yana toping.",
     "Could not load. Select to retry.":
         "Yuklab bo‘lmadi. Qayta urinish uchun tanlang.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Ushbu matnni tayyorlab bo'lmadi. Iltimos, uni qisqartiring va qaytadan urining.",
+    "Could not protect the private link. Use a different browser.":
+        "Shaxsiy havolani himoya qilib bo'lmadi. Boshqa brauzerdan foydalaning.",
     "Could not save provider settings.":
         "Provayder sozlamalarini saqlab bo‘lmadi.",
     "Could not save the approved command server settings.":
@@ -308,6 +323,8 @@ var keyStrings = {
     "Delete category": "Turkumni oʻchirish",
     "Delete channel": "Kanalni o'chirish",
     "Delete list": "Roʻyxatni oʻchirish",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Yetkazib berishni tasdiqlab bo'lmadi. Bu seans tugashidan oldin televizoringizni tekshiring yoki xuddi shu xabarni qaytadan urinib ko‘ring.",
     "Demo — moving test pattern": "Namoyish — harakatlanuvchi sinov tasviri",
     Description: "Tavsif",
     "Description of remote control buttons": "Pult tugmalari qoʻllanmasi",
@@ -321,7 +338,8 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV sozlamalari",
     Director: "Rejissyor",
     "Disable HTTP remote": "HTTP pultini o‘chirish",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support":
+        "Ishonchli masofaviy yordamni o'chirib qo'ying",
     "Disabled by default. Enabling creates a new device access code.":
         "Dastlab o‘chirilgan. Yoqilganda qurilmaga kirish uchun yangi kod yaratiladi.",
     Disconnect: "Uzish",
@@ -356,7 +374,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Bu xizmatga kirish uchun foydalanuvchi nomi va parolni kiriting.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Yaroqli Plex server manzili va kirish tokenini kiriting.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Toʻgʻri server manzilini kiriting, masalan, 192.168.1.20:8081.",
     "Enter access key for": "Quyidagiga kirish kalitini kiriting:",
@@ -374,8 +392,8 @@ var keyStrings = {
         "MAC manzilini kiriting (masalan, 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Media kutubxonasi URL kiriting",
     "Enter new category name": "Turkumning yangi nomini kiriting",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Plex server manzilini kiriting",
+    "Enter Plex token": "Plex tokenini kiriting",
     "Enter Provider Code": "Provayder kodini kiriting",
     "Enter Provider Code on PC or Phone":
         "Provayder kodini kompyuter yoki telefonda kiriting",
@@ -390,6 +408,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker portali URL manzilini kiriting (masalan, http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Server raqamini kiriting (%1).",
+    "Enter text": "Matn kiriting",
     "Enter the access code separately, not in the server address.":
         "Kirish kodini server manzilida emas, alohida kiriting.",
     "Enter the command server IP or address.":
@@ -414,56 +433,57 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Xtream serveri URL manzilini kiriting (masalan, https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Plex kirish tokeningizni kiriting. U ushbu qurilma profilida saqlangan.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Plex server manzilingizni kiriting, masalan http://192.168.1.25:32400",
     EPG: "TV dasturi",
     "EPG and archive. Channel: ": "EPG va arxiv. Kanal: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "EPG arxivi yoki XML yaroqsiz.",
+    "EPG cache and wait time: %1": "EPG kesh va kutish vaqti: %1",
+    "EPG cache updated: %1": "EPG kesh yangilandi: %1",
+    "EPG channels: %1": "EPG kanallari: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG ishga tushmadi. Fayllarini qayta yuklash uchun pleyerni qayta ishga tushiring. Ijro to‘xtaydi.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG diagnostikasi",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "EPG diagnostikasi yuklanmadi. Qayta urinish uchun uni qayta oching.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "EPG yuklab olinmadi. Ulanishni, HTTPS va manba CORS ruxsatlarini tekshiring.",
+    "EPG download time: %1": "EPG yuklab olish vaqti: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "EPG yuklab olish vaqti tugadi. Yuklashni qaytadan sinab ko'ring.",
+    "EPG elapsed: %1": "EPG uchun o‘tgan vaqt: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG xatosi. Ma'lumotni oching → EPG diagnostikasi.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG qurilmaning qayta ishlash chegarasidan oshdi. Kichikroq manba yoki qisqaroq arxiv davridan foydalaning.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG boshlanmadi. M3U pleylistini yuklang.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG mahalliy xotira mavjud emas yoki toʻla.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG ishlov berish va saqlash vaqti: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "EPG ishlov berish to'xtatildi. Qayta urinib ko'ring va brauzer qo'llab-quvvatlashini tekshiring.",
+    "EPG programmes: %1": "EPG ko‘rsatuvlari: %1",
+    "EPG progress: %1": "EPG taraqqiyoti: %1",
+    "EPG ready": "EPG tayyor",
+    "EPG source returned HTTP %1": "EPG manbasi qaytarildi HTTP %1",
+    "EPG source: %1": "EPG manba: %1",
+    "EPG stopped during: %1": "EPG quyidagi vaqtda to'xtadi: %1",
+    "EPG unavailable on this browser": "EPG ushbu brauzerda mavjud emas",
+    "EPG unavailable: %1": "EPG mavjud emas: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "EPG yangilanmadi; saqlangan teledasturdan foydalanilmoqda",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG: teledastur yuklab olinmoqda...",
+    "EPG: opening local cache...": "EPG: mahalliy keshni ochish...",
+    "EPG: processing programme guide...":
+        "EPG: teledastur qayta ishlanmoqda...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: saqlangan teledastur yangilanmoqda...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: boshqa pleer varag‘i kutilmoqda...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Xato: %1-raqamli turkum mavjud emas!<br>Boshqa turkumni tanlang.",
     "ERROR!": "Xato!",
@@ -499,7 +519,7 @@ var keyStrings = {
     "Finding command servers...": "Buyruqlar serverlari qidirilmoqda...",
     "First Run Setup": "Birinchi ishga tushirish sozlamalari",
     "Fit to screen": "Ekranga moslash",
-    Folders: "Folders",
+    Folders: "Papkalar",
     "Font type": "Shrift turi",
     "For download settings file open":
         "Sozlamalar faylini yuklab olish uchun oching:",
@@ -542,8 +562,10 @@ var keyStrings = {
     "Interface transparency": "Interfeys shaffofligi",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Kanal havolasi notoʻgʻri! Shaxsiy kabinetdagi oqim URL manzilidagi kabi xostning toʻliq nomini kiriting (masalan, subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Yaroqsiz bulut sozlamalari javobi",
     "Invalid protected source configuration":
         "Himoyalangan manba sozlamalari noto‘g‘ri",
+    "Invalid setting": "Sozlama noto'g'ri",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one sozlamalari",
@@ -619,10 +641,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Bu tarmoqda buyruqlar serveri topilmadi.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Bu hisob uchun Plex serverlari mavjud emas.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Hech bir ko‘rsatuv pleylist kanallari va sanalariga mos kelmadi. Manbani va qurilma soatini tekshiring.",
     "No saved settings found": "Saqlangan sozlamalar topilmadi",
+    "No supported system language. Choose a language.":
+        "Qo'llab-quvvatlanadigan tizim tili yo'q. Til tanlang.",
     "Not configured": "Sozlanmagan",
     "Not found": "Topilmadi",
     "Not reduce video when showing the list (bugfix)":
@@ -638,18 +662,21 @@ var keyStrings = {
     "not set": "belgilanmagan",
     Off: "Oʻchirilgan",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Faqat shu televizor xabaringizni qabul qilishi mumkin. Havola 10 daqiqadan so'ng tugaydi.",
     Open: "Ochish",
     "Open in PiP": "PiP da ochish",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Plex tizimga kirish sahifasini oching",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Telefoningiz yoki kompyuteringizda plex.tv/link ni oching va ushbu kodni kiriting.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Yoki ushbu to‘liq shaxsiy havolani boshqa qurilmada oching:",
+    "Original file": "Asl media fayl",
     "Original text: %1": "Asl matn: %1",
     "OTT / APP host": "OTT / ilova serveri",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE sozlamalari",
+    "OTT-play remote input": "OTT-play masofaviy kiritish",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 mavjud. Hozir yuklab olib oʻrnatilsinmi?",
     "Overwrite current settings?": "Joriy sozlamalar ustiga yozilsinmi?",
@@ -679,22 +706,23 @@ var keyStrings = {
     "PiP window position": "PiP oynasining joylashuvi",
     "PiP window size": "PiP oynasining oʻlchami",
     Play: "Ijro",
-    Playback: "Playback",
+    Playback: "Media ijrosi",
     "Player and device info": "Pleyer va qurilma haqida",
     "Player could not start": "Pleyerni ishga tushirib bo‘lmadi",
+    "Player default": "Pleerning standart tanlovi",
     "Player info:": "Pleyer haqida:",
-    Playlist: "Playlist",
+    Playlist: "Pleylist",
     "Playlist file": "Playlist fayli",
     "Playlist is not loading directly...Loading via server...":
         "Playlist to'g'ridan-to'g'ri yuklanmayapti...Server orqali yuklanmoqda...",
     "Playlist Name": "Playlist nomi",
     "Playlist URL": "Pleylist URL manzili",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Plex ulanishi amalga oshmadi",
+    "Plex settings": "Plex sozlamalari",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Plex tizimga kirish amalga oshmadi. Ulanishni tekshiring va qayta urinib ko'ring yoki server manzili va tokenni kiriting.",
+    "Plex token": "Plex tokeni",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA sozlamalari",
     "Portal URL": "Portal URL manzili",
@@ -703,8 +731,11 @@ var keyStrings = {
     Postpaid: "Keyin to‘lov",
     PROST: "PROST",
     "PROST settings": "PROST sozlamalari",
+    "Preferred audio language": "Afzal audio tili",
+    "Preferred subtitle language": "Afzal subtitr tili",
     Prepaid: "Oldindan to‘lov",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Xavfsiz masofaviy kiritish tayyorlanmoqda...",
     Prev: "Oldingi",
     "Preview in channel list": "Kanallar roʻyxatida oldindan koʻrish",
     Previous: "Oldingi",
@@ -735,31 +766,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Pult (raqamli tugmalarsiz)",
     "Remote control": "Masofadan boshqarish",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Masofadan boshqarish diagnostikaga ruxsat beradi. Operatorga tayyor.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Masofadan boshqarish diagnostikaga ruxsat beradi. Qayta ulanish kutilmoqda.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Masofadan boshqarish media pleerning skrinshotlarini, jumladan uning sozlamalarini o'z ichiga oladi. Rasmlar shaxsiy ma'lumotlarni o'z ichiga olishi mumkin. Ilova qo'shimcha ruxsatsiz skrinshotlarni to'g'ridan-to'g'ri olishi mumkin. Brauzerda ushbu qurilmada suratga olish uchun yorliq yoki oynani tanlang.",
+    "Remote diagnostics": "Masofaviy diagnostika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Ushbu ulanish uchun masofaviy diagnostika yig'ilmoqda (har bir seans uchun 10 daqiqagacha).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Ushbu sahifa uchun masofaviy diagnostika yig'ilmoqda.",
+    "Remote diagnostics is off.": "Masofaviy diagnostika o'chirilgan.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Masofaviy diagnostika vakolatli operator uchun tayyor.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Ushbu pleerda masofaviy diagnostika mavjud emas.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Masofaviy diagnostika to'xtatildi. Ruxsat berish uchun uni qayta yoqing.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Masofaviy kiritish muddati tugadi. Qayta urinish uchun yangi seansni oching.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Masofaviy kiritish seansi mavjud emas. Qayta urinish uchun yangi seansni oching.",
+    "Remote screenshots": "Masofaviy skrinshotlar",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Masofaviy skrinshotlarga 10 daqiqaga ruxsat beriladi. Rasmga olish uchun sozlamalarni yoping.",
+    "Remote screenshots are off.": "Masofaviy skrinshotlar o'chirilgan.",
     "Remote session expired": "Masofaviy seans muddati tugadi",
     "Remote text entry": "Masofaviy matn kiritish",
     "Remote text entry denied": "Masofaviy matn kiritish rad etildi",
@@ -786,7 +817,8 @@ var keyStrings = {
     "Restart stream / Live": "Oqimni qayta ishga tushirish / jonli efir",
     "Resume from archive?": "Arxivdan davom ettirilsinmi?",
     Retry: "Qayta urinish",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "EPG yuklab olishga qayta urinib ko'ring",
+    "Retry same message": "Xuddi shu xabarni qaytadan urinib ko'ring",
     "Return to previous channel": "Oldingi kanalga qaytish",
     Rewind: "Vaqt boʻyicha oʻtkazish",
     "Rewind step by buttons %1/%2":
@@ -799,32 +831,35 @@ var keyStrings = {
     "Save & load channels": "Saqlash va kanallarni yuklash",
     "Save and load": "Saqlash va yuklash",
     "Save and load channels": "Saqlash va kanallarni yuklash",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Kutubxonani saqlang va oching",
     "Save Settings": "Sozlamalarni saqlash",
     "Save settings": "Sozlamalarni saqlash",
     "Save settings and load channel list":
         "Sozlamalarni saqlash va kanallar roʻyxatini yuklash",
     "Save settings to storage": "Sozlamalarni xotiraga saqlash",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Televizoringizdagi QR kodini skanerlang yoki uning toʻliq shaxsiy ulanish havolasini quyida joylashtiring.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Matn kiritish uchun ushbu QR kodini telefoningiz bilan skanerlang.",
+    "Screen sharing could not start.": "Ekranni almashish ishga tushmadi.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ekranni almashish bekor qilingan yoki mavjud emas.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Skrinshot ruxsatini yoqib bo'lmadi.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Masofadan boshqarish ulanganda ekran tasvirlari mavjud.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ushbu platformada skrinshotlar mavjud emas.",
     Script: "Ssenariy",
     Search: "Qidirish",
+    "Search languages": "Tillarni qidirish",
     "Search programme": "Koʻrsatuv qidirish",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Xavfsiz masofaviy kiritishni ishga tushirib bo'lmadi. Qaytadan urining yoki ekran klaviaturasidan foydalaning.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Xavfsiz masofaviy kiritishni ishga tushirib bo'lmadi. Iltimos, ekran klaviaturasidan foydalaning.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Ushbu qurilmada xavfsiz masofaviy kiritish mavjud emas. Ekrandagi klaviaturadan foydalaning.",
     "Select a stream type:<br>%1": "Oqim turini tanlang:<br>%1",
     "Select category to add channel":
         "Kanal qo'shish uchun kategoriyani tanlang",
@@ -836,13 +871,14 @@ var keyStrings = {
         "EPG va logotiplar uchun pleylist andozasi manbasini tanlang",
     "Select Stalker portal": "Stalker portalini tanlash",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Brauzerda skrinshot manbasini tanlang",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Brauzer almashish dialogida pleer yorlig'ini yoki oynasini tanlang.",
     "Send request": "Soʻrov yuborish",
     "Send settings": "Sozlamalarni yuborish",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Bu kodni proksidan Authorization: Bearer sarlavhasida yuboring.",
+    "Send to TV": "Televizorga yuboring",
     Server: "Server",
     "Server address": "Server manzili",
     "Server address (for example 192.168.1.20:8081)":
@@ -851,10 +887,14 @@ var keyStrings = {
     "Server URL": "Server URL manzili",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server mavjud emas. Avtomatik qayta uriniladi; manzil va tarmoqqa kirishni tekshiring.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Seans yopildi. Zarur bo'lganda televizoringizdan yangisini ishga tushiring.",
     Set: "Belgilash",
     "Set parental code": "Ota-ona kodini belgilash",
     "Set timer?": "Taymer oʻrnatilsinmi?",
     Settings: "Sozlamalar",
+    "Settings changed while editing":
+        "Tahrirlash vaqtida sozlamalar o'zgartirildi",
     "Settings changed. Discovery was canceled.":
         "Sozlamalar oʻzgardi. Qidiruv bekor qilindi.",
     "Settings copied": "Sozlamalardan nusxa olindi",
@@ -864,10 +904,15 @@ var keyStrings = {
     "Settings imported": "Sozlamalar import qilindi",
     "Settings JSON": "JSON formatidagi sozlamalar",
     "Settings loaded from storage": "Sozlamalar xotiradan yuklandi",
+    "Settings received. Restarting player...":
+        "Sozlamalar qabul qilindi. Pleer qayta ishga tushirilmoqda...",
     "Settings STB": "STB sozlamalari",
     "Settings saved": "Sozlamalar saqlandi",
     "Settings saved to storage": "Sozlamalar xotiraga saqlandi",
     "Settings sended!": "Sozlamalar yuborildi!",
+    "Settings source changed": "Sozlamalar manbasi o'zgartirildi",
+    "Settings storage rejected write":
+        "Sozlamalar ombori yozish so‘rovini rad etdi",
     "Several command servers were found. Select one below.":
         "Bir nechta buyruqlar serveri topildi. Quyida ulardan birini tanlang.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -904,29 +949,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Himoyalangan manbaga qayta kiring",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Plex hisobingizga kiring va serverni tanlang. Bu pleerda hech qanday parol kiritilmagan.",
+    "Sign in with Plex": "Plex bilan tizimga kiring",
     "Sign in: %1": "Kirish: %1",
     "Sign out of all sources": "Barcha manbalardan chiqish",
     "Sign-in opens when you load a protected playlist.":
         "Himoyalangan pleylist yuklanganda kirish oynasi ochiladi.",
     "Sleep timer": "Uyqu taymeri",
     "Sort channels": "Kanallarni saralash",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Media manbasiga kirish",
+    "Source sign-in required": "Manbaga kirish talab qilinadi",
     "Source sign-in was cancelled": "Manbaga kirish bekor qilindi",
     "Stalker Portal Provider": "Stalker portali provayderi",
     "Stalker portal settings": "Stalker portali sozlamalari",
     "Stalker portals": "Stalker portallari",
     "Starting...": "Ishga tushirilmoqda…",
     Status: "Holat",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "To'xtating",
+    "Stop browser sharing": "Brauzer almashishni to'xtating",
+    "Stop current capture": "Joriy ma’lumot yig‘ishni to‘xtatish",
+    "Stop diagnostics": "Diagnostikani to'xtating",
     "Stop playback and return to live":
         "Ijroni toʻxtatish va jonli efirga qaytish",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Skrinshotlarni to'xtating",
     "Stream could not be played": "Oqimni ijro etib bo‘lmadi",
     "Stream type: %1": "Oqim turi: %1",
     "String for search": "Qidiruv soʻrovi",
@@ -938,22 +983,28 @@ var keyStrings = {
     "Switch subtitle": "Subtitrlarni almashtirish",
     "Switch to this list": "Bu roʻyxatga oʻtish",
     "Swop URL": "Swop URL manzili",
+    "System language": "Tizim tili",
     "saved on this device": "shu qurilmada saqlangan",
     select: "tanlash",
     small: "kichik",
     system: "tizim",
     Tabox: "Tabox",
     "Tabox settings": "Tabox sozlamalari",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Matn uzoqdan kiritish uchun juda uzun.",
+    "Text is too long. Please shorten it before sending.":
+        "Matn juda uzun. Iltimos, yuborishdan oldin uni qisqartiring.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Matn yuborildi. Uning paydo bo'lishini tasdiqlash uchun televizoringizni tekshiring.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Brauzer skrinshoti manbasi tayyor.",
     "The command server discovery URL is invalid.":
         "Buyruqlar serverini qidirish URL manzili yaroqsiz.",
     "The device ID in the address is invalid.":
         "Manzildagi qurilma ID raqami notoʻgʻri.",
     "The discovery response is invalid.": "Qidiruv javobi yaroqsiz.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ushbu brauzer tanlangan skrinshot manbasini aniqlay olmaydi.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Bu brauzer xavfsiz avtomatik juftlashni bajara olmaydi. Uni yangilang yoki buyruqlar serveri sozlamalarini qoʻlda kiriting.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -962,6 +1013,10 @@ var keyStrings = {
         "Bu HTTPS pleyer HTTP serverga ulana olmaydi. HTTPS serverdan foydalaning yoki pleyerni HTTP orqali oching.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Bu Play ilovasi HTTPS talab qiladi. Provayderdan HTTPS pleylist yoki server URL manzilini soʻrang.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ushbu ulanish havolasi muddati tugagan. Televizoringizda yangi seansni oching.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ushbu xavfsiz seans mavjud emas yoki muddati tugagan. Televizorda yangi seansni oching va uning to'liq havolasidan foydalaning.",
     Timer: "Taymer",
     "Timer: switch to channel?": "Taymer: bu kanalga oʻtilsinmi?",
     "Timeshift: one minute back": "Vaqt siljishi: bir daqiqa orqaga",
@@ -980,13 +1035,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sozlamalari",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Masofaviy yordam uchun ushbu serverga ishoning",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Ishonchli ruxsatni qurilma xotirasidan olib tashlab bo'lmadi.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Ishonchli diagnostika mavjud emas, chunki qurilma xotirasini yangilab bo'lmadi.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Ishonchli diagnostika ushbu pleer qayta ulanishini kutmoqda.",
     "Try demo": "Namoyishni sinash",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG sozlamalari",
@@ -1006,18 +1061,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "HTTP yoki HTTPS server manzilidan foydalaning.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Masofaviy diagnostika uchun HTTPS buyruq serveridan foydalaning.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Manzilda foydalanuvchi nomi yoki parolsiz HTTP yoki HTTPS dan foydalaning.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Boshqaruv elementini tanlash uchun CHAP/OʻNG, faollashtirish uchun OK, aylantirish uchun YUQORI/PAST tugmalaridan foydalaning.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "To'liq havoladan, jumladan # dan keyingi qismdan foydalaning. Uni boshqa hech kim bilan baham ko'rmang.",
     "Use Up / Down to scroll. Back to close.":
         "Siljitish uchun Yuqoriga / Pastga tugmalaridan foydalaning. Yopish uchun Orqaga.",
     Username: "Foydalanuvchi nomi",
     "Username or password is missing.":
         "Foydalanuvchi nomi yoki parol kiritilmagan.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "10 daqiqa davomida amal qiladi. Orqaga tugmasi bu seansni yopadi.",
     Version: "Versiya",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM sozlamalari",
@@ -1031,7 +1088,7 @@ var keyStrings = {
     "VPortal request failed":
         "VPortalʼni yuklab boʻlmadi. Havola, kirish kaliti va portalning mavjudligini tekshiring.",
     volume: "ovoz balandligi",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Tizimga kirish kutilmoqda…",
     "Wrong parental code !!!": "Noto'g'ri ota-ona kodi!!!",
     "Xtream Codes Provider": "Xtream Codes provayderi",
     "Xtream Codes settings": "Xtream Codes sozlamalari",

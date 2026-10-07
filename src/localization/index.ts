@@ -1,3 +1,6 @@
+import { languageDirection, languageLocaleTag } from "./assets";
+import { unicodeSearchKey } from "./unicode";
+
 /**
  * Localization/translation system.
  *
@@ -73,4 +76,85 @@ export var _ = translate;
 /** Update the fallback ESM dictionary after an optional loader completes. */
 export function setTranslations(value: Record<string, string>): void {
     translations = value;
+}
+
+/** The effective loaded dictionary, independent of a pending language request. */
+export function currentInterfaceLanguage(): string {
+    var host = window as any;
+    if (host.__ottInterfaceLanguage) return host.__ottInterfaceLanguage;
+    try {
+        if (typeof host.stbGetItem === "function")
+            return host.stbGetItem("ottplaylang") || "_eng";
+    } catch (_error) {}
+    return "_eng";
+}
+
+export function currentLocaleTag(): string {
+    return languageLocaleTag(currentInterfaceLanguage());
+}
+
+export function interfaceDirection(): "rtl" | "ltr" {
+    return languageDirection(currentInterfaceLanguage());
+}
+
+/** Text direction is applied to text containers, never the remote's layout. */
+export function applyLanguageMetadata(code: string): void {
+    (window as any).__ottInterfaceLanguage = code;
+    document.documentElement.lang = languageLocaleTag(code);
+    document.documentElement.setAttribute(
+        "data-ui-direction",
+        languageDirection(code)
+    );
+    var blocks = document.querySelectorAll(".localized-text");
+    for (var i = 0; i < blocks.length; i++)
+        blocks[i].setAttribute("dir", languageDirection(code));
+}
+
+export function normalizeSearchText(value: string): string {
+    return unicodeSearchKey(value, currentLocaleTag());
+}
+
+export function formatLocaleNumber(value: number): string {
+    try {
+        if (
+            typeof Intl !== "undefined" &&
+            typeof Intl.NumberFormat === "function"
+        )
+            return new Intl.NumberFormat(currentLocaleTag(), {
+                useGrouping: false,
+            }).format(value);
+    } catch (_error) {}
+    return String(value);
+}
+
+/** Display only; timestamps, persisted values and protocol numbers stay unchanged. */
+export function formatLocaleDateTime(seconds: number): string {
+    var date = new Date(seconds * 1000);
+    try {
+        if (
+            typeof Intl !== "undefined" &&
+            typeof Intl.DateTimeFormat === "function"
+        )
+            return new Intl.DateTimeFormat(currentLocaleTag(), {
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                month: "2-digit",
+                weekday: "short",
+            }).format(date);
+    } catch (_error) {}
+    function two(value: number): string {
+        return ("0" + value).slice(-2);
+    }
+    return (
+        translate("Su Mo Tu We Th Fr Sa").split(" ")[date.getDay()] +
+        "\u00a0" +
+        two(date.getDate()) +
+        "." +
+        two(date.getMonth() + 1) +
+        "\u00a0" +
+        two(date.getHours()) +
+        ":" +
+        two(date.getMinutes())
+    );
 }

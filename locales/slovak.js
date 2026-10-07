@@ -62,14 +62,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv nastavenia",
     "Allow diagnostics for 10 minutes": "Nechajte diagnostiku 10 minút",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Povoliť snímky obrazovky na 10 minút",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Povoliť tomuto serveru zhromažďovať diagnostické počítadlá a reštartovať tento stream alebo prehrávač médií. Dočasný prístup trvá 10 minút. Dôveryhodná podpora zostáva dostupná aj po opätovnom pripojení alebo reštartovaní; platnosť každého záberu stále vyprší po 10 minútach. Zbierka sa pozastaví, keď je skrytá alebo offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Povoliť tomuto serveru zhromažďovať počítadlá prehrávania, siete a vstupov pre túto reláciu v popredí. Vyžaduje HTTPS a povolenie servera. Zastaví sa po 10 minútach, keď je skrytý alebo keď je odpojený.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Umožnite tomuto serveru požadovať obrázky na 10 minút. Obrázky môžu obsahovať osobné informácie. V prehliadači vyberte kartu alebo okno prehrávača. Povolenie končí opätovným načítaním alebo odpojením.",
     "Allowlist this Device ID":
         "Pridať ID tohto zariadenia do zoznamu povolených",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -79,8 +79,8 @@ var keyStrings = {
     "Another source sign-in is already open":
         "Ďalší zdroj prihlasovania je už otvorený",
     "API failed, trying M3U...": "API zlyhalo, skúšam M3U…",
-    "API Server": "API server",
-    "API server URL": "API server URL",
+    "API Server": "Server API",
+    "API server URL": "URL servera API",
     "Applying HTTP remote settings...":
         "Aplikujú sa vzdialené nastavenia HTTP...",
     "Approve the code for %1 with ott approve NAME CODE:":
@@ -102,6 +102,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Preskočenie späť / dopredu o 1 minútu",
     "Background color": "Farba pozadia",
     "Background color of selected item": "Farba pozadia vybranej položky",
+    "Backup state changed": "Stav zálohy sa zmenil",
     "Balance, $": "Zostatok, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +114,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Čierna obrazovka pri prepínaní kanálov",
     Blue: "Modrá",
+    "Bookmark age (days): %1": "Vek záložky (dni): %1",
     "Bookmark age: %1 days": "Vek záložky: %1 dní",
     "Browse folders": "Prehľadávať priečinky",
     "Buffer Size, s": "Veľkosť vyrovnávacej pamäte, s",
@@ -169,6 +171,9 @@ var keyStrings = {
     "Clear settings": "Vymazať nastavenia",
     Close: "Zavrieť",
     "Close PiP": "Zavrieť PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Uloženie/načítanie do cloudu vyžaduje firmvér STB (host_ott nie je nastavený)",
+    "Cloud transfer failed": "Prenos do cloudu zlyhal",
     Code: "kód",
     Color: "Farba",
     "Color spectrum": "Farebné spektrum",
@@ -187,6 +192,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Kompatibilita runtime sa nepodarilo načítať. Znova otvorte prehrávač médií a skúste to znova.",
     "Compatible HLS": "Kompatibilné HLS",
+    "Complete pairing link": "Kompletné prepojenie na párovanie",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Nakonfigurujte All4you.tv v Nastaveniach -> Nastavenia poskytovateľa",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -259,22 +265,24 @@ var keyStrings = {
         "Nakonfigurujte Шаравоз v Nastaveniach -> Nastavenia poskytovateľa",
     Connect: "Pripojte sa",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Pred povolením snímok obrazovky pripojte príkazový server HTTPS.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ak chcete použiť snímky obrazovky, pripojte príkazový server HTTPS.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Pripojte diaľkové ovládanie, aby ste umožnili diagnostiku.",
     "Connect this player to a command server first.":
         "Najprv pripojte tento prehrávač médií k príkazovému serveru.",
+    "Connect to TV": "Pripojenie k TV",
     Connected: "Pripojené",
     "Connected. Waiting for the channel list...":
         "Pripojené. Čaká sa na zoznam kanálov...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Pripojením vzdialeného ovládania povoľujete tomuto serveru diagnostikovať a opravovať prehrávač. Prístup zostáva dostupný aj po reštarte a končí sa odpojením. Každý zber diagnostických údajov je obmedzený na 10 minút.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Pripojenie vzdialenej diagnostiky pre aktivované pripojenie diaľkového ovládania.",
     "Connecting remote diagnostics for this page.":
         "Pripája sa vzdialená diagnostika pre túto stránku.",
+    "Connecting securely to your TV...": "Bezpečné pripojenie k televízoru...",
     "Connecting to Plex…": "Pripája sa k Plex…",
     "Connecting to Stalker portal...": "Pripája sa k portálu Stalker…",
     "Connecting...": "Pripája sa…",
@@ -292,6 +300,10 @@ var keyStrings = {
         "Nepodarilo sa vytvoriť žiadosť o spárovanie. Znova vyhľadajte server a skúste to znova.",
     "Could not load. Select to retry.":
         "Nepodarilo sa načítať. Výberom to skúste znova.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Tento text sa nepodarilo pripraviť. Skráťte ho a skúste to znova.",
+    "Could not protect the private link. Use a different browser.":
+        "Nepodarilo sa ochrániť súkromný odkaz. Použite iný prehliadač.",
     "Could not save provider settings.":
         "Nastavenia poskytovateľa sa nepodarilo uložiť.",
     "Could not save the approved command server settings.":
@@ -309,6 +321,8 @@ var keyStrings = {
     "Delete category": "Odstrániť kategóriu",
     "Delete channel": "Odstrániť kanál",
     "Delete list": "Odstrániť zoznam",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Dodanie nebolo možné potvrdiť. Pred vypršaním platnosti tejto relácie skontrolujte svoj televízor alebo zopakujte rovnakú správu.",
     "Demo — moving test pattern": "Demo — pohybujúci sa testovací vzor",
     Description: "Popis",
     "Description of remote control buttons":
@@ -392,6 +406,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Zadajte URL portálu Stalker (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Zadajte číslo servera (%1).",
+    "Enter text": "Zadajte text",
     "Enter the access code separately, not in the server address.":
         "Prístupový kód zadajte samostatne, nie v adrese servera.",
     "Enter the command server IP or address.":
@@ -530,7 +545,7 @@ var keyStrings = {
     "Hide providers?": "Skryť poskytovateľov?",
     "History in Media Library": "História v knižnici médií",
     "History of watched movies": "História sledovania",
-    "HTTP port": "HTTP port",
+    "HTTP port": "Port HTTP",
     "HTTP remote control is unavailable on this device.":
         "Diaľkové ovládanie HTTP nie je na tomto zariadení k dispozícii.",
     "HTTPS support": "podpora HTTPS",
@@ -547,9 +562,11 @@ var keyStrings = {
     "Interface transparency": "Priehľadnosť rozhrania",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Neplatný odkaz na kanál! Zadajte úplného hostiteľa ako v streame hlavného panela účtu poskytovateľa URL (napr. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Neplatná odpoveď nastavení cloudu",
     "Invalid protected source configuration":
         "Neplatná konfigurácia chráneného zdroja",
-    "IPTV token": "IPTV token",
+    "Invalid setting": "Neplatné nastavenie",
+    "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one nastavenia",
     Joystick: "Pákový ovládač",
@@ -628,6 +645,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Kanálom a dátumom zoznamu videí nezodpovedajú žiadne programy. Skontrolujte zdroj a hodiny zariadenia.",
     "No saved settings found": "Nenašli sa žiadne uložené nastavenia",
+    "No supported system language. Choose a language.":
+        "Žiadny podporovaný systémový jazyk. Vyberte jazyk.",
     "Not configured": "Nenakonfigurované",
     "Not found": "Nenájdené",
     "Not reduce video when showing the list (bugfix)":
@@ -643,6 +662,8 @@ var keyStrings = {
     "not set": "nie je nastavený",
     Off: "Vypnuté",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Iba tento televízor môže prijať vašu správu. Platnosť odkazu vyprší po 10 minútach.",
     Open: "Otvoriť",
     "Open in PiP": "Otvoriť v PiP",
     "Open Plex sign-in page": "Otvorte prihlasovaciu stránku Plex",
@@ -655,6 +676,7 @@ var keyStrings = {
     "OTT / APP host": "Hostiteľ OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE nastavenia",
+    "OTT-play remote input": "Diaľkový vstup OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 je k dispozícii. Stiahnuť a nainštalovať teraz?",
     "Overwrite current settings?": "Prepísať aktuálne nastavenia?",
@@ -687,6 +709,7 @@ var keyStrings = {
     Playback: "Prehrávanie",
     "Player and device info": "informácie o prehrávači médií a zariadení",
     "Player could not start": "prehrávač médií sa nepodarilo spustiť",
+    "Player default": "Predvolená voľba prehrávača",
     "Player info:": "informácie o prehrávači médií:",
     Playlist: "Zoznam skladieb",
     "Playlist file": "Súbor zoznamu skladieb",
@@ -699,7 +722,7 @@ var keyStrings = {
     "Plex settings": "Plex nastavenia",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
         "Plex prihlásenie zlyhalo. Skontrolujte pripojenie a skúste to znova alebo zadajte adresu servera a token.",
-    "Plex token": "Plex token",
+    "Plex token": "Token Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA nastavenia",
     "Portal URL": "Portál URL",
@@ -708,6 +731,8 @@ var keyStrings = {
     Postpaid: "Platba spätne",
     PROST: "PROST",
     "PROST settings": "PROST nastavenia",
+    "Preferred audio language": "Preferovaný jazyk zvuku",
+    "Preferred subtitle language": "Preferovaný jazyk titulkov",
     Prepaid: "Platba vopred",
     "Preparing secure remote input...":
         "Pripravuje sa zabezpečený vzdialený vstup...",
@@ -743,14 +768,14 @@ var keyStrings = {
         "Diaľkové ovládanie (bez číselných tlačidiel)",
     "Remote control": "Diaľkové ovládanie",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Diaľkové ovládanie autorizuje diagnostiku. Pripravené pre operátora.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Diaľkové ovládanie autorizuje diagnostiku. Čaká sa na opätovné pripojenie.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Diaľkové ovládanie obsahuje snímky obrazovky prehrávača médií vrátane jeho nastavení. Obrázky môžu obsahovať súkromné ​​informácie. Aplikácia môže zachytávať snímky obrazovky priamo bez ďalšieho schvaľovania. V prehliadači vyberte kartu alebo okno, ktoré chcete nasnímať na tomto zariadení.",
     "Remote diagnostics": "Diaľková diagnostika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Pre toto pripojenie sa zhromažďujú údaje vzdialenej diagnostiky (najviac 10 minút na reláciu).",
     "Remote diagnostics is collecting for this page.":
         "Pre túto stránku sa zhromažďuje vzdialená diagnostika.",
     "Remote diagnostics is off.": "Diaľková diagnostika je vypnutá.",
@@ -764,10 +789,10 @@ var keyStrings = {
         "Platnosť vzdialeného vstupu vypršala. Otvorte novú reláciu a skúste to znova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Relácia vzdialeného vstupu je nedostupná. Otvorte novú reláciu a skúste to znova.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Vzdialené snímky obrazovky",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Vzdialené snímky obrazovky sú povolené na 10 minút. Ak chcete snímať, zatvorte nastavenia.",
+    "Remote screenshots are off.": "Vzdialené snímky obrazovky sú vypnuté.",
     "Remote session expired": "Platnosť vzdialenej relácie vypršala",
     "Remote text entry": "Vzdialené zadávanie textu",
     "Remote text entry denied": "Vzdialené zadávanie textu bolo odmietnuté",
@@ -796,6 +821,7 @@ var keyStrings = {
     "Resume from archive?": "Obnoviť z archívu?",
     Retry: "Skúste to znova",
     "Retry EPG download": "Zopakujte stiahnutie EPG",
+    "Retry same message": "Zopakujte rovnakú správu",
     "Return to previous channel": "Návrat na predchádzajúci kanál",
     Rewind: "Posunúť prehrávanie",
     "Rewind step by buttons %1/%2": "Krok pretáčania tlačidlami %1/%2",
@@ -813,19 +839,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Uložte nastavenia a načítajte zoznam kanálov",
     "Save settings to storage": "Uložte nastavenia do úložiska",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Naskenujte kód QR na svojom televízore alebo prilepte jeho úplný súkromný odkaz na párovanie nižšie.",
     "Scan this QR code with your phone to enter text.":
         "Naskenujte tento QR kód pomocou telefónu a zadajte text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Zdieľanie obrazovky sa nepodarilo spustiť.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Zdieľanie obrazovky bolo zrušené alebo je nedostupné.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Povolenie snímky obrazovky nebolo možné povoliť.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Keď je pripojené diaľkové ovládanie, sú k dispozícii snímky obrazovky.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Snímky obrazovky nie sú na tejto platforme dostupné.",
     Script: "Scenár",
     Search: "Hľadať",
+    "Search languages": "Hľadajte jazyky",
     "Search programme": "Vyhľadať reláciu",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Zabezpečený vzdialený vstup sa nepodarilo spustiť. Skúste to znova alebo použite klávesnicu na obrazovke.",
@@ -843,25 +873,29 @@ var keyStrings = {
         "Vyberte zdroj šablóny zoznamu videí pre EPG a logá",
     "Select Stalker portal": "Vyberte Stalker portál",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Vyberte zdroj snímky obrazovky v prehliadači",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Vyberte kartu prehrávača alebo okno v dialógovom okne zdieľania prehliadača.",
     "Send request": "Odoslať žiadosť",
     "Send settings": "Odoslať nastavenia",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Odošlite tento kód zo svojho proxy servera v hlavičke Authorization: Bearer.",
+    "Send to TV": "Odoslať do TV",
     Server: "Server",
     "Server address": "Adresa servera",
     "Server address (for example 192.168.1.20:8081)":
         "Adresa servera (napríklad 192.168.1.20:8081)",
     "Server device access code": "Prístupový kód serverového zariadenia",
-    "Server URL": "Server URL",
+    "Server URL": "URL servera",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server je nedostupný. Opätovný pokus automaticky; skontrolujte jeho adresu a prístup k sieti.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Relácia sa skončila. V prípade potreby spustite novú na televízore.",
     Set: "Nastaviť",
     "Set parental code": "Nastavte rodičovský kód",
     "Set timer?": "Nastaviť časovač?",
     Settings: "Nastavenia",
+    "Settings changed while editing": "Nastavenia sa zmenili počas úprav",
     "Settings changed. Discovery was canceled.":
         "Nastavenia zmenené. Objav bol zrušený.",
     "Settings copied": "Nastavenia boli skopírované",
@@ -871,10 +905,15 @@ var keyStrings = {
     "Settings imported": "Nastavenia boli importované",
     "Settings JSON": "Nastavenia JSON",
     "Settings loaded from storage": "Nastavenia načítané z úložiska",
+    "Settings received. Restarting player...":
+        "Prijaté nastavenia. Reštartuje sa prehrávač...",
     "Settings STB": "STB nastavenia",
     "Settings saved": "Nastavenia boli uložené",
     "Settings saved to storage": "Nastavenia boli uložené do úložiska",
     "Settings sended!": "Nastavenia boli odoslané!",
+    "Settings source changed": "Zdroj nastavení sa zmenil",
+    "Settings storage rejected write":
+        "Zápis do pamäte nastavení bol odmietnutý",
     "Several command servers were found. Select one below.":
         "Našlo sa niekoľko príkazových serverov. Vyberte jednu nižšie.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -928,12 +967,12 @@ var keyStrings = {
     "Starting...": "Začína sa…",
     Status: "Stav",
     Stop: "Zastaviť",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Zastavte zdieľanie prehliadača",
     "Stop current capture": "Zastaviť aktuálne snímanie",
     "Stop diagnostics": "Zastavte diagnostiku",
     "Stop playback and return to live":
         "Zastaviť prehrávanie a vrátiť sa k živému vysielaniu",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Zastavte snímky obrazovky",
     "Stream could not be played": "Stream sa nepodarilo prehrať",
     "Stream type: %1": "Typ streamu: %1",
     "String for search": "Vyhľadávací dopyt",
@@ -945,6 +984,7 @@ var keyStrings = {
     "Switch subtitle": "Prepnúť titulky",
     "Switch to this list": "Prepnúť na tento zoznam",
     "Swop URL": "URL SWOP",
+    "System language": "Systémový jazyk",
     "saved on this device": "uložené v tomto zariadení",
     select: "vyberte",
     small: "malý",
@@ -953,15 +993,19 @@ var keyStrings = {
     "Tabox settings": "Tabox nastavenia",
     "Text is too long for remote input.":
         "Text je príliš dlhý na diaľkový vstup.",
+    "Text is too long. Please shorten it before sending.":
+        "Text je príliš dlhý. Pred odoslaním ho prosím skráťte.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Text odoslaný. Skontrolujte svoj televízor, aby ste sa uistili, že sa objavil.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Zdroj snímky obrazovky prehliadača je pripravený.",
     "The command server discovery URL is invalid.":
         "Zistenie príkazového servera URL je neplatné.",
     "The device ID in the address is invalid.":
         "Zariadenie ID v adrese je neplatné.",
     "The discovery response is invalid.": "Odpoveď na zistenie je neplatná.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Tento prehliadač nedokáže identifikovať vybratý zdroj snímky obrazovky.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Tento prehliadač sa nemôže bezpečne automaticky spárovať. Aktualizujte ho alebo zadajte nastavenia príkazového servera manuálne.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -970,6 +1014,10 @@ var keyStrings = {
         "Tento prehrávač médií HTTPS sa nemôže pripojiť k serveru HTTP. Použite server HTTPS alebo otvorte prehrávač médií cez HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Táto aplikácia Play vyžaduje HTTPS. Požiadajte svojho poskytovateľa o zoznam skladieb HTTPS alebo server URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Platnosť tohto párovacieho odkazu vypršala. Otvorte novú reláciu na vašom televízore.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Táto zabezpečená relácia je nedostupná alebo jej platnosť vypršala. Otvorte novú reláciu na televízore a použite jej úplný odkaz.",
     Timer: "Časovač",
     "Timer: switch to channel?": "Časovač: prepnúť na tento kanál?",
     "Timeshift: one minute back": "Časový posun: jednu minútu späť",
@@ -1018,6 +1066,8 @@ var keyStrings = {
         "Použite HTTP alebo HTTPS bez používateľského mena alebo hesla v adrese.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Použite LEFT/RIGHT na výber ovládacieho prvku, OK na jeho aktiváciu a UP/DOWN na rolovanie.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Použite celý odkaz vrátane časti po #. Nezdieľajte to s nikým iným.",
     "Use Up / Down to scroll. Back to close.":
         "Na posúvanie použite Hore / Dole. Späť na zatvorenie.",
     Username: "Používateľské meno",

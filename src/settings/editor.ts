@@ -20,6 +20,21 @@ export function createSettingsEditor(host: any, rows: any[]) {
     function set(id: string, value: any): boolean {
         return active() && draft.set(id, value);
     }
+    function errorDetail(): string {
+        switch (draft.errorCode()) {
+            case "source_changed":
+                return host._("Settings source changed");
+            case "concurrent_edit":
+                return host._("Settings changed while editing");
+            case "backup_changed":
+                return host._("Backup state changed");
+            case "write_rejected":
+                return host._("Settings storage rejected write");
+            case "invalid_setting":
+                return host._("Invalid setting");
+        }
+        return "";
+    }
     var editor = {
         active: active,
         attach: function () {
@@ -38,11 +53,11 @@ export function createSettingsEditor(host: any, rows: any[]) {
         save: function (): boolean {
             if (!active() || host.listArray !== rows) return false;
             if (!draft.commit()) {
+                var detail = errorDetail();
                 if (host.showShift)
                     host.showShift(
                         host._("Settings could not be saved") +
-                            ": " +
-                            draft.error()
+                            (detail ? ": " + detail : "")
                     );
                 return false;
             }

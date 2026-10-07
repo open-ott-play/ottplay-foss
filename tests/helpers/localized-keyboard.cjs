@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
+const { localizationRuntime } = require("./localization-runtime.cjs");
 const root = path.resolve(__dirname, "../..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 function declarations(file, names) {
@@ -72,19 +73,18 @@ const keyboardNames = [
 ];
 function keyboardCode(bundle) {
     if (bundle)
-        return declarations(bundle, [
-            "metadataText",
-            "metadataHtml",
-            "metadataCssUrl",
-            "metadataImageUrl",
-            "translations",
-            "useGraphicIcons",
-            "translate",
-            "_",
-            ...keyboardNames.map((name) =>
-                name === "renderButtonHint" ? "btnDiv" : name
-            ),
-        ]);
+        return (
+            localizationRuntime(bundle) +
+            declarations(bundle, [
+                "metadataText",
+                "metadataHtml",
+                "metadataCssUrl",
+                "metadataImageUrl",
+                ...keyboardNames.map((name) =>
+                    name === "renderButtonHint" ? "btnDiv" : name
+                ),
+            ])
+        );
     return (
         declarations("src/utils/helpers.ts", [
             "metadataText",
@@ -92,12 +92,7 @@ function keyboardCode(bundle) {
             "metadataCssUrl",
             "metadataImageUrl",
         ]) +
-        declarations("src/localization/index.ts", [
-            "translations",
-            "useGraphicIcons",
-            "translate",
-            "_",
-        ]) +
+        localizationRuntime() +
         declarations("src/ui/index.ts", keyboardNames)
     );
 }
@@ -151,4 +146,4 @@ function initializeKeyboard() {
         return window.fixtureLocale;
     };
 }
-module.exports = { initializeKeyboard, keyboardCode, read, root };
+module.exports = { declarations, initializeKeyboard, keyboardCode, read, root };

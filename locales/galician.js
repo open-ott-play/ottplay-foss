@@ -63,14 +63,15 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Permitir o diagnóstico durante 10 minutos",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Permitir capturas de pantalla durante 10 minutos",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Permite que este servidor recolla contadores de diagnóstico e reinicie esta transmisión ou o reprodutor. O acceso temporal dura 10 minutos. A asistencia de confianza segue dispoñible despois de volver conectar ou reiniciar; cada recollida segue caducando aos 10 minutos. A recollida detense mentres a aplicación está oculta ou sen conexión.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Permite que este servidor recolla contadores de reprodución, rede e entrada nesta sesión en primeiro plano. Cómpre HTTPS e permiso do servidor. Detense aos 10 minutos, ao ocultar a páxina ou ao desconectar.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Permitir que este servidor solicite imaxes durante 10 minutos. As imaxes poden conter información persoal. Nun navegador, selecciona a pestana ou xanela do reprodutor. O permiso remata ao recargar ou desconectar.",
     "Allowlist this Device ID": "Autorizar este ID de dispositivo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Un reprodutor HTTPS non pode descargar unha fonte EPG HTTP. Usa unha fonte HTTPS.",
@@ -104,6 +105,7 @@ var keyStrings = {
     "Background color": "Cor do fondo",
     "Background color of selected item":
         "Cor do fondo do elemento seleccionado",
+    "Backup state changed": "O estado da copia de seguranza cambiou",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -116,6 +118,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Pantalla negra ao cambiar de canle",
     Blue: "Azul",
+    "Bookmark age (days): %1": "Idade do marcador (días): %1",
     "Bookmark age: %1 days": "Antigüidade do marcador: %1 días",
     "Browse folders": "Explorar cartafoles",
     "Buffer Size, s": "Tamaño do búfer, s",
@@ -168,11 +171,14 @@ var keyStrings = {
     "Choose language": "Escoller idioma",
     "Choose Plex server": "Escoller servidor Plex",
     "Choose provider": "Escoller provedor",
-    Classic: "Classic",
+    Classic: "Clásico",
     "Clear all settings?": "Borrar toda a configuración?",
     "Clear settings": "Borrar a configuración",
     Close: "Pechar",
     "Close PiP": "Pechar PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "O gardar/cargar na nube require firmware STB (host_ott non configurado)",
+    "Cloud transfer failed": "Fallou a transferencia na nube",
     Code: "Código",
     Color: "Cor",
     "Color spectrum": "Espectro de cores",
@@ -191,6 +197,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Non se puido cargar a contorna de compatibilidade. Abre de novo o reprodutor para tentalo outra vez.",
     "Compatible HLS": "HLS compatible",
+    "Complete pairing link": "A ligazón de emparellamento completa",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Configura All4you.tv en Configuración → Configuración do provedor",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -263,22 +270,25 @@ var keyStrings = {
         "Configura Шаравоз en Configuración → Configuración do provedor",
     Connect: "Conectar",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Conecte un servidor de comandos HTTPS antes de permitir capturas de pantalla.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Conecte un servidor de comandos HTTPS para usar capturas de pantalla.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Conecte o control remoto para activar os diagnósticos.",
     "Connect this player to a command server first.":
         "Conecta primeiro este reprodutor a un servidor de ordes.",
+    "Connect to TV": "Conectar á televisión",
     Connected: "Conectado",
     "Connected. Waiting for the channel list...":
         "Conectado. Agardando pola lista de canles…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "A conexión do control remoto autoriza este servidor a diagnosticar e reparar o reprodutor. O acceso permanece dispoñible despois de reiniciar e finaliza cando te desconectas. Cada captura de diagnóstico está limitada a 10 minutos.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Conexión de diagnóstico remoto para a conexión de control remoto activada.",
     "Connecting remote diagnostics for this page.":
         "Conectando o diagnóstico remoto desta páxina.",
+    "Connecting securely to your TV...":
+        "Conectando de forma segura ao televisor...",
     "Connecting to Plex…": "Conectando con Plex…",
     "Connecting to Stalker portal...": "Conectando co portal Stalker…",
     "Connecting...": "Conectando…",
@@ -296,6 +306,10 @@ var keyStrings = {
         "Non se puido crear unha solicitude de emparellamento. Busca de novo o servidor para tentalo outra vez.",
     "Could not load. Select to retry.":
         "Non se puido cargar. Selecciona para tentalo de novo.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Non se puido preparar este texto. Acurta e téntao de novo.",
+    "Could not protect the private link. Use a different browser.":
+        "Non se puido protexer a ligazón privada. Usa un navegador diferente.",
     "Could not save provider settings.":
         "Non se puido gardar a configuración do provedor.",
     "Could not save the approved command server settings.":
@@ -313,6 +327,8 @@ var keyStrings = {
     "Delete category": "Eliminar a categoría",
     "Delete channel": "Eliminar a canle",
     "Delete list": "Eliminar a lista",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Non se puido confirmar a entrega. Comproba a túa televisión ou volve tentar a mesma mensaxe antes de que caduque esta sesión.",
     "Demo — moving test pattern": "Demostración — patrón de proba en movemento",
     Description: "Descrición",
     "Description of remote control buttons": "Guía dos botóns do mando",
@@ -398,6 +414,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Introduce o URL do portal Stalker (p. ex. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Introduce o número do servidor (%1).",
+    "Enter text": "Introduza texto",
     "Enter the access code separately, not in the server address.":
         "Introduce o código de acceso por separado, non no enderezo do servidor.",
     "Enter the command server IP or address.":
@@ -542,7 +559,7 @@ var keyStrings = {
     ID: "ID",
     "Import settings": "Importar configuración",
     "In live mode: <br/>": "No modo en directo:<br/>",
-    Info: "Info",
+    Info: "Información",
     "Infobar display timeout, s":
         "Tempo de visualización da barra de información, s",
     "Infobar settings": "Configuración da barra de información",
@@ -553,8 +570,11 @@ var keyStrings = {
     "Interface transparency": "Transparencia da interface",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Ligazón da canle non válida! Introduce o nome completo do host que figura no URL da transmisión da conta (p. ex. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Resposta da configuración da nube non válida",
     "Invalid protected source configuration":
         "Configuración da fonte protexida non válida",
+    "Invalid setting": "Configuración non válida",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Configuración de IpStream.one",
@@ -634,6 +654,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Ningún programa coincidiu coas canles e as datas da lista. Comproba a fonte e o reloxo do dispositivo.",
     "No saved settings found": "Non se atopou ningunha configuración gardada",
+    "No supported system language. Choose a language.":
+        "Non se admite ningún idioma do sistema. Escolle un idioma.",
     "Not configured": "Sen configurar",
     "Not found": "Non se atopou",
     "Not reduce video when showing the list (bugfix)":
@@ -649,6 +671,8 @@ var keyStrings = {
     "not set": "sen definir",
     Off: "desactivado",
     Ok: "Aceptar",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Só este televisor pode aceptar a túa mensaxe. A ligazón caduca despois de 10 minutos.",
     Open: "Abrir",
     "Open in PiP": "Abrir en PiP",
     "Open Plex sign-in page": "Abrir a páxina de inicio de sesión de Plex",
@@ -661,6 +685,7 @@ var keyStrings = {
     "OTT / APP host": "Host OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Configuración de OTT Prime ONLINE",
+    "OTT-play remote input": "Entrada remota OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 está dispoñible. Queres descargalo e instalalo agora?",
     "Overwrite current settings?": "Sobrescribir a configuración actual?",
@@ -693,6 +718,7 @@ var keyStrings = {
     Playback: "Reprodución",
     "Player and device info": "Información do reprodutor e do dispositivo",
     "Player could not start": "Non se puido iniciar o reprodutor",
+    "Player default": "Opción predeterminada do reprodutor",
     "Player info:": "Información do reprodutor:",
     Playlist: "Lista de reprodución",
     "Playlist file": "Ficheiro da lista de reprodución",
@@ -714,6 +740,8 @@ var keyStrings = {
     Postpaid: "Pospagamento",
     PROST: "PROST",
     "PROST settings": "Configuración de PROST",
+    "Preferred audio language": "Idioma de audio preferido",
+    "Preferred subtitle language": "Idioma preferido dos subtítulos",
     Prepaid: "Prepagamento",
     "Preparing secure remote input...": "Preparando a entrada remota segura…",
     Prev: "Anterior",
@@ -745,14 +773,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Mando (sen botóns numéricos)",
     "Remote control": "Mando a distancia",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "O control remoto autoriza diagnósticos. Preparado para un operador.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "O control remoto autoriza diagnósticos. Agardando para volver conectar.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "O control remoto inclúe capturas de pantalla do reprodutor multimedia, incluíndo a súa configuración. As imaxes poden conter información privada. A aplicación pode capturar capturas de pantalla directamente sen aprobación adicional. Nun navegador, selecciona a pestana ou a xanela para capturar neste dispositivo.",
     "Remote diagnostics": "Diagnóstico remoto",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Recóllense diagnósticos remotos para esta conexión (ata 10 minutos por sesión).",
     "Remote diagnostics is collecting for this page.":
         "O diagnóstico remoto está a recoller datos desta páxina.",
     "Remote diagnostics is off.": "O diagnóstico remoto está desactivado.",
@@ -766,10 +794,11 @@ var keyStrings = {
         "A entrada remota caducou. Abre unha sesión nova para volver tentalo.",
     "Remote input session is unavailable. Open a new session to try again.":
         "A sesión de entrada remota non está dispoñible. Abre unha sesión nova para volver tentalo.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Capturas de pantalla remotas",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Permítense capturas de pantalla remotas durante 10 minutos. Pecha a configuración para capturar.",
+    "Remote screenshots are off.":
+        "As capturas de pantalla remotas están desactivadas.",
     "Remote session expired": "A sesión remota caducou",
     "Remote text entry": "Entrada de texto remota",
     "Remote text entry denied": "Entrada de texto remota denegada",
@@ -798,6 +827,7 @@ var keyStrings = {
     "Resume from archive?": "Continuar desde o arquivo?",
     Retry: "Tentar de novo",
     "Retry EPG download": "Volver descargar a EPG",
+    "Retry same message": "Tenta de novo a mesma mensaxe",
     "Return to previous channel": "Volver á canle anterior",
     Rewind: "Desprazar a reprodución",
     "Rewind step by buttons %1/%2": "Paso de desprazamento dos botóns %1/%2",
@@ -815,19 +845,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Gardar configuración e cargar a lista de canles",
     "Save settings to storage": "Gardar configuración no almacenamento",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Escanea o código QR no teu televisor ou pega a ligazón de vinculación privada completa a continuación.",
     "Scan this QR code with your phone to enter text.":
         "Escanea este código QR co teléfono para introducir texto.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Non se puido iniciar a compartición de pantalla.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "O uso compartido de pantalla cancelouse ou non está dispoñible.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Non se puido activar o permiso de captura de pantalla.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "As capturas de pantalla están dispoñibles mentres o control remoto está conectado.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "As capturas de pantalla non están dispoñibles nesta plataforma.",
     Script: "Guión",
     Search: "Buscar",
+    "Search languages": "Busca idiomas",
     "Search programme": "Buscar un programa",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Non se puido iniciar a entrada remota segura. Téntao de novo ou usa o teclado na pantalla.",
@@ -846,13 +880,14 @@ var keyStrings = {
         "Selecciona a fonte do modelo da lista para a EPG e os logotipos",
     "Select Stalker portal": "Selecciona un portal Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Seleccione a fonte da captura de pantalla no navegador",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Seleccione a pestana ou xanela do reprodutor no diálogo de uso compartido do navegador.",
     "Send request": "Enviar solicitude",
     "Send settings": "Enviar configuración",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Envía este código desde o teu servidor proxy na cabeceira Authorization: Bearer.",
+    "Send to TV": "Enviar á TV",
     Server: "Servidor",
     "Server address": "Enderezo do servidor",
     "Server address (for example 192.168.1.20:8081)":
@@ -861,10 +896,14 @@ var keyStrings = {
     "Server URL": "URL do servidor",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Servidor non dispoñible. Téntase de novo automaticamente; comproba o enderezo e o acceso á rede.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sesión pechada. Inicia unha nova sesión desde o televisor cando o necesites.",
     Set: "Aplicar",
     "Set parental code": "Definir o código parental",
     "Set timer?": "Definir un temporizador?",
     Settings: "Configuración",
+    "Settings changed while editing":
+        "A configuración cambiou durante a edición",
     "Settings changed. Discovery was canceled.":
         "A configuración cambiou. Cancelouse a busca.",
     "Settings copied": "Configuración copiada",
@@ -874,10 +913,15 @@ var keyStrings = {
     "Settings imported": "Configuración importada",
     "Settings JSON": "JSON de configuración",
     "Settings loaded from storage": "Configuración cargada do almacenamento",
+    "Settings received. Restarting player...":
+        "Configuración recibida. Reiniciando o reprodutor...",
     "Settings STB": "Configuración do STB",
     "Settings saved": "Configuración gardada",
     "Settings saved to storage": "Configuración gardada no almacenamento",
     "Settings sended!": "Configuración enviada!",
+    "Settings source changed": "Cambiouse a fonte da configuración",
+    "Settings storage rejected write":
+        "Rexeitouse a escritura de almacenamento da configuración",
     "Several command servers were found. Select one below.":
         "Atopáronse varios servidores de ordes. Selecciona un abaixo.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -932,12 +976,12 @@ var keyStrings = {
     "Starting...": "Iniciando…",
     Status: "Estado",
     Stop: "Deter",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Deixar de compartir o navegador",
     "Stop current capture": "Deter a recollida actual",
     "Stop diagnostics": "Deter o diagnóstico",
     "Stop playback and return to live":
         "Deter a reprodución e volver ao directo",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Deter capturas de pantalla",
     "Stream could not be played": "Non se puido reproducir a transmisión",
     "Stream type: %1": "Tipo de transmisión: %1",
     "String for search": "Texto de busca",
@@ -949,6 +993,7 @@ var keyStrings = {
     "Switch subtitle": "Cambiar os subtítulos",
     "Switch to this list": "Cambiar a esta lista",
     "Swop URL": "Swop URL",
+    "System language": "Idioma do sistema",
     "saved on this device": "gardado neste dispositivo",
     select: "seleccionar",
     small: "pequeno",
@@ -957,15 +1002,19 @@ var keyStrings = {
     "Tabox settings": "Configuración de Tabox",
     "Text is too long for remote input.":
         "O texto é demasiado longo para a entrada remota.",
+    "Text is too long. Please shorten it before sending.":
+        "O texto é demasiado longo. Por favor, acúrtao antes de envialo.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Texto enviado. Comproba o teu televisor para confirmar que apareceu.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "A fonte da captura de pantalla do navegador está lista.",
     "The command server discovery URL is invalid.":
         "O URL de busca do servidor de ordes non é válido.",
     "The device ID in the address is invalid.":
         "O ID do dispositivo no enderezo non é válido.",
     "The discovery response is invalid.": "A resposta da busca non é válida.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Este navegador non pode identificar a fonte da captura de pantalla seleccionada.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Este navegador non se pode emparellar automaticamente de forma segura. Actualízao ou introduce manualmente a configuración do servidor de ordes.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -974,6 +1023,10 @@ var keyStrings = {
         "Este reprodutor HTTPS non pode conectar cun servidor HTTP. Usa un servidor HTTPS ou abre o reprodutor mediante HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Esta aplicación Play require HTTPS. Pídelle ao provedor unha lista ou un URL de servidor HTTPS.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Esta ligazón de vinculación caducou. Abre unha nova sesión na túa televisión.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Esta sesión segura non está dispoñible ou caducou. Abre unha nova sesión na televisión e usa a súa ligazón completa.",
     Timer: "Temporizador",
     "Timer: switch to channel?": "Temporizador: cambiar a esta canle?",
     "Timeshift: one minute back": "Retroceder un minuto",
@@ -1023,6 +1076,8 @@ var keyStrings = {
         "Usa HTTP ou HTTPS sen nome de usuario nin contrasinal no enderezo.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Usa ESQUERDA/DEREITA para seleccionar un control, OK para activalo e ARRIBA/ABAIXO para desprazarte.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Use a ligazón completa, incluída a parte despois de #. Non o compartas con ninguén.",
     "Use Up / Down to scroll. Back to close.":
         "Usa Arriba/Abaixo para desprazarte. Atrás para pechar.",
     Username: "Nome de usuario",
@@ -1041,7 +1096,7 @@ var keyStrings = {
     "VPortal profiles": "Perfís VPortal",
     "VPortal request failed":
         "Non se puido cargar VPortal. Comproba a ligazón, a clave de acceso e a dispoñibilidade do portal.",
-    volume: "volume",
+    volume: "volume do son",
     "Waiting for sign-in…": "Agardando polo inicio de sesión…",
     "Wrong parental code !!!": "Código parental incorrecto!",
     "Xtream Codes Provider": "Provedor Xtream Codes",

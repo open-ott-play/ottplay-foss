@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const path = require("node:path");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
@@ -30,17 +31,7 @@ const code = ts.transpileModule(
         compilerOptions: { target: ts.ScriptTarget.ES2018 },
     }
 ).outputText;
-const localization = ts
-    .transpileModule(
-        fs.readFileSync(path.join(root, "src/localization/index.ts"), "utf8"),
-        {
-            compilerOptions: {
-                module: ts.ModuleKind.ES2015,
-                target: ts.ScriptTarget.ES2018,
-            },
-        }
-    )
-    .outputText.replace(/^export /gm, "");
+const localization = localizationRuntime();
 function loadLanguage(w, language) {
     w.eval(localization);
     w.eval(

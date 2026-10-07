@@ -1,11 +1,113 @@
 const { test, expect } = require("@playwright/test");
 const {
+    declarations,
     initializeKeyboard,
     keyboardCode,
     read,
 } = require("../helpers/localized-keyboard.cjs");
 const fixtures = JSON.parse(read("tests/fixtures/locale-alphabets.json"));
 const code = keyboardCode();
+
+test("RTL dialog punctuation and mixed identifiers keep text flow without reversing remote keys", async ({
+    page,
+}) => {
+    await page.setViewportSize({ height: 720, width: 1280 });
+    await page.setContent(
+        "<style>" +
+            read("styles/player.css") +
+            '</style><div id="listEdit"></div><div id="listPodval"></div><div id="dialogbox"></div>'
+    );
+    await page.addScriptTag({ content: read("js/jquery-1.11.1.min.js") });
+    await page.evaluate(initializeKeyboard);
+    await page.addScriptTag({
+        content:
+            code +
+            declarations("src/ui/index.ts", ["localizedTextHtml", "infoBox"]),
+    });
+    await page.addScriptTag({ content: read("locales/arabic.js") });
+    const result = await page.evaluate(() => {
+        window.strENTER = "ENTER";
+        window.__ottClassicScreenPort.setOwnedCallback = function () {};
+        applyLanguageMetadata("_ara");
+        infoBox(
+            _(
+                "ERROR: Category #%1 does not exist!<br>Please select another category.",
+                12
+            )
+        );
+        const body = document.querySelector("#dialogbox .localized-text");
+        function position(node, at) {
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + 1);
+            return range.getBoundingClientRect().x;
+        }
+        const first = body.firstChild;
+        const beforeBreak = Array.from(body.childNodes).find(
+            (n) => n.nodeType === 3 && n.textContent.includes("!")
+        );
+        const punctuationCorrect =
+            position(beforeBreak, beforeBreak.textContent.indexOf("!")) <
+            position(first, 0);
+        const direction = getComputedStyle(body).direction;
+        const number = body.querySelector("bdi");
+        const token = {
+            direction: getComputedStyle(number).direction,
+            isolation: getComputedStyle(number).unicodeBidi,
+            text: number.textContent,
+        };
+        infoBox(
+            'افتح https://example.com/watch?id=12&amp;lang=ar ثم تابع!<img src=x onerror="window.bad=true"><script>window.bad=true</script>'
+        );
+        const url = Array.from(
+            document.querySelectorAll("#dialogbox bdi")
+        ).find((n) => n.textContent.startsWith("https://"));
+        const urlText = url.textContent;
+        const unsafe = !!document.querySelector(
+            "#dialogbox script, #dialogbox [onerror]"
+        );
+        window.fixtureLocale = "_ara";
+        window.editvar = "";
+        showEditKey1();
+        const before = _keyCur;
+        editKey1(keys.RIGHT);
+        const right = _keyCur;
+        editKey1(keys.LEFT);
+        const left = _keyCur;
+        const rootDirection = getComputedStyle(document.body).direction;
+        applyLanguageMetadata("_eng");
+        infoBox("Ready!");
+        return {
+            before,
+            direction,
+            englishDirection: getComputedStyle(
+                document.querySelector("#dialogbox .localized-text")
+            ).direction,
+            left,
+            punctuationCorrect,
+            right,
+            rootDirection,
+            token,
+            unsafe,
+            urlText,
+        };
+    });
+    expect(result.direction).toBe("rtl");
+    expect(result.punctuationCorrect).toBe(true);
+    expect(result.token).toEqual({
+        direction: "ltr",
+        isolation: "isolate",
+        text: "#12",
+    });
+    expect(result.urlText).toBe("https://example.com/watch?id=12&lang=ar");
+    expect(result.unsafe).toBe(false);
+    expect(result.right).toBe(
+        result.before % 10 < 9 ? result.before + 1 : result.before - 9
+    );
+    expect(result.left).toBe(result.before);
+    expect(result.rootDirection).toBe("ltr");
+    expect(result.englishDirection).toBe("ltr");
+});
 
 test("remote keyboard keeps every alphabet page visible at supported densities and resolutions", async ({
     page,

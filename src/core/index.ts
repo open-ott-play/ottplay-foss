@@ -1335,6 +1335,10 @@ function startCorePlayback(
                     (window as any).refreshAudioBadge();
             }
         );
+        hlsInstance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, function () {
+            if (session !== _playSession || hlsInstance !== playbackHls) return;
+            applyChannelPreference("aSubs", setSubtitleTrack);
+        });
         applyChannelPreference("aSubs", function (i: number) {
             if (hlsInstance) hlsInstance.subtitleTrack = i - 1;
         });
@@ -2206,11 +2210,11 @@ export function stbInit(): void {
         } catch (_tab) {}
         video!.addEventListener("waiting", function () {
             $("#buffering").show();
-            $("#video_res").html("<br/>connect...");
+            $("#video_res").text(_("Connecting..."));
         });
         video!.addEventListener("loadstart", function () {
             $("#buffering").show();
-            $("#video_res").html("<br/>buffering...");
+            $("#video_res").text(_("Loading..."));
         });
         video!.addEventListener("loadeddata", function () {
             console.log("Event: loadeddata");
@@ -2394,13 +2398,13 @@ function chooseCoreTrack(kind: string): void {
         current,
         labels,
         function (choice: number) {
-            if (
-                !owner.active() ||
-                choice === current ||
-                ids[choice] === undefined
-            )
-                return;
-            owner.selectTrack(kind, ids[choice]);
+            if (!owner.active() || ids[choice] === undefined) return;
+            // Track-list events must not override an explicit choice in this session,
+            // including media playback where no per-channel preference is stored.
+            if (!(owner as any).__ottExplicitTracks)
+                (owner as any).__ottExplicitTracks = {};
+            (owner as any).__ottExplicitTracks[kind] = true;
+            if (choice !== current) owner.selectTrack(kind, ids[choice]);
             saveChannelPreference(
                 kind === "audio" ? "aAudios" : "aSubs",
                 ids[choice]
@@ -2703,6 +2707,7 @@ function openCoreEngineLease(
         return optionalEngine;
     }
     var listeners: Array<{ name: string; callback: () => void }> = [];
+    var trackListeners: Array<{ target: any; callback: () => void }> = [];
     var session = pip
         ? _corePipSession + 1
         : _playSession + (_inLiveRestart ? 0 : 1);
@@ -2729,6 +2734,29 @@ function openCoreEngineLease(
                 media!.addEventListener(name, callback);
             });
     }
+    if (!pip && media) {
+        ["audio", "subtitle"].forEach(function (kind) {
+            var list =
+                kind === "audio"
+                    ? (media as any).audioTracks
+                    : media!.textTracks;
+            if (
+                !list ||
+                typeof list.addEventListener !== "function" ||
+                typeof list.removeEventListener !== "function"
+            )
+                return;
+            var callback = function () {
+                if (!active()) return;
+                applyChannelPreference(
+                    kind === "audio" ? "aAudios" : "aSubs",
+                    kind === "audio" ? setAudioTrack : setSubtitleTrack
+                );
+            };
+            list.addEventListener("addtrack", callback);
+            trackListeners.push({ callback: callback, target: list });
+        });
+    }
     var lease: MediaEngineLease = {
         dispose: function () {
             listeners.forEach(function (listener) {
@@ -2736,6 +2764,13 @@ function openCoreEngineLease(
                     media.removeEventListener(listener.name, listener.callback);
             });
             listeners = [];
+            trackListeners.forEach(function (listener) {
+                listener.target.removeEventListener(
+                    "addtrack",
+                    listener.callback
+                );
+            });
+            trackListeners = [];
             if (!active()) return;
             if (pip) stopCorePipEngine();
             else stopCoreEngine();

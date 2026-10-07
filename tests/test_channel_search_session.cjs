@@ -4,6 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
 const ts = require("typescript");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const modules = {
     "access/classic-adapter": "__ottParental",
@@ -369,6 +370,7 @@ function fixture(code) {
     };
     host.window = host;
     vm.createContext(host);
+    vm.runInContext(localizationRuntime(), host);
     vm.runInContext(code, host);
     const port = host.__ottClassicScreenPort;
     host.showPage = () => {
@@ -513,6 +515,28 @@ for (const [profile, code] of profiles) {
         } catch (error) {
             failures.push(profile + ": " + name + "\n" + error.stack);
         }
+    }
+    for (const [locale, title, query] of [
+        ["_eng", "Café", "Cafe\u0301"],
+        ["_ben", "ড় TV", "ড়"],
+        ["_kor", "한 TV", "한"],
+        ["_tur", "İZMİR", "izmir"],
+        ["_aze", "IŞIK", "ışık"],
+    ]) {
+        check(
+            "actual search preserves Unicode equivalence for " + locale,
+            (f) => {
+                f.host.__ottInterfaceLanguage = locale;
+                f.host.channels[11].channel_name = title;
+                f.search(query);
+                assert.deepEqual(Array.from(f.host.listArray), [11]);
+                assert.equal(
+                    f.host.channels[11].channel_name,
+                    title,
+                    "Provider text stays literal"
+                );
+            }
+        );
     }
     for (const shortcut of ["YELLOW", "TOOLS"]) {
         for (const outcome of ["save", "cancel", "replace source"]) {

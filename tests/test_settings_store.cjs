@@ -362,6 +362,7 @@ check("source replacement and reload invalidate old drafts", () => {
     old.set("logo", 2);
     f.source("two");
     assert.equal(old.commit(), false);
+    assert.equal(old.errorCode(), "source_changed");
     assert.equal(f.writes.length, 0);
     const next = f.store.begin();
     next.set("layout", 3);
@@ -374,6 +375,7 @@ check("a later observed change rejects stale same-field commit", () => {
     d.set("rows", 25);
     f.store.observe("rows", 30);
     assert.equal(d.commit(), false);
+    assert.equal(d.errorCode(), "concurrent_edit");
     assert.equal(f.store.get("rows"), 30);
     assert.equal(f.writes.length, 0);
 });
@@ -420,6 +422,7 @@ check(
         assert.equal(f.store.get("rows"), 20);
         assert.equal(f.effects.length, 0);
         assert.match(d.error(), /storage rejected/);
+        assert.equal(d.errorCode(), "write_rejected");
     }
 );
 check("storage reentry cannot commit into a replacement source", () => {
@@ -486,6 +489,7 @@ check(
             false
         );
         assert.equal(draft.error(), "Error: Backup state changed");
+        assert.equal(draft.errorCode(), "backup_changed");
         assert.deepEqual(calls, ["additional.read"]);
         assert.equal(store.get("value"), "old");
     }
@@ -813,6 +817,42 @@ check(
         yes();
         assert.deepEqual(completions, [false, false]);
         assert.equal(f.data.size, 0);
+    }
+);
+check(
+    "settings editor translates stable failure codes without exposing raw storage errors",
+    () => {
+        const dictionary =
+            require("../scripts/localization-catalog.cjs").readDictionary(
+                path.join(root, "locales/russian.js")
+            );
+        const f = actual();
+        f.w._ = (key) => dictionary[key] || key;
+        const rows = [{ settingId: "fontSize" }];
+        f.w.listArray = rows;
+        const editor = f.w.createSettingsEditor(f.w, rows);
+        assert.equal(editor.set("fontSize", 2), true);
+        f.w.sFont = 3;
+        assert.equal(editor.save(), false);
+        const reason = "Settings changed while editing";
+        assert(dictionary[reason] && dictionary[reason] !== reason);
+        assert.equal(
+            f.events.at(-1),
+            dictionary["Settings could not be saved"] +
+                ": " +
+                dictionary[reason]
+        );
+        editor.cancel();
+        const next = f.w.createSettingsEditor(f.w, rows);
+        assert.equal(next.set("fontSize", 1), true);
+        f.w.storage.set = () => {
+            throw new Error("raw-private-storage-error");
+        };
+        assert.equal(next.save(), false);
+        assert.equal(
+            f.events.at(-1),
+            dictionary["Settings could not be saved"]
+        );
     }
 );
 console.log("OK: " + passed + " settings store/domain/editor scenarios");

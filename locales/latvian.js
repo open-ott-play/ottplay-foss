@@ -60,19 +60,19 @@ var keyStrings = {
     "All categories": "Visas kategorijas",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "All4you.tv iestatījumi",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Atļaut diagnostiku uz 10 minūtēm",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "Atļaut ekrānuzņēmumus uz 10 minūtēm",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Atļaujiet šim serverim vākt diagnostikas rādītājus un restartēt straumi vai atskaņotāju. Pagaidu piekļuve ilgst 10 minūtes. Uzticamā servera atbalsts paliek pieejams pēc atkārtotas savienošanās vai restartēšanas; katra datu vākšanas sesija beidzas pēc 10 minūtēm. Datu vākšana tiek apturēta, kad atskaņotājs ir paslēpts vai bezsaistē.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Ļaujiet šim serverim apkopot atskaņošanas, tīkla un ievades skaitītājus šai priekšplāna sesijai. Nepieciešama HTTPS un servera atļauja. Apstājas pēc 10 minūtēm, paslēpjot vai atvienojot.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Ļaujiet šim serverim pieprasīt attēlus 10 minūtes. Attēli var saturēt personisku informāciju. Pārlūkprogrammā atlasiet atskaņotāja cilni vai logu. Atļauja beidzas, atkārtoti ielādējot vai atvienojot.",
     "Allowlist this Device ID": "Atļaut šo ierīces ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "HTTPS atskaņotājs nevar lejupielādēt HTTP EPG avotu. Izmantojiet HTTPS avotu.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP adrese bez porta izmanto HTTP portu 8081. Lai apturētu, notīriet adresi vai izvēlieties Atvienot.",
     "Another source sign-in is already open":
@@ -92,9 +92,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arhīvs. Kanāls: ",
     Aspect: "Attēla proporcijas",
     Audio: "Skaņa",
-    Automatic: "Automatic",
+    Automatic: "Automātiski",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Automātiski atskaņo atbalstītos failus tieši un izmanto saderīgo HLS, kad nepieciešams.",
     alhabet: "aābcčdeēfgģhiījkķlļmnņoprsštuūvzž",
     always: "vienmēr",
     "and enter code": "un ievadiet kodu",
@@ -102,6 +102,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 minūti atpakaļ / uz priekšu",
     "Background color": "Fona krāsa",
     "Background color of selected item": "Atlasītā vienuma fona krāsa",
+    "Backup state changed": "Mainīts dublējuma stāvoklis",
     "Balance, $": "Atlikums, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -112,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Melns ekrāns, pārslēdzot kanālus",
     Blue: "Zils",
+    "Bookmark age (days): %1": "Grāmatzīmes vecums (dienas): %1",
     "Bookmark age: %1 days": "Grāmatzīmes vecums: %1 dienas",
     "Browse folders": "Pārlūkot mapes",
     "Buffer Size, s": "Bufera lielums, s",
@@ -153,21 +155,24 @@ var keyStrings = {
     "Channel parental control": "Kanāla vecāku kontrole",
     Channels: "Kanāli",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Pārbaudiet savienojumu un atveriet savas Plex bibliotēkas.",
     "Check this server's SWOP configuration.":
         "Pārbaudiet šī servera SWOP konfigurāciju.",
     "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+        "Notiek Plex servera savienojuma pārbaude…",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Izvēlieties Plex serveri",
     "Choose provider": "Izvēlēties pakalpojuma sniedzēju",
     Classic: "Klasisks",
     "Clear all settings?": "Notīrīt visus iestatījumus?",
     "Clear settings": "Notīrīt iestatījumus",
     Close: "Aizvērt",
     "Close PiP": "Aizvērt PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Mākoņa saglabāšanai/ielādēšanai nepieciešama programmaparatūra STB (host_ott nav iestatīta)",
+    "Cloud transfer failed": "Neizdevās pārsūtīt datus caur mākoni",
+    Code: "Piekļuves kods",
     Color: "Krāsa",
     "Color spectrum": "Krāsu spektrs",
     "Command server": "Komandu serveris",
@@ -184,7 +189,8 @@ var keyStrings = {
     "Command server found.": "Komandu serveris ir atrasts.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Neizdevās ielādēt saderības komponentus. Atveriet atskaņotāju vēlreiz.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Saderīgs HLS",
+    "Complete pairing link": "Pilna saite savienošanai pārī",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurējiet All4you.tv sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -218,7 +224,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Konfigurējiet OTT Prime ONLINE sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Konfigurējiet Plex sadaļā Iestatījumi -> Pakalpojumu sniedzēja iestatījumi",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Konfigurējiet POLMEDIA sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure PROST in Settings -> Provider Settings":
@@ -257,23 +263,26 @@ var keyStrings = {
         "Konfigurējiet Шаравоз sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     Connect: "Savienot",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Pirms ekrānuzņēmumu atļaušanas pievienojiet HTTPS komandu serveri.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Pievienojiet HTTPS komandu serveri, lai izmantotu ekrānuzņēmumus.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Izveidojiet attālās vadības savienojumu, lai iespējotu diagnostiku.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Vispirms savienojiet šo atskaņotāju ar komandu serveri.",
+    "Connect to TV": "Savienoties ar televizoru",
     Connected: "Savienots",
     "Connected. Waiting for the channel list...":
         "Savienots. Gaida kanālu sarakstu…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Attālās vadības savienojums piešķir šim serverim tiesības diagnosticēt un labot atskaņotāju. Piekļuve saglabājas pēc restartēšanas un beidzas, kad atvienojaties. Katra diagnostikas datu vākšanas sesija ilgst ne vairāk kā 10 minūtes.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Notiek attālās diagnostikas pieslēgšana aktīvajam attālās vadības savienojumam.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Attālās diagnostikas pievienošana šai lapai.",
+    "Connecting securely to your TV...":
+        "Notiek droša savienojuma izveide ar televizoru...",
+    "Connecting to Plex…": "Notiek savienojuma izveide ar Plex…",
     "Connecting to Stalker portal...": "Savienojas ar Stalker portālu…",
     "Connecting...": "Savienojas…",
     "Continue watching?": "Turpināt skatīties?",
@@ -284,12 +293,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Nokopējiet atlasīto JSON ar ierīces kopēšanas komandu",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Nevarēja izveidot savienojumu ar Plex. Pārbaudiet servera adresi, pilnvaru un piekļuvi tīklam.",
     "Could not connect to the server.": "Neizdevās savienoties ar serveri.",
     "Could not create a pairing request. Find the server again to retry.":
         "Neizdevās izveidot pārošanas pieprasījumu. Lai mēģinātu vēlreiz, atrodiet serveri no jauna.",
     "Could not load. Select to retry.":
         "Neizdevās ielādēt. Atlasiet, lai mēģinātu vēlreiz.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Nevarēja sagatavot šo tekstu. Lūdzu, saīsiniet to un mēģiniet vēlreiz.",
+    "Could not protect the private link. Use a different browser.":
+        "Nevarēja aizsargāt privāto saiti. Izmantojiet citu pārlūkprogrammu.",
     "Could not save provider settings.":
         "Neizdevās saglabāt pakalpojumu sniedzēja iestatījumus.",
     "Could not save the approved command server settings.":
@@ -307,6 +320,8 @@ var keyStrings = {
     "Delete category": "Dzēst kategoriju",
     "Delete channel": "Dzēst kanālu",
     "Delete list": "Dzēst sarakstu",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Piegādi nevarēja apstiprināt. Pirms šīs sesijas derīguma termiņa beigām pārbaudiet savu televizoru vai vēlreiz mēģiniet to pašu ziņojumu.",
     "Demo — moving test pattern": "Demonstrācija — kustīgs testa attēls",
     Description: "Apraksts",
     "Description of remote control buttons": "Tālvadības pults pogu ceļvedis",
@@ -320,7 +335,7 @@ var keyStrings = {
     "Diamond TV settings": "Diamond TV iestatījumi",
     Director: "Režisors",
     "Disable HTTP remote": "Izslēgt HTTP tālvadību",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support": "Atspējot uzticamu attālo atbalstu",
     "Disabled by default. Enabling creates a new device access code.":
         "Pēc noklusējuma izslēgta. Ieslēdzot tiek izveidots jauns ierīces piekļuves kods.",
     Disconnect: "Atvienot",
@@ -355,7 +370,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Lai piekļūtu šim pakalpojumam, ievadiet lietotājvārdu un paroli.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Ievadiet derīgu Plex servera adresi un piekļuves pilnvaru.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Ievadiet derīgu servera adresi, piemēram, 192.168.1.20:8081.",
     "Enter access key for": "Ievadiet piekļuves atslēgu:",
@@ -373,8 +388,8 @@ var keyStrings = {
         "Ievadiet MAC adresi (piem., 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Ievadiet mediotēkas URL",
     "Enter new category name": "Ievadiet jauno kategorijas nosaukumu",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Ievadiet Plex servera adresi",
+    "Enter Plex token": "Ievadiet Plex piekļuves pilnvaru",
     "Enter Provider Code": "Ievadiet pakalpojuma sniedzēja kodu",
     "Enter Provider Code on PC or Phone":
         "Ievadiet pakalpojuma sniedzēja kodu datorā vai tālrunī",
@@ -390,6 +405,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Ievadiet Stalker portāla URL (piem., http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Ievadiet servera numuru (%1).",
+    "Enter text": "Ievadiet tekstu",
     "Enter the access code separately, not in the server address.":
         "Piekļuves kodu ievadiet atsevišķi, nevis servera adresē.",
     "Enter the command server IP or address.":
@@ -414,56 +430,57 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Ievadiet Xtream servera URL (piem., https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Ievadiet savu Plex piekļuves pilnvaru. Tas ir saglabāts šīs ierīces profilā.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Ievadiet savu Plex servera adresi, piemēram, http://192.168.1.25:32400",
     EPG: "Programma",
     "EPG and archive. Channel: ": "EPG un arhīvs. Kanāls: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "EPG arhīvs vai XML nav derīgs.",
+    "EPG cache and wait time: %1": "EPG kešatmiņa un gaidīšanas laiks: %1",
+    "EPG cache updated: %1": "EPG kešatmiņa atjaunināta: %1",
+    "EPG channels: %1": "EPG kanāli: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "Neizdevās palaist EPG. Restartējiet atskaņotāju, lai atkārtoti ielādētu tā failus. Atskaņošana tiks apturēta.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "EPG diagnostika",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "EPG diagnostiku nevarēja ielādēt. Atveriet to vēlreiz, lai mēģinātu vēlreiz.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "EPG lejupielāde neizdevās. Pārbaudiet savienojumu, HTTPS un avota CORS atļaujas.",
+    "EPG download time: %1": "EPG lejupielādes laiks: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "EPG lejupielādes noildze. Mēģiniet lejupielādēt vēlreiz.",
+    "EPG elapsed: %1": "EPG pagājušais laiks: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "EPG kļūda. Atveriet Informācija → EPG diagnostika.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG pārsniedz ierīces apstrādes ierobežojumu. Izmantojiet mazāku avotu vai īsāku arhīva periodu.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG nav palaists. Ielādējiet M3U atskaņošanas sarakstu.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "EPG lokālā krātuve nav pieejama vai ir pilna.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "EPG apstrādes un uzglabāšanas laiks: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "EPG apstrāde apturēta. Mēģiniet vēlreiz un pārbaudiet pārlūkprogrammas atbalstu.",
+    "EPG programmes: %1": "EPG raidījumi: %1",
+    "EPG progress: %1": "EPG norise: %1",
+    "EPG ready": "EPG gatavs",
+    "EPG source returned HTTP %1": "EPG avots atgrieza HTTP %1",
+    "EPG source: %1": "EPG avots: %1",
+    "EPG stopped during: %1": "EPG apturēšanas posms: %1",
+    "EPG unavailable on this browser": "EPG šajā pārlūkprogrammā nav pieejams",
+    "EPG unavailable: %1": "EPG nav pieejams: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
+        "EPG atjaunināšana neizdevās; tiek izmantota saglabātā TV programma",
     "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "EPG: tiek lejupielādēta TV programma...",
+    "EPG: opening local cache...": "EPG: vietējās kešatmiņas atvēršana...",
+    "EPG: processing programme guide...":
+        "EPG: tiek apstrādāta TV programma...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: tiek atjaunināta saglabātā TV programma...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: gaida citu atskaņotāja cilni...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Kļūda: kategorija Nr. %1 nepastāv!<br>Izvēlieties citu kategoriju.",
     "ERROR!": "Kļūda!",
@@ -499,7 +516,7 @@ var keyStrings = {
     "Finding command servers...": "Notiek komandu serveru meklēšana...",
     "First Run Setup": "Pirmās palaišanas iestatīšana",
     "Fit to screen": "Ietilpināt ekrānā",
-    Folders: "Folders",
+    Folders: "Mapes",
     "Font type": "Fonta veids",
     "For download settings file open":
         "Lai lejupielādētu iestatījumu failu, atveriet",
@@ -542,8 +559,10 @@ var keyStrings = {
     "Interface transparency": "Saskarnes caurspīdīgums",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Nederīga kanāla saite! Ievadiet pilnu resursdatora nosaukumu kā konta straumes URL (piem., subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Nederīga mākoņa iestatījumu atbilde",
     "Invalid protected source configuration":
         "Nederīga aizsargātā avota konfigurācija",
+    "Invalid setting": "Nederīgs iestatījums",
     "IPTV token": "IPTV piekļuves pilnvara",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one iestatījumi",
@@ -619,10 +638,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Šajā tīklā nav atrasts neviens komandu serveris.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Šim kontam nav pieejams neviens Plex serveris.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Nav atrasti raidījumi, kas atbilst atskaņošanas saraksta kanāliem un datumiem. Pārbaudiet avotu un ierīces pulksteni.",
     "No saved settings found": "Nav atrasti saglabāti iestatījumi",
+    "No supported system language. Choose a language.":
+        "Nav atbalstīta sistēmas valoda. Izvēlieties valodu.",
     "Not configured": "Nav konfigurēts",
     "Not found": "Nav atrasts",
     "Not reduce video when showing the list (bugfix)":
@@ -638,18 +659,21 @@ var keyStrings = {
     "not set": "nav iestatīts",
     Off: "Izslēgts",
     Ok: "Labi",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Tikai šis televizors var pieņemt jūsu ziņojumu. Saite beidzas pēc 10 minūtēm.",
     Open: "Atvērt",
     "Open in PiP": "Atvērt PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Atveriet Plex pierakstīšanās lapu",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Tālrunī vai datorā atveriet plex.tv/link un ievadiet šo kodu.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Vai atveriet šo pilno privāto saiti citā ierīcē:",
+    "Original file": "Oriģinālais multivides fails",
     "Original text: %1": "Oriģinālais teksts: %1",
     "OTT / APP host": "OTT / lietotnes serveris",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE iestatījumi",
+    "OTT-play remote input": "OTT-play attālā ievade",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Pieejams OttPlay FOSS %1. Lejupielādēt un instalēt tagad?",
     "Overwrite current settings?": "Pārrakstīt pašreizējos iestatījumus?",
@@ -679,9 +703,10 @@ var keyStrings = {
     "PiP window position": "PiP loga novietojums",
     "PiP window size": "PiP loga izmērs",
     Play: "Atskaņot",
-    Playback: "Playback",
+    Playback: "Multivides atskaņošana",
     "Player and device info": "Atskaņotāja un ierīces informācija",
     "Player could not start": "Neizdevās palaist atskaņotāju",
+    "Player default": "Atskaņotāja noklusējuma izvēle",
     "Player info:": "Atskaņotāja informācija:",
     Playlist: "Atskaņošanas saraksts",
     "Playlist file": "Atskaņošanas saraksta fails",
@@ -690,11 +715,11 @@ var keyStrings = {
     "Playlist Name": "Atskaņošanas saraksta nosaukums",
     "Playlist URL": "Atskaņošanas saraksta URL",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Plex savienojums neizdevās",
+    "Plex settings": "Plex iestatījumi",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Plex pierakstīšanās neizdevās. Pārbaudiet savienojumu un mēģiniet vēlreiz vai ievadiet servera adresi un pilnvaru.",
+    "Plex token": "Plex piekļuves pilnvara",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "POLMEDIA iestatījumi",
     "Portal URL": "Portāla URL",
@@ -703,8 +728,11 @@ var keyStrings = {
     Postpaid: "Pēcapmaksa",
     PROST: "PROST",
     "PROST settings": "PROST iestatījumi",
+    "Preferred audio language": "Vēlamā audio valoda",
+    "Preferred subtitle language": "Vēlamā subtitru valoda",
     Prepaid: "Priekšapmaksa",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Notiek drošas attālās ievades sagatavošana...",
     Prev: "Iepriekšējais",
     "Preview in channel list": "Priekšskatījums kanālu sarakstā",
     Previous: "Iepriekšējais",
@@ -735,31 +763,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Pults (bez ciparu pogām)",
     "Remote control": "Tālvadība",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Attālā vadība piešķir diagnostikas tiesības. Gatavs operatoram.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Attālā vadība piešķir diagnostikas tiesības. Gaida savienojuma atjaunošanu.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Attālā vadība ietver atskaņotāja un tā iestatījumu ekrānuzņēmumus. Attēli var saturēt privātu informāciju. Lietotne var tieši uzņemt ekrānuzņēmumus bez papildu apstiprinājuma. Pārlūkprogrammā šajā ierīcē jāizvēlas kopīgojamā cilne vai logs.",
+    "Remote diagnostics": "Attālā diagnostika",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Šim savienojumam tiek apkopota attālā diagnostika (līdz 10 minūtēm vienā sesijā).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Šai lapai tiek apkopota attālā diagnostika.",
+    "Remote diagnostics is off.": "Attālā diagnostika ir izslēgta.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Attālā diagnostika ir gatava pilnvarotam operatoram.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Šim atskaņotājam nav pieejama tālvadības diagnostika.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Attālā diagnostika apturēta. Iespējojiet to vēlreiz, lai piešķirtu piekļuvi.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Attālās ievades derīguma termiņš ir beidzies. Atveriet jaunu sesiju, lai mēģinātu vēlreiz.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Attālās ievades sesija nav pieejama. Atveriet jaunu sesiju, lai mēģinātu vēlreiz.",
+    "Remote screenshots": "Attālināti ekrānuzņēmumi",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Attālināti ekrānuzņēmumi ir atļauti 10 minūtes. Aizveriet iestatījumus, lai uzņemtu.",
+    "Remote screenshots are off.": "Attālinātie ekrānuzņēmumi ir izslēgti.",
     "Remote session expired": "Attālinātās sesijas derīgums ir beidzies",
     "Remote text entry": "Attālināta teksta ievade",
     "Remote text entry denied": "Attālinātā teksta ievade liegta",
@@ -787,7 +815,8 @@ var keyStrings = {
     "Restart stream / Live": "Pārstartēt straumi / tiešraide",
     "Resume from archive?": "Turpināt no arhīva?",
     Retry: "Mēģināt vēlreiz",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Mēģiniet vēlreiz lejupielādēt EPG",
+    "Retry same message": "Nosūtīt to pašu ziņojumu vēlreiz",
     "Return to previous channel": "Atgriezties iepriekšējā kanālā",
     Rewind: "Pārtīt",
     "Rewind step by buttons %1/%2": "Attīšanas solis ar pogām %1/%2",
@@ -799,32 +828,35 @@ var keyStrings = {
     "Save & load channels": "Saglabāt un ielādēt kanālus",
     "Save and load": "Saglabāt un ielādēt",
     "Save and load channels": "Saglabāt un ielādēt kanālus",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Saglabājiet un atveriet bibliotēku",
     "Save Settings": "Saglabāt iestatījumus",
     "Save settings": "Saglabāt iestatījumus",
     "Save settings and load channel list":
         "Saglabāt iestatījumus un ielādēt kanālu sarakstu",
     "Save settings to storage": "Saglabāt iestatījumus krātuvē",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Skenējiet QR kodu savā televizorā vai ielīmējiet tālāk norādīto pilno saiti privātai savienošanai pārī.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Skenējiet šo QR kodu ar tālruni, lai ievadītu tekstu.",
+    "Screen sharing could not start.": "Ekrāna koplietošanu nevarēja sākt.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ekrāna koplietošana tika atcelta vai nav pieejama.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Ekrānuzņēmuma atļauju nevarēja iespējot.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Ekrānuzņēmumi ir pieejami, kamēr darbojas attālās vadības savienojums.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ekrānuzņēmumi šajā platformā nav pieejami.",
     Script: "Scenārijs",
     Search: "Meklēt",
+    "Search languages": "Meklēt valodas",
     "Search programme": "Meklēt raidījumu",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Drošo attālo ievadi nevarēja palaist. Lūdzu, mēģiniet vēlreiz vai izmantojiet ekrāna tastatūru.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Drošo attālo ievadi nevarēja palaist. Lūdzu, izmantojiet ekrāna tastatūru.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Šajā ierīcē nav pieejama droša attālināta ievade. Izmantojiet ekrāna tastatūru.",
     "Select a stream type:<br>%1": "Izvēlieties straumes veidu:<br>%1",
     "Select category to add channel":
         "Izvēlieties kategoriju, lai pievienotu kanālu",
@@ -836,13 +868,14 @@ var keyStrings = {
         "Izvēlieties atskaņošanas saraksta veidnes avotu EPG un logotipiem",
     "Select Stalker portal": "Izvēlēties Stalker portālu",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Pārlūkprogrammā atlasiet ekrānuzņēmuma avotu",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Pārlūkprogrammas koplietošanas dialoglodziņā atlasiet atskaņotāja cilni vai logu.",
     "Send request": "Nosūtīt pieprasījumu",
     "Send settings": "Nosūtīt iestatījumus",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Sūtiet šo kodu no starpniekservera galvenē Authorization: Bearer.",
+    "Send to TV": "Nosūtīt uz TV",
     Server: "Serveris",
     "Server address": "Servera adrese",
     "Server address (for example 192.168.1.20:8081)":
@@ -851,10 +884,13 @@ var keyStrings = {
     "Server URL": "Servera URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Serveris nav pieejams. Atkārtos automātiski; pārbaudiet adresi un piekļuvi tīklam.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sesija slēgta. Ja nepieciešams, sāciet jaunu televizorā.",
     Set: "Iestatīt",
     "Set parental code": "Iestatīt vecāku kodu",
     "Set timer?": "Iestatīt taimeri?",
     Settings: "Iestatījumi",
+    "Settings changed while editing": "Rediģēšanas laikā mainīti iestatījumi",
     "Settings changed. Discovery was canceled.":
         "Iestatījumi ir mainīti. Meklēšana tika atcelta.",
     "Settings copied": "Iestatījumi nokopēti",
@@ -864,10 +900,15 @@ var keyStrings = {
     "Settings imported": "Iestatījumi importēti",
     "Settings JSON": "Iestatījumi JSON formātā",
     "Settings loaded from storage": "Iestatījumi ielādēti no krātuves",
+    "Settings received. Restarting player...":
+        "Iestatījumi saņemti. Notiek atskaņotāja restartēšana...",
     "Settings STB": "STB iestatījumi",
     "Settings saved": "Iestatījumi saglabāti",
     "Settings saved to storage": "Iestatījumi saglabāti krātuvē",
     "Settings sended!": "Iestatījumi nosūtīti!",
+    "Settings source changed": "Iestatījumu avots mainīts",
+    "Settings storage rejected write":
+        "Iestatījumu krātuves rakstīšana noraidīta",
     "Several command servers were found. Select one below.":
         "Atrasti vairāki komandu serveri. Izvēlieties vienu no tālāk norādītajiem.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -903,29 +944,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Pierakstieties aizsargātajā avotā vēlreiz",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Pierakstieties savā Plex kontā un izvēlieties serveri. Šajā atskaņotājā nav ievadīta parole.",
+    "Sign in with Plex": "Pierakstieties, izmantojot Plex",
     "Sign in: %1": "Pierakstīties: %1",
     "Sign out of all sources": "Izrakstīties no visiem avotiem",
     "Sign-in opens when you load a protected playlist.":
         "Pierakstīšanās logs tiek atvērts, ielādējot aizsargātu atskaņošanas sarakstu.",
     "Sleep timer": "Miega taimeris",
     "Sort channels": "Kārtot kanālus",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Piekļuve multivides avotam",
+    "Source sign-in required": "Nepieciešama avota pierakstīšanās",
     "Source sign-in was cancelled": "Pierakstīšanās avotā atcelta",
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
     "Stalker portal settings": "Stalker portāla iestatījumi",
     "Stalker portals": "Stalker portāli",
     "Starting...": "Palaiž…",
     Status: "Statuss",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Apturēt",
+    "Stop browser sharing": "Pārtraukt pārlūkprogrammas koplietošanu",
+    "Stop current capture": "Apturēt pašreizējo datu vākšanu",
+    "Stop diagnostics": "Pārtraukt diagnostiku",
     "Stop playback and return to live":
         "Apturēt atskaņošanu un atgriezties tiešraidē",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Apturēt ekrānuzņēmumu uzņemšanu",
     "Stream could not be played": "Neizdevās atskaņot straumi",
     "Stream type: %1": "Straumes veids: %1",
     "String for search": "Meklēšanas vaicājums",
@@ -936,22 +977,28 @@ var keyStrings = {
     "Switch sound track": "Mainīt skaņas celiņu",
     "Switch subtitle": "Mainīt subtitrus",
     "Switch to this list": "Pārslēgties uz šo sarakstu",
-    "Swop URL": "Swop URL",
+    "Swop URL": "Swop adrese",
+    "System language": "Sistēmas valoda",
     "saved on this device": "saglabāts šajā ierīcē",
     select: "atlasīt",
     small: "mazs",
     system: "sistēmas",
     Tabox: "Tabox",
     "Tabox settings": "Tabox iestatījumi",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Teksts ir pārāk garš attālai ievadei.",
+    "Text is too long. Please shorten it before sending.":
+        "Teksts ir pārāk garš. Lūdzu, saīsiniet to pirms nosūtīšanas.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Teksts nosūtīts. Pārbaudiet savu televizoru, lai pārliecinātos, ka tas parādījās.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Pārlūka ekrānuzņēmuma avots ir gatavs.",
     "The command server discovery URL is invalid.":
         "Komandu servera meklēšanas URL nav derīgs.",
     "The device ID in the address is invalid.": "Ierīces ID adresē nav derīgs.",
     "The discovery response is invalid.": "Meklēšanas atbilde nav derīga.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Šī pārlūkprogramma nevar identificēt atlasīto ekrānuzņēmuma avotu.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Šī pārlūkprogramma nevar droši veikt automātisku pārošanu. Atjauniniet to vai ievadiet komandu servera iestatījumus manuāli.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -960,6 +1007,10 @@ var keyStrings = {
         "Šis HTTPS atskaņotājs nevar savienoties ar HTTP serveri. Izmantojiet HTTPS serveri vai atveriet atskaņotāju ar HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Šai Play lietotnei nepieciešams HTTPS. Lūdziet pakalpojuma sniedzējam HTTPS sarakstu vai servera URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Šīs savienošanas saites derīguma termiņš ir beidzies. Televizorā atveriet jaunu sesiju.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Šī drošā sesija nav pieejama vai tās derīguma termiņš ir beidzies. Televizorā atveriet jaunu sesiju un izmantojiet tās pilno saiti.",
     Timer: "Taimeris",
     "Timer: switch to channel?": "Taimeris: pārslēgties uz šo kanālu?",
     "Timeshift: one minute back": "Laika nobīde: vienu minūti atpakaļ",
@@ -977,13 +1028,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv iestatījumi",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Uzticieties šim serverim, lai saņemtu attālo atbalstu",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "No ierīces krātuves nevarēja noņemt uzticamu piekļuvi.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Uzticama diagnostika nav pieejama, jo nevarēja atjaunināt ierīces krātuvi.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Uzticama diagnostika gaida, kamēr šis atskaņotājs atkal izveidos savienojumu.",
     "Try demo": "Izmēģināt demonstrāciju",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "TV DOSUG iestatījumi",
@@ -1003,17 +1054,19 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Izmantojiet HTTP vai HTTPS servera adresi.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Attālinātai diagnostikai izmantojiet komandu serveri HTTPS.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Izmantojiet HTTP vai HTTPS bez lietotājvārda vai paroles adresē.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Ar PA KREISI/PA LABI izvēlieties vadīklu, ar OK aktivizējiet to, ar UZ AUGŠU/UZ LEJU ritiniet.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Izmantojiet pilnu saiti, ieskaitot daļu pēc #. Nedalieties tajā ne ar vienu citu.",
     "Use Up / Down to scroll. Back to close.":
         "Ritiniet ar Augšup / Lejup. Atpakaļ, lai aizvērtu.",
     Username: "Lietotājvārds",
     "Username or password is missing.": "Trūkst lietotājvārda vai paroles.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Derīgs 10 minūtes. Poga «Atpakaļ» aizver šo sesiju.",
     Version: "Versija",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "VIP-IP.COM iestatījumi",
@@ -1026,7 +1079,7 @@ var keyStrings = {
     "VPortal request failed":
         "Neizdevās ielādēt VPortal. Pārbaudiet saiti, piekļuves atslēgu un portāla pieejamību.",
     volume: "skaļums",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    "Waiting for sign-in…": "Gaida pierakstīšanos…",
     "Wrong parental code !!!": "Nepareizs vecāku kods!!!",
     "Xtream Codes Provider": "Xtream Codes pakalpojuma sniedzējs",
     "Xtream Codes settings": "Xtream Codes iestatījumi",

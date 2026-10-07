@@ -63,14 +63,15 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Ceadaigh diagnóisic ar feadh 10 nóiméad",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Ceadaigh gabhálacha scáileáin ar feadh 10 nóiméad",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Ceadaigh don fhreastalaí seo cuntair dhiagnóiseacha a bhailiú agus an sruth seo nó an seinnteoir a atosú. Maireann rochtain shealadach 10 nóiméad. Bíonn tacaíocht iontaofa ar fáil fós tar éis athcheangail nó atosaithe; téann gach bailiúchán in éag fós tar éis 10 nóiméad. Cuirtear an bailiú ar sos nuair atá an aip i bhfolach nó as líne.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Ceadaigh don fhreastalaí seo cuntair athsheinm, líonra agus ionchuir a bhailiú don seisiún seo sa tulra. Tá HTTPS agus cead an fhreastalaí de dhíth. Stadann sé tar éis 10 nóiméad, nuair atá an leathanach i bhfolach nó nuair a dhícheanglaítear é.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Lig don fhreastalaí seo íomhánna a iarraidh ar feadh 10 nóiméad. Is féidir faisnéis phearsanta a bheith in íomhánna. I mbrabhsálaí, roghnaigh cluaisín an tseinnteora nó an fhuinneog. Críochnaíonn cead ar athlódáil nó ar dhínascadh.",
     "Allowlist this Device ID": "Ceadaigh an t-aitheantas gléis seo",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "Ní féidir le seinnteoir HTTPS foinse EPG HTTP a íoslódáil. Úsáid foinse HTTPS.",
@@ -103,6 +104,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Téigh siar / ar aghaidh 1 nóiméad",
     "Background color": "Dath an chúlra",
     "Background color of selected item": "Dath cúlra na míre roghnaithe",
+    "Backup state changed": "Athraíodh an staid chúltaca",
     "Balance, $": "Iarmhéid, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -113,6 +115,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Scáileán dubh agus cainéal á athrú",
     Blue: "Gorm",
+    "Bookmark age (days): %1": "Aois leabharmharc (laethanta): %1",
     "Bookmark age: %1 days": "Aois an leabharmhairc: %1 lá",
     "Browse folders": "Brabhsáil fillteáin",
     "Buffer Size, s": "Méid an mhaoláin, soic",
@@ -165,11 +168,14 @@ var keyStrings = {
     "Choose language": "Roghnaigh teanga",
     "Choose Plex server": "Roghnaigh freastalaí Plex",
     "Choose provider": "Roghnaigh soláthraí",
-    Classic: "Classic",
+    Classic: "Clasaiceach",
     "Clear all settings?": "Glan gach socrú?",
     "Clear settings": "Glan socruithe",
     Close: "Dún",
     "Close PiP": "Dún PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Teastaíonn dochtearraí STB chun sábháil sa néal nó lódáil uaidh (níl host_ott socraithe)",
+    "Cloud transfer failed": "Theip ar aistriú scamall",
     Code: "Cód",
     Color: "Dath",
     "Color spectrum": "Speictream dathanna",
@@ -188,6 +194,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Níorbh fhéidir an timpeallacht chomhoiriúnachta a luchtú. Athoscail an seinnteoir chun triail eile a bhaint as.",
     "Compatible HLS": "HLS comhoiriúnach",
+    "Complete pairing link": "An nasc péireála iomlán",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Cumraigh All4you.tv in Socruithe → Socruithe an tsoláthraí",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -260,22 +267,25 @@ var keyStrings = {
         "Cumraigh Шаравоз in Socruithe → Socruithe an tsoláthraí",
     Connect: "Ceangail",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Ceangail freastalaí ordaithe HTTPS sula gceadaíonn tú gabhálacha scáileáin.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ceangail freastalaí ordaithe HTTPS chun gabhálacha scáileáin a úsáid.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Ceangail cianrialú chun diagnóisic a chumasú.",
     "Connect this player to a command server first.":
         "Ceangail an seinnteoir seo le freastalaí orduithe ar dtús.",
+    "Connect to TV": "Nasc leis an teilifís",
     Connected: "Ceangailte",
     "Connected. Waiting for the channel list...":
         "Ceangailte. Ag fanacht leis an liosta cainéal…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Trí chianrialú a nascadh, údaraítear don fhreastalaí seo an seinnteoir a dhiagnóisiú agus a dheisiú. Fanann an rochtain ar fáil tar éis atosaithe agus críochnaíonn sí nuair a dhícheanglaíonn tú. Tá gach seisiún bailithe sonraí diagnóiseacha teoranta do 10 nóiméad.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Ciandhiagnóisic a nascadh don nasc cianrialaithe cumasaithe.",
     "Connecting remote diagnostics for this page.":
         "Ciandiagnóisic á ceangal don leathanach seo.",
+    "Connecting securely to your TV...":
+        "Ag nascadh go slán le do theilifíseán...",
     "Connecting to Plex…": "Ag ceangal le Plex…",
     "Connecting to Stalker portal...": "Ag ceangal le tairseach Stalker…",
     "Connecting...": "Ag ceangal…",
@@ -294,6 +304,10 @@ var keyStrings = {
         "Níorbh fhéidir iarratas péireála a chruthú. Aimsigh an freastalaí arís chun triail eile a bhaint as.",
     "Could not load. Select to retry.":
         "Níorbh fhéidir luchtú. Roghnaigh chun triail eile a bhaint as.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Níorbh fhéidir an téacs seo a ullmhú. Giorraigh é agus bain triail eile as.",
+    "Could not protect the private link. Use a different browser.":
+        "Níorbh fhéidir an nasc príobháideach a chosaint. Bain úsáid as brabhsálaí eile.",
     "Could not save provider settings.":
         "Níorbh fhéidir socruithe an tsoláthraí a shábháil.",
     "Could not save the approved command server settings.":
@@ -311,6 +325,8 @@ var keyStrings = {
     "Delete category": "Scrios catagóir",
     "Delete channel": "Scrios cainéal",
     "Delete list": "Scrios liosta",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Níorbh fhéidir an seachadadh a dhearbhú. Seiceáil do theilifíseán, nó bain triail eile as an teachtaireacht chéanna sula dtéann an seisiún seo in éag.",
     "Demo — moving test pattern": "Taispeántas — patrún tástála ag gluaiseacht",
     Description: "Cur síos",
     "Description of remote control buttons": "Treoir chnaipí an chianrialtáin",
@@ -395,6 +411,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Cuir isteach URL thairseach Stalker (m.sh. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Cuir isteach uimhir an fhreastalaí (%1).",
+    "Enter text": "Cuir isteach téacs",
     "Enter the access code separately, not in the server address.":
         "Cuir an cód rochtana isteach ar leithligh, ní i seoladh an fhreastalaí.",
     "Enter the command server IP or address.":
@@ -546,8 +563,11 @@ var keyStrings = {
     "Interface transparency": "Trédhearcacht an chomhéadain",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Nasc cainéil neamhbhailí! Cuir isteach ainm iomlán an óstaigh ón URL srutha sa chuntas (m.sh. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Freagairt neamhbhailí ar shocruithe néil",
     "Invalid protected source configuration":
         "Cumraíocht neamhbhailí na foinse cosanta",
+    "Invalid setting": "Socrú neamhbhailí",
     "IPTV token": "Comhartha IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Socruithe IpStream.one",
@@ -627,6 +647,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Níor aimsíodh cláir a mheaitseálann cainéil agus dátaí an tseinmliosta. Seiceáil an fhoinse agus clog an ghléis.",
     "No saved settings found": "Níor aimsíodh socruithe sábháilte",
+    "No supported system language. Choose a language.":
+        "Gan teanga chórais tacaithe. Roghnaigh teanga.",
     "Not configured": "Gan chumrú",
     "Not found": "Níor aimsíodh é",
     "Not reduce video when showing the list (bugfix)":
@@ -642,6 +664,8 @@ var keyStrings = {
     "not set": "gan socrú",
     Off: "múchta",
     Ok: "Ceart go leor",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Ní féidir ach leis an teilifís seo glacadh le do theachtaireacht. Téann an nasc in éag tar éis 10 nóiméad.",
     Open: "Oscail",
     "Open in PiP": "Oscail i PiP",
     "Open Plex sign-in page": "Oscail leathanach sínithe isteach Plex",
@@ -654,6 +678,7 @@ var keyStrings = {
     "OTT / APP host": "Óstach OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Socruithe OTT Prime ONLINE",
+    "OTT-play remote input": "ionchur cianda OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Tá OttPlay FOSS %1 ar fáil. Íoslódáil agus suiteáil anois?",
     "Overwrite current settings?": "Forscríobh na socruithe reatha?",
@@ -686,6 +711,7 @@ var keyStrings = {
     Playback: "Athsheinm",
     "Player and device info": "Faisnéis faoin seinnteoir agus faoin ngléas",
     "Player could not start": "Níorbh fhéidir an seinnteoir a thosú",
+    "Player default": "Rogha réamhshocraithe an tseinnteora",
     "Player info:": "Faisnéis faoin seinnteoir:",
     Playlist: "Seinmliosta",
     "Playlist file": "Comhad seinmliosta",
@@ -707,6 +733,8 @@ var keyStrings = {
     Postpaid: "Iaríoctha",
     PROST: "PROST",
     "PROST settings": "Socruithe PROST",
+    "Preferred audio language": "Teanga fuaime is fearr leat",
+    "Preferred subtitle language": "Rogha teanga fotheideal",
     Prepaid: "Réamhíoctha",
     "Preparing secure remote input...": "Cianionchur slán á ullmhú...",
     Prev: "Roimhe seo",
@@ -739,14 +767,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Cianrialtán (gan cnaipí uimhreach)",
     "Remote control": "Cianrialú",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Údaraíonn cianrialú diagnóisic. Réidh le haghaidh oibreoir.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Údaraíonn cianrialú diagnóisic. Ag fanacht le hathcheangal.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Áirítear le cianrialú gabhálacha scáileáin den seinnteoir meán, lena shocruithe san áireamh. Féadfaidh faisnéis phríobháideach a bheith sna híomhánna. Is féidir leis an aip gabhálacha scáileáin a dhéanamh go díreach gan cead breise. Sa bhrabhsálaí, roghnaigh an cluaisín nó an fhuinneog le gabháil ar an ngléas seo.",
     "Remote diagnostics": "Ciandiagnóisic",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Tá ciandiagnóisic ag bailiú don nasc seo (suas le 10 nóiméad in aghaidh an tseisiúin).",
     "Remote diagnostics is collecting for this page.":
         "Tá ciandiagnóisic ag bailiú sonraí don leathanach seo.",
     "Remote diagnostics is off.": "Tá ciandiagnóisic múchta.",
@@ -760,10 +788,10 @@ var keyStrings = {
         "Chuaigh an cianionchur in éag. Oscail seisiún nua chun triail eile a bhaint as.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Níl an seisiún cianionchuir ar fáil. Oscail seisiún nua chun triail eile a bhaint as.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Gabhálacha scáileáin cianda",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Ceadaítear gabhálacha scáileáin cianda ar feadh 10 nóiméad. Dún na socruithe chun gabháil a dhéanamh.",
+    "Remote screenshots are off.": "Tá gabhálacha scáileáin cianda múchta.",
     "Remote session expired": "Chuaigh an seisiún cianda in éag",
     "Remote text entry": "Cianionchur téacs",
     "Remote text entry denied": "Diúltaíodh don chianionchur téacs",
@@ -791,6 +819,7 @@ var keyStrings = {
     "Resume from archive?": "Lean ar aghaidh ón gcartlann?",
     Retry: "Bain triail eile as",
     "Retry EPG download": "Bain triail as íoslódáil EPG arís",
+    "Retry same message": "Bain triail eile as an teachtaireacht chéanna",
     "Return to previous channel": "Fill ar an gcainéal roimhe seo",
     Rewind: "Bog sa fhíseán",
     "Rewind step by buttons %1/%2": "Céim léime do na cnaipí %1/%2",
@@ -808,19 +837,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "Sábháil socruithe agus luchtaigh liosta na gcainéal",
     "Save settings to storage": "Sábháil socruithe sa stóras",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Scan an cód QR ar do theilifíseán, nó greamaigh a nasc péireála príobháideach iomlán thíos.",
     "Scan this QR code with your phone to enter text.":
         "Scan an cód QR seo le d’fhón chun téacs a chur isteach.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Níorbh fhéidir tús a chur le comhroinnt scáileáin.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Cuireadh roinnt scáileáin ar ceal nó níl sé ar fáil.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Níorbh fhéidir cead gabháil scáileáin a chumasú.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Tá gabhálacha scáileáin ar fáil agus cianrialú nasctha.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Níl gabhálacha scáileáin ar fáil ar an ardán seo.",
     Script: "Script scannáin",
     Search: "Cuardaigh",
+    "Search languages": "Cuardaigh teangacha",
     "Search programme": "Cuardaigh clár",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Níorbh fhéidir cianionchur slán a thosú. Bain triail eile as nó úsáid an méarchlár ar an scáileán.",
@@ -839,13 +872,14 @@ var keyStrings = {
         "Roghnaigh foinse teimpléid seinmliosta le haghaidh EPG agus lógónna",
     "Select Stalker portal": "Roghnaigh tairseach Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Roghnaigh foinse gabhála scáileáin sa bhrabhsálaí",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Roghnaigh cluaisín nó fuinneog an tseinnteora i ndialóg comhroinnte an bhrabhsálaí.",
     "Send request": "Seol iarratas",
     "Send settings": "Seol socruithe",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Seol an cód seo ó do sheachfhreastalaí sa cheanntásc Authorization: Bearer.",
+    "Send to TV": "Seol chuig an teilifís",
     Server: "Freastalaí",
     "Server address": "Seoladh an fhreastalaí",
     "Server address (for example 192.168.1.20:8081)":
@@ -854,10 +888,14 @@ var keyStrings = {
     "Server URL": "URL an fhreastalaí",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Níl an freastalaí ar fáil. Bainfear triail eile as go huathoibríoch; seiceáil a sheoladh agus rochtain líonra.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Seisiún dúnta. Tosaigh ceann nua ó do theilifíseán nuair is gá.",
     Set: "Cuir i bhfeidhm",
     "Set parental code": "Socraigh an cód tuismitheora",
     "Set timer?": "Socraigh amadóir?",
     Settings: "Socruithe",
+    "Settings changed while editing":
+        "Athraíodh na socruithe agus eagarthóireacht á déanamh",
     "Settings changed. Discovery was canceled.":
         "Athraíodh socruithe. Cealaíodh an t-aimsiú.",
     "Settings copied": "Cóipeáladh socruithe",
@@ -867,10 +905,15 @@ var keyStrings = {
     "Settings imported": "Iompórtáladh socruithe",
     "Settings JSON": "JSON na socruithe",
     "Settings loaded from storage": "Luchtaíodh socruithe ón stóras",
+    "Settings received. Restarting player...":
+        "Socruithe faighte. An seinnteoir á atosú...",
     "Settings STB": "Socruithe STB",
     "Settings saved": "Sábháladh socruithe",
     "Settings saved to storage": "Sábháladh socruithe sa stóras",
     "Settings sended!": "Seoladh socruithe!",
+    "Settings source changed": "Foinse na socruithe athraithe",
+    "Settings storage rejected write":
+        "Dhiúltaigh stóras na socruithe don scríobh",
     "Several command servers were found. Select one below.":
         "Aimsíodh roinnt freastalaithe orduithe. Roghnaigh ceann thíos.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -926,12 +969,12 @@ var keyStrings = {
     "Starting...": "Á thosú…",
     Status: "Stádas",
     Stop: "Stad",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Cuir stop le roinnt brabhsálaí",
     "Stop current capture": "Stad an bailiú reatha",
     "Stop diagnostics": "Stad diagnóisic",
     "Stop playback and return to live":
         "Stad an athsheinm agus fill ar an gcraoladh beo",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Stop gabhálacha scáileáin",
     "Stream could not be played": "Níorbh fhéidir an sruth a sheinm",
     "Stream type: %1": "Cineál srutha: %1",
     "String for search": "Téarma cuardaigh",
@@ -942,7 +985,8 @@ var keyStrings = {
     "Switch sound track": "Athraigh an rian fuaime",
     "Switch subtitle": "Athraigh na fotheidil",
     "Switch to this list": "Athraigh chuig an liosta seo",
-    "Swop URL": "Swop URL",
+    "Swop URL": "URL Swop",
+    "System language": "Teanga chórais",
     "saved on this device": "sábháilte ar an ngléas seo",
     select: "roghnaigh",
     small: "beag",
@@ -951,8 +995,12 @@ var keyStrings = {
     "Tabox settings": "Socruithe Tabox",
     "Text is too long for remote input.":
         "Tá an téacs rófhada don chianionchur.",
+    "Text is too long. Please shorten it before sending.":
+        "Tá an téacs rófhada. Giorraigh é le do thoil roimh é a sheoladh.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Téacs seolta. Seiceáil do theilifíseán chun a dheimhniú go raibh sé le feiceáil.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Tá foinse scáileáin an bhrabhsálaí réidh.",
     "The command server discovery URL is invalid.":
         "Tá URL aimsiú an fhreastalaí orduithe neamhbhailí.",
     "The device ID in the address is invalid.":
@@ -960,7 +1008,7 @@ var keyStrings = {
     "The discovery response is invalid.":
         "Tá an freagra aimsiúcháin neamhbhailí.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Ní féidir leis an mbrabhsálaí seo foinse an scáileáin roghnaithe a shainaithint.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ní féidir leis an mbrabhsálaí seo péireáil go huathoibríoch go sábháilte. Nuashonraigh é nó cuir isteach socruithe an fhreastalaí orduithe de láimh.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -969,6 +1017,10 @@ var keyStrings = {
         "Ní féidir leis an seinnteoir HTTPS seo ceangal le freastalaí HTTP. Úsáid freastalaí HTTPS nó oscail an seinnteoir trí HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Tá HTTPS de dhíth ar an aip Play seo. Iarr URL seinmliosta nó freastalaí HTTPS ar do sholáthraí.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Tá an nasc péireála seo imithe in éag. Oscail seisiún nua ar do theilifíseán.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Níl an seisiún slán seo ar fáil nó tá sé imithe in éag. Oscail seisiún nua ar an teilifís agus úsáid a nasc iomlán.",
     Timer: "Amadóir",
     "Timer: switch to channel?": "Amadóir: athraigh chuig an gcainéal seo?",
     "Timeshift: one minute back": "Téigh siar nóiméad amháin",
@@ -1018,6 +1070,8 @@ var keyStrings = {
         "Úsáid HTTP nó HTTPS gan ainm úsáideora ná pasfhocal sa seoladh.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Úsáid CLÉ/DEAS chun rialtán a roghnú, OK chun é a ghníomhachtú, agus SUAS/SÍOS chun scrollú.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Úsáid an nasc iomlán, lena n-áirítear an chuid i ndiaidh #. Ná roinn é le haon duine eile.",
     "Use Up / Down to scroll. Back to close.":
         "Úsáid Suas / Síos chun scrollú. Siar chun dúnadh.",
     Username: "Ainm úsáideora",

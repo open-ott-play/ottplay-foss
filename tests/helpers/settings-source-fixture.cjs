@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, "../..");
 function settingsSource() {
     return ts
         .transpileModule(
-            ["store", "index", "editor"]
+            ["../localization/assets", "store", "index", "editor"]
                 .map((name) =>
                     fs.readFileSync(
                         path.join(root, "src/settings/" + name + ".ts"),

@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
@@ -419,7 +420,7 @@ test("future or malformed envelopes remain untouched and unwritable", (f) => {
     }
 });
 function language(w, name) {
-    vm.runInContext(compile("src/localization/index.ts"), w);
+    vm.runInContext(localizationRuntime(), w);
     vm.runInContext(
         fs.readFileSync(path.join(root, "locales", name + ".js"), "utf8"),
         w
@@ -555,6 +556,128 @@ test("list manager renders the default label and unchanged rename leaves its pro
     f.w.setEdit();
     assert.equal(f.w.favoritesListLabel("Favorites"), "Избранные");
     assert.equal(f.read().defaultList, "Favorites");
+});
+test("merge preserves repeated neighbour buckets, identity and invisible tail", (f) => {
+    const a = Object.freeze({ itemId: "A" });
+    const equalA = Object.freeze({ itemId: "A" });
+    const b = Object.freeze({ itemId: "B" });
+    const unseen = Array.from({ length: 4 }, (_, index) =>
+        Object.freeze({ ambiguous: true, legacyId: 100 + index, origin: "raw" })
+    );
+    const references = Object.freeze([
+        unseen[0],
+        a,
+        unseen[1],
+        b,
+        unseen[2],
+        equalA,
+        unseen[3],
+    ]);
+    const view = Object.freeze([2, 1, 2]);
+    const calls = [];
+    const result = f.w.mergeFavoriteReferences(
+        view,
+        { bindings: Object.freeze({ 1: a, 2: b }), references },
+        {
+            project(reference) {
+                calls.push(reference);
+                return null;
+            },
+            resolve() {
+                assert.fail("retained bindings must not be resolved again");
+            },
+        }
+    );
+    assert.deepEqual(Array.from(result), [
+        unseen[1],
+        b,
+        unseen[0],
+        unseen[2],
+        a,
+        b,
+        unseen[3],
+    ]);
+    assert.deepEqual(calls, unseen);
+    assert.notEqual(result, view);
+    assert.equal(result[4], a);
+    assert.notEqual(result[4], equalA);
+});
+test("large alternating invisible references do not recopy growing prefixes", (f) => {
+    vm.runInContext(
+        `var mergeCount = 1024, costView = [], costReferences = [], costBindings = Object.create(null);
+        for (var i = 0; i < mergeCount; i++) {
+            var reference = { itemId: 'item:' + i };
+            costView.push(i);
+            costReferences.push({ legacyId: i + 10000, origin: 'raw' }, reference);
+            costBindings[i] = reference;
+        }
+        var mergeCopiedSlots = 0, originalMergeConcat = Array.prototype.concat;
+        Array.prototype.concat = function () {
+            mergeCopiedSlots += this.length;
+            for (var i = 0; i < arguments.length; i++)
+                mergeCopiedSlots += Array.isArray(arguments[i]) ? arguments[i].length : 1;
+            return originalMergeConcat.apply(this, arguments);
+        };
+        var costResult;
+        try {
+            costResult = mergeFavoriteReferences(costView,
+                { bindings: costBindings, references: costReferences },
+                { project: function () { return null; }, resolve: function () { throw Error('unexpected resolve'); } });
+        } finally { Array.prototype.concat = originalMergeConcat; }`,
+        f.w
+    );
+    assert.equal(f.w.costResult.length, f.w.mergeCount * 2);
+    for (let i = 0; i < f.w.costResult.length; i++)
+        assert.equal(f.w.costResult[i], f.w.costReferences[i]);
+    assert(
+        f.w.mergeCopiedSlots <= f.w.mergeCount * 8,
+        "merge must not copy an accumulated prefix once per neighbour"
+    );
+});
+test("saving a large favorites list does not rescan references for every binding", (f) => {
+    const count = 1024;
+    f.w.channels = {};
+    for (let id = 1; id <= count; id++)
+        f.w.channels[id] = { itemId: "channel:" + id };
+    f.raw(
+        "favoritesLists",
+        blob(Array.from({ length: count }, (_, i) => i + 1))
+    );
+    f.load();
+    const before = f.read();
+    vm.runInContext(
+        `var bindingComparisons = 0, originalBindingIndexOf = Array.prototype.indexOf;
+        Array.prototype.indexOf = function () {
+            var at = originalBindingIndexOf.apply(this, arguments);
+            bindingComparisons += at < 0 ? this.length : at + 1;
+            return at;
+        };`,
+        f.w
+    );
+    try {
+        assert.equal(f.w.saveFavoritesLists(), true);
+    } finally {
+        vm.runInContext(
+            "Array.prototype.indexOf = originalBindingIndexOf;",
+            f.w
+        );
+    }
+    assert.deepEqual(f.read(), before);
+    assert(
+        f.w.bindingComparisons <= count * 10,
+        "merged references already contain selected prior bindings"
+    );
+});
+test("unmerged reference records still require exact prior object membership", (f) => {
+    const original = { itemId: "same" },
+        replacement = { itemId: "same" };
+    const record = f.w.favoriteReferenceRecord(
+        [1],
+        [replacement],
+        { project: () => 1 },
+        { bindings: { 1: original } }
+    );
+    assert.equal(record.bindings[1], replacement);
 });
 console.log(
     "PASS " +

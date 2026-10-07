@@ -63,14 +63,15 @@ var keyStrings = {
     "Allow diagnostics for 10 minutes":
         "Payagan ang mga diagnostic sa loob ng 10 minuto",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Payagan ang mga screenshot sa loob ng 10 minuto",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "Payagan ang server na ito na mangolekta ng mga diagnostic counter at i-restart ang stream o media player na ito. Ang pansamantalang pag-access ay tumatagal ng 10 minuto. Mananatiling available ang pinagkakatiwalaang suporta pagkatapos muling kumonekta o mag-restart; mag-e-expire pa rin ang bawat pagkuha pagkatapos ng 10 minuto. Naka-pause ang koleksyon habang nakatago o offline.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "Payagan ang server na ito na mangolekta ng playback, network at input counter para sa foreground session na ito. Nangangailangan ng HTTPS at pahintulot ng server. Hihinto pagkatapos ng 10 minuto, kapag nakatago, o kapag nadiskonekta.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Payagan ang server na ito na humiling ng mga larawan sa loob ng 10 minuto. Ang mga larawan ay maaaring maglaman ng personal na impormasyon. Sa isang browser, piliin ang tab o window ng player. Matatapos ang pahintulot sa pag-reload o pagdiskonekta.",
     "Allowlist this Device ID":
         "Idagdag ang ID ng device na ito sa listahan ng pinapayagan",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
@@ -104,6 +105,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Laktawan pabalik / pasulong ng 1 minuto",
     "Background color": "Kulay ng background",
     "Background color of selected item": "Kulay ng background ng napiling item",
+    "Backup state changed": "Nagbago ang status ng backup",
     "Balance, $": "Balanse, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -116,6 +118,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Itim na screen kapag lumilipat ng channel",
     Blue: "Asul",
+    "Bookmark age (days): %1": "Edad ng bookmark (mga araw): %1",
     "Bookmark age: %1 days": "Edad ng bookmark: %1 araw",
     "Browse folders": "Mag-browse ng mga folder",
     "Buffer Size, s": "Laki ng buffer, s",
@@ -171,6 +174,9 @@ var keyStrings = {
     "Clear settings": "I-clear ang mga setting",
     Close: "Isara",
     "Close PiP": "Isara PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Kailangan ng STB firmware para mag-save sa cloud o magkarga mula rito (hindi nakatakda ang host_ott)",
+    "Cloud transfer failed": "Nabigo ang paglilipat sa cloud",
     Code: "Kodigo",
     Color: "Kulay",
     "Color spectrum": "Spectrum ng kulay",
@@ -189,6 +195,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Hindi ma-load ang runtime ng compatibility. Muling buksan ang media player upang muling subukan.",
     "Compatible HLS": "Katugmang HLS",
+    "Complete pairing link": "Buong link para sa pagpapares",
     "Configure All4you.tv in Settings -> Provider Settings":
         "I-configure ang All4you.tv sa Mga Setting -> Mga Setting ng Provider",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -261,22 +268,24 @@ var keyStrings = {
         "I-configure ang Шаравоз sa Mga Setting -> Mga Setting ng Provider",
     Connect: "Kumonekta",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Ikonekta ang isang HTTPS command server bago payagan ang mga screenshot.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Ikonekta ang isang HTTPS command server upang gumamit ng mga screenshot.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Ikonekta ang remote control upang paganahin ang mga diagnostic.",
     "Connect this player to a command server first.":
         "Ikonekta muna ang media player na ito sa isang command server.",
+    "Connect to TV": "Kumonekta sa TV",
     Connected: "Nakakonekta",
     "Connected. Waiting for the channel list...":
         "Nakakonekta. Naghihintay para sa listahan ng channel...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Ang pagkonekta sa malayuang kontrol ay nagbibigay sa server na ito ng pahintulot na suriin at ayusin ang player. Nananatili ang access pagkatapos mag-restart at natatapos kapag pinutol mo ang koneksyon. Limitado sa 10 minuto ang bawat sesyon ng pangongolekta ng diagnostic na datos.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Pagkonekta ng malayuang diagnostic para sa pinaganang remote control na koneksyon.",
     "Connecting remote diagnostics for this page.":
         "Pagkonekta ng mga malalayong diagnostic para sa pahinang ito.",
+    "Connecting securely to your TV...": "Ligtas na kumokonekta sa iyong TV...",
     "Connecting to Plex…": "Kumokonekta sa Plex…",
     "Connecting to Stalker portal...": "Kumokonekta sa Stalker portal…",
     "Connecting...": "Kumokonekta…",
@@ -294,6 +303,10 @@ var keyStrings = {
         "Hindi makalikha ng kahilingan sa pagpapares. Hanapin muli ang server upang muling subukan.",
     "Could not load. Select to retry.":
         "Hindi ma-load. Piliin upang muling subukan.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Hindi maihanda ang tekstong ito. Mangyaring paikliin ito at subukang muli.",
+    "Could not protect the private link. Use a different browser.":
+        "Hindi maprotektahan ang pribadong link. Gumamit ng ibang browser.",
     "Could not save provider settings.":
         "Hindi ma-save ang mga setting ng provider.",
     "Could not save the approved command server settings.":
@@ -311,6 +324,8 @@ var keyStrings = {
     "Delete category": "Tanggalin ang kategorya",
     "Delete channel": "Tanggalin ang channel",
     "Delete list": "Tanggalin ang listahan",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Hindi makumpirma ang paghahatid. Tingnan ang iyong TV, o subukang muli ang parehong mensahe bago mag-expire ang session na ito.",
     "Demo — moving test pattern": "Demo — gumagalaw na pattern ng pagsubok",
     Description: "Paglalarawan",
     "Description of remote control buttons":
@@ -395,6 +410,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Ilagay ang URL ng Stalker portal (http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Ilagay ang numero ng server (%1).",
+    "Enter text": "Maglagay ng text",
     "Enter the access code separately, not in the server address.":
         "Ilagay ang access code nang hiwalay, hindi sa address ng server.",
     "Enter the command server IP or address.":
@@ -549,8 +565,11 @@ var keyStrings = {
     "Interface transparency": "Transparency ng interface",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Di-wastong link ng channel! Ilagay ang buong host tulad ng sa dashboard stream ng provider account URL (hal. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response":
+        "Di-wastong tugon mula sa cloud para sa mga setting",
     "Invalid protected source configuration":
         "Di-wastong protektadong source configuration",
+    "Invalid setting": "Di-wastong setting",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one na mga setting",
@@ -571,7 +590,7 @@ var keyStrings = {
     "Load playlist": "Mag-load ng playlist",
     "Load settings": "I-load ang mga setting",
     "Load settings from storage": "I-load ang mga setting mula sa storage",
-    "Load:": "load:",
+    "Load:": "Pagkarga:",
     "Loading channels from Xtream API...":
         "Naglo-load ng mga channel mula sa Xtream API…",
     "Loading channels...": "Naglo-load ng mga channel…",
@@ -631,6 +650,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "Walang mga programa ang tumugma sa mga channel at petsa ng playlist. Suriin ang pinagmulan at orasan ng device.",
     "No saved settings found": "Walang nakitang mga naka-save na setting",
+    "No supported system language. Choose a language.":
+        "Walang sinusuportahang wika ng system. Pumili ng wika.",
     "Not configured": "Hindi pa na-configure",
     "Not found": "Hindi nahanap",
     "Not reduce video when showing the list (bugfix)":
@@ -646,6 +667,8 @@ var keyStrings = {
     "not set": "hindi nakatakda",
     Off: "Naka-off",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Tanging ang TV na ito ang maaaring tumanggap ng iyong mensahe. Mag-e-expire ang link pagkatapos ng 10 minuto.",
     Open: "Buksan",
     "Open in PiP": "Buksan sa PiP",
     "Open Plex sign-in page": "Buksan ang Plex page sa pag-sign in",
@@ -658,6 +681,7 @@ var keyStrings = {
     "OTT / APP host": "Host ng OTT / APP",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE na mga setting",
+    "OTT-play remote input": "Malayuang pag-input sa OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "Available ang OttPlay FOSS %1. I-download at i-install ngayon?",
     "Overwrite current settings?": "I-overwrite ang mga kasalukuyang setting?",
@@ -690,6 +714,7 @@ var keyStrings = {
     Playback: "Pag-playback",
     "Player and device info": "impormasyon ng media player at device",
     "Player could not start": "hindi makapagsimula ang media player",
+    "Player default": "Default na pagpili ng media player",
     "Player info:": "impormasyon ng media player:",
     Playlist: "Playlist",
     "Playlist file": "File ng playlist",
@@ -711,6 +736,8 @@ var keyStrings = {
     Postpaid: "Bayad pagkatapos gamitin",
     PROST: "PROST",
     "PROST settings": "PROST na mga setting",
+    "Preferred audio language": "Ginustong wika ng audio",
+    "Preferred subtitle language": "Ginustong wika ng subtitle",
     Prepaid: "Bayad muna bago gamitin",
     "Preparing secure remote input...":
         "Inihahanda ang secure na remote input...",
@@ -745,14 +772,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Remote (walang mga pindutan ng numero)",
     "Remote control": "Malayuang kontrol",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Pinahihintulutan ng remote control ang mga diagnostic. Handa na para sa isang operator.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Pinahihintulutan ng remote control ang mga diagnostic. Naghihintay na kumonekta muli.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "Kasama sa malayuang kontrol ang pagkuha ng mga screenshot ng player, pati ang mga setting. Maaaring may pribadong impormasyon ang mga larawan. Hindi kailangan ng dagdag na pahintulot para sa pagkuha nang direkta sa app. Sa browser, kailangang piliin sa device na ito ang pinagmulan ng screenshot.",
     "Remote diagnostics": "Mga malalayong diagnostic",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Kinokolekta ang mga malalayong diagnostic para sa koneksyong ito (hanggang 10 minuto bawat session).",
     "Remote diagnostics is collecting for this page.":
         "Kinokolekta ang mga malalayong diagnostic para sa page na ito.",
     "Remote diagnostics is off.": "Naka-off ang remote diagnostics.",
@@ -766,10 +793,10 @@ var keyStrings = {
         "Nag-expire ang remote input. Magbukas ng bagong session para subukang muli.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Hindi available ang remote input session. Magbukas ng bagong session para subukang muli.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "Mga malayuang screenshot",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Ang mga remote na screenshot ay pinapayagan sa loob ng 10 minuto. Isara ang mga setting upang makuha.",
+    "Remote screenshots are off.": "Naka-off ang mga remote na screenshot.",
     "Remote session expired": "Nag-expire ang remote session",
     "Remote text entry": "Malayong entry ng text",
     "Remote text entry denied": "Tinanggihan ang remote na text entry",
@@ -799,6 +826,7 @@ var keyStrings = {
     "Resume from archive?": "Ipagpatuloy mula sa archive?",
     Retry: "Subukan muli",
     "Retry EPG download": "Subukan muli EPG download",
+    "Retry same message": "Subukang muli ang parehong mensahe",
     "Return to previous channel": "Bumalik sa nakaraang channel",
     Rewind: "Lumipat sa oras ng video",
     "Rewind step by buttons %1/%2":
@@ -817,19 +845,23 @@ var keyStrings = {
     "Save settings and load channel list":
         "I-save ang mga setting at i-load ang listahan ng channel",
     "Save settings to storage": "I-save ang mga setting sa storage",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "I-scan ang QR code sa iyong TV, o i-paste ang kumpletong pribadong link ng pagpapares nito sa ibaba.",
     "Scan this QR code with your phone to enter text.":
         "I-scan ang QR code na ito gamit ang iyong telepono upang maglagay ng text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.":
+        "Hindi makapagsimula ang pagbabahagi ng screen.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Ang pagbabahagi ng screen ay kinansela o hindi magagamit.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Hindi ma-enable ang pahintulot ng screenshot.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Available ang mga screenshot habang nakakonekta ang remote control.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Ang mga screenshot ay hindi magagamit sa platform na ito.",
     Script: "Iskrip",
     Search: "Maghanap",
+    "Search languages": "Maghanap ng mga wika",
     "Search programme": "Maghanap ng programa",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "Hindi makapagsimula ang secure na remote input. Pakisubukang muli o gamitin ang on-screen na keyboard.",
@@ -848,13 +880,14 @@ var keyStrings = {
         "Pumili ng pinagmulan ng template ng playlist para sa EPG at mga logo",
     "Select Stalker portal": "Piliin ang Stalker portal",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Piliin ang pinagmulan ng screenshot sa browser",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Piliin ang tab o window ng player sa dialog ng pagbabahagi ng browser.",
     "Send request": "Magpadala ng kahilingan",
     "Send settings": "Ipadala ang mga setting",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Ipadala ang code na ito mula sa iyong proxy sa header na Authorization: Bearer.",
+    "Send to TV": "Ipadala sa TV",
     Server: "server",
     "Server address": "Address ng server",
     "Server address (for example 192.168.1.20:8081)":
@@ -863,10 +896,14 @@ var keyStrings = {
     "Server URL": "URL ng server",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Hindi available ang server. Awtomatikong sinusubukang muli; tingnan ang address nito at access sa network.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sarado ang session. Magsimula ng bago mula sa iyong TV kung kinakailangan.",
     Set: "Itakda",
     "Set parental code": "Itakda ang parental code",
     "Set timer?": "Itakda ang timer?",
     Settings: "Mga setting",
+    "Settings changed while editing":
+        "Nagbago ang mga setting habang nag-e-edit",
     "Settings changed. Discovery was canceled.":
         "Binago ang mga setting. Kinansela ang pagtuklas.",
     "Settings copied": "Nakopya ang mga setting",
@@ -876,10 +913,15 @@ var keyStrings = {
     "Settings imported": "Na-import ang mga setting",
     "Settings JSON": "Mga Setting JSON",
     "Settings loaded from storage": "Na-load ang mga setting mula sa storage",
+    "Settings received. Restarting player...":
+        "Natanggap ang mga setting. Nire-restart ang player...",
     "Settings STB": "STB na mga setting",
     "Settings saved": "Na-save ang mga setting",
     "Settings saved to storage": "Na-save ang mga setting sa storage",
     "Settings sended!": "Ipinadala ang mga setting!",
+    "Settings source changed": "Binago ang pinagmulan ng mga setting",
+    "Settings storage rejected write":
+        "Tinanggihan ng imbakan ng mga setting ang pagsulat ng datos",
     "Several command servers were found. Select one below.":
         "Ilang command server ang natagpuan. Pumili ng isa sa ibaba.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -937,12 +979,12 @@ var keyStrings = {
     "Starting...": "Nagsisimula…",
     Status: "Katayuan",
     Stop: "Ihinto",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "Ihinto ang pagbabahagi ng browser",
     "Stop current capture": "Itigil ang kasalukuyang pagkuha",
     "Stop diagnostics": "Itigil ang mga diagnostic",
     "Stop playback and return to live":
         "Ihinto ang playback at bumalik sa direktang pagsasahimpapawid",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Ihinto ang mga screenshot",
     "Stream could not be played": "Hindi ma-play ang stream",
     "Stream type: %1": "Uri ng stream: %1",
     "String for search": "Query sa paghahanap",
@@ -954,6 +996,7 @@ var keyStrings = {
     "Switch subtitle": "Palitan ang mga subtitle",
     "Switch to this list": "Lumipat sa listahang ito",
     "Swop URL": "URL ng SWOP",
+    "System language": "Wika ng system",
     "saved on this device": "naka-save sa device na ito",
     select: "pumili",
     small: "maliit",
@@ -962,15 +1005,19 @@ var keyStrings = {
     "Tabox settings": "Tabox na mga setting",
     "Text is too long for remote input.":
         "Masyadong mahaba ang text para sa malayuang pag-input.",
+    "Text is too long. Please shorten it before sending.":
+        "Masyadong mahaba ang text. Mangyaring paikliin ito bago ipadala.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Naipadala ang text. Suriin ang iyong TV upang kumpirmahin na lumitaw ito.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Ang pinagmulan ng screenshot ng browser ay handa na.",
     "The command server discovery URL is invalid.":
         "Ang pagtuklas ng command server na URL ay hindi wasto.",
     "The device ID in the address is invalid.":
         "Ang device na ID sa address ay hindi wasto.",
     "The discovery response is invalid.": "Di-wasto ang tugon sa pagtuklas.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Hindi matukoy ng browser na ito ang napiling pinagmulan ng screenshot.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Ang browser na ito ay hindi maaaring awtomatikong magpares. I-update ito o ipasok ang mga setting ng command server nang manu-mano.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -979,6 +1026,10 @@ var keyStrings = {
         "Ang HTTPS media player na ito ay hindi makakonekta sa isang HTTP server. Gumamit ng HTTPS server o buksan ang media player sa HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Ang Play app na ito ay nangangailangan ng HTTPS. Humingi sa iyong provider ng HTTPS playlist o server URL.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Ang link ng pagpapares na ito ay nag-expire na. Magbukas ng bagong session sa iyong TV.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Ang secure na session na ito ay hindi magagamit o nag-expire. Magbukas ng bagong session sa TV at gamitin ang kumpletong link nito.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: lumipat sa channel na ito?",
     "Timeshift: one minute back": "Paglipat ng oras: isang minuto pabalik",
@@ -1028,6 +1079,8 @@ var keyStrings = {
         "Gamitin ang HTTP o HTTPS nang walang username o password sa address.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gamitin ang LEFT/RIGHT para pumili ng control, OK para i-activate ito, at UP/DOWN para mag-scroll.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Gamitin ang buong link, kasama ang bahagi pagkatapos ng #. Huwag ibahagi ito sa iba.",
     "Use Up / Down to scroll. Back to close.":
         "Gamitin ang Pataas / Pababa upang mag-scroll. Pindutin ang Bumalik upang isara.",
     Username: "Pangalan ng gumagamit",

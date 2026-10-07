@@ -4,13 +4,14 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const sharedCore = require("./helpers/shared-core-runtime.cjs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
+const localizationCode = localizationRuntime();
 const root = path.resolve(__dirname, "..");
-function include(c, names) {
+function include(c, names, file = "src/channels/index.ts") {
     names = require("./helpers/english-source-fixture.cjs").sourceNames(
-        "src/channels/index.ts",
+        file,
         names
     );
-    const file = "src/channels/index.ts";
     const ast = ts.createSourceFile(
         file,
         fs.readFileSync(path.join(root, file), "utf8"),
@@ -135,6 +136,8 @@ function fixture() {
     vm.createContext(c);
     require("./helpers/english-source-fixture.cjs").attachSourceAliases(c);
     sharedCore(c);
+    vm.runInContext(localizationCode, c);
+    include(c, ["metadataText"], "src/utils/helpers.ts");
     c.__ottClassicPlayback.importLegacy(); // Explicit startup ingress for this retained-device fixture.
     include(c, [
         "playArchive",

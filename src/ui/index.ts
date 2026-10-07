@@ -20,7 +20,12 @@ import {
 } from "../channels";
 import { updateCoreVideoInfo } from "../core";
 import { dispatchKey, keys, list_OnClick } from "../key-handler";
-import { translate as _ } from "../localization";
+import {
+    translate as _,
+    formatLocaleDateTime,
+    interfaceDirection,
+} from "../localization";
+import { textBoundary } from "../localization/unicode";
 import { settings } from "../settings";
 import { swopLoadValue } from "../swop";
 import {
@@ -126,7 +131,7 @@ var _keysSymbol: any[] = [
     {
         a: function () {
             if (editPos) {
-                editPos--;
+                editPos = textBoundary((window as any).editvar, editPos, -1);
                 _changeEdit();
             }
         },
@@ -135,7 +140,7 @@ var _keysSymbol: any[] = [
     {
         a: function () {
             if (editPos < (window as any).editvar.length) {
-                editPos++;
+                editPos = textBoundary((window as any).editvar, editPos, 1);
                 _changeEdit();
             }
         },
@@ -155,10 +160,15 @@ var _keysSymbol: any[] = [
     {
         a: function () {
             if (editPos) {
+                var previous = textBoundary(
+                    (window as any).editvar,
+                    editPos,
+                    -1
+                );
                 (window as any).editvar =
-                    (window as any).editvar.substr(0, editPos - 1) +
+                    (window as any).editvar.substr(0, previous) +
                     (window as any).editvar.substr(editPos);
-                editPos--;
+                editPos = previous;
                 _changeEdit();
             }
         },
@@ -1231,6 +1241,58 @@ export function closeList(restorePip = true): void {
         );
 }
 
+/** Isolate Latin identifiers/URLs inside RTL display text, after HTML sanitizing. */
+export function localizedTextHtml(message: string, centered?: boolean): string {
+    var direction = interfaceDirection();
+    var content = document.createElement("div");
+    content.innerHTML = metadataHtml(message);
+    if (direction === "rtl") {
+        var isolate = function (parent: Node): void {
+            for (var child = parent.firstChild; child; ) {
+                var next = child.nextSibling;
+                if (child.nodeType === 3) {
+                    var text = child.nodeValue || "",
+                        pattern =
+                            /[#@]?[A-Za-z0-9](?:[A-Za-z0-9._:/?&=%@+#~\-]*[A-Za-z0-9_/#=%~\-])?/g;
+                    var match: RegExpExecArray | null,
+                        previous = 0;
+                    var fragment = document.createDocumentFragment();
+                    while ((match = pattern.exec(text))) {
+                        fragment.appendChild(
+                            document.createTextNode(
+                                text.substring(previous, match.index)
+                            )
+                        );
+                        var token = document.createElement("bdi");
+                        token.setAttribute("dir", "ltr");
+                        token.className = "localized-token";
+                        token.textContent = match[0];
+                        fragment.appendChild(token);
+                        previous = match.index + match[0].length;
+                    }
+                    if (previous) {
+                        fragment.appendChild(
+                            document.createTextNode(text.substring(previous))
+                        );
+                        parent.replaceChild(fragment, child);
+                    }
+                } else if (child.nodeType === 1) isolate(child);
+                child = next;
+            }
+        };
+        isolate(content);
+    }
+    return (
+        '<div class="localized-text' +
+        (centered ? " localized-centered" : "") +
+        '" dir="' +
+        direction +
+        '">' +
+        content.innerHTML +
+        "</div>"
+    );
+}
+
 /**
  * Show a temporary notification/message at the bottom of the screen (the `#info` element).
  * Auto-hides after 3 seconds.
@@ -1243,7 +1305,7 @@ export function showShift(message: string): void {
     var info: any = document.getElementById("info");
     if (!info) return;
     clearTimeout(info.__ottShiftTimer);
-    info.innerHTML = metadataHtml(message);
+    info.innerHTML = localizedTextHtml(message);
     info.style.display = "block";
     info.__ottShiftTimer = setTimeout(function () {
         info.style.display = "none";
@@ -1261,7 +1323,7 @@ export function showShift(message: string): void {
 export function infoBox(message: string): void {
     $("#dialogbox")
         .html(
-            metadataHtml(message) +
+            localizedTextHtml(message) +
                 "<br/><br/>" +
                 renderButtonHint(keys.ENTER, strENTER, "Ok")
         )
@@ -1300,9 +1362,12 @@ export function confirmBox(
         .html(
             "<center>" +
                 // Preserve line breaks without interpreting other message HTML.
-                metadataText(_(message)).replace(
-                    /&lt;br\s*\/?&gt;|\r\n?|\n/gi,
-                    "<br/>"
+                localizedTextHtml(
+                    metadataText(_(message)).replace(
+                        /&lt;br\s*\/?&gt;|\r\n?|\n/gi,
+                        "<br/>"
+                    ),
+                    true
                 ) +
                 "<br/><br/>" +
                 renderButtonHint(keys.ENTER, strENTER, "Yes") +
@@ -1986,22 +2051,10 @@ export function formatSeekOffset(e: number): string {
  * Day names are from the translations of "Su Mo Tu We Th Fr Sa".
  *
  * @param e - Unix timestamp in seconds.
- * @returns string — Formatted as "Day dd.mm HH:MM".
+ * @returns Escaped date and time in the selected interface locale.
  */
 export function formatProgramDateTime(e: number): string {
-    var days = _("Su Mo Tu We Th Fr Sa").split(" ");
-    var d = new Date(e * 1e3);
-    return (
-        days[d.getDay()] +
-        "&nbsp;" +
-        _t2(d.getDate()) +
-        "." +
-        _t2(d.getMonth() + 1) +
-        "&nbsp;" +
-        _t2(d.getHours()) +
-        ":" +
-        _t2(d.getMinutes())
-    );
+    return metadataText(formatLocaleDateTime(e));
 }
 
 /* ---------------------------------------------------------------------------

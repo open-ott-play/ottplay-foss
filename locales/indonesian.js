@@ -60,19 +60,20 @@ var keyStrings = {
     "All categories": "Semua kategori",
     "All4you.tv": "All4you.tv",
     "All4you.tv settings": "Pengaturan All4you.tv",
-    "Allow diagnostics for 10 minutes": "Allow diagnostics for 10 minutes",
+    "Allow diagnostics for 10 minutes": "Izinkan diagnostik selama 10 menit",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "Izinkan tangkapan layar selama 10 menit",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
-        "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.",
+        "Izinkan server ini mengumpulkan penghitung diagnostik dan memulai ulang aliran atau pemutar ini. Akses sementara berlangsung 10 menit. Dukungan tepercaya tetap tersedia setelah tersambung kembali atau memulai ulang; setiap sesi pengumpulan data berakhir setelah 10 menit. Pengumpulan dijeda saat pemutar tersembunyi atau luring.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
-        "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.",
+        "Izinkan server ini mengumpulkan penghitung pemutaran, jaringan, dan input untuk sesi latar depan ini. Membutuhkan HTTPS dan izin server. Berhenti setelah 10 menit, saat disembunyikan, atau saat terputus.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "Izinkan server ini meminta gambar selama 10 menit. Gambar dapat berisi informasi pribadi. Di browser, pilih tab atau jendela pemutar. Izin berakhir saat memuat ulang atau memutuskan sambungan.",
     "Allowlist this Device ID": "Izinkan ID perangkat ini",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
-        "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.",
+        "Pemutar HTTPS tidak dapat mengunduh sumber EPG melalui HTTP. Gunakan sumber HTTPS.",
     "An IP without a port uses HTTP port 8081. Clear the address or select Disconnect to stop.":
         "IP tanpa port menggunakan port HTTP 8081. Kosongkan alamat atau pilih Putuskan untuk berhenti.",
     "Another source sign-in is already open":
@@ -91,9 +92,9 @@ var keyStrings = {
     "Archive. Channel: ": "Arsip. Saluran: ",
     Aspect: "Rasio aspek",
     Audio: "Audio",
-    Automatic: "Automatic",
+    Automatic: "Otomatis",
     "Automatic plays supported files directly and uses compatible HLS when needed.":
-        "Automatic plays supported files directly and uses compatible HLS when needed.",
+        "Otomatis memutar file yang didukung secara langsung dan menggunakan HLS yang kompatibel bila diperlukan.",
     alhabet: "abcdefghijklmnopqrstuvwxyz",
     always: "selalu",
     "and enter code": "dan masukkan kode",
@@ -101,6 +102,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "Mundur / maju 1 menit",
     "Background color": "Warna latar",
     "Background color of selected item": "Warna latar item terpilih",
+    "Backup state changed": "Status cadangan diubah",
     "Balance, $": "Saldo, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -111,6 +113,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "Layar hitam saat berpindah saluran",
     Blue: "Biru",
+    "Bookmark age (days): %1": "Usia penanda (hari): %1",
     "Bookmark age: %1 days": "Usia penanda: %1 hari",
     "Browse folders": "Jelajahi folder",
     "Buffer Size, s": "Ukuran buffer, dtk",
@@ -153,21 +156,23 @@ var keyStrings = {
     "Channel parental control": "Kontrol orang tua saluran",
     Channels: "Saluran",
     "Check the connection and open your Plex libraries.":
-        "Check the connection and open your Plex libraries.",
+        "Periksa koneksi dan buka perpustakaan Plex Anda.",
     "Check this server's SWOP configuration.":
         "Periksa konfigurasi SWOP server ini.",
-    "Checking the Plex server connection…":
-        "Checking the Plex server connection…",
+    "Checking the Plex server connection…": "Memeriksa koneksi server Plex…",
     "Choose from": "Pilih dari",
     "Choose language": "Pilih bahasa",
-    "Choose Plex server": "Choose Plex server",
+    "Choose Plex server": "Pilih server Plex",
     "Choose provider": "Pilih penyedia",
     Classic: "Klasik",
     "Clear all settings?": "Hapus semua pengaturan?",
     "Clear settings": "Hapus pengaturan",
     Close: "Tutup",
     "Close PiP": "Tutup PiP",
-    Code: "Code",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "Penyimpanan/pemuatan cloud memerlukan firmware STB (host_ott tidak disetel)",
+    "Cloud transfer failed": "Transfer ke cloud gagal",
+    Code: "Kode akses",
     Color: "Warna",
     "Color spectrum": "Spektrum warna",
     "Command server": "Server perintah",
@@ -184,7 +189,8 @@ var keyStrings = {
     "Command server found.": "Server perintah ditemukan.",
     "Compatibility runtime could not load. Reopen the player to retry.":
         "Komponen kompatibilitas tidak dapat dimuat. Buka kembali pemutar untuk mencoba lagi.",
-    "Compatible HLS": "Compatible HLS",
+    "Compatible HLS": "Kompatibel HLS",
+    "Complete pairing link": "Tautan penyandingan lengkap",
     "Configure All4you.tv in Settings -> Provider Settings":
         "Konfigurasikan All4you.tv di Pengaturan -> Pengaturan penyedia",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -218,7 +224,7 @@ var keyStrings = {
     "Configure OTT Prime ONLINE in Settings -> Provider Settings":
         "Konfigurasikan OTT Prime ONLINE di Pengaturan -> Pengaturan penyedia",
     "Configure Plex in Settings -> Provider Settings":
-        "Configure Plex in Settings -> Provider Settings",
+        "Konfigurasikan Plex di Pengaturan -> Pengaturan Penyedia",
     "Configure POLMEDIA in Settings -> Provider Settings":
         "Konfigurasikan POLMEDIA di Pengaturan -> Pengaturan penyedia",
     "Configure PROST in Settings -> Provider Settings":
@@ -257,23 +263,26 @@ var keyStrings = {
         "Konfigurasikan Шаравоз di Pengaturan -> Pengaturan penyedia",
     Connect: "Hubungkan",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "Hubungkan server perintah HTTPS sebelum mengizinkan tangkapan layar.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "Hubungkan server perintah HTTPS untuk menggunakan tangkapan layar.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "Hubungkan remote control untuk mengaktifkan diagnostik.",
     "Connect this player to a command server first.":
-        "Connect this player to a command server first.",
+        "Hubungkan pemutar ini ke server perintah terlebih dahulu.",
+    "Connect to TV": "Hubungkan ke TV",
     Connected: "Terhubung",
     "Connected. Waiting for the channel list...":
         "Terhubung. Menunggu daftar saluran…",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "Menghubungkan remote control memberi wewenang pada server ini untuk mendiagnosis dan memperbaiki pemutar. Akses tetap tersedia setelah memulai ulang dan berakhir saat Anda memutuskan sambungan. Setiap pengambilan diagnostik dibatasi hingga 10 menit.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "Menghubungkan diagnostik jarak jauh untuk koneksi kendali jarak jauh yang diaktifkan.",
     "Connecting remote diagnostics for this page.":
-        "Connecting remote diagnostics for this page.",
-    "Connecting to Plex…": "Connecting to Plex…",
+        "Menghubungkan diagnostik jarak jauh untuk halaman ini.",
+    "Connecting securely to your TV...":
+        "Menyambungkan dengan aman ke TV Anda...",
+    "Connecting to Plex…": "Menghubungkan ke Plex…",
     "Connecting to Stalker portal...": "Menghubungkan ke portal Stalker…",
     "Connecting...": "Menghubungkan…",
     "Continue watching?": "Lanjutkan menonton?",
@@ -284,12 +293,16 @@ var keyStrings = {
     "Copy the selected JSON with your device's copy command":
         "Salin JSON yang dipilih dengan perintah salin perangkat Anda",
     "Could not connect to Plex. Check the server address, token and network access.":
-        "Could not connect to Plex. Check the server address, token and network access.",
+        "Tidak dapat tersambung ke Plex. Periksa alamat server, token, dan akses jaringan.",
     "Could not connect to the server.": "Tidak dapat terhubung ke server.",
     "Could not create a pairing request. Find the server again to retry.":
         "Tidak dapat membuat permintaan pemasangan. Cari server lagi untuk mencoba kembali.",
     "Could not load. Select to retry.":
         "Gagal memuat. Pilih untuk mencoba lagi.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "Tidak dapat menyiapkan teks ini. Harap persingkat dan coba lagi.",
+    "Could not protect the private link. Use a different browser.":
+        "Tidak dapat melindungi tautan pribadi. Gunakan browser lain.",
     "Could not save provider settings.":
         "Tidak dapat menyimpan pengaturan penyedia.",
     "Could not save the approved command server settings.":
@@ -307,6 +320,8 @@ var keyStrings = {
     "Delete category": "Hapus kategori",
     "Delete channel": "Hapus saluran",
     "Delete list": "Hapus daftar",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "Pengiriman tidak dapat dikonfirmasi. Periksa TV Anda, atau coba lagi pesan yang sama sebelum sesi ini berakhir.",
     "Demo — moving test pattern": "Demo — pola uji bergerak",
     Description: "Deskripsi",
     "Description of remote control buttons":
@@ -321,7 +336,8 @@ var keyStrings = {
     "Diamond TV settings": "Pengaturan Diamond TV",
     Director: "Sutradara",
     "Disable HTTP remote": "Nonaktifkan kendali HTTP",
-    "Disable trusted remote support": "Disable trusted remote support",
+    "Disable trusted remote support":
+        "Nonaktifkan dukungan jarak jauh yang tepercaya",
     "Disabled by default. Enabling creates a new device access code.":
         "Nonaktif secara bawaan. Mengaktifkannya akan membuat kode akses perangkat baru.",
     Disconnect: "Putuskan",
@@ -335,13 +351,13 @@ var keyStrings = {
     "Dragon Media PRO": "Dragon Media PRO",
     "Dragon Media PRO settings": "Pengaturan Dragon Media PRO",
     Duration: "Durasi",
-    Edit: "Edit",
+    Edit: "Sunting",
     "Edit access key": "Edit kunci akses",
     "Edit category name": "Edit nama kategori",
     "Edit channel link": "Edit tautan saluran",
     "Edit playlist data": "Edit data daftar putar",
     "Edit VPortal link": "Edit tautan VPortal",
-    Editor: "Editor",
+    Editor: "Penyunting",
     "Enable HTTP remote": "Aktifkan kendali HTTP",
     English: "Inggris",
     "Enter a password (8 characters).": "Masukkan kata sandi (8 karakter).",
@@ -355,7 +371,7 @@ var keyStrings = {
     "Enter a username and password to access this service.":
         "Masukkan nama pengguna dan kata sandi untuk mengakses layanan ini.",
     "Enter a valid Plex server address and access token.":
-        "Enter a valid Plex server address and access token.",
+        "Masukkan alamat server Plex yang valid dan token akses.",
     "Enter a valid server address, for example 192.168.1.20:8081.":
         "Masukkan alamat server yang valid, misalnya 192.168.1.20:8081.",
     "Enter access key for": "Masukkan kunci akses untuk",
@@ -373,8 +389,8 @@ var keyStrings = {
         "Masukkan alamat MAC (mis. 00:1A:2B:3C:4D:5E)",
     "Enter Media Library URL": "Masukkan URL pustaka media",
     "Enter new category name": "Masukkan nama kategori baru",
-    "Enter Plex server address": "Enter Plex server address",
-    "Enter Plex token": "Enter Plex token",
+    "Enter Plex server address": "Masukkan alamat server Plex",
+    "Enter Plex token": "Masukkan token Plex",
     "Enter Provider Code": "Masukkan kode penyedia",
     "Enter Provider Code on PC or Phone":
         "Masukkan kode penyedia di PC atau ponsel",
@@ -389,6 +405,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Masukkan URL portal Stalker (mis. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "Masukkan nomor server (%1).",
+    "Enter text": "Masukkan teks",
     "Enter the access code separately, not in the server address.":
         "Masukkan kode akses secara terpisah, bukan di alamat server.",
     "Enter the command server IP or address.":
@@ -413,56 +430,55 @@ var keyStrings = {
     "Enter Xtream server URL (e.g. https://your-server:8080)":
         "Masukkan URL server Xtream (mis. https://your-server:8080)",
     "Enter your Plex access token. It is saved in this device's profile.":
-        "Enter your Plex access token. It is saved in this device's profile.",
+        "Masukkan token akses Plex Anda. Itu disimpan di profil perangkat ini.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
-        "Enter your Plex server address, for example http://192.168.1.25:32400",
+        "Masukkan alamat server Plex Anda, misalnya http://192.168.1.25:32400",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG dan arsip. Saluran: ",
-    "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
-    "EPG cache and wait time: %1": "EPG cache and wait time: %1",
-    "EPG cache updated: %1": "EPG cache updated: %1",
-    "EPG channels: %1": "EPG channels: %1",
+    "EPG archive or XML is invalid.": "Arsip EPG atau XML tidak valid.",
+    "EPG cache and wait time: %1": "EPG cache dan waktu tunggu: %1",
+    "EPG cache updated: %1": "EPG cache diperbarui: %1",
+    "EPG channels: %1": "saluran EPG: %1",
     "EPG could not start. Restart the player to reload its files. Playback will stop.":
         "EPG tidak dapat dimulai. Mulai ulang pemutar untuk memuat ulang berkasnya. Pemutaran akan berhenti.",
-    "EPG diagnostics": "EPG diagnostics",
+    "EPG diagnostics": "Diagnostik EPG",
     "EPG diagnostics could not load. Open it again to retry.":
-        "EPG diagnostics could not load. Open it again to retry.",
+        "Diagnostik EPG tidak dapat dimuat. Buka lagi untuk mencoba lagi.",
     "EPG download failed. Check the connection, HTTPS and source CORS permissions.":
-        "EPG download failed. Check the connection, HTTPS and source CORS permissions.",
-    "EPG download time: %1": "EPG download time: %1",
+        "Pengunduhan EPG gagal. Periksa koneksi, izin HTTPS dan sumber CORS.",
+    "EPG download time: %1": "EPG waktu pengunduhan: %1",
     "EPG download timed out. Retry the download.":
-        "EPG download timed out. Retry the download.",
-    "EPG elapsed: %1": "EPG elapsed: %1",
+        "Waktu pengunduhan EPG habis. Coba unduh lagi.",
+    "EPG elapsed: %1": "Waktu berlalu untuk EPG: %1",
     "EPG error. Open Information → EPG diagnostics.":
-        "EPG error. Open Information → EPG diagnostics.",
+        "Kesalahan EPG. Buka Informasi → Diagnostik EPG.",
     "EPG exceeds the device processing limit. Use a smaller source or archive window.":
-        "EPG exceeds the device processing limit. Use a smaller source or archive window.",
+        "EPG melebihi batas pemrosesan perangkat. Gunakan sumber yang lebih kecil atau rentang arsip yang lebih pendek.",
     "EPG has not started. Load an M3U playlist.":
-        "EPG has not started. Load an M3U playlist.",
+        "EPG belum dimulai. Muat daftar putar M3U.",
     "EPG local storage is unavailable or full.":
-        "EPG local storage is unavailable or full.",
+        "Penyimpanan lokal EPG tidak tersedia atau penuh.",
     "EPG processing and storage time: %1":
-        "EPG processing and storage time: %1",
+        "Waktu pemrosesan dan penyimpanan EPG: %1",
     "EPG processing stopped. Retry and check browser support.":
-        "EPG processing stopped. Retry and check browser support.",
-    "EPG programmes: %1": "EPG programmes: %1",
-    "EPG progress: %1": "EPG progress: %1",
-    "EPG ready": "EPG ready",
-    "EPG source returned HTTP %1": "EPG source returned HTTP %1",
-    "EPG source: %1": "EPG source: %1",
-    "EPG stopped during: %1": "EPG stopped during: %1",
-    "EPG unavailable on this browser": "EPG unavailable on this browser",
-    "EPG unavailable: %1": "EPG unavailable: %1",
+        "Pemrosesan EPG dihentikan. Coba lagi dan periksa dukungan browser.",
+    "EPG programmes: %1": "Program EPG: %1",
+    "EPG progress: %1": "Kemajuan EPG: %1",
+    "EPG ready": "EPG siap",
+    "EPG source returned HTTP %1": "Sumber EPG mengembalikan HTTP %1",
+    "EPG source: %1": "EPG sumber: %1",
+    "EPG stopped during: %1": "EPG berhenti selama: %1",
+    "EPG unavailable on this browser": "EPG tidak tersedia di browser ini",
+    "EPG unavailable: %1": "EPG tidak tersedia: %1",
     "EPG update failed; using saved programme guide":
-        "EPG update failed; using saved programme guide",
-    "EPG: downloading programme guide...":
-        "EPG: downloading programme guide...",
-    "EPG: opening local cache...": "EPG: opening local cache...",
-    "EPG: processing programme guide...": "EPG: processing programme guide...",
+        "Pembaruan EPG gagal; menggunakan panduan program yang disimpan",
+    "EPG: downloading programme guide...": "EPG: mengunduh panduan program...",
+    "EPG: opening local cache...": "EPG: membuka cache lokal...",
+    "EPG: processing programme guide...": "EPG: memproses panduan acara...",
     "EPG: updating saved programme guide...":
-        "EPG: updating saved programme guide...",
+        "EPG: memperbarui panduan program yang tersimpan...",
     "EPG: waiting for another player tab...":
-        "EPG: waiting for another player tab...",
+        "EPG: menunggu tab pemutar lain...",
     "ERROR: Category #%1 does not exist!<br>Please select another category.":
         "Kesalahan: Kategori #%1 tidak ada!<br>Pilih kategori lain.",
     "ERROR!": "Kesalahan!",
@@ -491,13 +507,13 @@ var keyStrings = {
     "File selection is not supported on this device":
         "Pemilihan file tidak didukung di perangkat ini",
     "Fill screen": "Isi layar",
-    Filter: "Filter",
+    Filter: "Penyaring",
     Filters: "Filter",
     "Find command server": "Cari server perintah",
     "Finding command servers...": "Mencari server perintah...",
     "First Run Setup": "Pengaturan awal",
     "Fit to screen": "Sesuaikan dengan layar",
-    Folders: "Folders",
+    Folders: "Folder",
     "Font type": "Jenis font",
     "For download settings file open": "Untuk mengunduh file pengaturan, buka",
     "For enter value open": "Untuk memasukkan nilai, buka",
@@ -538,8 +554,10 @@ var keyStrings = {
     "Interface transparency": "Transparansi antarmuka",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "Tautan saluran tidak valid! Masukkan host lengkap seperti dalam URL aliran di akun pelanggan (mis. subdomain.cdn-domain.tld)",
+    "Invalid cloud settings response": "Respon pengaturan cloud tidak valid",
     "Invalid protected source configuration":
         "Konfigurasi sumber yang dilindungi tidak valid",
+    "Invalid setting": "Pengaturan tidak valid",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "Pengaturan IpStream.one",
@@ -614,10 +632,12 @@ var keyStrings = {
     "No command server was found on this network.":
         "Tidak ditemukan server perintah di jaringan ini.",
     "No Plex servers are available for this account.":
-        "No Plex servers are available for this account.",
+        "Tidak ada server Plex yang tersedia untuk akun ini.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
-        "No programmes matched the playlist channels and dates. Check the source and device clock.",
+        "Tidak ada program yang cocok dengan saluran dan tanggal playlist. Periksa sumber dan jam perangkat.",
     "No saved settings found": "Tidak ditemukan pengaturan tersimpan",
+    "No supported system language. Choose a language.":
+        "Tidak ada bahasa sistem yang didukung. Pilih bahasa.",
     "Not configured": "Belum dikonfigurasi",
     "Not found": "Tidak ditemukan",
     "Not reduce video when showing the list (bugfix)":
@@ -633,18 +653,21 @@ var keyStrings = {
     "not set": "belum diatur",
     Off: "Nonaktif",
     Ok: "OK",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "Hanya TV ini yang dapat menerima pesan Anda. Tautan kedaluwarsa setelah 10 menit.",
     Open: "Buka",
     "Open in PiP": "Buka dalam PiP",
-    "Open Plex sign-in page": "Open Plex sign-in page",
+    "Open Plex sign-in page": "Buka halaman masuk Plex",
     "Open plex.tv/link on your phone or computer and enter this code.":
-        "Open plex.tv/link on your phone or computer and enter this code.",
+        "Buka plex.tv/link di ponsel atau komputer Anda dan masukkan kode ini.",
     "Or open this complete private link on another device:":
-        "Or open this complete private link on another device:",
-    "Original file": "Original file",
+        "Atau buka tautan pribadi lengkap ini di perangkat lain:",
+    "Original file": "File media asli",
     "Original text: %1": "Teks asli: %1",
     "OTT / APP host": "Server OTT / aplikasi",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "Pengaturan OTT Prime ONLINE",
+    "OTT-play remote input": "masukan jarak jauh OTT-play",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 tersedia. Unduh dan pasang sekarang?",
     "Overwrite current settings?": "Timpa pengaturan saat ini?",
@@ -674,9 +697,10 @@ var keyStrings = {
     "PiP window position": "Posisi jendela PiP",
     "PiP window size": "Ukuran jendela PiP",
     Play: "Putar",
-    Playback: "Playback",
+    Playback: "Pemutaran media",
     "Player and device info": "Informasi pemutar dan perangkat",
     "Player could not start": "Pemutar tidak dapat dimulai",
+    "Player default": "Pilihan bawaan pemutar",
     "Player info:": "Informasi pemutar:",
     Playlist: "Daftar putar",
     "Playlist file": "File daftar putar",
@@ -685,11 +709,11 @@ var keyStrings = {
     "Playlist Name": "Nama daftar putar",
     "Playlist URL": "URL daftar putar",
     Plex: "Plex",
-    "Plex connection failed": "Plex connection failed",
-    "Plex settings": "Plex settings",
+    "Plex connection failed": "Koneksi Plex gagal",
+    "Plex settings": "Pengaturan Plex",
     "Plex sign-in failed. Check the connection and try again, or enter the server address and token.":
-        "Plex sign-in failed. Check the connection and try again, or enter the server address and token.",
-    "Plex token": "Plex token",
+        "Plex gagal masuk. Periksa koneksi dan coba lagi, atau masukkan alamat server dan token.",
+    "Plex token": "Token Plex",
     POLMEDIA: "POLMEDIA",
     "POLMEDIA settings": "Pengaturan POLMEDIA",
     "Portal URL": "URL portal",
@@ -697,8 +721,11 @@ var keyStrings = {
     Postpaid: "Pascabayar",
     PROST: "PROST",
     "PROST settings": "Pengaturan PROST",
+    "Preferred audio language": "Bahasa audio pilihan",
+    "Preferred subtitle language": "Bahasa subtitle pilihan",
     Prepaid: "Prabayar",
-    "Preparing secure remote input...": "Preparing secure remote input...",
+    "Preparing secure remote input...":
+        "Mempersiapkan input jarak jauh yang aman...",
     Prev: "Sebelumnya",
     "Preview in channel list": "Pratinjau dalam daftar saluran",
     Previous: "Sebelumnya",
@@ -729,31 +756,31 @@ var keyStrings = {
     "Remote (number buttons N/A)": "Kendali jarak jauh tanpa tombol angka",
     "Remote control": "Kendali jarak jauh",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "Kendali jarak jauh mengizinkan diagnostik. Siap untuk operator.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "Kendali jarak jauh mengizinkan diagnostik. Menunggu untuk menyambung kembali.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
-    "Remote diagnostics": "Remote diagnostics",
+        "Kendali jarak jauh mencakup tangkapan layar pemutar media, termasuk pengaturannya. Gambar mungkin berisi informasi pribadi. Aplikasi dapat menangkap tangkapan layar secara langsung tanpa persetujuan tambahan. Di browser, pilih tab atau jendela yang akan diambil gambarnya di perangkat ini.",
+    "Remote diagnostics": "Diagnostik jarak jauh",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "Diagnostik jarak jauh dikumpulkan untuk koneksi ini (hingga 10 menit per sesi).",
     "Remote diagnostics is collecting for this page.":
-        "Remote diagnostics is collecting for this page.",
-    "Remote diagnostics is off.": "Remote diagnostics is off.",
+        "Diagnostik jarak jauh dikumpulkan untuk halaman ini.",
+    "Remote diagnostics is off.": "Diagnostik jarak jauh tidak aktif.",
     "Remote diagnostics is ready for an authorized operator.":
-        "Remote diagnostics is ready for an authorized operator.",
+        "Diagnostik jarak jauh siap untuk operator resmi.",
     "Remote diagnostics is unavailable on this player.":
-        "Remote diagnostics is unavailable on this player.",
+        "Diagnostik jarak jauh tidak tersedia pada pemutar ini.",
     "Remote diagnostics stopped. Enable it again to grant access.":
-        "Remote diagnostics stopped. Enable it again to grant access.",
+        "Diagnostik jarak jauh dihentikan. Aktifkan lagi untuk memberikan akses.",
     "Remote input expired. Open a new session to try again.":
-        "Remote input expired. Open a new session to try again.",
+        "Input jarak jauh telah habis masa berlakunya. Buka sesi baru untuk mencoba lagi.",
     "Remote input session is unavailable. Open a new session to try again.":
-        "Remote input session is unavailable. Open a new session to try again.",
-    "Remote screenshots": "Remote screenshots",
+        "Sesi input jarak jauh tidak tersedia. Buka sesi baru untuk mencoba lagi.",
+    "Remote screenshots": "Tangkapan layar jarak jauh",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "Tangkapan layar jarak jauh diperbolehkan selama 10 menit. Tutup pengaturan untuk mengambil gambar.",
+    "Remote screenshots are off.": "Tangkapan layar jarak jauh tidak aktif.",
     "Remote session expired": "Sesi jarak jauh kedaluwarsa",
     "Remote text entry": "Input teks jarak jauh",
     "Remote text entry denied": "Input teks jarak jauh ditolak",
@@ -781,7 +808,8 @@ var keyStrings = {
     "Restart stream / Live": "Mulai ulang aliran / langsung",
     "Resume from archive?": "Lanjutkan dari arsip?",
     Retry: "Coba lagi",
-    "Retry EPG download": "Retry EPG download",
+    "Retry EPG download": "Coba lagi unduh EPG",
+    "Retry same message": "Coba lagi pesan yang sama",
     "Return to previous channel": "Kembali ke saluran sebelumnya",
     Rewind: "Geser posisi putar",
     "Rewind step by buttons %1/%2": "Langkah mundur tombol %1/%2",
@@ -793,32 +821,35 @@ var keyStrings = {
     "Save & load channels": "Simpan dan muat saluran",
     "Save and load": "Simpan dan muat",
     "Save and load channels": "Simpan dan muat saluran",
-    "Save and open library": "Save and open library",
+    "Save and open library": "Simpan dan buka perpustakaan",
     "Save Settings": "Simpan pengaturan",
     "Save settings": "Simpan pengaturan",
     "Save settings and load channel list":
         "Simpan pengaturan dan muat daftar saluran",
     "Save settings to storage": "Simpan pengaturan ke penyimpanan",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "Pindai kode QR di TV Anda, atau tempel tautan pemasangan pribadi lengkapnya di bawah.",
     "Scan this QR code with your phone to enter text.":
-        "Scan this QR code with your phone to enter text.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+        "Pindai kode QR ini dengan ponsel Anda untuk memasukkan teks.",
+    "Screen sharing could not start.": "Berbagi layar tidak dapat dimulai.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "Berbagi layar dibatalkan atau tidak tersedia.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "Izin tangkapan layar tidak dapat diaktifkan.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "Tangkapan layar tersedia saat remote control tersambung.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "Tangkapan layar tidak tersedia pada platform ini.",
     Script: "Skenario",
     Search: "Cari",
+    "Search languages": "Cari bahasa",
     "Search programme": "Cari program",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
-        "Secure remote input could not start. Please try again or use the on-screen keyboard.",
+        "Input jarak jauh yang aman tidak dapat dimulai. Silakan coba lagi atau gunakan keyboard di layar.",
     "Secure remote input could not start. Please use the on-screen keyboard.":
-        "Secure remote input could not start. Please use the on-screen keyboard.",
+        "Input jarak jauh yang aman tidak dapat dimulai. Silakan gunakan keyboard di layar.",
     "Secure remote input is unavailable on this device. Use the on-screen keyboard.":
-        "Secure remote input is unavailable on this device. Use the on-screen keyboard.",
+        "Input jarak jauh yang aman tidak tersedia pada perangkat ini. Gunakan keyboard di layar.",
     "Select a stream type:<br>%1": "Pilih jenis aliran:<br>%1",
     "Select category to add channel":
         "Pilih kategori untuk menambahkan saluran",
@@ -830,13 +861,14 @@ var keyStrings = {
         "Pilih sumber templat daftar putar untuk EPG dan logo",
     "Select Stalker portal": "Pilih portal Stalker",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "Pilih sumber tangkapan layar di browser",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "Pilih tab atau jendela pemutar dalam dialog berbagi browser.",
     "Send request": "Kirim permintaan",
     "Send settings": "Kirim pengaturan",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Kirim kode ini dari proksi Anda di header Authorization: Bearer.",
+    "Send to TV": "Kirim ke TV",
     Server: "Server",
     "Server address": "Alamat server",
     "Server address (for example 192.168.1.20:8081)":
@@ -845,10 +877,13 @@ var keyStrings = {
     "Server URL": "URL server",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "Server tidak tersedia. Mencoba lagi secara otomatis; periksa alamat dan akses jaringannya.",
+    "Session closed. Start a new one from your TV when needed.":
+        "Sesi ditutup. Mulai yang baru dari TV Anda bila diperlukan.",
     Set: "Atur",
     "Set parental code": "Atur kode orang tua",
     "Set timer?": "Atur pengatur waktu?",
     Settings: "Pengaturan",
+    "Settings changed while editing": "Pengaturan diubah saat mengedit",
     "Settings changed. Discovery was canceled.":
         "Pengaturan berubah. Pencarian dibatalkan.",
     "Settings copied": "Pengaturan disalin",
@@ -858,10 +893,15 @@ var keyStrings = {
     "Settings imported": "Pengaturan diimpor",
     "Settings JSON": "Pengaturan dalam format JSON",
     "Settings loaded from storage": "Pengaturan dimuat dari penyimpanan",
+    "Settings received. Restarting player...":
+        "Pengaturan diterima. Memulai ulang pemutar...",
     "Settings STB": "Pengaturan STB",
     "Settings saved": "Pengaturan disimpan",
     "Settings saved to storage": "Pengaturan disimpan ke penyimpanan",
     "Settings sended!": "Pengaturan terkirim!",
+    "Settings source changed": "Sumber pengaturan diubah",
+    "Settings storage rejected write":
+        "Penyimpanan pengaturan menolak penulisan",
     "Several command servers were found. Select one below.":
         "Beberapa server perintah ditemukan. Pilih salah satu di bawah.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -898,29 +938,29 @@ var keyStrings = {
     "Sign in to the protected source again":
         "Masuk kembali ke sumber yang dilindungi",
     "Sign in to your Plex account and choose a server. No password is entered in this player.":
-        "Sign in to your Plex account and choose a server. No password is entered in this player.",
-    "Sign in with Plex": "Sign in with Plex",
+        "Masuk ke akun Plex Anda dan pilih server. Tidak ada kata sandi yang dimasukkan di pemutar ini.",
+    "Sign in with Plex": "Masuk dengan Plex",
     "Sign in: %1": "Masuk: %1",
     "Sign out of all sources": "Keluar dari semua sumber",
     "Sign-in opens when you load a protected playlist.":
         "Jendela masuk terbuka saat Anda memuat daftar putar yang dilindungi.",
     "Sleep timer": "Pengatur waktu tidur",
     "Sort channels": "Urutkan saluran",
-    "Source access": "Source access",
-    "Source sign-in required": "Source sign-in required",
+    "Source access": "Akses ke sumber media",
+    "Source sign-in required": "Diperlukan proses masuk sumber",
     "Source sign-in was cancelled": "Proses masuk ke sumber dibatalkan",
     "Stalker Portal Provider": "Penyedia portal Stalker",
     "Stalker portal settings": "Pengaturan portal Stalker",
     "Stalker portals": "Portal Stalker",
     "Starting...": "Memulai…",
     Status: "Status",
-    Stop: "Stop",
-    "Stop browser sharing": "Stop browser sharing",
-    "Stop current capture": "Stop current capture",
-    "Stop diagnostics": "Stop diagnostics",
+    Stop: "Berhenti",
+    "Stop browser sharing": "Hentikan berbagi browser",
+    "Stop current capture": "Hentikan pengumpulan data saat ini",
+    "Stop diagnostics": "Hentikan diagnostik",
     "Stop playback and return to live":
         "Hentikan pemutaran dan kembali ke siaran langsung",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "Hentikan tangkapan layar",
     "Stream could not be played": "Aliran tidak dapat diputar",
     "Stream type: %1": "Jenis aliran: %1",
     "String for search": "Kata pencarian",
@@ -931,23 +971,29 @@ var keyStrings = {
     "Switch sound track": "Ganti trek audio",
     "Switch subtitle": "Ganti subtitel",
     "Switch to this list": "Beralih ke daftar ini",
-    "Swop URL": "Swop URL",
+    "Swop URL": "URL Swop",
+    "System language": "Bahasa sistem",
     "saved on this device": "tersimpan di perangkat ini",
     select: "pilih",
     small: "kecil",
     system: "sistem",
     Tabox: "Tabox",
     "Tabox settings": "Pengaturan Tabox",
-    "Text is too long for remote input.": "Text is too long for remote input.",
+    "Text is too long for remote input.":
+        "Teks terlalu panjang untuk input jarak jauh.",
+    "Text is too long. Please shorten it before sending.":
+        "Teks terlalu panjang. Harap dipersingkat sebelum dikirim.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "Teks terkirim. Periksa TV Anda untuk memastikan teksnya muncul.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "Sumber tangkapan layar browser sudah siap.",
     "The command server discovery URL is invalid.":
         "URL pencarian server perintah tidak valid.",
     "The device ID in the address is invalid.":
         "ID perangkat di alamat tidak valid.",
     "The discovery response is invalid.": "Respons pencarian tidak valid.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "Browser ini tidak dapat mengidentifikasi sumber tangkapan layar yang dipilih.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "Browser ini tidak dapat melakukan pemasangan otomatis dengan aman. Perbarui browser atau masukkan pengaturan server perintah secara manual.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -956,6 +1002,10 @@ var keyStrings = {
         "Pemutar HTTPS ini tidak dapat terhubung ke server HTTP. Gunakan server HTTPS atau buka pemutar melalui HTTP.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "Aplikasi Play ini memerlukan HTTPS. Minta URL daftar putar atau server HTTPS kepada penyedia.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "Tautan penyandingan ini telah kedaluwarsa. Buka sesi baru di TV Anda.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "Sesi aman ini tidak tersedia atau kedaluwarsa. Buka sesi baru di TV dan gunakan tautan lengkapnya.",
     Timer: "Pengatur waktu",
     "Timer: switch to channel?": "Pengatur waktu: pindah ke saluran ini?",
     "Timeshift: one minute back": "Timeshift: mundur satu menit",
@@ -974,13 +1024,13 @@ var keyStrings = {
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Pengaturan Top-Tv",
     "Trust this server for remote support":
-        "Trust this server for remote support",
+        "Percayai server ini untuk dukungan jarak jauh",
     "Trusted access could not be removed from device storage.":
-        "Trusted access could not be removed from device storage.",
+        "Akses tepercaya tidak dapat dihapus dari penyimpanan perangkat.",
     "Trusted diagnostics is unavailable because device storage could not be updated.":
-        "Trusted diagnostics is unavailable because device storage could not be updated.",
+        "Diagnostik tepercaya tidak tersedia karena penyimpanan perangkat tidak dapat diperbarui.",
     "Trusted diagnostics is waiting for this player to reconnect.":
-        "Trusted diagnostics is waiting for this player to reconnect.",
+        "Diagnostik tepercaya menunggu pemutar ini terhubung kembali.",
     "Try demo": "Coba demo",
     "TV DOSUG": "TV DOSUG",
     "TV DOSUG settings": "Pengaturan TV DOSUG",
@@ -1000,18 +1050,20 @@ var keyStrings = {
     "Use an HTTP or HTTPS server address.":
         "Gunakan alamat server HTTP atau HTTPS.",
     "Use an HTTPS command server for remote diagnostics.":
-        "Use an HTTPS command server for remote diagnostics.",
+        "Gunakan server perintah HTTPS untuk diagnostik jarak jauh.",
     "Use HTTP or HTTPS without a username or password in the address.":
         "Gunakan HTTP atau HTTPS tanpa nama pengguna atau kata sandi dalam alamat.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "Gunakan KIRI/KANAN untuk memilih kontrol, OK untuk mengaktifkannya, dan ATAS/BAWAH untuk menggulir.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "Gunakan tautan lengkap, termasuk bagian setelah #. Jangan membaginya dengan orang lain.",
     "Use Up / Down to scroll. Back to close.":
         "Gunakan Atas / Bawah untuk menggulir. Kembali untuk menutup.",
     Username: "Nama pengguna",
     "Username or password is missing.":
         "Nama pengguna atau kata sandi belum diisi.",
     "Valid for 10 minutes. Back closes this session.":
-        "Valid for 10 minutes. Back closes this session.",
+        "Berlaku selama 10 menit. Kembali menutup sesi ini.",
     Version: "Versi",
     "VIP-IP.COM": "VIP-IP.COM",
     "VIP-IP.COM settings": "Pengaturan VIP-IP.COM",
@@ -1023,8 +1075,8 @@ var keyStrings = {
     "VPortal profiles": "Profil VPortal",
     "VPortal request failed":
         "Tidak dapat memuat VPortal. Periksa tautan, kunci akses, dan ketersediaan portal.",
-    volume: "volume",
-    "Waiting for sign-in…": "Waiting for sign-in…",
+    volume: "volume suara",
+    "Waiting for sign-in…": "Menunggu proses masuk…",
     "Wrong parental code !!!": "Kode orang tua salah!",
     "Xtream Codes Provider": "Penyedia Xtream Codes",
     "Xtream Codes settings": "Pengaturan Xtream Codes",
@@ -1040,8 +1092,8 @@ var keyStrings = {
         "Tidak dapat memproses daftar saluran. Periksa data penyedia Anda!",
     Радуга: "Радуга",
     "Радуга settings": "Pengaturan Радуга",
-    "Редактирование ID": "Edit ID",
-    "Редактирование PIN": "Edit PIN",
+    "Редактирование ID": "Sunting ID",
+    "Редактирование PIN": "Sunting PIN",
     Шаравоз: "Шаравоз",
     "Шаравоз settings": "Pengaturan Шаравоз",
     "↑↓ Scroll": "↑↓ Gulir",

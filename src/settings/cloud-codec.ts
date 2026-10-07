@@ -151,18 +151,12 @@ function writeCloudSettings(
 (window as any).__ottCloudSettingsCodec = {
     read: function (xml: string) {
         return readCloudSettings(xml, function (key) {
-            return (
-                key !== "__ottKioskV1" &&
-                (window as any).OttPlayCore.classicPortableKey(key, true)
-            );
+            return (window as any).isPortableSettingsKey(key);
         });
     },
     write: function (items: Record<string, string>) {
         return writeCloudSettings(items, function (key) {
-            return (
-                key !== "__ottKioskV1" &&
-                (window as any).OttPlayCore.classicPortableKey(key, true)
-            );
+            return (window as any).isPortableSettingsKey(key);
         });
     },
 };

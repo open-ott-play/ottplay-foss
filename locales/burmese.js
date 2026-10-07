@@ -61,14 +61,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv ဆက်တင်များ",
     "Allow diagnostics for 10 minutes": "ရောဂါရှာဖွေမှုများကို 10 မိနစ်ခွင့်ပြုပါ။",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "ဖန်သားပြင်ဓာတ်ပုံများကို 10 မိနစ်ကြာ ခွင့်ပြုပါ။",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "ဤဆာဗာအား ရောဂါရှာဖွေရေးကောင်တာများစုဆောင်းပြီး ဤထုတ်လွှင့်မှု သို့မဟုတ် ပလေယာကို ပြန်လည်စတင်ခွင့်ပြုပါ။ ယာယီဝင်ရောက်ခွင့်သည် ၁၀ မိနစ်ဖြစ်သည်။ ပြန်လည်ချိတ်ဆက်ခြင်း သို့မဟုတ် ပြန်လည်စတင်ပြီးနောက် ယုံကြည်စိတ်ချရသော ပံ့ပိုးကူညီမှုကို ဆက်လက်ရရှိနိုင်မည်ဖြစ်သည်။ ဖမ်းယူမှုတစ်ခုစီသည် 10 မိနစ်အကြာတွင်သက်တမ်းကုန်ဆုံးဆဲဖြစ်သည်။ ဝှက်ထားစဉ် သို့မဟုတ် အော့ဖ်လိုင်းတွင် စုဆောင်းမှု ခေတ္တရပ်သည်။",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "ဤရှေ့မျက်နှာစာစက်ရှင်အတွက် ပြန်ဖွင့်ခြင်း၊ ကွန်ရက်နှင့် ထည့်သွင်းခြင်းကောင်တာများကို စုဆောင်းရန် ဤဆာဗာအား ခွင့်ပြုပါ။ HTTPS နှင့် ဆာဗာခွင့်ပြုချက် လိုအပ်သည်။ 10 မိနစ်အကြာတွင်၊ ဝှက်ထားသည့်အခါ သို့မဟုတ် ချိတ်ဆက်မှုပြတ်တောက်သွားသည့်အခါ ရပ်သည်။",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "ဤဆာဗာအား ပုံများကို 10 မိနစ်ကြာ တောင်းဆိုခွင့်ပြုပါ။ ပုံများတွင် ကိုယ်ရေးကိုယ်တာအချက်အလက်များ ပါဝင်နိုင်သည်။ ဘရောင်ဇာတစ်ခုတွင်၊ ပလေယာတက်ဘ် သို့မဟုတ် ဝင်းဒိုးကို ရွေးပါ။ ပြန်လည်စတင်ခြင်း သို့မဟုတ် ချိတ်ဆက်မှုဖြတ်ခြင်းတွင် ခွင့်ပြုချက် ပြီးဆုံးသည်။",
     "Allowlist this Device ID": "ဤစက်ပစ္စည်း ID အား စာရင်းခွင့်ပြုပါ။",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS မီဒီယာဖွင့်စက်တစ်ဦးသည် HTTP EPG အရင်းအမြစ်ကို ဒေါင်းလုဒ်လုပ်၍မရပါ။ HTTPS အရင်းအမြစ်ကို အသုံးပြုပါ။",
@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "နောက်ပြန်/ရှေ့သို့ 1 မိနစ်ကျော်သွားပါ။",
     "Background color": "နောက်ခံအရောင်",
     "Background color of selected item": "ရွေးထားသည့်အရာ၏ နောက်ခံအရောင်",
+    "Backup state changed": "အရန်သိမ်းမှု အခြေအနေ ပြောင်းသွားသည်။",
     "Balance, $": "လက်ကျန်၊ $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +111,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "ချန်နယ်များကိုပြောင်းသည့်အခါ အနက်ရောင်မျက်နှာပြင်",
     Blue: "အပြာရောင်",
+    "Bookmark age (days): %1": "စာညှပ်အသက် (ရက်)- %1",
     "Bookmark age: %1 days": "စာညှပ်အသက်- %1 ရက်များ",
     "Browse folders": "ဖိုင်တွဲများကို ရှာဖွေပါ။",
     "Buffer Size, s": "ကြိုတင်သိမ်းဆည်းမှု အရွယ်အစား၊ စက္ကန့်",
@@ -158,11 +160,14 @@ var keyStrings = {
     "Choose language": "ဘာသာစကားကို ရွေးပါ။",
     "Choose Plex server": "Plex ဆာဗာကို ရွေးပါ။",
     "Choose provider": "ဝန်ဆောင်မှုပေးသူကို ရွေးပါ။",
-    Classic: "Classic",
+    Classic: "မူလပုံစံ",
     "Clear all settings?": "ဆက်တင်အားလုံးကို ရှင်းမလား။",
     "Clear settings": "ဆက်တင်များကို ရှင်းလင်းပါ။",
     Close: "ပိတ်ပါ။",
     "Close PiP": "PiP ကို ပိတ်ပါ။",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "ကလောက်တွင် သိမ်းဆည်းခြင်း/ကလောက်မှ ရယူခြင်းအတွက် STB ဖမ်းဝဲ လိုအပ်သည် (host_ott သတ်မှတ်မထားပါ)",
+    "Cloud transfer failed": "Cloud လွှဲပြောင်းမှု မအောင်မြင်ပါ။",
     Code: "ကုဒ်",
     Color: "အရောင်",
     "Color spectrum": "အရောင်ရောင်စဉ်",
@@ -181,6 +186,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "လိုက်ဖက်ညီမှုအတွက် အလုပ်လုပ်စေသောစနစ်ကို တင်၍မရပါ။ ထပ်ကြိုးစားရန် မီဒီယာဖွင့်စက်ကို ပြန်ဖွင့်ပါ။",
     "Compatible HLS": "လိုက်ဖက်သော HLS",
+    "Complete pairing link": "တွဲချိတ်ရန် လင့်ခ်အပြည့်အစုံ",
     "Configure All4you.tv in Settings -> Provider Settings":
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် All4you.tv ကို စီစဉ်သတ်မှတ်ပါ။",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -253,22 +259,24 @@ var keyStrings = {
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် Шаравоз ကို စီစဉ်သတ်မှတ်ပါ။",
     Connect: "ချိတ်ဆက်ပါ။",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ဖန်သားပြင်ဓာတ်ပုံများကို ခွင့်ပြုခြင်းမပြုမီ HTTPS အမိန့်ပေးဆာဗာကို ချိတ်ဆက်ပါ။",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ဖန်သားပြင်ဓာတ်ပုံများကို အသုံးပြုရန် HTTPS အမိန့်ဆာဗာကို ချိတ်ဆက်ပါ။",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "ချို့ယွင်းချက်စစ်ဆေးမှုကို ဖွင့်ရန် အဝေးမှထိန်းချုပ်မှုကို ချိတ်ဆက်ပါ။",
     "Connect this player to a command server first.":
         "ဤမီဒီယာဖွင့်စက်ကို အမိန့်ပေးဆာဗာတစ်ခုသို့ ဦးစွာချိတ်ဆက်ပါ။",
+    "Connect to TV": "TV သို့ ချိတ်ဆက်ပါ။",
     Connected: "ချိတ်ဆက်ထားသည်။",
     "Connected. Waiting for the channel list...":
         "ချိတ်ဆက်ထားသည်။ ချန်နယ်စာရင်းကို စောင့်နေသည်...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "အဝေးမှထိန်းချုပ်မှုကို ချိတ်ဆက်ခြင်းဖြင့် ဤဆာဗာအား ပလေယာ၏ ချို့ယွင်းချက်များကို စစ်ဆေးပြုပြင်ခွင့်ပေးသည်။ ပြန်လည်စတင်ပြီးနောက်တွင်လည်း ဝင်ရောက်ခွင့် ဆက်ရှိနေပြီး ချိတ်ဆက်မှုဖြတ်သောအခါမှ ရပ်ဆိုင်းသည်။ စစ်ဆေးရေးဒေတာ စုဆောင်းမှုတစ်ကြိမ်လျှင် 10 မိနစ်သာ ခွင့်ပြုသည်။",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "ဖွင့်ထားသော အဝေးထိန်းထိန်းချုပ်ချိတ်ဆက်မှုအတွက် အဝေးထိန်းရောဂါရှာဖွေမှုများကို ချိတ်ဆက်ခြင်း။",
     "Connecting remote diagnostics for this page.":
         "ဤစာမျက်နှာအတွက် အဝေးထိန်းရောဂါရှာဖွေမှုများကို ချိတ်ဆက်ခြင်း။",
+    "Connecting securely to your TV...": "သင့် TV သို့ လုံခြုံစွာချိတ်ဆက်နေသည်...",
     "Connecting to Plex…": "Plex သို့ ချိတ်ဆက်နေသည်...",
     "Connecting to Stalker portal...": "Stalker ပေါ်တယ်သို့ ချိတ်ဆက်နေသည်…",
     "Connecting...": "ချိတ်ဆက်နေသည်…",
@@ -285,6 +293,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "တွဲချိတ်ရန် တောင်းဆိုချက်ကို မဖန်တီးနိုင်ခဲ့ပါ။ ထပ်ကြိုးစားရန် ဆာဗာကို ထပ်မံရှာဖွေပါ။",
     "Could not load. Select to retry.": "မတင်နိုင်ပါ။ ထပ်ကြိုးစားရန် ရွေးချယ်ပါ။",
+    "Could not prepare this text. Please shorten it and try again.":
+        "ဤစာသားကို မပြင်ဆင်နိုင်ပါ။ ၎င်းကို အတိုချုံ့ပြီး ထပ်စမ်းကြည့်ပါ။",
+    "Could not protect the private link. Use a different browser.":
+        "သီးသန့်လင့်ခ်ကို မကာကွယ်နိုင်ပါ။ မတူညီသောဘရောက်ဆာကိုသုံးပါ။",
     "Could not save provider settings.": "ဝန်ဆောင်မှုပေးသူ၏ ဆက်တင်များကို သိမ်းဆည်း၍မရပါ။",
     "Could not save the approved command server settings.":
         "အတည်ပြုထားသော အမိန့်ပေးဆာဗာ ဆက်တင်များကို မသိမ်းဆည်းနိုင်ပါ။",
@@ -300,6 +312,8 @@ var keyStrings = {
     "Delete category": "အမျိုးအစားကို ဖျက်ပါ။",
     "Delete channel": "ချန်နယ်ကို ဖျက်ပါ။",
     "Delete list": "စာရင်းကိုဖျက်ပါ။",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "ပေးပို့မှုကို အတည်မပြုနိုင်ပါ။ သင့် TV ကို စစ်ဆေးပါ၊ သို့မဟုတ် ဤစက်ရှင် မကုန်ဆုံးမီ တူညီသော မက်ဆေ့ချ်ကို ထပ်စမ်းကြည့်ပါ။",
     "Demo — moving test pattern": "ဒီမို — ရွေ့လျားစမ်းသပ်မှုပုံစံ",
     Description: "ဖော်ပြချက်",
     "Description of remote control buttons": "အဝေးထိန်းခလုတ် လမ်းညွှန်",
@@ -379,6 +393,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker ပေါ်တယ် URL (ဥပမာ http://your-portal/stalker_portal/c/) ထည့်ပါ",
     "Enter server number (%1).": "ဆာဗာနံပါတ် (%1) ထည့်ပါ။",
+    "Enter text": "စာသားထည့်ပါ။",
     "Enter the access code separately, not in the server address.":
         "ဆာဗာလိပ်စာတွင်မဟုတ်ဘဲ ဝင်ရောက်ခွင့်ကုဒ်ကို သီးခြားစီထည့်ပါ။",
     "Enter the command server IP or address.": "အမိန့်ပေးဆာဗာ IP သို့မဟုတ် လိပ်စာကို ထည့်ပါ။",
@@ -523,8 +538,10 @@ var keyStrings = {
     "Interface transparency": "မျက်နှာပြင် ပွင့်လင်းမြင်သာမှု",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "မမှန်ကန်သော ချန်နယ်လင့်ခ်။ ကက်ဘိနက်စီးကြောင်း URL (ဥပမာ subdomain.cdn-domain.tld) တွင်ကဲ့သို့ လက်ခံသူအပြည့်ထည့်ပါ",
+    "Invalid cloud settings response": "မမှန်ကန်သော cloud ဆက်တင်များ တုံ့ပြန်မှု",
     "Invalid protected source configuration":
         "အကာအကွယ်ပေးထားသော ရင်းမြစ်ဖွဲ့စည်းပုံ မမှန်ကန်ပါ။",
+    "Invalid setting": "မမှန်ကန်သော ဆက်တင်",
     "IPTV token": "IPTV တိုကင်",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one ဆက်တင်များ",
@@ -603,6 +620,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "အစီအစဉ်များနှင့် ရက်စွဲများနှင့် ကိုက်ညီသည့် အစီအစဉ်မရှိပါ။ အရင်းအမြစ်နှင့် စက်နာရီကို စစ်ဆေးပါ။",
     "No saved settings found": "သိမ်းဆည်းထားသော ဆက်တင်များကို မတွေ့ပါ။",
+    "No supported system language. Choose a language.":
+        "ပံ့ပိုးထားသော စနစ်ဘာသာစကားမရှိပါ။ ဘာသာစကားတစ်ခုကို ရွေးပါ။",
     "Not configured": "မသတ်မှတ်ရသေးပါ",
     "Not found": "ရှာမတွေ့ပါ။",
     "Not reduce video when showing the list (bugfix)":
@@ -618,6 +637,8 @@ var keyStrings = {
     "not set": "မသတ်မှတ်ထားဘူး။",
     Off: "ပိတ်",
     Ok: "အိုကေ",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "ဤ TV သာလျှင် သင့်မက်ဆေ့ဂျ်ကို လက်ခံနိုင်သည်။ လင့်ခ်သည် 10 မိနစ်အကြာတွင်သက်တမ်းကုန်ဆုံးသည်။",
     Open: "ဖွင့်ပါ",
     "Open in PiP": "PiP တွင် ဖွင့်ပါ။",
     "Open Plex sign-in page": "Plex အကောင့်ဝင်ခြင်းစာမျက်နှာကိုဖွင့်ပါ။",
@@ -630,6 +651,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP လက်ခံဆောင်ရွက်ပေးသူ",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE ဆက်တင်များ",
+    "OTT-play remote input": "OTT-play အဝေးထိန်း ထည့်သွင်းမှု",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 ရနိုင်ပါသည်။ ယခုဒေါင်းလုဒ်လုပ်ပြီး ထည့်သွင်းမလား။",
     "Overwrite current settings?": "လက်ရှိဆက်တင်များကို ထပ်ရေးမလား။",
@@ -662,6 +684,7 @@ var keyStrings = {
     Playback: "ဖွင့်ကြည့်ခြင်း",
     "Player and device info": "ပလေယာနှင့် စက်အချက်အလက်",
     "Player could not start": "မီဒီယာဖွင့်စက်သည် မစတင်နိုင်ပါ။",
+    "Player default": "မီဒီယာဖွင့်စက်၏ မူလရွေးချယ်မှု",
     "Player info:": "မီဒီယာဖွင့်စက် အချက်အလက်:",
     Playlist: "အစီအစဉ်",
     "Playlist file": "အစီအစဉ်ဖိုင်",
@@ -683,6 +706,8 @@ var keyStrings = {
     Postpaid: "အသုံးပြုပြီးမှ ငွေပေးချေခြင်း",
     PROST: "PROST",
     "PROST settings": "PROST ဆက်တင်များ",
+    "Preferred audio language": "နှစ်သက်သော အသံဘာသာစကား",
+    "Preferred subtitle language": "ဦးစားပေးစာတန်းထိုးဘာသာစကား",
     Prepaid: "ကြိုတင်ငွေပေးချေခြင်း။",
     "Preparing secure remote input...": "လုံခြုံသော အဝေးထိန်းထည့်သွင်းမှုကို ပြင်ဆင်နေသည်...",
     Prev: "ယခင်",
@@ -716,14 +741,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "အဝေးထိန်း (နံပါတ်ခလုတ်များမပါ)",
     "Remote control": "အဝေးထိန်းခလုတ်",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "အဝေးထိန်းစနစ်သည် ရောဂါရှာဖွေမှုများကို ခွင့်ပြုသည်။ အော်ပရေတာအတွက် အဆင်သင့်ဖြစ်နေပါပြီ။",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "အဝေးထိန်းစနစ်သည် ရောဂါရှာဖွေမှုများကို ခွင့်ပြုသည်။ ပြန်လည်ချိတ်ဆက်ရန် စောင့်နေသည်။",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "အဝေးမှထိန်းချုပ်မှုဖြင့် ဆက်တင်များအပါအဝင် ပလေယာ၏ ဖန်သားပြင်ဓာတ်ပုံများကို ရိုက်ယူနိုင်သည်။ ပုံများတွင် ကိုယ်ရေးကိုယ်တာအချက်အလက်များ ပါဝင်နိုင်သည်။ အက်ပ်အတွင်း တိုက်ရိုက်ရိုက်ယူရန် ထပ်မံခွင့်ပြုချက် မလိုအပ်ပါ။ ဘရောင်ဇာတွင် ရိုက်ယူမည့်အရင်းအမြစ်ကို ဤစက်ပေါ်၌ ရွေးချယ်ရန် လိုအပ်သည်။",
     "Remote diagnostics": "အဝေးထိန်းရောဂါရှာဖွေရေး",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "အဝေးထိန်းရောဂါရှာဖွေခြင်းများသည် ဤချိတ်ဆက်မှုအတွက် စုဆောင်းနေသည် (စက်ရှင်တစ်ခုလျှင် 10 မိနစ်အထိ)။",
     "Remote diagnostics is collecting for this page.":
         "အဝေးထိန်းရောဂါရှာဖွေခြင်းများကို ဤစာမျက်နှာအတွက် စုဆောင်းနေပါသည်။",
     "Remote diagnostics is off.": "အဝေးထိန်းရောဂါရှာဖွေခြင်းများကို ပိတ်ထားသည်။",
@@ -737,10 +762,10 @@ var keyStrings = {
         "အဝေးထိန်းထည့်သွင်းမှု သက်တမ်းကုန်သွားပါပြီ။ ထပ်စမ်းကြည့်ရန် စက်ရှင်အသစ်တစ်ခုကို ဖွင့်ပါ။",
     "Remote input session is unavailable. Open a new session to try again.":
         "အဝေးထိန်းစနစ်ထည့်သွင်းခြင်း စက်ရှင်ကို မရနိုင်ပါ။ ထပ်စမ်းကြည့်ရန် စက်ရှင်အသစ်တစ်ခုကို ဖွင့်ပါ။",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "အဝေးထိန်းဖန်သားပြင်ဓာတ်ပုံများ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "အဝေးထိန်းဖန်သားပြင်ဓာတ်ပုံများကို 10 မိနစ်ကြာခွင့်ပြုထားသည်။ ရိုက်ကူးရန် ဆက်တင်များကို ပိတ်ပါ။",
+    "Remote screenshots are off.": "အဝေးထိန်းဖန်သားပြင်ဓာတ်ပုံများကို ပိတ်ထားသည်။",
     "Remote session expired": "အဝေးထိန်းစက်ရှင် သက်တမ်းကုန်သွားပါပြီ။",
     "Remote text entry": "အဝေးမှ စာသားထည့်သွင်းမှု",
     "Remote text entry denied": "အဝေးထိန်းစာသားထည့်သွင်းမှုကို ငြင်းဆိုထားသည်။",
@@ -768,6 +793,7 @@ var keyStrings = {
     "Resume from archive?": "ယခင်ထုတ်လွှင့်ချက်ကို ပြန်ကြည့်မလား။",
     Retry: "ပြန်ကြိုးစားပါ။",
     "Retry EPG download": "EPG ဒေါင်းလုဒ်လုပ်ကြည့်ပါ။",
+    "Retry same message": "တူညီသောမက်ဆေ့ဂျ်ကို ထပ်စမ်းကြည့်ပါ။",
     "Return to previous channel": "ယခင်ချန်နယ်သို့ ပြန်သွားပါ။",
     Rewind: "ရှေ့တိုး / နောက်ပြန်",
     "Rewind step by buttons %1/%2": "%1/%2 ခလုတ်များအတွက် နောက်ပြန်လှည့်ရန် အဆင့်",
@@ -785,19 +811,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "ဆက်တင်များကို သိမ်းဆည်းပြီး ချန်နယ်စာရင်းကို ဖွင့်ပါ။",
     "Save settings to storage": "ဆက်တင်များကို သိုလှောင်မှုတွင် သိမ်းဆည်းပါ။",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "သင့် TV ရှိ QR ကုဒ်ကို စကင်န်ဖတ်ပါ သို့မဟုတ် ၎င်း၏ ပြီးပြည့်စုံသော သီးသန့်တွဲချိတ်လင့်ခ်ကို အောက်တွင် ကူးထည့်ပါ။",
     "Scan this QR code with your phone to enter text.":
         "စာသားရိုက်ထည့်ရန် ဤ QR ကုဒ်ကို သင့်ဖုန်းဖြင့် စကန်ဖတ်ပါ။",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "မျက်နှာပြင်မျှဝေခြင်းကို မစတင်နိုင်ပါ။",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "မျက်နှာပြင်မျှဝေခြင်းကို ပယ်ဖျက်လိုက်သည် သို့မဟုတ် မရရှိနိုင်ပါ။",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ဖန်သားပြင်ရိုက်ချက်ခွင့်ပြုချက်ကို ဖွင့်၍မရပါ။",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "အဝေးမှထိန်းချုပ်မှုကို ချိတ်ဆက်ထားချိန်တွင် ဖန်သားပြင်ဓာတ်ပုံများ ရနိုင်သည်။",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "ဖန်သားပြင်ဓာတ်ပုံများကို ဤပလပ်ဖောင်းပေါ်တွင် မရနိုင်ပါ။",
     Script: "ဇာတ်ညွှန်း",
     Search: "ရှာရန်",
+    "Search languages": "ဘာသာစကားများကို ရှာဖွေပါ။",
     "Search programme": "အစီအစဉ်ကို ရှာဖွေပါ",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "လုံခြုံသော အဝေးထိန်းထည့်သွင်းမှု မစတင်နိုင်ပါ။ ကျေးဇူးပြု၍ ထပ်စမ်းကြည့်ပါ သို့မဟုတ် မျက်နှာပြင်ပေါ်ရှိ ကီးဘုတ်ကို အသုံးပြုပါ။",
@@ -815,13 +844,14 @@ var keyStrings = {
         "EPG နှင့် လိုဂိုများအတွက် အစီအစဉ်ပုံစံ နမူနာအရင်းအမြစ်ကို ရွေးပါ။",
     "Select Stalker portal": "Stalker ပေါ်တယ်ကို ရွေးပါ။",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "ဘရောင်ဇာရှိ ဖန်သားပြင်ဓာတ်ပုံရင်းမြစ်ကို ရွေးပါ။",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "ဘရောင်ဇာမျှဝေခြင်းဒိုင်ယာလော့ဂ်ရှိ ပလေယာတဘ် သို့မဟုတ် ဝင်းဒိုးကို ရွေးပါ။",
     "Send request": "တောင်းဆိုချက်ကို ပေးပို့ပါ။",
     "Send settings": "ဆက်တင်များကို ပို့ပါ။",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "Authorization: Bearer ခေါင်းစီးရှိ သင့်ပရောက်စီမှ ဤကုဒ်ကို ပို့ပါ။",
+    "Send to TV": "TV သို့ ပို့ပါ။",
     Server: "ဆာဗာ",
     "Server address": "ဆာဗာလိပ်စာ",
     "Server address (for example 192.168.1.20:8081)":
@@ -830,10 +860,13 @@ var keyStrings = {
     "Server URL": "ဆာဗာ URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "ဆာဗာ မရနိုင်ပါ။ အလိုအလျောက် ပြန်ကြိုးစားနေသည်; ၎င်း၏လိပ်စာနှင့် ကွန်ရက်ဝင်ရောက်ခွင့်ကို စစ်ဆေးပါ။",
+    "Session closed. Start a new one from your TV when needed.":
+        "စက်ရှင်ပိတ်ပါသည်။ လိုအပ်သည့်အခါ သင့် TV မှ အသစ်တစ်ခု စတင်ပါ။",
     Set: "အသုံးပြုရန်",
     "Set parental code": "မိဘထိန်းချုပ်မှုကုဒ်ကို သတ်မှတ်ပါ။",
     "Set timer?": "အချိန်တိုင်းကိရိယာ သတ်မှတ်မလား။",
     Settings: "ဆက်တင်များ",
+    "Settings changed while editing": "တည်းဖြတ်နေစဉ် ဆက်တင်များ ပြောင်းလဲသွားသည်။",
     "Settings changed. Discovery was canceled.":
         "ဆက်တင်များ ပြောင်းလဲသွားသည်။ ရှာဖွေတွေ့ရှိမှုကို ပယ်ဖျက်ခဲ့သည်။",
     "Settings copied": "ဆက်တင်များကို ကူးယူထားသည်။",
@@ -843,10 +876,15 @@ var keyStrings = {
     "Settings imported": "ဆက်တင်များကို ထည့်သွင်းထားသည်။",
     "Settings JSON": "ဆက်တင်များ JSON",
     "Settings loaded from storage": "ဆက်တင်များကို သိုလှောင်မှုမှ တင်ထားသည်။",
+    "Settings received. Restarting player...":
+        "ဆက်တင်များကို လက်ခံရရှိခဲ့သည်။ ပလေယာကို ပြန်လည်စတင်နေသည်...",
     "Settings STB": "STB ဆက်တင်များ",
     "Settings saved": "ဆက်တင်များကို သိမ်းထားသည်။",
     "Settings saved to storage": "ဆက်တင်များကို သိုလှောင်ခန်းတွင် သိမ်းဆည်းထားသည်။",
     "Settings sended!": "ဆက်တင်များ ပို့လိုက်ပါပြီ။",
+    "Settings source changed": "ဆက်တင်များ ရင်းမြစ်ကို ပြောင်းထားသည်။",
+    "Settings storage rejected write":
+        "ဆက်တင်များ သိုလှောင်သည့်စနစ်က ဒေတာရေးသွင်းမှုကို ငြင်းပယ်ခဲ့သည်",
     "Several command servers were found. Select one below.":
         "အမိန့်ပေးဆာဗာများစွာကို တွေ့ရှိခဲ့သည်။ အောက်ပါတစ်ခုကို ရွေးပါ။",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -901,11 +939,11 @@ var keyStrings = {
     "Starting...": "စတင်နေသည်...",
     Status: "အဆင့်အတန်း",
     Stop: "ရပ်ပါ။",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "ဘရောင်ဇာမျှဝေခြင်းကို ရပ်ပါ။",
     "Stop current capture": "လက်ရှိရိုက်ကူးမှုကို ရပ်ပါ။",
     "Stop diagnostics": "ရောဂါရှာဖွေမှုများကို ရပ်ပါ။",
     "Stop playback and return to live": "ပြန်ဖွင့်ခြင်းကို ရပ်ပြီး တိုက်ရိုက်ပြန်သွားပါ။",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "ဖန်သားပြင်ဓာတ်ပုံများကို ရပ်ပါ။",
     "Stream could not be played": "တိုက်ရိုက်ထုတ်လွှင့်မှုကို မကစားနိုင်ပါ။",
     "Stream type: %1": "တိုက်ရိုက်ထုတ်လွှင့်မှု အမျိုးအစား- %1",
     "String for search": "ရှာဖွေမှု",
@@ -917,6 +955,7 @@ var keyStrings = {
     "Switch subtitle": "စာတန်းထိုး ပြောင်းရန်",
     "Switch to this list": "ဤစာရင်းသို့ ပြောင်းပါ။",
     "Swop URL": "Swop URL",
+    "System language": "စနစ်ဘာသာစကား",
     "saved on this device": "ဤစက်ပစ္စည်းပေါ်တွင် သိမ်းဆည်းထားသည်။",
     select: "ရွေးပါ။",
     small: "ငယ်",
@@ -924,14 +963,18 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox ဆက်တင်များ",
     "Text is too long for remote input.": "စာသားသည် အဝေးထိန်းထည့်သွင်းမှုအတွက် ရှည်လွန်းသည်။",
+    "Text is too long. Please shorten it before sending.":
+        "စာသားသည် ရှည်လွန်းသည်။ မပို့မီ အတိုချုံးပါ။",
+    "Text sent. Check your TV to confirm it appeared.":
+        "စာတိုပေးပို့ခဲ့သည်။ ပေါ်လာကြောင်း အတည်ပြုရန် သင့် TV ကို စစ်ဆေးပါ။",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "ဘရောင်ဇာစခရင်ပုံရင်းမြစ် အဆင်သင့်ဖြစ်ပါပြီ။",
     "The command server discovery URL is invalid.":
         "အမိန့်ဆာဗာ ရှာဖွေတွေ့ရှိမှု URL သည် မမှန်ကန်ပါ။",
     "The device ID in the address is invalid.": "လိပ်စာရှိ စက် ID သည် မမှန်ကန်ပါ။",
     "The discovery response is invalid.": "ရှာဖွေတွေ့ရှိမှု တုံ့ပြန်မှုသည် မမှန်ကန်ပါ။",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "ဤဘရောက်ဆာသည် ရွေးချယ်ထားသော ဖန်သားပြင်ဓာတ်ပုံရင်းမြစ်ကို မခွဲခြားနိုင်ပါ။",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "ဤဘရောက်ဆာသည် အလိုအလျောက် လုံခြုံစွာတွဲချိတ်၍မရပါ။ ၎င်းကို အပ်ဒိတ်လုပ်ပါ သို့မဟုတ် အမိန့်ပေးဆာဗာ ဆက်တင်များကို ကိုယ်တိုင်ရိုက်ထည့်ပါ။",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -940,6 +983,10 @@ var keyStrings = {
         "ဤ HTTPS မီဒီယာဖွင့်စက်သည် HTTP ဆာဗာသို့ ချိတ်ဆက်၍မရပါ။ HTTPS ဆာဗာကိုသုံးပါ သို့မဟုတ် HTTP ပေါ်တွင် ပလေယာကိုဖွင့်ပါ။",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "ဤ Play အက်ပ်သည် HTTPS လိုအပ်သည်။ HTTPS အစီအစဉ် သို့မဟုတ် ဆာဗာ URL အတွက် သင့်ဝန်ဆောင်မှုပေးသူကို တောင်းဆိုပါ။",
+    "This pairing link has expired. Open a new session on your TV.":
+        "ဤတွဲချိတ်လင့်ခ်သည် သက်တမ်းကုန်သွားပါပြီ။ သင့် TV တွင် စက်ရှင်အသစ်တစ်ခုဖွင့်ပါ။",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "ဤလုံခြုံသောစက်ရှင်ကို မရရှိနိုင်ပါ သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ။ TV တွင် စက်ရှင်အသစ်တစ်ခုဖွင့်ပြီး ၎င်း၏ အပြည့်အစုံလင့်ခ်ကို အသုံးပြုပါ။",
     Timer: "အချိန်တိုင်းစက်",
     "Timer: switch to channel?": "အချိန်တိုင်း- ဤချန်နယ်သို့ ပြောင်းမလား။",
     "Timeshift: one minute back": "တစ်မိနစ် နောက်ပြန်ကြည့်ရန်",
@@ -986,6 +1033,8 @@ var keyStrings = {
         "လိပ်စာရှိ သုံးစွဲသူအမည် သို့မဟုတ် စကားဝှက်မပါဘဲ HTTP သို့မဟုတ် HTTPS ကို အသုံးပြုပါ။",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "ထိန်းချုပ်မှုတစ်ခုကို ရွေးချယ်ရန် ဘယ်/ညာကို အသုံးပြုပါ၊ ၎င်းကို အသက်သွင်းရန် OK နှင့် အပေါ်/အောက် လှိမ့်ရန်။",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# နောက်အပိုင်းအပါအဝင် လင့်ခ်အပြည့်အစုံကို အသုံးပြုပါ။ အခြားမည်သူ့ကိုမျှ မမျှဝေပါနှင့်။",
     "Use Up / Down to scroll. Back to close.": "လှိမ့်ရန် အပေါ်/အောက်ကို သုံးပါ။ ပြန်ပိတ်။",
     Username: "အသုံးပြုသူအမည်",
     "Username or password is missing.": "အသုံးပြုသူအမည် သို့မဟုတ် စကားဝှက် ပျောက်ဆုံးနေပါသည်။",

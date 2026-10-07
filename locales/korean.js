@@ -60,14 +60,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv 설정",
     "Allow diagnostics for 10 minutes": "10분간 진단 허용",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "10분간 스크린샷 허용",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "이 서버가 진단 카운터를 수집하고 이 스트림 또는 플레이어를 다시 시작하도록 허용합니다. 임시 액세스는 10분 동안 지속됩니다. 다시 연결하거나 다시 시작한 후에도 신뢰할 수 있는 지원이 계속 제공됩니다. 각 캡처는 10분 후에 만료됩니다. 숨김 상태 또는 오프라인 상태에서는 수집이 일시 중지됩니다.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "이 서버가 이 포그라운드 세션에 대한 재생, 네트워크 및 입력 카운터를 수집하도록 허용합니다. HTTPS 및 서버 권한이 필요합니다. 10분 후, 숨겨지거나 연결이 끊어지면 중지됩니다.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "이 서버가 10분 동안 이미지를 요청하도록 허용합니다. 이미지에는 개인정보가 포함될 수 있습니다. 브라우저에서 플레이어 탭이나 창을 선택합니다. 다시 로드하거나 연결을 끊으면 권한이 종료됩니다.",
     "Allowlist this Device ID": "이 장치를 허용 목록에 추가하세요 ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS 플레이어는 HTTP EPG 소스를 다운로드할 수 없습니다. HTTPS 소스를 사용하세요.",
@@ -100,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1분 뒤로/앞으로 건너뛰기",
     "Background color": "배경색",
     "Background color of selected item": "선택한 항목의 배경색",
+    "Backup state changed": "백업 상태가 변경되었습니다.",
     "Balance, $": "잔액, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -109,6 +110,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "목록의 %1/%2 버튼 동작",
     "Black screen while switching the channel": "채널전환시 검은화면",
     Blue: "블루",
+    "Bookmark age (days): %1": "북마크 기간(일): %1",
     "Bookmark age: %1 days": "북마크 기간: %1일",
     "Browse folders": "폴더 찾아보기",
     "Buffer Size, s": "버퍼 크기, s",
@@ -158,11 +160,14 @@ var keyStrings = {
     "Choose language": "언어를 선택하세요",
     "Choose Plex server": "Plex 서버를 선택하세요",
     "Choose provider": "제공업체 선택",
-    Classic: "Classic",
+    Classic: "클래식",
     "Clear all settings?": "모든 설정을 삭제하시겠습니까?",
     "Clear settings": "설정 지우기",
     Close: "닫기",
     "Close PiP": "닫기 PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "클라우드 저장/로드에는 STB 펌웨어가 필요합니다. (host_ott 미설정)",
+    "Cloud transfer failed": "클라우드 전송 실패",
     Code: "코드",
     Color: "색상",
     "Color spectrum": "색상 스펙트럼",
@@ -180,6 +185,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "호환성 런타임을 로드할 수 없습니다. 플레이어를 다시 열어 다시 시도하세요.",
     "Compatible HLS": "호환 HLS",
+    "Complete pairing link": "완전한 페어링 링크",
     "Configure All4you.tv in Settings -> Provider Settings":
         "설정 -> 공급자 설정에서 All4you.tv 구성",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -252,22 +258,24 @@ var keyStrings = {
         "설정 -> 공급자 설정에서 Шаравоз 구성",
     Connect: "연결",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "스크린샷을 허용하기 전에 HTTPS 명령 서버를 연결하세요.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "스크린샷을 사용하려면 HTTPS 명령 서버를 연결하세요.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "원격 제어를 연결하여 진단을 활성화합니다.",
     "Connect this player to a command server first.":
         "먼저 이 플레이어를 커맨드 서버에 연결하세요.",
+    "Connect to TV": "TV에 연결",
     Connected: "연결됨",
     "Connected. Waiting for the channel list...":
         "연결되었습니다. 채널 목록을 기다리는 중...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "원격 제어에 연결하면 이 서버가 플레이어를 진단하고 복구할 수 있도록 허용됩니다. 접근 권한은 다시 시작한 후에도 유지되며 연결을 끊으면 종료됩니다. 진단 데이터 수집은 회당 최대 10분입니다.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "활성화된 원격 제어 연결에 대한 원격 진단을 연결합니다.",
     "Connecting remote diagnostics for this page.":
         "이 페이지에 대한 원격 진단을 연결합니다.",
+    "Connecting securely to your TV...": "TV에 안전하게 연결하는 중...",
     "Connecting to Plex…": "Plex에 연결 중…",
     "Connecting to Stalker portal...": "Stalker 포털에 연결 중…",
     "Connecting...": "연결 중…",
@@ -285,6 +293,10 @@ var keyStrings = {
         "페어링 요청을 생성할 수 없습니다. 다시 시도하려면 서버를 찾으세요.",
     "Could not load. Select to retry.":
         "로드할 수 없습니다. 다시 시도하려면 선택하세요.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "이 텍스트를 준비할 수 없습니다. 길이를 줄이고 다시 시도해 주세요.",
+    "Could not protect the private link. Use a different browser.":
+        "개인 링크를 보호할 수 없습니다. 다른 브라우저를 사용하세요.",
     "Could not save provider settings.": "제공업체 설정을 저장하지 못했습니다.",
     "Could not save the approved command server settings.":
         "승인된 명령 서버 설정을 저장할 수 없습니다.",
@@ -301,6 +313,8 @@ var keyStrings = {
     "Delete category": "카테고리 삭제",
     "Delete channel": "채널 삭제",
     "Delete list": "목록 삭제",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "메시지 전달을 확인할 수 없습니다. TV를 확인하거나 이 세션이 만료되기 전에 같은 메시지를 다시 보내세요.",
     "Demo — moving test pattern": "데모 — 이동 테스트 패턴",
     Description: "설명",
     "Description of remote control buttons": "리모컨 버튼 안내",
@@ -382,6 +396,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker 포탈 URL 입력(예: http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "서버번호(%1)를 입력하세요.",
+    "Enter text": "문자를 입력하세요",
     "Enter the access code separately, not in the server address.":
         "서버주소가 아닌 접속비밀번호를 별도로 입력하세요.",
     "Enter the command server IP or address.":
@@ -532,8 +547,10 @@ var keyStrings = {
     "Interface transparency": "인터페이스 투명성",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "채널 링크가 잘못되었습니다! 캐비닛 스트림 URL(예: subdomain.cdn-domain.tld)에서와 같이 전체 호스트를 입력하세요.",
+    "Invalid cloud settings response": "잘못된 클라우드 설정 응답",
     "Invalid protected source configuration":
         "보호된 소스 구성이 잘못되었습니다.",
+    "Invalid setting": "설정이 잘못되었습니다.",
     "IPTV token": "IPTV 토큰",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one 설정",
@@ -613,6 +630,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "재생목록 채널 및 날짜와 일치하는 프로그램이 없습니다. 소스 및 장치 시계를 확인하십시오.",
     "No saved settings found": "저장된 설정을 찾을 수 없습니다.",
+    "No supported system language. Choose a language.":
+        "지원되는 시스템 언어가 없습니다. 언어를 선택하세요.",
     "Not configured": "구성되지 않음",
     "Not found": "찾을 수 없음",
     "Not reduce video when showing the list (bugfix)":
@@ -628,6 +647,8 @@ var keyStrings = {
     "not set": "설정되지 않음",
     Off: "꺼짐",
     Ok: "확인",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "이 TV에서만 귀하의 메시지를 수신할 수 있습니다. 링크는 10분 후에 만료됩니다.",
     Open: "열기",
     "Open in PiP": "PiP에서 열기",
     "Open Plex sign-in page": "Plex 로그인 페이지 열기",
@@ -640,6 +661,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / 앱 호스트",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE 설정",
+    "OTT-play remote input": "OTT-play 원격 입력",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1를 이용하실 수 있습니다. 지금 다운로드하여 설치하시겠습니까?",
     "Overwrite current settings?": "현재 설정을 덮어쓰시겠습니까?",
@@ -672,6 +694,7 @@ var keyStrings = {
     Playback: "재생",
     "Player and device info": "플레이어 및 장치 정보",
     "Player could not start": "플레이어를 시작할 수 없습니다",
+    "Player default": "플레이어 기본 선택",
     "Player info:": "플레이어 정보:",
     Playlist: "재생목록",
     "Playlist file": "재생목록 파일",
@@ -692,6 +715,8 @@ var keyStrings = {
     Postpaid: "후불",
     PROST: "PROST",
     "PROST settings": "PROST 설정",
+    "Preferred audio language": "선호하는 오디오 언어",
+    "Preferred subtitle language": "선호하는 자막 언어",
     Prepaid: "선불",
     "Preparing secure remote input...": "보안 원격 입력 준비 중...",
     Prev: "이전",
@@ -724,14 +749,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "리모콘(숫자버튼 없음)",
     "Remote control": "리모콘",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "원격 제어로 진단을 승인합니다. 운영자를 위한 준비가 되었습니다.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "원격 제어로 진단을 승인합니다. 다시 연결되기를 기다리고 있습니다.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "원격 제어에는 설정을 포함한 미디어 플레이어의 스크린샷이 포함됩니다. 이미지에는 개인 정보가 포함될 수 있습니다. 이 애플리케이션은 추가 승인 없이 직접 스크린샷을 캡처할 수 있습니다. 브라우저에서 이 장치에서 캡처할 탭이나 창을 선택합니다.",
     "Remote diagnostics": "원격진단",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "이 연결에 대한 원격 진단이 수집 중입니다(세션당 최대 10분).",
     "Remote diagnostics is collecting for this page.":
         "이 페이지에 대한 원격 진단을 수집 중입니다.",
     "Remote diagnostics is off.": "원격 진단이 꺼져 있습니다.",
@@ -745,10 +770,10 @@ var keyStrings = {
         "원격 입력이 만료되었습니다. 새 세션을 열어 다시 시도하세요.",
     "Remote input session is unavailable. Open a new session to try again.":
         "원격 입력 세션을 사용할 수 없습니다. 새 세션을 열어 다시 시도하세요.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "원격 스크린샷",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "원격 스크린샷은 10분간 허용됩니다. 캡처하려면 설정을 닫으세요.",
+    "Remote screenshots are off.": "원격 스크린샷이 꺼져 있습니다.",
     "Remote session expired": "원격 세션이 만료되었습니다.",
     "Remote text entry": "원격 텍스트 입력",
     "Remote text entry denied": "원격 텍스트 입력이 거부되었습니다.",
@@ -777,6 +802,7 @@ var keyStrings = {
     "Resume from archive?": "지난 방송을 다시 시청하시겠습니까?",
     Retry: "재시도",
     "Retry EPG download": "EPG 다운로드 재시도",
+    "Retry same message": "같은 메시지를 다시 시도하세요.",
     "Return to previous channel": "이전 채널로 돌아가기",
     Rewind: "되감기 / 빨리 감기",
     "Rewind step by buttons %1/%2": "버튼 %1/%2의 되감기 단계",
@@ -793,19 +819,22 @@ var keyStrings = {
     "Save settings": "설정 저장",
     "Save settings and load channel list": "설정 저장 및 채널 목록 불러오기",
     "Save settings to storage": "설정을 스토리지에 저장",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "TV에 표시된 QR 코드를 스캔하거나 비공개 페어링 링크 전체를 아래에 붙여 넣으세요.",
     "Scan this QR code with your phone to enter text.":
         "문자를 입력하려면 휴대폰으로 이 QR 코드를 스캔하세요.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "화면 공유를 시작할 수 없습니다.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "화면공유가 취소되었거나 이용이 불가능합니다.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "스크린샷 권한을 활성화할 수 없습니다.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "원격 제어가 연결되어 있는 동안 스크린샷을 촬영할 수 있습니다.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "이 플랫폼에서는 스크린샷 촬영을 사용할 수 없습니다.",
     Script: "각본",
     Search: "검색",
+    "Search languages": "언어 검색",
     "Search programme": "방송 프로그램 검색",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "보안 원격 입력을 시작할 수 없습니다. 다시 시도하거나 화면 키보드를 사용하십시오.",
@@ -822,14 +851,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "EPG 및 로고에 대한 재생 목록 템플릿 소스 선택",
     "Select Stalker portal": "Stalker 포탈 선택",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "브라우저에서 스크린샷 소스 선택",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "브라우저 공유 대화상자에서 플레이어 탭이나 창을 선택하세요.",
     "Send request": "요청 보내기",
     "Send settings": "전송 설정",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "프록시에서 Authorization: Bearer 헤더로 이 코드를 보냅니다.",
+    "Send to TV": "TV로 보내기",
     Server: "서버",
     "Server address": "서버 주소",
     "Server address (for example 192.168.1.20:8081)":
@@ -838,10 +867,13 @@ var keyStrings = {
     "Server URL": "서버 URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "서버를 사용할 수 없습니다. 자동으로 다시 시도하는 중입니다. 주소와 네트워크 액세스를 확인하세요.",
+    "Session closed. Start a new one from your TV when needed.":
+        "세션이 종료되었습니다. 필요할 때 TV에서 새 것을 시작하세요.",
     Set: "적용",
     "Set parental code": "자녀보호코드를 설정하세요",
     "Set timer?": "타이머를 설정하시겠습니까?",
     Settings: "설정",
+    "Settings changed while editing": "편집 중 설정이 변경되었습니다.",
     "Settings changed. Discovery was canceled.":
         "설정이 변경되었습니다. 검색이 취소되었습니다.",
     "Settings copied": "설정이 복사되었습니다",
@@ -851,10 +883,14 @@ var keyStrings = {
     "Settings imported": "설정을 가져왔습니다.",
     "Settings JSON": "설정 JSON",
     "Settings loaded from storage": "스토리지에서 로드된 설정",
+    "Settings received. Restarting player...":
+        "설정이 수신되었습니다. 플레이어를 다시 시작하는 중...",
     "Settings STB": "STB 설정",
     "Settings saved": "설정이 저장되었습니다",
     "Settings saved to storage": "스토리지에 저장된 설정",
     "Settings sended!": "설정이 전송되었습니다!",
+    "Settings source changed": "설정 소스가 변경되었습니다.",
+    "Settings storage rejected write": "설정 저장소에서 쓰기를 거부했습니다",
     "Several command servers were found. Select one below.":
         "여러 개의 명령 서버가 발견되었습니다. 아래에서 하나를 선택하세요.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -909,11 +945,11 @@ var keyStrings = {
     "Starting...": "시작 중…",
     Status: "상태",
     Stop: "정지",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "브라우저 공유 중지",
     "Stop current capture": "전류 캡처 중지",
     "Stop diagnostics": "진단 중지",
     "Stop playback and return to live": "재생을 중지하고 라이브로 돌아갑니다.",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "스크린샷 중지",
     "Stream could not be played": "스트림을 재생할 수 없습니다.",
     "Stream type: %1": "스트림 유형: %1",
     "String for search": "검색어",
@@ -925,6 +961,7 @@ var keyStrings = {
     "Switch subtitle": "자막 전환",
     "Switch to this list": "이 목록으로 전환",
     "Swop URL": "스왑 URL",
+    "System language": "시스템 언어",
     "saved on this device": "이 기기에 저장되었습니다",
     select: "선택",
     small: "작은",
@@ -932,15 +969,19 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox 설정",
     "Text is too long for remote input.": "원격입력에 텍스트가 너무 깁니다.",
+    "Text is too long. Please shorten it before sending.":
+        "텍스트가 너무 깁니다. 짧게 줄여 보내주세요.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "문자를 보냈습니다. TV에 나타나는지 확인하세요.",
     "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+        "브라우저 스크린샷 소스가 준비되었습니다.",
     "The command server discovery URL is invalid.":
         "명령 서버 검색 URL가 잘못되었습니다.",
     "The device ID in the address is invalid.":
         "주소의 ID 디바이스가 유효하지 않습니다.",
     "The discovery response is invalid.": "검색 응답이 잘못되었습니다.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "이 브라우저는 선택된 스크린샷 소스를 식별할 수 없습니다.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "이 브라우저는 자동으로 안전하게 페어링할 수 없습니다. 이를 업데이트하거나 명령 서버 설정을 수동으로 입력하십시오.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -949,6 +990,10 @@ var keyStrings = {
         "이 HTTPS 플레이어는 HTTP 서버에 연결할 수 없습니다. HTTPS 서버를 사용하거나 HTTP를 통해 플레이어를 엽니다.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "이 Play 앱에는 HTTPS가 필요합니다. 공급자에게 HTTPS 재생 목록 또는 서버 URL를 요청하세요.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "이 페어링 링크는 만료되었습니다. TV에서 새 세션을 엽니다.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "이 보안 세션을 사용할 수 없거나 만료되었습니다. TV에서 새 세션을 열고 전체 링크를 사용하세요.",
     Timer: "타이머",
     "Timer: switch to channel?": "타이머: 이 채널로 전환하시겠습니까?",
     "Timeshift: one minute back": "타임시프트: 1분 뒤로",
@@ -997,6 +1042,8 @@ var keyStrings = {
         "주소에 사용자 이름이나 비밀번호 없이 HTTP 또는 HTTPS를 사용하세요.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "컨트롤을 선택하려면 왼쪽/오른쪽을 사용하고, 활성화하려면 확인을 사용하고, 스크롤하려면 위/아래를 사용하세요.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# 이후의 부분을 포함하여 전체 링크를 사용하세요. 다른 사람과 공유하지 마십시오.",
     "Use Up / Down to scroll. Back to close.":
         "위로/아래로 스크롤합니다. 닫기로 돌아갑니다.",
     Username: "사용자 이름",

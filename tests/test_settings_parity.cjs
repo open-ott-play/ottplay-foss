@@ -221,6 +221,15 @@ function fixture(
     require("./helpers/shared-core-runtime.cjs")(w);
     vm.runInContext(
         compile(
+            fs.readFileSync(
+                path.join(root, "src/localization/assets.ts"),
+                "utf8"
+            )
+        ),
+        w
+    );
+    vm.runInContext(
+        compile(
             selectedSource("src/plugins/access-media.ts", ["accessMediaPlugin"])
         ),
         w
@@ -347,6 +356,34 @@ function fixture(
 }
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
+}
+
+// Media-language rows appear only for managed engines, with persisted codes
+// independent of translated/native display names and the interface locale.
+for (const managed of [false, true]) {
+    const { w, stored } = fixture();
+    w.__ottCoreTransport = { play() {} };
+    if (managed) w.stbPlay = w.__ottCoreTransport.play;
+    w.settingsInterface();
+    const audio = w.listArray.find(
+        (row) => row.settingId === "preferredAudioLanguage"
+    );
+    const subtitle = w.listArray.find(
+        (row) => row.settingId === "preferredSubtitleLanguage"
+    );
+    assert.equal(Boolean(audio), managed);
+    assert.equal(Boolean(subtitle), managed);
+    if (managed) {
+        assert.equal(audio.settingValues.length, 89);
+        assert.equal(subtitle.settingValues.length, 90);
+        assert.equal(audio.settingValues[0], "");
+        assert.equal(subtitle.settingValues[1], "off");
+        audio.val = audio.settingValues.indexOf("_rus");
+        subtitle.val = 1;
+        assert.equal(w.__ottSettingsEditor.save(), true);
+        assert.equal(stored.get("sPreferredAudioLanguage"), "_rus");
+        assert.equal(stored.get("sPreferredSubtitleLanguage"), "off");
+    }
 }
 
 // Source access uses the same native capability for playback and Settings.

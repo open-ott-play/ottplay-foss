@@ -60,14 +60,15 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv அமைப்புகள்",
     "Allow diagnostics for 10 minutes": "10 நிமிடங்களுக்கு கண்டறிய அனுமதிக்கவும்",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes":
+        "ஸ்கிரீன்ஷாட்களை 10 நிமிடங்களுக்கு அனுமதிக்கவும்",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "கண்டறியும் கவுண்டர்களைச் சேகரித்து இந்த ஸ்ட்ரீம் அல்லது பிளேயரை மறுதொடக்கம் செய்ய இந்தச் சேவையகத்தை அனுமதிக்கவும். தற்காலிக அணுகல் 10 நிமிடங்கள் நீடிக்கும். மீண்டும் இணைக்கப்பட்ட பிறகு அல்லது மறுதொடக்கம் செய்த பிறகு நம்பகமான ஆதரவு கிடைக்கும்; ஒவ்வொரு பிடிப்பும் இன்னும் 10 நிமிடங்களுக்குப் பிறகு காலாவதியாகும். மறைக்கப்பட்ட அல்லது ஆஃப்லைனில் சேகரிப்பு இடைநிறுத்தப்படும்.",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "இந்த முன்புற அமர்வுக்கான பின்னணி, நெட்வொர்க் மற்றும் உள்ளீட்டு கவுண்டர்களை சேகரிக்க இந்த சேவையகத்தை அனுமதிக்கவும். HTTPS மற்றும் சர்வர் அனுமதி தேவை. 10 நிமிடங்களுக்குப் பிறகு, மறைக்கப்படும்போது அல்லது துண்டிக்கப்படும்போது நிறுத்தப்படும்.",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "10 நிமிடங்களுக்கு படங்களைக் கோர இந்தச் சேவையகத்தை அனுமதிக்கவும். படங்கள் தனிப்பட்ட தகவல்களைக் கொண்டிருக்கலாம். உலாவியில், பிளேயர் தாவல் அல்லது சாளரத்தைத் தேர்ந்தெடுக்கவும். மறுஏற்றம் அல்லது துண்டிக்கப்படும் போது அனுமதி முடிவடைகிறது.",
     "Allowlist this Device ID": "இந்தச் சாதனத்தை ID அனுமதிக்கவும்",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS பிளேயர் HTTP EPG மூலத்தைப் பதிவிறக்க முடியாது. HTTPS மூலத்தைப் பயன்படுத்தவும்.",
@@ -99,6 +100,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "1 நிமிடம் பின்னால் / முன்னால் செல்",
     "Background color": "பின்னணி நிறம்",
     "Background color of selected item": "தேர்ந்தெடுக்கப்பட்ட பொருளின் பின்னணி நிறம்",
+    "Backup state changed": "காப்புப் பிரதி நிலை மாற்றப்பட்டது",
     "Balance, $": "இருப்பு, $",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -110,6 +112,7 @@ var keyStrings = {
     "Black screen while switching the channel":
         "சேனல்களை மாற்றும் போது கருப்பு திரை",
     Blue: "நீலம்",
+    "Bookmark age (days): %1": "புக்மார்க்கின் வயது (நாட்கள்): %1",
     "Bookmark age: %1 days": "புக்மார்க் வயது: %1 நாட்கள்",
     "Browse folders": "கோப்புறைகளை உலாவுக",
     "Buffer Size, s": "தாங்கல் அளவு, எஸ்",
@@ -159,11 +162,14 @@ var keyStrings = {
     "Choose language": "மொழியை தேர்வு செய்யவும்",
     "Choose Plex server": "Plex சேவையகத்தைத் தேர்வு செய்யவும்",
     "Choose provider": "வழங்குநரைத் தேர்வு செய்யவும்",
-    Classic: "Classic",
+    Classic: "பாரம்பரியம்",
     "Clear all settings?": "அனைத்து அமைப்புகளையும் அழிக்கவா?",
     "Clear settings": "அமைப்புகளை அழிக்கவும்",
     Close: "மூடு",
     "Close PiP": "PiP ஐ மூடு",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "கிளவுட் சேவ்/லோடுக்கு STB ஃபார்ம்வேர் தேவை (host_ott அமைக்கப்படவில்லை)",
+    "Cloud transfer failed": "கிளவுட் பரிமாற்றம் தோல்வியடைந்தது",
     Code: "குறியீடு",
     Color: "நிறம்",
     "Color spectrum": "வண்ண நிறமாலை",
@@ -182,6 +188,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "இணக்கத்தன்மை இயக்க நேரத்தை ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்க பிளேயரை மீண்டும் திறக்கவும்.",
     "Compatible HLS": "இணக்கமான HLS",
+    "Complete pairing link": "முழுமையான இணைத்தல் இணைப்பு",
     "Configure All4you.tv in Settings -> Provider Settings":
         "அமைப்புகள் -> வழங்குநர் அமைப்புகளில் All4you.tv ஐ உள்ளமைக்கவும்",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -254,22 +261,24 @@ var keyStrings = {
         "அமைப்புகள் -> வழங்குநர் அமைப்புகளில் Шаравоз ஐ உள்ளமைக்கவும்",
     Connect: "இணைக்கவும்",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "ஸ்கிரீன் ஷாட்களை அனுமதிக்கும் முன் HTTPS கட்டளை சேவையகத்தை இணைக்கவும்.",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
+        "ஸ்கிரீன் ஷாட்களைப் பயன்படுத்த HTTPS கட்டளை சேவையகத்தை இணைக்கவும்.",
     "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "கண்டறிதலை இயக்க ரிமோட் கண்ட்ரோலை இணைக்கவும்.",
     "Connect this player to a command server first.":
         "இந்த பிளேயரை முதலில் கட்டளை சேவையகத்துடன் இணைக்கவும்.",
+    "Connect to TV": "டிவியுடன் இணைக்கவும்",
     Connected: "இணைக்கப்பட்டது",
     "Connected. Waiting for the channel list...":
         "இணைக்கப்பட்டது. சேனல் பட்டியலுக்காக காத்திருக்கிறது...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "தொலைநிலைக் கட்டுப்பாட்டை இணைப்பதால் பிளேயரின் சிக்கல்களைக் கண்டறிந்து சரிசெய்ய இந்தச் சேவையகத்திற்கு அனுமதி கிடைக்கும். மறுதொடக்கத்திற்குப் பிறகும் அணுகல் இருக்கும்; இணைப்பைத் துண்டிக்கும்போது அது முடியும். ஒவ்வொரு பிழையறிதல் தரவுச் சேகரிப்பும் 10 நிமிடங்களுக்கு மட்டுமே.",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "இயக்கப்பட்ட ரிமோட் கண்ட்ரோல் இணைப்பிற்கான ரிமோட் கண்டறிதல்களை இணைக்கிறது.",
     "Connecting remote diagnostics for this page.":
         "இந்தப் பக்கத்திற்கான தொலைநிலை கண்டறிதல்களை இணைக்கிறது.",
+    "Connecting securely to your TV...": "உங்கள் டிவியுடன் பாதுகாப்பாக இணைகிறது...",
     "Connecting to Plex…": "Plex உடன் இணைக்கிறது…",
     "Connecting to Stalker portal...": "Stalker போர்ட்டலுடன் இணைக்கிறது…",
     "Connecting...": "இணைக்கிறது…",
@@ -287,6 +296,10 @@ var keyStrings = {
         "இணைத்தல் கோரிக்கையை உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்க சர்வரைக் கண்டறியவும்.",
     "Could not load. Select to retry.":
         "ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்க தேர்ந்தெடுக்கவும்.",
+    "Could not prepare this text. Please shorten it and try again.":
+        "இந்த உரையைத் தயாரிக்க முடியவில்லை. அதை சுருக்கி மீண்டும் முயற்சிக்கவும்.",
+    "Could not protect the private link. Use a different browser.":
+        "தனிப்பட்ட இணைப்பைப் பாதுகாக்க முடியவில்லை. வேறு உலாவியைப் பயன்படுத்தவும்.",
     "Could not save provider settings.":
         "வழங்குநர் அமைப்புகளைச் சேமிக்க முடியவில்லை.",
     "Could not save the approved command server settings.":
@@ -304,6 +317,8 @@ var keyStrings = {
     "Delete category": "வகையை நீக்கு",
     "Delete channel": "சேனலை நீக்கு",
     "Delete list": "பட்டியலை நீக்கு",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "டெலிவரி உறுதி செய்ய முடியவில்லை. உங்கள் டிவியைச் சரிபார்க்கவும் அல்லது இந்த அமர்வு காலாவதியாகும் முன் அதே செய்தியை மீண்டும் முயற்சிக்கவும்.",
     "Demo — moving test pattern": "டெமோ — நகரும் சோதனை முறை",
     Description: "விளக்கம்",
     "Description of remote control buttons": "ரிமோட் கண்ட்ரோல் பட்டன் வழிகாட்டி",
@@ -386,6 +401,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "Stalker போர்ட்டலின் URL-ஐ உள்ளிடவும் (எ.கா. http://your-portal/stalker_portal/c/)",
     "Enter server number (%1).": "சேவையக எண்ணை உள்ளிடவும் (%1).",
+    "Enter text": "உரையை உள்ளிடவும்",
     "Enter the access code separately, not in the server address.":
         "அணுகல் குறியீட்டை தனித்தனியாக உள்ளிடவும், சேவையக முகவரியில் இல்லை.",
     "Enter the command server IP or address.":
@@ -534,7 +550,9 @@ var keyStrings = {
     "Interface transparency": "இடைமுகம் வெளிப்படைத்தன்மை",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "தவறான சேனல் இணைப்பு! உங்கள் வழங்குநர் கணக்குப் பக்கத்தில் உள்ள ஸ்ட்ரீம் URL இலிருந்து முழுமையான ஹோஸ்ட்பெயரை உள்ளிடவும் (எடுத்துக்காட்டாக subdomain.cdn-domain.tld ).",
+    "Invalid cloud settings response": "தவறான கிளவுட் அமைப்புகளின் பதில்",
     "Invalid protected source configuration": "தவறான பாதுகாக்கப்பட்ட மூல உள்ளமைவு",
+    "Invalid setting": "தவறான அமைப்பு",
     "IPTV token": "IPTV டோக்கன்",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one அமைப்புகள்",
@@ -614,6 +632,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "பிளேலிஸ்ட் சேனல்கள் மற்றும் தேதிகளுடன் எந்த நிகழ்ச்சிகளும் பொருந்தவில்லை. மூலத்தையும் சாதன கடிகாரத்தையும் சரிபார்க்கவும்.",
     "No saved settings found": "சேமிக்கப்பட்ட அமைப்புகள் எதுவும் இல்லை",
+    "No supported system language. Choose a language.":
+        "ஆதரிக்கப்படும் கணினி மொழி இல்லை. ஒரு மொழியை தேர்வு செய்யவும்.",
     "Not configured": "அமைக்கப்படவில்லை",
     "Not found": "கிடைக்கவில்லை",
     "Not reduce video when showing the list (bugfix)":
@@ -629,6 +649,8 @@ var keyStrings = {
     "not set": "அமைக்கப்படவில்லை",
     Off: "முடக்கம்",
     Ok: "சரி",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "இந்த டிவியால் மட்டுமே உங்கள் செய்தியை ஏற்க முடியும். இணைப்பு 10 நிமிடங்களுக்குப் பிறகு காலாவதியாகிவிடும்.",
     Open: "திறக்கவும்",
     "Open in PiP": "PiP இல் திறக்கவும்",
     "Open Plex sign-in page": "Plex உள்நுழைவுப் பக்கத்தைத் திறக்கவும்",
@@ -641,6 +663,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP ஹோஸ்ட்",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE அமைப்புகள்",
+    "OTT-play remote input": "OTT-play ரிமோட் உள்ளீடு",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 கிடைக்கிறது. பதிவிறக்கி இப்போது நிறுவவா?",
     "Overwrite current settings?": "தற்போதைய அமைப்புகளை மேலெழுதவா?",
@@ -673,6 +696,7 @@ var keyStrings = {
     Playback: "பின்னணி",
     "Player and device info": "பிளேயர் மற்றும் சாதனத் தகவல்",
     "Player could not start": "பிளேயர் தொடங்க முடியவில்லை",
+    "Player default": "பிளேயரின் இயல்புநிலைத் தேர்வு",
     "Player info:": "பிளேயர் தகவல்:",
     Playlist: "பிளேலிஸ்ட்",
     "Playlist file": "பிளேலிஸ்ட் கோப்பு",
@@ -694,6 +718,8 @@ var keyStrings = {
     Postpaid: "போஸ்ட்பெய்டு",
     PROST: "PROST",
     "PROST settings": "PROST அமைப்புகள்",
+    "Preferred audio language": "விருப்பமான ஆடியோ மொழி",
+    "Preferred subtitle language": "விருப்பமான வசன மொழி",
     Prepaid: "ப்ரீபெய்ட்",
     "Preparing secure remote input...": "பாதுகாப்பான ரிமோட் உள்ளீட்டைத் தயாரிக்கிறது...",
     Prev: "முந்தைய",
@@ -725,14 +751,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "ரிமோட் (எண் பொத்தான்கள் இல்லை)",
     "Remote control": "ரிமோட் கண்ட்ரோல்",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "தொலைநிலைக் கட்டுப்பாடு பிழையறிதலை அனுமதிக்கிறது. இயக்குநருக்காகத் தயார்.",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "தொலைநிலைக் கட்டுப்பாடு பிழையறிதலை அனுமதிக்கிறது. மீண்டும் இணைவதற்காகக் காத்திருக்கிறது.",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "ரிமோட் கண்ட்ரோலில் மீடியா பிளேயரின் ஸ்கிரீன் ஷாட்கள், அதன் அமைப்புகள் உட்பட. படங்களில் தனிப்பட்ட தகவல்கள் இருக்கலாம். பயன்பாடு கூடுதல் அனுமதி இல்லாமல் நேரடியாக ஸ்கிரீன் ஷாட்களைப் பிடிக்க முடியும். உலாவியில், இந்தச் சாதனத்தில் படம்பிடிக்க தாவல் அல்லது சாளரத்தைத் தேர்ந்தெடுக்கவும்.",
     "Remote diagnostics": "தொலைநிலை கண்டறிதல்",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "இந்த இணைப்பிற்கான தொலைநிலை கண்டறிதல் சேகரிக்கப்படுகிறது (ஒரு அமர்வுக்கு 10 நிமிடங்கள் வரை).",
     "Remote diagnostics is collecting for this page.":
         "இந்தப் பக்கத்திற்கான தொலைநிலை கண்டறிதல் சேகரிக்கப்படுகிறது.",
     "Remote diagnostics is off.": "தொலைநிலை கண்டறிதல் முடக்கப்பட்டுள்ளது.",
@@ -746,10 +772,10 @@ var keyStrings = {
         "தொலைநிலை உள்ளீடு காலாவதியானது. மீண்டும் முயற்சிக்க, புதிய அமர்வைத் திறக்கவும்.",
     "Remote input session is unavailable. Open a new session to try again.":
         "தொலைநிலை உள்ளீட்டு அமர்வு கிடைக்கவில்லை. மீண்டும் முயற்சிக்க, புதிய அமர்வைத் திறக்கவும்.",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "ரிமோட் ஸ்கிரீன்ஷாட்கள்",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "ரிமோட் ஸ்கிரீன்ஷாட்கள் 10 நிமிடங்களுக்கு அனுமதிக்கப்படும். பிடிக்க அமைப்புகளை மூடு.",
+    "Remote screenshots are off.": "ரிமோட் ஸ்கிரீன்ஷாட்கள் முடக்கப்பட்டுள்ளன.",
     "Remote session expired": "தொலைநிலை அமர்வு காலாவதியானது",
     "Remote text entry": "தொலைநிலை உரை உள்ளீடு",
     "Remote text entry denied": "தொலைநிலை உரை நுழைவு மறுக்கப்பட்டது",
@@ -777,6 +803,7 @@ var keyStrings = {
     "Resume from archive?": "காப்பகத்திலிருந்து மீண்டும் தொடங்கவா?",
     Retry: "மீண்டும் முயற்சிக்கவும்",
     "Retry EPG download": "EPG பதிவிறக்கத்தை மீண்டும் முயற்சிக்கவும்",
+    "Retry same message": "அதே செய்தியை மீண்டும் முயற்சிக்கவும்",
     "Return to previous channel": "முந்தைய சேனலுக்கு திரும்பவும்",
     Rewind: "முன்னால்/பின்னால் நகர்த்து",
     "Rewind step by buttons %1/%2":
@@ -795,19 +822,22 @@ var keyStrings = {
     "Save settings and load channel list":
         "அமைப்புகளைச் சேமித்து சேனல் பட்டியலை ஏற்றவும்",
     "Save settings to storage": "சேமிப்பகத்தில் அமைப்புகளைச் சேமிக்கவும்",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "உங்கள் டிவியில் QR குறியீட்டை ஸ்கேன் செய்யவும் அல்லது அதன் முழுமையான தனிப்பட்ட இணைத்தல் இணைப்பை கீழே ஒட்டவும்.",
     "Scan this QR code with your phone to enter text.":
         "உரையை உள்ளிட இந்த QR குறியீட்டை உங்கள் ஃபோன் மூலம் ஸ்கேன் செய்யவும்.",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "திரைப் பகிர்வைத் தொடங்க முடியவில்லை.",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
+        "திரைப் பகிர்வு ரத்துசெய்யப்பட்டது அல்லது கிடைக்கவில்லை.",
     "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "ஸ்கிரீன்ஷாட் அனுமதியை இயக்க முடியவில்லை.",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
+        "ரிமோட் கண்ட்ரோல் இணைக்கப்பட்டிருக்கும் போது ஸ்கிரீன்ஷாட்கள் கிடைக்கும்.",
     "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "இந்த பிளாட்ஃபார்மில் ஸ்கிரீன்ஷாட்கள் இல்லை.",
     Script: "திரைக்கதை",
     Search: "தேடல்",
+    "Search languages": "மொழிகளைத் தேடுங்கள்",
     "Search programme": "நிகழ்ச்சியைத் தேடவும்",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "பாதுகாப்பான ரிமோட் உள்ளீட்டைத் தொடங்க முடியவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது திரையில் உள்ள விசைப்பலகையைப் பயன்படுத்தவும்.",
@@ -825,13 +855,14 @@ var keyStrings = {
         "EPG மற்றும் லோகோக்களுக்கான பிளேலிஸ்ட் டெம்ப்ளேட் மூலத்தைத் தேர்ந்தெடுக்கவும்",
     "Select Stalker portal": "Stalker போர்ட்டலைத் தேர்ந்தெடுக்கவும்",
     "Select screenshot source in browser":
-        "Select screenshot source in browser",
+        "உலாவியில் ஸ்கிரீன்ஷாட் மூலத்தைத் தேர்ந்தெடுக்கவும்",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "உலாவி பகிர்வு உரையாடலில் பிளேயர் தாவல் அல்லது சாளரத்தைத் தேர்ந்தெடுக்கவும்.",
     "Send request": "கோரிக்கையை அனுப்பவும்",
     "Send settings": "அமைப்புகளை அனுப்பவும்",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "உங்கள் ப்ராக்ஸியிலிருந்து இந்தக் குறியீட்டை Authorization: Bearer தலைப்பில் அனுப்பவும்.",
+    "Send to TV": "டிவிக்கு அனுப்பவும்",
     Server: "சேவையகம்",
     "Server address": "சேவையக முகவரி",
     "Server address (for example 192.168.1.20:8081)":
@@ -840,10 +871,13 @@ var keyStrings = {
     "Server URL": "சர்வர் URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "சேவையகம் கிடைக்கவில்லை. தானாக மீண்டும் முயற்சிக்கிறது; அதன் முகவரி மற்றும் பிணைய அணுகலைச் சரிபார்க்கவும்.",
+    "Session closed. Start a new one from your TV when needed.":
+        "அமர்வு மூடப்பட்டது. தேவைப்படும்போது உங்கள் டிவியிலிருந்து புதிய ஒன்றைத் தொடங்கவும்.",
     Set: "பயன்படுத்து",
     "Set parental code": "பெற்றோர் குறியீட்டை அமைக்கவும்",
     "Set timer?": "டைமரை அமைக்கவா?",
     Settings: "அமைப்புகள்",
+    "Settings changed while editing": "திருத்தும் போது அமைப்புகள் மாற்றப்பட்டன",
     "Settings changed. Discovery was canceled.":
         "அமைப்புகள் மாற்றப்பட்டன. கண்டுபிடிப்பு ரத்து செய்யப்பட்டது.",
     "Settings copied": "அமைப்புகள் நகலெடுக்கப்பட்டன",
@@ -853,10 +887,15 @@ var keyStrings = {
     "Settings imported": "அமைப்புகள் இறக்குமதி செய்யப்பட்டன",
     "Settings JSON": "அமைப்புகள் JSON",
     "Settings loaded from storage": "சேமிப்பகத்திலிருந்து அமைப்புகள் ஏற்றப்பட்டன",
+    "Settings received. Restarting player...":
+        "அமைப்புகள் பெறப்பட்டன. பிளேயரை மறுதொடக்கம் செய்கிறது...",
     "Settings STB": "STB அமைப்புகள்",
     "Settings saved": "அமைப்புகள் சேமிக்கப்பட்டன",
     "Settings saved to storage": "அமைப்புகள் சேமிப்பகத்தில் சேமிக்கப்பட்டன",
     "Settings sended!": "அமைப்புகள் அனுப்பப்பட்டன!",
+    "Settings source changed": "அமைப்புகளின் ஆதாரம் மாற்றப்பட்டது",
+    "Settings storage rejected write":
+        "அமைப்புச் சேமிப்பகம் எழுதும் கோரிக்கையை நிராகரித்தது",
     "Several command servers were found. Select one below.":
         "பல கட்டளை சேவையகங்கள் கண்டறியப்பட்டன. கீழே ஒன்றைத் தேர்ந்தெடுக்கவும்.",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -908,12 +947,12 @@ var keyStrings = {
     "Starting...": "தொடங்குகிறது…",
     Status: "நிலை",
     Stop: "நிறுத்து",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "உலாவி பகிர்வை நிறுத்தவும்",
     "Stop current capture": "தற்போதைய பிடிப்பை நிறுத்தவும்",
     "Stop diagnostics": "நோயறிதலை நிறுத்து",
     "Stop playback and return to live":
         "பிளேபேக்கை நிறுத்திவிட்டு நேரலைக்குத் திரும்பவும்",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "ஸ்கிரீன்ஷாட்களை நிறுத்து",
     "Stream could not be played": "ஸ்ட்ரீமை இயக்க முடியவில்லை",
     "Stream type: %1": "ஸ்ட்ரீம் வகை: %1",
     "String for search": "தேடல் வினவல்",
@@ -925,6 +964,7 @@ var keyStrings = {
     "Switch subtitle": "வசனங்களை மாற்றவும்",
     "Switch to this list": "இந்தப் பட்டியலுக்கு மாறவும்",
     "Swop URL": "SWOP URL",
+    "System language": "கணினி மொழி",
     "saved on this device": "இந்தச் சாதனத்தில் சேமிக்கப்பட்டது",
     select: "தேர்ந்தெடுக்கவும்",
     small: "சிறியது",
@@ -933,14 +973,17 @@ var keyStrings = {
     "Tabox settings": "Tabox அமைப்புகள்",
     "Text is too long for remote input.":
         "தொலைநிலை உள்ளீட்டிற்கு உரை மிக நீளமாக உள்ளது.",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "உரை மிக நீளமாக உள்ளது. அனுப்பும் முன் சுருக்கவும்.",
+    "Text sent. Check your TV to confirm it appeared.":
+        "உரை அனுப்பப்பட்டது. அது டிவியில் தோன்றியுள்ளதா எனச் சரிபார்க்கவும்.",
+    "The browser screenshot source is ready.": "உலாவி ஸ்கிரீன்ஷாட் ஆதாரம் தயாராக உள்ளது.",
     "The command server discovery URL is invalid.":
         "கட்டளை சர்வர் கண்டுபிடிப்பு URL தவறானது.",
     "The device ID in the address is invalid.": "முகவரியில் உள்ள ID சாதனம் தவறானது.",
     "The discovery response is invalid.": "கண்டுபிடிப்பு பதில் தவறானது.",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "இந்த உலாவியால் தேர்ந்தெடுக்கப்பட்ட ஸ்கிரீன்ஷாட் மூலத்தை அடையாளம் காண முடியவில்லை.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "இந்த உலாவி தானாகவே பாதுகாப்பாக இணைக்க முடியாது. அதை புதுப்பிக்கவும் அல்லது கட்டளை சேவையக அமைப்புகளை கைமுறையாக உள்ளிடவும்.",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -949,6 +992,10 @@ var keyStrings = {
         "இந்த HTTPS பிளேயர் HTTP சேவையகத்துடன் இணைக்க முடியாது. HTTPS சேவையகத்தைப் பயன்படுத்தவும் அல்லது HTTP இல் பிளேயரைத் திறக்கவும்.",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "இந்த Play பயன்பாட்டிற்கு HTTPS தேவை. HTTPS பிளேலிஸ்ட் அல்லது சர்வர் URL உங்கள் வழங்குநரிடம் கேளுங்கள்.",
+    "This pairing link has expired. Open a new session on your TV.":
+        "இந்த இணைத்தல் இணைப்பு காலாவதியானது. உங்கள் டிவியில் புதிய அமர்வைத் திறக்கவும்.",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "இந்த பாதுகாப்பான அமர்வு கிடைக்கவில்லை அல்லது காலாவதியானது. டிவியில் புதிய அமர்வைத் திறந்து அதன் முழுமையான இணைப்பைப் பயன்படுத்தவும்.",
     Timer: "டைமர்",
     "Timer: switch to channel?": "டைமர்: இந்த சேனலுக்கு மாறவா?",
     "Timeshift: one minute back": "டைம்ஷிப்ட்: ஒரு நிமிடம் பின்",
@@ -997,6 +1044,8 @@ var keyStrings = {
         "முகவரியில் பயனர்பெயர் அல்லது கடவுச்சொல் இல்லாமல் HTTP அல்லது HTTPS ஐப் பயன்படுத்தவும்.",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "கட்டுப்பாட்டைத் தேர்ந்தெடுக்க இடது/வலது, அதைச் செயல்படுத்த சரி, மற்றும் உருட்ட மேல்/கீழே பயன்படுத்தவும்.",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "# க்குப் பின் உள்ள பகுதி உட்பட முழு இணைப்பைப் பயன்படுத்தவும். அதை யாரிடமும் பகிர்ந்து கொள்ள வேண்டாம்.",
     "Use Up / Down to scroll. Back to close.":
         "உருட்டுவதற்கு மேல் / கீழ் பயன்படுத்தவும். மீண்டும் மூடுவதற்கு.",
     Username: "பயனர்பெயர்",

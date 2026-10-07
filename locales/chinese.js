@@ -60,14 +60,14 @@ var keyStrings = {
     "All4you.tv settings": "All4you.tv 设置",
     "Allow diagnostics for 10 minutes": "允许诊断 10 分钟",
 
-    // Remote screenshots: English fallback pending translation.
-    "Allow screenshots for 10 minutes": "Allow screenshots for 10 minutes",
+    // Remote screenshots.
+    "Allow screenshots for 10 minutes": "允许截图10分钟",
     "Allow this server to collect diagnostic counters and restart this stream or player. Temporary access lasts 10 minutes. Trusted support stays available after reconnecting or restarting; each capture still expires after 10 minutes. Collection pauses while hidden or offline.":
         "允许该服务器收集诊断计数器并重新启动该流或播放器。临时访问持续 10 分钟。重新连接或重新启动后，可信支持仍然可用；每次捕获仍会在 10 分钟后过期。隐藏或离线时收集会暂停。",
     "Allow this server to collect playback, network and input counters for this foreground session. Requires HTTPS and server permission. Stops after 10 minutes, when hidden, or when disconnected.":
         "允许该服务器收集该前台会话的播放、网络和输入计数器。需要 HTTPS 和服务器权限。当隐藏或断开连接时，10 分钟后停止。",
     "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.":
-        "Allow this server to request images for 10 minutes. Images can contain personal information. In a browser, select the player tab or window. Permission ends on reload or disconnect.",
+        "允许该服务器请求图像10 分钟。图像可以包含个人信息。在浏览器中，选择播放器选项卡或窗口。权限在重新加载或断开连接时终止。",
     "Allowlist this Device ID": "将此设备列入白名单 ID",
     "An HTTPS player cannot download an HTTP EPG source. Use an HTTPS source.":
         "HTTPS 播放器无法下载HTTP EPG 源。使用 HTTPS 源。",
@@ -98,6 +98,7 @@ var keyStrings = {
     "Back / Forward for 1 minute": "快退/快进 1 分钟",
     "Background color": "背景颜色",
     "Background color of selected item": "所选项目的背景颜色",
+    "Backup state changed": "备份状态已更改",
     "Balance, $": "余额，$",
     "BEST LiST IPTV [HLS Playlist]": "BEST LiST IPTV [HLS Playlist]",
     "BEST LiST IPTV [HLS Playlist] settings":
@@ -107,6 +108,7 @@ var keyStrings = {
     "Behavior of %1/%2 buttons in lists": "列表中%1/%2 按钮的行为",
     "Black screen while switching the channel": "切换频道时黑屏",
     Blue: "蓝色",
+    "Bookmark age (days): %1": "书签年龄（天）：%1",
     "Bookmark age: %1 days": "书签年龄：%1 天",
     "Browse folders": "浏览文件夹",
     "Buffer Size, s": "缓冲区大小，s",
@@ -155,11 +157,14 @@ var keyStrings = {
     "Choose language": "选择语言",
     "Choose Plex server": "选择Plex服务器",
     "Choose provider": "选择提供商",
-    Classic: "Classic",
+    Classic: "经典",
     "Clear all settings?": "清除所有设置吗？",
     "Clear settings": "清除设定",
     Close: "关闭",
     "Close PiP": "关闭PiP",
+    "Cloud save/load requires STB firmware (host_ott not set)":
+        "云保存/加载需要STB固件（host_ott未设置）",
+    "Cloud transfer failed": "云传输失败",
     Code: "代码",
     Color: "颜色",
     "Color spectrum": "色谱",
@@ -175,6 +180,7 @@ var keyStrings = {
     "Compatibility runtime could not load. Reopen the player to retry.":
         "无法加载兼容性运行时。重新打开播放器重试。",
     "Compatible HLS": "兼容HLS",
+    "Complete pairing link": "完整配对链接",
     "Configure All4you.tv in Settings -> Provider Settings":
         "在“设置”->“提供商设置”中配置 All4you.tv",
     "Configure BEST LiST IPTV [HLS Playlist] in Settings -> Provider Settings":
@@ -247,20 +253,21 @@ var keyStrings = {
         "在“设置”->“提供商设置”中配置 Шаравоз",
     Connect: "连接",
     "Connect an HTTPS command server before allowing screenshots.":
-        "Connect an HTTPS command server before allowing screenshots.",
+        "在允许屏幕截图之前连接HTTPS 命令服务器。",
     "Connect an HTTPS command server to use screenshots.":
-        "Connect an HTTPS command server to use screenshots.",
-    "Connect remote control to enable diagnostics.":
-        "Connect remote control to enable diagnostics.",
+        "连接HTTPS 命令服务器以使用屏幕截图。",
+    "Connect remote control to enable diagnostics.": "连接远程控制以启用诊断。",
     "Connect this player to a command server first.":
         "首先将此播放器连接到命令服务器。",
+    "Connect to TV": "连接到电视",
     Connected: "已连接",
     "Connected. Waiting for the channel list...": "已连接。等待频道列表...",
     "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.":
-        "Connecting remote control authorizes this server to diagnose and repair the player. Access remains available after restarting and ends when you disconnect. Each diagnostic capture is limited to 10 minutes.",
+        "连接远程控制授权该服务器诊断和修复播放器。重新启动后访问仍然可用，并在断开连接时结束。每次诊断捕获的时间限制为 10 分钟。",
     "Connecting remote diagnostics for the enabled remote control connection.":
-        "Connecting remote diagnostics for the enabled remote control connection.",
+        "为已启用的远程控制连接连接远程诊断。",
     "Connecting remote diagnostics for this page.": "连接此页面的远程诊断。",
+    "Connecting securely to your TV...": "安全连接到电视...",
     "Connecting to Plex…": "连接到Plex…",
     "Connecting to Stalker portal...": "正在连接Stalker门户…",
     "Connecting...": "正在连接……",
@@ -277,6 +284,10 @@ var keyStrings = {
     "Could not create a pairing request. Find the server again to retry.":
         "无法创建配对请求。再次查找服务器重试。",
     "Could not load. Select to retry.": "无法加载。选择重试。",
+    "Could not prepare this text. Please shorten it and try again.":
+        "无法准备此文本。请缩短它并重试。",
+    "Could not protect the private link. Use a different browser.":
+        "无法保护专用链接。使用不同的浏览器。",
     "Could not save provider settings.": "无法保存提供商设置。",
     "Could not save the approved command server settings.":
         "无法保存批准的命令服务器设置。",
@@ -291,6 +302,8 @@ var keyStrings = {
     "Delete category": "删除类别",
     "Delete channel": "删除频道",
     "Delete list": "删除列表",
+    "Delivery could not be confirmed. Check your TV, or retry the same message before this session expires.":
+        "无法确认消息是否送达。请检查电视，或在此会话到期前重发同一条消息。",
     "Demo — moving test pattern": "演示 — 移动测试图案",
     Description: "说明",
     "Description of remote control buttons": "遥控器按钮指南",
@@ -370,6 +383,7 @@ var keyStrings = {
     "Enter Stalker portal URL (e.g. http://your-portal/stalker_portal/c/)":
         "输入Stalker门户URL（例如http://your-portal/stalker_portal/c/）",
     "Enter server number (%1).": "输入服务器编号(%1)。",
+    "Enter text": "输入文字",
     "Enter the access code separately, not in the server address.":
         "单独输入访问代码，而不是在服务器地址中输入。",
     "Enter the command server IP or address.": "输入命令服务器IP 或地址。",
@@ -510,7 +524,9 @@ var keyStrings = {
     "Interface transparency": "界面透明",
     "Invalid channel link! Enter the full host as in the cabinet stream URL (e.g. subdomain.cdn-domain.tld)":
         "频道链接无效！输入内阁流 URL 中的完整主机（例如 subdomain.cdn-domain.tld）",
+    "Invalid cloud settings response": "无效的云设置响应",
     "Invalid protected source configuration": "受保护源配置无效",
+    "Invalid setting": "无效设置",
     "IPTV token": "IPTV 代币",
     "IpStream.one": "IpStream.one",
     "IpStream.one settings": "IpStream.one设定",
@@ -589,6 +605,8 @@ var keyStrings = {
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
         "没有与播放列表频道和日期匹配的节目。检查源和设备时钟。",
     "No saved settings found": "未找到已保存的设置",
+    "No supported system language. Choose a language.":
+        "不支持的系统语言。选择一种语言。",
     "Not configured": "未配置",
     "Not found": "未找到",
     "Not reduce video when showing the list (bugfix)":
@@ -603,6 +621,8 @@ var keyStrings = {
     "not set": "未设置",
     Off: "关闭",
     Ok: "确定",
+    "Only this TV can accept your message. The link expires after 10 minutes.":
+        "只有本电视可以接受您的消息。该链接将在 10 分钟后过期。",
     Open: "打开",
     "Open in PiP": "在PiP中打开",
     "Open Plex sign-in page": "打开Plex登录页面",
@@ -615,6 +635,7 @@ var keyStrings = {
     "OTT / APP host": "OTT / APP主机",
     "OTT Prime ONLINE": "OTT Prime ONLINE",
     "OTT Prime ONLINE settings": "OTT Prime ONLINE设定",
+    "OTT-play remote input": "OTT-play 远程输入",
     "OttPlay FOSS %1 is available. Download and install now?":
         "OttPlay FOSS %1 可用。立即下载并安装？",
     "Overwrite current settings?": "覆盖当前设置？",
@@ -647,6 +668,7 @@ var keyStrings = {
     Playback: "播放",
     "Player and device info": "播放器和设备信息",
     "Player could not start": "播放器无法启动",
+    "Player default": "播放器默认选项",
     "Player info:": "播放器信息：",
     Playlist: "播放列表",
     "Playlist file": "播放列表文件",
@@ -667,6 +689,8 @@ var keyStrings = {
     Postpaid: "后付费",
     PROST: "PROST",
     "PROST settings": "PROST设定",
+    "Preferred audio language": "首选音频语言",
+    "Preferred subtitle language": "首选字幕语言",
     Prepaid: "预付费",
     "Preparing secure remote input...": "准备安全远程输入...",
     Prev: "上一页",
@@ -697,14 +721,14 @@ var keyStrings = {
     "Remote (number buttons N/A)": "遥控器（无数字按钮）",
     "Remote control": "远程控制",
     "Remote control authorizes diagnostics. Ready for an operator.":
-        "Remote control authorizes diagnostics. Ready for an operator.",
+        "远程控制授权诊断。为操作员做好准备。",
     "Remote control authorizes diagnostics. Waiting to reconnect.":
-        "Remote control authorizes diagnostics. Waiting to reconnect.",
+        "远程控制授权诊断。等待重新连接。",
     "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.":
-        "Remote control includes screenshots of the player, including settings. Images may contain private information. Native capture needs no extra approval. Browsers require a local choice of capture source.",
+        "远程控制包括播放器的屏幕截图，包括设置。图像可能包含私人信息。本机捕获不需要额外的批准。浏览器需要本地选择捕获源。",
     "Remote diagnostics": "远程诊断",
     "Remote diagnostics is collecting for this connection (up to 10 minutes per session).":
-        "Remote diagnostics is collecting for this connection (up to 10 minutes per session).",
+        "正在收集此连接的远程诊断信息（每个会话最多 10 分钟）。",
     "Remote diagnostics is collecting for this page.":
         "正在收集此页面的远程诊断信息。",
     "Remote diagnostics is off.": "远程诊断已关闭。",
@@ -718,10 +742,10 @@ var keyStrings = {
         "远程输入已过期。打开一个新会话重试。",
     "Remote input session is unavailable. Open a new session to try again.":
         "远程输入会话不可用。打开一个新会话重试。",
-    "Remote screenshots": "Remote screenshots",
+    "Remote screenshots": "远程截图",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
-        "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
-    "Remote screenshots are off.": "Remote screenshots are off.",
+        "已允许远程截图，持续10分钟。关闭设置界面后即可截图。",
+    "Remote screenshots are off.": "远程屏幕截图已关闭。",
     "Remote session expired": "远程会话已过期",
     "Remote text entry": "远程文本输入",
     "Remote text entry denied": "远程文本输入被拒绝",
@@ -747,6 +771,7 @@ var keyStrings = {
     "Resume from archive?": "继续观看过去的广播吗？",
     Retry: "重试",
     "Retry EPG download": "重试EPG下载",
+    "Retry same message": "重试同一消息",
     "Return to previous channel": "返回上一个频道",
     Rewind: "快退 / 快进",
     "Rewind step by buttons %1/%2": "按钮 %1/%2 的倒回步骤",
@@ -763,19 +788,20 @@ var keyStrings = {
     "Save settings": "保存设置",
     "Save settings and load channel list": "保存设置并加载通道列表",
     "Save settings to storage": "将设置保存到存储器",
+    "Scan the QR code on your TV, or paste its complete private pairing link below.":
+        "扫描电视上的二维码，或在下方粘贴完整的私密配对链接。",
     "Scan this QR code with your phone to enter text.":
         "用手机扫描此QR 代码以输入文本。",
-    "Screen sharing could not start.": "Screen sharing could not start.",
+    "Screen sharing could not start.": "屏幕共享无法启动。",
     "Screen sharing was cancelled or is unavailable.":
-        "Screen sharing was cancelled or is unavailable.",
-    "Screenshot permission could not be enabled.":
-        "Screenshot permission could not be enabled.",
+        "屏幕共享已取消或不可用。",
+    "Screenshot permission could not be enabled.": "无法启用屏幕截图权限。",
     "Screenshots are available while remote control is connected.":
-        "Screenshots are available while remote control is connected.",
-    "Screenshots are unavailable on this platform.":
-        "Screenshots are unavailable on this platform.",
+        "连接远程控制时可以使用屏幕截图。",
+    "Screenshots are unavailable on this platform.": "此平台上不提供屏幕截图。",
     Script: "编剧",
     Search: "搜索",
+    "Search languages": "搜索语言",
     "Search programme": "搜索节目",
     "Secure remote input could not start. Please try again or use the on-screen keyboard.":
         "安全远程输入无法启动。请重试或使用屏幕键盘。",
@@ -792,14 +818,14 @@ var keyStrings = {
     "Select playlist template source for EPG and logos":
         "选择EPG和徽标的播放列表模板源",
     "Select Stalker portal": "选择Stalker 门户",
-    "Select screenshot source in browser":
-        "Select screenshot source in browser",
+    "Select screenshot source in browser": "在浏览器中选择屏幕截图源",
     "Select the player tab or window in the browser sharing dialog.":
-        "Select the player tab or window in the browser sharing dialog.",
+        "在浏览器共享对话框中选择播放器选项卡或窗口。",
     "Send request": "发送请求",
     "Send settings": "发送设置",
     "Send this code from your proxy in the Authorization: Bearer header.":
         "从您的代理在Authorization: Bearer 标头中发送此代码。",
+    "Send to TV": "发送到电视",
     Server: "服务器",
     "Server address": "服务器地址",
     "Server address (for example 192.168.1.20:8081)":
@@ -808,10 +834,13 @@ var keyStrings = {
     "Server URL": "服务器URL",
     "Server unavailable. Retrying automatically; check its address and network access.":
         "服务器不可用。自动重试；检查其地址和网络访问。",
+    "Session closed. Start a new one from your TV when needed.":
+        "会话已关闭。需要时，请在电视上启动新的会话。",
     Set: "应用",
     "Set parental code": "设置家长控制代码",
     "Set timer?": "设置定时器？",
     Settings: "设置",
+    "Settings changed while editing": "编辑时设置已更改",
     "Settings changed. Discovery was canceled.": "设置已更改。发现被取消。",
     "Settings copied": "设置已复制",
     "Settings could not be exported": "无法导出设置",
@@ -820,10 +849,14 @@ var keyStrings = {
     "Settings imported": "导入的设置",
     "Settings JSON": "设置JSON",
     "Settings loaded from storage": "从存储加载的设置",
+    "Settings received. Restarting player...":
+        "收到设置。正在重新启动播放器...",
     "Settings STB": "STB设定",
     "Settings saved": "设置已保存",
     "Settings saved to storage": "设置保存到存储器",
     "Settings sended!": "设置已发送！",
+    "Settings source changed": "设置源已更改",
+    "Settings storage rejected write": "设置存储拒绝写入",
     "Several command servers were found. Select one below.":
         "发现多个命令服务器。选择以下一项。",
     "Shara.club (ClubTV.pro)": "Shara.club (ClubTV.pro)",
@@ -875,11 +908,11 @@ var keyStrings = {
     "Starting...": "开始……",
     Status: "状态",
     Stop: "停止",
-    "Stop browser sharing": "Stop browser sharing",
+    "Stop browser sharing": "停止浏览器共享",
     "Stop current capture": "停止电流捕捉",
     "Stop diagnostics": "停止诊断",
     "Stop playback and return to live": "停止播放并返回直播",
-    "Stop screenshots": "Stop screenshots",
+    "Stop screenshots": "停止截图",
     "Stream could not be played": "无法播放流",
     "Stream type: %1": "流类型：%1",
     "String for search": "搜索查询",
@@ -890,7 +923,8 @@ var keyStrings = {
     "Switch sound track": "切换音轨",
     "Switch subtitle": "切换字幕",
     "Switch to this list": "切换到此列表",
-    "Swop URL": "Swop URL",
+    "Swop URL": "Swop 地址",
+    "System language": "系统语言",
     "saved on this device": "保存在此设备上",
     select: "选择",
     small: "小",
@@ -898,13 +932,16 @@ var keyStrings = {
     Tabox: "Tabox",
     "Tabox settings": "Tabox设定",
     "Text is too long for remote input.": "文本对于远程输入来说太长。",
-    "The browser screenshot source is ready.":
-        "The browser screenshot source is ready.",
+    "Text is too long. Please shorten it before sending.":
+        "文本太长。发送前请缩短。",
+    "Text sent. Check your TV to confirm it appeared.":
+        "文本已发送。检查您的电视以确认它出现。",
+    "The browser screenshot source is ready.": "浏览器截图源已准备就绪。",
     "The command server discovery URL is invalid.": "命令服务器发现URL 无效。",
     "The device ID in the address is invalid.": "地址中的设备ID 无效。",
     "The discovery response is invalid.": "发现响应无效。",
     "This browser cannot identify the selected screenshot source.":
-        "This browser cannot identify the selected screenshot source.",
+        "该浏览器无法识别所选的屏幕截图源。",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
         "此浏览器无法安全地自动配对。更新它或手动输入命令服务器设置。",
     "This browser has no discovery profile. Enter a server address or configure the deployment profile.":
@@ -913,6 +950,10 @@ var keyStrings = {
         "该HTTPS 播放器无法连接到HTTP 服务器。使用 HTTPS 服务器或通过 HTTP 打开播放器。",
     "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.":
         "此Play 应用程序需要HTTPS。向您的提供商询问 HTTPS 播放列表或服务器 URL。",
+    "This pairing link has expired. Open a new session on your TV.":
+        "该配对链接已过期。在电视上打开一个新会话。",
+    "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
+        "此安全会话不可用或已过期。在电视上打开一个新会话并使用其完整链接。",
     Timer: "定时器",
     "Timer: switch to channel?": "定时器：切换到该频道？",
     "Timeshift: one minute back": "时移：回退一分钟",
@@ -958,6 +999,8 @@ var keyStrings = {
         "使用HTTP 或HTTPS，地址中不带用户名或密码。",
     "Use LEFT/RIGHT to select a control, OK to activate, and UP/DOWN to scroll.":
         "使用向左/向右选择控件，使用确定激活它，使用向上/向下滚动。",
+    "Use the full link, including the part after #. Do not share it with anyone else.":
+        "使用完整链接，包括# 后面的部分。不要与其他人分享。",
     "Use Up / Down to scroll. Back to close.": "使用向上/向下滚动。返回关闭。",
     Username: "用户名",
     "Username or password is missing.": "用户名或密码丢失。",

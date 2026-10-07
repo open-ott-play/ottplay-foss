@@ -1,6 +1,7 @@
 /* Real viewer, jQuery and CPD functions; only the bundled-file I/O boundary is faked. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const path = require("node:path");
 const ts = require("typescript");
 const acorn = require("acorn");
@@ -38,14 +39,7 @@ const viewer = extract("src/index.ts", [
     "pluginInfo",
     "interfaceCredits",
 ]);
-const localization = ts
-    .transpileModule(read("src/localization/index.ts"), {
-        compilerOptions: {
-            module: ts.ModuleKind.ES2015,
-            target: ts.ScriptTarget.ES5,
-        },
-    })
-    .outputText.replace(/^export /gm, "");
+const localization = localizationRuntime();
 const cpd = extract("src/ui/index.ts", [
     "saveListPanelState",
     "restoreListPanelState",
