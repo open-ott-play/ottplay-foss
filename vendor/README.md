@@ -109,5 +109,5 @@ with this repository's absolute path. `node scripts/shared-core.cjs` checks the
 pinned distribution; build staging verifies and packages it after polyfills.
 
 Canonical source: [ottplay-core/shared-core](https://github.com/open-ott-play/ottplay-core/tree/main/shared-core).
-Access to the private core repository is required to rebuild it; pinned
-consumer artifacts remain self-contained and carry source and artifact hashes.
+Rebuild these artifacts from the canonical source repository. The pinned
+consumer artifacts are self-contained and carry source and artifact hashes.
