@@ -58,7 +58,7 @@ public class MainActivity extends BridgeActivity {
                     mediaAction = true;
                     break;
                 case KeyEvent.KEYCODE_MEDIA_PLAY:
-                    script = "if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue();";
+                    script = "if(typeof window.stbResume==='function')window.stbResume();else if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue();";
                     mediaAction = true;
                     break;
                 case KeyEvent.KEYCODE_MEDIA_PAUSE:

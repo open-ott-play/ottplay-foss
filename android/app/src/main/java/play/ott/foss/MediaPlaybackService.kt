@@ -118,7 +118,7 @@ class MediaPlaybackService : Service() {
 
         private fun drivePlay() {
             evalOnWebView(
-                "if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;"
+                "if(typeof window.stbResume==='function')window.stbResume();else if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;"
             )
         }
 

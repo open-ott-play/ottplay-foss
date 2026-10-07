@@ -1026,6 +1026,7 @@ const coreControls = functions("src/core/index.ts", [
     "resetCoreNativeBitrate",
     "stbContinue",
     "stbPause",
+    "stbResume",
     "stbStop",
     "getCoreMediaBackend",
     "openCoreEngineLease",
@@ -1067,6 +1068,7 @@ for (const platform of Object.keys(nativeSources)) {
                 this.paused = true;
             },
             paused: true,
+            readyState: 0,
             play() {
                 this.paused = false;
             },
@@ -1081,10 +1083,21 @@ for (const platform of Object.keys(nativeSources)) {
         w._playSession++;
     };
     vm.runInContext(coreControls, w);
+    w.stbResume();
     w.getCoreMediaBackend().open({ url: "fixture.mp4" });
-    for (let i = 0; i < 2; i++)
-        vm.runInContext(nativeScript(platform, "play"), w);
-    assert.equal(w.video.paused, false, platform + " repeated explicit Play");
+    for (const readyState of [0, 1, 2]) {
+        w.video.readyState = readyState;
+        w.stbPause();
+        for (let i = 0; i < 2; i++) {
+            vm.runInContext(nativeScript(platform, "play"), w);
+            assert.equal(
+                w.video.paused,
+                false,
+                platform + " repeated explicit Play at readyState " + readyState
+            );
+            assert.equal(w.stbIsPlaying(), readyState >= 2);
+        }
+    }
     for (let i = 0; i < 2; i++)
         vm.runInContext(nativeScript(platform, "pause"), w);
     assert.equal(w.video.paused, true, platform + " explicit Pause");

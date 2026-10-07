@@ -134,10 +134,14 @@ const { gzipSync } = require("node:zlib");
 // inside the measured entry. Bounded cookie recovery uses part of the original
 // reserve; the unchanged cap leaves at least 685 raw / 477 gzip bytes at 1.1.53.
 // Do not exclude these tables or storage helpers from the measurement.
-// Merge both independent allowances from the common 749450 / 229800 base:
-// localization retains its 34850 / 14700 increment; Plex and decoder ownership
-// retain 2250 / 800. Neither feature consumes the other's release reserve.
-const BUDGET = Object.freeze({ bytes: 786550, gzipBytes: 245300 });
+// Both branches consumed the same historical reserve: common source 6f497732
+// measures 746380 / 228703, below its 749450 / 229800 cap. Adding only cap
+// increments therefore undercounts their combined cost. Latest main 3d7b65b7
+// measures 783764 / 243995; Plex, decoder ownership and explicit native Resume
+// together measure 788914 / 245600 on Node 22.23.3. Add their measured 5150 /
+// 1605 cost, rounded to 5200 / 1650, to main's 784300 / 244500 cap so the
+// existing native and release-version reserve is retained exactly once.
+const BUDGET = Object.freeze({ bytes: 789500, gzipBytes: 246150 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -206,9 +210,12 @@ const BUDGET = Object.freeze({ bytes: 786550, gzipBytes: 245300 });
 // web and 888349 / 283289 native. Only Stalker's locale adds provider bytes
 // (+24 raw / +7 gzip). The unchanged complete-payload cap leaves at least
 // 2009 raw / 411 gzip bytes at 1.1.53, counting every provider and table.
-// From the common 855550 / 269000 base, retain localization's 34850 / 14700
-// and the complete Plex/decoder payload's 8250 / 3300 allowance exactly once.
-const TOTAL_BUDGET = Object.freeze({ bytes: 898650, gzipBytes: 287000 });
+// Common source 6f497732 totals 851132 / 267962, below its 855550 / 269000
+// cap. Latest main totals 888540 / 283261; the combined player totals 901237 /
+// 287304, including every optional provider. Add the measured 12697 / 4043
+// cost, rounded to 12700 / 4100, to main's 890400 / 283700 cap. This preserves
+// main's reserve without counting the common branch reserve twice.
+const TOTAL_BUDGET = Object.freeze({ bytes: 903100, gzipBytes: 287800 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
