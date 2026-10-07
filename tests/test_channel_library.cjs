@@ -504,6 +504,101 @@ for (let slot = 0; slot < 15; slot++) {
     };
     assert(sourceId.current(h).startsWith("m3u:" + slot + "@"));
 }
+{
+    const names = ["__proto__", "constructor", "toString", "", "unknown"];
+    const catalog = names.map((itemId, index) => ({
+        groupId: "test",
+        groupLabel: "Test",
+        id: index + 1,
+        itemId,
+        label: itemId,
+        locked: true,
+    }));
+    function fromSaved(value, legacy) {
+        return create(
+            {
+                current: () => true,
+                get: (key) =>
+                    key === "channelLibrary:lock-test" && !legacy
+                        ? JSON.stringify(value)
+                        : key === "parentalArray" && legacy
+                          ? JSON.stringify(value)
+                          : null,
+                set: () => assert.fail("construction must not persist"),
+                sourceId: "lock-test",
+            },
+            catalog
+        );
+    }
+    const document = {
+        groups: [],
+        hidden: [],
+        locks: ["unknown", "__proto__", "unknown", "constructor"],
+        preferences: {},
+        sourceId: "lock-test",
+        unlocks: ["constructor", "toString", "", "constructor"],
+        version: 1,
+    };
+    assert.deepEqual(plain(fromSaved(document).snapshot().locks), [5, 1]);
+    assert.deepEqual(
+        plain(fromSaved([1, 5, 1], true).snapshot().locks),
+        [1, 5],
+        "legacy explicit locks override provider defaults without losing special IDs"
+    );
+}
+{
+    const count = 2000;
+    const catalog = Array.from({ length: count }, (_, index) => ({
+        groupId: "test",
+        groupLabel: "Test",
+        id: index + 1,
+        itemId: "item:" + index,
+        label: "Channel " + index,
+    }));
+    const document = JSON.stringify({
+        groups: [],
+        hidden: [],
+        locks: catalog.map((row) => row.itemId),
+        preferences: {},
+        sourceId: "lock-cost",
+        unlocks: catalog
+            .filter((_, index) => index % 2 === 0)
+            .map((row) => row.itemId),
+        version: 1,
+    });
+    vm.runInContext(
+        `var lockComparisons = 0, originalLockIndexOf = Array.prototype.indexOf;
+        Array.prototype.indexOf = function () {
+            var result = originalLockIndexOf.apply(this, arguments);
+            lockComparisons += result < 0 ? this.length : result + 1;
+            return result;
+        };`,
+        context
+    );
+    let result;
+    try {
+        result = create(
+            {
+                current: () => true,
+                get: (key) =>
+                    key === "channelLibrary:lock-cost" ? document : null,
+                set: () => assert.fail("construction must not persist"),
+                sourceId: "lock-cost",
+            },
+            catalog
+        );
+    } finally {
+        vm.runInContext(
+            "Array.prototype.indexOf = originalLockIndexOf;",
+            context
+        );
+    }
+    assert.equal(result.snapshot().locks.length, count / 2);
+    assert(
+        context.lockComparisons <= count * 10,
+        "large lock lists must not require quadratic membership scans"
+    );
+}
 console.log(
     "Channel library: stable identity, catalog/user separation, migration, account isolation, storage failures PASS"
 );
