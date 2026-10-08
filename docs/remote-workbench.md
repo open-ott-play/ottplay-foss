@@ -41,8 +41,12 @@ uses a pure cached `peek` and does not start or stop screen sharing.
 Build version, source revision and a content identifier are embedded in the
 loaded bundle. Fetching a newer `build-info.json` cannot change this identity.
 The `bundle-` identifier hashes the compiled input before identity insertion and
-minification; it is not a hash of the downloadable asset. Dirty worktrees and
-source archives without Git metadata report a partial source identity. Compare
+minification; it is not a hash of the downloadable asset. A clean Git checkout or
+an exact frozen release version overlay retains its source revision. The overlay
+must match the current commit, its committed policy and every declared version
+input, with no staged or unrelated changes; a release receipt alone is not proof.
+Other dirty worktrees and source archives without Git metadata report a partial
+source identity. Compare
 downloadable bytes against the release manifest separately when checking delivery.
 
 ## Transport and operation receipts

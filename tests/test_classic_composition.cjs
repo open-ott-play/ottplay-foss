@@ -19,6 +19,7 @@ const {
     createPlayerBuildIdentity,
     embedPlayerBuildIdentity,
 } = require("../scripts/player-build-identity.cjs");
+const { testReleaseOverlay } = require("./test_player_build_identity.cjs");
 
 async function testBuildIdentity() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "ott-composition-"));
@@ -227,6 +228,7 @@ async function main() {
     assert.throws(() => argumentsFor(["--compare"]), /Usage:/);
     assert.throws(() => argumentsFor(["--unknown", "file"]), /Usage:/);
     await testBuildIdentity();
+    testReleaseOverlay();
     console.log(
         "Classic composition: UTF-8 accounting, source maps, build identity, function attribution and arguments passed"
     );
