@@ -12,3 +12,15 @@ Include the affected version or commit, steps to reproduce, expected and actual
 behavior, and potential impact. Remove access tokens, credentials and personal
 data from examples. Do not disclose exploit details in public issues before
 coordinating with the maintainers.
+
+## Response commitments
+
+Maintainers aim to acknowledge private reports within 14 days; follow up
+privately if there is no response. Triage confirmed issues by impact, prioritize
+critical defects, and coordinate remediation/disclosure with the reporter.
+Security changes must have release notes with affected versions and upgrade
+actions. Fixes target the current default branch and latest release, rather than
+unmaintained historical versions. These are project policies, not assertions
+about the existence or response times of past reports.
+
+See [security design](docs/security-design.md) for project-specific trust boundaries.
