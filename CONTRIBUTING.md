@@ -40,3 +40,14 @@ test assertions enabled, resolve new warnings, and document any remaining
 warning with its reason and scope. Do not suppress a real security finding to
 obtain a passing check. Wait for required checks and independent review before
 merging; do not use an administrator bypass.
+
+## Python test dependency lock
+
+Install coverage with `python3 -m pip install --require-hashes --only-binary=:all: -r requirements-test.txt`. The `.in` file contains the direct requirement;
+regenerate the reviewed cross-platform hashes with:
+
+```sh
+uv pip compile requirements-test.in --generate-hashes --universal --python-version 3.12 --output-file requirements-test.txt
+```
+
+Run `npm run test:python` in the resulting Python environment.

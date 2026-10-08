@@ -418,19 +418,72 @@ fs.copyFileSync(process.env.MOCK_CLI, binary);
 `,
             { mode: 0o755 }
         );
+        const archiveCapture = path.join(fixture, "verified archive args.json");
+        fs.writeFileSync(
+            path.join(binaries, "python3"),
+            `#!/usr/bin/env node
+const fs = require('node:fs');
+if (!process.argv[2].endsWith('/download-verified-archive.py')) process.exit(2);
+fs.writeFileSync(process.env.ARCHIVE_CAPTURE, JSON.stringify(process.argv.slice(2)));
+if (process.env.FAIL_CLI_INTEGRITY) { console.error('archive verification failed'); process.exit(1); }
+fs.writeFileSync(process.argv[4], 'verified archive test double');
+`,
+            { mode: 0o755 }
+        );
         const cliEnv = {
             ...setupEnv,
+            ARCHIVE_CAPTURE: archiveCapture,
             HOME: cliHome,
             NPM_CAPTURE: npmCapture,
             PATH: binaries + path.delimiter + setupEnv.PATH,
             WEBOS_CLI: "",
         };
+        const cliDestination = path.join(
+            cliHome,
+            ".local/share/ottplay/webos-cli"
+        );
+        await exec("bash", [realSetup, "--cli-only", "--dry-run"], {
+            env: cliEnv,
+        });
+        assert(!fs.existsSync(archiveCapture));
+        assert(!fs.existsSync(npmCapture));
+        await assert.rejects(
+            exec("bash", [realSetup, "--cli-only"], {
+                env: { ...cliEnv, FAIL_CLI_INTEGRITY: "1" },
+            }),
+            (error) => /archive verification failed/.test(error.stderr)
+        );
+        assert(
+            !fs.existsSync(npmCapture),
+            "Unverified archive must never reach npm"
+        );
+        assert(
+            !fs.existsSync(cliDestination),
+            "Failed verification must not publish an installation"
+        );
+        assert(
+            !fs
+                .readdirSync(path.dirname(cliDestination))
+                .some((name) => name.startsWith(".webos-cli-install.")),
+            "Failed verification must remove staging files"
+        );
         await exec("bash", [realSetup, "--cli-only", "--version", "25"], {
             env: cliEnv,
         });
+        const installArgs = JSON.parse(fs.readFileSync(npmCapture, "utf8"));
+        assert(installArgs.includes("--ignore-scripts"));
+        assert(installArgs.includes("--no-save"));
+        assert(installArgs.at(-1).endsWith("/cli.tgz"));
+        const archiveArgs = JSON.parse(fs.readFileSync(archiveCapture, "utf8"));
+        assert.equal(
+            archiveArgs[1],
+            "https://registry.npmjs.org/@webos-tools/cli/-/cli-3.2.6.tgz"
+        );
+        assert.equal(archiveArgs[3], "5901117");
+        assert.match(archiveArgs[4], /^[a-f0-9]{128}$/);
         assert(
-            JSON.parse(fs.readFileSync(npmCapture, "utf8")).includes(
-                "@webos-tools/cli@3.2.6"
+            fs.existsSync(
+                path.join(cliDestination, "node_modules/.bin/ares-launch")
             )
         );
         fs.unlinkSync(npmCapture);
@@ -440,6 +493,27 @@ fs.copyFileSync(process.env.MOCK_CLI, binary);
         assert(
             !fs.existsSync(npmCapture),
             "Installed CLI must not be reinstalled"
+        );
+        const incompleteCliHome = path.join(fixture, "incomplete CLI home");
+        const incompleteCli = path.join(
+            incompleteCliHome,
+            ".local/share/ottplay/webos-cli"
+        );
+        fs.mkdirSync(incompleteCli, { recursive: true });
+        fs.writeFileSync(
+            path.join(incompleteCli, "keep.txt"),
+            "existing contents"
+        );
+        await assert.rejects(
+            exec("bash", [realSetup, "--cli-only"], {
+                env: { ...cliEnv, HOME: incompleteCliHome },
+            }),
+            (error) =>
+                /CLI destination exists but is incomplete/.test(error.stderr)
+        );
+        assert.equal(
+            fs.readFileSync(path.join(incompleteCli, "keep.txt"), "utf8"),
+            "existing contents"
         );
         console.log(
             "PASS webOS shell launcher: missing-tool bootstrap, reuse, stale registration, setup failure, dry run, archive rejection, exact CLI arguments and preflight"

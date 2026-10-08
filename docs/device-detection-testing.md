@@ -102,7 +102,11 @@ user-local installation at `~/.local/share/ottplay/webos-cli`. Existing simulato
 registrations and installations are reused when their files still exist. A
 missing default SDK is restored automatically; temporary download files are
 removed after setup. Setup checks the pinned archive size and SHA-256 before
-extraction. `--no-install` disables automatic setup on launch; setup's `--archive`
+extraction. The CLI tarball is separately checked against its pinned size and
+SHA-512 before npm runs. CLI installation disables dependency lifecycle scripts
+and publishes only a complete staged installation; an existing incomplete CLI
+directory is left untouched. Read [CLI dependency security](webos-cli-security.md)
+for upstream limitations. `--no-install` disables automatic setup on launch; setup's `--archive`
 option accepts an already downloaded official ZIP. To select another extracted
 Simulator directory:
 

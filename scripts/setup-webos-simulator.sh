@@ -5,6 +5,10 @@ set -euo pipefail
 VERSION=26
 SIMULATOR_VERSION=1.5.0
 CLI_VERSION=3.2.6
+CLI_ARCHIVE_SIZE=5901117
+# npm registry integrity for the official 3.2.6 archive, verified 2026-10-08.
+CLI_ARCHIVE_SHA512=564095f280727207745134f79fcc4e0942a3cc815a24ce4ccc95abf41aa61dfa6551e9ad32c4c1c7ed4634ecb18a8e8acb59a3fe2caa014c7855c532da742edd
+SCRIPT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCHIVE_SIZE=111268559
 # SHA-256 of the official RF00021097 download, verified on 2026-09-15.
 ARCHIVE_SHA256=f09068359f5cbab4da6fae3faac6239da17ea63ee34560df2471e469becf1cd4
@@ -104,7 +108,7 @@ if [[ "$cli_only" == 0 ]]; then
 fi
 if [[ -z "$cli" ]]; then
     printf 'Install CLI:'
-    printf ' %q' npm install --prefix "$cli_directory" --no-audit --no-fund --package-lock=false "@webos-tools/cli@$CLI_VERSION"
+    printf ' verify SHA-512 for @webos-tools/cli@%s, then install with --ignore-scripts into %q' "$CLI_VERSION" "$cli_directory"
     printf '\n'
 fi
 [[ "$dry_run" == 0 ]] || exit 0
@@ -194,7 +198,19 @@ fi
 if [[ -z "$cli" ]]; then
     command -v node >/dev/null || die "Node.js is required to install webOS CLI"
     command -v npm >/dev/null || die "npm is required to install webOS CLI"
-    npm install --prefix "$cli_directory" --no-audit --no-fund --package-lock=false "@webos-tools/cli@$CLI_VERSION"
-    [[ -x "$cli_directory/node_modules/.bin/ares-launch" ]] || die "Installed ares-launch was not found"
+    command -v python3 >/dev/null || die "Python 3 is required to verify the webOS CLI archive"
+    [[ ! -e "$cli_directory" && ! -L "$cli_directory" ]] || die "CLI destination exists but is incomplete; refusing to overwrite: $cli_directory"
+    mkdir -p "$(dirname "$cli_directory")"
+    cli_staging="$(mktemp -d "$(dirname "$cli_directory")/.webos-cli-install.XXXXXX")"
+    trap 'rm -rf "$cli_staging"' EXIT
+    python3 "$SCRIPT_DIRECTORY/download-verified-archive.py" \
+        "https://registry.npmjs.org/@webos-tools/cli/-/cli-$CLI_VERSION.tgz" \
+        "$cli_staging/cli.tgz" "$CLI_ARCHIVE_SIZE" "$CLI_ARCHIVE_SHA512"
+    npm install --prefix "$cli_staging/install" --ignore-scripts --no-save --no-audit --no-fund --package-lock=false "$cli_staging/cli.tgz"
+    [[ -x "$cli_staging/install/node_modules/.bin/ares-launch" ]] || die "Installed ares-launch was not found"
+    [[ ! -e "$cli_directory" && ! -L "$cli_directory" ]] || die "CLI destination appeared during installation; refusing to overwrite"
+    mv "$cli_staging/install" "$cli_directory"
+    rm -rf "$cli_staging"
+    trap - EXIT
 fi
 printf 'LG Simulator setup complete.\n'
