@@ -24,6 +24,9 @@
 - Version updates preserve quoted TOML keys containing `=` or `#`, including
   unrelated keys, without changing comments or surrounding file layout.
 
+- Release notes accept optional closing hashes in Markdown headings while
+  continuing to reject duplicate version sections.
+
 ### Upgrade
 
 Retain provider profiles and exported settings before replacing a web, desktop or
