@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
-const { fixture } = require("./test_port_vod.cjs");
+const { fixture, sourceFunctions } = require("./test_port_vod.cjs");
 const plain = (x) => JSON.parse(JSON.stringify(x));
 const contract = JSON.parse(
     fs.readFileSync("contracts/plex-queue-v1.json", "utf8")
@@ -186,6 +186,61 @@ test("explicit saved Plex queue preserves provider until preflight, starts at ze
     h.call("stop");
     assert.equal(h.queue.snapshot().state, "idle");
     assert.equal(h.queue.snapshot().active, false);
+});
+test("Fullscreen arrows follow the playing Plex source without changing the selected provider", () => {
+    for (const provider of ["m3u", "vportal", "stalker"]) {
+        const h = setup();
+        h.c.p_pref = provider;
+        h.c.__ottActiveProviderDriver = { id: provider };
+        const selected = h.c.__ottActiveProviderDriver;
+        vm.runInContext(
+            sourceFunctions("src/key-handler/index.ts", [
+                "handleMainKey",
+                "keyFun",
+            ]),
+            h.c
+        );
+        h.c.settings.auFun = 19;
+        h.c.settings.adFun = 18;
+        const seeks = [];
+        h.c.shiftArchive = (seconds) => seeks.push(seconds);
+        const press = (key) =>
+            h.c.handleMainKey(key, {
+                preventDefault() {},
+                stopPropagation() {},
+            });
+        h.call("play", ["1", "2", "3"]);
+        h.prepare(["1", "2", "3"]);
+        h.resolve("1");
+        press(h.c.keys.UP);
+        assert.equal(
+            h.requests.length,
+            1,
+            provider + " must resolve the next Plex video"
+        );
+        h.resolve("2");
+        assert.equal(h.queue.snapshot().index, 1);
+        press(h.c.keys.DOWN);
+        h.resolve("1");
+        assert.equal(h.queue.snapshot().index, 0);
+        assert.deepEqual(seeks, []);
+        assert.equal(h.c.p_pref, provider);
+        assert.equal(h.c.__ottActiveProviderDriver, selected);
+
+        h.call("stop");
+        h.c._playMedia({
+            id: "own-video",
+            stream_url: "own-video.mp4",
+            title: "Own video",
+        });
+        press(h.c.keys.UP);
+        press(h.c.keys.DOWN);
+        assert.deepEqual(
+            seeks,
+            [60, -60],
+            "The selected provider's own video keeps configured seeking"
+        );
+    }
 });
 test("preview validates order without publishing, resolving streams or modifying saved settings", () => {
     const h = setup();
