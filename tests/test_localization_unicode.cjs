@@ -17,6 +17,31 @@ const bundle =
     (process.argv.includes("--bundle") ? "dist/player.js" : undefined);
 const code = localizationRuntime(bundle);
 acorn.parse(code, { ecmaVersion: 5 });
+const foldReference = new Map();
+for (const line of fs
+    .readFileSync("tests/fixtures/unicode/CaseFolding-17.0.0.txt", "utf8")
+    .split("\n")) {
+    const [point, status, mapping] = line.split("#")[0].split(";");
+    if (!status || !["C", "F"].includes(status.trim())) continue;
+    foldReference.set(
+        Number.parseInt(point, 16),
+        String.fromCodePoint(
+            ...mapping
+                .trim()
+                .split(/\s+/)
+                .map((value) => Number.parseInt(value, 16))
+        )
+    );
+}
+assert.equal(foldReference.size, 1585);
+function canonicalCaselessReference(value) {
+    return Array.from(
+        value.normalize("NFD"),
+        (char) => foldReference.get(char.codePointAt(0)) || char
+    )
+        .join("")
+        .normalize("NFC");
+}
 // APIs may exist yet implement an older Unicode version. They must not bypass pinned17.
 {
     const host = {};
@@ -72,6 +97,39 @@ for (const legacy of [false, true]) {
             host.normalizeSearchText(query),
             `${legacy}: ${name}`
         );
+    // Folding can expand a starter or turn U+0345 into a new starter. Testing
+    // isolated C/F mappings misses composition and mark placement across it.
+    // Keep the native oracle marks old enough for hosts with older ICU data.
+    for (const point of foldReference.keys()) {
+        const char = String.fromCodePoint(point);
+        for (const mark of [
+            "\u0301",
+            "\u0302",
+            "\u0307",
+            "\u0323",
+            "\u0331",
+            "\u0345",
+        ]) {
+            for (const value of [char + mark, mark + char]) {
+                const actual = host.unicodeSearchKey(value, "");
+                assert.equal(
+                    actual,
+                    canonicalCaselessReference(value),
+                    `contextual C/F key U+${point.toString(16)}`
+                );
+                assert.equal(
+                    host.unicodeSearchKey(actual, ""),
+                    actual,
+                    "contextual search keys are idempotent"
+                );
+            }
+        }
+    }
+    assert.equal(
+        host.unicodeSearchKey("H\u1acf\u0331", ""),
+        "\u1e96\u1acf",
+        "Unicode17 mark ordering and fold composition use a pinned expectation"
+    );
     // Leading marks, starter barriers and equal-CCC order in long pasted text.
     const highMarks = "\u0315".repeat(8192),
         lowMarks = "\u0323\u0324".repeat(4096),
@@ -130,6 +188,28 @@ for (const legacy of [false, true]) {
             host.unicodeSearchKey("I\u0323\u0307", locale),
             host.unicodeSearchKey("i\u0323", locale),
             "Turkic dot after a lower-CCC mark"
+        );
+        for (const [value, expected] of [
+            ["III\u0307", "ııi"],
+            ["I\u0307I\u0307", "ii"],
+            ["İI", "iı"],
+            ["I\u0301\u0307", "ı\u0301\u0307"],
+            ["I\u034f\u0307", "ı\u034f\u0307"],
+            ["I\ud800\u0307", "ı\ud800\u0307"],
+            ["I😀\u0307", "ı😀\u0307"],
+            ["I\u{1d165}\u0307", "i\u{1d165}"],
+            ["I\u1add\u0307I\u1acf\u0323\u0307", "i\u1addı\u0323\u1acf\u0307"],
+        ]) {
+            assert.equal(host.unicodeSearchKey(value, locale), expected);
+            assert.equal(host.unicodeSearchKey(expected, locale), expected);
+        }
+        assert.equal(
+            host.unicodeSearchKey(
+                "I\u0323\u0307I\u0301\u0307".repeat(256),
+                locale
+            ),
+            "ịı\u0301\u0307".repeat(256),
+            "repeated Turkic replacements preserve every span"
         );
     }
     if (legacy) {
@@ -424,6 +504,39 @@ for (const legacy of [false, true]) {
     host.medHistory = [{ name: "한" }];
     host.searchHistoryChannel("한");
     assert.equal(host.getFilteredHistory().length, 1);
+    host.channels = Object.freeze({
+        1: Object.freeze({ channel_name: "ß\u0301 TV" }),
+        2: Object.freeze({ channel_name: "sś TV" }),
+        3: Object.freeze({ channel_name: "ss TV" }),
+        4: Object.freeze({ channel_name: "\u1f80\u0302 TV" }),
+    });
+    host.curList = [1, 2, 3, 4];
+    host.medHistory = Object.freeze([
+        Object.freeze({ name: "ß\u0301 TV", title: "Programme" }),
+        Object.freeze({ name: "Channel", title: "sś programme" }),
+        Object.freeze({ name: "ss TV", title: "Programme" }),
+        Object.freeze({ name: "Greek", title: "\u1f80\u0302 programme" }),
+    ]);
+    const beforeSearch = JSON.stringify([host.channels, host.medHistory]);
+    for (const [query, expected] of [
+        ["ss\u0301", [1, 2]],
+        ["ß\u0301", [1, 2]],
+        ["ss", [3]],
+        ["α\u0313\u0302ι", [4]],
+        ["ἀι\u0302", []],
+    ]) {
+        host.setSearchText(query);
+        host.searchHistoryChannel(query);
+        assert.deepEqual(Array.from(host.getFilteredChannelList()), expected);
+        assert.deepEqual(
+            Array.from(host.getFilteredHistory()),
+            expected.map((id) => host.medHistory[id - 1])
+        );
+    }
+    assert.equal(
+        JSON.stringify([host.channels, host.medHistory]),
+        beforeSearch
+    );
 }
 for (const legacy of [false, true]) {
     const dom = new JSDOM(

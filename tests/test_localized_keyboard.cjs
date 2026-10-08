@@ -532,6 +532,92 @@ try {
             "display-only dotted circles never enter the value"
         );
     }
+    // Edits may join the inserted text to the following cluster. The caret
+    // must move to that new boundary before rendering or the next deletion.
+    w._setCase(false);
+    for (const [value, position, character, expected, caret] of [
+        ["\u0301", 0, "a", "a\u0301", 2],
+        ["\u0301", 0, " ", " \u0301", 2],
+        ["👩👩", 2, "\u200d", "👩‍👩", 5],
+    ]) {
+        w.editvar = value;
+        w.editPos = position;
+        w._keys = character;
+        w._keyCur = 0;
+        if (character === " ") w._keysSymbol[6].a();
+        else w.editKey1(w.keys.ENTER);
+        assert.equal(w.editvar, expected, "insertion preserves all input");
+        assert.equal(w.editPos, caret, "caret follows the joined grapheme");
+        w.editKey1(w.keys.YELLOW);
+        assert.equal(w.editvar, "", "backspace removes the joined grapheme");
+    }
+    for (const [position, snapped] of [
+        [-4, 0],
+        [-Infinity, 0],
+        [NaN, 0],
+        [0, 0],
+        [0.5, 2],
+        [1, 2],
+        [1.5, 2],
+        [2, 2],
+        [99, 3],
+        [Infinity, 3],
+    ]) {
+        w.editvar = "📺z";
+        w.editPos = position;
+        w._keys = "a";
+        w._keyCur = 0;
+        w.editKey1(w.keys.ENTER);
+        assert.equal(
+            w.editvar,
+            "📺z".slice(0, snapped) + "a" + "📺z".slice(snapped),
+            "external caret is clamped before insertion: " + position
+        );
+        assert.equal(w.editPos, snapped + 1);
+        w.editvar = "📺z";
+        w.editPos = position;
+        w._changeEdit();
+        assert.equal(w.editPos, snapped, "render aligns external cursor");
+        assert.equal(w.document.getElementById("ee").textContent, "📺z");
+        assert.equal(
+            w.document.getElementById("cursor").previousSibling.nodeValue,
+            "📺z".slice(0, snapped),
+            "preview never splits the surrogate pair"
+        );
+    }
+    w.editvar = "🇦x🇧🇨";
+    w.editPos = 3;
+    w.editKey1(w.keys.YELLOW);
+    assert.equal(w.editvar, "🇦🇧🇨", "remove only the separator");
+    assert.equal(w.editPos, 4, "deletion changes RI pairing at the caret");
+    for (const [value, boundaries] of [
+        ["\u0301\u0308a", [0, 2, 3]],
+        ["🇦🇧🇨", [0, 4, 6]],
+        ["👩‍👩z", [0, 5, 6]],
+        ["\r\na", [0, 2, 3]],
+        ["\ud800\u0301z", [0, 2, 3]],
+    ]) {
+        w.editvar = value;
+        w.editPos = 0;
+        for (const boundary of boundaries.slice(1)) {
+            w._keysSymbol[5].a();
+            assert.equal(w.editPos, boundary, "forward grapheme movement");
+        }
+        for (const boundary of boundaries.slice(0, -1).reverse()) {
+            w._keysSymbol[4].a();
+            assert.equal(w.editPos, boundary, "backward grapheme movement");
+        }
+    }
+    for (const value of ["A\r\nB\rC\u0000", "\ud800\u0301z", "<img>&\r\n"]) {
+        w.editvar = value;
+        w.editPos = value.length;
+        w._changeEdit();
+        assert.equal(
+            w.document.getElementById("ee").textContent,
+            value,
+            "preview text nodes preserve controls and malformed UTF16"
+        );
+    }
     w.editvar = '<img src=x onerror="bad()">&';
     w.editPos = w.editvar.length;
     w._changeEdit();

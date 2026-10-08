@@ -57,7 +57,10 @@ function createInputRouter(ports: any) {
             id: id,
             repeat: !!(event && event.repeat),
             text:
-                event && event.key && event.key.length === 1
+                event &&
+                event.key &&
+                (event.key.length === 1 ||
+                    /^[\ud800-\udbff][\udc00-\udfff]$/.test(event.key))
                     ? event.key
                     : undefined,
         };
