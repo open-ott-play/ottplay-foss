@@ -16,8 +16,9 @@ const output = ts.transpileModule(
 ).outputText;
 acorn.parse(output, { ecmaVersion: 5 });
 const exported = {};
+let wallNow = 1800000000000;
 vm.runInNewContext(output, {
-    Date: { now: () => 1800000000000 },
+    Date: { now: () => wallNow },
     exports: exported,
 });
 const collect = exported.collectRemoteDoctor;
@@ -457,6 +458,20 @@ test("maximum legal payload stays below 8 KiB; input lengths never drive travers
     assert.equal(new Set(result.reasons).size, result.reasons.length);
     assert.equal(result.reasons.includes("producer_failed"), false);
     assert.equal(serialized.includes("secret"), false);
+    f.dom.window.close();
+});
+
+test("unknown wall-clock time cannot claim a consistent timed observation", () => {
+    const f = fixture();
+    for (const value of [-1, 0, NaN, Infinity, undefined]) {
+        wallNow = value;
+        const result = collect(f.w, f.readers);
+        assert.equal(result.capturedAt, 0);
+        assert.equal(result.consistent, false);
+        assert.ok(result.reasons.includes("invalid_sample"));
+    }
+    wallNow = 1800000000000;
+    assert.equal(collect(f.w, f.readers).consistent, true);
     f.dom.window.close();
 });
 

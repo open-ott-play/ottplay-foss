@@ -149,6 +149,8 @@ export function installRemoteInspection(w: any): any {
         return (
             /^[a-f0-9]{32}$/.test(item.id || "") &&
             actions.indexOf(item.action) >= 0 &&
+            item.action !== "vportal_search" &&
+            !(item.action === "kiosk" && params.mode === "status") &&
             !(
                 item.action === "plex_queue" &&
                 /^(status|preview)$/.test(params.op)

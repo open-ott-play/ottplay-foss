@@ -283,7 +283,11 @@ export function collectRemoteDoctor(
         }, null);
     }
     var start = clock();
-    var capturedAt = number(Date.now(), 9007199254740991, true) || 0;
+    var capturedAt =
+        safely(function () {
+            return number(Date.now(), 9007199254740991, true);
+        }, null) || 0;
+    if (!capturedAt) reason("invalid_sample");
     var identity = safely(
         function () {
             var raw = read(readers.readIdentity);
@@ -627,6 +631,7 @@ export function collectRemoteDoctor(
         return token(raw && raw.runtime, 96);
     }, null);
     var consistent =
+        capturedAt > 0 &&
         identity.runtime !== "unknown" &&
         afterRuntime === identity.runtime &&
         ui.revision !== null &&

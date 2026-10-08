@@ -135,6 +135,8 @@ for (const [action, params] of [
     ["plex_queue", { op: "status" }],
     ["vportal_queue", { operation: "status" }],
     ["maintenance", { operation: "health" }],
+    ["vportal_search", { query: "fixture" }],
+    ["kiosk", { mode: "status" }],
 ]) {
     api.execute(
         { action, id: readId, params },
