@@ -15,15 +15,15 @@ Usage: scripts/run-webos-simulator.sh [options]
                     OTTP_PLAYER_URL, or legacy OTTP_DEVICE_TEST_PORT)
   --sdk DIRECTORY   Simulator directory (WEBOS_SDK_PATH); otherwise reuse a
                     registered installation or install in the user-local path
-  --cli PATH        ares-launch executable (WEBOS_CLI; otherwise PATH or
-                    ~/.local/share/ottplay/webos-cli/node_modules/.bin/ares-launch)
+  --cli PATH        Explicit external ares-launch override (or WEBOS_CLI);
+                    default: bundled launcher, no webOS CLI or npm install
   --dry-run         Prepare the hosted app and print the command without
                     downloading, checking the server or launching the Simulator
-  --no-install      Fail if the Simulator or CLI is missing
+  --no-install      Fail if the Simulator is missing
   -h, --help        Show this help
 
-Missing LG Simulator 26 (macOS ARM64) and webOS CLI are installed automatically.
-Requires Node.js and curl; initial setup also needs Python 3, ditto and npm.
+Missing LG Simulator 26 (macOS ARM64) is installed automatically.
+Requires Node.js and curl; initial setup also needs Python 3 and ditto.
 The script does not build, deploy or start the player server.
 EOF
 }
@@ -80,12 +80,6 @@ JS
     sdk="${sdk:-$HOME/.local/share/ottplay/webos-tv-simulator/$version}"
 fi
 if [[ -d "$sdk" ]]; then sdk="$(cd "$sdk" && pwd)"; fi
-if [[ -z "$cli" ]]; then
-    cli="$(command -v ares-launch || true)"
-    if [[ -z "$cli" && -x "$HOME/.local/share/ottplay/webos-cli/node_modules/.bin/ares-launch" ]]; then
-        cli="$HOME/.local/share/ottplay/webos-cli/node_modules/.bin/ares-launch"
-    fi
-fi
 if [[ -n "$cli" ]]; then
     cli="$(command -v "$cli")" || die "ares-launch is not executable; check --cli or WEBOS_CLI"
     [[ -x "$cli" ]] || die "ares-launch is not executable: $cli"
@@ -95,12 +89,9 @@ needs_setup=0
 setup_args=(--version "$version" --destination "$sdk")
 if ! simulator_ready "$sdk"; then
     needs_setup=1
-elif [[ -z "$cli" ]]; then
-    needs_setup=1
-    setup_args+=(--cli-only)
 fi
 if [[ "$needs_setup" == 1 && "$auto_install" == 0 ]]; then
-    die "LG Simulator or ares-launch is missing; run scripts/setup-webos-simulator.sh or omit --no-install."
+    die "LG Simulator is missing; run scripts/setup-webos-simulator.sh or omit --no-install."
 fi
 
 if [[ "$dry_run" == 0 ]]; then
@@ -118,17 +109,16 @@ if [[ "$needs_setup" == 1 ]]; then
         printf ' %q' "$SCRIPT_DIR/setup-webos-simulator.sh" "${setup_args[@]}"
         printf '\n'
     else
-        WEBOS_CLI="$cli" bash "$SCRIPT_DIR/setup-webos-simulator.sh" "${setup_args[@]}"
+        bash "$SCRIPT_DIR/setup-webos-simulator.sh" "${setup_args[@]}"
         simulator_ready "$sdk" || die "LG setup finished without a usable Simulator: $sdk"
     fi
 fi
-if [[ -z "$cli" ]]; then cli="$HOME/.local/share/ottplay/webos-cli/node_modules/.bin/ares-launch"; fi
-if [[ "$dry_run" == 0 && ! -x "$cli" ]]; then die "LG setup finished without an executable ares-launch: $cli"; fi
-
 OTTP_PLAYER_URL="$player_url" node "$SCRIPT_DIR/prepare-webos-simulator.cjs"
-command_args=("$cli" -s "$version")
-if [[ -n "$sdk" ]]; then command_args+=(-sp "$sdk"); fi
-command_args+=("$PROJECT_ROOT/build/device-webos-simulator")
+if [[ -n "$cli" ]]; then
+    command_args=("$cli" -s "$version" -sp "$sdk" "$PROJECT_ROOT/build/device-webos-simulator")
+else
+    command_args=(node "$SCRIPT_DIR/launch-webos-simulator.cjs" "$version" "$sdk" "$PROJECT_ROOT/build/device-webos-simulator")
+fi
 printf 'Launch:'
 printf ' %q' "${command_args[@]}"
 printf '\n'

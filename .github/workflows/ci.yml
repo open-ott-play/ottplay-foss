@@ -208,7 +208,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: |
-          python3 -m pip install --only-binary=:all: -r requirements-test.txt
+          python3 -m pip install --require-hashes --only-binary=:all: -r requirements-test.txt
       - name: Python suite and runtime branch coverage gate
         run: npm run test:python
       - name: Preserve Python suite evidence
