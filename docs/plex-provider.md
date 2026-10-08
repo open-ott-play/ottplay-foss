@@ -15,6 +15,11 @@ selection or adding another breadcrumb. A failed request keeps the existing
 items and offers a selectable retry row; **Back** still opens the parent folder.
 Selecting a video starts an ordered queue of that folder’s files. Natural completion
 plays the next file in the same folder, including files on later catalog pages.
+The selected filename and an animated loading dialog appear immediately while
+the player collects the folder and resolves the file. Other list selections are
+blocked during this wait. **Back** cancels and keeps the same file selected;
+a connection error returns to the list for retry. Once the stream is handed to
+the decoder, its normal buffering indicator follows actual video readiness.
 Subfolders are excluded. **Shuffle: Off** starts its videos in a random order. The
 queue includes every page of that folder and applies the current title filter;
 it does not descend into subfolders. A failed page cancels the new queue.

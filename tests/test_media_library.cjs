@@ -2884,6 +2884,176 @@ test("Full-screen Plex arrows select adjacent videos instead of the configured m
     );
 });
 
+function resumedWithoutFolder(repeat) {
+    const c = coldFolderResumeFixture();
+    if (repeat) c.stored["mediaRepeat.v1:" + c.__ottMedia.sourceId()] = repeat;
+    const collect = c.providerMediaClient.collect;
+    c.providerMediaClient.collect = (_target, done) =>
+        done({ error: true, items: [] });
+    assert.equal(c.__ottMedia.restoreLast(), true);
+    if (repeat !== "one") assert.equal(c.__ottMedia.current().sequence, null);
+    c.providerMediaClient.collect = collect;
+    c.deferFolder = true;
+    return c;
+}
+
+test("Plex arrows recover the original folder after an unavailable startup catalog", () => {
+    const c = resumedWithoutFolder();
+    c.__ottMedia.skip(1);
+    assert.equal(c.collections.length, 1);
+    assert.equal(
+        c.resolutions.length,
+        1,
+        "The current file keeps playing during collection"
+    );
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    c.__ottMedia.skip(-1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    assert.equal(c.collections.length, 1, "Recovered siblings are reused");
+});
+
+test("Repeat One keeps folder recovery available after replaying the fallback item", () => {
+    const c = resumedWithoutFolder("one");
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 600,
+        type: "position",
+    });
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(
+        c.resolutions.length,
+        2,
+        "Natural completion repeats the current file"
+    );
+    c.__ottMedia.skip(1);
+    assert.equal(c.collections.length, 1);
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    assert.equal(c.__ottMedia.current().sequence.repeat, "one");
+});
+
+test("Enabling Repeat One on a file without a queue does not disable arrow recovery", () => {
+    const c = resumedWithoutFolder();
+    c.__ottMedia.cycleRepeat();
+    c.__ottMedia.skip(-1);
+    assert.equal(c.collections.length, 1);
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/41"
+    );
+    assert.equal(c.__ottMedia.current().sequence.repeat, "one");
+});
+
+test("A real one-file folder is collected once without recursive recovery", () => {
+    const c = resumedWithoutFolder("one");
+    c.folderRows = c.folderRows.filter(
+        (row) => row.request?.path === "/library/metadata/42"
+    );
+    c.__ottMedia.skip(1);
+    c.completeFolder();
+    c.__ottMedia.skip(-1);
+    assert.equal(c.collections.length, 1);
+    assert.equal(c.resolutions.length, 1);
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+});
+
+test("Pending folder recovery combines arrow presses without restarting the request", () => {
+    const c = resumedWithoutFolder();
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    c.__ottMedia.skip(-1);
+    assert.equal(c.collections.length, 1);
+    c.completeFolder();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/41"
+    );
+});
+
+test("A stopped or ended fallback file can retry an invalidated folder recovery", () => {
+    for (const ended of [false, true]) {
+        for (const finishBeforeRetry of [false, true]) {
+            const c = resumedWithoutFolder();
+            c.__ottMedia.skip(1);
+            const stale = c.completeFolder;
+            c.__ottClassicPlayback.command({ type: "stop" });
+            if (ended)
+                c.__ottMedia.ended(
+                    c.__ottClassicPlayback.snapshot().generation
+                );
+            if (finishBeforeRetry) stale(true);
+            assert.equal(c.resolutions.length, 1);
+            c.__ottMedia.skip(1);
+            assert.equal(
+                c.collections.length,
+                2,
+                "A new arrow starts a fresh folder request"
+            );
+            stale(true);
+            assert.equal(
+                c.resolutions.length,
+                1,
+                "The stale folder reply cannot start a video"
+            );
+            c.completeFolder();
+            assert.equal(
+                c.__ottMedia.current().payload.request.path,
+                "/library/metadata/43"
+            );
+            assert.equal(c.resolutions.length, 2);
+        }
+    }
+});
+
+test("Cancelled folder recovery cannot replace newer playback or navigation", () => {
+    for (const cancel of [
+        (c) => c.__ottMedia.cancelAuto(),
+        (c) => c.__ottClassicPlayback.command({ type: "stop" }),
+        (c) => c.mediaList("library"),
+    ]) {
+        const c = resumedWithoutFolder();
+        c.__ottMedia.skip(1);
+        const finish = c.completeFolder;
+        cancel(c);
+        finish(true);
+        assert.equal(c.resolutions.length, 1);
+        assert.equal(c.__ottMedia.current().sequence, null);
+    }
+});
+
+test("Missing original file never falls through to an unrelated folder sibling", () => {
+    const c = resumedWithoutFolder();
+    c.folderRows = c.folderRows.filter(
+        (row) => !row.request || row.request.path !== "/library/metadata/42"
+    );
+    c.__ottMedia.skip(1);
+    c.completeFolder();
+    assert.equal(c.resolutions.length, 1);
+    assert.equal(c.__ottMedia.current().sequence, null);
+    c.__ottMedia.skip(1);
+    assert.equal(
+        c.collections.length,
+        2,
+        "A later press can retry a failed collection"
+    );
+});
+
 test("Manual media skip respects queue order, repeat boundaries and shuffle", () => {
     const c = coldFolderResumeFixture();
     c.__ottMedia.restoreLast();
@@ -3165,7 +3335,7 @@ test("Cancelled cold folder collection cannot restore navigation or start late p
     }
 });
 
-test("Reentrant Stop while restoring a replacement folder prevents both pending manual selections", () => {
+test("Pending Plex selection blocks replacement and cancellation cannot revive either file", () => {
     const c = coldFolderResumeFixture();
     assert.equal(c.__ottMedia.restoreLast(), true);
     c.mediaList(null);
@@ -3182,8 +3352,19 @@ test("Reentrant Stop while restoring a replacement folder prevents both pending 
     };
     const plays = c.calls.filter((row) => row[0] === "play").length;
     c.chooseTitle("Next film");
+    assert.equal(
+        cancellations,
+        0,
+        "a second selection cannot replace the loading file"
+    );
+    assert.equal(pending.length, 1);
+    c.dialogBoxKeyHandler(c.keys.RETURN);
     assert.equal(cancellations, 1);
-    assert.equal(pending.length, 1, "Stop prevents the replacement resolver");
+    assert.equal(
+        pending.length,
+        1,
+        "cancellation cannot dispatch the queued selection"
+    );
     assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
     pending[0].done({ ...pending[0].payload, stream_url: "late-film.mp4" });
     assert.equal(c.calls.filter((row) => row[0] === "play").length, plays);

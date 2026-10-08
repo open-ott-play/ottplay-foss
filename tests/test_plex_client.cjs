@@ -1166,6 +1166,25 @@ test("resolution fallback cannot run after cancellation, replacement, retirement
     );
 });
 
+test("resolution failure releases its owned wait before the error and retains cancellation guards", () => {
+    for (const cancel of [false, true]) {
+        const f = fixture(),
+            events = [];
+        const done = (value) => events.push(value);
+        done.beforeError = () => {
+            events.push("release wait");
+            if (cancel) f.client.cancel();
+        };
+        f.host.infoBox = () => events.push("visible error");
+        f.client.resolve(film, done);
+        last(f).fail();
+        assert.deepEqual(
+            events,
+            cancel ? ["release wait"] : ["release wait", "visible error", null]
+        );
+    }
+});
+
 test("HEVC HLS preserves source resolution only when the actual MSE codec is supported", () => {
     for (const [supported, hls] of [
         [false, true],

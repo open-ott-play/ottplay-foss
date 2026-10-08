@@ -1028,6 +1028,11 @@ function createPlexClient(
         function finish(playable: any): void {
             if (finished || !current(token)) return;
             finished = true;
+            // An owned launch wait must yield before the error dialog takes
+            // its place; replacing the wait otherwise cancels this completion.
+            var beforeError = (done as any).beforeError;
+            if (!playable && typeof beforeError === "function") beforeError();
+            if (!current(token)) return;
             if (!playable) failure();
             // A visible error may itself retire this source or navigate away.
             if (current(token)) done(playable);

@@ -243,6 +243,253 @@ async function select(page, title) {
     }, title);
 }
 
+test("Plex file selection shows an owned wait through collection and resolution, cancels and retries", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const local = new URL(baseURL).origin;
+    const title = "Винни-Пух <тест>";
+    const rows = [
+        { ratingKey: "42", title, type: "movie" },
+        { ratingKey: "43", title: "Following film", type: "movie" },
+    ];
+    const collections = [],
+        metadata = [],
+        errors = [];
+    let hold = false;
+    page.on("pageerror", (error) => errors.push(error.message));
+    const headers = { "access-control-allow-origin": "*" };
+    const folder = (route) =>
+        route.fulfill({
+            headers,
+            json: {
+                MediaContainer: {
+                    Metadata: rows,
+                    offset: 0,
+                    size: 2,
+                    totalSize: 2,
+                },
+            },
+        });
+    await context.route("**/*", (route) => {
+        const url = new URL(route.request().url());
+        if (url.origin === local) return route.continue();
+        if (url.origin !== plex) return route.abort();
+        if (url.pathname === "/library/sections")
+            return route.fulfill({
+                headers,
+                json: {
+                    MediaContainer: {
+                        Directory: [
+                            { key: "7", title: "My library", type: "movie" },
+                        ],
+                    },
+                },
+            });
+        if (url.pathname === "/library/sections/7/all")
+            return route.fulfill({
+                headers,
+                json: { MediaContainer: { Metadata: [] } },
+            });
+        if (url.pathname === "/library/sections/7/folder") {
+            if (hold) {
+                collections.push(route);
+                return;
+            }
+            return folder(route);
+        }
+        if (/^\/library\/metadata\/\d+$/.test(url.pathname)) {
+            metadata.push(route);
+            return;
+        }
+        if (url.pathname.endsWith("/decision"))
+            return route.fulfill({
+                headers,
+                json: {
+                    MediaContainer: {
+                        generalDecisionCode: 1001,
+                        Metadata: [
+                            { Media: [{ Part: [{ decision: "transcode" }] }] },
+                        ],
+                    },
+                },
+            });
+        if (url.pathname.endsWith("/start.m3u8"))
+            return route.fulfill({
+                body:
+                    "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
+                    Array.from(
+                        { length: 15 },
+                        (_, index) =>
+                            (index ? "#EXT-X-DISCONTINUITY\n" : "") +
+                            "#EXTINF:2.000000,\nsegment00.ts?n=" +
+                            index +
+                            "\n"
+                    ).join("") +
+                    "#EXT-X-ENDLIST\n",
+                contentType: "application/vnd.apple.mpegurl",
+                headers,
+            });
+        if (url.pathname.endsWith(".ts"))
+            return route.fulfill({
+                body: fs.readFileSync(path.join(mediaRoot, "segment00.ts")),
+                contentType: "video/mp2t",
+                headers,
+            });
+        if (url.pathname.endsWith("/stop") || url.pathname.endsWith("/ping"))
+            return route.fulfill({ body: "", headers, status: 200 });
+        return route.fulfill({
+            body: "missing fixture route",
+            headers,
+            status: 404,
+        });
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(
+        ({ plex, token }) => {
+            localStorage.setItem("ottplaylang", "_rus");
+            localStorage.setItem("ottplayprov", "plex");
+            localStorage.setItem(
+                "plexcfg",
+                JSON.stringify({ address: plex, playback: "compatible", token })
+            );
+            const play = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () {
+                this.muted = true;
+                return play.call(this);
+            };
+        },
+        { plex, token }
+    );
+    await page.goto("/f/pc/");
+    await page.keyboard.press("Shift");
+    await select(page, "My library");
+    await select(page, await page.evaluate(() => window._("Browse folders")));
+    await expect(page.locator("#list")).toContainText(title);
+    hold = true;
+    await page.keyboard.press("Enter");
+    await expect.poll(() => collections.length).toBe(1);
+    const dialog = page.locator("#dialogbox");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Загрузка. Подождите…");
+    await expect(dialog).toContainText(title);
+    await expect(dialog.locator(".ott-spinner")).toBeVisible();
+    expect(
+        await page.evaluate(
+            () => window.__ottScreens.current().model.parent.kind
+        )
+    ).toBe("list");
+    for (const key of ["ArrowDown", "ArrowUp", "Enter"])
+        await page.keyboard.press(key);
+    await page.evaluate(() => window.__ottMedia.select(1));
+    await page.locator("#it1").click();
+    expect(await page.evaluate(() => window.selIndex)).toBe(0);
+    await page.locator("#it1").hover();
+    await page.mouse.wheel(0, 100);
+    expect(await page.evaluate(() => window.selIndex)).toBe(0);
+    const box = await page.locator("#it1").boundingBox();
+    const touch = await context.newCDPSession(page);
+    await touch.send("Input.dispatchTouchEvent", {
+        touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+        type: "touchStart",
+    });
+    await touch.send("Input.dispatchTouchEvent", {
+        touchPoints: [],
+        type: "touchEnd",
+    });
+    await touch.detach();
+    expect(await page.evaluate(() => window.selIndex)).toBe(0);
+    const repeat = await page.evaluate(
+        () => window.__ottMedia.snapshot().repeat
+    );
+    await page
+        .locator('#mediaPlaybackControls [data-ott-key="57"]')
+        .click({ position: { x: 10, y: 10 } });
+    await page.getByRole("button", { exact: true, name: "Фильтр" }).click();
+    expect(await page.evaluate(() => window.__ottMedia.snapshot().repeat)).toBe(
+        repeat
+    );
+    await expect(page.locator("#listEdit")).toBeHidden();
+    expect(collections.length).toBe(1);
+    expect(metadata.length).toBe(0);
+    expect(
+        await page.evaluate(() => window.__ottMedia.snapshot().frame.selected)
+    ).toBe(0);
+    await page.screenshot({
+        path: test.info().outputPath("plex-file-collecting.png"),
+    });
+    await page.keyboard.press("Backspace");
+    await expect(dialog).toBeHidden();
+    await folder(collections[0]);
+    expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
+
+    await page.keyboard.press("Enter");
+    await expect.poll(() => collections.length).toBe(2);
+    await folder(collections[1]);
+    await expect.poll(() => metadata.length).toBe(1);
+    await expect(dialog.locator(".ott-spinner")).toBeVisible();
+    await page.screenshot({
+        path: test.info().outputPath("plex-file-resolving.png"),
+    });
+    await page.keyboard.press("Backspace");
+    await expect(dialog).toBeHidden();
+    await metadata[0].fulfill({ headers, json: { MediaContainer: {} } });
+    expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
+
+    await page.keyboard.press("Enter");
+    await expect.poll(() => collections.length).toBe(3);
+    await folder(collections[2]);
+    await expect.poll(() => metadata.length).toBe(2);
+    await metadata[1].fulfill({ body: "Unavailable", headers, status: 503 });
+    await expect(dialog).toContainText(
+        await page.evaluate(() => window._("Plex connection failed"))
+    );
+    await expect(dialog.locator(".ott-spinner")).toHaveCount(0);
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await page.keyboard.press("Enter");
+    await expect.poll(() => collections.length).toBe(4);
+    await folder(collections[3]);
+    await expect.poll(() => metadata.length).toBe(3);
+    await metadata[2].fulfill({
+        headers,
+        json: {
+            MediaContainer: {
+                Metadata: [
+                    {
+                        Media: [
+                            {
+                                audioCodec: "mp3",
+                                container: "avi",
+                                Part: [{ key: "/library/parts/42/file.avi" }],
+                                videoCodec: "mpeg4",
+                            },
+                        ],
+                        ratingKey: "42",
+                        type: "movie",
+                    },
+                ],
+            },
+        },
+    });
+    await page.waitForFunction(() => {
+        const video = document.querySelector("video");
+        return (
+            window.__ottClassicPlayback.snapshot().phase === "playing" &&
+            video.currentTime > 0.2 &&
+            !video.error
+        );
+    });
+    await expect(dialog).toBeHidden();
+    await expect(page.locator("#buffering")).toBeHidden();
+    await expect(page.locator("#list_window")).toBeHidden();
+    await page.screenshot({
+        path: test.info().outputPath("plex-file-playing.png"),
+    });
+    expect(errors).toEqual([]);
+});
+
 test("Plex boots as a nested library, plays direct HLS and keeps access URLs out of history", async ({
     page,
     context,
@@ -252,6 +499,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     const requests = [];
     const errors = [];
     let expandedFolder = false;
+    let failCollection = false;
     let holdCollection = false;
     let releaseCollection;
     let holdDecision = false;
@@ -290,6 +538,12 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         if (url.pathname === "/library/sections/7/folder") {
             const level = Number(url.searchParams.get("parent") || 0);
             folderParents.push(level);
+            if (level === 3 && failCollection)
+                return route.fulfill({
+                    body: "Unavailable",
+                    headers,
+                    status: 503,
+                });
             if (level === 3 && holdCollection)
                 await new Promise((release) => {
                     releaseCollection = release;
@@ -681,6 +935,38 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     );
     expect(folderParents).not.toContain(4);
     await page.evaluate(() => window.closeList());
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/42" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    await page.keyboard.press("ArrowUp");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/43" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    // A transient catalog error must not permanently disable full-screen
+    // arrows after the individual file has successfully resumed.
+    await page.evaluate(() => {
+        const playing = window.__ottMedia.current();
+        window.__ottMedia.checkpoint(playing.ref, 1, true);
+    });
+    failCollection = true;
+    await page.reload();
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia?.current()?.payload.request.path ===
+                "/library/metadata/43" &&
+            document.querySelector("video").currentTime > 0.2
+    );
+    expect(
+        await page.evaluate(() => window.__ottMedia.current().sequence)
+    ).toBeNull();
+    failCollection = false;
     await page.keyboard.press("ArrowDown");
     await page.waitForFunction(
         () =>

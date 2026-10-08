@@ -282,13 +282,13 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         else call("numberProg", value);
         return;
     }
-    if (
-        w.p_pref === "plex" &&
-        w.playType < 0 &&
-        (command.id === "up" || command.id === "down")
-    ) {
-        w.__ottMedia.skip(command.id === "up" ? 1 : -1);
-        return;
+    if (w.playType < 0 && (command.id === "up" || command.id === "down")) {
+        var media = w.__ottMedia && w.__ottMedia.current();
+        // A remote Plex queue keeps the selected TV provider unchanged.
+        if (media && /^plex(?:@|$)/.test(media.ref.sourceId)) {
+            w.__ottMedia.skip(command.id === "up" ? 1 : -1);
+            return;
+        }
     }
     var configured: any = {
         blue: "bFun",
