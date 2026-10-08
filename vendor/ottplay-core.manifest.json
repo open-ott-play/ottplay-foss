@@ -3,10 +3,10 @@
   "name": "ottplay-shared-core",
   "version": "0.1.0-dev",
   "source": {
-    "sha256": "473b4e068cc3787d8007a77c555309eda101ead66e7e14021510d20c4d2e35e7",
+    "sha256": "377ebb8414b3051adc7f420567a023ba70a8cee20a5423302c146ef120051834",
     "files": {
       "LICENSE": "ec6a17ce723ea8b4c6b08f277ab84750440a8c3e5401aaa9f4e4e9d5fd0fd72c",
-      "build.gradle.kts": "e89cc0e4057ab3989c6d4048d6b2ee7b5efb023a7c96c2886d8dd62778e42a73",
+      "build.gradle.kts": "fbe1eba546e931ab2c4e1a31d59e6d20fcfbc2102d1e2417e9c39760b4213940",
       "gradle.properties": "dd942c44c3d22f584bcdea5f5f72325b7b49af1b42a5e73ed0b82ef665d1c9e1",
       "gradle/wrapper/gradle-wrapper.jar": "7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d",
       "gradle/wrapper/gradle-wrapper.properties": "7ecd08c4b304cb5c5091a7c9e3d3cbcb31dc48b3d77410f6ded99da2ee88977b",
