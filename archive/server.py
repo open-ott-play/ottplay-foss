@@ -800,7 +800,9 @@ if __name__ == "__main__":
             if not HTTPS_PORTS:
                 HTTPS_PORTS = [8443]
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ctx.minimum_version = max(ctx.minimum_version, ssl.TLSVersion.TLSv1_2)
+            # Keep the TLS floor explicit for security analysis without lowering a stricter policy.
+            if ctx.minimum_version < ssl.TLSVersion.TLSv1_2:  # noqa: PLR1730
+                ctx.minimum_version = ssl.TLSVersion.TLSv1_2
             ctx.load_cert_chain(CERT_FILE, KEY_FILE)
             for hp in HTTPS_PORTS:
                 httpsd = ReusableTCPServer((HOST, hp), OTTPlayHandler)
