@@ -2107,6 +2107,32 @@ test("closing the parent revokes nested callbacks and hides their surfaces", ({
     assert.equal(w.document.getElementById("dialogbox").style.display, "none");
     assert.equal(w.document.getElementById("listEdit").style.display, "none");
 });
+test("pointer and wheel selection cannot move a covered list, while model updates remain available", ({
+    w,
+}) => {
+    w.eval(functions("src/ui/index.ts", ["setSelect", "changeSelect"]));
+    w.settings = { pageSize: 25 };
+    w.listArray = w.listDataArray = ["first", "second"];
+    w.selIndex = 0;
+    w.scheduleListDetailUpdate = () => {};
+    w.showPage();
+    const dialog = w.__ottClassicScreenPort.setOwnedCallback(
+        "dialog",
+        () => {}
+    ).owner;
+    w.setSelect(1);
+    w.changeSelect(1);
+    assert.equal(w.selIndex, 0);
+    // Provider/render projection writes are independent of input admission.
+    w.listArray = w.listDataArray = ["updated", "second"];
+    assert.equal(w.listArray[0], "updated");
+    dialog.close();
+    w.showPage();
+    w.setSelect(1);
+    assert.equal(w.selIndex, 1);
+    w.changeSelect(-1);
+    assert.equal(w.selIndex, 0);
+});
 test("retired list models do not alias replacement fields", ({ w }) => {
     w.listArray = ["old"];
     w.listDataArray = w.listArray;

@@ -3335,7 +3335,7 @@ test("Cancelled cold folder collection cannot restore navigation or start late p
     }
 });
 
-test("Reentrant Stop while restoring a replacement folder prevents both pending manual selections", () => {
+test("Pending Plex selection blocks replacement and cancellation cannot revive either file", () => {
     const c = coldFolderResumeFixture();
     assert.equal(c.__ottMedia.restoreLast(), true);
     c.mediaList(null);
@@ -3352,8 +3352,19 @@ test("Reentrant Stop while restoring a replacement folder prevents both pending 
     };
     const plays = c.calls.filter((row) => row[0] === "play").length;
     c.chooseTitle("Next film");
+    assert.equal(
+        cancellations,
+        0,
+        "a second selection cannot replace the loading file"
+    );
+    assert.equal(pending.length, 1);
+    c.dialogBoxKeyHandler(c.keys.RETURN);
     assert.equal(cancellations, 1);
-    assert.equal(pending.length, 1, "Stop prevents the replacement resolver");
+    assert.equal(
+        pending.length,
+        1,
+        "cancellation cannot dispatch the queued selection"
+    );
     assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
     pending[0].done({ ...pending[0].payload, stream_url: "late-film.mp4" });
     assert.equal(c.calls.filter((row) => row[0] === "play").length, plays);

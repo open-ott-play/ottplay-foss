@@ -96,6 +96,134 @@ function saveLast(c, position) {
     });
 }
 
+function delayedSelection() {
+    const { c } = create();
+    const rows = [42, 43].map((id) => ({
+        itemId: String(id),
+        request: { path: "/library/metadata/" + id },
+        title: id === 42 ? "<Film & 42>" : "Film 43",
+    }));
+    const collections = [],
+        resolutions = [];
+    let cancelled = 0;
+    const $ = c.$;
+    c.$ = (selector) => {
+        const result = $(selector);
+        result.is = () => c.elements[selector]?.style.display === "";
+        return result;
+    };
+    c.getMediaArray = (_target, done) => {
+        c.mediaRecords = rows.map((row) => ({ ...row }));
+        done();
+    };
+    c.providerMediaClient.collect = (_target, done) => {
+        collections.push(done);
+        return () => cancelled++;
+    };
+    c.providerMediaClient.resolve = (payload, done) => {
+        resolutions.push({ done, payload });
+    };
+    c.providerMediaClient.cancel = () => cancelled++;
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.popMedia();
+    const key = (code) =>
+        c.__ottClassicScreenPort.dispatch(code, null, () => {
+            assert.fail("The modal launch must consume input before playback");
+        });
+    const ready = (index = resolutions.length - 1) => {
+        const { done, payload } = resolutions[index];
+        done({ ...payload, stream_url: "https://plex.invalid/file.mp4" });
+    };
+    return {
+        c,
+        cancelled: () => cancelled,
+        collections,
+        key,
+        ready,
+        resolutions,
+        rows,
+    };
+}
+
+// A real deferred folder collection and URL lookup must acknowledge the first
+// activation immediately; neither keyboard repeats nor direct row clicks may
+// launch another item while the selected file is pending.
+{
+    const f = delayedSelection(),
+        { c } = f;
+    c.selectMedia(0);
+    const owner = c.__ottScreens.current();
+    assert.equal(owner.kind, "dialog");
+    assert.equal(f.collections.length, 1);
+    assert.equal(f.resolutions.length, 0);
+    assert.match(c.elements["#dialogbox"].innerHTML, /ott-spinner/);
+    assert.match(c.elements["#dialogbox"].innerHTML, /Loading\. Please wait/);
+    assert.match(c.elements["#dialogbox"].innerHTML, /&lt;Film &amp; 42&gt;/);
+    for (const code of [c.keys.DOWN, c.keys.UP, c.keys.ENTER, c.keys.PLAY])
+        f.key(code);
+    c.selectMedia(1);
+    assert.equal(c.__ottMedia.snapshot().frame.selected, 0);
+    assert.equal(f.collections.length, 1);
+    f.collections[0]({ items: f.rows });
+    assert.equal(f.resolutions.length, 1);
+    assert.equal(c.__ottScreens.current(), owner);
+    assert.equal(c.elements["#dialogbox"].style.display, "");
+    f.key(c.keys.DOWN);
+    c.selectMedia(1);
+    assert.equal(f.resolutions.length, 1);
+    f.ready();
+    assert.equal(c.calls.filter(([name]) => name === "play").length, 1);
+    assert.equal(c.elements["#dialogbox"].style.display, "none");
+    assert.equal(owner.active(), false);
+}
+
+for (const stage of ["collection", "resolve"]) {
+    for (const key of ["RETURN", "EXIT"]) {
+        const f = delayedSelection(),
+            { c } = f;
+        c.selectMedia(0);
+        if (stage === "resolve") f.collections[0]({ items: f.rows });
+        const cancelled = f.cancelled();
+        f.key(c.keys[key]);
+        assert.equal(c.elements["#dialogbox"].style.display, "none");
+        assert.equal(c.__ottScreens.current().kind, "list");
+        assert.equal(c.__ottMedia.snapshot().frame.selected, 0);
+        assert(f.cancelled() > cancelled, stage);
+        if (stage === "collection") f.collections[0]({ items: f.rows });
+        else f.ready();
+        assert.equal(c.calls.filter(([name]) => name === "play").length, 0);
+        c.selectMedia(1);
+        assert.equal(f.collections.length, 2);
+        assert.equal(c.__ottMedia.snapshot().frame.selected, 1);
+        assert.match(c.elements["#dialogbox"].innerHTML, /Film 43/);
+    }
+}
+
+// The producer yields the launch wait before showing its error. Closing that
+// error returns to a live list and permits exactly one fresh retry.
+{
+    const f = delayedSelection(),
+        { c } = f;
+    c.selectMedia(0);
+    f.collections[0]({ items: f.rows });
+    const { done } = f.resolutions[0];
+    assert.equal(typeof done.beforeError, "function");
+    done.beforeError();
+    c.$("#dialogbox").html("Plex connection failed").show();
+    c.__ottClassicScreenPort.setOwnedCallback("dialog", () => {
+        c.dialogBoxKeyHandler = null;
+    });
+    done(null);
+    assert.equal(c.elements["#dialogbox"].style.display, "");
+    assert.equal(c.elements["#dialogbox"].innerHTML, "Plex connection failed");
+    f.key(c.keys.ENTER);
+    c.selectMedia(0);
+    assert.equal(f.collections.length, 2);
+    assert.match(c.elements["#dialogbox"].innerHTML, /ott-spinner/);
+    done({ stream_url: "https://plex.invalid/stale.mp4" });
+    assert.equal(c.calls.filter(([name]) => name === "play").length, 0);
+}
+
 {
     const { c, loads, resolutions } = create();
     c.popMedia();

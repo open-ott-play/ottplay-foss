@@ -174,6 +174,7 @@ function classicMediaRuntime(): any {
     var completionRequest: any = null;
     var skipRequest: any = null;
     var startupLoading: ScreenOwner | null = null;
+    var manualLoading: any = null;
     var restored = false;
     var repeat = "all";
     var repeatKey = "mediaRepeat.v1:" + source;
@@ -184,6 +185,49 @@ function classicMediaRuntime(): any {
         var owner = startupLoading;
         startupLoading = null;
         if (owner) owner.close();
+    }
+    function finishManualLoading(request: any, cancelled = false) {
+        if (!request) return;
+        if (cancelled) request.cancelled = true;
+        if (manualLoading !== request) return;
+        manualLoading = null;
+        request.owner.close();
+    }
+    function showLoading(cancel: () => void, item?: MediaLibraryItem) {
+        var owner = w.__ottClassicScreenPort.setOwnedCallback(
+            "dialog",
+            function (key: number) {
+                if (key === w.keys.RETURN || key === w.keys.EXIT) cancel();
+            }
+        ).owner;
+        var title = w.document.createElement("div");
+        if (item) title.textContent = classicMediaTitle(item.payload);
+        w.$("#dialogbox")
+            .html(
+                '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
+                    w._("Loading. Please wait...") +
+                    "<br/>" +
+                    title.innerHTML +
+                    "<br/><br/>" +
+                    w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Cancel")
+            )
+            .show();
+        return owner;
+    }
+    function beginManualLoading(item: MediaLibraryItem) {
+        if (!item.payload.plexSource && w.p_pref !== "plex") return null;
+        var request: any = { cancelled: false, owner: null };
+        request.owner = showLoading(function () {
+            if (manualLoading !== request) return;
+            api.cancelAuto();
+            if (current()) library.show();
+        }, item);
+        manualLoading = request;
+        request.owner.own(function () {
+            // Replacing the dialog or leaving its list also retires the launch.
+            if (manualLoading === request) api.cancelAuto();
+        });
+        return request;
     }
     function bindScreen() {
         var screen = w.__ottClassicScreenPort;
@@ -896,7 +940,8 @@ function classicMediaRuntime(): any {
         startup?: { position: number; unavailable(): void; resolved?: any },
         settled?: (dispatched?: boolean) => void
     ) {
-        if (!automatic && !cancelNavigationAuto()) return;
+        var loading = automatic ? null : manualLoading;
+        if (!automatic && !loading && !cancelNavigationAuto()) return;
         rememberNavigation(item);
         var request = {};
         if (automatic) automaticRequest = request;
@@ -904,12 +949,21 @@ function classicMediaRuntime(): any {
             return (
                 current() &&
                 guard() &&
+                (!loading || !loading.cancelled) &&
                 (!automatic || automaticRequest === request)
             );
         }
         (automatic ? automaticLibrary : library).resolve(
             function (done: any) {
                 bindScreen();
+                if (loading)
+                    done.beforeError = function () {
+                        if (!valid() || manualLoading !== loading) return;
+                        // Retire the wait before Plex replaces it with its error
+                        // dialog. Keep the selected file available for retry.
+                        finishManualLoading(loading);
+                        library.show();
+                    };
                 var abortLoad: any = null;
                 function accept(payload: any) {
                     if (!done.isCurrent() || !valid()) return;
@@ -966,11 +1020,17 @@ function classicMediaRuntime(): any {
                 if (!valid()) return;
                 if (automatic) automaticRequest = null;
                 if (!payload) {
+                    if (manualLoading === loading && loading) {
+                        finishManualLoading(loading);
+                        library.show();
+                    }
                     if (sequence && sequence.onError) sequence.onError();
                     if (settled) settled();
                     if (startup) startup.unavailable();
                     return;
                 }
+                // The backend's buffering indicator now owns media readiness.
+                finishManualLoading(loading);
                 if (!automatic && typeof w.closeList === "function")
                     w.closeList();
                 if (startup) finishStartupLoading();
@@ -1025,6 +1085,10 @@ function classicMediaRuntime(): any {
         },
         cancelAuto: function () {
             automaticGeneration++;
+            if (manualLoading) {
+                finishManualLoading(manualLoading, true);
+                library.cancel();
+            }
             finishStartupLoading();
             completionRequest = null;
             skipRequest = null;
@@ -1267,6 +1331,7 @@ function classicMediaRuntime(): any {
             if (typeof w.showEditKey === "function") w.showEditKey();
         },
         highlight: function (index: number, revision: number) {
+            if (manualLoading) return;
             if (!current() || library.revision() !== revision) return;
             library.highlight(index);
             if (pageScheduled === revision || !library.nearEnd(index)) return;
@@ -1640,27 +1705,15 @@ function classicMediaRuntime(): any {
             }
             authorize(item, function () {
                 if (!valid()) return;
-                var loading = w.__ottClassicScreenPort.setOwnedCallback(
-                    "dialog",
-                    function (key: number) {
-                        if (key === w.keys.RETURN || key === w.keys.EXIT) {
-                            if (!valid()) return;
-                            api.cancelAuto();
-                            if (current() && onUnavailable) onUnavailable();
-                        }
-                    }
-                ).owner;
+                var loading = showLoading(function () {
+                    if (!valid()) return;
+                    api.cancelAuto();
+                    if (current() && onUnavailable) onUnavailable();
+                });
                 startupLoading = loading;
                 loading.own(function () {
                     if (startupLoading === loading) startupLoading = null;
                 });
-                w.$("#dialogbox")
-                    .html(
-                        '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
-                            w._("Loading. Please wait...") +
-                            "<br/>"
-                    )
-                    .show();
                 try {
                     collectFolder(item, valid, function (folder) {
                         if (!valid()) return;
@@ -1697,6 +1750,7 @@ function classicMediaRuntime(): any {
             project(library.snapshot("none"), false);
         },
         select: function (index: number) {
+            if (manualLoading) return;
             var item = library.select(index);
             if (!item) return;
             if (item.payload.__ottMediaNext) {
@@ -1736,33 +1790,42 @@ function classicMediaRuntime(): any {
                             classicMediaLabel(payload)
                         );
                 } else if (payload.stream_url || payload.request) {
+                    var loading = beginManualLoading(item);
                     var revision = automaticGeneration;
                     var generation =
                         w.__ottClassicPlayback.snapshot().generation;
-                    collectFolder(item, admitted, function (folder) {
-                        if (!admitted()) return;
-                        if (folder) {
-                            if (!restoreFolder(item, folder)) return;
-                            // Retiring the old resolver can synchronously Stop
-                            // or replace playback. A new navigation capture must
-                            // not erase that cancellation.
-                            if (
-                                !current() ||
-                                automaticGeneration !== revision ||
-                                w.__ottClassicPlayback.snapshot().generation !==
-                                    generation
-                            )
-                                return;
-                            admitted = api.capture();
-                        }
-                        if (admitted())
-                            resolve(
-                                item,
-                                folder
-                                    ? folder.sequence
-                                    : sequenceFor(item, folder !== false)
+                    collectFolder(
+                        item,
+                        function () {
+                            return (
+                                admitted() && (!loading || !loading.cancelled)
                             );
-                    });
+                        },
+                        function (folder) {
+                            if (!admitted()) return;
+                            if (folder) {
+                                if (!restoreFolder(item, folder)) return;
+                                // Retiring the old resolver can synchronously Stop
+                                // or replace playback. A new navigation capture must
+                                // not erase that cancellation.
+                                if (
+                                    !current() ||
+                                    automaticGeneration !== revision ||
+                                    w.__ottClassicPlayback.snapshot()
+                                        .generation !== generation
+                                )
+                                    return;
+                                admitted = api.capture();
+                            }
+                            if (admitted())
+                                resolve(
+                                    item,
+                                    folder
+                                        ? folder.sequence
+                                        : sequenceFor(item, folder !== false)
+                                );
+                        }
+                    );
                 } else if (w.infoMedia) w.infoMedia();
             }
             authorize(item, proceed);

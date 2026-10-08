@@ -1083,6 +1083,8 @@ export function showPage(): void {
  *             `showPage()` is called if the new index is not yet rendered on the current page.
  */
 export function changeSelect(delta: number): void {
+    var owner = (window as any).__ottClassicScreenPort.listOwner();
+    if (owner && !owner.foreground()) return;
     var dataArr =
         (listDataArray && listDataArray.length ? listDataArray : null) ||
         ((window as any).listDataArray && (window as any).listDataArray.length
@@ -1154,6 +1156,8 @@ export function changeSelect(delta: number): void {
  *             Calls `scheduleListDetailUpdate()`.
  */
 export function setSelect(index: number): void {
+    var owner = (window as any).__ottClassicScreenPort.listOwner();
+    if (owner && !owner.foreground()) return;
     if (selIndex === index) {
         dispatchKey(keys.ENTER);
     } else {
