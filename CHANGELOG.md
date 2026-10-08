@@ -59,6 +59,12 @@ CLI installations are left in place.
 
 ### Security
 
+The archived Python server handles unmatched parentheses in channel names in a
+linear pass, avoiding excessive CPU use from malformed EPG names. Its HTTPS
+listener and proxy explicitly require TLS 1.2 or newer while retaining normal
+upstream certificate and hostname verification. Archived-server users must
+ensure HTTPS peers support TLS 1.2; the current Rust server is unchanged.
+
 The application dependency update removes seven maintenance warnings while
 retaining the existing Tauri/Wry/Tao/GLib patches. Three upstream maintenance
 warnings, the already-backported GLib version warning and historical vendor
