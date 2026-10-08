@@ -123,7 +123,7 @@ Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
 
 | Platform | Package | Notes |
 |---|---|---|
-| **macOS** | `.dmg` / `.app.zip` | Universal Apple Silicon + Intel; unsigned — remove quarantine |
+| **macOS** | `.dmg` / `.app.zip` | Separate Apple Silicon and Intel builds; ad-hoc signed unless Apple signing is configured |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Various distributions |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
@@ -131,28 +131,42 @@ Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
 
 Supported installers are attached to qualified GitHub releases: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
 
-> **Note:** Desktop and iOS release packages may be unsigned. iOS requires
-> signing before installation on a physical device. Android packages are not
-> part of releases from this repository.
+> **Note:** macOS app bundles use ad-hoc signing when Apple signing credentials
+> are absent; this does not provide Developer ID or notarization. Windows/Linux
+> installers and iOS release packages may be unsigned. iOS requires signing before
+> installation on a physical device. The current workflow does not build Android
+> packages; older releases may include retired Capacitor APKs.
 
 ---
 
 ### macOS
 
-1. Download `OttPlay.FOSS_*_aarch64-apple-darwin.dmg` (Apple Silicon) or `OttPlay.FOSS_*_x86_64-apple-darwin.dmg` (Intel) from [Releases](https://github.com/open-ott-play/ottplay-foss/releases/latest)
-2. Open the `.dmg`
-3. Drag **OttPlay FOSS.app** to Applications
-4. On first run: Right-click → Open → Open
-
-If you see "OttPlay FOSS.app is damaged and can't be opened", macOS has quarantined the download. Remove the attribute and retry:
+1. Choose the intended tag from [Releases](https://github.com/open-ott-play/ottplay-foss/releases). The latest-release shortcut selects stable, not beta or RC.
+2. Download `OttPlay.FOSS_*_aarch64-apple-darwin.dmg` for Apple Silicon or `OttPlay.FOSS_*_x86_64-apple-darwin.dmg` for Intel. These are separate architecture builds.
+3. Open the `.dmg` and drag **OttPlay FOSS.app** to Applications.
+4. Verify the copied bundle before first launch:
 
 ```bash
-# On the downloaded .dmg:
-xattr -d com.apple.quarantine ~/Downloads/OttPlay.FOSS_*_aarch64-apple-darwin.dmg
-
-# Or on the .app after copying to Applications:
-xattr -cr /Applications/OttPlay\ FOSS.app
+codesign --verify --deep --strict --verbose=2 "/Applications/OttPlay FOSS.app"
+codesign --display --verbose=4 "/Applications/OttPlay FOSS.app"
 ```
+
+A successful verification checks bundle integrity. `Signature=adhoc` means the
+app has no Apple-authenticated developer identity; it does not establish
+notarization or Gatekeeper approval. With a trusted download and a valid bundle,
+macOS may still require **System Settings → Privacy & Security → Open Anyway**
+after the first launch attempt; see [Apple's instructions](https://support.apple.com/en-us/102445).
+
+An “app is damaged” message is not proof of quarantine alone. If signature
+verification fails, preserve the error and obtain a corrected release. Do not
+re-sign the downloaded app or remove its attributes to make a failed verification
+appear successful.
+
+ZIP alternatives are `OttPlay.FOSS_aarch64-apple-darwin.app.zip` and
+`OttPlay.FOSS_x86_64-apple-darwin.app.zip`. See [macOS signing and artifact
+verification](docs/tauri-updater-notarize.md#verify-a-downloaded-macos-artifact)
+for extraction, disk-image and Gatekeeper checks. For checkout builds and local
+installation, use [local macOS delivery](docs/macos-local-delivery.md).
 
 ---
 
@@ -566,7 +580,9 @@ Desktop checklist + helper for Mode B Tauri (window / channel play / PiP). Not M
 ./scripts/smoke-tauri-desktop.sh --check-companion
 ```
 
-Details: [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md). Unpaid/unsigned OK; human still marks headed launch/play/PiP.
+Details: [docs/mode-b-tauri-smoke.md](docs/mode-b-tauri-smoke.md). Apple developer
+credentials are optional for local smoke; use [ad-hoc signing](docs/tauri-updater-notarize.md#local-smoke-without-apple-credentials)
+for a packaged Mac app. Human acceptance still covers launch, playback and PiP.
 
 ## Docker
 
@@ -1043,6 +1059,8 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 - [Player architecture](./docs/architecture.md) — runtime ownership, provider integration, playback, guide, device adapters and build contracts.
 - [Classic ES5 build pipeline](./docs/build-pipeline.md) — compilation, compatibility checks and artifact size limits.
 - [Runtime asset names and deployment migration](./docs/asset-layout.md) — descriptive paths shared by web and native packages.
+- [Remote workbench](./docs/remote-workbench.md) — UI/media inspection, operation receipts and saved evidence.
+- [Local macOS delivery](./docs/macos-local-delivery.md) — checkout builds, local installation and verification.
 
 ## License
 
@@ -1050,7 +1068,10 @@ FOSS — free and open source.
 
 ## Desktop updater / notarization (Mode B)
 
-Optional Tauri auto-updater (GitHub Releases) and macOS notarization hooks are documented in [docs/tauri-updater-notarize.md](docs/tauri-updater-notarize.md). Release CI skips signing/notarize when secrets are absent.
+The [desktop signing and updater guide](docs/tauri-updater-notarize.md) describes
+macOS ad-hoc signing, optional Developer ID/notarization and bundle verification.
+Release CI uses ad-hoc signing without Apple credentials. Updater signing is
+separate; production automatic updates remain unconfigured.
 
 ## Local Mac build helpers
 
