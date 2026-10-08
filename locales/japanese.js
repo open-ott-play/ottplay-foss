@@ -139,6 +139,12 @@ var keyStrings = {
         "プロバイダを変更します。選択した内容は、次回プレーヤーを起動するときに記憶されます。",
     "Change value": "値を変更する",
     "Channel ": "チャンネル ",
+    'Channel "%1" not found': "チャンネル「%1」が見つかりません",
+    "Channel #%1": "チャンネル #%1",
+    "Channel #%1 not found (total: %2)":
+        "チャンネル #%1 が見つかりません（合計：%2）",
+    "Channel #%1 not in any category":
+        "チャンネル #%1 はどのカテゴリにもありません",
     "Channel has no EPG": "チャンネルにEPGがありません",
     "Channel is not available!!!": "チャンネルが利用できません！",
     "Channel link": "チャンネルリンク",
@@ -289,6 +295,7 @@ var keyStrings = {
         "JSONをコピーしてバックアップを取っておきます。設定をインポートして復元してください。",
     "Copy the selected JSON with your device's copy command":
         "選択したJSONを端末のコピーコマンドでコピーします。",
+    "Could not change the playlist.": "プレイリストを変更できませんでした。",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plexに接続できませんでした。サーバーアドレス、トークン、ネットワークアクセスを確認してください。",
     "Could not connect to the server.": "サーバーに接続できませんでした。",
@@ -553,6 +560,7 @@ var keyStrings = {
         "チャンネルリンクが無効です！キャビネット ストリーム URL のように完全なホストを入力します (例: subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "無効なクラウド設定応答",
     "Invalid protected source configuration": "保護されたソース構成が無効です",
+    "Invalid range: %1-%2": "無効な範囲：%1-%2",
     "Invalid setting": "設定が無効です",
     "IPTV token": "IPTVトークン",
     "IpStream.one": "IpStream.one",
@@ -585,6 +593,7 @@ var keyStrings = {
     "Loading M3U...": "M3Uを読み込み中…",
     "Loading media libraries...": "メディアライブラリを読み込み中…",
     "Loading player...": "プレーヤーをロード中…",
+    "Loading the new playlist...": "新しいプレイリストを読み込んでいます...",
     "Loading via proxy...": "プロキシ経由で読み込み中…",
     "Loading. Please wait...": "読み込み中…お待ちください…",
     "Loading...": "読み込み中…",
@@ -627,6 +636,7 @@ var keyStrings = {
     "Next TV program": "次の番組",
     No: "いいえ",
     "No channel name": "チャンネル名なし",
+    "No channels loaded": "チャンネルが読み込まれていません",
     "No command server was found on this network.":
         "このネットワーク上にコマンド サーバーが見つかりませんでした。",
     "No Plex servers are available for this account.":
@@ -700,6 +710,7 @@ var keyStrings = {
     "Player could not start": "プレーヤーを起動できませんでした",
     "Player default": "プレーヤーの既定の選択",
     "Player info:": "プレーヤー情報：",
+    "Playing: %1": "再生中：%1",
     Playlist: "プレイリスト",
     "Playlist file": "プレイリストファイル",
     "Playlist is not loading directly...Loading via server...":
@@ -735,9 +746,14 @@ var keyStrings = {
         "プロバイダーを変更するにはアクセスコードが必要です",
     "Protect Settings": "設定変更にはアクセスコードが必要です",
     "Protected source is unavailable": "保護されたソースが利用できません",
+    "Provider switching not available":
+        "プロバイダーの切り替えは利用できません",
     "p...": "p...",
     paging: "ページング",
     Quality: "品質",
+    "Random #%1": "ランダムチャンネル #%1",
+    "Random channel not in any category":
+        "ランダムに選んだチャンネルはどのカテゴリにもありません",
     Rating: "評価",
     RD: "RD",
     "RD settings": "RDの設定",
@@ -775,6 +791,10 @@ var keyStrings = {
         "リモート入力の有効期限が切れました。新しいセッションを開いて再試行してください。",
     "Remote input session is unavailable. Open a new session to try again.":
         "リモート入力セッションは利用できません。新しいセッションを開いて再試行してください。",
+    "Remote playlist changes require the M3U provider.":
+        "プレイリストを遠隔変更するには、M3Uプロバイダーが必要です。",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "プロバイダーの遠隔設定には対応していません。プレーヤーのプロバイダー設定を使用してください。",
     "Remote screenshots": "リモートスクリーンショット",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "リモートスクリーンショットを10分間許可しました。撮影するには設定画面を閉じてください。",
@@ -970,6 +990,7 @@ var keyStrings = {
     "Switch sound track": "音声トラックを切り替え",
     "Switch subtitle": "字幕を切り替え",
     "Switch to this list": "このリストへ切り替える",
+    "Switching provider...": "プロバイダーを切り替えています...",
     "Swop URL": "スワップ URL",
     "System language": "システム言語",
     "saved on this device": "この端末に保存されています",
@@ -1003,6 +1024,8 @@ var keyStrings = {
         "このPlayアプリにはHTTPSが必要です。プロバイダーに HTTPS プレイリストまたはサーバー URL を問い合わせてください。",
     "This pairing link has expired. Open a new session on your TV.":
         "このペアリングリンクの有効期限が切れています。テレビで新しいセッションを開きます。",
+    "This remote command is not supported by the player.":
+        "この遠隔操作コマンドにはプレーヤーが対応していません。",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "この安全なセッションは利用できないか、期限切れです。テレビで新しいセッションを開き、その完全なリンクを使用します。",
     Timer: "タイマー",
@@ -1020,6 +1043,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ズームモードを変更する",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tvの設定",
+    "Touchscreen locked": "タッチスクリーンをロックしました",
+    "Touchscreen unlocked": "タッチスクリーンのロックを解除しました",
     "Trust this server for remote support":
         "リモート サポートのためにこのサーバーを信頼します",
     "Trusted access could not be removed from device storage.":
@@ -1040,6 +1065,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1Xの設定",
     "Unable to load playlist": "プレイリストを読み込めません",
+    "Unlock the player's settings before changing its playlist.":
+        "プレイリストを変更する前に、プレーヤーの設定のロックを解除してください。",
     Untitled: "無題",
     "Untitled folder": "無題のフォルダ",
     "Update installed. Please restart OttPlay FOSS.":

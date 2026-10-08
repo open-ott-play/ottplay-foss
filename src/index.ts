@@ -1785,7 +1785,12 @@ function selectLang(forceReload?: boolean): void {
                     applyLanguageMetadata(selectedLanguage);
                     resumeAfterLanguage();
                 };
-                if (currentCode === selectedLanguage && forceReload !== true)
+                // A saved system language can outlive a failed boot download.
+                // Reuse only the dictionary that actually loaded this session.
+                if (
+                    languageHost.__ottInterfaceLanguage === selectedLanguage &&
+                    forceReload !== true
+                )
                     selected();
                 else
                     cancelLanguageLoad = loadInterfaceLanguage(

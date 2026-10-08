@@ -140,6 +140,11 @@ var keyStrings = {
         "Vahetage teenusepakkujat. Teie valik jäetakse meelde järgmisel korral, kui käivitate meediumipleieri.",
     "Change value": "Muutke väärtust",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': "Kanalit „%1” ei leitud",
+    "Channel #%1": "Kanal nr %1",
+    "Channel #%1 not found (total: %2)": "Kanalit nr %1 ei leitud (kokku: %2)",
+    "Channel #%1 not in any category":
+        "Kanal nr %1 ei kuulu ühtegi kategooriasse",
     "Channel has no EPG": "Kanalil puudub EPG",
     "Channel is not available!!!": "Kanal pole saadaval!",
     "Channel link": "Kanali link",
@@ -289,6 +294,7 @@ var keyStrings = {
         "Varukoopia säilitamiseks kopeerige JSON. Kasutage selle taastamiseks Impordi seadeid.",
     "Copy the selected JSON with your device's copy command":
         "Kopeerige valitud JSON oma seadme kopeerimiskäsuga",
+    "Could not change the playlist.": "Esitusloendit ei õnnestunud muuta.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Võrguga Plex ei saanud ühendust luua. Kontrollige serveri aadressi, luba ja juurdepääsu võrgule.",
     "Could not connect to the server.":
@@ -555,6 +561,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Pilvesätete vastus on kehtetu",
     "Invalid protected source configuration":
         "Vale kaitstud allika konfiguratsioon",
+    "Invalid range: %1-%2": "Vigane vahemik: %1-%2",
     "Invalid setting": "Kehtetu säte",
     "IPTV token": "IPTV märk",
     "IpStream.one": "IpStream.one",
@@ -586,6 +593,7 @@ var keyStrings = {
     "Loading M3U...": "Laadimine M3U…",
     "Loading media libraries...": "Meediumiteekide laadimine…",
     "Loading player...": "Meediumipleieri laadimine…",
+    "Loading the new playlist...": "Uue esitusloendi laadimine...",
     "Loading via proxy...": "Laadimine puhverserveri kaudu…",
     "Loading. Please wait...": "Laadimine… palun oota…",
     "Loading...": "Laadimine…",
@@ -627,6 +635,7 @@ var keyStrings = {
     "Next TV program": "Järgmine programm",
     No: "Ei",
     "No channel name": "Kanali nime pole",
+    "No channels loaded": "Ühtegi kanalit pole laaditud",
     "No command server was found on this network.":
         "Sellest võrgust ei leitud ühtegi käsuserverit.",
     "No Plex servers are available for this account.":
@@ -700,6 +709,7 @@ var keyStrings = {
     "Player could not start": "meediapleierit ei saanud käivitada",
     "Player default": "Pleieri vaikevalik",
     "Player info:": "meediapleieri teave:",
+    "Playing: %1": "Esitamisel: %1",
     Playlist: "Esitusloend",
     "Playlist file": "Esitusloendi fail",
     "Playlist is not loading directly...Loading via server...":
@@ -736,9 +746,14 @@ var keyStrings = {
     "Protect Change Provider": "Kaitske teenusepakkuja vahetust",
     "Protect Settings": "Kaitse seadeid",
     "Protected source is unavailable": "Kaitstud allikas pole saadaval",
+    "Provider switching not available":
+        "Teenusepakkuja vahetamine pole saadaval",
     "p...": "p...",
     paging: "lehekülgede vahetamine",
     Quality: "Kvaliteet",
+    "Random #%1": "Juhuslik nr %1",
+    "Random channel not in any category":
+        "Juhuslik kanal ei kuulu ühtegi kategooriasse",
     Rating: "Hinnang",
     RD: "RD",
     "RD settings": "RD seaded",
@@ -776,6 +791,10 @@ var keyStrings = {
         "Kaugsisend aegus. Uuesti proovimiseks avage uus seanss.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kaugsisendi seanss pole saadaval. Uuesti proovimiseks avage uus seanss.",
+    "Remote playlist changes require the M3U provider.":
+        "Esitusloendi kaugmuutmiseks on vaja M3U-teenusepakkujat.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Teenusepakkuja kaugseadistamist ei toetata. Kasutage mängija teenusepakkuja seadeid.",
     "Remote screenshots": "Kaugekraanipildid",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Kaug-ekraanitõmmised on lubatud 10 minutit. Sulgege jäädvustamiseks seaded.",
@@ -968,6 +987,7 @@ var keyStrings = {
     "Switch sound track": "Vaheta helirada",
     "Switch subtitle": "Vaheta subtiitreid",
     "Switch to this list": "Lülitu sellele loendile",
+    "Switching provider...": "Teenusepakkuja vahetamine...",
     "Swop URL": "SWOP-i URL",
     "System language": "Süsteemi keel",
     "saved on this device": "sellesse seadmesse salvestatud",
@@ -1001,6 +1021,8 @@ var keyStrings = {
         "See Play rakendus nõuab HTTPS. Küsige oma teenusepakkujalt esitusloendit HTTPS või serverit URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "See sidumislink on aegunud. Avage oma teleris uus seanss.",
+    "This remote command is not supported by the player.":
+        "Mängija ei toeta seda kaugkäsku.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "See turvaline seanss pole saadaval või on aegunud. Avage teleris uus seanss ja kasutage selle täielikku linki.",
     Timer: "Taimer",
@@ -1020,6 +1042,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Muutke suumirežiimi",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv seaded",
+    "Touchscreen locked": "Puuteekraan on lukustatud",
+    "Touchscreen unlocked": "Puuteekraani lukustus on avatud",
     "Trust this server for remote support":
         "Usaldage seda serverit kaugtoe saamiseks",
     "Trusted access could not be removed from device storage.":
@@ -1040,6 +1064,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X seaded",
     "Unable to load playlist": "Esitusloendit ei saa laadida",
+    "Unlock the player's settings before changing its playlist.":
+        "Enne esitusloendi muutmist avage mängija seadete lukustus.",
     Untitled: "Pealkirjata",
     "Untitled folder": "Nimetu kaust",
     "Update installed. Please restart OttPlay FOSS.":

@@ -16,6 +16,39 @@ function visibleIds(c) {
     );
 }
 
+test("Media filtering uses the interface Unicode rules and preserves original titles", () => {
+    for (const [locale, title, query] of [
+        ["_ger", "Straße", "STRASSE"],
+        ["_fra", "Café", "Cafe\u0301"],
+        ["_tur", "IŞIK", "ışık"],
+        ["_rus", "Ёлка   дома", "елка дома"],
+    ]) {
+        const c = fixture();
+        c.__ottInterfaceLanguage = locale;
+        c.catalogs[""] = [
+            { id: 1, stream_url: "match.mp4", title },
+            { id: 2, stream_url: "other.mp4", title: "Unrelated" },
+        ];
+        c.mediaList(null);
+        applyFilter(c, query);
+        assert.deepEqual(visibleIds(c), [1], locale + ": " + query);
+        assert.equal(c.listArray.find((row) => row.id === 1).title, title);
+        assert.equal(c.__ottMedia.snapshot().filter, query);
+        c.__ottMedia.shufflePlay();
+        assert.deepEqual(
+            c.calls.filter((call) => call[0] === "play"),
+            [["play", "match.mp4"]],
+            "Shuffle obeys the same Unicode filter"
+        );
+    }
+    const c = fixture();
+    c.__ottInterfaceLanguage = "_fra";
+    c.catalogs[""] = [{ id: 1, stream_url: "accent.mp4", title: "Café" }];
+    c.mediaList(null);
+    applyFilter(c, "Cafe");
+    assert.deepEqual(visibleIds(c), [], "Significant accents are preserved");
+});
+
 test("Navigation during resolver cancellation discards the interrupted filter edit", () => {
     const c = fixture();
     let replaceOnCancel = false;

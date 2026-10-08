@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const root = path.join(__dirname, "..");
 function source(file, names) {
@@ -287,8 +288,15 @@ c.onChannelsLoaded = () => {
 };
 c.playChannel = (category, channel) => played.push([category, channel]);
 c.exports = {};
+const commandLocale = { window: c };
+vm.createContext(commandLocale);
+vm.runInContext(localizationRuntime(), commandLocale);
 c.require = (name) =>
-    name === "../shared/wire-contracts" ? require("./load-wire.cjs")() : {};
+    name === "../shared/wire-contracts"
+        ? require("./load-wire.cjs")()
+        : name === "../localization"
+          ? commandLocale
+          : {};
 c.document = { getElementById: () => null };
 vm.runInContext(
     ts.transpileModule(

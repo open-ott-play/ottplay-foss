@@ -148,6 +148,12 @@ var keyStrings = {
         "Cambia de provedor. Lembrarase a selección a próxima vez que inicies o reprodutor.",
     "Change value": "Cambiar o valor",
     "Channel ": "Canle ",
+    'Channel "%1" not found': 'Non se atopou a canle "%1"',
+    "Channel #%1": "Canle #%1",
+    "Channel #%1 not found (total: %2)":
+        "Non se atopou a canle #%1 (total: %2)",
+    "Channel #%1 not in any category":
+        "A canle #%1 non está en ningunha categoría",
     "Channel has no EPG": "A canle non ten EPG",
     "Channel is not available!!!": "A canle non está dispoñible!",
     "Channel link": "Ligazón da canle",
@@ -299,6 +305,8 @@ var keyStrings = {
         "Copia o JSON para conservar unha copia de seguranza. Usa «Importar configuración» para restaurala.",
     "Copy the selected JSON with your device's copy command":
         "Copia o JSON seleccionado coa orde de copia do dispositivo",
+    "Could not change the playlist.":
+        "Non se puido cambiar a lista de reprodución.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Non se puido conectar con Plex. Comproba o enderezo do servidor, o token e o acceso á rede.",
     "Could not connect to the server.": "Non se puido conectar co servidor.",
@@ -574,6 +582,7 @@ var keyStrings = {
         "Resposta da configuración da nube non válida",
     "Invalid protected source configuration":
         "Configuración da fonte protexida non válida",
+    "Invalid range: %1-%2": "Intervalo non válido: %1-%2",
     "Invalid setting": "Configuración non válida",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -605,6 +614,7 @@ var keyStrings = {
     "Loading M3U...": "Cargando M3U…",
     "Loading media libraries...": "Cargando bibliotecas multimedia…",
     "Loading player...": "Cargando reprodutor…",
+    "Loading the new playlist...": "Cargando a nova lista de reprodución...",
     "Loading via proxy...": "Cargando mediante o servidor proxy…",
     "Loading. Please wait...": "Cargando… agarda, por favor…",
     "Loading...": "Cargando…",
@@ -647,6 +657,7 @@ var keyStrings = {
     "Next TV program": "Programa seguinte",
     No: "Non",
     "No channel name": "Canle sen nome",
+    "No channels loaded": "Non hai canles cargadas",
     "No command server was found on this network.":
         "Non se atopou ningún servidor de ordes nesta rede.",
     "No Plex servers are available for this account.":
@@ -720,6 +731,7 @@ var keyStrings = {
     "Player could not start": "Non se puido iniciar o reprodutor",
     "Player default": "Opción predeterminada do reprodutor",
     "Player info:": "Información do reprodutor:",
+    "Playing: %1": "Reproducindo: %1",
     Playlist: "Lista de reprodución",
     "Playlist file": "Ficheiro da lista de reprodución",
     "Playlist is not loading directly...Loading via server...":
@@ -755,9 +767,14 @@ var keyStrings = {
     "Protect Change Provider": "Protexer o cambio de provedor",
     "Protect Settings": "Protexer a configuración",
     "Protected source is unavailable": "A fonte protexida non está dispoñible",
+    "Provider switching not available":
+        "O cambio de provedor non está dispoñible",
     "p...": "p...",
     paging: "paxinación",
     Quality: "Calidade",
+    "Random #%1": "Canle aleatoria #%1",
+    "Random channel not in any category":
+        "A canle escollida ao azar non está en ningunha categoría",
     Rating: "Valoración",
     RD: "RD",
     "RD settings": "Configuración de RD",
@@ -794,6 +811,10 @@ var keyStrings = {
         "A entrada remota caducou. Abre unha sesión nova para volver tentalo.",
     "Remote input session is unavailable. Open a new session to try again.":
         "A sesión de entrada remota non está dispoñible. Abre unha sesión nova para volver tentalo.",
+    "Remote playlist changes require the M3U provider.":
+        "Para cambiar a lista de reprodución a distancia é necesario o provedor M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Non se admite cambiar a configuración do provedor a distancia. Usa a configuración do provedor no reprodutor.",
     "Remote screenshots": "Capturas de pantalla remotas",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Permítense capturas de pantalla remotas durante 10 minutos. Pecha a configuración para capturar.",
@@ -992,6 +1013,7 @@ var keyStrings = {
     "Switch sound track": "Cambiar a pista de son",
     "Switch subtitle": "Cambiar os subtítulos",
     "Switch to this list": "Cambiar a esta lista",
+    "Switching provider...": "Cambiando de provedor...",
     "Swop URL": "Swop URL",
     "System language": "Idioma do sistema",
     "saved on this device": "gardado neste dispositivo",
@@ -1025,6 +1047,8 @@ var keyStrings = {
         "Esta aplicación Play require HTTPS. Pídelle ao provedor unha lista ou un URL de servidor HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Esta ligazón de vinculación caducou. Abre unha nova sesión na túa televisión.",
+    "This remote command is not supported by the player.":
+        "O reprodutor non admite esta orde remota.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Esta sesión segura non está dispoñible ou caducou. Abre unha nova sesión na televisión e usa a súa ligazón completa.",
     Timer: "Temporizador",
@@ -1044,6 +1068,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Cambiar o modo de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Configuración de Top-Tv",
+    "Touchscreen locked": "Pantalla táctil bloqueada",
+    "Touchscreen unlocked": "Pantalla táctil desbloqueada",
     "Trust this server for remote support":
         "Confiar neste servidor para a asistencia remota",
     "Trusted access could not be removed from device storage.":
@@ -1064,6 +1090,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Configuración de ULTIFL1X",
     "Unable to load playlist": "Non se pode cargar a lista de reprodución",
+    "Unlock the player's settings before changing its playlist.":
+        "Desbloquea a configuración do reprodutor antes de cambiar a súa lista de reprodución.",
     Untitled: "Sen título",
     "Untitled folder": "Cartafol sen título",
     "Update installed. Please restart OttPlay FOSS.":

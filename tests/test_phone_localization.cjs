@@ -192,6 +192,65 @@ async function main() {
         );
         assert.equal(w.document.documentElement.lang, "ru");
     }
+    // Legacy offers have no language field and can precede the browser catalog.
+    for (const caption of ["", "Enter text", "<b>My playlist</b>"]) {
+        const page = new JSDOM(PHONE_HTML, {
+            runScripts: "outside-only",
+            url: "https://phone.invalid/swop-input/#fixture",
+        });
+        const phone = page.window,
+            requests = [];
+        Object.defineProperty(phone.navigator, "languages", {
+            value: ["ru-RU"],
+        });
+        phone.XMLHttpRequest = class {
+            open() {}
+            send() {
+                requests.push(this);
+            }
+        };
+        const core = {
+            hereNowCryptoAvailable: () => true,
+            hereNowOpen: async () => ({ caption, draft: "" }),
+            hereNowReadPair: () => ({
+                deadline: Date.now() + 60000,
+                recordId: "fixture",
+                secret: new Uint8Array(32),
+            }),
+            hereNowStore: () => ({ get: async () => ({ offer: "fixture" }) }),
+            hereNowSwopConfig: () => ({ collection: "fixture" }),
+            hereNowValidValue: () => true,
+        };
+        phone.require = (id) =>
+            id === "./herenow"
+                ? core
+                : id === "./phone-localization"
+                  ? api
+                  : assets;
+        phone.exports = {};
+        try {
+            phone.eval(compile("src/swop/herenow-phone.ts"));
+            for (let i = 0; i < 10; i++) await Promise.resolve();
+            const label = phone.document.getElementById("caption");
+            assert.equal(phone.document.getElementById("entry").hidden, false);
+            assert.equal(
+                requests.length,
+                1,
+                "browser dictionary still pending"
+            );
+            respond(requests[0], ru);
+            for (let i = 0; i < 10; i++) await Promise.resolve();
+            assert.equal(phone.document.documentElement.lang, "ru");
+            assert.equal(
+                label.textContent,
+                caption || ru["Enter text"],
+                "late language translates only a generated caption"
+            );
+            assert.equal(label.querySelector("b"), null);
+        } finally {
+            phone.close();
+        }
+    }
     dom.window.close();
     console.log(
         "PASS phone localization: real RU/Arabic text, encrypted-offer language precedence, timeout/invalid/stale data, safe text and bidi fields"

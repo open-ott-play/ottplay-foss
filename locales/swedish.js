@@ -140,6 +140,11 @@ var keyStrings = {
         "Byt leverantör. Ditt val sparas till nästa gång spelaren startas.",
     "Change value": "Ändra värde",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': "Kanalen ”%1” hittades inte",
+    "Channel #%1": "Kanal nr %1",
+    "Channel #%1 not found (total: %2)":
+        "Kanal nr %1 hittades inte (totalt: %2)",
+    "Channel #%1 not in any category": "Kanal nr %1 tillhör ingen kategori",
     "Channel has no EPG": "Kanalen saknar programguide",
     "Channel is not available!!!": "Kanalen är inte tillgänglig!",
     "Channel link": "Kanallänk",
@@ -290,6 +295,7 @@ var keyStrings = {
         "Kopiera JSON för att spara en säkerhetskopia. Återställ den genom att importera inställningarna.",
     "Copy the selected JSON with your device's copy command":
         "Kopiera markerad JSON med enhetens kopieringskommando",
+    "Could not change the playlist.": "Det gick inte att ändra spellistan.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Kunde inte ansluta till Plex. Kontrollera serveradressen, token och nätverksåtkomst.",
     "Could not connect to the server.": "Kunde inte ansluta till servern.",
@@ -557,6 +563,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Ogiltigt svar på molninställningar",
     "Invalid protected source configuration":
         "Ogiltig konfiguration för skyddad källa",
+    "Invalid range: %1-%2": "Ogiltigt intervall: %1-%2",
     "Invalid setting": "Ogiltig inställning",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
@@ -588,6 +595,7 @@ var keyStrings = {
     "Loading M3U...": "Läser in M3U…",
     "Loading media libraries...": "Läser in mediebibliotek…",
     "Loading player...": "Läser in spelaren…",
+    "Loading the new playlist...": "Läser in den nya spellistan...",
     "Loading via proxy...": "Läser in via proxy…",
     "Loading. Please wait...": "Läser in. Vänta…",
     "Loading...": "Läser in…",
@@ -630,6 +638,7 @@ var keyStrings = {
     "Next TV program": "Nästa program",
     No: "Nej",
     "No channel name": "Kanalnamn saknas",
+    "No channels loaded": "Inga kanaler har lästs in",
     "No command server was found on this network.":
         "Ingen kommandoserver hittades i det här nätverket.",
     "No Plex servers are available for this account.":
@@ -703,6 +712,7 @@ var keyStrings = {
     "Player could not start": "Spelaren kunde inte starta",
     "Player default": "Spelarens standardval",
     "Player info:": "Spelarinformation:",
+    "Playing: %1": "Spelar upp: %1",
     Playlist: "Spellista",
     "Playlist file": "Spellistefil",
     "Playlist is not loading directly...Loading via server...":
@@ -739,9 +749,13 @@ var keyStrings = {
     "Protect Settings": "Skydda inställningar",
     "Protected source is unavailable":
         "Den skyddade källan är inte tillgänglig",
+    "Provider switching not available": "Leverantörsbyte är inte tillgängligt",
     "p...": "p…",
     paging: "sidbläddring",
     Quality: "Kvalitet",
+    "Random #%1": "Slumpmässig nr %1",
+    "Random channel not in any category":
+        "Den slumpmässiga kanalen tillhör ingen kategori",
     Rating: "Betyg",
     RD: "RD",
     "RD settings": "RD-inställningar",
@@ -779,6 +793,10 @@ var keyStrings = {
         "Fjärrinmatningen har gått ut. Öppna en ny session för att försöka igen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Fjärrinmatningssession är inte tillgänglig. Öppna en ny session för att försöka igen.",
+    "Remote playlist changes require the M3U provider.":
+        "Fjärrändring av spellistan kräver M3U-leverantören.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Fjärrinställning av leverantören stöds inte. Använd leverantörsinställningarna i spelaren.",
     "Remote screenshots": "Fjärrstyrda skärmdumpar",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Fjärrstyrda skärmdumpar tillåts i 10 minuter. Stäng inställningarna för att fånga.",
@@ -970,6 +988,7 @@ var keyStrings = {
     "Switch sound track": "Byt ljudspår",
     "Switch subtitle": "Byt undertext",
     "Switch to this list": "Byt till den här listan",
+    "Switching provider...": "Byter leverantör...",
     "Swop URL": "Swop-URL",
     "System language": "Systemspråk",
     "saved on this device": "sparat på den här enheten",
@@ -1003,6 +1022,8 @@ var keyStrings = {
         "Denna Play-app kräver HTTPS. Be leverantören om en HTTPS-adress till spellistan eller servern.",
     "This pairing link has expired. Open a new session on your TV.":
         "Denna sammankopplingslänk har upphört att gälla. Öppna en ny session på din TV.",
+    "This remote command is not supported by the player.":
+        "Spelaren stöder inte detta fjärrkommando.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Denna säkra session är inte tillgänglig eller har löpt ut. Öppna en ny session på TV:n och använd hela länken till den.",
     Timer: "Timer",
@@ -1022,6 +1043,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Byt zoomläge",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-inställningar",
+    "Touchscreen locked": "Pekskärmen är låst",
+    "Touchscreen unlocked": "Pekskärmen är upplåst",
     "Trust this server for remote support":
         "Lita på den här servern för fjärrsupport",
     "Trusted access could not be removed from device storage.":
@@ -1042,6 +1065,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-inställningar",
     "Unable to load playlist": "Det gick inte att läsa in spellistan",
+    "Unlock the player's settings before changing its playlist.":
+        "Lås upp spelarens inställningar innan du ändrar spellistan.",
     Untitled: "Utan titel",
     "Untitled folder": "Namnlös mapp",
     "Update installed. Please restart OttPlay FOSS.":

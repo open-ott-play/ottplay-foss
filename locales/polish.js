@@ -144,6 +144,12 @@ var keyStrings = {
         "Zmień dostawcę. Wybór zostanie zapamiętany przy następnym uruchomieniu odtwarzacza.",
     "Change value": "Zmień wartość",
     "Channel ": "Kanał ",
+    'Channel "%1" not found': "Nie znaleziono kanału „%1”",
+    "Channel #%1": "Kanał nr %1",
+    "Channel #%1 not found (total: %2)":
+        "Nie znaleziono kanału nr %1 (łącznie: %2)",
+    "Channel #%1 not in any category":
+        "Kanał nr %1 nie należy do żadnej kategorii",
     "Channel has no EPG": "Kanał nie ma programu EPG",
     "Channel is not available!!!": "Kanał niedostępny!!!",
     "Channel link": "Link do kanału",
@@ -295,6 +301,8 @@ var keyStrings = {
         "Skopiuj JSON, aby zachować kopię zapasową. Użyj importowania ustawień, aby ją przywrócić.",
     "Copy the selected JSON with your device's copy command":
         "Skopiuj zaznaczony JSON za pomocą polecenia kopiowania na urządzeniu",
+    "Could not change the playlist.":
+        "Nie udało się zmienić listy odtwarzania.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nie można połączyć się z Plex. Sprawdź adres serwera, token i dostęp do sieci.",
     "Could not connect to the server.": "Nie udało się połączyć z serwerem.",
@@ -565,6 +573,7 @@ var keyStrings = {
         "Nieprawidłowa odpowiedź na ustawienia chmury",
     "Invalid protected source configuration":
         "Nieprawidłowa konfiguracja chronionego źródła",
+    "Invalid range: %1-%2": "Nieprawidłowy zakres: %1-%2",
     "Invalid setting": "Nieprawidłowe ustawienie",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -596,6 +605,7 @@ var keyStrings = {
     "Loading M3U...": "Wczytywanie M3U…",
     "Loading media libraries...": "Wczytywanie bibliotek multimedialnych…",
     "Loading player...": "Wczytywanie odtwarzacza…",
+    "Loading the new playlist...": "Wczytywanie nowej listy odtwarzania...",
     "Loading via proxy...": "Wczytywanie przez proxy…",
     "Loading. Please wait...": "Wczytywanie. Poczekaj…",
     "Loading...": "Wczytywanie…",
@@ -637,6 +647,7 @@ var keyStrings = {
     "Next TV program": "Następny program",
     No: "Nie",
     "No channel name": "Brak nazwy kanału",
+    "No channels loaded": "Nie wczytano żadnych kanałów",
     "No command server was found on this network.":
         "W tej sieci nie znaleziono serwera poleceń.",
     "No Plex servers are available for this account.":
@@ -710,6 +721,7 @@ var keyStrings = {
     "Player could not start": "Nie udało się uruchomić odtwarzacza",
     "Player default": "Domyślny wybór odtwarzacza",
     "Player info:": "Informacje o odtwarzaczu:",
+    "Playing: %1": "Odtwarzanie: %1",
     Playlist: "Playlista",
     "Playlist file": "Plik playlisty",
     "Playlist is not loading directly...Loading via server...":
@@ -745,9 +757,13 @@ var keyStrings = {
     "Protect Change Provider": "Chroń zmianę dostawcy",
     "Protect Settings": "Chroń ustawienia",
     "Protected source is unavailable": "Chronione źródło jest niedostępne",
+    "Provider switching not available": "Zmiana dostawcy jest niedostępna",
     "p...": "p…",
     paging: "przewracanie stron",
     Quality: "Jakość",
+    "Random #%1": "Losowy nr %1",
+    "Random channel not in any category":
+        "Losowy kanał nie należy do żadnej kategorii",
     Rating: "Ocena",
     RD: "RD",
     "RD settings": "Ustawienia RD",
@@ -784,6 +800,10 @@ var keyStrings = {
         "Zdalne wprowadzanie wygasło. Otwórz nową sesję, aby spróbować ponownie.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesja zdalnego wprowadzania danych jest niedostępna. Otwórz nową sesję, aby spróbować ponownie.",
+    "Remote playlist changes require the M3U provider.":
+        "Zdalna zmiana listy odtwarzania wymaga dostawcy M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Zdalna konfiguracja dostawcy nie jest obsługiwana. Użyj ustawień dostawcy w odtwarzaczu.",
     "Remote screenshots": "Zdalne zrzuty ekranu",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Zdalne zrzuty ekranu są dozwolone przez 10 minut. Zamknij ustawienia, aby przechwycić.",
@@ -977,6 +997,7 @@ var keyStrings = {
     "Switch sound track": "Zmień ścieżkę dźwiękową",
     "Switch subtitle": "Zmień napisy",
     "Switch to this list": "Przełącz na tę listę",
+    "Switching provider...": "Zmiana dostawcy...",
     "Swop URL": "Adres URL Swop",
     "System language": "Język systemu",
     "saved on this device": "zapisano na tym urządzeniu",
@@ -1011,6 +1032,8 @@ var keyStrings = {
         "Ta wersja z Play wymaga HTTPS. Poproś dostawcę o adres HTTPS playlisty lub serwera.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ten link do parowania wygasł. Otwórz nową sesję na swoim telewizorze.",
+    "This remote command is not supported by the player.":
+        "Odtwarzacz nie obsługuje tego zdalnego polecenia.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ta bezpieczna sesja jest niedostępna lub wygasła. Otwórz nową sesję w telewizorze i użyj jej pełnego łącza.",
     Timer: "Minutnik",
@@ -1030,6 +1053,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Zmień tryb powiększenia",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ustawienia Top-Tv",
+    "Touchscreen locked": "Ekran dotykowy zablokowany",
+    "Touchscreen unlocked": "Ekran dotykowy odblokowany",
     "Trust this server for remote support":
         "Zaufaj temu serwerowi, jeśli chodzi o zdalną pomoc",
     "Trusted access could not be removed from device storage.":
@@ -1050,6 +1075,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ustawienia ULTIFL1X",
     "Unable to load playlist": "Nie udało się wczytać listy odtwarzania",
+    "Unlock the player's settings before changing its playlist.":
+        "Odblokuj ustawienia odtwarzacza przed zmianą listy odtwarzania.",
     Untitled: "Bez tytułu",
     "Untitled folder": "Folder bez nazwy",
     "Update installed. Please restart OttPlay FOSS.":

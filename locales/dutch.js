@@ -144,6 +144,12 @@ var keyStrings = {
         "Wijzig de provider. Uw keuze wordt onthouden bij de volgende start van de speler.",
     "Change value": "Waarde wijzigen",
     "Channel ": "Zender ",
+    'Channel "%1" not found': "Kanaal ‘%1’ niet gevonden",
+    "Channel #%1": "Kanaal nr. %1",
+    "Channel #%1 not found (total: %2)":
+        "Kanaal nr. %1 niet gevonden (totaal: %2)",
+    "Channel #%1 not in any category":
+        "Kanaal nr. %1 hoort bij geen enkele categorie",
     "Channel has no EPG": "Zender heeft geen EPG",
     "Channel is not available!!!": "Zender niet beschikbaar!",
     "Channel link": "Zenderlink",
@@ -294,6 +300,8 @@ var keyStrings = {
         "Kopieer de JSON om een back-up te bewaren. Gebruik de importfunctie voor instellingen om deze te herstellen.",
     "Copy the selected JSON with your device's copy command":
         "Kopieer de geselecteerde JSON met de kopieeropdracht van uw apparaat",
+    "Could not change the playlist.":
+        "De afspeellijst kon niet worden gewijzigd.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Kan geen verbinding maken met Plex. Controleer het serveradres, token en netwerktoegang.",
     "Could not connect to the server.":
@@ -563,6 +571,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Ongeldig antwoord op cloudinstellingen",
     "Invalid protected source configuration":
         "Ongeldige configuratie van beveiligde bron",
+    "Invalid range: %1-%2": "Ongeldig bereik: %1-%2",
     "Invalid setting": "Ongeldige instelling",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
@@ -594,6 +603,7 @@ var keyStrings = {
     "Loading M3U...": "M3U laden…",
     "Loading media libraries...": "Mediabibliotheken laden…",
     "Loading player...": "Speler laden…",
+    "Loading the new playlist...": "De nieuwe afspeellijst wordt geladen...",
     "Loading via proxy...": "Laden via proxy…",
     "Loading. Please wait...": "Laden… even geduld…",
     "Loading...": "Laden…",
@@ -635,6 +645,7 @@ var keyStrings = {
     "Next TV program": "Volgend programma",
     No: "Nee",
     "No channel name": "Geen zendernaam",
+    "No channels loaded": "Geen kanalen geladen",
     "No command server was found on this network.":
         "Geen opdrachtserver gevonden op dit netwerk.",
     "No Plex servers are available for this account.":
@@ -708,6 +719,7 @@ var keyStrings = {
     "Player could not start": "De speler kon niet worden gestart",
     "Player default": "Standaardkeuze van de speler",
     "Player info:": "Spelergegevens:",
+    "Playing: %1": "Wordt afgespeeld: %1",
     Playlist: "Afspeellijst",
     "Playlist file": "Afspeellijstbestand",
     "Playlist is not loading directly...Loading via server...":
@@ -744,9 +756,14 @@ var keyStrings = {
     "Protect Change Provider": "Providerwijziging beveiligen",
     "Protect Settings": "Instellingen beveiligen",
     "Protected source is unavailable": "De beveiligde bron is niet beschikbaar",
+    "Provider switching not available":
+        "Van provider wisselen is niet beschikbaar",
     "p...": "p...",
     paging: "paginagewijs",
     Quality: "Kwaliteit",
+    "Random #%1": "Willekeurig nr. %1",
+    "Random channel not in any category":
+        "Het willekeurige kanaal hoort bij geen enkele categorie",
     Rating: "Beoordeling",
     RD: "RD",
     "RD settings": "Instellingen voor RD",
@@ -784,6 +801,10 @@ var keyStrings = {
         "Externe invoer verlopen. Open een nieuwe sessie om het opnieuw te proberen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sessie voor externe invoer is niet beschikbaar. Open een nieuwe sessie om het opnieuw te proberen.",
+    "Remote playlist changes require the M3U provider.":
+        "Voor wijzigingen aan de afspeellijst op afstand is de M3U-provider vereist.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Providerinstellingen op afstand worden niet ondersteund. Gebruik de providerinstellingen in de speler.",
     "Remote screenshots": "Schermafbeeldingen op afstand",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Schermafbeeldingen op afstand zijn toegestaan gedurende 10 minuten. Sluit de instellingen om vast te leggen.",
@@ -981,6 +1002,7 @@ var keyStrings = {
     "Switch sound track": "Audiospoor wisselen",
     "Switch subtitle": "Ondertitels wisselen",
     "Switch to this list": "Naar deze lijst wisselen",
+    "Switching provider...": "Provider wordt gewisseld...",
     "Swop URL": "Swop-URL",
     "System language": "Systeemtaal",
     "saved on this device": "opgeslagen op dit apparaat",
@@ -1015,6 +1037,8 @@ var keyStrings = {
         "Deze Play-app vereist HTTPS. Vraag uw provider om een HTTPS-afspeellijst of server-URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Deze koppelingslink is verlopen. Open een nieuwe sessie op uw tv.",
+    "This remote command is not supported by the player.":
+        "De speler ondersteunt deze opdracht op afstand niet.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Deze beveiligde sessie is niet beschikbaar of verlopen. Open een nieuwe sessie op de tv en gebruik de volledige link.",
     Timer: "Timer",
@@ -1033,6 +1057,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Zoommodus wijzigen",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Instellingen voor Top-Tv",
+    "Touchscreen locked": "Aanraakscherm vergrendeld",
+    "Touchscreen unlocked": "Aanraakscherm ontgrendeld",
     "Trust this server for remote support":
         "Vertrouw op deze server voor ondersteuning op afstand",
     "Trusted access could not be removed from device storage.":
@@ -1053,6 +1079,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Instellingen voor ULTIFL1X",
     "Unable to load playlist": "Kan afspeellijst niet laden",
+    "Unlock the player's settings before changing its playlist.":
+        "Ontgrendel de instellingen van de speler voordat u de afspeellijst wijzigt.",
     Untitled: "Zonder titel",
     "Untitled folder": "Naamloze map",
     "Update installed. Please restart OttPlay FOSS.":

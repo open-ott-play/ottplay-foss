@@ -138,6 +138,10 @@ var keyStrings = {
         "প্ৰদানকাৰী সলনি কৰক। পৰৱৰ্তী সময়ত প্লেয়াৰ আৰম্ভ কৰোঁতে আপোনাৰ নিৰ্বাচন মনত ৰখা হ’ব।",
     "Change value": "মান সলনি কৰক",
     "Channel ": "চেনেল ",
+    'Channel "%1" not found': '"%1" চেনেল পোৱা নগ\'ল',
+    "Channel #%1": "চেনেল #%1",
+    "Channel #%1 not found (total: %2)": "চেনেল #%1 পোৱা নগ'ল (মুঠ: %2)",
+    "Channel #%1 not in any category": "চেনেল #%1 কোনো শ্ৰেণীত নাই",
     "Channel has no EPG": "চেনেলৰ EPG নাই",
     "Channel is not available!!!": "চেনেল উপলব্ধ নহয়!",
     "Channel link": "চেনেলৰ লিংক",
@@ -284,6 +288,7 @@ var keyStrings = {
         "বেকআপ ৰাখিবলৈ JSON কপি কৰক। পুনৰুদ্ধাৰ কৰিবলৈ ছেটিংছ আমদানি কৰক ব্যৱহাৰ কৰক।",
     "Copy the selected JSON with your device's copy command":
         "আপোনাৰ ডিভাইচৰ কপি আদেশেৰে নিৰ্বাচিত JSON কপি কৰক",
+    "Could not change the playlist.": "প্লেলিষ্ট সলনি কৰিব পৰা নগ'ল।",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex-ৰ সৈতে সংযোগ কৰিব পৰা নগ’ল। ছাৰ্ভাৰৰ ঠিকনা, টোকেন আৰু নেটৱৰ্ক প্ৰৱেশাধিকাৰ পৰীক্ষা কৰক।",
     "Could not connect to the server.": "ছাৰ্ভাৰৰ সৈতে সংযোগ কৰিব পৰা নগ’ল।",
@@ -542,6 +547,7 @@ var keyStrings = {
         "চেনেলৰ লিংক বৈধ নহয়! একাউণ্টৰ ষ্ট্ৰিম URL-ত থকা সম্পূৰ্ণ হ’ষ্ট লিখক (যেনে subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "অবৈধ ক্লাউড ছেটিংছ সঁহাৰি",
     "Invalid protected source configuration": "সুৰক্ষিত উৎসৰ বিন্যাস বৈধ নহয়",
+    "Invalid range: %1-%2": "অবৈধ পৰিসৰ: %1-%2",
     "Invalid setting": "অবৈধ ছেটিং",
     "IPTV token": "IPTV টোকেন",
     "IpStream.one": "IpStream.one",
@@ -573,6 +579,7 @@ var keyStrings = {
     "Loading M3U...": "M3U লোড হৈ আছে…",
     "Loading media libraries...": "মিডিয়া লাইব্ৰেৰী লোড হৈ আছে…",
     "Loading player...": "প্লেয়াৰ লোড হৈ আছে…",
+    "Loading the new playlist...": "নতুন প্লেলিষ্ট লোড কৰা হৈছে...",
     "Loading via proxy...": "প্ৰক্সিৰ জৰিয়তে লোড হৈ আছে…",
     "Loading. Please wait...": "লোড হৈ আছে… অনুগ্ৰহ কৰি অপেক্ষা কৰক…",
     "Loading...": "লোড হৈ আছে…",
@@ -614,6 +621,7 @@ var keyStrings = {
     "Next TV program": "পৰৱৰ্তী অনুষ্ঠান",
     No: "নহয়",
     "No channel name": "চেনেলৰ নাম নাই",
+    "No channels loaded": "কোনো চেনেল লোড হোৱা নাই",
     "No command server was found on this network.":
         "এই নেটৱৰ্কত কোনো আদেশ ছাৰ্ভাৰ পোৱা নগ’ল।",
     "No Plex servers are available for this account.":
@@ -687,6 +695,7 @@ var keyStrings = {
     "Player could not start": "প্লেয়াৰ আৰম্ভ কৰিব পৰা নগ’ল",
     "Player default": "প্লেয়াৰৰ পূৰ্বনিৰ্ধাৰিত বাছনি",
     "Player info:": "প্লেয়াৰৰ তথ্য:",
+    "Playing: %1": "চলি আছে: %1",
     Playlist: "প্লেলিষ্ট",
     "Playlist file": "প্লেলিষ্ট ফাইল",
     "Playlist is not loading directly...Loading via server...":
@@ -721,9 +730,13 @@ var keyStrings = {
     "Protect Change Provider": "প্ৰদানকাৰী সলনি কৰা সুৰক্ষিত কৰক",
     "Protect Settings": "ছেটিংছ সুৰক্ষিত কৰক",
     "Protected source is unavailable": "সুৰক্ষিত উৎস উপলব্ধ নহয়",
+    "Provider switching not available": "প্ৰদানকাৰী সলনি কৰাৰ সুবিধা উপলব্ধ নহয়",
     "p...": "p...",
     paging: "পৃষ্ঠা অনুসৰি",
     Quality: "মান",
+    "Random #%1": "যাদৃচ্ছিক চেনেল #%1",
+    "Random channel not in any category":
+        "যাদৃচ্ছিকভাৱে বাছনি কৰা চেনেল কোনো শ্ৰেণীত নাই",
     Rating: "মূল্যায়ন",
     RD: "RD",
     "RD settings": "RD ছেটিংছ",
@@ -760,6 +773,10 @@ var keyStrings = {
         "দূৰৱৰ্তী ইনপুটৰ সময়সীমা শেষ হ’ল। পুনৰ চেষ্টা কৰিবলৈ নতুন ছেছন খোলক।",
     "Remote input session is unavailable. Open a new session to try again.":
         "দূৰৱৰ্তী ইনপুট ছেছন উপলব্ধ নহয়। পুনৰ চেষ্টা কৰিবলৈ নতুন ছেছন খোলক।",
+    "Remote playlist changes require the M3U provider.":
+        "দূৰৰ পৰা প্লেলিষ্ট সলনি কৰিবলৈ M3U প্ৰদানকাৰী প্ৰয়োজন।",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "দূৰৰ পৰা প্ৰদানকাৰীৰ ছেটিংছ সলনি কৰা সমৰ্থিত নহয়। প্লেয়াৰৰ প্ৰদানকাৰীৰ ছেটিংছ ব্যৱহাৰ কৰক।",
     "Remote screenshots": "দূৰৱৰ্তী স্ক্ৰীণশ্বট",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "দূৰৱৰ্তী স্ক্ৰীণশ্বটৰ অনুমতি ১০ মিনিটৰ বাবে দিয়া হৈছে। স্ক্ৰীণশ্বট ল’বলৈ ছেটিংছ বন্ধ কৰক।",
@@ -949,6 +966,7 @@ var keyStrings = {
     "Switch sound track": "অডিঅ’ ট্ৰেক সলনি কৰক",
     "Switch subtitle": "উপশিৰোনাম সলনি কৰক",
     "Switch to this list": "এই তালিকালৈ সলনি কৰক",
+    "Switching provider...": "প্ৰদানকাৰী সলনি কৰা হৈছে...",
     "Swop URL": "শ্বোপ URL",
     "System language": "ব্যৱস্থাপ্ৰণালীৰ ভাষা",
     "saved on this device": "এই ডিভাইচত সংৰক্ষিত",
@@ -979,6 +997,8 @@ var keyStrings = {
         "এই Play এপৰ বাবে HTTPS প্ৰয়োজন। আপোনাৰ প্ৰদানকাৰীৰ পৰা HTTPS প্লেলিষ্ট বা ছাৰ্ভাৰৰ URL বিচাৰক।",
     "This pairing link has expired. Open a new session on your TV.":
         "এই যোৰা সংযোগৰ ম্যাদ উকলি গৈছে। আপোনাৰ টিভিত এটা নতুন অধিবেশন খোলক।",
+    "This remote command is not supported by the player.":
+        "এই দূৰনিয়ন্ত্ৰণ নিৰ্দেশ প্লেয়াৰে সমৰ্থন নকৰে।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "এই সুৰক্ষিত অধিবেশন উপলব্ধ নহয় বা মেয়াদ উকলি গৈছে। টিভিত এটা নতুন অধিবেশন খোলক আৰু ইয়াৰ সম্পূৰ্ণ লিংক ব্যৱহাৰ কৰক।",
     Timer: "টাইমাৰ",
@@ -997,6 +1017,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "জুম মোড সলনি কৰক",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ছেটিংছ",
+    "Touchscreen locked": "টাচস্ক্ৰীণ লক কৰা হৈছে",
+    "Touchscreen unlocked": "টাচস্ক্ৰীণৰ লক খোলা হৈছে",
     "Trust this server for remote support":
         "দূৰৱৰ্তী সহায়ৰ বাবে এই ছাৰ্ভাৰক বিশ্বাস কৰক",
     "Trusted access could not be removed from device storage.":
@@ -1017,6 +1039,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ছেটিংছ",
     "Unable to load playlist": "প্লেলিষ্ট লোড কৰিব পৰা নগ’ল",
+    "Unlock the player's settings before changing its playlist.":
+        "প্লেলিষ্ট সলনি কৰাৰ আগতে প্লেয়াৰৰ ছেটিংছৰ লক খুলক।",
     Untitled: "শিৰোনামহীন",
     "Untitled folder": "নামহীন ফ’ল্ডাৰ",
     "Update installed. Please restart OttPlay FOSS.":

@@ -146,6 +146,12 @@ var keyStrings = {
         "Baguhin ang provider. Ang iyong pinili ay tatandaan sa susunod na simulan mo ang media player.",
     "Change value": "Baguhin ang halaga",
     "Channel ": "Channel ",
+    'Channel "%1" not found': 'Hindi natagpuan ang tsanel na "%1"',
+    "Channel #%1": "Tsanel #%1",
+    "Channel #%1 not found (total: %2)":
+        "Hindi natagpuan ang tsanel #%1 (kabuuan: %2)",
+    "Channel #%1 not in any category":
+        "Wala sa anumang kategorya ang tsanel #%1",
     "Channel has no EPG": "Walang EPG ang channel",
     "Channel is not available!!!": "Hindi available ang channel!",
     "Channel link": "Link ng channel",
@@ -296,6 +302,7 @@ var keyStrings = {
         "Kopyahin ang JSON upang mapanatili ang isang backup. Gamitin ang mga setting ng Import para i-restore ito.",
     "Copy the selected JSON with your device's copy command":
         "Kopyahin ang napiling JSON gamit ang copy command ng iyong device",
+    "Could not change the playlist.": "Hindi mapalitan ang playlist.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Hindi makakonekta sa Plex. Suriin ang address ng server, token at access sa network.",
     "Could not connect to the server.": "Hindi makakonekta sa server.",
@@ -569,6 +576,7 @@ var keyStrings = {
         "Di-wastong tugon mula sa cloud para sa mga setting",
     "Invalid protected source configuration":
         "Di-wastong protektadong source configuration",
+    "Invalid range: %1-%2": "Hindi wastong saklaw: %1-%2",
     "Invalid setting": "Di-wastong setting",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
@@ -602,6 +610,7 @@ var keyStrings = {
     "Loading M3U...": "Nilo-load ang M3U…",
     "Loading media libraries...": "Naglo-load ng mga media library…",
     "Loading player...": "Nilo-load ang media player...",
+    "Loading the new playlist...": "Nilo-load ang bagong playlist...",
     "Loading via proxy...": "Naglo-load sa pamamagitan ng proxy...",
     "Loading. Please wait...": "Naglo-load... mangyaring maghintay...",
     "Loading...": "Naglo-load…",
@@ -643,6 +652,7 @@ var keyStrings = {
     "Next TV program": "Susunod na programa",
     No: "Hindi",
     "No channel name": "Walang pangalan ng channel",
+    "No channels loaded": "Walang na-load na tsanel",
     "No command server was found on this network.":
         "Walang nakitang command server sa network na ito.",
     "No Plex servers are available for this account.":
@@ -716,6 +726,7 @@ var keyStrings = {
     "Player could not start": "hindi makapagsimula ang media player",
     "Player default": "Default na pagpili ng media player",
     "Player info:": "impormasyon ng media player:",
+    "Playing: %1": "Pinapatugtog: %1",
     Playlist: "Playlist",
     "Playlist file": "File ng playlist",
     "Playlist is not loading directly...Loading via server...":
@@ -753,9 +764,14 @@ var keyStrings = {
     "Protect Settings": "Protektahan ang mga setting",
     "Protected source is unavailable":
         "Hindi available ang protektadong pinagmulan",
+    "Provider switching not available":
+        "Hindi magagamit ang pagpapalit ng provider",
     "p...": "p...",
     paging: "paglipat ng pahina",
     Quality: "Kalidad",
+    "Random #%1": "Sapalarang tsanel #%1",
+    "Random channel not in any category":
+        "Wala sa anumang kategorya ang sapalarang napiling tsanel",
     Rating: "Marka",
     RD: "RD",
     "RD settings": "RD na mga setting",
@@ -793,6 +809,10 @@ var keyStrings = {
         "Nag-expire ang remote input. Magbukas ng bagong session para subukang muli.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Hindi available ang remote input session. Magbukas ng bagong session para subukang muli.",
+    "Remote playlist changes require the M3U provider.":
+        "Kailangang piliin ang M3U provider upang palitan ang playlist mula sa malayo.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Hindi sinusuportahan ang pagpapalit ng mga setting ng provider mula sa malayo. Gamitin ang mga setting ng provider sa player.",
     "Remote screenshots": "Mga malayuang screenshot",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Ang mga remote na screenshot ay pinapayagan sa loob ng 10 minuto. Isara ang mga setting upang makuha.",
@@ -995,6 +1015,7 @@ var keyStrings = {
     "Switch sound track": "Palitan ang audio track",
     "Switch subtitle": "Palitan ang mga subtitle",
     "Switch to this list": "Lumipat sa listahang ito",
+    "Switching provider...": "Pinapalitan ang provider...",
     "Swop URL": "URL ng SWOP",
     "System language": "Wika ng system",
     "saved on this device": "naka-save sa device na ito",
@@ -1028,6 +1049,8 @@ var keyStrings = {
         "Ang Play app na ito ay nangangailangan ng HTTPS. Humingi sa iyong provider ng HTTPS playlist o server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ang link ng pagpapares na ito ay nag-expire na. Magbukas ng bagong session sa iyong TV.",
+    "This remote command is not supported by the player.":
+        "Hindi sinusuportahan ng player ang utos na ito mula sa remote control.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ang secure na session na ito ay hindi magagamit o nag-expire. Magbukas ng bagong session sa TV at gamitin ang kumpletong link nito.",
     Timer: "Timer",
@@ -1047,6 +1070,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Baguhin ang zoom mode",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv na mga setting",
+    "Touchscreen locked": "Naka-lock ang touchscreen",
+    "Touchscreen unlocked": "Naka-unlock ang touchscreen",
     "Trust this server for remote support":
         "Pagkatiwalaan ang server na ito para sa malayuang suporta",
     "Trusted access could not be removed from device storage.":
@@ -1067,6 +1092,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X na mga setting",
     "Unable to load playlist": "Hindi ma-load ang playlist",
+    "Unlock the player's settings before changing its playlist.":
+        "I-unlock ang mga setting ng player bago palitan ang playlist nito.",
     Untitled: "Walang pamagat",
     "Untitled folder": "Folder na walang pangalan",
     "Update installed. Please restart OttPlay FOSS.":

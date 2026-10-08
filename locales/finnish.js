@@ -141,6 +141,12 @@ var keyStrings = {
         "Vaihda palveluntarjoajaa. Valintasi muistetaan, kun seuraavan kerran käynnistät mediasoittimen.",
     "Change value": "Muuta arvoa",
     "Channel ": "kanava ",
+    'Channel "%1" not found': "Kanavaa ”%1” ei löytynyt",
+    "Channel #%1": "Kanava nro %1",
+    "Channel #%1 not found (total: %2)":
+        "Kanavaa nro %1 ei löytynyt (yhteensä: %2)",
+    "Channel #%1 not in any category":
+        "Kanava nro %1 ei kuulu mihinkään luokkaan",
     "Channel has no EPG": "Kanavalla ei ole EPG",
     "Channel is not available!!!": "Kanava ei ole käytettävissä!",
     "Channel link": "Kanavan linkki",
@@ -292,6 +298,7 @@ var keyStrings = {
         "Kopioi JSON säilyttääksesi varmuuskopion. Palauta se käyttämällä Tuontiasetuksia.",
     "Copy the selected JSON with your device's copy command":
         "Kopioi valittu JSON laitteesi kopioimiskomennolla",
+    "Could not change the playlist.": "Toistolistan muuttaminen epäonnistui.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Yhteyttä ei voitu muodostaa Plex. Tarkista palvelimen osoite, tunnus ja verkkoyhteys.",
     "Could not connect to the server.": "Ei saatu yhteyttä palvelimeen.",
@@ -558,6 +565,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Virheellinen pilviasetusten vastaus",
     "Invalid protected source configuration":
         "Virheellinen suojatun lähteen määritys",
+    "Invalid range: %1-%2": "Virheellinen alue: %1-%2",
     "Invalid setting": "Virheellinen asetus",
     "IPTV token": "IPTV tunnus",
     "IpStream.one": "IpStream.one",
@@ -589,6 +597,7 @@ var keyStrings = {
     "Loading M3U...": "Ladataan M3U…",
     "Loading media libraries...": "Ladataan mediakirjastoja…",
     "Loading player...": "Ladataan mediasoitinta…",
+    "Loading the new playlist...": "Ladataan uutta toistolistaa...",
     "Loading via proxy...": "Ladataan välityspalvelimen kautta…",
     "Loading. Please wait...": "Ladataan… odota…",
     "Loading...": "Ladataan…",
@@ -630,6 +639,7 @@ var keyStrings = {
     "Next TV program": "Seuraava ohjelma",
     No: "Ei",
     "No channel name": "Ei kanavan nimeä",
+    "No channels loaded": "Kanavia ei ole ladattu",
     "No command server was found on this network.":
         "Tästä verkosta ei löytynyt komentopalvelinta.",
     "No Plex servers are available for this account.":
@@ -703,6 +713,7 @@ var keyStrings = {
     "Player could not start": "mediasoitin ei voinut käynnistyä",
     "Player default": "Soittimen oletusvalinta",
     "Player info:": "mediasoittimen tiedot:",
+    "Playing: %1": "Toistetaan: %1",
     Playlist: "Soittolista",
     "Playlist file": "Soittolistatiedosto",
     "Playlist is not loading directly...Loading via server...":
@@ -738,9 +749,14 @@ var keyStrings = {
     "Protect Change Provider": "Suojaa palveluntarjoajan vaihto",
     "Protect Settings": "Suojaa asetukset",
     "Protected source is unavailable": "Suojattu lähde ei ole käytettävissä",
+    "Provider switching not available":
+        "Palveluntarjoajan vaihtaminen ei ole käytettävissä",
     "p...": "p...",
     paging: "sivutus",
     Quality: "Laatu",
+    "Random #%1": "Satunnainen nro %1",
+    "Random channel not in any category":
+        "Satunnainen kanava ei kuulu mihinkään luokkaan",
     Rating: "Luokitus",
     RD: "RD",
     "RD settings": "RD asetukset",
@@ -778,6 +794,10 @@ var keyStrings = {
         "Kaukosyöte on vanhentunut. Avaa uusi istunto ja yritä uudelleen.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Etäsyöttöistunto ei ole käytettävissä. Avaa uusi istunto ja yritä uudelleen.",
+    "Remote playlist changes require the M3U provider.":
+        "Toistolistan etämuutos edellyttää M3U-palveluntarjoajaa.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Palveluntarjoajan etäasetuksia ei tueta. Käytä soittimen palveluntarjoaja-asetuksia.",
     "Remote screenshots": "Etäkuvakaappaukset",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Etäkuvakaappaukset ovat sallittuja 10 minuuttia. Sulje asetukset kaappaamista varten.",
@@ -969,6 +989,7 @@ var keyStrings = {
     "Switch sound track": "Vaihda ääniraita",
     "Switch subtitle": "Vaihda tekstitys",
     "Switch to this list": "Vaihda tähän luetteloon",
+    "Switching provider...": "Vaihdetaan palveluntarjoajaa...",
     "Swop URL": "SWOP-URL",
     "System language": "Järjestelmän kieli",
     "saved on this device": "tallennettu tälle laitteelle",
@@ -1002,6 +1023,8 @@ var keyStrings = {
         "Tämä Play-sovellus vaatii HTTPS. Pyydä palveluntarjoajaltasi HTTPS soittolista tai palvelin URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Tämä pariliitoslinkki on vanhentunut. Avaa uusi istunto televisiossasi.",
+    "This remote command is not supported by the player.":
+        "Soitin ei tue tätä etäkomentoa.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Tämä suojattu istunto ei ole käytettävissä tai se on vanhentunut. Avaa uusi istunto televisiossa ja käytä sen täydellistä linkkiä.",
     Timer: "Ajastin",
@@ -1020,6 +1043,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Vaihda zoomaustilaa",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv asetukset",
+    "Touchscreen locked": "Kosketusnäyttö on lukittu",
+    "Touchscreen unlocked": "Kosketusnäytön lukitus on avattu",
     "Trust this server for remote support":
         "Luota tähän palvelimeen saadaksesi etätukea",
     "Trusted access could not be removed from device storage.":
@@ -1040,6 +1065,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X asetukset",
     "Unable to load playlist": "Soittolistan lataaminen epäonnistui",
+    "Unlock the player's settings before changing its playlist.":
+        "Avaa soittimen asetusten lukitus ennen toistolistan muuttamista.",
     Untitled: "Nimetön",
     "Untitled folder": "Nimetön kansio",
     "Update installed. Please restart OttPlay FOSS.":

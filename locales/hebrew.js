@@ -135,6 +135,10 @@ var keyStrings = {
         "החלף ספק. הבחירה שלך תישמר להפעלה הבאה של הנגן.",
     "Change value": "שנה ערך",
     "Channel ": "ערוץ ",
+    'Channel "%1" not found': "הערוץ „%1” לא נמצא",
+    "Channel #%1": "ערוץ #%1",
+    "Channel #%1 not found (total: %2)": "ערוץ #%1 לא נמצא (סה״כ: %2)",
+    "Channel #%1 not in any category": "ערוץ #%1 אינו שייך לאף קטגוריה",
     "Channel has no EPG": "לערוץ אין לוח שידורים",
     "Channel is not available!!!": "הערוץ לא זמין!!!",
     "Channel link": "קישור לערוץ",
@@ -280,6 +284,7 @@ var keyStrings = {
         "העתיקו את ה-JSON כדי לשמור גיבוי. השתמשו בייבוא הגדרות כדי לשחזר אותו.",
     "Copy the selected JSON with your device's copy command":
         "העתיקו את ה-JSON המסומן באמצעות פקודת ההעתקה של המכשיר",
+    "Could not change the playlist.": "לא ניתן לשנות את רשימת ההשמעה.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "לא ניתן להתחבר ל-Plex. בדוק את כתובת השרת, האסימון והגישה לרשת.",
     "Could not connect to the server.": "לא ניתן להתחבר לשרת.",
@@ -536,6 +541,7 @@ var keyStrings = {
         "קישור הערוץ אינו תקין! הזן את שם המארח המלא כמו בכתובת השידור באזור האישי (למשל subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "תגובת הגדרות ענן לא חוקית",
     "Invalid protected source configuration": "הגדרות המקור המוגן אינן תקינות",
+    "Invalid range: %1-%2": "טווח לא תקין: %1-%2",
     "Invalid setting": "הגדרה לא חוקית",
     "IPTV token": "אסימון IPTV",
     "IpStream.one": "IpStream.one",
@@ -567,6 +573,7 @@ var keyStrings = {
     "Loading M3U...": "טוען M3U…",
     "Loading media libraries...": "טוען ספריות מדיה…",
     "Loading player...": "טוען נגן…",
+    "Loading the new playlist...": "טוען את רשימת ההשמעה החדשה...",
     "Loading via proxy...": "טוען דרך פרוקסי…",
     "Loading. Please wait...": "טוען… נא להמתין…",
     "Loading...": "טוען…",
@@ -608,6 +615,7 @@ var keyStrings = {
     "Next TV program": "התוכנית הבאה",
     No: "לא",
     "No channel name": "אין שם ערוץ",
+    "No channels loaded": "לא נטענו ערוצים",
     "No command server was found on this network.":
         "לא נמצא שרת פקודות ברשת זו.",
     "No Plex servers are available for this account.":
@@ -681,6 +689,7 @@ var keyStrings = {
     "Player could not start": "לא ניתן היה להפעיל את הנגן",
     "Player default": "בחירת ברירת המחדל של הנגן",
     "Player info:": "פרטי הנגן:",
+    "Playing: %1": "מתנגן: %1",
     Playlist: "פלייליסט",
     "Playlist file": "קובץ פלייליסט",
     "Playlist is not loading directly...Loading via server...":
@@ -715,9 +724,13 @@ var keyStrings = {
     "Protect Change Provider": "הגן על החלפת ספק",
     "Protect Settings": "הגן על ההגדרות",
     "Protected source is unavailable": "המקור המוגן אינו זמין",
+    "Provider switching not available": "החלפת ספק אינה זמינה",
     "p...": "p...",
     paging: "דפדוף בין עמודים",
     Quality: "איכות",
+    "Random #%1": "ערוץ אקראי #%1",
+    "Random channel not in any category":
+        "הערוץ שנבחר באקראי אינו שייך לאף קטגוריה",
     Rating: "דירוג",
     RD: "RD",
     "RD settings": "הגדרות RD",
@@ -754,6 +767,10 @@ var keyStrings = {
         "פג תוקף קלט מרחוק. פתח הפעלה חדשה כדי לנסות שוב.",
     "Remote input session is unavailable. Open a new session to try again.":
         "הפעלת קלט מרחוק אינה זמינה. פתח הפעלה חדשה כדי לנסות שוב.",
+    "Remote playlist changes require the M3U provider.":
+        "שינוי רשימת ההשמעה מרחוק מחייב ספק M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "הגדרות ספק מרחוק אינן נתמכות. יש להשתמש בהגדרות הספק בנגן.",
     "Remote screenshots": "צילומי מסך מרחוק",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "צילומי מסך מרחוק מותרים למשך 10 דקות. סגור הגדרות לצילום.",
@@ -938,6 +955,7 @@ var keyStrings = {
     "Switch sound track": "החלף רצועת שמע",
     "Switch subtitle": "החלף כתוביות",
     "Switch to this list": "עבור לרשימה זו",
+    "Switching provider...": "מחליף ספק...",
     "Swop URL": "כתובת Swop",
     "System language": "שפת מערכת",
     "saved on this device": "נשמר במכשיר זה",
@@ -969,6 +987,8 @@ var keyStrings = {
         "יישום Play זה דורש HTTPS. בקש מהספק פלייליסט או כתובת שרת ב-HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "פג תוקף קישור ההתאמה הזה. פתח הפעלה חדשה בטלוויזיה שלך.",
+    "This remote command is not supported by the player.":
+        "פקודת שליטה מרחוק זו אינה נתמכת בנגן.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "הפעלה מאובטחת זו אינה זמינה או שפג תוקפו. פתח הפעלה חדשה בטלוויזיה והשתמש בקישור המלא שלה.",
     Timer: "טיימר",
@@ -987,6 +1007,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "שנה מצב זום",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "הגדרות Top-Tv",
+    "Touchscreen locked": "מסך המגע נעול",
+    "Touchscreen unlocked": "נעילת מסך המגע בוטלה",
     "Trust this server for remote support": "סמוך על שרת זה לתמיכה מרחוק",
     "Trusted access could not be removed from device storage.":
         "לא ניתן היה להסיר גישה מהימנה מאחסון המכשיר.",
@@ -1006,6 +1028,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "הגדרות ULTIFL1X",
     "Unable to load playlist": "לא ניתן לטעון את רשימת ההשמעה",
+    "Unlock the player's settings before changing its playlist.":
+        "יש לבטל את נעילת הגדרות הנגן לפני שינוי רשימת ההשמעה.",
     Untitled: "ללא כותרת",
     "Untitled folder": "תיקייה ללא שם",
     "Update installed. Please restart OttPlay FOSS.":

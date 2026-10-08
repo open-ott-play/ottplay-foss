@@ -140,6 +140,12 @@ var keyStrings = {
         "Promijenite davatelja usluga. Vaš će odabir biti zapamćen kada sljedeći put pokrenete medijski reproduktor.",
     "Change value": "Promjena vrijednosti",
     "Channel ": "kanal ",
+    'Channel "%1" not found': "Kanal „%1” nije pronađen",
+    "Channel #%1": "Kanal br. %1",
+    "Channel #%1 not found (total: %2)":
+        "Kanal br. %1 nije pronađen (ukupno: %2)",
+    "Channel #%1 not in any category":
+        "Kanal br. %1 ne pripada nijednoj kategoriji",
     "Channel has no EPG": "Kanal nema EPG",
     "Channel is not available!!!": "Kanal nije dostupan!",
     "Channel link": "Link kanala",
@@ -289,6 +295,8 @@ var keyStrings = {
         "Kopirajte JSON da biste sačuvali sigurnosnu kopiju. Koristite postavke uvoza za vraćanje.",
     "Copy the selected JSON with your device's copy command":
         "Kopirajte odabrani JSON pomoću naredbe za kopiranje vašeg uređaja",
+    "Could not change the playlist.":
+        "Nije moguće promijeniti popis za reprodukciju.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nije moguće povezati se s Plex. Provjerite adresu poslužitelja, token i pristup mreži.",
     "Could not connect to the server.":
@@ -558,6 +566,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Nevažeći odgovor na postavke oblaka",
     "Invalid protected source configuration":
         "Nevažeća konfiguracija zaštićenog izvora",
+    "Invalid range: %1-%2": "Neispravan raspon: %1-%2",
     "Invalid setting": "Nevažeća postavka",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
@@ -590,6 +599,7 @@ var keyStrings = {
     "Loading M3U...": "Učitavanje M3U…",
     "Loading media libraries...": "Učitavanje medijskih biblioteka…",
     "Loading player...": "Učitavanje medijskog reproduktora...",
+    "Loading the new playlist...": "Učitavanje novog popisa za reprodukciju...",
     "Loading via proxy...": "Učitavanje putem proxyja…",
     "Loading. Please wait...": "Učitavanje... pričekajte...",
     "Loading...": "učitavanje...",
@@ -631,6 +641,7 @@ var keyStrings = {
     "Next TV program": "Sljedeći program",
     No: "Ne",
     "No channel name": "Nema naziva kanala",
+    "No channels loaded": "Nijedan kanal nije učitan",
     "No command server was found on this network.":
         "Na ovoj mreži nije pronađen naredbeni poslužitelj.",
     "No Plex servers are available for this account.":
@@ -704,6 +715,7 @@ var keyStrings = {
     "Player could not start": "medijski reproduktor se nije mogao pokrenuti",
     "Player default": "Zadani odabir reproduktora",
     "Player info:": "informacije o medijskom reproduktoru:",
+    "Playing: %1": "Reprodukcija: %1",
     Playlist: "Popis pjesama",
     "Playlist file": "Datoteka popisa za reprodukciju",
     "Playlist is not loading directly...Loading via server...":
@@ -739,9 +751,14 @@ var keyStrings = {
     "Protect Change Provider": "Zaštitite promjenu pružatelja usluga",
     "Protect Settings": "Zaštitite postavke",
     "Protected source is unavailable": "Zaštićeni izvor nije dostupan",
+    "Provider switching not available":
+        "Promjena pružatelja usluge nije dostupna",
     "p...": "p...",
     paging: "listanje stranica",
     Quality: "Kvaliteta",
+    "Random #%1": "Nasumični br. %1",
+    "Random channel not in any category":
+        "Nasumični kanal ne pripada nijednoj kategoriji",
     Rating: "Ocjena",
     RD: "RD",
     "RD settings": "RD postavke",
@@ -779,6 +796,10 @@ var keyStrings = {
         "Daljinski unos je istekao. Otvorite novu sesiju da pokušate ponovno.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesija daljinskog unosa nije dostupna. Otvorite novu sesiju da pokušate ponovno.",
+    "Remote playlist changes require the M3U provider.":
+        "Daljinska promjena popisa za reprodukciju zahtijeva pružatelja usluge M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Daljinske postavke pružatelja usluge nisu podržane. Upotrijebite postavke pružatelja usluge u reproduktoru.",
     "Remote screenshots": "Udaljene snimke zaslona",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Udaljene snimke zaslona dopuštene su 10 minuta. Zatvorite postavke za snimanje.",
@@ -974,6 +995,7 @@ var keyStrings = {
     "Switch sound track": "Promijeni zvučni zapis",
     "Switch subtitle": "Promijeni titlove",
     "Switch to this list": "Prijeđi na ovaj popis",
+    "Switching provider...": "Promjena pružatelja usluge...",
     "Swop URL": "URL za SWOP",
     "System language": "Jezik sustava",
     "saved on this device": "spremljeno na ovaj uređaj",
@@ -1006,6 +1028,8 @@ var keyStrings = {
         "Ova Play aplikacija zahtijeva HTTPS. Zatražite od svog pružatelja usluga HTTPS popis za reprodukciju ili poslužitelj URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ova veza za uparivanje je istekla. Otvorite novu sesiju na TV-u.",
+    "This remote command is not supported by the player.":
+        "Reproduktor ne podržava ovu daljinsku naredbu.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ova sigurna sesija je nedostupna ili je istekla. Otvorite novu sesiju na TV-u i koristite njegovu potpunu vezu.",
     Timer: "Brojač vremena",
@@ -1025,6 +1049,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Promjena načina zumiranja",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv postavke",
+    "Touchscreen locked": "Dodirni zaslon je zaključan",
+    "Touchscreen unlocked": "Dodirni zaslon je otključan",
     "Trust this server for remote support":
         "Vjerujte ovom poslužitelju za daljinsku podršku",
     "Trusted access could not be removed from device storage.":
@@ -1045,6 +1071,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X postavke",
     "Unable to load playlist": "Nije moguće učitati popis za reprodukciju",
+    "Unlock the player's settings before changing its playlist.":
+        "Otključajte postavke reproduktora prije promjene popisa za reprodukciju.",
     Untitled: "Bez naslova",
     "Untitled folder": "Mapa bez naziva",
     "Update installed. Please restart OttPlay FOSS.":

@@ -146,6 +146,12 @@ var keyStrings = {
         "Shintsha umhlinzeki. Okukhethile kuzokhunjulwa ngesikhathi esilandelayo lapho uqala isidlali.",
     "Change value": "Shintsha inani",
     "Channel ": "Isiteshi ",
+    'Channel "%1" not found': 'Isiteshi "%1" asitholakalanga',
+    "Channel #%1": "Isiteshi #%1",
+    "Channel #%1 not found (total: %2)":
+        "Isiteshi #%1 asitholakalanga (sezizonke: %2)",
+    "Channel #%1 not in any category":
+        "Isiteshi #%1 asikho kunoma yisiphi isigaba",
     "Channel has no EPG": "Isiteshi asinayo i-EPG",
     "Channel is not available!!!": "Isiteshi asitholakali!",
     "Channel link": "Isixhumanisi sesiteshi",
@@ -297,6 +303,7 @@ var keyStrings = {
         "Kopisha i-JSON ukuze ugcine ikhophi eyisipele. Sebenzisa okuthi Ngenisa izilungiselelo ukuze uyibuyisele.",
     "Copy the selected JSON with your device's copy command":
         "Kopisha i-JSON ekhethiwe ngomyalo wokukopisha wedivayisi yakho",
+    "Could not change the playlist.": "Ayikwazanga ukushintsha uhlu lokudlala.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Akukwazanga ukuxhuma ku-Plex. Hlola ikheli leseva, ithokheni nokufinyelela kunethiwekhi.",
     "Could not connect to the server.": "Akukwazanga ukuxhuma kuseva.",
@@ -572,6 +579,7 @@ var keyStrings = {
         "Impendulo yezilungiselelo zefu engavumelekile",
     "Invalid protected source configuration":
         "Izilungiselelo zomthombo ovikelekile azivumelekile",
+    "Invalid range: %1-%2": "Ibanga elingavumelekile: %1-%2",
     "Invalid setting": "Isilungiselelo esingavumelekile",
     "IPTV token": "Ithokheni ye-IPTV",
     "IpStream.one": "IpStream.one",
@@ -605,6 +613,7 @@ var keyStrings = {
     "Loading M3U...": "Kulayishwa i-M3U…",
     "Loading media libraries...": "Kulayishwa imitapo yemidiya…",
     "Loading player...": "Kulayishwa isidlali…",
+    "Loading the new playlist...": "Kulayishwa uhlu olusha lokudlala...",
     "Loading via proxy...": "Kulayishwa nge-proxy…",
     "Loading. Please wait...": "Kuyalayishwa… sicela ulinde…",
     "Loading...": "Kuyalayishwa…",
@@ -646,6 +655,7 @@ var keyStrings = {
     "Next TV program": "Uhlelo olulandelayo",
     No: "Cha",
     "No channel name": "Alikho igama lesiteshi",
+    "No channels loaded": "Azikho iziteshi ezilayishiwe",
     "No command server was found on this network.":
         "Ayikho iseva yemiyalo etholakele kule nethiwekhi.",
     "No Plex servers are available for this account.":
@@ -719,6 +729,7 @@ var keyStrings = {
     "Player could not start": "Isidlali asikwazanga ukuqala",
     "Player default": "Ukukhetha okuzenzakalelayo kwesidlali",
     "Player info:": "Ulwazi lwesidlali:",
+    "Playing: %1": "Kuyadlalwa: %1",
     Playlist: "Uhlu lokudlala",
     "Playlist file": "Ifayela lohlu lokudlala",
     "Playlist is not loading directly...Loading via server...":
@@ -755,9 +766,13 @@ var keyStrings = {
     "Protect Change Provider": "Vikela ukushintsha umhlinzeki",
     "Protect Settings": "Vikela izilungiselelo",
     "Protected source is unavailable": "Umthombo ovikelekile awutholakali",
+    "Provider switching not available": "Ukushintsha umhlinzeki akutholakali",
     "p...": "p...",
     paging: "ukupheqa amakhasi",
     Quality: "Ikhwalithi",
+    "Random #%1": "Isiteshi esingahleliwe #%1",
+    "Random channel not in any category":
+        "Isiteshi esikhethwe ngokungahleliwe asikho kunoma yisiphi isigaba",
     Rating: "Isilinganiso",
     RD: "RD",
     "RD settings": "Izilungiselelo ze-RD",
@@ -798,6 +813,10 @@ var keyStrings = {
         "Ukufaka ukude kuphelelwe isikhathi. Vula iseshini entsha ukuze uzame futhi.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Iseshini yokufaka ukude ayitholakali. Vula iseshini entsha ukuze uzame futhi.",
+    "Remote playlist changes require the M3U provider.":
+        "Ukushintsha uhlu lokudlala ukude kudinga umhlinzeki we-M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Ukushintsha izilungiselelo zomhlinzeki ukude akusekelwa. Sebenzisa izilungiselelo zomhlinzeki ezikusidlali.",
     "Remote screenshots": "Izithombe-skrini ezikude",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Izithombe-skrini ezikude zivunyelwe imizuzu eyi-10. Vala izilungiselelo ukuze uthwebule.",
@@ -994,6 +1013,7 @@ var keyStrings = {
     "Switch sound track": "Shintsha ithrekhi yomsindo",
     "Switch subtitle": "Shintsha imibhalo engezansi",
     "Switch to this list": "Shintshela kulolu hlu",
+    "Switching provider...": "Kushintshwa umhlinzeki...",
     "Swop URL": "I-URL ye-Swop",
     "System language": "Ulimi lwesistimu",
     "saved on this device": "kugcinwe kule divayisi",
@@ -1027,6 +1047,8 @@ var keyStrings = {
         "Lolu hlelo lwe-Play ludinga i-HTTPS. Cela umhlinzeki wakho ukuthi akunike uhlu lokudlala noma i-URL yeseva ye-HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Lesi sixhumanisi sokumatanisa siphelelwe yisikhathi. Vula iseshini entsha ku-TV yakho.",
+    "This remote command is not supported by the player.":
+        "Isidlali asiwusekeli lo myalo wesilawuli kude.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Le seshini evikelekile ayitholakali noma iphelelwe yisikhathi. Vula iseshini entsha ku-TV futhi usebenzise isixhumanisi sayo esiphelele.",
     Timer: "Isibali-sikhathi",
@@ -1048,6 +1070,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Shintsha imodi yokusondeza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Izilungiselelo ze-Top-Tv",
+    "Touchscreen locked": "Isikrini sokuthinta sikhiyiwe",
+    "Touchscreen unlocked": "Ukukhiya kwesikrini sokuthinta kuvuliwe",
     "Trust this server for remote support":
         "Themba le seva ukuze ikunike usizo olukude",
     "Trusted access could not be removed from device storage.":
@@ -1068,6 +1092,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Izilungiselelo ze-ULTIFL1X",
     "Unable to load playlist": "Akukwazanga ukulayisha uhlu lokudlala",
+    "Unlock the player's settings before changing its playlist.":
+        "Vula ukukhiya kwezilungiselelo zesidlali ngaphambi kokushintsha uhlu lwaso lokudlala.",
     Untitled: "Akunasihloko",
     "Untitled folder": "Ifolda engenasihloko",
     "Update installed. Please restart OttPlay FOSS.":

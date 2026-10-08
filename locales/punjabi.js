@@ -136,6 +136,10 @@ var keyStrings = {
         "ਪ੍ਰਦਾਤਾ ਬਦਲੋ। ਅਗਲੀ ਵਾਰ ਜਦੋਂ ਤੁਸੀਂ ਪਲੇਅਰ ਸ਼ੁਰੂ ਕਰੋਗੇ ਤਾਂ ਤੁਹਾਡੀ ਚੋਣ ਨੂੰ ਯਾਦ ਰੱਖਿਆ ਜਾਵੇਗਾ।",
     "Change value": "ਮੁੱਲ ਬਦਲੋ",
     "Channel ": "ਚੈਨਲ ",
+    'Channel "%1" not found': '"%1" ਚੈਨਲ ਨਹੀਂ ਮਿਲਿਆ',
+    "Channel #%1": "ਚੈਨਲ #%1",
+    "Channel #%1 not found (total: %2)": "ਚੈਨਲ #%1 ਨਹੀਂ ਮਿਲਿਆ (ਕੁੱਲ: %2)",
+    "Channel #%1 not in any category": "ਚੈਨਲ #%1 ਕਿਸੇ ਵੀ ਸ਼੍ਰੇਣੀ ਵਿੱਚ ਨਹੀਂ ਹੈ",
     "Channel has no EPG": "ਚੈਨਲ ਦਾ ਕੋਈ EPG ਨਹੀਂ ਹੈ",
     "Channel is not available!!!": "ਚੈਨਲ ਉਪਲਬਧ ਨਹੀਂ ਹੈ!",
     "Channel link": "ਚੈਨਲ ਲਿੰਕ",
@@ -284,6 +288,7 @@ var keyStrings = {
         "ਬੈਕਅੱਪ ਰੱਖਣ ਲਈ JSON ਨੂੰ ਕਾਪੀ ਕਰੋ। ਇਸਨੂੰ ਰੀਸਟੋਰ ਕਰਨ ਲਈ ਆਯਾਤ ਸੈਟਿੰਗਾਂ ਦੀ ਵਰਤੋਂ ਕਰੋ।",
     "Copy the selected JSON with your device's copy command":
         "ਚੁਣੀ ਹੋਈ JSON ਨੂੰ ਆਪਣੀ ਡਿਵਾਈਸ ਦੀ ਕਾਪੀ ਕਮਾਂਡ ਨਾਲ ਕਾਪੀ ਕਰੋ",
+    "Could not change the playlist.": "ਪਲੇਲਿਸਟ ਬਦਲੀ ਨਹੀਂ ਜਾ ਸਕੀ।",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex ਨਾਲ ਕਨੈਕਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ। ਸਰਵਰ ਪਤਾ, ਟੋਕਨ ਅਤੇ ਨੈੱਟਵਰਕ ਪਹੁੰਚ ਦੀ ਜਾਂਚ ਕਰੋ।",
     "Could not connect to the server.": "ਸਰਵਰ ਨਾਲ ਕਨੈਕਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ।",
@@ -542,6 +547,7 @@ var keyStrings = {
         "ਅਵੈਧ ਚੈਨਲ ਲਿੰਕ! ਆਪਣੇ ਪ੍ਰਦਾਤਾ ਖਾਤਾ ਪੰਨੇ 'ਤੇ ਸਟ੍ਰੀਮ URL ਤੋਂ ਪੂਰਾ ਹੋਸਟਨਾਮ ਦਾਖਲ ਕਰੋ (ਉਦਾਹਰਨ ਲਈ subdomain.cdn-domain.tld )।",
     "Invalid cloud settings response": "ਅਵੈਧ ਕਲਾਉਡ ਸੈਟਿੰਗਾਂ ਜਵਾਬ",
     "Invalid protected source configuration": "ਅਵੈਧ ਸੁਰੱਖਿਅਤ ਸਰੋਤ ਸੰਰਚਨਾ",
+    "Invalid range: %1-%2": "ਅਵੈਧ ਹੱਦ: %1-%2",
     "Invalid setting": "ਅਵੈਧ ਸੈਟਿੰਗ",
     "IPTV token": "IPTV ਟੋਕਨ",
     "IpStream.one": "IpStream.one",
@@ -573,6 +579,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
     "Loading media libraries...": "ਮੀਡੀਆ ਲਾਇਬ੍ਰੇਰੀਆਂ ਲੋਡ ਕੀਤੀਆਂ ਜਾ ਰਹੀਆਂ ਹਨ...",
     "Loading player...": "ਪਲੇਅਰ ਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ...",
+    "Loading the new playlist...": "ਨਵੀਂ ਪਲੇਲਿਸਟ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...",
     "Loading via proxy...": "ਪ੍ਰੌਕਸੀ ਰਾਹੀਂ ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
     "Loading. Please wait...": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ... ਕਿਰਪਾ ਕਰਕੇ ਉਡੀਕ ਕਰੋ...",
     "Loading...": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
@@ -614,6 +621,7 @@ var keyStrings = {
     "Next TV program": "ਅਗਲਾ ਪ੍ਰੋਗਰਾਮ",
     No: "ਨਹੀਂ",
     "No channel name": "ਕੋਈ ਚੈਨਲ ਦਾ ਨਾਮ ਨਹੀਂ",
+    "No channels loaded": "ਕੋਈ ਚੈਨਲ ਲੋਡ ਨਹੀਂ ਹੋਇਆ",
     "No command server was found on this network.":
         "ਇਸ ਨੈੱਟਵਰਕ 'ਤੇ ਕੋਈ ਕਮਾਂਡ ਸਰਵਰ ਨਹੀਂ ਮਿਲਿਆ।",
     "No Plex servers are available for this account.":
@@ -687,6 +695,7 @@ var keyStrings = {
     "Player could not start": "ਪਲੇਅਰ ਸ਼ੁਰੂ ਨਹੀਂ ਕਰ ਸਕਿਆ",
     "Player default": "ਪਲੇਅਰ ਦੀ ਪੂਰਵ-ਨਿਰਧਾਰਤ ਚੋਣ",
     "Player info:": "ਪਲੇਅਰ ਜਾਣਕਾਰੀ:",
+    "Playing: %1": "ਚੱਲ ਰਿਹਾ ਹੈ: %1",
     Playlist: "ਪਲੇਲਿਸਟ",
     "Playlist file": "ਪਲੇਲਿਸਟ ਫ਼ਾਈਲ",
     "Playlist is not loading directly...Loading via server...":
@@ -721,9 +730,13 @@ var keyStrings = {
     "Protect Change Provider": "ਪ੍ਰਦਾਤਾ ਤਬਦੀਲੀ ਨੂੰ ਸੁਰੱਖਿਅਤ ਕਰੋ",
     "Protect Settings": "ਸੈਟਿੰਗਾਂ ਸੁਰੱਖਿਅਤ ਕਰੋ",
     "Protected source is unavailable": "ਸੁਰੱਖਿਅਤ ਸਰੋਤ ਅਣਉਪਲਬਧ ਹੈ",
+    "Provider switching not available": "ਪ੍ਰਦਾਤਾ ਬਦਲਣ ਦੀ ਸਹੂਲਤ ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
     "p...": "p...",
     paging: "ਪੇਜਿੰਗ",
     Quality: "ਗੁਣਵੱਤਾ",
+    "Random #%1": "ਬੇਤਰਤੀਬ ਚੈਨਲ #%1",
+    "Random channel not in any category":
+        "ਬੇਤਰਤੀਬੇ ਢੰਗ ਨਾਲ ਚੁਣਿਆ ਚੈਨਲ ਕਿਸੇ ਵੀ ਸ਼੍ਰੇਣੀ ਵਿੱਚ ਨਹੀਂ ਹੈ",
     Rating: "ਰੇਟਿੰਗ",
     RD: "RD",
     "RD settings": "RD ਸੈਟਿੰਗਾਂ",
@@ -761,6 +774,10 @@ var keyStrings = {
         "ਰਿਮੋਟ ਇਨਪੁੱਟ ਦੀ ਮਿਆਦ ਸਮਾਪਤ ਹੋਈ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਇੱਕ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ।",
     "Remote input session is unavailable. Open a new session to try again.":
         "ਰਿਮੋਟ ਇਨਪੁਟ ਸੈਸ਼ਨ ਅਣਉਪਲਬਧ ਹੈ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਇੱਕ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ।",
+    "Remote playlist changes require the M3U provider.":
+        "ਦੂਰੋਂ ਪਲੇਲਿਸਟ ਬਦਲਣ ਲਈ M3U ਪ੍ਰਦਾਤਾ ਲੋੜੀਂਦਾ ਹੈ।",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "ਦੂਰੋਂ ਪ੍ਰਦਾਤਾ ਦੀਆਂ ਸੈਟਿੰਗਾਂ ਬਦਲਣ ਦਾ ਸਮਰਥਨ ਨਹੀਂ ਹੈ। ਪਲੇਅਰ ਦੀਆਂ ਪ੍ਰਦਾਤਾ ਸੈਟਿੰਗਾਂ ਵਰਤੋ।",
     "Remote screenshots": "ਰਿਮੋਟ ਸਕ੍ਰੀਨਸ਼ਾਟ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "ਰਿਮੋਟ ਸਕ੍ਰੀਨਸ਼ਾਟ 10 ਮਿੰਟ ਲਈ ਮਨਜ਼ੂਰ ਹਨ। ਕੈਪਚਰ ਕਰਨ ਲਈ ਸੈਟਿੰਗਾਂ ਨੂੰ ਬੰਦ ਕਰੋ।",
@@ -947,6 +964,7 @@ var keyStrings = {
     "Switch sound track": "ਆਡੀਓ ਟਰੈਕ ਬਦਲੋ",
     "Switch subtitle": "ਉਪਸਿਰਲੇਖ ਬਦਲੋ",
     "Switch to this list": "ਇਸ ਸੂਚੀ 'ਤੇ ਜਾਓ",
+    "Switching provider...": "ਪ੍ਰਦਾਤਾ ਬਦਲਿਆ ਜਾ ਰਿਹਾ ਹੈ...",
     "Swop URL": "SWOP URL",
     "System language": "ਸਿਸਟਮ ਭਾਸ਼ਾ",
     "saved on this device": "ਇਸ ਡੀਵਾਈਸ 'ਤੇ ਰੱਖਿਅਤ ਕੀਤੀ ਗਈ",
@@ -976,6 +994,8 @@ var keyStrings = {
         "ਇਸ ਪਲੇ ਐਪ ਨੂੰ HTTPS ਦੀ ਲੋੜ ਹੈ। ਆਪਣੇ ਪ੍ਰਦਾਤਾ ਨੂੰ ਇੱਕ HTTPS ਪਲੇਲਿਸਟ ਜਾਂ ਸਰਵਰ URL ਲਈ ਪੁੱਛੋ।",
     "This pairing link has expired. Open a new session on your TV.":
         "ਇਸ ਜੋੜੀ ਲਿੰਕ ਦੀ ਮਿਆਦ ਪੁੱਗ ਗਈ ਹੈ। ਆਪਣੇ ਟੀਵੀ 'ਤੇ ਇੱਕ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ।",
+    "This remote command is not supported by the player.":
+        "ਪਲੇਅਰ ਇਸ ਰਿਮੋਟ ਕੰਟਰੋਲ ਹੁਕਮ ਦਾ ਸਮਰਥਨ ਨਹੀਂ ਕਰਦਾ।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ਇਹ ਸੁਰੱਖਿਅਤ ਸੈਸ਼ਨ ਅਣਉਪਲਬਧ ਹੈ ਜਾਂ ਮਿਆਦ ਪੁੱਗ ਗਈ ਹੈ। ਟੀਵੀ 'ਤੇ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ ਅਤੇ ਇਸਦੇ ਪੂਰੇ ਲਿੰਕ ਦੀ ਵਰਤੋਂ ਕਰੋ।",
     Timer: "ਟਾਈਮਰ",
@@ -994,6 +1014,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ਜ਼ੂਮ ਮੋਡ ਬਦਲੋ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ਸੈਟਿੰਗਾਂ",
+    "Touchscreen locked": "ਟੱਚਸਕ੍ਰੀਨ ਲੌਕ ਹੈ",
+    "Touchscreen unlocked": "ਟੱਚਸਕ੍ਰੀਨ ਦਾ ਲੌਕ ਖੁੱਲ੍ਹਾ ਹੈ",
     "Trust this server for remote support": "ਰਿਮੋਟ ਸਹਾਇਤਾ ਲਈ ਇਸ ਸਰਵਰ 'ਤੇ ਭਰੋਸਾ ਕਰੋ",
     "Trusted access could not be removed from device storage.":
         "ਭਰੋਸੇਯੋਗ ਪਹੁੰਚ ਨੂੰ ਡੀਵਾਈਸ ਸਟੋਰੇਜ ਤੋਂ ਹਟਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ।",
@@ -1013,6 +1035,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ਸੈਟਿੰਗਾਂ",
     "Unable to load playlist": "ਪਲੇਲਿਸਟ ਲੋਡ ਕਰਨ ਵਿੱਚ ਅਸਮਰੱਥ",
+    "Unlock the player's settings before changing its playlist.":
+        "ਪਲੇਲਿਸਟ ਬਦਲਣ ਤੋਂ ਪਹਿਲਾਂ ਪਲੇਅਰ ਦੀਆਂ ਸੈਟਿੰਗਾਂ ਦਾ ਲੌਕ ਖੋਲ੍ਹੋ।",
     Untitled: "ਸਿਰਲੇਖ ਰਹਿਤ",
     "Untitled folder": "ਬਿਨਾਂ ਸਿਰਲੇਖ ਵਾਲਾ ਫੋਲਡਰ",
     "Update installed. Please restart OttPlay FOSS.":

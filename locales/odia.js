@@ -135,6 +135,10 @@ var keyStrings = {
         "ପ୍ରଦାନକାରୀ ବଦଳାନ୍ତୁ। ପରବର୍ତ୍ତୀଥର ପ୍ଲେୟାର୍ ଆରମ୍ଭ କଲେ ଆପଣଙ୍କ ଚୟନ ମନେ ରହିବ।",
     "Change value": "ମୂଲ୍ୟ ବଦଳାନ୍ତୁ",
     "Channel ": "ଚ୍ୟାନେଲ୍ ",
+    'Channel "%1" not found': '"%1" ଚ୍ୟାନେଲ୍ ମିଳିଲା ନାହିଁ',
+    "Channel #%1": "ଚ୍ୟାନେଲ୍ #%1",
+    "Channel #%1 not found (total: %2)": "ଚ୍ୟାନେଲ୍ #%1 ମିଳିଲା ନାହିଁ (ମୋଟ: %2)",
+    "Channel #%1 not in any category": "ଚ୍ୟାନେଲ୍ #%1 କୌଣସି ବର୍ଗରେ ନାହିଁ",
     "Channel has no EPG": "ଚ୍ୟାନେଲ୍‌ର EPG ନାହିଁ",
     "Channel is not available!!!": "ଚ୍ୟାନେଲ୍ ଉପଲବ୍ଧ ନାହିଁ!",
     "Channel link": "ଚ୍ୟାନେଲ୍ ଲିଙ୍କ୍",
@@ -281,6 +285,7 @@ var keyStrings = {
         "ବ୍ୟାକଅପ୍ ରଖିବାକୁ JSON କପି କରନ୍ତୁ। ପୁନରୁଦ୍ଧାର ପାଇଁ «ସେଟିଂସ୍ ଆମଦାନି କରନ୍ତୁ» ବ୍ୟବହାର କରନ୍ତୁ।",
     "Copy the selected JSON with your device's copy command":
         "ଡିଭାଇସ୍‌ର କପି ନିର୍ଦ୍ଦେଶରେ ବଛା JSON କପି କରନ୍ତୁ",
+    "Could not change the playlist.": "ପ୍ଲେଲିଷ୍ଟ ବଦଳାଇ ହେଲା ନାହିଁ।",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex ସହ ସଂଯୋଗ ହୋଇପାରିଲା ନାହିଁ। ସର୍ଭର୍ ଠିକଣା, ଟୋକେନ୍ ଓ ନେଟୱର୍କ ପ୍ରବେଶ ଯାଞ୍ଚ କରନ୍ତୁ।",
     "Could not connect to the server.": "ସର୍ଭର୍ ସହ ସଂଯୋଗ ହୋଇପାରିଲା ନାହିଁ।",
@@ -533,6 +538,7 @@ var keyStrings = {
         "ଅବୈଧ ଚ୍ୟାନେଲ୍ ଲିଙ୍କ୍! ବ୍ୟକ୍ତିଗତ ଖାତାର ଷ୍ଟ୍ରିମ୍ URL ପରି ସମ୍ପୂର୍ଣ୍ଣ ହୋଷ୍ଟ ଦିଅନ୍ତୁ (ଯେପରି subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "କ୍ଲାଉଡ୍ ସେଟିଂସମୂହର ଅବୈଧ ପ୍ରତିକ୍ରିୟା",
     "Invalid protected source configuration": "ସୁରକ୍ଷିତ ଉତ୍ସ ବିନ୍ୟାସ ଅବୈଧ",
+    "Invalid range: %1-%2": "ଅବୈଧ ସୀମା: %1-%2",
     "Invalid setting": "ଅବୈଧ ସେଟିଂ",
     "IPTV token": "IPTV ଟୋକେନ୍",
     "IpStream.one": "IpStream.one",
@@ -564,6 +570,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ଲୋଡ୍ ହେଉଛି…",
     "Loading media libraries...": "ମିଡିଆ ଲାଇବ୍ରେରୀ ଲୋଡ୍ ହେଉଛି…",
     "Loading player...": "ପ୍ଲେୟାର୍ ଲୋଡ୍ ହେଉଛି…",
+    "Loading the new playlist...": "ନୂଆ ପ୍ଲେଲିଷ୍ଟ ଲୋଡ୍ ହେଉଛି...",
     "Loading via proxy...": "ପ୍ରକ୍ସି ମାଧ୍ୟମରେ ଲୋଡ୍ ହେଉଛି…",
     "Loading. Please wait...": "ଲୋଡ୍ ହେଉଛି… ଅପେକ୍ଷା କରନ୍ତୁ…",
     "Loading...": "ଲୋଡ୍ ହେଉଛି…",
@@ -605,6 +612,7 @@ var keyStrings = {
     "Next TV program": "ପର କାର୍ଯ୍ୟକ୍ରମ",
     No: "ନା",
     "No channel name": "ଚ୍ୟାନେଲ୍ ନାମ ନାହିଁ",
+    "No channels loaded": "କୌଣସି ଚ୍ୟାନେଲ୍ ଲୋଡ୍ ହୋଇନାହିଁ",
     "No command server was found on this network.":
         "ଏହି ନେଟୱର୍କରେ କୌଣସି ନିର୍ଦ୍ଦେଶ ସର୍ଭର୍ ମିଳିଲା ନାହିଁ।",
     "No Plex servers are available for this account.":
@@ -677,6 +685,7 @@ var keyStrings = {
     "Player could not start": "ପ୍ଲେୟାର୍ ଆରମ୍ଭ ହୋଇପାରିଲା ନାହିଁ",
     "Player default": "ପ୍ଲେୟାରର ପୂର୍ବନିର୍ଦ୍ଧାରିତ ଚୟନ",
     "Player info:": "ପ୍ଲେୟାର୍ ସୂଚନା:",
+    "Playing: %1": "ଚାଲୁଛି: %1",
     Playlist: "ପ୍ଲେଲିଷ୍ଟ",
     "Playlist file": "ପ୍ଲେଲିଷ୍ଟ ଫାଇଲ୍",
     "Playlist is not loading directly...Loading via server...":
@@ -711,9 +720,12 @@ var keyStrings = {
     "Protect Change Provider": "ପ୍ରଦାନକାରୀ ପରିବର୍ତ୍ତନ ସୁରକ୍ଷିତ କରନ୍ତୁ",
     "Protect Settings": "ସେଟିଂସ୍ ସୁରକ୍ଷିତ କରନ୍ତୁ",
     "Protected source is unavailable": "ସୁରକ୍ଷିତ ଉତ୍ସ ଉପଲବ୍ଧ ନାହିଁ",
+    "Provider switching not available": "ପ୍ରଦାନକାରୀ ବଦଳାଇବା ସୁବିଧା ଉପଲବ୍ଧ ନାହିଁ",
     "p...": "ପୃ...",
     paging: "ପୃଷ୍ଠା ବଦଳ",
     Quality: "ଗୁଣବତ୍ତା",
+    "Random #%1": "ଯାଦୃଚ୍ଛିକ ଚ୍ୟାନେଲ୍ #%1",
+    "Random channel not in any category": "ଯାଦୃଚ୍ଛିକ ଭାବେ ବାଛିଥିବା ଚ୍ୟାନେଲ୍ କୌଣସି ବର୍ଗରେ ନାହିଁ",
     Rating: "ମୂଲ୍ୟାଙ୍କନ",
     RD: "RD",
     "RD settings": "RD ସେଟିଂସ୍",
@@ -750,6 +762,10 @@ var keyStrings = {
         "ଦୂର ଇନପୁଟ୍ ସମୟସୀମା ସରିଗଲା। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ନୂଆ ଅଧିବେଶନ ଖୋଲନ୍ତୁ।",
     "Remote input session is unavailable. Open a new session to try again.":
         "ଦୂର ଇନପୁଟ୍ ଅଧିବେଶନ ଉପଲବ୍ଧ ନାହିଁ। ପୁଣି ଚେଷ୍ଟା ପାଇଁ ନୂଆ ଅଧିବେଶନ ଖୋଲନ୍ତୁ।",
+    "Remote playlist changes require the M3U provider.":
+        "ଦୂରରୁ ପ୍ଲେଲିଷ୍ଟ ବଦଳାଇବାକୁ M3U ପ୍ରଦାନକାରୀ ଆବଶ୍ୟକ।",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "ଦୂରରୁ ପ୍ରଦାନକାରୀଙ୍କ ସେଟିଂସ୍ ବଦଳାଇବା ସମର୍ଥିତ ନୁହେଁ। ପ୍ଲେୟାରର ପ୍ରଦାନକାରୀ ସେଟିଂସ୍ ବ୍ୟବହାର କରନ୍ତୁ।",
     "Remote screenshots": "ସୁଦୂର ସ୍କ୍ରିନସଟ୍।",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "10 ମିନିଟ୍ ପାଇଁ ରିମୋଟ ସ୍କ୍ରିନସଟଗୁଡିକ ଅନୁମତିପ୍ରାପ୍ତ। କ୍ୟାପଚର କରିବାକୁ ସେଟିଂସମୂହ ବନ୍ଦ କରନ୍ତୁ।",
@@ -933,6 +949,7 @@ var keyStrings = {
     "Switch sound track": "ଅଡିଓ ଟ୍ରାକ୍ ବଦଳାନ୍ତୁ",
     "Switch subtitle": "ଉପଶୀର୍ଷକ ବଦଳାନ୍ତୁ",
     "Switch to this list": "ଏହି ତାଲିକାକୁ ଯାଆନ୍ତୁ",
+    "Switching provider...": "ପ୍ରଦାନକାରୀ ବଦଳାଯାଉଛି...",
     "Swop URL": "Swop URL",
     "System language": "ସିଷ୍ଟମ୍ ଭାଷା।",
     "saved on this device": "ଏହି ଡିଭାଇସ୍‌ରେ ସଞ୍ଚିତ",
@@ -962,6 +979,8 @@ var keyStrings = {
         "ଏହି Play ଆପ୍ ପାଇଁ HTTPS ଆବଶ୍ୟକ। ପ୍ରଦାନକାରୀଙ୍କୁ HTTPS ପ୍ଲେଲିଷ୍ଟ କିମ୍ବା ସର୍ଭର୍ URL ମାଗନ୍ତୁ।",
     "This pairing link has expired. Open a new session on your TV.":
         "ଏହି ଯୋଡି ଲିଙ୍କ୍ ମିଆଦ ପୂର୍ଣ୍ଣ ହୋଇଛି। ଆପଣଙ୍କ ଟିଭିରେ ଏକ ନୂତନ ଅଧିବେଶନ ଖୋଲନ୍ତୁ।",
+    "This remote command is not supported by the player.":
+        "ପ୍ଲେୟାର ଏହି ଦୂରନିୟନ୍ତ୍ରଣ ନିର୍ଦ୍ଦେଶକୁ ସମର୍ଥନ କରେ ନାହିଁ।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ଏହି ସୁରକ୍ଷିତ ଅଧିବେଶନ ଉପଲବ୍ଧ ନାହିଁ କିମ୍ବା ମିଆଦ ପୂର୍ଣ୍ଣ ହୋଇଛି। ଟିଭିରେ ଏକ ନୂତନ ଅଧିବେଶନ ଖୋଲ ଏବଂ ଏହାର ସମ୍ପୂର୍ଣ୍ଣ ଲିଙ୍କ୍ ବ୍ୟବହାର କର।",
     Timer: "ଟାଇମର୍",
@@ -980,6 +999,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ଜୁମ୍ ମୋଡ୍ ବଦଳାନ୍ତୁ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ସେଟିଂସ୍",
+    "Touchscreen locked": "ଟଚସ୍କ୍ରିନ୍ ଲକ୍ ହୋଇଛି",
+    "Touchscreen unlocked": "ଟଚସ୍କ୍ରିନ୍‌ର ଲକ୍ ଖୋଲାଯାଇଛି",
     "Trust this server for remote support": "ଦୂର ସହାୟତା ପାଇଁ ଏହି ସର୍ଭର୍‌କୁ ବିଶ୍ୱାସ କରନ୍ତୁ",
     "Trusted access could not be removed from device storage.":
         "ଡିଭାଇସ୍ ସଞ୍ଚୟରୁ ବିଶ୍ୱସ୍ତ ପ୍ରବେଶ ହଟାଇହେଲା ନାହିଁ।",
@@ -999,6 +1020,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ସେଟିଂସ୍",
     "Unable to load playlist": "ପ୍ଲେଲିଷ୍ଟ ଲୋଡ୍ ହୋଇପାରିଲା ନାହିଁ",
+    "Unlock the player's settings before changing its playlist.":
+        "ପ୍ଲେଲିଷ୍ଟ ବଦଳାଇବା ପୂର୍ବରୁ ପ୍ଲେୟାର ସେଟିଂସ୍‌ର ଲକ୍ ଖୋଲନ୍ତୁ।",
     Untitled: "ଶୀର୍ଷକହୀନ",
     "Untitled folder": "ନାମହୀନ ଫୋଲ୍ଡର୍",
     "Update installed. Please restart OttPlay FOSS.":

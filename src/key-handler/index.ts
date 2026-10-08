@@ -11,7 +11,7 @@ import {
     stbEventToKeyCode,
     stbToggleTauriNativeFullscreen,
 } from "../core";
-import { translate as _ } from "../localization";
+import { translate as _, formatLocaleNumber } from "../localization";
 import { settings } from "../settings";
 
 declare var $: any;
@@ -406,7 +406,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             Math.min(100, current + direction * settings.volumeStep)
         );
         call("stbSetVolume", value);
-        call("showShift", "Volume: " + value);
+        call("showShift", _("volume") + ": " + formatLocaleNumber(value));
     }
     if (actions[command.id]) actions[command.id]();
 }
@@ -1216,7 +1216,7 @@ function handleTouchStart(e: any): void {
     tCount = e.touches.length;
     if (tCount === 4) {
         touch_locked = !touch_locked;
-        alert(touch_locked ? "Touchscreen LOCKED" : "Touchscreen UNLOCKED");
+        alert(_(touch_locked ? "Touchscreen locked" : "Touchscreen unlocked"));
     }
     if (touch_locked) return;
     xDown = e.touches[0].screenX;

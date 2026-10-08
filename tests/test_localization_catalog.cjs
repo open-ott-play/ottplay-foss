@@ -823,6 +823,101 @@ try {
         "_rus",
         "Keep the last successful language without treating it as a system match"
     );
+    // After an unsupported system preference or failed early download, the
+    // last persisted language is not an active dictionary. Both manual recovery
+    // and retrying System language must load it before persisting or resuming.
+    for (const choice of ["manual", "system"]) {
+        const stored = { ottplaylang: "_rus", ottplaylangmode: "system" };
+        const requests = [];
+        const emptyDictionary = {};
+        let providers = 0;
+        const host = {
+            __ottDetectLanguage: () => (choice === "system" ? "_rus" : ""),
+            keyStrings: emptyDictionary,
+        };
+        const recovery = {
+            _: (key) => host.keyStrings[key] || key,
+            applyLanguageMetadata: (code) => {
+                host.__ottInterfaceLanguage = code;
+            },
+            checkTauriUpdatesAfterLanguage() {},
+            clearTimeout() {},
+            console: { log() {} },
+            document: { getElementById: () => null },
+            getScriptDOM: (url, success, error) =>
+                requests.push({ error, success, url }),
+            hostUrl: "",
+            infoBox() {},
+            keys: { ENTER: 13, EXIT: 27, RED: 403, RETURN: 8 },
+            languageAssetPath,
+            languageLocaleTag: localeAssets.languageLocaleTag,
+            languageNames: localeAssets.languageNames,
+            loadProv: () => providers++,
+            metadataText: String,
+            normalizeSearchText: (value) => value.toLowerCase(),
+            PLAYER_VERSION: "test",
+            renderButtonHint: () => "",
+            setTimeout: () => 1,
+            showPage() {},
+            stbGetItem: (key) => stored[key],
+            stbSetItem: (key, value) => {
+                stored[key] = value;
+            },
+            strRETURN: "BACK",
+            window: host,
+        };
+        vm.createContext(recovery);
+        vm.runInContext(
+            ts.transpileModule(
+                [loadInterface, selectLang, startupFunction]
+                    .map((node) => node.getText(selectionSource))
+                    .join("\n"),
+                {}
+            ).outputText,
+            recovery
+        );
+        assert.equal(recovery.loadStartupLanguage(), false);
+        recovery.selIndex =
+            choice === "system"
+                ? 0
+                : recovery.listDataArray.indexOf(
+                      localeAssets.languageNames._rus
+                  );
+        recovery.listKeyHandlerFn(13);
+        assert.equal(
+            requests.length,
+            1,
+            choice + " recovery needs a dictionary"
+        );
+        assert.match(requests[0].url, /\/locales\/russian\.js\?/);
+        assert.equal(providers, 0);
+        assert.equal(stored.ottplaylangmode, "system");
+        requests[0].error();
+        assert.equal(providers, 0);
+        assert.equal(host.keyStrings, emptyDictionary);
+        assert.equal(host.__ottInterfaceLanguage, undefined);
+        assert.equal(stored.ottplaylangmode, "system");
+        recovery.listKeyHandlerFn(13);
+        assert.equal(requests.length, 2);
+        host.keyStrings = {
+            "Choose language": "Выберите язык",
+            lang: "Russian",
+        };
+        requests[1].success();
+        assert.equal(providers, 1);
+        assert.equal(host.__ottInterfaceLanguage, "_rus");
+        assert.equal(stored.ottplaylang, "_rus");
+        assert.equal(stored.ottplaylangmode, choice);
+        assert.equal(recovery._("Choose language"), "Выберите язык");
+        recovery.selectLang();
+        recovery.listKeyHandlerFn(13);
+        assert.equal(
+            requests.length,
+            2,
+            "A successfully active language is reused"
+        );
+        assert.equal(providers, 2);
+    }
     const stalledSaved = startupLanguage({ saved: "_rus" });
     assert.equal(stalledSaved.deadlines.length, 1);
     stalledSaved.deadlines[0]();
@@ -1190,7 +1285,7 @@ try {
         });
         assert.deepEqual(result.errors, [], result.errors.join("\n"));
         assert.equal(result.localeCount, 88);
-        assert.equal(result.keyCount, 865);
+        assert.equal(result.keyCount, 884);
         console.log(
             `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
         );

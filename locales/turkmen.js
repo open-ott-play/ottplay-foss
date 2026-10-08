@@ -141,6 +141,10 @@ var keyStrings = {
         "Üpçün edijini üýtgediň. Saýlawyňyz pleýer indiki gezek işledilende ýatda saklanar.",
     "Change value": "Bahany üýtget",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': '"%1" kanaly tapylmady',
+    "Channel #%1": "Kanal #%1",
+    "Channel #%1 not found (total: %2)": "#%1 kanal tapylmady (jemi: %2)",
+    "Channel #%1 not in any category": "#%1 kanal hiç bir kategoriýada däl",
     "Channel has no EPG": "Kanalyň EPG maglumaty ýok",
     "Channel is not available!!!": "Kanal elýeterli däl!",
     "Channel link": "Kanalyň baglanyşygy",
@@ -290,6 +294,7 @@ var keyStrings = {
         "Ätiýaç nusgasyny saklamak üçin JSON göçüriň. Dikeltmek üçin «Sazlamalary import et» ulanyň.",
     "Copy the selected JSON with your device's copy command":
         "Enjamyň göçürmek buýrugy bilen saýlanan JSON-y göçüriň",
+    "Could not change the playlist.": "Oýnatma sanawyny üýtgedip bolmady.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex-e birikdirip bolmady. Serwer salgysyny, tokeni we tora girişi barlaň.",
     "Could not connect to the server.": "Serwere birikdirip bolmady.",
@@ -554,6 +559,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Bulut sazlamalarynyň nädogry jogaby",
     "Invalid protected source configuration":
         "Goragly çeşmäniň sazlamasy nädogry",
+    "Invalid range: %1-%2": "Nädogry aralyk: %1-%2",
     "Invalid setting": "Nädogry sazlama",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
@@ -586,6 +592,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ýüklenýär…",
     "Loading media libraries...": "Media kitaphanalary ýüklenýär…",
     "Loading player...": "Pleýer ýüklenýär…",
+    "Loading the new playlist...": "Täze oýnatma sanawy ýüklenýär...",
     "Loading via proxy...": "Proksi arkaly ýüklenýär…",
     "Loading. Please wait...": "Ýüklenýär… garaşyň…",
     "Loading...": "Ýüklenýär…",
@@ -627,6 +634,7 @@ var keyStrings = {
     "Next TV program": "Indiki gepleşik",
     No: "Ýok",
     "No channel name": "Kanalyň ady ýok",
+    "No channels loaded": "Hiç bir kanal ýüklenmedi",
     "No command server was found on this network.":
         "Bu torda buýruk serweri tapylmady.",
     "No Plex servers are available for this account.":
@@ -700,6 +708,7 @@ var keyStrings = {
     "Player could not start": "Pleýer işläp başlamady",
     "Player default": "Pleýeriň deslapky saýlawy",
     "Player info:": "Pleýer barada maglumat:",
+    "Playing: %1": "Oýnadylýar: %1",
     Playlist: "Oýnatma sanawy",
     "Playlist file": "Oýnatma sanawynyň faýly",
     "Playlist is not loading directly...Loading via server...":
@@ -735,9 +744,13 @@ var keyStrings = {
     "Protect Change Provider": "Üpçün edijini üýtgetmegi gora",
     "Protect Settings": "Sazlamalary gora",
     "Protected source is unavailable": "Goragly çeşme elýeterli däl",
+    "Provider switching not available": "Üpjün edijini çalşyrmak mümkin däl",
     "p...": "s...",
     paging: "sahypalama",
     Quality: "Hil",
+    "Random #%1": "Tötänleýin kanal #%1",
+    "Random channel not in any category":
+        "Tötänleýin saýlanan kanal hiç bir kategoriýada däl",
     Rating: "Reýting",
     RD: "RD",
     "RD settings": "RD sazlamalary",
@@ -774,6 +787,10 @@ var keyStrings = {
         "Uzakdan girizmegiň möhleti gutardy. Gaýtadan synanyşmak üçin täze sessiýa açyň.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Uzakdan girizmek sessiýasy elýeterli däl. Gaýtadan synanyşmak üçin täze sessiýa açyň.",
+    "Remote playlist changes require the M3U provider.":
+        "Oýnatma sanawyny uzakdan üýtgetmek üçin M3U üpjün edijisini saýlamaly.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Üpjün edijiniň sazlamalaryny uzakdan üýtgetmek goldanylmaýar. Pleýerdäki üpjün edijiniň sazlamalaryny ulanyň.",
     "Remote screenshots": "Uzakdaky ekran suratlary",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Uzakdaky ekran suratlaryna 10 minut rugsat berilýär. Surata almak üçin sazlamalary ýapyň.",
@@ -963,6 +980,7 @@ var keyStrings = {
     "Switch sound track": "Ses ýazgysyny çalyş",
     "Switch subtitle": "Subtitrleri çalyş",
     "Switch to this list": "Bu sanawa geç",
+    "Switching provider...": "Üpjün ediji çalşyrylýar...",
     "Swop URL": "Swop URL salgysy",
     "System language": "Ulgam dili",
     "saved on this device": "bu enjamda saklanan",
@@ -996,6 +1014,8 @@ var keyStrings = {
         "Bu Play programmasyna HTTPS gerek. Üpçün edijiňizden HTTPS oýnatma sanawyny ýa-da serwer URL salgysyny soraň.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu jübütleşigiň möhleti gutardy. Telewizoryňyzda täze sessiýa açyň.",
+    "This remote command is not supported by the player.":
+        "Pleýer bu uzakdan dolandyryş buýrugyny goldamaýar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Bu ygtybarly sessiýa elýeterli däl ýa-da möhleti gutarýar. Telewizorda täze sessiýa açyň we doly baglanyşygyny ulanyň.",
     Timer: "Taýmer",
@@ -1015,6 +1035,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ulaltma tertibini üýtget",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sazlamalary",
+    "Touchscreen locked": "Duýgur ekran gulplandy",
+    "Touchscreen unlocked": "Duýgur ekranyň gulpy açyldy",
     "Trust this server for remote support":
         "Uzakdan goldaw üçin bu serwere ynan",
     "Trusted access could not be removed from device storage.":
@@ -1035,6 +1057,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X sazlamalary",
     "Unable to load playlist": "Oýnatma sanawyny ýükläp bolmady",
+    "Unlock the player's settings before changing its playlist.":
+        "Oýnatma sanawyny üýtgetmezden öň pleýeriň sazlamalarynyň gulpuny açyň.",
     Untitled: "Atsyz",
     "Untitled folder": "Atsyz bukja",
     "Update installed. Please restart OttPlay FOSS.":

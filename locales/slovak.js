@@ -143,6 +143,11 @@ var keyStrings = {
         "Zmeňte poskytovateľa. Váš výber sa zapamätá pri ďalšom spustení prehrávača médií.",
     "Change value": "Zmeňte hodnotu",
     "Channel ": "kanál ",
+    'Channel "%1" not found': "Kanál „%1“ sa nenašiel",
+    "Channel #%1": "Kanál č. %1",
+    "Channel #%1 not found (total: %2)": "Kanál č. %1 sa nenašiel (celkom: %2)",
+    "Channel #%1 not in any category":
+        "Kanál č. %1 nepatrí do žiadnej kategórie",
     "Channel has no EPG": "Kanál nemá žiadne EPG",
     "Channel is not available!!!": "Kanál nie je dostupný!",
     "Channel link": "Odkaz na kanál",
@@ -293,6 +298,7 @@ var keyStrings = {
         "Skopírujte JSON, aby ste si ponechali zálohu. Na obnovenie použite nastavenia importu.",
     "Copy the selected JSON with your device's copy command":
         "Skopírujte vybrané JSON pomocou príkazu kopírovania vášho zariadenia",
+    "Could not change the playlist.": "Zoznam skladieb sa nepodarilo zmeniť.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nepodarilo sa pripojiť k Plex. Skontrolujte adresu servera, token a prístup k sieti.",
     "Could not connect to the server.": "Nepodarilo sa pripojiť k serveru.",
@@ -565,6 +571,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Neplatná odpoveď nastavení cloudu",
     "Invalid protected source configuration":
         "Neplatná konfigurácia chráneného zdroja",
+    "Invalid range: %1-%2": "Neplatný rozsah: %1-%2",
     "Invalid setting": "Neplatné nastavenie",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -596,6 +603,7 @@ var keyStrings = {
     "Loading M3U...": "Načítava sa M3U…",
     "Loading media libraries...": "Načítavajú sa knižnice médií…",
     "Loading player...": "Načítava sa prehrávač médií…",
+    "Loading the new playlist...": "Načítavanie nového zoznamu skladieb...",
     "Loading via proxy...": "Načítava sa cez proxy…",
     "Loading. Please wait...": "Načítava sa... čakajte prosím...",
     "Loading...": "Načítava sa...",
@@ -638,6 +646,7 @@ var keyStrings = {
     "Next TV program": "Ďalší program",
     No: "Nie",
     "No channel name": "Žiadny názov kanála",
+    "No channels loaded": "Nie sú načítané žiadne kanály",
     "No command server was found on this network.":
         "V tejto sieti sa nenašiel žiadny príkazový server.",
     "No Plex servers are available for this account.":
@@ -711,6 +720,7 @@ var keyStrings = {
     "Player could not start": "prehrávač médií sa nepodarilo spustiť",
     "Player default": "Predvolená voľba prehrávača",
     "Player info:": "informácie o prehrávači médií:",
+    "Playing: %1": "Prehráva sa: %1",
     Playlist: "Zoznam skladieb",
     "Playlist file": "Súbor zoznamu skladieb",
     "Playlist is not loading directly...Loading via server...":
@@ -747,9 +757,14 @@ var keyStrings = {
     "Protect Change Provider": "Chráňte zmenu poskytovateľa",
     "Protect Settings": "Chráňte nastavenia",
     "Protected source is unavailable": "Chránený zdroj je nedostupný",
+    "Provider switching not available":
+        "Prepnutie poskytovateľa nie je dostupné",
     "p...": "p...",
     paging: "listovanie strán",
     Quality: "Kvalita",
+    "Random #%1": "Náhodný č. %1",
+    "Random channel not in any category":
+        "Náhodný kanál nepatrí do žiadnej kategórie",
     Rating: "Hodnotenie",
     RD: "RD",
     "RD settings": "RD nastavenia",
@@ -789,6 +804,10 @@ var keyStrings = {
         "Platnosť vzdialeného vstupu vypršala. Otvorte novú reláciu a skúste to znova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Relácia vzdialeného vstupu je nedostupná. Otvorte novú reláciu a skúste to znova.",
+    "Remote playlist changes require the M3U provider.":
+        "Vzdialená zmena zoznamu skladieb vyžaduje poskytovateľa M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Vzdialené nastavenie poskytovateľa nie je podporované. Použite nastavenia poskytovateľa v prehrávači.",
     "Remote screenshots": "Vzdialené snímky obrazovky",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Vzdialené snímky obrazovky sú povolené na 10 minút. Ak chcete snímať, zatvorte nastavenia.",
@@ -983,6 +1002,7 @@ var keyStrings = {
     "Switch sound track": "Prepnúť zvukovú stopu",
     "Switch subtitle": "Prepnúť titulky",
     "Switch to this list": "Prepnúť na tento zoznam",
+    "Switching provider...": "Prepínanie poskytovateľa...",
     "Swop URL": "URL SWOP",
     "System language": "Systémový jazyk",
     "saved on this device": "uložené v tomto zariadení",
@@ -1016,6 +1036,8 @@ var keyStrings = {
         "Táto aplikácia Play vyžaduje HTTPS. Požiadajte svojho poskytovateľa o zoznam skladieb HTTPS alebo server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Platnosť tohto párovacieho odkazu vypršala. Otvorte novú reláciu na vašom televízore.",
+    "This remote command is not supported by the player.":
+        "Prehrávač tento vzdialený príkaz nepodporuje.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Táto zabezpečená relácia je nedostupná alebo jej platnosť vypršala. Otvorte novú reláciu na televízore a použite jej úplný odkaz.",
     Timer: "Časovač",
@@ -1034,6 +1056,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Zmeňte režim priblíženia",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv nastavenia",
+    "Touchscreen locked": "Dotyková obrazovka je zamknutá",
+    "Touchscreen unlocked": "Dotyková obrazovka je odomknutá",
     "Trust this server for remote support":
         "Dôverujte tomuto serveru pre vzdialenú podporu",
     "Trusted access could not be removed from device storage.":
@@ -1054,6 +1078,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X nastavenia",
     "Unable to load playlist": "Nie je možné načítať zoznam skladieb",
+    "Unlock the player's settings before changing its playlist.":
+        "Pred zmenou zoznamu skladieb odomknite nastavenia prehrávača.",
     Untitled: "Bez názvu",
     "Untitled folder": "Priečinok bez názvu",
     "Update installed. Please restart OttPlay FOSS.":

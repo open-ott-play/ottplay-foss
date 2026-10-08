@@ -141,6 +141,12 @@ var keyStrings = {
         "Pakeiskite teikėją. Pasirinkimas bus išsaugotas kitam grotuvo paleidimui.",
     "Change value": "Keisti reikšmę",
     "Channel ": "Kanalas ",
+    'Channel "%1" not found': "Kanalas „%1“ nerastas",
+    "Channel #%1": "Kanalas Nr. %1",
+    "Channel #%1 not found (total: %2)":
+        "Kanalas Nr. %1 nerastas (iš viso: %2)",
+    "Channel #%1 not in any category":
+        "Kanalas Nr. %1 nepriklauso jokiai kategorijai",
     "Channel has no EPG": "Kanalas neturi EPG",
     "Channel is not available!!!": "Kanalas nepasiekiamas!!!",
     "Channel link": "Kanalo nuoroda",
@@ -290,6 +296,7 @@ var keyStrings = {
         "Nukopijuokite JSON, kad išsaugotumėte atsarginę kopiją. Atkurkite ją importuodami nustatymus.",
     "Copy the selected JSON with your device's copy command":
         "Nukopijuokite pasirinktą JSON naudodami įrenginio kopijavimo komandą",
+    "Could not change the playlist.": "Nepavyko pakeisti grojaraščio.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nepavyko prisijungti prie Plex. Patikrinkite serverio adresą, prieigos raktą ir prieigą prie tinklo.",
     "Could not connect to the server.": "Nepavyko prisijungti prie serverio.",
@@ -559,6 +566,7 @@ var keyStrings = {
         "Netinkamas debesies nustatymų atsakymas",
     "Invalid protected source configuration":
         "Neteisinga apsaugoto šaltinio konfigūracija",
+    "Invalid range: %1-%2": "Netinkamas intervalas: %1-%2",
     "Invalid setting": "Neteisingas nustatymas",
     "IPTV token": "IPTV prieigos žetonas",
     "IpStream.one": "IpStream.one",
@@ -590,6 +598,7 @@ var keyStrings = {
     "Loading M3U...": "Įkeliamas M3U…",
     "Loading media libraries...": "Įkeliamos medijos bibliotekos…",
     "Loading player...": "Įkeliamas leistuvas…",
+    "Loading the new playlist...": "Įkeliamas naujas grojaraštis...",
     "Loading via proxy...": "Įkeliama per tarpinį serverį…",
     "Loading. Please wait...": "Įkeliama… palaukite…",
     "Loading...": "Įkeliama…",
@@ -631,6 +640,7 @@ var keyStrings = {
     "Next TV program": "Kita laida",
     No: "Ne",
     "No channel name": "Nėra kanalo pavadinimo",
+    "No channels loaded": "Neįkeltas nė vienas kanalas",
     "No command server was found on this network.":
         "Šiame tinkle nerasta komandų serverio.",
     "No Plex servers are available for this account.":
@@ -704,6 +714,7 @@ var keyStrings = {
     "Player could not start": "Nepavyko paleisti leistuvo",
     "Player default": "Numatytasis grotuvo pasirinkimas",
     "Player info:": "Grotuvo informacija:",
+    "Playing: %1": "Atkuriama: %1",
     Playlist: "Grojaraštis",
     "Playlist file": "Grojaraščio failas",
     "Playlist is not loading directly...Loading via server...":
@@ -738,9 +749,13 @@ var keyStrings = {
     "Protect Change Provider": "Apsaugoti teikėjo keitimą",
     "Protect Settings": "Apsaugoti nustatymus",
     "Protected source is unavailable": "Apsaugotas šaltinis nepasiekiamas",
+    "Provider switching not available": "Teikėjo keitimas negalimas",
     "p...": "p...",
     paging: "puslapiais",
     Quality: "Kokybė",
+    "Random #%1": "Atsitiktinis Nr. %1",
+    "Random channel not in any category":
+        "Atsitiktinis kanalas nepriklauso jokiai kategorijai",
     Rating: "Įvertinimas",
     RD: "RD",
     "RD settings": "RD nustatymai",
@@ -777,6 +792,10 @@ var keyStrings = {
         "Nuotolinio įvesties galiojimo laikas baigėsi. Atidarykite naują seansą ir bandykite dar kartą.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Nuotolinio įvesties seansas nepasiekiamas. Atidarykite naują seansą ir bandykite dar kartą.",
+    "Remote playlist changes require the M3U provider.":
+        "Norint nuotoliniu būdu pakeisti grojaraštį, reikia M3U teikėjo.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Nuotolinis teikėjo nustatymas nepalaikomas. Naudokite teikėjo nustatymus leistuve.",
     "Remote screenshots": "Nuotolinės ekrano kopijos",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Nuotolinės ekrano kopijos leidžiamos 10 minučių. Norėdami užfiksuoti, uždarykite nustatymus.",
@@ -969,6 +988,7 @@ var keyStrings = {
     "Switch sound track": "Keisti garso takelį",
     "Switch subtitle": "Keisti subtitrus",
     "Switch to this list": "Perjungti į šį sąrašą",
+    "Switching provider...": "Keičiamas teikėjas...",
     "Swop URL": "Swop adresas",
     "System language": "Sistemos kalba",
     "saved on this device": "išsaugota šiame įrenginyje",
@@ -1002,6 +1022,8 @@ var keyStrings = {
         "Šiai Play programėlei būtinas HTTPS. Paprašykite teikėjo HTTPS grojaraščio arba serverio URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ši poravimo nuoroda nebegalioja. Atidarykite naują seansą televizoriuje.",
+    "This remote command is not supported by the player.":
+        "Leistuvas nepalaiko šios nuotolinės komandos.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ši saugi sesija nepasiekiama arba pasibaigė. Atidarykite naują seansą televizoriuje ir naudokite visą jos nuorodą.",
     Timer: "Laikmatis",
@@ -1020,6 +1042,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Keisti mastelio režimą",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv nustatymai",
+    "Touchscreen locked": "Jutiklinis ekranas užrakintas",
+    "Touchscreen unlocked": "Jutiklinis ekranas atrakintas",
     "Trust this server for remote support":
         "Pasitikėkite šiuo serveriu nuotoliniam palaikymui",
     "Trusted access could not be removed from device storage.":
@@ -1040,6 +1064,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X nustatymai",
     "Unable to load playlist": "Nepavyko įkelti grojaraščio",
+    "Unlock the player's settings before changing its playlist.":
+        "Prieš keisdami grojaraštį atrakinkite leistuvo nustatymus.",
     Untitled: "Be pavadinimo",
     "Untitled folder": "Aplankas be pavadinimo",
     "Update installed. Please restart OttPlay FOSS.":

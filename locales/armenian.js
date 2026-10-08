@@ -140,6 +140,10 @@ var keyStrings = {
         "Փոխեք մատակարարին։ Ընտրությունը կհիշվի նվագարկչի հաջորդ գործարկման ժամանակ։",
     "Change value": "Փոխել արժեքը",
     "Channel ": "Ալիք ",
+    'Channel "%1" not found': "«%1» ալիքը չի գտնվել",
+    "Channel #%1": "Ալիք #%1",
+    "Channel #%1 not found (total: %2)": "#%1 ալիքը չի գտնվել (ընդամենը՝ %2)",
+    "Channel #%1 not in any category": "#%1 ալիքը որևէ կատեգորիայում չկա",
     "Channel has no EPG": "Ալիքը հեռուստածրագիր չունի",
     "Channel is not available!!!": "Ալիքը հասանելի չէ!!!",
     "Channel link": "Ալիքի հղում",
@@ -290,6 +294,7 @@ var keyStrings = {
         "Պատճենեք JSON-ը՝ պահուստային պատճենը պահպանելու համար։ Վերականգնման համար օգտագործեք կարգավորումների ներմուծումը։",
     "Copy the selected JSON with your device's copy command":
         "Պատճենեք ընտրված JSON-ը՝ օգտագործելով սարքի պատճենման հրամանը",
+    "Could not change the playlist.": "Չհաջողվեց փոխել նվագացանկը։",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Չհաջողվեց միանալ Plex-ին։ Ստուգեք սերվերի հասցեն, մուտքի թոքենը և ցանցային կապը։",
     "Could not connect to the server.": "Չհաջողվեց միանալ սերվերին։",
@@ -558,6 +563,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Անվավեր ամպի կարգավորումների պատասխան",
     "Invalid protected source configuration":
         "Պաշտպանված աղբյուրի սխալ կարգավորում",
+    "Invalid range: %1-%2": "Անվավեր միջակայք՝ %1-%2",
     "Invalid setting": "Անվավեր կարգավորում",
     "IPTV token": "IPTV թոքեն",
     "IpStream.one": "IpStream.one",
@@ -589,6 +595,7 @@ var keyStrings = {
     "Loading M3U...": "M3U-ի բեռնում…",
     "Loading media libraries...": "Մեդիա գրադարանները բեռնվում են…",
     "Loading player...": "Նվագարկիչը բեռնվում է…",
+    "Loading the new playlist...": "Բեռնվում է նոր նվագացանկը...",
     "Loading via proxy...": "Բեռնում պրոքսիի միջոցով…",
     "Loading. Please wait...": "Բեռնում… խնդրում ենք սպասել…",
     "Loading...": "Բեռնում…",
@@ -630,6 +637,7 @@ var keyStrings = {
     "Next TV program": "Հաջորդ հաղորդում",
     No: "Ոչ",
     "No channel name": "Ալիքի անուն չկա",
+    "No channels loaded": "Ալիքներ բեռնված չեն",
     "No command server was found on this network.":
         "Այս ցանցում հրամանների սերվեր չի գտնվել։",
     "No Plex servers are available for this account.":
@@ -703,6 +711,7 @@ var keyStrings = {
     "Player could not start": "Չհաջողվեց գործարկել նվագարկիչը",
     "Player default": "Նվագարկչի լռելյայն ընտրությունը",
     "Player info:": "Նվագարկչի տվյալներ՝",
+    "Playing: %1": "Նվագարկվում է՝ %1",
     Playlist: "Նվագարկման ցուցակ",
     "Playlist file": "Նվագարկման ցուցակի ֆայլ",
     "Playlist is not loading directly...Loading via server...":
@@ -739,9 +748,13 @@ var keyStrings = {
     "Protect Change Provider": "Պաշտպանել մատակարարի փոփոխությունը",
     "Protect Settings": "Պաշտպանել կարգավորումները",
     "Protected source is unavailable": "Պաշտպանված աղբյուրը հասանելի չէ",
+    "Provider switching not available": "Մատակարարի փոխարկումը հասանելի չէ",
     "p...": "p...",
     paging: "էջերով",
     Quality: "Որակ",
+    "Random #%1": "Պատահական ալիք #%1",
+    "Random channel not in any category":
+        "Պատահական ընտրված ալիքը որևէ կատեգորիայում չկա",
     Rating: "Գնահատական",
     RD: "RD",
     "RD settings": "RD կարգավորումներ",
@@ -781,6 +794,10 @@ var keyStrings = {
         "Հեռակա մուտքագրման ժամկետը սպառվել է: Բացեք նոր աշխատաշրջան՝ նորից փորձելու համար:",
     "Remote input session is unavailable. Open a new session to try again.":
         "Հեռակա մուտքագրման աշխատաշրջանն անհասանելի է: Բացեք նոր աշխատաշրջան՝ նորից փորձելու համար:",
+    "Remote playlist changes require the M3U provider.":
+        "Նվագացանկը հեռակա փոխելու համար անհրաժեշտ է M3U մատակարար։",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Մատակարարի հեռակա կարգավորումները չեն աջակցվում։ Օգտագործեք նվագարկչի մատակարարի կարգավորումները։",
     "Remote screenshots": "Հեռավոր սքրինշոթներ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Հեռավոր սքրինշոթները թույլատրվում են 10 րոպե: Փակեք կարգավորումները նկարելու համար:",
@@ -979,6 +996,7 @@ var keyStrings = {
     "Switch sound track": "Փոխել ձայնաշերտը",
     "Switch subtitle": "Փոխել ենթագրերը",
     "Switch to this list": "Անցնել այս ցուցակին",
+    "Switching provider...": "Փոխարկվում է մատակարարը...",
     "Swop URL": "Swop URL",
     "System language": "Համակարգի լեզու",
     "saved on this device": "պահպանված է այս սարքում",
@@ -1012,6 +1030,8 @@ var keyStrings = {
         "Այս Play հավելվածը պահանջում է HTTPS։ Խնդրեք մատակարարին տրամադրել HTTPS նվագարկման ցուցակ կամ սերվերի URL։",
     "This pairing link has expired. Open a new session on your TV.":
         "Այս զուգավորման հղումը ժամկետանց է: Բացեք նոր նիստ ձեր հեռուստացույցով:",
+    "This remote command is not supported by the player.":
+        "Նվագարկիչը չի աջակցում հեռակառավարման այս հրամանը։",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Այս անվտանգ նիստն անհասանելի է կամ ժամկետանց է: Բացեք նոր նիստ հեռուստացույցով և օգտագործեք դրա ամբողջական հղումը:",
     Timer: "Ժամանակաչափ",
@@ -1031,6 +1051,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Փոխել խոշորացման ռեժիմը",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv կարգավորումներ",
+    "Touchscreen locked": "Սենսորային էկրանը կողպված է",
+    "Touchscreen unlocked": "Սենսորային էկրանն ապակողպված է",
     "Trust this server for remote support":
         "Վստահեք այս սերվերին հեռակա աջակցության համար",
     "Trusted access could not be removed from device storage.":
@@ -1051,6 +1073,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X կարգավորումներ",
     "Unable to load playlist": "Չհաջողվեց բեռնել նվագացանկը",
+    "Unlock the player's settings before changing its playlist.":
+        "Նվագացանկը փոխելուց առաջ ապակողպեք նվագարկչի կարգավորումները։",
     Untitled: "Անվերնագիր",
     "Untitled folder": "Անանուն պանակ",
     "Update installed. Please restart OttPlay FOSS.":

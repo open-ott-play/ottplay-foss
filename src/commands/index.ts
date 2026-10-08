@@ -1,3 +1,8 @@
+import {
+    translate as _,
+    formatLocaleNumber,
+    normalizeSearchText,
+} from "../localization";
 import { checkProviderUrl, selectProviderByIndex } from "../provider";
 import { type Command, validPlayerCommand } from "../shared/wire-contracts";
 
@@ -47,6 +52,7 @@ export function showPopup(text: string, durationSec = 5) {
     }
     const el = document.createElement("div");
     el.className = "notify";
+    el.dir = "auto";
     el.textContent = text;
     container.appendChild(el);
     setTimeout(function () {
@@ -76,6 +82,35 @@ function findChannelIndices(chId: number): [number, number] {
     return [-1, -1];
 }
 
+/** Numbered and random commands share category lookup and playback feedback. */
+function playListedChannel(index: number, random: boolean): void {
+    var w = window;
+    var chId = w.curList[index];
+    var indices = findChannelIndices(chId);
+    if (indices[0] === -1) {
+        showPopup(
+            _(
+                random
+                    ? "Random channel not in any category"
+                    : "Channel #%1 not in any category",
+                formatLocaleNumber(index + 1)
+            )
+        );
+        return;
+    }
+    if (typeof w.playChannel === "function") {
+        w.playChannel(indices[0], indices[1], true);
+    }
+    var chName =
+        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
+    showPopup(
+        _(
+            random ? "Random #%1" : "Channel #%1",
+            formatLocaleNumber(index + 1)
+        ) + (chName ? ": " + chName : "")
+    );
+}
+
 // ─── Command implementations ───────────────────────────────────────────────────
 
 /**
@@ -87,29 +122,22 @@ function findChannelIndices(chId: number): [number, number] {
 function channelByNumber(num: number): void {
     var w = window;
     if (!(w.curList && w.curList.length)) {
-        showPopup("No channels loaded");
+        showPopup(_("No channels loaded"));
         return;
     }
     // Channel numbers are 1-based
     var idx = num - 1;
     if (idx < 0 || idx >= w.curList.length) {
         showPopup(
-            "Channel #" + num + " not found (total: " + w.curList.length + ")"
+            _(
+                "Channel #%1 not found (total: %2)",
+                formatLocaleNumber(num),
+                formatLocaleNumber(w.curList.length)
+            )
         );
         return;
     }
-    var chId = w.curList[idx];
-    var indices = findChannelIndices(chId);
-    if (indices[0] === -1) {
-        showPopup("Channel #" + num + " not in any category");
-        return;
-    }
-    if (typeof w.playChannel === "function") {
-        w.playChannel(indices[0], indices[1], true);
-    }
-    var chName =
-        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
-    showPopup("Channel #" + num + (chName ? ": " + chName : ""));
+    playListedChannel(idx, false);
 }
 
 /**
@@ -121,10 +149,7 @@ function channelByNumber(num: number): void {
 function channelByName(name: string): void {
     if (!name) return;
     var w = window;
-    var needle = name.toLowerCase();
-    var bestChId: number | string | null = null;
-    var bestCatIdx = -1;
-    var bestChIdx = -1;
+    var needle = normalizeSearchText(name);
 
     // Search all categories
     for (var ci = 0; w.catsArray && w.cats && ci < w.catsArray.length; ci++) {
@@ -136,30 +161,23 @@ function channelByName(name: string): void {
             if (
                 ch &&
                 ch.channel_name &&
-                ch.channel_name.toLowerCase().indexOf(needle) !== -1
+                normalizeSearchText(ch.channel_name).indexOf(needle) !== -1
             ) {
-                bestChId = chId;
-                bestCatIdx = ci;
-                bestChIdx = i;
-                break;
+                // Preserve the legacy null-ID sentinel; channel IDs are strings/numbers.
+                if (chId === null) break;
+                if (typeof w.playChannel === "function") {
+                    w.playChannel(ci, i, true);
+                }
+                var chName =
+                    w.channels && w.channels[chId]
+                        ? w.channels[chId].channel_name
+                        : "";
+                showPopup(_("Playing: %1", chName));
+                return;
             }
         }
-        if (bestChId !== null) break;
     }
-
-    if (bestChId === null) {
-        showPopup('Channel "' + name + '" not found');
-        return;
-    }
-
-    if (typeof w.playChannel === "function") {
-        w.playChannel(bestCatIdx, bestChIdx, true);
-    }
-    var chName =
-        w.channels && w.channels[bestChId]
-            ? w.channels[bestChId].channel_name
-            : "";
-    showPopup("Playing: " + chName);
+    showPopup(_('Channel "%1" not found', name));
 }
 
 /**
@@ -173,7 +191,7 @@ function channelByName(name: string): void {
 function randomChannel(rangeStart?: number, rangeEnd?: number): void {
     var w = window;
     if (!(w.curList && w.curList.length)) {
-        showPopup("No channels loaded");
+        showPopup(_("No channels loaded"));
         return;
     }
 
@@ -186,7 +204,13 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
         startIdx = Math.max(0, rangeStart - 1);
         endIdx = Math.min(total - 1, rangeEnd - 1);
         if (startIdx > endIdx) {
-            showPopup("Invalid range: " + rangeStart + "-" + rangeEnd);
+            showPopup(
+                _(
+                    "Invalid range: %1-%2",
+                    formatLocaleNumber(rangeStart),
+                    formatLocaleNumber(rangeEnd)
+                )
+            );
             return;
         }
     } else {
@@ -196,19 +220,7 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
 
     var pickIdx =
         startIdx + Math.floor(Math.random() * (endIdx - startIdx + 1));
-    var chId = w.curList[pickIdx];
-    var indices = findChannelIndices(chId);
-    if (indices[0] === -1) {
-        showPopup("Random channel not in any category");
-        return;
-    }
-
-    if (typeof w.playChannel === "function") {
-        w.playChannel(indices[0], indices[1], true);
-    }
-    var chName =
-        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
-    showPopup("Random #" + (pickIdx + 1) + (chName ? ": " + chName : ""));
+    playListedChannel(pickIdx, true);
 }
 
 /**
@@ -218,16 +230,18 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
  */
 function changeProvider(providerIdx: number): void {
     if (selectProviderByIndex(providerIdx)) {
-        showPopup("Switching provider...");
+        showPopup(_("Switching provider..."));
     } else {
-        showPopup("Provider switching not available");
+        showPopup(_("Provider switching not available"));
     }
 }
 
 /** Provider configuration schemas differ; no generic remote replacement is supported. */
 function changeProviderSettings(): string {
     showPopup(
-        "Remote provider settings are not supported. Use the player's provider settings."
+        _(
+            "Remote provider settings are not supported. Use the player's provider settings."
+        )
     );
     return "unsupported";
 }
@@ -242,7 +256,7 @@ function changePlaylist(url: string): string {
         !w.m3uArr ||
         !Array.isArray(w.m3uArr.M3Us)
     ) {
-        showPopup("Remote playlist changes require the M3U provider.");
+        showPopup(_("Remote playlist changes require the M3U provider."));
         return "unsupported";
     }
     if (
@@ -250,7 +264,9 @@ function changePlaylist(url: string): string {
         w.parentPIN !== "*" &&
         !w.parentAccess
     ) {
-        showPopup("Unlock the player's settings before changing its playlist.");
+        showPopup(
+            _("Unlock the player's settings before changing its playlist.")
+        );
         return "rejected";
     }
     try {
@@ -273,10 +289,10 @@ function changePlaylist(url: string): string {
         next.M3Us[active].www = url;
         w.providerSetItem("m3uArr", JSON.stringify(next));
         w.loadPlaylist();
-        showPopup("Loading the new playlist...");
+        showPopup(_("Loading the new playlist..."));
         return "accepted";
     } catch (_error) {
-        showPopup("Could not change the playlist.");
+        showPopup(_("Could not change the playlist."));
         return "rejected";
     }
 }
@@ -296,17 +312,17 @@ function setVolume(level?: number, step?: number): void {
         typeof w.stbGetVolume === "function";
     if (!supported) return; // silently ignore on clients without volume control
 
-    if (level !== undefined) {
-        var clamped = Math.max(0, Math.min(100, level));
-        w.stbSetVolume(clamped);
-        showPopup("Volume: " + clamped + "%");
-    } else if (step !== undefined) {
+    var next: number;
+    if (level !== undefined) next = level;
+    else {
+        if (step === undefined) return;
         var current = w.stbGetVolume();
         if (current === undefined || current === null) return;
-        var next = Math.max(0, Math.min(100, current + step));
-        w.stbSetVolume(next);
-        showPopup("Volume: " + next + "%");
+        next = current + step;
     }
+    next = Math.max(0, Math.min(100, next));
+    w.stbSetVolume(next);
+    showPopup(_("volume") + ": " + formatLocaleNumber(next) + "%");
 }
 
 // ─── Main dispatcher ──────────────────────────────────────────────────────────
@@ -397,7 +413,7 @@ export function handleCommand(cmd: Command): string {
             return "unsupported";
 
         default:
-            showPopup("This remote command is not supported by the player.");
+            showPopup(_("This remote command is not supported by the player."));
             return "unsupported";
     }
     return "accepted";

@@ -138,6 +138,11 @@ var keyStrings = {
         "Změňte poskytovatele. Výběr se zachová při příštím spuštění přehrávače.",
     "Change value": "Změnit hodnotu",
     "Channel ": "Kanál ",
+    'Channel "%1" not found': "Kanál „%1“ nebyl nalezen",
+    "Channel #%1": "Kanál č. %1",
+    "Channel #%1 not found (total: %2)":
+        "Kanál č. %1 nebyl nalezen (celkem: %2)",
+    "Channel #%1 not in any category": "Kanál č. %1 nepatří do žádné kategorie",
     "Channel has no EPG": "Kanál nemá EPG",
     "Channel is not available!!!": "Kanál není dostupný!",
     "Channel link": "Odkaz na kanál",
@@ -287,6 +292,7 @@ var keyStrings = {
         "Zkopírujte JSON a uchovejte si zálohu. Obnovíte ji pomocí importu nastavení.",
     "Copy the selected JSON with your device's copy command":
         "Zkopírujte vybraný JSON pomocí příkazu kopírování v zařízení",
+    "Could not change the playlist.": "Seznam se nepodařilo změnit.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nelze se připojit k Plex. Zkontrolujte adresu serveru, token a přístup k síti.",
     "Could not connect to the server.": "Nepodařilo se připojit k serveru.",
@@ -552,6 +558,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Neplatná odpověď nastavení cloudu",
     "Invalid protected source configuration":
         "Neplatná konfigurace chráněného zdroje",
+    "Invalid range: %1-%2": "Neplatný rozsah: %1-%2",
     "Invalid setting": "Neplatné nastavení",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -583,6 +590,7 @@ var keyStrings = {
     "Loading M3U...": "Načítání M3U…",
     "Loading media libraries...": "Načítání multimediálních knihoven…",
     "Loading player...": "Načítání přehrávače…",
+    "Loading the new playlist...": "Načítání nového seznamu...",
     "Loading via proxy...": "Načítání přes proxy…",
     "Loading. Please wait...": "Načítání. Čekejte…",
     "Loading...": "Načítání…",
@@ -624,6 +632,7 @@ var keyStrings = {
     "Next TV program": "Další pořad",
     No: "Ne",
     "No channel name": "Kanál nemá název",
+    "No channels loaded": "Nejsou načteny žádné kanály",
     "No command server was found on this network.":
         "V této síti nebyl nalezen příkazový server.",
     "No Plex servers are available for this account.":
@@ -697,6 +706,7 @@ var keyStrings = {
     "Player could not start": "Přehrávač se nepodařilo spustit",
     "Player default": "Výchozí volba přehrávače",
     "Player info:": "Informace o přehrávači:",
+    "Playing: %1": "Přehrává se: %1",
     Playlist: "Seznam skladeb",
     "Playlist file": "Soubor playlistu",
     "Playlist is not loading directly...Loading via server...":
@@ -732,9 +742,13 @@ var keyStrings = {
     "Protect Change Provider": "Chránit změnu poskytovatele",
     "Protect Settings": "Chránit nastavení",
     "Protected source is unavailable": "Chráněný zdroj není dostupný",
+    "Provider switching not available": "Přepnutí poskytovatele není dostupné",
     "p...": "p…",
     paging: "listování",
     Quality: "Kvalita",
+    "Random #%1": "Náhodný č. %1",
+    "Random channel not in any category":
+        "Náhodný kanál nepatří do žádné kategorie",
     Rating: "Hodnocení",
     RD: "RD",
     "RD settings": "Nastavení RD",
@@ -771,6 +785,10 @@ var keyStrings = {
         "Platnost vzdáleného vstupu vypršela. Otevřete novou relaci a zkuste to znovu.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Relace vzdáleného vstupu není dostupná. Otevřete novou relaci a zkuste to znovu.",
+    "Remote playlist changes require the M3U provider.":
+        "Vzdálená změna seznamu vyžaduje poskytovatele M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Vzdálené nastavení poskytovatele není podporováno. Použijte nastavení poskytovatele v přehrávači.",
     "Remote screenshots": "Vzdálené snímky obrazovky",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Vzdálené snímky obrazovky jsou povoleny po dobu 10 minut. Chcete-li zachytit, zavřete nastavení.",
@@ -963,6 +981,7 @@ var keyStrings = {
     "Switch sound track": "Změnit zvukovou stopu",
     "Switch subtitle": "Změnit titulky",
     "Switch to this list": "Přepnout na tento seznam",
+    "Switching provider...": "Přepínání poskytovatele...",
     "Swop URL": "URL Swop",
     "System language": "Systémový jazyk",
     "saved on this device": "uloženo v tomto zařízení",
@@ -997,6 +1016,8 @@ var keyStrings = {
         "Tato verze z Play vyžaduje HTTPS. Požádejte poskytovatele o HTTPS adresu playlistu nebo serveru.",
     "This pairing link has expired. Open a new session on your TV.":
         "Platnost tohoto párovacího odkazu vypršela. Otevřete na televizoru novou relaci.",
+    "This remote command is not supported by the player.":
+        "Přehrávač tento vzdálený příkaz nepodporuje.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Tato zabezpečená relace je nedostupná nebo vypršela její platnost. Otevřete v televizi novou relaci a použijte její úplný odkaz.",
     Timer: "Časovač",
@@ -1015,6 +1036,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Změnit režim zvětšení",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Nastavení Top-Tv",
+    "Touchscreen locked": "Dotyková obrazovka je zamknutá",
+    "Touchscreen unlocked": "Dotyková obrazovka je odemknutá",
     "Trust this server for remote support":
         "Důvěřujte tomuto serveru pro vzdálenou podporu",
     "Trusted access could not be removed from device storage.":
@@ -1035,6 +1058,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Nastavení ULTIFL1X",
     "Unable to load playlist": "Seznam přehrávání se nepodařilo načíst",
+    "Unlock the player's settings before changing its playlist.":
+        "Před změnou seznamu odemkněte nastavení přehrávače.",
     Untitled: "Bez názvu",
     "Untitled folder": "Složka bez názvu",
     "Update installed. Please restart OttPlay FOSS.":

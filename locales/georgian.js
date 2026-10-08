@@ -141,6 +141,10 @@ var keyStrings = {
         "შეცვალეთ პროვაიდერი. თქვენი არჩევანი დამახსოვრდება პლეერის შემდეგი გაშვებისთვის.",
     "Change value": "მნიშვნელობის შეცვლა",
     "Channel ": "არხი ",
+    'Channel "%1" not found': "არხი „%1“ ვერ მოიძებნა",
+    "Channel #%1": "არხი #%1",
+    "Channel #%1 not found (total: %2)": "არხი #%1 ვერ მოიძებნა (სულ: %2)",
+    "Channel #%1 not in any category": "არხი #%1 არცერთ კატეგორიაში არ არის",
     "Channel has no EPG": "არხს არ აქვს EPG",
     "Channel is not available!!!": "არხი მიუწვდომელია!",
     "Channel link": "არხის ბმული",
@@ -291,6 +295,7 @@ var keyStrings = {
         "შეინახეთ სარეზერვო ასლი JSON-ის კოპირებით. აღსადგენად გამოიყენეთ «პარამეტრების იმპორტი».",
     "Copy the selected JSON with your device's copy command":
         "დააკოპირეთ არჩეული JSON თქვენი მოწყობილობის კოპირების ბრძანებით",
+    "Could not change the playlist.": "დასაკრავი სიის შეცვლა ვერ მოხერხდა.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex-თან დაკავშირება ვერ მოხერხდა. შეამოწმეთ სერვერის მისამართი, ტოკენი და ქსელთან წვდომა.",
     "Could not connect to the server.": "სერვერთან დაკავშირება ვერ მოხერხდა.",
@@ -561,6 +566,7 @@ var keyStrings = {
     "Invalid cloud settings response": "ღრუბლის პარამეტრების არასწორი პასუხი",
     "Invalid protected source configuration":
         "არასწორი დაცული წყაროს კონფიგურაცია",
+    "Invalid range: %1-%2": "არასწორი დიაპაზონი: %1-%2",
     "Invalid setting": "არასწორი პარამეტრი",
     "IPTV token": "IPTV ტოკენი",
     "IpStream.one": "IpStream.one",
@@ -592,6 +598,7 @@ var keyStrings = {
     "Loading M3U...": "იტვირთება M3U…",
     "Loading media libraries...": "მედია ბიბლიოთეკების ჩატვირთვა…",
     "Loading player...": "მედია ფლეიერის ჩატვირთვა…",
+    "Loading the new playlist...": "იტვირთება ახალი დასაკრავი სია...",
     "Loading via proxy...": "იტვირთება პროქსის მეშვეობით…",
     "Loading. Please wait...": "იტვირთება… გთხოვთ დაელოდოთ…",
     "Loading...": "იტვირთება…",
@@ -634,6 +641,7 @@ var keyStrings = {
     "Next TV program": "შემდეგი პროგრამა",
     No: "არა",
     "No channel name": "არხის სახელი არ არის",
+    "No channels loaded": "არხები არ არის ჩატვირთული",
     "No command server was found on this network.":
         "ამ ქსელში ბრძანების სერვერი არ მოიძებნა.",
     "No Plex servers are available for this account.":
@@ -707,6 +715,7 @@ var keyStrings = {
     "Player could not start": "მედია პლეერი ვერ დაიწყო",
     "Player default": "დამკვრელის ნაგულისხმევი არჩევანი",
     "Player info:": "მედია ფლეერის ინფორმაცია:",
+    "Playing: %1": "მიმდინარეობს დაკვრა: %1",
     Playlist: "დასაკრავი სია",
     "Playlist file": "დასაკრავი სიის ფაილი",
     "Playlist is not loading directly...Loading via server...":
@@ -743,9 +752,13 @@ var keyStrings = {
     "Protect Change Provider": "დაიცავით პროვაიდერის ცვლილება",
     "Protect Settings": "პარამეტრების დაცვა",
     "Protected source is unavailable": "დაცული წყარო მიუწვდომელია",
+    "Provider switching not available": "პროვაიდერის შეცვლა მიუწვდომელია",
     "p...": "p...",
     paging: "პეიჯინგი",
     Quality: "ხარისხი",
+    "Random #%1": "შემთხვევითი არხი #%1",
+    "Random channel not in any category":
+        "შემთხვევით შერჩეული არხი არცერთ კატეგორიაში არ არის",
     Rating: "რეიტინგი",
     RD: "RD",
     "RD settings": "RD პარამეტრები",
@@ -783,6 +796,10 @@ var keyStrings = {
         "დისტანციური შეყვანის ვადა ამოიწურა. გახსენით ახალი სესია ხელახლა საცდელად.",
     "Remote input session is unavailable. Open a new session to try again.":
         "დისტანციური შეყვანის სესია მიუწვდომელია. გახსენით ახალი სესია ხელახლა საცდელად.",
+    "Remote playlist changes require the M3U provider.":
+        "დასაკრავი სიის დისტანციურად შესაცვლელად საჭიროა M3U პროვაიდერი.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "პროვაიდერის დისტანციური დაყენება მხარდაჭერილი არ არის. გამოიყენეთ პლეერის პროვაიდერის პარამეტრები.",
     "Remote screenshots": "დისტანციური ეკრანის ანაბეჭდები",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "დისტანციური ეკრანის ანაბეჭდები დაშვებულია 10 წუთის განმავლობაში. დახურეთ პარამეტრები გადასაღებად.",
@@ -974,6 +991,7 @@ var keyStrings = {
     "Switch sound track": "ხმოვანი ბილიკის შეცვლა",
     "Switch subtitle": "სუბტიტრების შეცვლა",
     "Switch to this list": "გადაერთეთ ამ სიაზე",
+    "Switching provider...": "პროვაიდერი იცვლება...",
     "Swop URL": "Swop-ის URL",
     "System language": "სისტემის ენა",
     "saved on this device": "შენახულია ამ მოწყობილობაზე",
@@ -1007,6 +1025,8 @@ var keyStrings = {
         "ამ Play აპლიკაციას სჭირდება HTTPS. სთხოვეთ პროვაიდერს HTTPS დასაკრავი სიის ან სერვერის URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "ამ დაწყვილების ბმულს ვადა გაუვიდა. გახსენით ახალი სესია თქვენს ტელევიზორზე.",
+    "This remote command is not supported by the player.":
+        "პლეერი დისტანციური მართვის ამ ბრძანებას არ უჭერს მხარს.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ეს უსაფრთხო სესია მიუწვდომელია ან ვადაგასულია. გახსენით ახალი სესია ტელევიზორში და გამოიყენეთ მისი სრული ბმული.",
     Timer: "ტაიმერი",
@@ -1025,6 +1045,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "შეცვალეთ მასშტაბირების რეჟიმი",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv პარამეტრები",
+    "Touchscreen locked": "სენსორული ეკრანი დაბლოკილია",
+    "Touchscreen unlocked": "სენსორული ეკრანი განბლოკილია",
     "Trust this server for remote support":
         "ენდეთ ამ სერვერს დისტანციური მხარდაჭერისთვის",
     "Trusted access could not be removed from device storage.":
@@ -1045,6 +1067,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X პარამეტრები",
     "Unable to load playlist": "დასაკრავი სიის ჩატვირთვა შეუძლებელია",
+    "Unlock the player's settings before changing its playlist.":
+        "დასაკრავი სიის შეცვლამდე განბლოკეთ პლეერის პარამეტრები.",
     Untitled: "უსათაურო",
     "Untitled folder": "უსათაურო საქაღალდე",
     "Update installed. Please restart OttPlay FOSS.":

@@ -143,6 +143,12 @@ var keyStrings = {
         "Aldatu hornitzailea. Hautaketa gogoratuko da erreproduzitzailea hurrengo aldiz abiaraztean.",
     "Change value": "Aldatu balioa",
     "Channel ": "Kanala ",
+    'Channel "%1" not found': 'Ez da "%1" kanala aurkitu',
+    "Channel #%1": "#%1 kanala",
+    "Channel #%1 not found (total: %2)":
+        "Ez da #%1 kanala aurkitu (guztira: %2)",
+    "Channel #%1 not in any category":
+        "#%1 kanala ez dago inolako kategoriatan",
     "Channel has no EPG": "Kanalak ez du EPGrik",
     "Channel is not available!!!": "Kanala ez dago erabilgarri!",
     "Channel link": "Kanalaren esteka",
@@ -294,6 +300,8 @@ var keyStrings = {
         "Kopiatu JSONa babeskopia gordetzeko. Erabili «Inportatu ezarpenak» leheneratzeko.",
     "Copy the selected JSON with your device's copy command":
         "Kopiatu hautatutako JSONa gailuaren kopiatzeko komandoarekin",
+    "Could not change the playlist.":
+        "Ezin izan da erreprodukzio-zerrenda aldatu.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Ezin izan da Plex-era konektatu. Egiaztatu zerbitzariaren helbidea, tokena eta sareko sarbidea.",
     "Could not connect to the server.": "Ezin izan da zerbitzarira konektatu.",
@@ -563,6 +571,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Hodeiko ezarpenen erantzun baliogabea",
     "Invalid protected source configuration":
         "Babestutako iturriaren konfigurazioa baliogabea da",
+    "Invalid range: %1-%2": "Tarte baliogabea: %1-%2",
     "Invalid setting": "Ezarpen baliogabea",
     "IPTV token": "IPTV tokena",
     "IpStream.one": "IpStream.one",
@@ -594,6 +603,7 @@ var keyStrings = {
     "Loading M3U...": "M3U kargatzen…",
     "Loading media libraries...": "Multimedia-liburutegiak kargatzen…",
     "Loading player...": "Erreproduzitzailea kargatzen…",
+    "Loading the new playlist...": "Erreprodukzio-zerrenda berria kargatzen...",
     "Loading via proxy...": "Proxy zerbitzariaren bidez kargatzen…",
     "Loading. Please wait...": "Kargatzen… itxaron, mesedez…",
     "Loading...": "Kargatzen…",
@@ -636,6 +646,7 @@ var keyStrings = {
     "Next TV program": "Hurrengo saioa",
     No: "Ez",
     "No channel name": "Kanalak ez du izenik",
+    "No channels loaded": "Ez da kanalik kargatu",
     "No command server was found on this network.":
         "Ez da komando-zerbitzaririk aurkitu sare honetan.",
     "No Plex servers are available for this account.":
@@ -709,6 +720,7 @@ var keyStrings = {
     "Player could not start": "Erreproduzitzailea ezin izan da abiarazi",
     "Player default": "Erreproduzigailuaren aukera lehenetsia",
     "Player info:": "Erreproduzitzailearen informazioa:",
+    "Playing: %1": "Erreproduzitzen: %1",
     Playlist: "Erreprodukzio-zerrenda",
     "Playlist file": "Erreprodukzio-zerrendaren fitxategia",
     "Playlist is not loading directly...Loading via server...":
@@ -745,9 +757,13 @@ var keyStrings = {
     "Protect Settings": "Babestu ezarpenak",
     "Protected source is unavailable":
         "Babestutako iturria ez dago erabilgarri",
+    "Provider switching not available": "Ezin da hornitzailea aldatu",
     "p...": "p...",
     paging: "orrialdekatzea",
     Quality: "Kalitatea",
+    "Random #%1": "Ausazko #%1 kanala",
+    "Random channel not in any category":
+        "Ausaz hautatutako kanala ez dago inolako kategoriatan",
     Rating: "Balorazioa",
     RD: "RD",
     "RD settings": "RD ezarpenak",
@@ -785,6 +801,10 @@ var keyStrings = {
         "Urruneko sarrera iraungi da. Ireki saio berria berriro saiatzeko.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Urruneko sarreraren saioa ez dago erabilgarri. Ireki saio berria berriro saiatzeko.",
+    "Remote playlist changes require the M3U provider.":
+        "Erreprodukzio-zerrenda urrunetik aldatzeko M3U hornitzailea behar da.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Ezin dira hornitzailearen ezarpenak urrunetik aldatu. Erabili erreproduzitzaileko hornitzailearen ezarpenak.",
     "Remote screenshots": "Urruneko pantaila-argazkiak",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Urruneko pantaila-argazkiak 10 minutuz onartzen dira. Itxi ezarpenak ateratzeko.",
@@ -981,6 +1001,7 @@ var keyStrings = {
     "Switch sound track": "Aldatu audio-pista",
     "Switch subtitle": "Aldatu azpitituluak",
     "Switch to this list": "Aldatu zerrenda honetara",
+    "Switching provider...": "Hornitzailea aldatzen...",
     "Swop URL": "Swop URL",
     "System language": "Sistemaren hizkuntza",
     "saved on this device": "gailu honetan gordeta",
@@ -1015,6 +1036,8 @@ var keyStrings = {
         "Play aplikazio honek HTTPS behar du. Eskatu hornitzaileari HTTPS erreprodukzio-zerrenda edo zerbitzariaren URLa.",
     "This pairing link has expired. Open a new session on your TV.":
         "Parekatzeko esteka hau iraungi da. Ireki saio berri bat zure telebistan.",
+    "This remote command is not supported by the player.":
+        "Erreproduzitzaileak ez du urrutiko agindu hau onartzen.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Saio seguru hau ez dago erabilgarri edo iraungi da. Ireki saio berri bat telebistan eta erabili bere esteka osoa.",
     Timer: "Tenporizadorea",
@@ -1033,6 +1056,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Aldatu zoom modua",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ezarpenak",
+    "Touchscreen locked": "Ukipen-pantaila blokeatu da",
+    "Touchscreen unlocked": "Ukipen-pantaila desblokeatu da",
     "Trust this server for remote support":
         "Fidatu zerbitzari honetaz urruneko laguntzarako",
     "Trusted access could not be removed from device storage.":
@@ -1053,6 +1078,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ezarpenak",
     "Unable to load playlist": "Ezin da erreprodukzio-zerrenda kargatu",
+    "Unlock the player's settings before changing its playlist.":
+        "Desblokeatu erreproduzitzailearen ezarpenak erreprodukzio-zerrenda aldatu aurretik.",
     Untitled: "Izenbururik gabe",
     "Untitled folder": "Izenik gabeko karpeta",
     "Update installed. Please restart OttPlay FOSS.":

@@ -82,7 +82,9 @@ languages without a mode remain manual, so upgrades do not change them.
 successfully loaded effective language. The two are persisted only after a
 successful load. Device/native bridge initialization also runs when startup has
 to show the manual picker. Without a match or after load failure/timeout, startup
-continues to that picker. All dictionary attempts have bounded timeouts; cancelled
+continues to that picker. Retrying the same saved language still loads its
+dictionary if the earlier attempt failed; only a successfully active dictionary
+can be reused. All dictionary attempts have bounded timeouts; cancelled
 or late callbacks cannot replace the current dictionary or launch twice. If
 localStorage rejects a write, the fresh cookie fallback takes precedence on the
 next launch instead of resurrecting a stale language. Override metadata is split
@@ -110,6 +112,10 @@ also offer **Off**. An existing per-channel choice wins over a language default.
 Manual selection stays in force for the current playback session, including VOD,
 and late track events cannot override it. Matching uses manifest language tags
 and common ISO 639 aliases; absent matches leave the engine choice intact.
+These aliases follow the [ISO 639-2 code list](https://www.loc.gov/standards/iso639-2/php/code_list.php),
+including bibliographic `fre`/`rum` and Latvian `lav`. Persisted interface IDs
+are not ISO codes: `_lat` selects Latvian, while a media tag `lat` means Latin
+and must not satisfy a Latvian preference.
 Subtitle matching respects known writing-system differences. These preferences
 are available to the shared HTML5/HLS/Video.js track interface; retained device
 engines without that interface keep their own controls.
@@ -121,10 +127,16 @@ assets can be loaded. Hashed filenames keep the page and its dictionary bytes
 consistent; late requests cannot revert a newer language. Instructions and
 statuses are translated, while the private link stays LTR and entered text uses
 its own direction.
+An empty caption from an older TV offer remains a live translated label while
+the browser dictionary loads; a caption supplied by the TV remains literal text.
 
 Resolve interface labels when displaying them, including retained media frames,
 provider menus and native dialogs. Placeholder arguments are literal content:
 channel names containing `$&` or `%2` must not become replacement instructions.
+Remote-command results and touchscreen-lock notifications use the same catalog.
+The `popup_message` command preserves the sender's text verbatim; notification
+text uses automatic direction and is never interpreted as HTML. Command names,
+numeric arguments and machine-readable response statuses remain unchanged.
 
 Generated media titles and the default favorites list carry provenance separate
 from their stored names. Only marked defaults change with the interface language.
@@ -334,9 +346,13 @@ the device's fonts.
 
 ## Search, cursor movement and bidirectional text
 
-Channel, programme and history search use canonical Unicode normalization with
+Channel, programme, history and media-library search use canonical Unicode normalization with
 Turkish/Azerbaijani case rules tied to the selected interface language. The common
 remote/API caseless helper preserves its locale-independent case-fold contract.
+Remote `channel_by_name` selection follows the interface search rules, and media
+filtering applies the same comparison to both visible results and shuffle queues.
+The media filter retains its existing Russian `ё`/`е` equivalence and whitespace
+normalization.
 All 1,585 default Unicode 17 C/F mappings are generated from the repository's
 pinned reference, so search casing no longer depends on the device's tables.
 Turkish/Azerbaijani tailoring is separate from default folding.
@@ -366,7 +382,7 @@ so a single English plural rule is not imposed on other languages.
 
 ## Bundle cost and verification
 
-On Node 22.23.3 with version 1.1.53, the complete localization change increases
+At `6fa14dc7`, on Node 22.23.3 with version 1.1.53, the complete localization change increases
 the web entry from 746,380 bytes (228,703 gzip) at `8c240190` to 783,615 bytes
 (243,951 gzip). An independent intermediate build attributes 23,186 raw bytes
 and 10,982 gzip bytes to pinned Unicode support; the remaining interface,
@@ -374,11 +390,11 @@ startup, storage recovery and media-language behavior adds 14,049 raw bytes and 
 The dictionaries remain external assets. All Unicode tables count inside the
 entry; all seven optional provider families count toward the complete payload.
 
-The final native entry is 783,573 bytes (244,023 gzip). Including every provider,
+That native entry is 783,573 bytes (244,023 gzip). Including every provider,
 the web/native totals are 888,391/888,349 raw bytes and 283,217/283,289 gzip bytes.
 The size limits remain unchanged after the bounded-cookie fix. At this version,
 the smaller web/native reserves are 685 raw / 477 gzip bytes for the entry and
-2,009 raw / 411 gzip bytes for the complete payload. Reproduce the final artifacts with `npm ci`, `npm run build` and
+2,009 raw / 411 gzip bytes for the complete payload. Measure the current checkout with `npm ci`, `npm run build` and
 `npm run check:size` on Node 22; `npm run check:bundle` also runs the pinned
 normalization/grapheme tests against the optimized entry. Long nonstarter runs
 use stable combining-class buckets to avoid quadratic reordering; conformance

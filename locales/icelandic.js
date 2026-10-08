@@ -139,6 +139,10 @@ var keyStrings = {
         "Breyttu þjónustuaðila. Valið verður munað næst þegar spilarinn er ræstur.",
     "Change value": "Breyta gildi",
     "Channel ": "Rás ",
+    'Channel "%1" not found': 'Rásin "%1" fannst ekki',
+    "Channel #%1": "Rás #%1",
+    "Channel #%1 not found (total: %2)": "Rás #%1 fannst ekki (samtals: %2)",
+    "Channel #%1 not in any category": "Rás #%1 er ekki í neinum flokki",
     "Channel has no EPG": "Rásin hefur enga EPG",
     "Channel is not available!!!": "Rásin er ekki tiltæk!",
     "Channel link": "Rásartengill",
@@ -286,6 +290,7 @@ var keyStrings = {
         "Afritaðu JSON til að geyma öryggisafrit. Notaðu «Flytja inn stillingar» til að endurheimta það.",
     "Copy the selected JSON with your device's copy command":
         "Afritaðu valið JSON með afritunarskipun tækisins",
+    "Could not change the playlist.": "Ekki tókst að breyta spilunarlistanum.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Ekki tókst að tengjast Plex. Athugaðu vistfang þjónsins, aðgangsteikn og netaðgang.",
     "Could not connect to the server.": "Ekki tókst að tengjast þjóninum.",
@@ -549,6 +554,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Ógilt svar skýjastillinga",
     "Invalid protected source configuration":
         "Ógildar stillingar varinnar uppsprettu",
+    "Invalid range: %1-%2": "Ógilt bil: %1-%2",
     "Invalid setting": "Ógild stilling",
     "IPTV token": "IPTV-aðgangsteikn",
     "IpStream.one": "IpStream.one",
@@ -580,6 +586,7 @@ var keyStrings = {
     "Loading M3U...": "Hleð M3U…",
     "Loading media libraries...": "Hleð miðlasöfnum…",
     "Loading player...": "Hleð spilara…",
+    "Loading the new playlist...": "Hleð nýjan spilunarlista...",
     "Loading via proxy...": "Hleð í gegnum milliþjón…",
     "Loading. Please wait...": "Hleð… bíddu aðeins…",
     "Loading...": "Hleð…",
@@ -621,6 +628,7 @@ var keyStrings = {
     "Next TV program": "Næsti þáttur",
     No: "Nei",
     "No channel name": "Ekkert heiti á rás",
+    "No channels loaded": "Engar rásir hafa verið hlaðnar",
     "No command server was found on this network.":
         "Enginn skipanaþjónn fannst á þessu neti.",
     "No Plex servers are available for this account.":
@@ -694,6 +702,7 @@ var keyStrings = {
     "Player could not start": "Ekki tókst að ræsa spilara",
     "Player default": "Sjálfgefið val spilarans",
     "Player info:": "Upplýsingar um spilara:",
+    "Playing: %1": "Í spilun: %1",
     Playlist: "Spilunarlisti",
     "Playlist file": "Spilunarlistaskrá",
     "Playlist is not loading directly...Loading via server...":
@@ -729,9 +738,14 @@ var keyStrings = {
     "Protect Change Provider": "Vernda breytingu þjónustuaðila",
     "Protect Settings": "Vernda stillingar",
     "Protected source is unavailable": "Varin uppspretta er ekki tiltæk",
+    "Provider switching not available":
+        "Ekki er hægt að skipta um þjónustuveitanda",
     "p...": "p...",
     paging: "síðuskipting",
     Quality: "Gæði",
+    "Random #%1": "Rás valin af handahófi #%1",
+    "Random channel not in any category":
+        "Rásin sem var valin af handahófi er ekki í neinum flokki",
     Rating: "Einkunn",
     RD: "RD",
     "RD settings": "Stillingar fyrir RD",
@@ -769,6 +783,10 @@ var keyStrings = {
         "Fjarinnsláttur rann út. Opnaðu nýja lotu til að reyna aftur.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Fjarinnsláttarlota er ekki tiltæk. Opnaðu nýja lotu til að reyna aftur.",
+    "Remote playlist changes require the M3U provider.":
+        "Til að breyta spilunarlista með fjarstýringu þarf M3U að vera valið sem þjónustuveitandi.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Ekki er stutt að breyta stillingum þjónustuveitanda með fjarstýringu. Notaðu stillingar þjónustuveitanda í spilaranum.",
     "Remote screenshots": "Fjarskjámyndir",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Fjarskjámyndir eru leyfðar í 10 mínútur. Lokaðu stillingum til að taka.",
@@ -961,6 +979,7 @@ var keyStrings = {
     "Switch sound track": "Skipta um hljóðrás",
     "Switch subtitle": "Skipta um skjátexta",
     "Switch to this list": "Skipta yfir á þennan lista",
+    "Switching provider...": "Skipt er um þjónustuveitanda...",
     "Swop URL": "Swop-vefslóð",
     "System language": "Kerfismál",
     "saved on this device": "vistað á þessu tæki",
@@ -994,6 +1013,8 @@ var keyStrings = {
         "Þetta Play-forrit krefst HTTPS. Biddu þjónustuaðilann um HTTPS-spilunarlista eða vefslóð þjóns.",
     "This pairing link has expired. Open a new session on your TV.":
         "Þessi pörunartengill er útrunninn. Opnaðu nýja lotu í sjónvarpinu þínu.",
+    "This remote command is not supported by the player.":
+        "Spilarinn styður ekki þessa fjarstýringarskipun.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Þessi örugga lota er ekki tiltæk eða útrunnin. Opnaðu nýja lotu í sjónvarpinu og notaðu allan hlekkinn.",
     Timer: "Tímastillir",
@@ -1012,6 +1033,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Breyta aðdráttarham",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Stillingar fyrir Top-Tv",
+    "Touchscreen locked": "Snertiskjár læstur",
+    "Touchscreen unlocked": "Snertiskjár aflæstur",
     "Trust this server for remote support":
         "Treysta þessum þjóni fyrir fjarþjónustu",
     "Trusted access could not be removed from device storage.":
@@ -1032,6 +1055,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Stillingar fyrir ULTIFL1X",
     "Unable to load playlist": "Ekki hægt að hlaða spilunarlista",
+    "Unlock the player's settings before changing its playlist.":
+        "Aflæstu stillingum spilarans áður en þú breytir spilunarlista hans.",
     Untitled: "Án titils",
     "Untitled folder": "Mappa án heitis",
     "Update installed. Please restart OttPlay FOSS.":

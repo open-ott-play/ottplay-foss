@@ -143,6 +143,11 @@ var keyStrings = {
         "Beddel bixiyaha. Doorashadaada waa la xusuusan doonaa marka xigta ee aad daaraha bilowdo.",
     "Change value": "Beddel qiimaha",
     "Channel ": "Kanaalka ",
+    'Channel "%1" not found': 'Kanaalka "%1" lama helin',
+    "Channel #%1": "Kanaalka #%1",
+    "Channel #%1 not found (total: %2)":
+        "Kanaalka #%1 lama helin (wadarta: %2)",
+    "Channel #%1 not in any category": "Kanaalka #%1 qaybna kuma jiro",
     "Channel has no EPG": "Kanaalku ma laha EPG",
     "Channel is not available!!!": "Kanaalka lama heli karo!",
     "Channel link": "Xidhiidhiyaha kanaalka",
@@ -296,6 +301,7 @@ var keyStrings = {
         "Nuqul ka samee JSON si aad u haysato kayd. Adeegso Soo geli dejinta si aad u soo celiso.",
     "Copy the selected JSON with your device's copy command":
         "Ku koobiyee JSON-ka la doortay amarka nuqul-samaynta ee qalabkaaga",
+    "Could not change the playlist.": "Lama beddeli karin liiska daarista.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex laguma xidhmi karin. Hubi cinwaanka seerfarka, token-ka iyo gelitaanka shabakadda.",
     "Could not connect to the server.": "Seerfarka laguma xidhmi karin.",
@@ -568,6 +574,7 @@ var keyStrings = {
         "Jawaabta habaynta daruuraha ee aan sax ahayn",
     "Invalid protected source configuration":
         "Dejinta isha la ilaaliyey sax ma aha",
+    "Invalid range: %1-%2": "Xad aan sax ahayn: %1-%2",
     "Invalid setting": "Dejin aan sax ahayn",
     "IPTV token": "Summadda gelitaanka IPTV",
     "IpStream.one": "IpStream.one",
@@ -601,6 +608,8 @@ var keyStrings = {
     "Loading media libraries...":
         "Maktabadaha warbaahinta ayaa la soo rarayaa…",
     "Loading player...": "Daaraha ayaa la soo rarayaa…",
+    "Loading the new playlist...":
+        "Liiska cusub ee daarista ayaa la soo rarayaa...",
     "Loading via proxy...": "Waxaa lagu soo rarayaa proksi…",
     "Loading. Please wait...": "Waxaa la soo rarayaa… fadlan sug…",
     "Loading...": "Waxaa la soo rarayaa…",
@@ -643,6 +652,7 @@ var keyStrings = {
     "Next TV program": "Barnaamijka xiga",
     No: "Maya",
     "No channel name": "Kanaalku magac ma laha",
+    "No channels loaded": "Kanaallo lama soo rarin",
     "No command server was found on this network.":
         "Shabakaddan lagama helin seerfar amarrada qaabila.",
     "No Plex servers are available for this account.":
@@ -716,6 +726,7 @@ var keyStrings = {
     "Player could not start": "Daaruhu wuu bilaaban waayey",
     "Player default": "Doorashada caadiga ah ee barnaamijka warbaahinta",
     "Player info:": "Macluumaadka daaraha:",
+    "Playing: %1": "Hadda la daarayo: %1",
     Playlist: "Liiska daarista",
     "Playlist file": "Faylka liiska daarista",
     "Playlist is not loading directly...Loading via server...":
@@ -752,9 +763,14 @@ var keyStrings = {
     "Protect Change Provider": "Ilaali beddelidda bixiyaha",
     "Protect Settings": "Ilaali dejinta",
     "Protected source is unavailable": "Isha la ilaaliyey lama heli karo",
+    "Provider switching not available":
+        "Beddelka bixiyaha adeegga lama heli karo",
     "p...": "b...",
     paging: "bogag u gudbid",
     Quality: "Tayada",
+    "Random #%1": "Kanaal bakhtiyaa-nasiib ah #%1",
+    "Random channel not in any category":
+        "Kanaalka si bakhtiyaa-nasiib ah loo doortay qaybna kuma jiro",
     Rating: "Qiimaynta",
     RD: "RD",
     "RD settings": "Dejinta RD",
@@ -795,6 +811,10 @@ var keyStrings = {
         "Waqtigii gelinta fog wuu dhacay. Fur kalfadhi cusub si aad mar kale u tijaabiso.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kalfadhiga gelinta fog lama heli karo. Fur kalfadhi cusub si aad mar kale u tijaabiso.",
+    "Remote playlist changes require the M3U provider.":
+        "Si liiska daarista meel fog looga beddelo, waa in la doortaa bixiyaha M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Beddelka dejinta bixiyaha adeegga meel fog lagama taageero. Adeegso dejinta bixiyaha adeegga ee ku jirta daaraha.",
     "Remote screenshots": "Sawirada fogaanta",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Sawirada fogaanta waa la oggol yahay 10 daqiiqo. Xir dejinta si aad u qabato",
@@ -987,6 +1007,7 @@ var keyStrings = {
     "Switch sound track": "Beddel jidka codka",
     "Switch subtitle": "Beddel qoraal-hoosaadyada",
     "Switch to this list": "U wareeg liiskan",
+    "Switching provider...": "Bixiyaha adeegga ayaa la beddelayaa...",
     "Swop URL": "URL-ka Swop",
     "System language": "Luqadda nidaamka",
     "saved on this device": "ku kaydsan qalabkan",
@@ -1020,6 +1041,8 @@ var keyStrings = {
         "App-kan Play wuxuu u baahan yahay HTTPS. Ka codso bixiyahaaga URL liiska daarista ama seerfar oo HTTPS ah.",
     "This pairing link has expired. Open a new session on your TV.":
         "Isku xirka lammaanaha ayaa dhacay. Ka fur fadhi cusub TV-gaaga.",
+    "This remote command is not supported by the player.":
+        "Daaruhu ma taageero amarkan kontoroolka fog.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Fadhigan sugan lama heli karo ama dhacay. Kalfadhi cusub ka fur TV-ga oo isticmaal xidhiidhkiisa oo dhammaystiran.",
     Timer: "Saacad-tiriye",
@@ -1041,6 +1064,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Beddel habka weyneynta",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Dejinta Top-Tv",
+    "Touchscreen locked": "Shaashadda taabashada waa la qufulay",
+    "Touchscreen unlocked": "Qufulka shaashadda taabashada waa la furay",
     "Trust this server for remote support":
         "Ku kalsoonow seerfarkan taageerada fog",
     "Trusted access could not be removed from device storage.":
@@ -1061,6 +1086,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Dejinta ULTIFL1X",
     "Unable to load playlist": "Liiska daarista waa la soo rari waayey",
+    "Unlock the player's settings before changing its playlist.":
+        "Fur qufulka dejinta daaraha ka hor intaadan beddelin liiskiisa daarista.",
     Untitled: "Aan magac lahayn",
     "Untitled folder": "Gal aan magac lahayn",
     "Update installed. Please restart OttPlay FOSS.":

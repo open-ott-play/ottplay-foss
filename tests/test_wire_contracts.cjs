@@ -4,6 +4,7 @@ const fs = require("node:fs"),
     assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
 const ts = require("typescript");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 function load(file, extra = {}) {
     const box = {
         console,
@@ -45,7 +46,9 @@ const commandBox = {
     require: (p) =>
         p === "../provider"
             ? provider
-            : load(path.resolve(root + "/src/commands", p) + ".ts"),
+            : p === "../localization"
+              ? commandLocale
+              : load(path.resolve(root + "/src/commands", p) + ".ts"),
     URL,
     window: {
         catsArray: [],
@@ -58,6 +61,9 @@ const commandBox = {
         stbSetVolume: () => {},
     },
 };
+const commandLocale = { window: commandBox.window };
+vm.createContext(commandLocale);
+vm.runInContext(localizationRuntime(), commandLocale);
 vm.runInNewContext(
     ts.transpileModule(source, {
         compilerOptions: {

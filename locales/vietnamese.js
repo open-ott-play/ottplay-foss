@@ -143,6 +143,10 @@ var keyStrings = {
         "Đổi nhà cung cấp. Lựa chọn sẽ được ghi nhớ vào lần khởi động trình phát tiếp theo.",
     "Change value": "Đổi giá trị",
     "Channel ": "Kênh ",
+    'Channel "%1" not found': "Không tìm thấy kênh “%1”",
+    "Channel #%1": "Kênh #%1",
+    "Channel #%1 not found (total: %2)": "Không tìm thấy kênh #%1 (tổng: %2)",
+    "Channel #%1 not in any category": "Kênh #%1 không thuộc danh mục nào",
     "Channel has no EPG": "Kênh không có EPG",
     "Channel is not available!!!": "Kênh không khả dụng!",
     "Channel link": "Liên kết kênh",
@@ -291,6 +295,7 @@ var keyStrings = {
         "Sao chép JSON để lưu bản sao lưu. Dùng chức năng nhập cài đặt để khôi phục.",
     "Copy the selected JSON with your device's copy command":
         "Sao chép JSON đã chọn bằng lệnh sao chép trên thiết bị",
+    "Could not change the playlist.": "Không thể thay đổi danh sách phát.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Không thể kết nối với Plex. Kiểm tra địa chỉ máy chủ, mã thông báo và quyền truy cập mạng.",
     "Could not connect to the server.": "Không thể kết nối tới máy chủ.",
@@ -551,6 +556,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Phản hồi cài đặt đám mây không hợp lệ",
     "Invalid protected source configuration":
         "Cấu hình nguồn được bảo vệ không hợp lệ",
+    "Invalid range: %1-%2": "Phạm vi không hợp lệ: %1-%2",
     "Invalid setting": "Cài đặt không hợp lệ",
     "IPTV token": "Mã token IPTV",
     "IpStream.one": "IpStream.one",
@@ -582,6 +588,7 @@ var keyStrings = {
     "Loading M3U...": "Đang tải M3U…",
     "Loading media libraries...": "Đang tải thư viện đa phương tiện…",
     "Loading player...": "Đang tải trình phát…",
+    "Loading the new playlist...": "Đang tải danh sách phát mới...",
     "Loading via proxy...": "Đang tải qua proxy…",
     "Loading. Please wait...": "Đang tải… vui lòng đợi…",
     "Loading...": "Đang tải…",
@@ -624,6 +631,7 @@ var keyStrings = {
     "Next TV program": "Chương trình tiếp theo",
     No: "Không",
     "No channel name": "Kênh không có tên",
+    "No channels loaded": "Chưa tải kênh nào",
     "No command server was found on this network.":
         "Không tìm thấy máy chủ lệnh trên mạng này.",
     "No Plex servers are available for this account.":
@@ -697,6 +705,7 @@ var keyStrings = {
     "Player could not start": "Không thể khởi động trình phát",
     "Player default": "Lựa chọn mặc định của trình phát",
     "Player info:": "Thông tin trình phát:",
+    "Playing: %1": "Đang phát: %1",
     Playlist: "Danh sách phát",
     "Playlist file": "Tệp danh sách phát",
     "Playlist is not loading directly...Loading via server...":
@@ -733,9 +742,13 @@ var keyStrings = {
     "Protect Change Provider": "Bảo vệ thay đổi nhà cung cấp",
     "Protect Settings": "Bảo vệ cài đặt",
     "Protected source is unavailable": "Nguồn được bảo vệ không khả dụng",
+    "Provider switching not available": "Không thể chuyển nhà cung cấp",
     "p...": "p...",
     paging: "theo trang",
     Quality: "Chất lượng",
+    "Random #%1": "Kênh ngẫu nhiên #%1",
+    "Random channel not in any category":
+        "Kênh được chọn ngẫu nhiên không thuộc danh mục nào",
     Rating: "Đánh giá",
     RD: "RD",
     "RD settings": "Cài đặt RD",
@@ -772,6 +785,10 @@ var keyStrings = {
         "Đầu vào từ xa đã hết hạn. Mở một phiên mới để thử lại.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Phiên nhập liệu từ xa không khả dụng. Mở một phiên mới để thử lại.",
+    "Remote playlist changes require the M3U provider.":
+        "Thay đổi danh sách phát từ xa cần dùng nhà cung cấp M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Không hỗ trợ thiết lập nhà cung cấp từ xa. Hãy dùng phần cài đặt nhà cung cấp trong trình phát.",
     "Remote screenshots": "Ảnh chụp màn hình từ xa",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Cho phép chụp ảnh màn hình từ xa trong 10 phút. Đóng cài đặt để chụp.",
@@ -962,6 +979,7 @@ var keyStrings = {
     "Switch sound track": "Đổi luồng âm thanh",
     "Switch subtitle": "Đổi phụ đề",
     "Switch to this list": "Chuyển sang danh sách này",
+    "Switching provider...": "Đang chuyển nhà cung cấp...",
     "Swop URL": "URL của Swop",
     "System language": "Ngôn ngữ hệ thống",
     "saved on this device": "đã lưu trên thiết bị này",
@@ -994,6 +1012,8 @@ var keyStrings = {
         "Ứng dụng Play này yêu cầu HTTPS. Hãy yêu cầu nhà cung cấp cung cấp danh sách phát hoặc URL máy chủ HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Liên kết ghép nối này đã hết hạn. Mở một phiên mới trên TV của bạn.",
+    "This remote command is not supported by the player.":
+        "Trình phát không hỗ trợ lệnh điều khiển từ xa này.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Phiên bảo mật này không khả dụng hoặc đã hết hạn. Mở một phiên mới trên TV và sử dụng liên kết hoàn chỉnh của nó.",
     Timer: "Hẹn giờ",
@@ -1012,6 +1032,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Đổi chế độ thu phóng",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cài đặt Top-Tv",
+    "Touchscreen locked": "Đã khóa màn hình cảm ứng",
+    "Touchscreen unlocked": "Đã mở khóa màn hình cảm ứng",
     "Trust this server for remote support":
         "Tin cậy máy chủ này để được hỗ trợ từ xa",
     "Trusted access could not be removed from device storage.":
@@ -1032,6 +1054,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Cài đặt ULTIFL1X",
     "Unable to load playlist": "Không thể tải danh sách phát",
+    "Unlock the player's settings before changing its playlist.":
+        "Mở khóa cài đặt của trình phát trước khi thay đổi danh sách phát.",
     Untitled: "Không có tiêu đề",
     "Untitled folder": "Thư mục chưa đặt tên",
     "Update installed. Please restart OttPlay FOSS.":

@@ -138,6 +138,10 @@ var keyStrings = {
         "เปลี่ยนผู้ให้บริการ การเลือกของคุณจะถูกจดจำในครั้งถัดไปที่คุณเริ่มเล่น",
     "Change value": "เปลี่ยนค่า",
     "Channel ": "ช่อง ",
+    'Channel "%1" not found': "ไม่พบช่อง “%1”",
+    "Channel #%1": "ช่อง #%1",
+    "Channel #%1 not found (total: %2)": "ไม่พบช่อง #%1 (ทั้งหมด: %2)",
+    "Channel #%1 not in any category": "ช่อง #%1 ไม่อยู่ในหมวดหมู่ใด",
     "Channel has no EPG": "ช่องไม่มี EPG",
     "Channel is not available!!!": "ช่องไม่พร้อมใช้งาน!",
     "Channel link": "ลิงค์ช่อง",
@@ -286,6 +290,7 @@ var keyStrings = {
         "คัดลอก JSON เพื่อสำรองข้อมูล ใช้การตั้งค่าการนำเข้าเพื่อคืนค่า",
     "Copy the selected JSON with your device's copy command":
         "คัดลอก JSON ที่เลือกด้วยคำสั่งคัดลอกของอุปกรณ์",
+    "Could not change the playlist.": "ไม่สามารถเปลี่ยนเพลย์ลิสต์ได้",
     "Could not connect to Plex. Check the server address, token and network access.":
         "ไม่สามารถเชื่อมต่อกับ Plex ได้ ตรวจสอบที่อยู่เซิร์ฟเวอร์ โทเค็น และการเข้าถึงเครือข่าย",
     "Could not connect to the server.": "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้",
@@ -541,6 +546,7 @@ var keyStrings = {
     "Invalid cloud settings response": "การตอบสนองการตั้งค่าคลาวด์ไม่ถูกต้อง",
     "Invalid protected source configuration":
         "การกำหนดค่าแหล่งที่มาที่ได้รับการป้องกันไม่ถูกต้อง",
+    "Invalid range: %1-%2": "ช่วงไม่ถูกต้อง: %1-%2",
     "Invalid setting": "การตั้งค่าไม่ถูกต้อง",
     "IPTV token": "โทเค็น IPTV",
     "IpStream.one": "IpStream.one",
@@ -572,6 +578,7 @@ var keyStrings = {
     "Loading M3U...": "กำลังโหลด M3U...",
     "Loading media libraries...": "กำลังโหลดไลบรารีสื่อ...",
     "Loading player...": "กำลังโหลดเครื่องเล่น...",
+    "Loading the new playlist...": "กำลังโหลดเพลย์ลิสต์ใหม่...",
     "Loading via proxy...": "กำลังโหลดผ่านพรอกซี...",
     "Loading. Please wait...": "กำลังโหลด... กรุณารอสักครู่...",
     "Loading...": "กำลังโหลด...",
@@ -613,6 +620,7 @@ var keyStrings = {
     "Next TV program": "โปรแกรมถัดไป",
     No: "ไม่",
     "No channel name": "ไม่มีชื่อช่อง",
+    "No channels loaded": "ยังไม่ได้โหลดช่องใด",
     "No command server was found on this network.":
         "ไม่พบเซิร์ฟเวอร์คำสั่งบนเครือข่ายนี้",
     "No Plex servers are available for this account.":
@@ -685,6 +693,7 @@ var keyStrings = {
     "Player could not start": "เครื่องเล่นไม่สามารถเริ่มได้",
     "Player default": "การเลือกเริ่มต้นของเครื่องเล่น",
     "Player info:": "ข้อมูลเครื่องเล่น:",
+    "Playing: %1": "กำลังเล่น: %1",
     Playlist: "เพลย์ลิสต์",
     "Playlist file": "ไฟล์เพลย์ลิสต์",
     "Playlist is not loading directly...Loading via server...":
@@ -718,9 +727,12 @@ var keyStrings = {
     "Protect Change Provider": "ต้องใช้รหัสการเข้าถึงเพื่อเปลี่ยนผู้ให้บริการ",
     "Protect Settings": "ต้องใช้รหัสการเข้าถึงเพื่อเปลี่ยนการตั้งค่า",
     "Protected source is unavailable": "แหล่งที่ได้รับการป้องกันไม่พร้อมใช้งาน",
+    "Provider switching not available": "ไม่สามารถเปลี่ยนผู้ให้บริการได้",
     "p...": "p...",
     paging: "เพจ",
     Quality: "คุณภาพ",
+    "Random #%1": "ช่องสุ่ม #%1",
+    "Random channel not in any category": "ช่องที่สุ่มเลือกไม่อยู่ในหมวดหมู่ใด",
     Rating: "เรตติ้ง",
     RD: "RD",
     "RD settings": "การตั้งค่า RD",
@@ -757,6 +769,10 @@ var keyStrings = {
         "อินพุตระยะไกลหมดอายุ เปิดเซสชันใหม่เพื่อลองอีกครั้ง",
     "Remote input session is unavailable. Open a new session to try again.":
         "เซสชั่นการป้อนข้อมูลระยะไกลไม่พร้อมใช้งาน เปิดเซสชันใหม่เพื่อลองอีกครั้ง",
+    "Remote playlist changes require the M3U provider.":
+        "การเปลี่ยนเพลย์ลิสต์จากระยะไกลต้องใช้ผู้ให้บริการ M3U",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "ไม่รองรับการตั้งค่าผู้ให้บริการจากระยะไกล โปรดใช้การตั้งค่าผู้ให้บริการในโปรแกรมเล่น",
     "Remote screenshots": "ภาพหน้าจอระยะไกล",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "อนุญาตให้จับภาพหน้าจอระยะไกลได้เป็นเวลา 10 นาที ปิดการตั้งค่าเพื่อจับภาพ",
@@ -944,6 +960,7 @@ var keyStrings = {
     "Switch sound track": "เปลี่ยนแทร็กเสียง",
     "Switch subtitle": "เปลี่ยนคำบรรยาย",
     "Switch to this list": "สลับไปที่รายการนี้",
+    "Switching provider...": "กำลังเปลี่ยนผู้ให้บริการ...",
     "Swop URL": "สลับ URL",
     "System language": "ภาษาของระบบ",
     "saved on this device": "บันทึกอยู่ในอุปกรณ์นี้แล้ว",
@@ -976,6 +993,8 @@ var keyStrings = {
         "แอป Play นี้ต้องใช้ HTTPS สอบถามผู้ให้บริการของคุณเกี่ยวกับเพลย์ลิสต์ HTTPS หรือเซิร์ฟเวอร์ URL",
     "This pairing link has expired. Open a new session on your TV.":
         "ลิงก์การจับคู่นี้หมดอายุแล้ว เปิดเซสชันใหม่บนทีวีของคุณ",
+    "This remote command is not supported by the player.":
+        "โปรแกรมเล่นไม่รองรับคำสั่งควบคุมระยะไกลนี้",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "เซสชันที่ปลอดภัยนี้ไม่พร้อมใช้งานหรือหมดอายุแล้ว เปิดเซสชันใหม่บนทีวีและใช้ลิงก์ที่สมบูรณ์",
     Timer: "ตัวจับเวลา",
@@ -994,6 +1013,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "เปลี่ยนโหมดการซูม",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "การตั้งค่า Top-Tv",
+    "Touchscreen locked": "ล็อกหน้าจอสัมผัสแล้ว",
+    "Touchscreen unlocked": "ปลดล็อกหน้าจอสัมผัสแล้ว",
     "Trust this server for remote support":
         "เชื่อถือเซิร์ฟเวอร์นี้สำหรับการสนับสนุนระยะไกล",
     "Trusted access could not be removed from device storage.":
@@ -1014,6 +1035,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "การตั้งค่า ULTIFL1X",
     "Unable to load playlist": "ไม่สามารถโหลดเพลย์ลิสต์ได้",
+    "Unlock the player's settings before changing its playlist.":
+        "ปลดล็อกการตั้งค่าโปรแกรมเล่นก่อนเปลี่ยนเพลย์ลิสต์",
     Untitled: "ไม่มีชื่อ",
     "Untitled folder": "โฟลเดอร์ไม่มีชื่อ",
     "Update installed. Please restart OttPlay FOSS.":
