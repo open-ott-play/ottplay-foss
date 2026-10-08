@@ -136,15 +136,22 @@
       {
         "path": "ottplay-foss-container.oci.tar",
         "format": "oci",
-        "field": ["config", "Labels", "org.opencontainers.image.version"],
+        "field": [
+          "config",
+          "Labels",
+          "org.opencontainers.image.version"
+        ],
         "value": "package"
       }
     ],
-    "toolkit_revision": "73986983fb74b489af72e7cfdd8f4bfc66333229"
+    "toolkit_revision": "2d4da2b50ecf688a17fe48f172748601341d7dd4"
   },
   "asset_restrictions": [
     {
-      "suffixes": [".apk", ".aab"],
+      "suffixes": [
+        ".apk",
+        ".aab"
+      ],
       "reason": "Android APK/AAB publication moved to open-ott-play/ottplay-android"
     }
   ],
@@ -161,9 +168,15 @@
   ],
   "single_entry_ci": true,
   "change_scope": {
-    "documentation_paths": ["vendor/README.md"],
-    "required_paths": ["docs/privacy-policy.md"],
-    "always_validate_workflows": ["codeql.yml"]
+    "documentation_paths": [
+      "vendor/README.md"
+    ],
+    "required_paths": [
+      "docs/privacy-policy.md"
+    ],
+    "always_validate_workflows": [
+      "codeql.yml"
+    ]
   },
   "release_notes": "CHANGELOG.md"
 }
