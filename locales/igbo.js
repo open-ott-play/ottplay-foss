@@ -142,6 +142,10 @@ var keyStrings = {
         "Gbanwee onye na-eweta ọrụ. A ga-echeta nhọrọ gị mgbe ọzọ ị malitere ihe ọkpụkpọ.",
     "Change value": "Gbanwee uru",
     "Channel ": "Ọwa ",
+    'Channel "%1" not found': 'Achọtaghị ọwa "%1"',
+    "Channel #%1": "Ọwa #%1",
+    "Channel #%1 not found (total: %2)": "Achọtaghị ọwa #%1 (ngụkọta: %2)",
+    "Channel #%1 not in any category": "Ọwa #%1 adịghị n’otu ọ bụla",
     "Channel has no EPG": "Ọwa enweghị EPG",
     "Channel is not available!!!": "Ọwa adịghị!",
     "Channel link": "Njikọ ọwa",
@@ -287,6 +291,7 @@ var keyStrings = {
         "Detuo JSON ka ị nwee nkwado ndabere. Jiri Bubata ntọala weghachi ya.",
     "Copy the selected JSON with your device's copy command":
         "Detuo JSON ahọpụtara site n'iwu nnomi ngwaọrụ gị",
+    "Could not change the playlist.": "Enweghị ike ịgbanwe ndepụta ọkpụkpọ.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Enweghị ike ijikọ na Plex. Lelee adreesị sava, akara nnweta na nnweta netwọk.",
     "Could not connect to the server.": "Enweghị ike ijikọ na sava.",
@@ -552,6 +557,7 @@ var keyStrings = {
         "Nzaghachi ntọala igwe ojii na-ezighi ezi",
     "Invalid protected source configuration":
         "Nhazi isi iyi echekwara ezighi ezi",
+    "Invalid range: %1-%2": "Oke ezighi ezi: %1-%2",
     "Invalid setting": "Ntọala ezighi ezi",
     "IPTV token": "Akara IPTV",
     "IpStream.one": "IpStream.one",
@@ -583,6 +589,7 @@ var keyStrings = {
     "Loading M3U...": "Ana ebugo M3U…",
     "Loading media libraries...": "Ana ebugo ọba mgbasa ozi…",
     "Loading player...": "Ana ebugo ihe ọkpụkpọ…",
+    "Loading the new playlist...": "A na-ebugo ndepụta ọkpụkpọ ọhụrụ...",
     "Loading via proxy...": "Ana ebugo site na sava nnọchite…",
     "Loading. Please wait...": "Ana ebugo… chere biko…",
     "Loading...": "Ana ebugo…",
@@ -624,6 +631,7 @@ var keyStrings = {
     "Next TV program": "Mmemme na-esote",
     No: "Mba",
     "No channel name": "Ọwa enweghị aha",
+    "No channels loaded": "Ebughị ọwa ọ bụla",
     "No command server was found on this network.":
         "Achọtaghị sava iwu na netwọk a.",
     "No Plex servers are available for this account.":
@@ -697,6 +705,7 @@ var keyStrings = {
     "Player could not start": "Ihe ọkpụkpọ enweghị ike ịmalite",
     "Player default": "Nhọrọ ndabara nke ihe ọkpụkpọ mgbasa ozi",
     "Player info:": "Ozi ihe ọkpụkpọ:",
+    "Playing: %1": "A na-akpọ: %1",
     Playlist: "Ndepụta ọkpụkpọ",
     "Playlist file": "Faịlụ ndepụta ọkpụkpọ",
     "Playlist is not loading directly...Loading via server...":
@@ -732,9 +741,13 @@ var keyStrings = {
     "Protect Change Provider": "Chebe ịgbanwe onye na-eweta ọrụ",
     "Protect Settings": "Chebe ntọala",
     "Protected source is unavailable": "Isi iyi echekwara adịghị",
+    "Provider switching not available": "Enweghị ike ịgbanwe onye na-enye ọrụ",
     "p...": "p...",
     paging: "ịgbanwe ibe",
     Quality: "Ogo",
+    "Random #%1": "Ọwa a họọrọ n’enweghị usoro #%1",
+    "Random channel not in any category":
+        "Ọwa a họọrọ n’enweghị usoro adịghị n’otu ọ bụla",
     Rating: "Ntụle",
     RD: "RD",
     "RD settings": "Ntọala RD",
@@ -772,6 +785,10 @@ var keyStrings = {
         "Oge ntinye dị anya agwụla. Mepee nnọkọ ọhụrụ ka ị nwaa ọzọ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Nnọkọ ntinye dị anya adịghị. Mepee nnọkọ ọhụrụ ka ị nwaa ọzọ.",
+    "Remote playlist changes require the M3U provider.":
+        "A ga-ahọrọ onye na-enye ọrụ M3U iji gbanwee ndepụta ọkpụkpọ site n’ebe dị anya.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "A naghị akwado ịgbanwe ntọala onye na-enye ọrụ site n’ebe dị anya. Jiri ntọala onye na-enye ọrụ dị n’ihe ọkpụkpọ.",
     "Remote screenshots": "Nseta ihuenyo dị anya",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "A na-ahapụ nseta ihuenyo dị anya maka nkeji iri. Mechie ntọala iji weghara.",
@@ -961,6 +978,7 @@ var keyStrings = {
     "Switch sound track": "Gbanwee egwu ụda",
     "Switch subtitle": "Gbanwee ndepụta okwu",
     "Switch to this list": "Gbanwee na ndepụta a",
+    "Switching provider...": "A na-agbanwe onye na-enye ọrụ...",
     "Swop URL": "URL SWOP",
     "System language": "Asụsụ sistemu",
     "saved on this device": "echekwara na ngwaọrụ a",
@@ -994,6 +1012,8 @@ var keyStrings = {
         "Ngwa Play a chọrọ HTTPS. Rịọ onye na-eweta ọrụ maka ndepụta ọkpụkpọ HTTPS ma ọ bụ URL sava.",
     "This pairing link has expired. Open a new session on your TV.":
         "Njikọ njikọ a kubiela. Mepee nnọkọ ọhụrụ na TV gị.",
+    "This remote command is not supported by the player.":
+        "Ihe ọkpụkpọ anaghị akwado iwu njikwa dị anya a.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Nnọkọ echekwara a adịghị ma ọ bụ oge ya agwụla. Mepee nnọkọ ọhụrụ na TV wee jiri njikọ ya zuru ezu.",
     Timer: "Oge ngụkọta",
@@ -1013,6 +1033,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Gbanwee ọnọdụ mbugharị",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ntọala Top-Tv",
+    "Touchscreen locked": "Akpọchiela ihuenyo mmetụ",
+    "Touchscreen unlocked": "Emegheela mkpọchi ihuenyo mmetụ",
     "Trust this server for remote support":
         "Tụkwasị sava a obi maka nkwado dị anya",
     "Trusted access could not be removed from device storage.":
@@ -1033,6 +1055,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ntọala ULTIFL1X",
     "Unable to load playlist": "Enweghị ike ibugo ndepụta ọkpụkpọ",
+    "Unlock the player's settings before changing its playlist.":
+        "Mepee mkpọchi ntọala ihe ọkpụkpọ tupu ịgbanwe ndepụta ọkpụkpọ ya.",
     Untitled: "Enweghị aha",
     "Untitled folder": "Folda na-enweghị aha",
     "Update installed. Please restart OttPlay FOSS.":

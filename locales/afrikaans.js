@@ -142,6 +142,11 @@ var keyStrings = {
         "Verander die verskaffer. Jou keuse word onthou wanneer jy die speler weer begin.",
     "Change value": "Verander waarde",
     "Channel ": "Kanaal ",
+    'Channel "%1" not found': 'Kanaal "%1" nie gevind nie',
+    "Channel #%1": "Kanaal #%1",
+    "Channel #%1 not found (total: %2)":
+        "Kanaal #%1 nie gevind nie (totaal: %2)",
+    "Channel #%1 not in any category": "Kanaal #%1 is in geen kategorie nie",
     "Channel has no EPG": "Kanaal het geen EPG nie",
     "Channel is not available!!!": "Kanaal is nie beskikbaar nie!",
     "Channel link": "Kanaalskakel",
@@ -292,6 +297,7 @@ var keyStrings = {
         "Kopieer die JSON om 'n rugsteun te hou. Gebruik Voer instellings in om dit te herstel.",
     "Copy the selected JSON with your device's copy command":
         "Kopieer die gekose JSON met jou toestel se kopieeropdrag",
+    "Could not change the playlist.": "Kon nie die afspeellys verander nie.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Kon nie met Plex verbind nie. Kontroleer die bedieneradres, toegangsteken en netwerktoegang.",
     "Could not connect to the server.": "Kon nie met die bediener verbind nie.",
@@ -560,6 +566,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Ongeldige wolkinstellingsreaksie",
     "Invalid protected source configuration":
         "Ongeldige opstelling van beskermde bron",
+    "Invalid range: %1-%2": "Ongeldige reeks: %1-%2",
     "Invalid setting": "Ongeldige instelling",
     "IPTV token": "IPTV-toegangsteken",
     "IpStream.one": "IpStream.one",
@@ -591,6 +598,7 @@ var keyStrings = {
     "Loading M3U...": "Laai M3U…",
     "Loading media libraries...": "Laai mediabiblioteke…",
     "Loading player...": "Laai speler…",
+    "Loading the new playlist...": "Laai die nuwe afspeellys...",
     "Loading via proxy...": "Laai via instaanbediener…",
     "Loading. Please wait...": "Laai… wag asseblief…",
     "Loading...": "Laai…",
@@ -633,6 +641,7 @@ var keyStrings = {
     "Next TV program": "Volgende program",
     No: "Nee",
     "No channel name": "Geen kanaalnaam nie",
+    "No channels loaded": "Geen kanale is gelaai nie",
     "No command server was found on this network.":
         "Geen opdragbediener is op hierdie netwerk gevind nie.",
     "No Plex servers are available for this account.":
@@ -706,6 +715,7 @@ var keyStrings = {
     "Player could not start": "Speler kon nie begin nie",
     "Player default": "Speler se verstekkeuse",
     "Player info:": "Spelerinligting:",
+    "Playing: %1": "Speel tans: %1",
     Playlist: "Snitlys",
     "Playlist file": "Snitlyslêer",
     "Playlist is not loading directly...Loading via server...":
@@ -741,9 +751,14 @@ var keyStrings = {
     "Protect Change Provider": "Beskerm verskafferverandering",
     "Protect Settings": "Beskerm instellings",
     "Protected source is unavailable": "Beskermde bron is nie beskikbaar nie",
+    "Provider switching not available":
+        "Verskafferwisseling is nie beskikbaar nie",
     "p...": "p...",
     paging: "blaai deur bladsye",
     Quality: "Gehalte",
+    "Random #%1": "Ewekansige kanaal #%1",
+    "Random channel not in any category":
+        "Die ewekansige kanaal is in geen kategorie nie",
     Rating: "Gradering",
     RD: "RD",
     "RD settings": "RD-instellings",
@@ -781,6 +796,10 @@ var keyStrings = {
         "Afstandinvoer het verval. Maak 'n nuwe sessie oop om weer te probeer.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Afstandinvoersessie is nie beskikbaar nie. Maak 'n nuwe sessie oop om weer te probeer.",
+    "Remote playlist changes require the M3U provider.":
+        "Om die afspeellys op afstand te verander, moet die M3U-verskaffer gekies wees.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Verskafferinstellings kan nie op afstand verander word nie. Gebruik die speler se verskafferinstellings.",
     "Remote screenshots": "Afgeleë skermkiekies",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Afgeleë skermkiekies word vir 10 minute toegelaat. Maak instellings toe om vas te vang.",
@@ -973,6 +992,7 @@ var keyStrings = {
     "Switch sound track": "Wissel oudiospoor",
     "Switch subtitle": "Wissel ondertitels",
     "Switch to this list": "Skakel na hierdie lys",
+    "Switching provider...": "Wissel van verskaffer...",
     "Swop URL": "SWOP-URL",
     "System language": "Stelseltaal",
     "saved on this device": "op hierdie toestel gestoor",
@@ -1005,6 +1025,8 @@ var keyStrings = {
         "Hierdie Play-toepassing vereis HTTPS. Vra jou verskaffer vir 'n HTTPS-snitlys of bediener-URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Hierdie paringskakel het verval. Maak 'n nuwe sessie op jou TV oop.",
+    "This remote command is not supported by the player.":
+        "Die speler ondersteun nie hierdie afstandbeheeropdrag nie.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Hierdie veilige sessie is onbeskikbaar of het verval. Maak 'n nuwe sessie op die TV oop en gebruik sy volledige skakel.",
     Timer: "Tydhouer",
@@ -1024,6 +1046,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Verander zoemmodus",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-instellings",
+    "Touchscreen locked": "Raakskerm gesluit",
+    "Touchscreen unlocked": "Raakskerm ontsluit",
     "Trust this server for remote support":
         "Vertrou hierdie bediener vir afstandondersteuning",
     "Trusted access could not be removed from device storage.":
@@ -1044,6 +1068,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-instellings",
     "Unable to load playlist": "Kan nie snitlys laai nie",
+    "Unlock the player's settings before changing its playlist.":
+        "Ontsluit die speler se instellings voordat jy die afspeellys verander.",
     Untitled: "Naamloos",
     "Untitled folder": "Naamlose vouer",
     "Update installed. Please restart OttPlay FOSS.":

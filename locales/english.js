@@ -139,6 +139,10 @@ var keyStrings = {
         "Change the provider. Your selection will be remembered the next time you start the player.",
     "Change value": "Change value",
     "Channel ": "Channel ",
+    'Channel "%1" not found': 'Channel "%1" not found',
+    "Channel #%1": "Channel #%1",
+    "Channel #%1 not found (total: %2)": "Channel #%1 not found (total: %2)",
+    "Channel #%1 not in any category": "Channel #%1 not in any category",
     "Channel has no EPG": "Channel has no EPG",
     "Channel is not available!!!": "Channel is not available!",
     "Channel link": "Channel link",
@@ -288,6 +292,7 @@ var keyStrings = {
         "Copy the JSON to keep a backup. Use Import settings to restore it.",
     "Copy the selected JSON with your device's copy command":
         "Copy the selected JSON with your device's copy command",
+    "Could not change the playlist.": "Could not change the playlist.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Could not connect to Plex. Check the server address, token and network access.",
     "Could not connect to the server.": "Could not connect to the server.",
@@ -550,6 +555,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Invalid cloud settings response",
     "Invalid protected source configuration":
         "Invalid protected source configuration",
+    "Invalid range: %1-%2": "Invalid range: %1-%2",
     "Invalid setting": "Invalid setting",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
@@ -581,6 +587,7 @@ var keyStrings = {
     "Loading M3U...": "Loading M3U…",
     "Loading media libraries...": "Loading media libraries…",
     "Loading player...": "Loading player…",
+    "Loading the new playlist...": "Loading the new playlist...",
     "Loading via proxy...": "Loading via proxy…",
     "Loading. Please wait...": "Loading… please wait…",
     "Loading...": "Loading…",
@@ -622,6 +629,7 @@ var keyStrings = {
     "Next TV program": "Next program",
     No: "No",
     "No channel name": "No channel name",
+    "No channels loaded": "No channels loaded",
     "No command server was found on this network.":
         "No command server was found on this network.",
     "No Plex servers are available for this account.":
@@ -695,6 +703,7 @@ var keyStrings = {
     "Player could not start": "Player could not start",
     "Player default": "Player default",
     "Player info:": "Player information:",
+    "Playing: %1": "Playing: %1",
     Playlist: "Playlist",
     "Playlist file": "Playlist file",
     "Playlist is not loading directly...Loading via server...":
@@ -730,9 +739,12 @@ var keyStrings = {
     "Protect Change Provider": "Protect provider change",
     "Protect Settings": "Protect settings",
     "Protected source is unavailable": "Protected source is unavailable",
+    "Provider switching not available": "Provider switching not available",
     "p...": "p...",
     paging: "paging",
     Quality: "Quality",
+    "Random #%1": "Random #%1",
+    "Random channel not in any category": "Random channel not in any category",
     Rating: "Rating",
     RD: "RD",
     "RD settings": "RD settings",
@@ -770,6 +782,10 @@ var keyStrings = {
         "Remote input expired. Open a new session to try again.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Remote input session is unavailable. Open a new session to try again.",
+    "Remote playlist changes require the M3U provider.":
+        "Remote playlist changes require the M3U provider.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Remote provider settings are not supported. Use the player's provider settings.",
     "Remote screenshots": "Remote screenshots",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Remote screenshots are allowed for 10 minutes. Close settings to capture.",
@@ -959,6 +975,7 @@ var keyStrings = {
     "Switch sound track": "Switch audio track",
     "Switch subtitle": "Switch subtitles",
     "Switch to this list": "Switch to this list",
+    "Switching provider...": "Switching provider...",
     "Swop URL": "Swop URL",
     "System language": "System language",
     "saved on this device": "saved on this device",
@@ -991,6 +1008,8 @@ var keyStrings = {
         "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "This pairing link has expired. Open a new session on your TV.",
+    "This remote command is not supported by the player.":
+        "This remote command is not supported by the player.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.",
     Timer: "Timer",
@@ -1009,6 +1028,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Change zoom mode",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv settings",
+    "Touchscreen locked": "Touchscreen locked",
+    "Touchscreen unlocked": "Touchscreen unlocked",
     "Trust this server for remote support":
         "Trust this server for remote support",
     "Trusted access could not be removed from device storage.":
@@ -1029,6 +1050,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X settings",
     "Unable to load playlist": "Unable to load playlist",
+    "Unlock the player's settings before changing its playlist.":
+        "Unlock the player's settings before changing its playlist.",
     Untitled: "Untitled",
     "Untitled folder": "Untitled folder",
     "Update installed. Please restart OttPlay FOSS.":

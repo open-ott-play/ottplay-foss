@@ -144,6 +144,10 @@ var keyStrings = {
         "Үйлчилгээ үзүүлэгчийг солино уу. Дараа тоглуулагчийг эхлүүлэхэд таны сонголтыг санана.",
     "Change value": "Утгыг өөрчлөх",
     "Channel ": "Суваг ",
+    'Channel "%1" not found': "«%1» суваг олдсонгүй",
+    "Channel #%1": "#%1 суваг",
+    "Channel #%1 not found (total: %2)": "#%1 суваг олдсонгүй (нийт: %2)",
+    "Channel #%1 not in any category": "#%1 суваг ямар ч ангилалд байхгүй",
     "Channel has no EPG": "Суваг EPG-гүй",
     "Channel is not available!!!": "Суваг боломжгүй!",
     "Channel link": "Сувгийн холбоос",
@@ -294,6 +298,7 @@ var keyStrings = {
         "Нөөцлөхийн тулд JSON-г хуулна уу. Сэргээхийн тулд «Тохиргоо импортлох»-ыг ашиглана уу.",
     "Copy the selected JSON with your device's copy command":
         "Төхөөрөмжийн хуулах тушаалаар сонгосон JSON-г хуулна уу",
+    "Could not change the playlist.": "Тоглуулах жагсаалтыг өөрчилж чадсангүй.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex-т холбогдож чадсангүй. Серверийн хаяг, токен болон сүлжээний хандалтыг шалгана уу.",
     "Could not connect to the server.": "Серверт холбогдож чадсангүй.",
@@ -565,6 +570,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Клоуд тохиргооны хариу буруу байна",
     "Invalid protected source configuration":
         "Хамгаалагдсан эх сурвалжийн тохиргоо буруу",
+    "Invalid range: %1-%2": "Хүчингүй муж: %1-%2",
     "Invalid setting": "Буруу тохиргоо",
     "IPTV token": "IPTV токен",
     "IpStream.one": "IpStream.one",
@@ -597,6 +603,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ачаалж байна…",
     "Loading media libraries...": "Медиа сангуудыг ачаалж байна…",
     "Loading player...": "Тоглуулагчийг ачаалж байна…",
+    "Loading the new playlist...": "Шинэ тоглуулах жагсаалтыг ачаалж байна...",
     "Loading via proxy...": "Проксигоор ачаалж байна…",
     "Loading. Please wait...": "Ачаалж байна… түр хүлээнэ үү…",
     "Loading...": "Ачаалж байна…",
@@ -638,6 +645,7 @@ var keyStrings = {
     "Next TV program": "Дараагийн нэвтрүүлэг",
     No: "Үгүй",
     "No channel name": "Сувгийн нэр алга",
+    "No channels loaded": "Суваг ачаалаагүй байна",
     "No command server was found on this network.":
         "Энэ сүлжээнд тушаалын сервер олдсонгүй.",
     "No Plex servers are available for this account.":
@@ -711,6 +719,7 @@ var keyStrings = {
     "Player could not start": "Тоглуулагч эхэлж чадсангүй",
     "Player default": "Тоглуулагчийн үндсэн сонголт",
     "Player info:": "Тоглуулагчийн мэдээлэл:",
+    "Playing: %1": "Тоглуулж байна: %1",
     Playlist: "Тоглуулах жагсаалт",
     "Playlist file": "Тоглуулах жагсаалтын файл",
     "Playlist is not loading directly...Loading via server...":
@@ -747,9 +756,13 @@ var keyStrings = {
     "Protect Change Provider": "Үйлчилгээ үзүүлэгч солихыг хамгаалах",
     "Protect Settings": "Тохиргоог хамгаалах",
     "Protected source is unavailable": "Хамгаалагдсан эх сурвалж боломжгүй",
+    "Provider switching not available": "Үйлчилгээ үзүүлэгчийг солих боломжгүй",
     "p...": "х...",
     paging: "хуудаслалт",
     Quality: "Чанар",
+    "Random #%1": "Санамсаргүй суваг #%1",
+    "Random channel not in any category":
+        "Санамсаргүй сонгосон суваг ямар ч ангилалд байхгүй",
     Rating: "Үнэлгээ",
     RD: "RD",
     "RD settings": "RD-ийн тохиргоо",
@@ -787,6 +800,10 @@ var keyStrings = {
         "Алсаас оруулах хугацаа дууссан. Дахин оролдохын тулд шинэ сешн нээнэ үү.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Алсаас оруулах сешн боломжгүй. Дахин оролдохын тулд шинэ сешн нээнэ үү.",
+    "Remote playlist changes require the M3U provider.":
+        "Тоглуулах жагсаалтыг алсаас өөрчлөхийн тулд M3U үйлчилгээ үзүүлэгчийг сонгох шаардлагатай.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Үйлчилгээ үзүүлэгчийн тохиргоог алсаас өөрчлөхийг дэмждэггүй. Тоглуулагч доторх үйлчилгээ үзүүлэгчийн тохиргоог ашиглана уу.",
     "Remote screenshots": "Алсын дэлгэцийн агшин",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Дэлгэцийн зургийг алсаас авахыг 10 минутын турш зөвшөөрсөн. Зураг авахын тулд тохиргооны цонхыг хаана уу.",
@@ -979,6 +996,7 @@ var keyStrings = {
     "Switch sound track": "Аудио зам солих",
     "Switch subtitle": "Хадмал солих",
     "Switch to this list": "Энэ жагсаалт руу шилжих",
+    "Switching provider...": "Үйлчилгээ үзүүлэгчийг сольж байна...",
     "Swop URL": "Swop URL",
     "System language": "Системийн хэл",
     "saved on this device": "энэ төхөөрөмж дээр хадгалсан",
@@ -1012,6 +1030,8 @@ var keyStrings = {
         "Энэ Play апп HTTPS шаарддаг. Үйлчилгээ үзүүлэгчээс HTTPS тоглуулах жагсаалт эсвэл серверийн URL авна уу.",
     "This pairing link has expired. Open a new session on your TV.":
         "Энэ холболтын хугацаа дууссан. ТВ дээрээ шинэ сесс нээнэ үү.",
+    "This remote command is not supported by the player.":
+        "Тоглуулагч энэ алсын удирдлагын командыг дэмждэггүй.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Энэ аюулгүй сесс боломжгүй эсвэл хугацаа нь дууссан. ТВ дээр шинэ сесс нээж, түүний бүрэн холбоосыг ашиглана уу.",
     Timer: "Цаглуур",
@@ -1032,6 +1052,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Томруулах горим өөрчлөх",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-ийн тохиргоо",
+    "Touchscreen locked": "Мэдрэгчтэй дэлгэц түгжигдсэн",
+    "Touchscreen unlocked": "Мэдрэгчтэй дэлгэцийн түгжээ тайлагдсан",
     "Trust this server for remote support": "Алсын тусламжид энэ серверт итгэх",
     "Trusted access could not be removed from device storage.":
         "Төхөөрөмжийн хадгалах сангаас итгэмжлэгдсэн хандалтыг арилгаж чадсангүй.",
@@ -1051,6 +1073,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-ийн тохиргоо",
     "Unable to load playlist": "Тоглуулах жагсаалт ачаалж чадсангүй",
+    "Unlock the player's settings before changing its playlist.":
+        "Тоглуулах жагсаалтыг өөрчлөхөөс өмнө тоглуулагчийн тохиргооны түгжээг тайлна уу.",
     Untitled: "Нэргүй",
     "Untitled folder": "Нэргүй хавтас",
     "Update installed. Please restart OttPlay FOSS.":

@@ -138,6 +138,11 @@ var keyStrings = {
         "공급자를 변경하세요. 다음에 플레이어를 시작할 때 선택 사항이 기억됩니다.",
     "Change value": "값 변경",
     "Channel ": "채널 ",
+    'Channel "%1" not found': '"%1" 채널을 찾을 수 없습니다',
+    "Channel #%1": "채널 #%1",
+    "Channel #%1 not found (total: %2)":
+        "채널 #%1을 찾을 수 없습니다 (전체: %2)",
+    "Channel #%1 not in any category": "채널 #%1은 어떤 카테고리에도 없습니다",
     "Channel has no EPG": "채널에 EPG가 없습니다.",
     "Channel is not available!!!": "채널을 이용할 수 없습니다!",
     "Channel link": "채널링크",
@@ -286,6 +291,7 @@ var keyStrings = {
         "JSON를 복사하여 백업을 보관하세요. 복원하려면 가져오기 설정을 사용하세요.",
     "Copy the selected JSON with your device's copy command":
         "장치의 복사 명령으로 선택한 JSON를 복사합니다.",
+    "Could not change the playlist.": "재생목록을 변경하지 못했습니다.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex에 연결할 수 없습니다. 서버 주소, 토큰, 네트워크 액세스를 확인하세요.",
     "Could not connect to the server.": "서버에 접속할 수 없습니다.",
@@ -550,6 +556,7 @@ var keyStrings = {
     "Invalid cloud settings response": "잘못된 클라우드 설정 응답",
     "Invalid protected source configuration":
         "보호된 소스 구성이 잘못되었습니다.",
+    "Invalid range: %1-%2": "잘못된 범위: %1-%2",
     "Invalid setting": "설정이 잘못되었습니다.",
     "IPTV token": "IPTV 토큰",
     "IpStream.one": "IpStream.one",
@@ -581,6 +588,7 @@ var keyStrings = {
     "Loading M3U...": "M3U 로딩 중…",
     "Loading media libraries...": "미디어 라이브러리 로드 중…",
     "Loading player...": "플레이어 로딩 중…",
+    "Loading the new playlist...": "새 재생목록을 불러오는 중...",
     "Loading via proxy...": "프록시를 통해 로드하는 중…",
     "Loading. Please wait...": "로딩중입니다...잠시만 기다려주세요...",
     "Loading...": "로딩중…",
@@ -623,6 +631,7 @@ var keyStrings = {
     "Next TV program": "다음 프로그램",
     No: "아니요",
     "No channel name": "채널 이름 없음",
+    "No channels loaded": "불러온 채널이 없습니다",
     "No command server was found on this network.":
         "이 네트워크에서 명령 서버를 찾을 수 없습니다.",
     "No Plex servers are available for this account.":
@@ -696,6 +705,7 @@ var keyStrings = {
     "Player could not start": "플레이어를 시작할 수 없습니다",
     "Player default": "플레이어 기본 선택",
     "Player info:": "플레이어 정보:",
+    "Playing: %1": "재생 중: %1",
     Playlist: "재생목록",
     "Playlist file": "재생목록 파일",
     "Playlist is not loading directly...Loading via server...":
@@ -730,9 +740,13 @@ var keyStrings = {
     "Protect Change Provider": "공급자를 변경하려면 액세스 코드가 필요합니다.",
     "Protect Settings": "설정을 변경하려면 액세스 코드가 필요합니다.",
     "Protected source is unavailable": "보호된 소스를 사용할 수 없습니다.",
+    "Provider switching not available": "제공업체 전환을 사용할 수 없습니다",
     "p...": "p...",
     paging: "페이징",
     Quality: "품질",
+    "Random #%1": "무작위 채널 #%1",
+    "Random channel not in any category":
+        "무작위로 선택한 채널은 어떤 카테고리에도 없습니다",
     Rating: "평점",
     RD: "RD",
     "RD settings": "RD 설정",
@@ -770,6 +784,10 @@ var keyStrings = {
         "원격 입력이 만료되었습니다. 새 세션을 열어 다시 시도하세요.",
     "Remote input session is unavailable. Open a new session to try again.":
         "원격 입력 세션을 사용할 수 없습니다. 새 세션을 열어 다시 시도하세요.",
+    "Remote playlist changes require the M3U provider.":
+        "재생목록을 원격으로 변경하려면 M3U 제공업체가 필요합니다.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "원격 제공업체 설정은 지원되지 않습니다. 플레이어의 제공업체 설정을 사용하세요.",
     "Remote screenshots": "원격 스크린샷",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "원격 스크린샷은 10분간 허용됩니다. 캡처하려면 설정을 닫으세요.",
@@ -960,6 +978,7 @@ var keyStrings = {
     "Switch sound track": "오디오 트랙 전환",
     "Switch subtitle": "자막 전환",
     "Switch to this list": "이 목록으로 전환",
+    "Switching provider...": "제공업체를 전환하는 중...",
     "Swop URL": "스왑 URL",
     "System language": "시스템 언어",
     "saved on this device": "이 기기에 저장되었습니다",
@@ -992,6 +1011,8 @@ var keyStrings = {
         "이 Play 앱에는 HTTPS가 필요합니다. 공급자에게 HTTPS 재생 목록 또는 서버 URL를 요청하세요.",
     "This pairing link has expired. Open a new session on your TV.":
         "이 페어링 링크는 만료되었습니다. TV에서 새 세션을 엽니다.",
+    "This remote command is not supported by the player.":
+        "플레이어에서 이 원격 제어 명령을 지원하지 않습니다.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "이 보안 세션을 사용할 수 없거나 만료되었습니다. TV에서 새 세션을 열고 전체 링크를 사용하세요.",
     Timer: "타이머",
@@ -1010,6 +1031,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "줌 모드 변경",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv 설정",
+    "Touchscreen locked": "터치스크린이 잠겼습니다",
+    "Touchscreen unlocked": "터치스크린 잠금이 해제되었습니다",
     "Trust this server for remote support":
         "원격 지원을 위해 이 서버를 신뢰하십시오.",
     "Trusted access could not be removed from device storage.":
@@ -1030,6 +1053,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X 설정",
     "Unable to load playlist": "재생 목록을 로드할 수 없습니다.",
+    "Unlock the player's settings before changing its playlist.":
+        "재생목록을 변경하기 전에 플레이어 설정의 잠금을 해제하세요.",
     Untitled: "제목없음",
     "Untitled folder": "제목없는 폴더",
     "Update installed. Please restart OttPlay FOSS.":

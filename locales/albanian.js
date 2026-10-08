@@ -142,6 +142,10 @@ var keyStrings = {
         "Ndryshoni ofruesin. Zgjedhja juaj do të mbahet mend herën tjetër që të nisni luajtësin e mediave.",
     "Change value": "Ndrysho vlerën",
     "Channel ": "Kanali ",
+    'Channel "%1" not found': 'Kanali "%1" nuk u gjet',
+    "Channel #%1": "Kanali #%1",
+    "Channel #%1 not found (total: %2)": "Kanali #%1 nuk u gjet (gjithsej: %2)",
+    "Channel #%1 not in any category": "Kanali #%1 nuk është në asnjë kategori",
     "Channel has no EPG": "Kanali nuk ka EPG",
     "Channel is not available!!!": "Kanali nuk është i disponueshëm!",
     "Channel link": "Lidhja e kanalit",
@@ -294,6 +298,8 @@ var keyStrings = {
         "Kopjoni JSON për të mbajtur një kopje rezervë. Përdorni «Importo cilësimet» për ta rikthyer.",
     "Copy the selected JSON with your device's copy command":
         "Kopjoni JSON-në e zgjedhur me komandën e kopjimit të pajisjes suaj",
+    "Could not change the playlist.":
+        "Lista e luajtjes nuk mund të ndryshohej.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nuk mund të lidhej me Plex. Kontrolloni adresën e serverit, tokenin e hyrjes dhe aksesin në rrjet.",
     "Could not connect to the server.": "Nuk mund të lidhej me serverin.",
@@ -570,6 +576,7 @@ var keyStrings = {
         "Përgjigje e pavlefshme e cilësimeve të resë kompjuterike",
     "Invalid protected source configuration":
         "Konfigurim i pavlefshëm i burimit të mbrojtur",
+    "Invalid range: %1-%2": "Interval i pavlefshëm: %1-%2",
     "Invalid setting": "Cilësim i pavlefshëm",
     "IPTV token": "IPTV token",
     "IpStream.one": "IpStream.one",
@@ -601,6 +608,7 @@ var keyStrings = {
     "Loading M3U...": "Po ngarkohet M3U…",
     "Loading media libraries...": "Po ngarkon bibliotekat e mediave…",
     "Loading player...": "Po ngarkon luajtësin e mediave…",
+    "Loading the new playlist...": "Po ngarkohet lista e re e luajtjes...",
     "Loading via proxy...": "Po ngarkohet nëpërmjet serverit proksi…",
     "Loading. Please wait...": "Po ngarkohet… ju lutemi prisni…",
     "Loading...": "Po ngarkohet…",
@@ -642,6 +650,7 @@ var keyStrings = {
     "Next TV program": "Programi i radhës",
     No: "Jo",
     "No channel name": "Nuk ka emër kanali",
+    "No channels loaded": "Nuk është ngarkuar asnjë kanal",
     "No command server was found on this network.":
         "Asnjë server komandimi nuk u gjet në këtë rrjet.",
     "No Plex servers are available for this account.":
@@ -715,6 +724,7 @@ var keyStrings = {
     "Player could not start": "luajtësi i medias nuk mund të nisej",
     "Player default": "Parazgjedhja e luajtësit",
     "Player info:": "informacione për luajtësin e medias:",
+    "Playing: %1": "Po luhet: %1",
     Playlist: "Lista e luajtjes",
     "Playlist file": "Skedari i listës së luajtjes",
     "Playlist is not loading directly...Loading via server...":
@@ -752,9 +762,14 @@ var keyStrings = {
     "Protect Settings": "Mbroni cilësimet",
     "Protected source is unavailable":
         "Burimi i mbrojtur është i padisponueshëm",
+    "Provider switching not available":
+        "Ndërrimi i ofruesit nuk është i disponueshëm",
     "p...": "p...",
     paging: "faqe",
     Quality: "Cilësi",
+    "Random #%1": "Kanal i rastësishëm #%1",
+    "Random channel not in any category":
+        "Kanali i zgjedhur rastësisht nuk është në asnjë kategori",
     Rating: "Vlerësimi",
     RD: "RD",
     "RD settings": "Cilësimet RD",
@@ -792,6 +807,10 @@ var keyStrings = {
         "Hyrja në distancë ka skaduar. Hap një sesion të ri për të provuar sërish.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesioni i hyrjes në distancë është i padisponueshëm. Hap një sesion të ri për të provuar sërish.",
+    "Remote playlist changes require the M3U provider.":
+        "Ndryshimi i listës së luajtjes nga larg kërkon ofruesin M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Ndryshimi i cilësimeve të ofruesit nga larg nuk mbështetet. Përdorni cilësimet e ofruesit në luajtës.",
     "Remote screenshots": "Pamjet e ekranit në distancë",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Pamjet e ekranit në distancë lejohen për 10 minuta. Mbyllni cilësimet për të kapur.",
@@ -987,6 +1006,7 @@ var keyStrings = {
     "Switch sound track": "Ndërro pistën audio",
     "Switch subtitle": "Ndërro titrat",
     "Switch to this list": "Kalo te kjo listë",
+    "Switching provider...": "Po ndërrohet ofruesi...",
     "Swop URL": "Swop URL",
     "System language": "Gjuha e sistemit",
     "saved on this device": "ruajtur në këtë pajisje",
@@ -1021,6 +1041,8 @@ var keyStrings = {
         "Ky aplikacion Play kërkon HTTPS. Kërkojini ofruesit tuaj një listë riprodhimi ose URL serveri me HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Kjo lidhje çiftimi ka skaduar. Hapni një sesion të ri në televizorin tuaj.",
+    "This remote command is not supported by the player.":
+        "Kjo komandë në distancë nuk mbështetet nga luajtësi.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ky sesion i sigurt nuk disponohet ose ka skaduar. Hapni një sesion të ri në televizor dhe përdorni lidhjen e plotë të tij.",
     Timer: "Kohëmatësi",
@@ -1039,6 +1061,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ndrysho mënyrën e zmadhimit",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cilësimet e Top-Tv",
+    "Touchscreen locked": "Ekrani me prekje u bllokua",
+    "Touchscreen unlocked": "Ekrani me prekje u zhbllokua",
     "Trust this server for remote support":
         "Besoji këtij serveri për mbështetje në distancë",
     "Trusted access could not be removed from device storage.":
@@ -1059,6 +1083,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Cilësimet e ULTIFL1X",
     "Unable to load playlist": "Nuk mund të ngarkohet lista e riprodhimit",
+    "Unlock the player's settings before changing its playlist.":
+        "Zhbllokoni cilësimet e luajtësit përpara se të ndryshoni listën e tij të luajtjes.",
     Untitled: "Pa titull",
     "Untitled folder": "Dosje pa titull",
     "Update installed. Please restart OttPlay FOSS.":

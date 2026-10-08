@@ -146,6 +146,12 @@ var keyStrings = {
         "Αλλάξτε πάροχο. Η επιλογή σας θα αποθηκευτεί για την επόμενη εκκίνηση του προγράμματος αναπαραγωγής.",
     "Change value": "Αλλαγή τιμής",
     "Channel ": "Κανάλι ",
+    'Channel "%1" not found': "Το κανάλι «%1» δεν βρέθηκε",
+    "Channel #%1": "Κανάλι αρ. %1",
+    "Channel #%1 not found (total: %2)":
+        "Το κανάλι αρ. %1 δεν βρέθηκε (σύνολο: %2)",
+    "Channel #%1 not in any category":
+        "Το κανάλι αρ. %1 δεν ανήκει σε καμία κατηγορία",
     "Channel has no EPG": "Το κανάλι δεν έχει EPG",
     "Channel is not available!!!": "Το κανάλι δεν είναι διαθέσιμο!!!",
     "Channel link": "Σύνδεσμος καναλιού",
@@ -297,6 +303,8 @@ var keyStrings = {
         "Αντιγράψτε το JSON για να διατηρήσετε ένα αντίγραφο ασφαλείας. Χρησιμοποιήστε την εισαγωγή ρυθμίσεων για να το επαναφέρετε.",
     "Copy the selected JSON with your device's copy command":
         "Αντιγράψτε το επιλεγμένο JSON με την εντολή αντιγραφής της συσκευής σας",
+    "Could not change the playlist.":
+        "Δεν ήταν δυνατή η αλλαγή της λίστας αναπαραγωγής.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Δεν ήταν δυνατή η σύνδεση στο Plex. Ελέγξτε τη διεύθυνση διακομιστή, το διακριτικό και την πρόσβαση στο δίκτυο.",
     "Could not connect to the server.": "Αδυναμία σύνδεσης στον διακομιστή.",
@@ -573,6 +581,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Μη έγκυρη απόκριση ρυθμίσεων cloud",
     "Invalid protected source configuration":
         "Μη έγκυρη διαμόρφωση προστατευμένης πηγής",
+    "Invalid range: %1-%2": "Μη έγκυρο εύρος: %1-%2",
     "Invalid setting": "Μη έγκυρη ρύθμιση",
     "IPTV token": "Διακριτικό IPTV",
     "IpStream.one": "IpStream.one",
@@ -605,6 +614,7 @@ var keyStrings = {
     "Loading M3U...": "Φόρτωση M3U…",
     "Loading media libraries...": "Φόρτωση βιβλιοθηκών πολυμέσων…",
     "Loading player...": "Φόρτωση προγράμματος αναπαραγωγής…",
+    "Loading the new playlist...": "Φόρτωση της νέας λίστας αναπαραγωγής...",
     "Loading via proxy...": "Φόρτωση μέσω διαμεσολαβητή…",
     "Loading. Please wait...": "Φόρτωση… παρακαλώ περιμένετε…",
     "Loading...": "Φόρτωση…",
@@ -647,6 +657,7 @@ var keyStrings = {
     "Next TV program": "Επόμενη εκπομπή",
     No: "Όχι",
     "No channel name": "Χωρίς όνομα καναλιού",
+    "No channels loaded": "Δεν έχουν φορτωθεί κανάλια",
     "No command server was found on this network.":
         "Δεν βρέθηκε διακομιστής εντολών σε αυτό το δίκτυο.",
     "No Plex servers are available for this account.":
@@ -722,6 +733,7 @@ var keyStrings = {
         "Δεν ήταν δυνατή η εκκίνηση του προγράμματος αναπαραγωγής",
     "Player default": "Προεπιλεγμένη επιλογή του προγράμματος αναπαραγωγής",
     "Player info:": "Πληροφορίες προγράμματος αναπαραγωγής:",
+    "Playing: %1": "Αναπαραγωγή: %1",
     Playlist: "Λίστα αναπαραγωγής",
     "Playlist file": "Αρχείο λίστας αναπαραγωγής",
     "Playlist is not loading directly...Loading via server...":
@@ -759,9 +771,13 @@ var keyStrings = {
     "Protect Settings": "Προστασία ρυθμίσεων",
     "Protected source is unavailable":
         "Η προστατευμένη πηγή δεν είναι διαθέσιμη",
+    "Provider switching not available": "Η αλλαγή παρόχου δεν είναι διαθέσιμη",
     "p...": "p...",
     paging: "ανά σελίδα",
     Quality: "Ποιότητα",
+    "Random #%1": "Τυχαίο αρ. %1",
+    "Random channel not in any category":
+        "Το τυχαίο κανάλι δεν ανήκει σε καμία κατηγορία",
     Rating: "Βαθμολογία",
     RD: "RD",
     "RD settings": "Ρυθμίσεις RD",
@@ -800,6 +816,10 @@ var keyStrings = {
         "Η απομακρυσμένη είσοδος έληξε. Ανοίξτε μια νέα περίοδο λειτουργίας για να προσπαθήσετε ξανά.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Η απομακρυσμένη περίοδος εισαγωγής δεν είναι διαθέσιμη. Ανοίξτε μια νέα περίοδο λειτουργίας για να προσπαθήσετε ξανά.",
+    "Remote playlist changes require the M3U provider.":
+        "Η απομακρυσμένη αλλαγή λίστας αναπαραγωγής απαιτεί τον πάροχο M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Δεν υποστηρίζεται η απομακρυσμένη ρύθμιση παρόχου. Χρησιμοποιήστε τις ρυθμίσεις παρόχου στη συσκευή αναπαραγωγής.",
     "Remote screenshots": "Απομακρυσμένα στιγμιότυπα οθόνης",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Τα απομακρυσμένα στιγμιότυπα οθόνης επιτρέπονται για 10 λεπτά. Κλείστε τις ρυθμίσεις για λήψη.",
@@ -999,6 +1019,7 @@ var keyStrings = {
     "Switch sound track": "Αλλαγή κομματιού ήχου",
     "Switch subtitle": "Αλλαγή υποτίτλων",
     "Switch to this list": "Μετάβαση σε αυτή τη λίστα",
+    "Switching provider...": "Αλλαγή παρόχου...",
     "Swop URL": "URL Swop",
     "System language": "Γλώσσα συστήματος",
     "saved on this device": "αποθηκευμένο σε αυτή τη συσκευή",
@@ -1033,6 +1054,8 @@ var keyStrings = {
         "Αυτή η εφαρμογή Play απαιτεί HTTPS. Ζητήστε από τον πάροχό σας λίστα αναπαραγωγής ή URL διακομιστή HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Αυτός ο σύνδεσμος σύζευξης έχει λήξει. Ανοίξτε μια νέα περίοδο λειτουργίας στην τηλεόρασή σας.",
+    "This remote command is not supported by the player.":
+        "Η συσκευή αναπαραγωγής δεν υποστηρίζει αυτή την απομακρυσμένη εντολή.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Αυτή η ασφαλής περίοδος λειτουργίας δεν είναι διαθέσιμη ή έχει λήξει. Ανοίξτε μια νέα περίοδο λειτουργίας στην τηλεόραση και χρησιμοποιήστε τον πλήρη σύνδεσμό της.",
     Timer: "Χρονοδιακόπτης",
@@ -1052,6 +1075,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Αλλαγή λειτουργίας μεγέθυνσης",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ρυθμίσεις Top-Tv",
+    "Touchscreen locked": "Η οθόνη αφής κλειδώθηκε",
+    "Touchscreen unlocked": "Η οθόνη αφής ξεκλειδώθηκε",
     "Trust this server for remote support":
         "Εμπιστευτείτε αυτόν τον διακομιστή για απομακρυσμένη υποστήριξη",
     "Trusted access could not be removed from device storage.":
@@ -1073,6 +1098,8 @@ var keyStrings = {
     "ULTIFL1X settings": "Ρυθμίσεις ULTIFL1X",
     "Unable to load playlist":
         "Δεν ήταν δυνατή η φόρτωση της λίστας αναπαραγωγής",
+    "Unlock the player's settings before changing its playlist.":
+        "Ξεκλειδώστε τις ρυθμίσεις της συσκευής αναπαραγωγής πριν αλλάξετε τη λίστα.",
     Untitled: "Χωρίς τίτλο",
     "Untitled folder": "Φάκελος χωρίς όνομα",
     "Update installed. Please restart OttPlay FOSS.":

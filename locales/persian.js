@@ -141,6 +141,10 @@ var keyStrings = {
         "ارائه دهنده را تغییر دهید. دفعه بعد که پخش کننده را شروع می کنید، انتخاب شما به خاطر سپرده می شود.",
     "Change value": "مقدار را تغییر دهید",
     "Channel ": "کانال ",
+    'Channel "%1" not found': "کانال «%1» پیدا نشد",
+    "Channel #%1": "کانال #%1",
+    "Channel #%1 not found (total: %2)": "کانال #%1 پیدا نشد (تعداد کل: %2)",
+    "Channel #%1 not in any category": "کانال #%1 در هیچ دسته‌ای نیست",
     "Channel has no EPG": "کانال EPG ندارد",
     "Channel is not available!!!": "کانال در دسترس نیست!",
     "Channel link": "لینک کانال",
@@ -288,6 +292,7 @@ var keyStrings = {
         "برای تهیهٔ نسخهٔ پشتیبان، JSON را کپی کنید. برای بازیابی آن از «وارد کردن تنظیمات» استفاده کنید.",
     "Copy the selected JSON with your device's copy command":
         "JSON انتخاب شده را با دستور کپی دستگاه خود کپی کنید",
+    "Could not change the playlist.": "تغییر فهرست پخش ممکن نشد.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "به Plex متصل نشد. آدرس سرور، نشانه و دسترسی به شبکه را بررسی کنید.",
     "Could not connect to the server.": "به سرور متصل نشد.",
@@ -550,6 +555,7 @@ var keyStrings = {
     "Invalid cloud settings response": "پاسخ تنظیمات ابر نامعتبر است",
     "Invalid protected source configuration":
         "پیکربندی منبع محافظت شده نامعتبر است",
+    "Invalid range: %1-%2": "بازه نامعتبر: %1-%2",
     "Invalid setting": "تنظیم نامعتبر است",
     "IPTV token": "توکن IPTV",
     "IpStream.one": "IpStream.one",
@@ -581,6 +587,7 @@ var keyStrings = {
     "Loading M3U...": "در حال بارگیری M3U…",
     "Loading media libraries...": "در حال بارگیری کتابخانه های رسانه…",
     "Loading player...": "در حال بارگیری پخش کننده…",
+    "Loading the new playlist...": "در حال بارگذاری فهرست پخش جدید...",
     "Loading via proxy...": "در حال بارگیری از طریق پروکسی…",
     "Loading. Please wait...": "در حال بارگیری… لطفاً صبر کنید…",
     "Loading...": "در حال بارگیری…",
@@ -622,6 +629,7 @@ var keyStrings = {
     "Next TV program": "برنامه بعدی",
     No: "خیر",
     "No channel name": "بدون نام کانال",
+    "No channels loaded": "هیچ کانالی بارگذاری نشده است",
     "No command server was found on this network.":
         "هیچ سرور فرمانی در این شبکه یافت نشد.",
     "No Plex servers are available for this account.":
@@ -695,6 +703,7 @@ var keyStrings = {
     "Player could not start": "پخش کننده شروع نشد",
     "Player default": "انتخاب پیش‌فرض پخش‌کننده",
     "Player info:": "اطلاعات پخش‌کننده:",
+    "Playing: %1": "در حال پخش: %1",
     Playlist: "لیست پخش",
     "Playlist file": "فایل لیست پخش",
     "Playlist is not loading directly...Loading via server...":
@@ -732,9 +741,13 @@ var keyStrings = {
         "برای تغییر ارائه دهندگان به کد دسترسی نیاز دارید",
     "Protect Settings": "برای تغییر تنظیمات به کد دسترسی نیاز است",
     "Protected source is unavailable": "منبع محافظت شده در دسترس نیست",
+    "Provider switching not available": "امکان تغییر ارائه‌دهنده وجود ندارد",
     "p...": "p...",
     paging: "صفحه بندی",
     Quality: "کیفیت",
+    "Random #%1": "کانال تصادفی #%1",
+    "Random channel not in any category":
+        "کانال انتخاب‌شده به‌صورت تصادفی در هیچ دسته‌ای نیست",
     Rating: "امتیاز",
     RD: "RD",
     "RD settings": "تنظیمات RD",
@@ -772,6 +785,10 @@ var keyStrings = {
         "ورودی از راه دور منقضی شده است. یک جلسه جدید باز کنید تا دوباره امتحان کنید.",
     "Remote input session is unavailable. Open a new session to try again.":
         "جلسه ورودی از راه دور در دسترس نیست. یک جلسه جدید باز کنید تا دوباره امتحان کنید.",
+    "Remote playlist changes require the M3U provider.":
+        "تغییر فهرست پخش از راه دور به ارائه‌دهنده M3U نیاز دارد.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "تنظیم ارائه‌دهنده از راه دور پشتیبانی نمی‌شود. از تنظیمات ارائه‌دهنده در پخش‌کننده استفاده کنید.",
     "Remote screenshots": "تصاویر از راه دور",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "اسکرین شات از راه دور به مدت 10 دقیقه مجاز است. تنظیمات را ببندید تا عکس بگیرید.",
@@ -967,6 +984,7 @@ var keyStrings = {
     "Switch sound track": "تغییر مسیر صوتی",
     "Switch subtitle": "تغییر زیرنویس",
     "Switch to this list": "به این لیست بروید",
+    "Switching provider...": "در حال تغییر ارائه‌دهنده...",
     "Swop URL": "Swop URL",
     "System language": "زبان سیستم",
     "saved on this device": "در این دستگاه ذخیره شده است",
@@ -1000,6 +1018,8 @@ var keyStrings = {
         "این برنامه Play به HTTPS نیاز دارد. از ارائه دهنده خود یک لیست پخش HTTPS یا سرور URL بخواهید.",
     "This pairing link has expired. Open a new session on your TV.":
         "این پیوند جفت شدن منقضی شده است. یک جلسه جدید در تلویزیون خود باز کنید.",
+    "This remote command is not supported by the player.":
+        "پخش‌کننده از این فرمان کنترل از راه دور پشتیبانی نمی‌کند.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "این جلسه امن در دسترس نیست یا منقضی شده است. یک جلسه جدید در تلویزیون باز کنید و از لینک کامل آن استفاده کنید.",
     Timer: "تایمر",
@@ -1018,6 +1038,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "تغییر حالت زوم",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "تنظیمات Top-Tv",
+    "Touchscreen locked": "صفحه لمسی قفل شد",
+    "Touchscreen unlocked": "قفل صفحه لمسی باز شد",
     "Trust this server for remote support":
         "برای پشتیبانی از راه دور به این سرور اعتماد کنید",
     "Trusted access could not be removed from device storage.":
@@ -1038,6 +1060,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "تنظیمات ULTIFL1X",
     "Unable to load playlist": "لیست پخش بارگیری نمی شود",
+    "Unlock the player's settings before changing its playlist.":
+        "پیش از تغییر فهرست پخش، قفل تنظیمات پخش‌کننده را باز کنید.",
     Untitled: "بدون عنوان",
     "Untitled folder": "پوشه بدون عنوان",
     "Update installed. Please restart OttPlay FOSS.":

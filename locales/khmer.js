@@ -138,6 +138,10 @@ var keyStrings = {
         "ផ្លាស់ប្តូរអ្នកផ្តល់សេវា។ ការជ្រើសរើសរបស់អ្នកនឹងត្រូវបានចងចាំនៅពេលដែលអ្នកចាប់ផ្តើមកម្មវិធីចាក់បន្ទាប់។",
     "Change value": "ផ្លាស់ប្តូរតម្លៃ",
     "Channel ": "ឆានែល ",
+    'Channel "%1" not found': "រកមិនឃើញប៉ុស្តិ៍ «%1»",
+    "Channel #%1": "ប៉ុស្តិ៍ #%1",
+    "Channel #%1 not found (total: %2)": "រកមិនឃើញប៉ុស្តិ៍ #%1 (សរុប៖ %2)",
+    "Channel #%1 not in any category": "ប៉ុស្តិ៍ #%1 មិនស្ថិតក្នុងប្រភេទណាមួយទេ",
     "Channel has no EPG": "ឆានែលមិនមាន EPG ទេ។",
     "Channel is not available!!!": "ឆានែលមិនមានទេ!",
     "Channel link": "តំណភ្ជាប់ឆានែល",
@@ -285,6 +289,7 @@ var keyStrings = {
         "ចម្លង JSON ដើម្បីរក្សាការបម្រុងទុក។ ប្រើការកំណត់នាំចូលដើម្បីស្ដារវាឡើងវិញ។",
     "Copy the selected JSON with your device's copy command":
         "ចម្លង JSON ដែលបានជ្រើសរើសដោយប្រើពាក្យបញ្ជាចម្លងឧបករណ៍របស់អ្នក។",
+    "Could not change the playlist.": "មិនអាចប្តូរបញ្ជីចាក់បានទេ។",
     "Could not connect to Plex. Check the server address, token and network access.":
         "មិនអាចភ្ជាប់ទៅ Plex បានទេ។ ពិនិត្យអាសយដ្ឋានម៉ាស៊ីនមេ សញ្ញាសម្ងាត់ និងការចូលប្រើបណ្តាញ។",
     "Could not connect to the server.": "មិនអាចភ្ជាប់ទៅម៉ាស៊ីនមេបានទេ។",
@@ -544,6 +549,7 @@ var keyStrings = {
     "Invalid cloud settings response": "ការឆ្លើយតបការកំណត់ពពកមិនត្រឹមត្រូវ",
     "Invalid protected source configuration":
         "ការកំណត់រចនាសម្ព័ន្ធប្រភពការពារមិនត្រឹមត្រូវ",
+    "Invalid range: %1-%2": "ជួរមិនត្រឹមត្រូវ៖ %1-%2",
     "Invalid setting": "ការកំណត់មិនត្រឹមត្រូវ",
     "IPTV token": "IPTV សញ្ញាសម្ងាត់",
     "IpStream.one": "IpStream.one",
@@ -575,6 +581,7 @@ var keyStrings = {
     "Loading M3U...": "កំពុងផ្ទុក M3U…",
     "Loading media libraries...": "កំពុងផ្ទុកបណ្ណាល័យប្រព័ន្ធផ្សព្វផ្សាយ…",
     "Loading player...": "កំពុងផ្ទុកកម្មវិធីចាក់...",
+    "Loading the new playlist...": "កំពុងផ្ទុកបញ្ជីចាក់ថ្មី...",
     "Loading via proxy...": "កំពុងផ្ទុកតាមរយៈប្រូកស៊ី…",
     "Loading. Please wait...": "កំពុងផ្ទុក… សូមរង់ចាំ…",
     "Loading...": "កំពុងផ្ទុក...",
@@ -616,6 +623,7 @@ var keyStrings = {
     "Next TV program": "កម្មវិធីបន្ទាប់",
     No: "ទេ",
     "No channel name": "គ្មានឈ្មោះឆានែលទេ។",
+    "No channels loaded": "មិនមានប៉ុស្តិ៍ណាមួយត្រូវបានផ្ទុកទេ",
     "No command server was found on this network.":
         "គ្មានម៉ាស៊ីនមេបញ្ជាត្រូវបានរកឃើញនៅលើបណ្តាញនេះទេ។",
     "No Plex servers are available for this account.":
@@ -689,6 +697,7 @@ var keyStrings = {
     "Player could not start": "កម្មវិធីចាក់មិនអាចចាប់ផ្តើមបានទេ។",
     "Player default": "ជម្រើសលំនាំដើមរបស់កម្មវិធីចាក់",
     "Player info:": "ព័ត៌មានកម្មវិធីចាក់៖",
+    "Playing: %1": "កំពុងចាក់៖ %1",
     Playlist: "បញ្ជីចាក់",
     "Playlist file": "ឯកសារបញ្ជីចាក់",
     "Playlist is not loading directly...Loading via server...":
@@ -724,9 +733,13 @@ var keyStrings = {
     "Protect Change Provider": "ទាមទារលេខកូដចូលប្រើដើម្បីផ្លាស់ប្តូរអ្នកផ្តល់សេវា",
     "Protect Settings": "ទាមទារលេខកូដចូលប្រើដើម្បីផ្លាស់ប្តូរការកំណត់",
     "Protected source is unavailable": "ប្រភពការពារមិនមានទេ។\nទំព័រ",
+    "Provider switching not available": "មិនអាចប្តូរអ្នកផ្តល់សេវាបានទេ",
     "p...": "p...",
     paging: "ការប្ដូរទំព័រ",
     Quality: "គុណភាព",
+    "Random #%1": "ប៉ុស្តិ៍ចៃដន្យ #%1",
+    "Random channel not in any category":
+        "ប៉ុស្តិ៍ដែលបានជ្រើសរើសដោយចៃដន្យមិនស្ថិតក្នុងប្រភេទណាមួយទេ",
     Rating: "ការវាយតម្លៃ",
     RD: "RD",
     "RD settings": "ការកំណត់ RD",
@@ -764,6 +777,10 @@ var keyStrings = {
         "ការបញ្ចូលពីចម្ងាយបានផុតកំណត់ហើយ។ បើកវគ្គថ្មីដើម្បីព្យាយាមម្តងទៀត។",
     "Remote input session is unavailable. Open a new session to try again.":
         "សម័យបញ្ចូលពីចម្ងាយមិនអាចប្រើបានទេ។ បើកវគ្គថ្មីដើម្បីព្យាយាមម្តងទៀត។",
+    "Remote playlist changes require the M3U provider.":
+        "ការប្តូរបញ្ជីចាក់ពីចម្ងាយតម្រូវឱ្យប្រើអ្នកផ្តល់សេវា M3U។",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "មិនគាំទ្រការកំណត់អ្នកផ្តល់សេវាពីចម្ងាយទេ។ សូមប្រើការកំណត់អ្នកផ្តល់សេវានៅក្នុងកម្មវិធីចាក់។",
     "Remote screenshots": "រូបថតអេក្រង់ពីចម្ងាយ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "ការថតអេក្រង់ពីចម្ងាយត្រូវបានអនុញ្ញាតរយៈពេល 10 នាទី។ បិទការកំណត់ដើម្បីចាប់យក។",
@@ -955,6 +972,7 @@ var keyStrings = {
     "Switch sound track": "ប្ដូរបទអូឌីយ៉ូ",
     "Switch subtitle": "ប្ដូរចំណងជើងរង",
     "Switch to this list": "ប្តូរទៅបញ្ជីនេះ។",
+    "Switching provider...": "កំពុងប្តូរអ្នកផ្តល់សេវា...",
     "Swop URL": "Swop URL",
     "System language": "ភាសាប្រព័ន្ធ",
     "saved on this device": "បានរក្សាទុកនៅលើឧបករណ៍នេះ។",
@@ -987,6 +1005,8 @@ var keyStrings = {
         "កម្មវិធី Play នេះទាមទារ HTTPS ។ សួរអ្នកផ្តល់សេវារបស់អ្នកសម្រាប់បញ្ជីចាក់ HTTPS ឬម៉ាស៊ីនមេ URL ។",
     "This pairing link has expired. Open a new session on your TV.":
         "តំណផ្គូផ្គងនេះបានផុតកំណត់ហើយ។ បើកវគ្គថ្មីនៅលើទូរទស្សន៍របស់អ្នក។",
+    "This remote command is not supported by the player.":
+        "កម្មវិធីចាក់មិនគាំទ្រពាក្យបញ្ជាពីចម្ងាយនេះទេ។",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "វគ្គសុវត្ថិភាពនេះមិនមានទេ ឬផុតកំណត់។ បើកវគ្គថ្មីនៅលើទូរទស្សន៍ ហើយប្រើតំណពេញលេញរបស់វា។",
     Timer: "កម្មវិធីកំណត់ម៉ោង",
@@ -1005,6 +1025,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ប្តូររបៀបពង្រីក",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "ការកំណត់ Top-Tv",
+    "Touchscreen locked": "អេក្រង់ប៉ះត្រូវបានចាក់សោ",
+    "Touchscreen unlocked": "អេក្រង់ប៉ះត្រូវបានដោះសោ",
     "Trust this server for remote support":
         "ជឿជាក់លើម៉ាស៊ីនមេនេះសម្រាប់ការគាំទ្រពីចម្ងាយ",
     "Trusted access could not be removed from device storage.":
@@ -1025,6 +1047,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ការកំណត់ ULTIFL1X",
     "Unable to load playlist": "មិនអាចផ្ទុកបញ្ជីចាក់បានទេ។",
+    "Unlock the player's settings before changing its playlist.":
+        "សូមដោះសោការកំណត់កម្មវិធីចាក់ មុនពេលប្តូរបញ្ជីចាក់។",
     Untitled: "គ្មានចំណងជើង",
     "Untitled folder": "ថតគ្មានចំណងជើង",
     "Update installed. Please restart OttPlay FOSS.":

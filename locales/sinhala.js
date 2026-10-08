@@ -139,6 +139,10 @@ var keyStrings = {
         "සපයන්නා වෙනස් කරන්න. ඊළඟ වතාවේ ඔබ වාදකය ආරම්භ කරන විට ඔබේ තේරීම මතක තබා ගනු ඇත.",
     "Change value": "අගය වෙනස් කරන්න",
     "Channel ": "නාලිකාව ",
+    'Channel "%1" not found': '"%1" නාලිකාව හමු නොවීය',
+    "Channel #%1": "නාලිකාව #%1",
+    "Channel #%1 not found (total: %2)": "නාලිකාව #%1 හමු නොවීය (මුළු ගණන: %2)",
+    "Channel #%1 not in any category": "නාලිකාව #%1 කිසිදු කාණ්ඩයක නැත",
     "Channel has no EPG": "නාලිකාවට EPG නොමැත",
     "Channel is not available!!!": "නාලිකාව නොමැත!",
     "Channel link": "නාලිකා සබැඳිය",
@@ -286,6 +290,7 @@ var keyStrings = {
         "උපස්ථයක් තබා ගැනීමට JSON පිටපත් කරන්න. එය ප්‍රතිසාධනය කිරීමට ආයාත සැකසුම් භාවිතා කරන්න.",
     "Copy the selected JSON with your device's copy command":
         "ඔබගේ උපාංගයේ පිටපත් විධානය සමඟ තෝරාගත් JSON පිටපත් කරන්න",
+    "Could not change the playlist.": "ධාවන ලැයිස්තුව වෙනස් කළ නොහැකි විය.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex වෙත සම්බන්ධ වීමට නොහැකි විය. සේවාදායක ලිපිනය, ටෝකනය සහ ජාල ප්රවේශය පරීක්ෂා කරන්න.",
     "Could not connect to the server.": "සේවාදායකයට සම්බන්ධ වීමට නොහැකි විය.",
@@ -545,6 +550,7 @@ var keyStrings = {
         "වලංගු නොවන නාලිකා සබැඳියක්! කැබිනට් ප්‍රවාහයේ URL (උදා. subdomain.cdn-domain.tld) ලෙස සම්පූර්ණ ධාරකය ඇතුළු කරන්න",
     "Invalid cloud settings response": "ක්ලවුඩ් සැකසුම් සඳහා වලංගු නොවන ප්‍රතිචාරයක් ලැබුණි",
     "Invalid protected source configuration": "වලංගු නොවන ආරක්ෂිත මූලාශ්‍ර වින්‍යාසය",
+    "Invalid range: %1-%2": "වලංගු නොවන පරාසය: %1-%2",
     "Invalid setting": "වලංගු නොවන සැකසුම",
     "IPTV token": "IPTV ටෝකනය",
     "IpStream.one": "IpStream.one",
@@ -576,6 +582,7 @@ var keyStrings = {
     "Loading M3U...": "M3U පූරණය වෙමින්…",
     "Loading media libraries...": "මාධ්‍ය පුස්තකාල පූරණය වෙමින්...",
     "Loading player...": "වාදකය පූරණය වෙමින්...",
+    "Loading the new playlist...": "නව ධාවන ලැයිස්තුව පූරණය කරමින්...",
     "Loading via proxy...": "ප්‍රොක්සි හරහා පූරණය වෙමින්...",
     "Loading. Please wait...": "පූරණය වෙමින්... කරුණාකර රැඳී සිටින්න...",
     "Loading...": "පූරණය වෙමින්...",
@@ -617,6 +624,7 @@ var keyStrings = {
     "Next TV program": "මීළඟ වැඩසටහන",
     No: "නැත",
     "No channel name": "නාලිකා නමක් නැත",
+    "No channels loaded": "නාලිකා කිසිවක් පූරණය වී නැත",
     "No command server was found on this network.":
         "මෙම ජාලයේ විධාන සේවාදායකයක් හමු නොවීය.",
     "No Plex servers are available for this account.":
@@ -689,6 +697,7 @@ var keyStrings = {
     "Player could not start": "වාදකයට ආරම්භ කිරීමට නොහැකි විය",
     "Player default": "වාදකයේ පෙරනිමි තේරීම",
     "Player info:": "වාදකයේ තොරතුරු:",
+    "Playing: %1": "වාදනය වෙමින්: %1",
     Playlist: "ධාවන ලැයිස්තුව",
     "Playlist file": "ධාවන ලැයිස්තු ගොනුව",
     "Playlist is not loading directly...Loading via server...":
@@ -723,9 +732,12 @@ var keyStrings = {
     "Protect Change Provider": "සපයන්නන් වෙනස් කිරීමට ප්‍රවේශ කේතයක් අවශ්‍ය වේ",
     "Protect Settings": "සිටුවම් වෙනස් කිරීමට ප්‍රවේශ කේතයක් අවශ්‍ය වේ",
     "Protected source is unavailable": "ආරක්ෂිත මූලාශ්‍රය නොමැත",
+    "Provider switching not available": "සැපයුම්කරු මාරු කිරීමේ පහසුකම නොමැත",
     "p...": "p...",
     paging: "පිටුකරණය",
     Quality: "ගුණාත්මකභාවය",
+    "Random #%1": "අහඹු නාලිකාව #%1",
+    "Random channel not in any category": "අහඹු ලෙස තෝරාගත් නාලිකාව කිසිදු කාණ්ඩයක නැත",
     Rating: "ශ්රේණිගත කිරීම",
     RD: "RD",
     "RD settings": "RD සැකසුම්",
@@ -763,6 +775,10 @@ var keyStrings = {
         "දුරස්ථ ආදානය කල් ඉකුත් විය. නැවත උත්සාහ කිරීමට නව සැසියක් විවෘත කරන්න.",
     "Remote input session is unavailable. Open a new session to try again.":
         "දුරස්ථ ආදාන සැසිය නොමැත. නැවත උත්සාහ කිරීමට නව සැසියක් විවෘත කරන්න.",
+    "Remote playlist changes require the M3U provider.":
+        "ධාවන ලැයිස්තුව දුරස්ථව වෙනස් කිරීමට M3U සැපයුම්කරු අවශ්‍ය වේ.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "දුරස්ථව සැපයුම්කරුගේ සැකසුම් වෙනස් කිරීමට සහාය නොදක්වයි. වාදකයේ සැපයුම්කරුගේ සැකසුම් භාවිත කරන්න.",
     "Remote screenshots": "දුරස්ථ තිරපිටපත්",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "දුරස්ථ තිරපිටපත් විනාඩි 10ක් සඳහා ඉඩ දෙනු ලැබේ. අල්ලා ගැනීමට සැකසීම් වසන්න.",
@@ -952,6 +968,7 @@ var keyStrings = {
     "Switch sound track": "ශ්‍රව්‍ය ධාවන පථය මාරු කරන්න",
     "Switch subtitle": "උපසිරැසි මාරු කරන්න",
     "Switch to this list": "මෙම ලැයිස්තුවට මාරු වන්න",
+    "Switching provider...": "සැපයුම්කරු මාරු කරමින්...",
     "Swop URL": "URL මාරු කරන්න",
     "System language": "පද්ධති භාෂාව",
     "saved on this device": "මෙම උපාංගයේ සුරකින ලදී",
@@ -982,6 +999,8 @@ var keyStrings = {
         "මෙම Play යෙදුමට HTTPS අවශ්‍ය වේ. HTTPS ධාවන ලැයිස්තුවක් හෝ සේවාදායකය URL සඳහා ඔබේ සැපයුම්කරුගෙන් විමසන්න.",
     "This pairing link has expired. Open a new session on your TV.":
         "මෙම යුගල සබැඳිය කල් ඉකුත් වී ඇත. ඔබගේ රූපවාහිනියේ නව සැසියක් විවෘත කරන්න.",
+    "This remote command is not supported by the player.":
+        "වාදකය මෙම දුරස්ථ පාලන විධානයට සහාය නොදක්වයි.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "මෙම ආරක්ෂිත සැසිය ලබා ගත නොහැක හෝ කල් ඉකුත් වී ඇත. රූපවාහිනියේ නව සැසියක් විවෘත කර එහි සම්පූර්ණ සබැඳිය භාවිතා කරන්න.",
     Timer: "ටයිමරය",
@@ -1000,6 +1019,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "විශාලන මාදිලිය වෙනස් කරන්න",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv සැකසුම්",
+    "Touchscreen locked": "ස්පර්ශ තිරය අගුළු දමා ඇත",
+    "Touchscreen unlocked": "ස්පර්ශ තිරයේ අගුල ඉවත් කර ඇත",
     "Trust this server for remote support":
         "දුරස්ථ සහාය සඳහා මෙම සේවාදායකය විශ්වාස කරන්න",
     "Trusted access could not be removed from device storage.":
@@ -1020,6 +1041,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X සැකසුම්",
     "Unable to load playlist": "ධාවන ලැයිස්තුව පූරණය කළ නොහැක",
+    "Unlock the player's settings before changing its playlist.":
+        "ධාවන ලැයිස්තුව වෙනස් කිරීමට පෙර වාදකයේ සැකසුම් අගුල අරින්න.",
     Untitled: "මාතෘකා නැත",
     "Untitled folder": "නම් නොකළ ෆෝල්ඩරය",
     "Update installed. Please restart OttPlay FOSS.":

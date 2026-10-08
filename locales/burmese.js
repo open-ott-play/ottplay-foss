@@ -139,6 +139,10 @@ var keyStrings = {
         "ဝန်ဆောင်မှုပေးသူကို ပြောင်းပါ။ မီဒီယာဖွင့်စက်ကို နောက်တစ်ကြိမ် စတင်သောအခါတွင် သင်၏ရွေးချယ်မှုကို မှတ်မိပါမည်။",
     "Change value": "တန်ဖိုးကို ပြောင်းပါ။",
     "Channel ": "ချန်နယ် ",
+    'Channel "%1" not found': '"%1" ချန်နယ်ကို မတွေ့ပါ',
+    "Channel #%1": "ချန်နယ် #%1",
+    "Channel #%1 not found (total: %2)": "ချန်နယ် #%1 ကို မတွေ့ပါ (စုစုပေါင်း: %2)",
+    "Channel #%1 not in any category": "ချန်နယ် #%1 သည် မည်သည့်အမျိုးအစားတွင်မျှ မပါဝင်ပါ",
     "Channel has no EPG": "ချန်နယ်တွင် EPG မရှိပါ။",
     "Channel is not available!!!": "ချန်နယ်ကို မရနိုင်ပါ။",
     "Channel link": "ချန်နယ်လင့်ခ်",
@@ -287,6 +291,7 @@ var keyStrings = {
         "အရန်သိမ်းထားရန် JSON ကို ကူးယူပါ။ ၎င်းကို ပြန်လည်ရယူရန် သွင်းသွင်းဆက်တင်များကို အသုံးပြုပါ။",
     "Copy the selected JSON with your device's copy command":
         "ရွေးချယ်ထားသော JSON ကို သင့်စက်၏ မိတ္တူအမိန့်ဖြင့် ကူးယူပါ။",
+    "Could not change the playlist.": "ဖွင့်စာရင်းကို မပြောင်းနိုင်ပါ။",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex သို့ ချိတ်ဆက်၍မရပါ။ ဆာဗာလိပ်စာ၊ တိုကင်နှင့် ကွန်ရက်ဝင်ရောက်ခွင့်တို့ကို စစ်ဆေးပါ။",
     "Could not connect to the server.": "ဆာဗာသို့ ချိတ်ဆက်၍မရပါ။",
@@ -541,6 +546,7 @@ var keyStrings = {
     "Invalid cloud settings response": "မမှန်ကန်သော cloud ဆက်တင်များ တုံ့ပြန်မှု",
     "Invalid protected source configuration":
         "အကာအကွယ်ပေးထားသော ရင်းမြစ်ဖွဲ့စည်းပုံ မမှန်ကန်ပါ။",
+    "Invalid range: %1-%2": "အပိုင်းအခြား မမှန်ပါ: %1-%2",
     "Invalid setting": "မမှန်ကန်သော ဆက်တင်",
     "IPTV token": "IPTV တိုကင်",
     "IpStream.one": "IpStream.one",
@@ -572,6 +578,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ကို ဖွင့်နေသည်...",
     "Loading media libraries...": "မီဒီယာစာကြည့်တိုက်များကို ဖွင့်နေသည်…",
     "Loading player...": "ပလေယာကို ဖွင့်နေသည်…",
+    "Loading the new playlist...": "ဖွင့်စာရင်းအသစ်ကို တင်နေသည်...",
     "Loading via proxy...": "ပရောက်စီမှတစ်ဆင့် ဖွင့်နေသည်…",
     "Loading. Please wait...": "တင်နေသည်… ကျေးဇူးပြု၍ စောင့်ပါ…",
     "Loading...": "တင်နေသည်...",
@@ -613,6 +620,7 @@ var keyStrings = {
     "Next TV program": "နောက်တစ်ခု အစီအစဉ်",
     No: "မဟုတ်ပါ",
     "No channel name": "ချန်နယ်အမည်မရှိပါ။",
+    "No channels loaded": "ချန်နယ်များ မတင်ရသေးပါ",
     "No command server was found on this network.":
         "ဤကွန်ရက်တွင် အမိန့်ပေးဆာဗာကို ရှာမတွေ့ပါ။",
     "No Plex servers are available for this account.":
@@ -686,6 +694,7 @@ var keyStrings = {
     "Player could not start": "မီဒီယာဖွင့်စက်သည် မစတင်နိုင်ပါ။",
     "Player default": "မီဒီယာဖွင့်စက်၏ မူလရွေးချယ်မှု",
     "Player info:": "မီဒီယာဖွင့်စက် အချက်အလက်:",
+    "Playing: %1": "ဖွင့်နေသည်: %1",
     Playlist: "အစီအစဉ်",
     "Playlist file": "အစီအစဉ်ဖိုင်",
     "Playlist is not loading directly...Loading via server...":
@@ -721,9 +730,13 @@ var keyStrings = {
     "Protect Change Provider": "ဝန်ဆောင်မှုပေးသူများကို ပြောင်းလဲရန် ဝင်ရောက်ကုဒ်တစ်ခု လိုအပ်သည်။",
     "Protect Settings": "ဆက်တင်များကိုပြောင်းလဲရန် ဝင်ရောက်ခွင့်ကုဒ်တစ်ခု လိုအပ်သည်။",
     "Protected source is unavailable": "ကာကွယ်ထားသောရင်းမြစ်ကို မရရှိနိုင်ပါ။",
+    "Provider switching not available": "ဝန်ဆောင်မှုပေးသူကို ပြောင်း၍မရပါ",
     "p...": "p...",
     paging: "ပေ့ချ်",
     Quality: "အရည်အသွေး",
+    "Random #%1": "ကျပန်းချန်နယ် #%1",
+    "Random channel not in any category":
+        "ကျပန်းရွေးထားသော ချန်နယ်သည် မည်သည့်အမျိုးအစားတွင်မျှ မပါဝင်ပါ",
     Rating: "အဆင့်သတ်မှတ်ချက်",
     RD: "RD",
     "RD settings": "RD ဆက်တင်များ",
@@ -762,6 +775,10 @@ var keyStrings = {
         "အဝေးထိန်းထည့်သွင်းမှု သက်တမ်းကုန်သွားပါပြီ။ ထပ်စမ်းကြည့်ရန် စက်ရှင်အသစ်တစ်ခုကို ဖွင့်ပါ။",
     "Remote input session is unavailable. Open a new session to try again.":
         "အဝေးထိန်းစနစ်ထည့်သွင်းခြင်း စက်ရှင်ကို မရနိုင်ပါ။ ထပ်စမ်းကြည့်ရန် စက်ရှင်အသစ်တစ်ခုကို ဖွင့်ပါ။",
+    "Remote playlist changes require the M3U provider.":
+        "ဖွင့်စာရင်းကို အဝေးမှပြောင်းရန် M3U ဝန်ဆောင်မှုပေးသူ လိုအပ်သည်။",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "ဝန်ဆောင်မှုပေးသူ၏ ဆက်တင်များကို အဝေးမှပြောင်းခြင်းအား မပံ့ပိုးပါ။ ပလေယာရှိ ဝန်ဆောင်မှုပေးသူဆက်တင်များကို အသုံးပြုပါ။",
     "Remote screenshots": "အဝေးထိန်းဖန်သားပြင်ဓာတ်ပုံများ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "အဝေးထိန်းဖန်သားပြင်ဓာတ်ပုံများကို 10 မိနစ်ကြာခွင့်ပြုထားသည်။ ရိုက်ကူးရန် ဆက်တင်များကို ပိတ်ပါ။",
@@ -954,6 +971,7 @@ var keyStrings = {
     "Switch sound track": "အသံလမ်းကြောင်း ပြောင်းရန်",
     "Switch subtitle": "စာတန်းထိုး ပြောင်းရန်",
     "Switch to this list": "ဤစာရင်းသို့ ပြောင်းပါ။",
+    "Switching provider...": "ဝန်ဆောင်မှုပေးသူကို ပြောင်းနေသည်...",
     "Swop URL": "Swop URL",
     "System language": "စနစ်ဘာသာစကား",
     "saved on this device": "ဤစက်ပစ္စည်းပေါ်တွင် သိမ်းဆည်းထားသည်။",
@@ -985,6 +1003,8 @@ var keyStrings = {
         "ဤ Play အက်ပ်သည် HTTPS လိုအပ်သည်။ HTTPS အစီအစဉ် သို့မဟုတ် ဆာဗာ URL အတွက် သင့်ဝန်ဆောင်မှုပေးသူကို တောင်းဆိုပါ။",
     "This pairing link has expired. Open a new session on your TV.":
         "ဤတွဲချိတ်လင့်ခ်သည် သက်တမ်းကုန်သွားပါပြီ။ သင့် TV တွင် စက်ရှင်အသစ်တစ်ခုဖွင့်ပါ။",
+    "This remote command is not supported by the player.":
+        "ဤအဝေးထိန်းအမိန့်ကို ပလေယာက မပံ့ပိုးပါ။",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ဤလုံခြုံသောစက်ရှင်ကို မရရှိနိုင်ပါ သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ။ TV တွင် စက်ရှင်အသစ်တစ်ခုဖွင့်ပြီး ၎င်း၏ အပြည့်အစုံလင့်ခ်ကို အသုံးပြုပါ။",
     Timer: "အချိန်တိုင်းစက်",
@@ -1002,6 +1022,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ဇူးမ်မုဒ်ကို ပြောင်းပါ။",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ဆက်တင်များ",
+    "Touchscreen locked": "ထိတွေ့မျက်နှာပြင်ကို လော့ခ်ချထားသည်",
+    "Touchscreen unlocked": "ထိတွေ့မျက်နှာပြင်၏ လော့ခ်ကို ဖွင့်ထားသည်",
     "Trust this server for remote support": "အဝေးထိန်းပံ့ပိုးမှုအတွက် ဤဆာဗာကို ယုံကြည်ပါ။",
     "Trusted access could not be removed from device storage.":
         "ယုံကြည်စိတ်ချရသောဝင်ရောက်မှုကို စက်ပစ္စည်းသိုလှောင်မှုမှ ဖယ်ရှား၍မရပါ။",
@@ -1021,6 +1043,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ဆက်တင်များ",
     "Unable to load playlist": "အစီအစဉ်ကို ဖွင့်၍မရပါ။",
+    "Unlock the player's settings before changing its playlist.":
+        "ဖွင့်စာရင်းကို မပြောင်းမီ ပလေယာဆက်တင်များ၏ လော့ခ်ကို ဖွင့်ပါ။",
     Untitled: "ခေါင်းစဉ်မဲ့",
     "Untitled folder": "ခေါင်းစဉ်မဲ့ ဖိုင်တွဲ",
     "Update installed. Please restart OttPlay FOSS.":

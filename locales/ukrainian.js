@@ -141,6 +141,11 @@ var keyStrings = {
         "Змініть провайдера. Вибір збережеться під час наступного запуску програвача.",
     "Change value": "Змінити значення",
     "Channel ": "Канал ",
+    'Channel "%1" not found': "Канал «%1» не знайдено",
+    "Channel #%1": "Канал №%1",
+    "Channel #%1 not found (total: %2)": "Канал №%1 не знайдено (усього: %2)",
+    "Channel #%1 not in any category":
+        "Канал №%1 не належить до жодної категорії",
     "Channel has no EPG": "Для каналу немає програми передач",
     "Channel is not available!!!": "Канал недоступний!!!",
     "Channel link": "Посилання на канал",
@@ -289,6 +294,7 @@ var keyStrings = {
         "Скопіюйте JSON, щоб зберегти резервну копію. Для відновлення скористайтеся імпортом налаштувань.",
     "Copy the selected JSON with your device's copy command":
         "Скопіюйте виділений JSON за допомогою команди копіювання на пристрої",
+    "Could not change the playlist.": "Не вдалося змінити плейлист.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Не вдалося підключитися до Plex. Перевірте адресу сервера, токен і доступ до мережі.",
     "Could not connect to the server.": "Не вдалося підключитися до сервера.",
@@ -556,6 +562,7 @@ var keyStrings = {
         "Недійсна відповідь на налаштування хмари",
     "Invalid protected source configuration":
         "Неправильна конфігурація захищеного джерела",
+    "Invalid range: %1-%2": "Неправильний діапазон: %1-%2",
     "Invalid setting": "Недійсне налаштування",
     "IPTV token": "IPTV-токен",
     "IpStream.one": "IpStream.one",
@@ -587,6 +594,7 @@ var keyStrings = {
     "Loading M3U...": "Завантаження M3U…",
     "Loading media libraries...": "Завантаження медіабібліотек…",
     "Loading player...": "Завантаження плеєра…",
+    "Loading the new playlist...": "Завантаження нового плейлиста...",
     "Loading via proxy...": "Завантаження через проксі…",
     "Loading. Please wait...": "Завантаження. Зачекайте…",
     "Loading...": "Завантаження…",
@@ -628,6 +636,7 @@ var keyStrings = {
     "Next TV program": "Наступна передача",
     No: "Ні",
     "No channel name": "Немає назви каналу",
+    "No channels loaded": "Канали не завантажено",
     "No command server was found on this network.":
         "У цій мережі не знайдено сервера команд.",
     "No Plex servers are available for this account.":
@@ -701,6 +710,7 @@ var keyStrings = {
     "Player could not start": "Не вдалося запустити плеєр",
     "Player default": "Вибір програвача за замовчуванням",
     "Player info:": "Інформація про програвач:",
+    "Playing: %1": "Відтворюється: %1",
     Playlist: "Плейлист",
     "Playlist file": "Файл плейлиста",
     "Playlist is not loading directly...Loading via server...":
@@ -737,9 +747,13 @@ var keyStrings = {
     "Protect Change Provider": "Захистити зміну провайдера",
     "Protect Settings": "Захистити налаштування",
     "Protected source is unavailable": "Захищене джерело недоступне",
+    "Provider switching not available": "Перемикання провайдера недоступне",
     "p...": "с…",
     paging: "гортання сторінок",
     Quality: "Якість",
+    "Random #%1": "Випадковий №%1",
+    "Random channel not in any category":
+        "Випадковий канал не належить до жодної категорії",
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "Налаштування RD",
@@ -776,6 +790,10 @@ var keyStrings = {
         "Термін дії віддаленого введення минув. Відкрийте новий сеанс, щоб повторити спробу.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сеанс дистанційного введення недоступний. Відкрийте новий сеанс, щоб повторити спробу.",
+    "Remote playlist changes require the M3U provider.":
+        "Для віддаленої зміни плейлиста потрібен провайдер M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Віддалене налаштування провайдера не підтримується. Скористайтеся налаштуваннями провайдера в плеєрі.",
     "Remote screenshots": "Віддалені знімки екрана",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Віддалені скріншоти дозволені протягом 10 хвилин. Закрийте налаштування для зйомки.",
@@ -969,6 +987,7 @@ var keyStrings = {
     "Switch sound track": "Змінити звукову доріжку",
     "Switch subtitle": "Змінити субтитри",
     "Switch to this list": "Перемкнутися на цей список",
+    "Switching provider...": "Перемикання провайдера...",
     "Swop URL": "Адреса Swop",
     "System language": "Мова системи",
     "saved on this device": "збережено на цьому пристрої",
@@ -1003,6 +1022,8 @@ var keyStrings = {
         "Для цієї версії з Play потрібен HTTPS. Попросіть у провайдера HTTPS-адресу списку або сервера.",
     "This pairing link has expired. Open a new session on your TV.":
         "Термін дії цього посилання для створення пари закінчився. Відкрийте новий сеанс на телевізорі.",
+    "This remote command is not supported by the player.":
+        "Плеєр не підтримує цю віддалену команду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Цей безпечний сеанс недоступний або закінчився. Відкрийте новий сеанс на телевізорі та скористайтеся його повним посиланням.",
     Timer: "Таймер",
@@ -1021,6 +1042,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змінити режим масштабування",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налаштування Top-Tv",
+    "Touchscreen locked": "Сенсорний екран заблоковано",
+    "Touchscreen unlocked": "Сенсорний екран розблоковано",
     "Trust this server for remote support":
         "Довіряйте цьому серверу віддалену підтримку",
     "Trusted access could not be removed from device storage.":
@@ -1041,6 +1064,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Налаштування ULTIFL1X",
     "Unable to load playlist": "Не вдалося завантажити список відтворення",
+    "Unlock the player's settings before changing its playlist.":
+        "Розблокуйте налаштування плеєра перед зміною плейлиста.",
     Untitled: "Без назви",
     "Untitled folder": "Папка без назви",
     "Update installed. Please restart OttPlay FOSS.":

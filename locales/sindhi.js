@@ -139,6 +139,10 @@ var keyStrings = {
         "فراهم ڪندڙ بدلايو. ايندڙ ڀيري پليئر شروع ڪرڻ وقت توهان جي چونڊ ياد رهندي.",
     "Change value": "قدر بدلايو",
     "Channel ": "چينل ",
+    'Channel "%1" not found': '"%1" چينل نه مليو',
+    "Channel #%1": "چينل #%1",
+    "Channel #%1 not found (total: %2)": "چينل #%1 نه مليو (ڪل: %2)",
+    "Channel #%1 not in any category": "چينل #%1 ڪنهن به درجي ۾ ناهي",
     "Channel has no EPG": "چينل وٽ EPG ناهي",
     "Channel is not available!!!": "چينل موجود ناهي!",
     "Channel link": "چينل لنڪ",
@@ -286,6 +290,7 @@ var keyStrings = {
         "بيڪ اپ رکڻ لاءِ JSON نقل ڪريو. بحال ڪرڻ لاءِ «سيٽنگون درآمد ڪريو» استعمال ڪريو.",
     "Copy the selected JSON with your device's copy command":
         "پنهنجي ڊوائيس جي نقل ڪرڻ واري حڪم سان چونڊيل JSON نقل ڪريو",
+    "Could not change the playlist.": "پلي لسٽ تبديل نه ٿي سگهي.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex سان ڳنڍجي نه سگهيو. سرور جو پتو، ٽوڪن ۽ نيٽ ورڪ رسائي جاچيو.",
     "Could not connect to the server.": "سرور سان ڳنڍجي نه سگهيو.",
@@ -546,6 +551,7 @@ var keyStrings = {
         "چينل لنڪ صحيح ناهي! ذاتي اڪائونٽ جي اسٽريم URL وانگر مڪمل هوسٽ داخل ڪريو (مثال طور subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "ڪلائوڊ سيٽنگن جو جواب غلط آهي",
     "Invalid protected source configuration": "محفوظ ذريعي جي ترتيب صحيح ناهي",
+    "Invalid range: %1-%2": "غلط حد: %1-%2",
     "Invalid setting": "غلط سيٽنگ",
     "IPTV token": "IPTV ٽوڪن",
     "IpStream.one": "IpStream.one",
@@ -578,6 +584,7 @@ var keyStrings = {
     "Loading M3U...": "M3U لوڊ ٿي رهيو آهي…",
     "Loading media libraries...": "ميڊيا لائبريريون لوڊ ٿي رهيون آهن…",
     "Loading player...": "پليئر لوڊ ٿي رهيو آهي…",
+    "Loading the new playlist...": "نئين پلي لسٽ لوڊ ٿي رهي آهي...",
     "Loading via proxy...": "پراڪسي ذريعي لوڊ ٿي رهيو آهي…",
     "Loading. Please wait...": "لوڊ ٿي رهيو آهي… مهرباني ڪري انتظار ڪريو…",
     "Loading...": "لوڊ ٿي رهيو آهي…",
@@ -619,6 +626,7 @@ var keyStrings = {
     "Next TV program": "اڳيون پروگرام",
     No: "نه",
     "No channel name": "چينل جو نالو ناهي",
+    "No channels loaded": "ڪو به چينل لوڊ نه ٿيو آهي",
     "No command server was found on this network.":
         "هن نيٽ ورڪ تي ڪو حڪم سرور نه مليو.",
     "No Plex servers are available for this account.":
@@ -692,6 +700,7 @@ var keyStrings = {
     "Player could not start": "پليئر شروع نه ٿيو",
     "Player default": "پليئر جي ڊفالٽ چونڊ",
     "Player info:": "پليئر جي ڄاڻ:",
+    "Playing: %1": "هلي رهيو آهي: %1",
     Playlist: "پلي لسٽ",
     "Playlist file": "پلي لسٽ فائل",
     "Playlist is not loading directly...Loading via server...":
@@ -728,9 +737,14 @@ var keyStrings = {
     "Protect Change Provider": "فراهم ڪندڙ بدلائڻ محفوظ ڪريو",
     "Protect Settings": "سيٽنگون محفوظ رسائي هيٺ رکو",
     "Protected source is unavailable": "محفوظ ذريعو موجود ناهي",
+    "Provider switching not available":
+        "فراهم ڪندڙ کي تبديل ڪرڻ جي سهولت موجود ناهي",
     "p...": "ص...",
     paging: "صفحو بدلائڻ",
     Quality: "معيار",
+    "Random #%1": "بي ترتيب چينل #%1",
+    "Random channel not in any category":
+        "بي ترتيب چونڊيل چينل ڪنهن به درجي ۾ ناهي",
     Rating: "درجه بندي",
     RD: "RD",
     "RD settings": "RD جون سيٽنگون",
@@ -768,6 +782,10 @@ var keyStrings = {
         "پري کان ان پٽ جو مدو ختم ٿيو. ٻيهر ڪوشش لاءِ نئون سيشن کوليو.",
     "Remote input session is unavailable. Open a new session to try again.":
         "پري کان ان پٽ سيشن موجود ناهي. ٻيهر ڪوشش لاءِ نئون سيشن کوليو.",
+    "Remote playlist changes require the M3U provider.":
+        "پري کان پلي لسٽ بدلائڻ لاءِ M3U فراهم ڪندڙ گهربل آهي.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "پري کان فراهم ڪندڙ جون سيٽنگون بدلائڻ جي سهائتا ناهي. پليئر ۾ فراهم ڪندڙ جون سيٽنگون استعمال ڪريو.",
     "Remote screenshots": "ريموٽ اسڪرين شاٽ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "ريموٽ اسڪرين شاٽس جي اجازت آھي 10 منٽن لاءِ. پڪڙڻ لاء سيٽنگون بند ڪريو.",
@@ -957,6 +975,7 @@ var keyStrings = {
     "Switch sound track": "آڊيو ٽريڪ بدلايو",
     "Switch subtitle": "ذيلي عنوان بدلايو",
     "Switch to this list": "هن فهرست ڏانهن وڃو",
+    "Switching provider...": "فراهم ڪندڙ تبديل ٿي رهيو آهي...",
     "Swop URL": "Swop جو URL",
     "System language": "سسٽم ٻولي",
     "saved on this device": "هن ڊوائيس تي محفوظ",
@@ -989,6 +1008,8 @@ var keyStrings = {
         "هن Play ايپ کي HTTPS گهربل آهي. فراهم ڪندڙ کان HTTPS پلي لسٽ يا سرور URL گهرو.",
     "This pairing link has expired. Open a new session on your TV.":
         "هن جوڙڻ واري لنڪ ختم ٿي وئي آهي. پنھنجي ٽي وي تي ھڪڙو نئون سيشن کوليو.",
+    "This remote command is not supported by the player.":
+        "پليئر هن ريموٽ ڪنٽرول حڪم جي سهائتا نٿو ڪري.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "هي محفوظ سيشن دستياب ناهي يا ختم ٿي چڪو آهي. ٽي وي تي نئون سيشن کوليو ۽ ان جي مڪمل لنڪ استعمال ڪريو.",
     Timer: "ٽائمر",
@@ -1008,6 +1029,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "زوم موڊ بدلايو",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv جون سيٽنگون",
+    "Touchscreen locked": "ٽچ اسڪرين کي تالو لڳل آهي",
+    "Touchscreen unlocked": "ٽچ اسڪرين جو تالو کليل آهي",
     "Trust this server for remote support":
         "پري کان مدد لاءِ هن سرور تي ڀروسو ڪريو",
     "Trusted access could not be removed from device storage.":
@@ -1028,6 +1051,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X جون سيٽنگون",
     "Unable to load playlist": "پلي لسٽ لوڊ نه ٿي",
+    "Unlock the player's settings before changing its playlist.":
+        "پلي لسٽ بدلائڻ کان اڳ پليئر جي سيٽنگن جو تالو کوليو.",
     Untitled: "بي عنوان",
     "Untitled folder": "بي نالي فولڊر",
     "Update installed. Please restart OttPlay FOSS.":

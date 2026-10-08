@@ -134,6 +134,10 @@ var keyStrings = {
         "ປ່ຽນຜູ້ໃຫ້ບໍລິການ. ການເລືອກຂອງທ່ານຈະຖືກຈື່ໃນຄັ້ງຕໍ່ໄປທີ່ເປີດເຄື່ອງຫຼິ້ນ.",
     "Change value": "ປ່ຽນຄ່າ",
     "Channel ": "ຊ່ອງ ",
+    'Channel "%1" not found': 'ບໍ່ພົບຊ່ອງ "%1"',
+    "Channel #%1": "ຊ່ອງ #%1",
+    "Channel #%1 not found (total: %2)": "ບໍ່ພົບຊ່ອງ #%1 (ທັງໝົດ: %2)",
+    "Channel #%1 not in any category": "ຊ່ອງ #%1 ບໍ່ຢູ່ໃນໝວດໝູ່ໃດ",
     "Channel has no EPG": "ຊ່ອງບໍ່ມີ EPG",
     "Channel is not available!!!": "ຊ່ອງບໍ່ພ້ອມໃຊ້!",
     "Channel link": "ລິ້ງຊ່ອງ",
@@ -279,6 +283,7 @@ var keyStrings = {
         "ສຳເນົາ JSON ເພື່ອເກັບສຳຮອງ. ໃຊ້ «ນຳເຂົ້າການຕັ້ງຄ່າ» ເພື່ອກູ້ຄືນ.",
     "Copy the selected JSON with your device's copy command":
         "ສຳເນົາ JSON ທີ່ເລືອກດ້ວຍຄຳສັ່ງສຳເນົາຂອງອຸປະກອນ",
+    "Could not change the playlist.": "ບໍ່ສາມາດປ່ຽນລາຍການຫຼິ້ນໄດ້.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "ບໍ່ສາມາດເຊື່ອມຕໍ່ Plex. ກວດສອບທີ່ຢູ່ເຊີບເວີ, ໂທເຄັນ ແລະ ການເຂົ້າເຖິງເຄືອຂ່າຍ.",
     "Could not connect to the server.": "ບໍ່ສາມາດເຊື່ອມຕໍ່ເຊີບເວີ.",
@@ -529,6 +534,7 @@ var keyStrings = {
         "ລິ້ງຊ່ອງບໍ່ຖືກຕ້ອງ! ປ້ອນຊື່ໂຮສຄົບຖ້ວນຕາມ URL ສະຕຣີມໃນບັນຊີສ່ວນຕົວ (ເຊັ່ນ subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "ການຕອບສະໜອງການຕັ້ງຄ່າຄລາວບໍ່ຖືກຕ້ອງ",
     "Invalid protected source configuration": "ການຕັ້ງຄ່າແຫຼ່ງທີ່ປ້ອງກັນບໍ່ຖືກຕ້ອງ",
+    "Invalid range: %1-%2": "ຊ່ວງບໍ່ຖືກຕ້ອງ: %1-%2",
     "Invalid setting": "ການຕັ້ງຄ່າບໍ່ຖືກຕ້ອງ",
     "IPTV token": "ໂທເຄັນ IPTV",
     "IpStream.one": "IpStream.one",
@@ -560,6 +566,7 @@ var keyStrings = {
     "Loading M3U...": "ກຳລັງໂຫຼດ M3U…",
     "Loading media libraries...": "ກຳລັງໂຫຼດຄັງສື່…",
     "Loading player...": "ກຳລັງໂຫຼດເຄື່ອງຫຼິ້ນ…",
+    "Loading the new playlist...": "ກຳລັງໂຫຼດລາຍການຫຼິ້ນໃໝ່...",
     "Loading via proxy...": "ກຳລັງໂຫຼດຜ່ານພຣັອກຊີ…",
     "Loading. Please wait...": "ກຳລັງໂຫຼດ… ກະລຸນາລໍຖ້າ…",
     "Loading...": "ກຳລັງໂຫຼດ…",
@@ -601,6 +608,7 @@ var keyStrings = {
     "Next TV program": "ລາຍການຕໍ່ໄປ",
     No: "ບໍ່",
     "No channel name": "ບໍ່ມີຊື່ຊ່ອງ",
+    "No channels loaded": "ຍັງບໍ່ໄດ້ໂຫຼດຊ່ອງໃດ",
     "No command server was found on this network.": "ບໍ່ພົບເຊີບເວີຄຳສັ່ງໃນເຄືອຂ່າຍນີ້.",
     "No Plex servers are available for this account.": "ບໍ່ມີເຊີບເວີ Plex ສຳລັບບັນຊີນີ້.",
     "No programmes matched the playlist channels and dates. Check the source and device clock.":
@@ -671,6 +679,7 @@ var keyStrings = {
     "Player could not start": "ເຄື່ອງຫຼິ້ນບໍ່ສາມາດເລີ່ມໄດ້",
     "Player default": "ຄ່າເລີ່ມຕົ້ນຂອງເຄື່ອງຫຼິ້ນ",
     "Player info:": "ຂໍ້ມູນເຄື່ອງຫຼິ້ນ:",
+    "Playing: %1": "ກຳລັງຫຼິ້ນ: %1",
     Playlist: "ລາຍການຫຼິ້ນ",
     "Playlist file": "ໄຟລ໌ລາຍການຫຼິ້ນ",
     "Playlist is not loading directly...Loading via server...":
@@ -705,9 +714,12 @@ var keyStrings = {
     "Protect Change Provider": "ປ້ອງກັນການປ່ຽນຜູ້ໃຫ້ບໍລິການ",
     "Protect Settings": "ປ້ອງກັນການຕັ້ງຄ່າ",
     "Protected source is unavailable": "ແຫຼ່ງທີ່ປ້ອງກັນບໍ່ພ້ອມໃຊ້",
+    "Provider switching not available": "ບໍ່ສາມາດປ່ຽນຜູ້ໃຫ້ບໍລິການໄດ້",
     "p...": "ໜ...",
     paging: "ແບ່ງໜ້າ",
     Quality: "ຄຸນນະພາບ",
+    "Random #%1": "ຊ່ອງສຸ່ມ #%1",
+    "Random channel not in any category": "ຊ່ອງທີ່ສຸ່ມເລືອກບໍ່ຢູ່ໃນໝວດໝູ່ໃດ",
     Rating: "ຄະແນນ",
     RD: "RD",
     "RD settings": "ການຕັ້ງຄ່າ RD",
@@ -744,6 +756,10 @@ var keyStrings = {
         "ການປ້ອນທາງໄກໝົດອາຍຸ. ເປີດເຊດຊັນໃໝ່ເພື່ອລອງອີກ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ເຊດຊັນປ້ອນທາງໄກບໍ່ພ້ອມໃຊ້. ເປີດເຊດຊັນໃໝ່ເພື່ອລອງອີກ.",
+    "Remote playlist changes require the M3U provider.":
+        "ການປ່ຽນລາຍການຫຼິ້ນຈາກທາງໄກຕ້ອງໃຊ້ຜູ້ໃຫ້ບໍລິການ M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "ບໍ່ຮອງຮັບການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການຈາກທາງໄກ. ໃຫ້ໃຊ້ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການໃນໂປຣແກຣມຫຼິ້ນ.",
     "Remote screenshots": "ພາບຫນ້າຈໍໄລຍະໄກ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "ພາບຫນ້າຈໍໄລຍະໄກແມ່ນອະນຸຍາດໃຫ້ໃຊ້ເວລາ 10 ນາທີ. ປິດການຕັ້ງຄ່າເພື່ອບັນທຶກ.",
@@ -928,6 +944,7 @@ var keyStrings = {
     "Switch sound track": "ປ່ຽນແທຣັກສຽງ",
     "Switch subtitle": "ປ່ຽນຄຳບັນຍາຍ",
     "Switch to this list": "ປ່ຽນໄປລາຍການນີ້",
+    "Switching provider...": "ກຳລັງປ່ຽນຜູ້ໃຫ້ບໍລິການ...",
     "Swop URL": "URL Swop",
     "System language": "ພາສາລະບົບ",
     "saved on this device": "ບັນທຶກໃນອຸປະກອນນີ້",
@@ -957,6 +974,8 @@ var keyStrings = {
         "ແອັບ Play ນີ້ຕ້ອງໃຊ້ HTTPS. ຂໍລາຍການຫຼິ້ນ ຫຼື URL ເຊີບເວີແບບ HTTPS ຈາກຜູ້ໃຫ້ບໍລິການ.",
     "This pairing link has expired. Open a new session on your TV.":
         "ລິ້ງການຈັບຄູ່ນີ້ໝົດອາຍຸແລ້ວ. ເປີດເຊດຊັນໃໝ່ຢູ່ໂທລະທັດຂອງເຈົ້າ.",
+    "This remote command is not supported by the player.":
+        "ໂປຣແກຣມຫຼິ້ນບໍ່ຮອງຮັບຄຳສັ່ງຄວບຄຸມທາງໄກນີ້.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ເຊດຊັນທີ່ປອດໄພນີ້ບໍ່ສາມາດໃຊ້ໄດ້ ຫຼືໝົດອາຍຸແລ້ວ. ເປີດເຊດຊັນໃໝ່ໃນໂທລະທັດ ແລະໃຊ້ລິ້ງທີ່ສົມບູນຂອງມັນ.",
     Timer: "ຕົວຕັ້ງເວລາ",
@@ -975,6 +994,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ປ່ຽນໂໝດຂະຫຍາຍພາບ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "ການຕັ້ງຄ່າ Top-Tv",
+    "Touchscreen locked": "ໜ້າຈໍສຳຜັດຖືກລັອກແລ້ວ",
+    "Touchscreen unlocked": "ໜ້າຈໍສຳຜັດຖືກປົດລັອກແລ້ວ",
     "Trust this server for remote support": "ໄວ້ໃຈເຊີບເວີນີ້ສຳລັບການຊ່ວຍເຫຼືອທາງໄກ",
     "Trusted access could not be removed from device storage.":
         "ບໍ່ສາມາດລຶບສິດເຂົ້າໃຊ້ທີ່ໄວ້ໃຈຈາກບ່ອນເກັບອຸປະກອນ.",
@@ -994,6 +1015,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ການຕັ້ງຄ່າ ULTIFL1X",
     "Unable to load playlist": "ບໍ່ສາມາດໂຫຼດລາຍການຫຼິ້ນ",
+    "Unlock the player's settings before changing its playlist.":
+        "ປົດລັອກການຕັ້ງຄ່າໂປຣແກຣມຫຼິ້ນກ່ອນປ່ຽນລາຍການຫຼິ້ນ.",
     Untitled: "ບໍ່ມີຊື່",
     "Untitled folder": "ໂຟນເດີບໍ່ມີຊື່",
     "Update installed. Please restart OttPlay FOSS.":

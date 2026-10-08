@@ -136,6 +136,10 @@ var keyStrings = {
         "ప్రొవైడర్‌ను మార్చండి. తదుపరిసారి మీరు ప్లేయర్‌ని ప్రారంభించినప్పుడు మీ ఎంపిక గుర్తుంచుకుంటుంది.",
     "Change value": "విలువను మార్చండి",
     "Channel ": "ఛానెల్ ",
+    'Channel "%1" not found': '"%1" ఛానెల్ కనబడలేదు',
+    "Channel #%1": "ఛానెల్ #%1",
+    "Channel #%1 not found (total: %2)": "ఛానెల్ #%1 కనబడలేదు (మొత్తం: %2)",
+    "Channel #%1 not in any category": "ఛానెల్ #%1 ఏ వర్గంలోనూ లేదు",
     "Channel has no EPG": "ఛానెల్‌లో EPG లేదు",
     "Channel is not available!!!": "ఛానెల్ అందుబాటులో లేదు!",
     "Channel link": "ఛానెల్ లింక్",
@@ -282,6 +286,7 @@ var keyStrings = {
         "బ్యాకప్ ఉంచడానికి JSONని కాపీ చేయండి. దీన్ని పునరుద్ధరించడానికి దిగుమతి సెట్టింగ్‌లను ఉపయోగించండి.",
     "Copy the selected JSON with your device's copy command":
         "ఎంచుకున్న JSONని మీ పరికరం యొక్క కాపీ కమాండ్‌తో కాపీ చేయండి",
+    "Could not change the playlist.": "ప్లేజాబితాను మార్చలేకపోయింది.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plexకి కనెక్ట్ చేయడం సాధ్యపడలేదు. సర్వర్ చిరునామా, టోకెన్ మరియు నెట్‌వర్క్ యాక్సెస్‌ని తనిఖీ చేయండి.",
     "Could not connect to the server.": "సర్వర్‌కి కనెక్ట్ చేయడం సాధ్యపడలేదు.",
@@ -539,6 +544,7 @@ var keyStrings = {
         "చెల్లని ఛానెల్ లింక్! మీ ప్రొవైడర్ ఖాతా పేజీలో URL స్ట్రీమ్ నుండి పూర్తి హోస్ట్ పేరును నమోదు చేయండి (ఉదాహరణకు subdomain.cdn-domain.tld ).",
     "Invalid cloud settings response": "చెల్లని క్లౌడ్ సెట్టింగ్‌ల ప్రతిస్పందన",
     "Invalid protected source configuration": "చెల్లని రక్షిత మూల కాన్ఫిగరేషన్",
+    "Invalid range: %1-%2": "చెల్లని పరిధి: %1-%2",
     "Invalid setting": "చెల్లని సెట్టింగ్",
     "IPTV token": "IPTV టోకెన్",
     "IpStream.one": "IpStream.one",
@@ -570,6 +576,7 @@ var keyStrings = {
     "Loading M3U...": "M3U లోడ్ అవుతోంది…",
     "Loading media libraries...": "మీడియా లైబ్రరీలను లోడ్ చేస్తోంది…",
     "Loading player...": "ప్లేయర్ లోడ్ అవుతోంది…",
+    "Loading the new playlist...": "కొత్త ప్లేజాబితాను లోడ్ చేస్తోంది...",
     "Loading via proxy...": "ప్రాక్సీ ద్వారా లోడ్ అవుతోంది…",
     "Loading. Please wait...": "లోడ్ అవుతోంది... దయచేసి వేచి ఉండండి...",
     "Loading...": "లోడ్ అవుతోంది…",
@@ -611,6 +618,7 @@ var keyStrings = {
     "Next TV program": "తదుపరి ప్రోగ్రామ్",
     No: "కాదు",
     "No channel name": "ఛానెల్ పేరు లేదు",
+    "No channels loaded": "ఏ ఛానెల్‌లు లోడ్ కాలేదు",
     "No command server was found on this network.":
         "ఈ నెట్‌వర్క్‌లో కమాండ్ సర్వర్ కనుగొనబడలేదు.",
     "No Plex servers are available for this account.":
@@ -683,6 +691,7 @@ var keyStrings = {
     "Player could not start": "ప్లేయర్ ప్రారంభం కాలేదు",
     "Player default": "ప్లేయర్ డిఫాల్ట్ ఎంపిక",
     "Player info:": "ప్లేయర్ సమాచారం:",
+    "Playing: %1": "ప్లే అవుతోంది: %1",
     Playlist: "ప్లేజాబితా",
     "Playlist file": "ప్లేజాబితా ఫైల్",
     "Playlist is not loading directly...Loading via server...":
@@ -718,9 +727,12 @@ var keyStrings = {
     "Protect Change Provider": "ప్రొవైడర్ మార్పును రక్షించండి",
     "Protect Settings": "సెట్టింగ్‌లను రక్షించండి",
     "Protected source is unavailable": "రక్షిత మూలం అందుబాటులో లేదు",
+    "Provider switching not available": "ప్రొవైడర్‌ను మార్చే సౌకర్యం అందుబాటులో లేదు",
     "p...": "p...",
     paging: "పేజింగ్",
     Quality: "నాణ్యత",
+    "Random #%1": "యాదృచ్ఛిక ఛానెల్ #%1",
+    "Random channel not in any category": "యాదృచ్ఛికంగా ఎంచుకున్న ఛానెల్ ఏ వర్గంలోనూ లేదు",
     Rating: "రేటింగ్",
     RD: "RD",
     "RD settings": "RD సెట్టింగ్‌లు",
@@ -757,6 +769,10 @@ var keyStrings = {
         "రిమోట్ ఇన్‌పుట్ గడువు ముగిసింది. మళ్లీ ప్రయత్నించడానికి కొత్త సెషన్‌ను తెరవండి.",
     "Remote input session is unavailable. Open a new session to try again.":
         "రిమోట్ ఇన్‌పుట్ సెషన్ అందుబాటులో లేదు. మళ్లీ ప్రయత్నించడానికి కొత్త సెషన్‌ను తెరవండి.",
+    "Remote playlist changes require the M3U provider.":
+        "దూరం నుంచి ప్లేజాబితాను మార్చడానికి M3U ప్రొవైడర్ అవసరం.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "దూరం నుంచి ప్రొవైడర్ సెట్టింగ్‌లను మార్చడానికి మద్దతు లేదు. ప్లేయర్‌లోని ప్రొవైడర్ సెట్టింగ్‌లను ఉపయోగించండి.",
     "Remote screenshots": "రిమోట్ స్క్రీన్‌షాట్‌లు",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "రిమోట్ స్క్రీన్‌షాట్‌లు 10 నిమిషాల పాటు అనుమతించబడతాయి. క్యాప్చర్ చేయడానికి సెట్టింగ్‌లను మూసివేయండి.",
@@ -942,6 +958,7 @@ var keyStrings = {
     "Switch sound track": "ఆడియో ట్రాక్‌ని మార్చండి",
     "Switch subtitle": "ఉపశీర్షికలను మార్చండి",
     "Switch to this list": "ఈ జాబితాకు మారండి",
+    "Switching provider...": "ప్రొవైడర్‌ను మారుస్తోంది...",
     "Swop URL": "SWOP URL",
     "System language": "సిస్టమ్ భాష",
     "saved on this device": "ఈ పరికరంలో సేవ్ చేయబడింది",
@@ -972,6 +989,8 @@ var keyStrings = {
         "ఈ Play యాప్‌కి HTTPS అవసరం. HTTPS ప్లేజాబితా లేదా సర్వర్ URL కోసం మీ ప్రొవైడర్‌ను అడగండి.",
     "This pairing link has expired. Open a new session on your TV.":
         "ఈ జత చేసే లింక్ గడువు ముగిసింది. మీ టీవీలో కొత్త సెషన్‌ను తెరవండి.",
+    "This remote command is not supported by the player.":
+        "ప్లేయర్ ఈ రిమోట్ కంట్రోల్ ఆదేశానికి మద్దతు ఇవ్వదు.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ఈ సురక్షిత సెషన్ అందుబాటులో లేదు లేదా గడువు ముగిసింది. టీవీలో కొత్త సెషన్‌ని తెరిచి, దాని పూర్తి లింక్‌ని ఉపయోగించండి.",
     Timer: "టైమర్",
@@ -990,6 +1009,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "జూమ్ మోడ్‌ని మార్చండి",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv సెట్టింగ్‌లు",
+    "Touchscreen locked": "టచ్‌స్క్రీన్ లాక్ చేయబడింది",
+    "Touchscreen unlocked": "టచ్‌స్క్రీన్ లాక్ తీసివేయబడింది",
     "Trust this server for remote support": "రిమోట్ మద్దతు కోసం ఈ సర్వర్‌ను విశ్వసించండి",
     "Trusted access could not be removed from device storage.":
         "పరికర నిల్వ నుండి విశ్వసనీయ యాక్సెస్ తీసివేయబడలేదు.",
@@ -1009,6 +1030,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X సెట్టింగ్‌లు",
     "Unable to load playlist": "ప్లేజాబితాను లోడ్ చేయడం సాధ్యపడలేదు",
+    "Unlock the player's settings before changing its playlist.":
+        "ప్లేజాబితాను మార్చే ముందు ప్లేయర్ సెట్టింగ్‌ల లాక్‌ను తీసివేయండి.",
     Untitled: "శీర్షిక లేదు",
     "Untitled folder": "శీర్షికలేని ఫోల్డర్",
     "Update installed. Please restart OttPlay FOSS.":

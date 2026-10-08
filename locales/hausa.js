@@ -143,6 +143,10 @@ var keyStrings = {
         "Sauya mai bada sabis. Za a tuna zaɓinka a gaba idan ka kunna manhajar.",
     "Change value": "Sauya ƙima",
     "Channel ": "Tasha ",
+    'Channel "%1" not found': 'Ba a sami tasha "%1" ba',
+    "Channel #%1": "Tasha #%1",
+    "Channel #%1 not found (total: %2)": "Ba a sami tasha #%1 ba (jimilla: %2)",
+    "Channel #%1 not in any category": "Tasha #%1 ba ta cikin kowane rukuni",
     "Channel has no EPG": "Tashar ba ta da EPG",
     "Channel is not available!!!": "Tashar ba ta samuwa!",
     "Channel link": "Hanyar haɗin tasha",
@@ -291,6 +295,7 @@ var keyStrings = {
         "Kwafi JSON don ajiye kwafin kariya. Yi amfani da Shigo da saituna don dawo da shi.",
     "Copy the selected JSON with your device's copy command":
         "Kwafi JSON da aka zaɓa ta amfani da umarnin kwafi na na'urarka",
+    "Could not change the playlist.": "Ba a iya sauya jerin kunnawa ba.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Ba a iya haɗawa da Plex ba. Duba adireshin sabar, alamar shiga da damar hanyar sadarwa.",
     "Could not connect to the server.": "Ba a iya haɗawa da sabar ba.",
@@ -559,6 +564,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Amsar saitunan girgije mara inganci",
     "Invalid protected source configuration":
         "Saitin tushen da aka kare ba ya inganta",
+    "Invalid range: %1-%2": "Tazara marar inganci: %1-%2",
     "Invalid setting": "Saiti mara inganci",
     "IPTV token": "Alamar IPTV",
     "IpStream.one": "IpStream.one",
@@ -590,6 +596,7 @@ var keyStrings = {
     "Loading M3U...": "Ana loda M3U…",
     "Loading media libraries...": "Ana loda ɗakunan kafofin watsa labarai…",
     "Loading player...": "Ana loda manhajar kunnawa…",
+    "Loading the new playlist...": "Ana loda sabon jerin kunnawa...",
     "Loading via proxy...": "Ana lodawa ta sabar wakili…",
     "Loading. Please wait...": "Ana lodawa… a jira…",
     "Loading...": "Ana lodawa…",
@@ -632,6 +639,7 @@ var keyStrings = {
     "Next TV program": "Shiri na gaba",
     No: "A'a",
     "No channel name": "Babu sunan tasha",
+    "No channels loaded": "Ba a loda tashoshi ba",
     "No command server was found on this network.":
         "Ba a gano sabar umarni a wannan hanyar sadarwa ba.",
     "No Plex servers are available for this account.":
@@ -705,6 +713,7 @@ var keyStrings = {
     "Player could not start": "Manhajar kunnawa ba ta iya farawa ba",
     "Player default": "Zaɓin tsoho na mai kunna kafofin watsa labarai",
     "Player info:": "Bayanan manhajar kunnawa:",
+    "Playing: %1": "Ana kunnawa: %1",
     Playlist: "Jerin kunnawa",
     "Playlist file": "Fayil ɗin jerin kunnawa",
     "Playlist is not loading directly...Loading via server...":
@@ -741,9 +750,13 @@ var keyStrings = {
     "Protect Change Provider": "Kare sauya mai bada sabis",
     "Protect Settings": "Kare saituna",
     "Protected source is unavailable": "Tushen da aka kare ba ya samuwa",
+    "Provider switching not available": "Ba a iya sauya mai ba da sabis",
     "p...": "p...",
     paging: "juyawa tsakanin shafuka",
     Quality: "Inganci",
+    "Random #%1": "Tashar da aka zaɓa ba tare da tsari ba #%1",
+    "Random channel not in any category":
+        "Tashar da aka zaɓa ba tare da tsari ba ba ta cikin kowane rukuni",
     Rating: "Kima",
     RD: "RD",
     "RD settings": "Saitunan RD",
@@ -781,6 +794,10 @@ var keyStrings = {
         "Lokacin shigarwa daga nesa ya ƙare. Buɗe sabon zama don sake gwadawa.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Zaman shigarwa daga nesa ba ya samuwa. Buɗe sabon zama don sake gwadawa.",
+    "Remote playlist changes require the M3U provider.":
+        "Dole a zaɓi mai ba da sabis na M3U don sauya jerin kunnawa daga nesa.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Ba a goyon bayan sauya saitunan mai ba da sabis daga nesa. Yi amfani da saitunan mai ba da sabis a cikin manhajar kunnawa.",
     "Remote screenshots": "Hotunan allo daga nesa",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Ana ba da izinin ɗaukar hoto mai nisa na mintuna 10. Rufe saituna don ɗauka.",
@@ -971,6 +988,7 @@ var keyStrings = {
     "Switch sound track": "Sauya layin sauti",
     "Switch subtitle": "Sauya rubutun fassara",
     "Switch to this list": "Sauya zuwa wannan jeri",
+    "Switching provider...": "Ana sauya mai ba da sabis...",
     "Swop URL": "URL na SWOP",
     "System language": "Harshen tsarin",
     "saved on this device": "an ajiye a wannan na'ura",
@@ -1005,6 +1023,8 @@ var keyStrings = {
         "Wannan manhajar Play tana buƙatar HTTPS. Nemi jerin kunnawa na HTTPS ko URL na sabar daga mai bada sabis.",
     "This pairing link has expired. Open a new session on your TV.":
         "Wannan hanyar haɗin gwiwar ta ƙare. Bude sabon zama akan TV ɗin ku.",
+    "This remote command is not supported by the player.":
+        "Manhajar kunnawa ba ta goyon bayan wannan umarnin sarrafawa daga nesa.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Wannan amintaccen zaman babu shi ko ya ƙare. Bude sabon zama akan TV kuma yi amfani da cikakkiyar hanyar haɗin gwiwa.",
     Timer: "Mai ƙidayar lokaci",
@@ -1023,6 +1043,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Sauya yanayin zuƙowa",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Saitunan Top-Tv",
+    "Touchscreen locked": "An kulle allon taɓawa",
+    "Touchscreen unlocked": "An buɗe makullin allon taɓawa",
     "Trust this server for remote support":
         "Amince da wannan sabar don tallafi daga nesa",
     "Trusted access could not be removed from device storage.":
@@ -1043,6 +1065,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Saitunan ULTIFL1X",
     "Unable to load playlist": "Ba a iya loda jerin kunnawa ba",
+    "Unlock the player's settings before changing its playlist.":
+        "Buɗe makullin saitunan manhajar kunnawa kafin sauya jerin kunnawarta.",
     Untitled: "Ba a ba da suna ba",
     "Untitled folder": "Babban fayil ba tare da suna ba",
     "Update installed. Please restart OttPlay FOSS.":

@@ -145,6 +145,12 @@ var keyStrings = {
         "Schimbați furnizorul. Alegerea va fi păstrată la următoarea pornire a playerului.",
     "Change value": "Schimbă valoarea",
     "Channel ": "Canalul ",
+    'Channel "%1" not found': "Canalul „%1” nu a fost găsit",
+    "Channel #%1": "Canalul nr. %1",
+    "Channel #%1 not found (total: %2)":
+        "Canalul nr. %1 nu a fost găsit (total: %2)",
+    "Channel #%1 not in any category":
+        "Canalul nr. %1 nu aparține niciunei categorii",
     "Channel has no EPG": "Canalul nu are EPG",
     "Channel is not available!!!": "Canalul nu este disponibil!!!",
     "Channel link": "Link canal",
@@ -296,6 +302,8 @@ var keyStrings = {
         "Copiați JSON-ul pentru a păstra o copie de rezervă. Folosiți importul setărilor pentru a o restaura.",
     "Copy the selected JSON with your device's copy command":
         "Copiați JSON-ul selectat cu comanda de copiere a dispozitivului",
+    "Could not change the playlist.":
+        "Lista de redare nu a putut fi modificată.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nu s-a putut conecta la Plex. Verificați adresa serverului, tokenul și accesul la rețea.",
     "Could not connect to the server.": "Conectarea la server nu a reușit.",
@@ -568,6 +576,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Răspuns nevalid pentru setările cloud",
     "Invalid protected source configuration":
         "Configurație nevalidă a sursei protejate",
+    "Invalid range: %1-%2": "Interval nevalid: %1-%2",
     "Invalid setting": "Setare nevalidă",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -600,6 +609,7 @@ var keyStrings = {
     "Loading M3U...": "Se încarcă M3U…",
     "Loading media libraries...": "Se încarcă bibliotecile multimedia…",
     "Loading player...": "Se încarcă playerul…",
+    "Loading the new playlist...": "Se încarcă noua listă de redare...",
     "Loading via proxy...": "Se încarcă prin proxy…",
     "Loading. Please wait...": "Se încarcă… așteptați…",
     "Loading...": "Se încarcă…",
@@ -642,6 +652,7 @@ var keyStrings = {
     "Next TV program": "Emisiunea următoare",
     No: "Nu",
     "No channel name": "Fără nume de canal",
+    "No channels loaded": "Nu sunt încărcate canale",
     "No command server was found on this network.":
         "Nu s-a găsit niciun server de comenzi în această rețea.",
     "No Plex servers are available for this account.":
@@ -715,6 +726,7 @@ var keyStrings = {
     "Player could not start": "Playerul nu a putut porni",
     "Player default": "Selecția implicită a playerului",
     "Player info:": "Informații despre player:",
+    "Playing: %1": "Se redă: %1",
     Playlist: "Lista de redare",
     "Playlist file": "Fișier playlist",
     "Playlist is not loading directly...Loading via server...":
@@ -750,9 +762,14 @@ var keyStrings = {
     "Protect Change Provider": "Protejează schimbarea furnizorului",
     "Protect Settings": "Protejează setările",
     "Protected source is unavailable": "Sursa protejată nu este disponibilă",
+    "Provider switching not available":
+        "Schimbarea furnizorului nu este disponibilă",
     "p...": "p...",
     paging: "paginare",
     Quality: "Calitate",
+    "Random #%1": "Aleatoriu nr. %1",
+    "Random channel not in any category":
+        "Canalul aleatoriu nu aparține niciunei categorii",
     Rating: "Evaluare",
     RD: "RD",
     "RD settings": "Setări RD",
@@ -791,6 +808,10 @@ var keyStrings = {
         "Intrarea de la distanță a expirat. Deschideți o nouă sesiune pentru a încerca din nou.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesiunea de intrare de la distanță nu este disponibilă. Deschideți o nouă sesiune pentru a încerca din nou.",
+    "Remote playlist changes require the M3U provider.":
+        "Modificarea listei de redare de la distanță necesită furnizorul M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Configurarea furnizorului de la distanță nu este acceptată. Folosiți setările furnizorului din player.",
     "Remote screenshots": "Capturi de ecran de la distanță",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Capturile de ecran de la distanță sunt permise timp de 10 minute. Închideți setările pentru a captura.",
@@ -989,6 +1010,7 @@ var keyStrings = {
     "Switch sound track": "Schimbă pista audio",
     "Switch subtitle": "Schimbă subtitrările",
     "Switch to this list": "Treci la această listă",
+    "Switching provider...": "Se schimbă furnizorul...",
     "Swop URL": "URL Swop",
     "System language": "Limba sistemului",
     "saved on this device": "salvat pe acest dispozitiv",
@@ -1022,6 +1044,8 @@ var keyStrings = {
         "Această aplicație Play necesită HTTPS. Solicitați furnizorului o listă de redare sau un URL de server HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Acest link de asociere a expirat. Deschideți o nouă sesiune pe televizor.",
+    "This remote command is not supported by the player.":
+        "Playerul nu acceptă această comandă de la distanță.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Această sesiune securizată este indisponibilă sau a expirat. Deschideți o nouă sesiune pe televizor și utilizați linkul complet al acesteia.",
     Timer: "Temporizator",
@@ -1041,6 +1065,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Schimbă modul de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Setări Top-Tv",
+    "Touchscreen locked": "Ecranul tactil este blocat",
+    "Touchscreen unlocked": "Ecranul tactil este deblocat",
     "Trust this server for remote support":
         "Aveți încredere în acest server pentru asistență de la distanță",
     "Trusted access could not be removed from device storage.":
@@ -1061,6 +1087,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Setări ULTIFL1X",
     "Unable to load playlist": "Nu s-a putut încărca lista de redare",
+    "Unlock the player's settings before changing its playlist.":
+        "Deblocați setările playerului înainte de a-i modifica lista de redare.",
     Untitled: "Fără titlu",
     "Untitled folder": "Folder fără nume",
     "Update installed. Please restart OttPlay FOSS.":

@@ -144,6 +144,10 @@ var keyStrings = {
         "Таъминкунандаро иваз кунед. Интихоби шумо ҳангоми оғози навбатии плеер нигоҳ дошта мешавад.",
     "Change value": "Қиматро иваз кунед",
     "Channel ": "Канал ",
+    'Channel "%1" not found': "Канали «%1» ёфт нашуд",
+    "Channel #%1": "Канали №%1",
+    "Channel #%1 not found (total: %2)": "Канали №%1 ёфт нашуд (ҳамагӣ: %2)",
+    "Channel #%1 not in any category": "Канали №%1 ба ягон гурӯҳ дохил нест",
     "Channel has no EPG": "Канал EPG надорад",
     "Channel is not available!!!": "Канал дастрас нест!",
     "Channel link": "Пайванди канал",
@@ -295,6 +299,8 @@ var keyStrings = {
         "Барои нусхаи эҳтиётӣ JSON-ро нусха бардоред. Барои барқарор кардан воридоти танзимотро истифода баред.",
     "Copy the selected JSON with your device's copy command":
         "JSON-и интихобшударо бо фармони нусхабардории дастгоҳ нусха бардоред",
+    "Could not change the playlist.":
+        "Рӯйхати пахшро тағйир додан муяссар нашуд.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Ба Plex пайваст нашуд. Суроғаи сервер, токен ва дастрасии шабакаро санҷед.",
     "Could not connect to the server.": "Ба сервер пайваст нашуд.",
@@ -561,6 +567,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Ҷавоби танзимоти абр нодуруст",
     "Invalid protected source configuration":
         "Танзимоти манбаи ҳифзшуда нодуруст аст",
+    "Invalid range: %1-%2": "Диапазони нодуруст: %1-%2",
     "Invalid setting": "Танзими нодуруст",
     "IPTV token": "Токени IPTV",
     "IpStream.one": "IpStream.one",
@@ -593,6 +600,7 @@ var keyStrings = {
     "Loading M3U...": "M3U бор мешавад…",
     "Loading media libraries...": "Китобхонаҳои медиа бор мешаванд…",
     "Loading player...": "Плеер бор мешавад…",
+    "Loading the new playlist...": "Рӯйхати нави пахш бор шуда истодааст...",
     "Loading via proxy...": "Боркунӣ тавассути прокси…",
     "Loading. Please wait...": "Боркунӣ… лутфан интизор шавед…",
     "Loading...": "Боркунӣ…",
@@ -634,6 +642,7 @@ var keyStrings = {
     "Next TV program": "Барномаи навбатӣ",
     No: "Не",
     "No channel name": "Канал ном надорад",
+    "No channels loaded": "Ягон канал бор карда нашудааст",
     "No command server was found on this network.":
         "Дар ин шабака сервери фармонҳо ёфт нашуд.",
     "No Plex servers are available for this account.":
@@ -707,6 +716,7 @@ var keyStrings = {
     "Player could not start": "Плеер оғоз нашуд",
     "Player default": "Интихоби пешфарзи плеер",
     "Player info:": "Маълумоти плеер:",
+    "Playing: %1": "Дар ҳоли пахш: %1",
     Playlist: "Рӯйхати пахш",
     "Playlist file": "Файли рӯйхати пахш",
     "Playlist is not loading directly...Loading via server...":
@@ -743,9 +753,13 @@ var keyStrings = {
     "Protect Change Provider": "Иваз кардани таъминкунандаро ҳифз кунед",
     "Protect Settings": "Танзимотро ҳифз кунед",
     "Protected source is unavailable": "Манбаи ҳифзшуда дастрас нест",
+    "Provider switching not available": "Иваз кардани провайдер дастрас нест",
     "p...": "p...",
     paging: "саҳифабандӣ",
     Quality: "Сифат",
+    "Random #%1": "Канали тасодуфӣ №%1",
+    "Random channel not in any category":
+        "Канали тасодуфан интихобшуда ба ягон гурӯҳ дохил нест",
     Rating: "Баҳо",
     RD: "RD",
     "RD settings": "Танзимоти RD",
@@ -783,6 +797,10 @@ var keyStrings = {
         "Муҳлати вуруди дурдаст гузашт. Барои кӯшиши дубора нишасти нав кушоед.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Нишасти вуруди дурдаст дастрас нест. Барои кӯшиши дубора нишасти нав кушоед.",
+    "Remote playlist changes require the M3U provider.":
+        "Барои тағйир додани рӯйхати пахш аз фосилаи дур провайдери M3U бояд интихоб шуда бошад.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Тағйир додани танзимоти провайдер аз фосилаи дур дастгирӣ намешавад. Аз танзимоти провайдер дар плеер истифода баред.",
     "Remote screenshots": "Скриншотҳои дурдаст",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Скриншотҳои дурдаст барои 10 дақиқа иҷозат дода мешаванд. Танзимотҳоро барои сабт пӯшед.",
@@ -976,6 +994,7 @@ var keyStrings = {
     "Switch sound track": "Роҳи садоро иваз кунед",
     "Switch subtitle": "Зернависҳоро иваз кунед",
     "Switch to this list": "Ба ин рӯйхат гузаред",
+    "Switching provider...": "Провайдер иваз шуда истодааст...",
     "Swop URL": "URL-и Swop",
     "System language": "Забони система",
     "saved on this device": "дар ин дастгоҳ захира шудааст",
@@ -1009,6 +1028,8 @@ var keyStrings = {
         "Барномаи Play ба HTTPS ниёз дорад. Аз таъминкунанда URL-и рӯйхати пахш ё сервери HTTPS-ро талаб кунед.",
     "This pairing link has expired. Open a new session on your TV.":
         "Мӯҳлати ин пайванди ҷуфткунӣ гузаштааст. Дар телевизиони худ сессияи нав кушоед.",
+    "This remote command is not supported by the player.":
+        "Плеер ин фармони идоракунии дурдастро дастгирӣ намекунад.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ин сеанси бехатар дастнорас аст ё мӯҳлати гузаштааст. Дар телевизион сеанси нав кушоед ва истиноди пурраи онро истифода баред.",
     Timer: "Таймер",
@@ -1028,6 +1049,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ҳолати калонкуниро иваз кунед",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Танзимоти Top-Tv",
+    "Touchscreen locked": "Экрани ламсӣ қулф шуд",
+    "Touchscreen unlocked": "Қулфи экрани ламсӣ кушода шуд",
     "Trust this server for remote support":
         "Барои дастгирии дурдаст ба ин сервер эътимод диҳед",
     "Trusted access could not be removed from device storage.":
@@ -1048,6 +1071,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Танзимоти ULTIFL1X",
     "Unable to load playlist": "Рӯйхати пахш бор нашуд",
+    "Unlock the player's settings before changing its playlist.":
+        "Пеш аз тағйир додани рӯйхати пахш қулфи танзимоти плеерро кушоед.",
     Untitled: "Беном",
     "Untitled folder": "Ҷузвдони беном",
     "Update installed. Please restart OttPlay FOSS.":

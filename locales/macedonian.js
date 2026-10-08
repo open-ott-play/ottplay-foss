@@ -143,6 +143,12 @@ var keyStrings = {
         "Сменете го провајдерот. Вашиот избор ќе се запамети при следното стартување на плеерот.",
     "Change value": "Смени вредност",
     "Channel ": "Канал ",
+    'Channel "%1" not found': "Каналот „%1“ не е пронајден",
+    "Channel #%1": "Канал бр. %1",
+    "Channel #%1 not found (total: %2)":
+        "Каналот бр. %1 не е пронајден (вкупно: %2)",
+    "Channel #%1 not in any category":
+        "Каналот бр. %1 не припаѓа на ниедна категорија",
     "Channel has no EPG": "Каналот нема EPG",
     "Channel is not available!!!": "Каналот не е достапен!",
     "Channel link": "Линк на каналот",
@@ -293,6 +299,8 @@ var keyStrings = {
         "Копирајте го JSON за да задржите резервна копија. Користете „Увези поставки“ за да ја вратите.",
     "Copy the selected JSON with your device's copy command":
         "Копирајте го избраниот JSON со командата за копирање на уредот",
+    "Could not change the playlist.":
+        "Листата за репродукција не можеше да се промени.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Не може да се воспостави врска со Plex. Проверете ги адресата на серверот, токенот и мрежниот пристап.",
     "Could not connect to the server.":
@@ -566,6 +574,7 @@ var keyStrings = {
         "Неважечки одговор на поставките за облак",
     "Invalid protected source configuration":
         "Неважечка конфигурација на заштитениот извор",
+    "Invalid range: %1-%2": "Невалиден опсег: %1-%2",
     "Invalid setting": "Неважечка поставка",
     "IPTV token": "IPTV токен",
     "IpStream.one": "IpStream.one",
@@ -597,6 +606,7 @@ var keyStrings = {
     "Loading M3U...": "Се вчитува M3U…",
     "Loading media libraries...": "Се вчитуваат медиумски библиотеки…",
     "Loading player...": "Се вчитува плеерот…",
+    "Loading the new playlist...": "Се вчитува новата листа за репродукција...",
     "Loading via proxy...": "Се вчитува преку прокси…",
     "Loading. Please wait...": "Се вчитува… ве молиме почекајте…",
     "Loading...": "Се вчитува…",
@@ -639,6 +649,7 @@ var keyStrings = {
     "Next TV program": "Следна емисија",
     No: "Не",
     "No channel name": "Нема име на каналот",
+    "No channels loaded": "Нема вчитани канали",
     "No command server was found on this network.":
         "Не е пронајден команден сервер во оваа мрежа.",
     "No Plex servers are available for this account.":
@@ -712,6 +723,7 @@ var keyStrings = {
     "Player could not start": "Плеерот не може да се стартува",
     "Player default": "Стандардниот избор на плеерот",
     "Player info:": "Информации за плеерот:",
+    "Playing: %1": "Се репродуцира: %1",
     Playlist: "Плејлиста",
     "Playlist file": "Датотека со плејлиста",
     "Playlist is not loading directly...Loading via server...":
@@ -747,9 +759,14 @@ var keyStrings = {
     "Protect Change Provider": "Заштити промена на провајдер",
     "Protect Settings": "Заштити поставки",
     "Protected source is unavailable": "Заштитениот извор не е достапен",
+    "Provider switching not available":
+        "Промената на провајдерот не е достапна",
     "p...": "p...",
     paging: "страничење",
     Quality: "Квалитет",
+    "Random #%1": "Случаен бр. %1",
+    "Random channel not in any category":
+        "Случајниот канал не припаѓа на ниедна категорија",
     Rating: "Оцена",
     RD: "RD",
     "RD settings": "Поставки за RD",
@@ -787,6 +804,10 @@ var keyStrings = {
         "Далечинскиот внес истече. Отворете нова сесија за повторен обид.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сесијата за далечински внес не е достапна. Отворете нова сесија за повторен обид.",
+    "Remote playlist changes require the M3U provider.":
+        "За далечинска промена на листата за репродукција е потребен провајдерот M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Далечинското поставување на провајдерот не е поддржано. Користете ги поставките за провајдерот во плеерот.",
     "Remote screenshots": "Далечински слики од екранот",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Далечинските слики од екранот се дозволени 10 минути. Затворете ги поставките за снимање.",
@@ -982,6 +1003,7 @@ var keyStrings = {
     "Switch sound track": "Смени аудиозапис",
     "Switch subtitle": "Смени титлови",
     "Switch to this list": "Префрли на оваа листа",
+    "Switching provider...": "Се менува провајдерот...",
     "Swop URL": "Swop URL",
     "System language": "Системски јазик",
     "saved on this device": "зачувано на овој уред",
@@ -1015,6 +1037,8 @@ var keyStrings = {
         "За оваа Play апликација е потребен HTTPS. Побарајте од провајдерот HTTPS плејлиста или URL на сервер.",
     "This pairing link has expired. Open a new session on your TV.":
         "Оваа врска за спарување е истечена. Отворете нова сесија на вашиот телевизор.",
+    "This remote command is not supported by the player.":
+        "Плеерот не ја поддржува оваа далечинска команда.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Оваа безбедна сесија не е достапна или е истечена. Отворете нова сесија на ТВ и користете ја неговата целосна врска.",
     Timer: "Тајмер",
@@ -1033,6 +1057,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Смени режим на зумирање",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Поставки за Top-Tv",
+    "Touchscreen locked": "Екранот на допир е заклучен",
+    "Touchscreen unlocked": "Екранот на допир е отклучен",
     "Trust this server for remote support":
         "Доверувај му на овој сервер за далечинска поддршка",
     "Trusted access could not be removed from device storage.":
@@ -1053,6 +1079,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Поставки за ULTIFL1X",
     "Unable to load playlist": "Плејлистата не може да се вчита",
+    "Unlock the player's settings before changing its playlist.":
+        "Отклучете ги поставките на плеерот пред да ја промените листата за репродукција.",
     Untitled: "Без наслов",
     "Untitled folder": "Папка без наслов",
     "Update installed. Please restart OttPlay FOSS.":

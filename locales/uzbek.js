@@ -144,6 +144,12 @@ var keyStrings = {
         "Provayderni almashtiring. Tanlovingiz pleyer keyingi safar ishga tushirilganda saqlanadi.",
     "Change value": "Qiymatni oʻzgartirish",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': "«%1» kanali topilmadi",
+    "Channel #%1": "%1-raqamli kanal",
+    "Channel #%1 not found (total: %2)":
+        "%1-raqamli kanal topilmadi (jami: %2)",
+    "Channel #%1 not in any category":
+        "%1-raqamli kanal hech qaysi kategoriyada yo‘q",
     "Channel has no EPG": "Kanalda EPG yoʻq",
     "Channel is not available!!!": "Kanal mavjud emas!!!",
     "Channel link": "Kanal havolasi",
@@ -295,6 +301,7 @@ var keyStrings = {
         "Zaxira nusxani saqlash uchun JSON matnidan nusxa oling. Tiklash uchun sozlamalarni import qilishdan foydalaning.",
     "Copy the selected JSON with your device's copy command":
         "Tanlangan JSON matnidan qurilmaning nusxalash buyrug‘i yordamida nusxa oling",
+    "Could not change the playlist.": "Pleylistni o‘zgartirib bo‘lmadi.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex ga ulanib bo'lmadi. Server manzilini, tokenni va tarmoqqa kirishni tekshiring.",
     "Could not connect to the server.": "Serverga ulanib boʻlmadi.",
@@ -565,6 +572,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Yaroqsiz bulut sozlamalari javobi",
     "Invalid protected source configuration":
         "Himoyalangan manba sozlamalari noto‘g‘ri",
+    "Invalid range: %1-%2": "Noto‘g‘ri oraliq: %1-%2",
     "Invalid setting": "Sozlama noto'g'ri",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
@@ -597,6 +605,7 @@ var keyStrings = {
     "Loading M3U...": "M3U yuklanmoqda…",
     "Loading media libraries...": "Media kutubxonalari yuklanmoqda…",
     "Loading player...": "Pleyer yuklanmoqda…",
+    "Loading the new playlist...": "Yangi pleylist yuklanmoqda...",
     "Loading via proxy...": "Proksi orqali yuklanmoqda…",
     "Loading. Please wait...": "Yuklanmoqda… kuting…",
     "Loading...": "Yuklanmoqda…",
@@ -638,6 +647,7 @@ var keyStrings = {
     "Next TV program": "Keyingi koʻrsatuv",
     No: "Yoʻq",
     "No channel name": "Kanal nomi yo'q",
+    "No channels loaded": "Hech qanday kanal yuklanmagan",
     "No command server was found on this network.":
         "Bu tarmoqda buyruqlar serveri topilmadi.",
     "No Plex servers are available for this account.":
@@ -711,6 +721,7 @@ var keyStrings = {
     "Player could not start": "Pleyerni ishga tushirib bo‘lmadi",
     "Player default": "Pleerning standart tanlovi",
     "Player info:": "Pleyer haqida:",
+    "Playing: %1": "Ijro etilmoqda: %1",
     Playlist: "Pleylist",
     "Playlist file": "Playlist fayli",
     "Playlist is not loading directly...Loading via server...":
@@ -747,9 +758,13 @@ var keyStrings = {
     "Protect Change Provider": "Provayder almashtirishni himoyalash",
     "Protect Settings": "Sozlamalarni himoyalash",
     "Protected source is unavailable": "Himoyalangan manba mavjud emas",
+    "Provider switching not available": "Provayderni almashtirish imkoni yo‘q",
     "p...": "p...",
     paging: "sahifalash",
     Quality: "Sifat",
+    "Random #%1": "Tasodifiy kanal #%1",
+    "Random channel not in any category":
+        "Tasodifiy tanlangan kanal hech qaysi kategoriyada yo‘q",
     Rating: "Baho",
     RD: "RD",
     "RD settings": "RD sozlamalari",
@@ -787,6 +802,10 @@ var keyStrings = {
         "Masofaviy kiritish muddati tugadi. Qayta urinish uchun yangi seansni oching.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Masofaviy kiritish seansi mavjud emas. Qayta urinish uchun yangi seansni oching.",
+    "Remote playlist changes require the M3U provider.":
+        "Pleylistni masofadan o‘zgartirish uchun M3U provayderi tanlangan bo‘lishi kerak.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Provayder sozlamalarini masofadan o‘zgartirish qo‘llab-quvvatlanmaydi. Pleyerdagi provayder sozlamalaridan foydalaning.",
     "Remote screenshots": "Masofaviy skrinshotlar",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Masofaviy skrinshotlarga 10 daqiqaga ruxsat beriladi. Rasmga olish uchun sozlamalarni yoping.",
@@ -982,6 +1001,7 @@ var keyStrings = {
     "Switch sound track": "Ovoz yoʻlagini almashtirish",
     "Switch subtitle": "Subtitrlarni almashtirish",
     "Switch to this list": "Bu roʻyxatga oʻtish",
+    "Switching provider...": "Provayder almashtirilmoqda...",
     "Swop URL": "Swop URL manzili",
     "System language": "Tizim tili",
     "saved on this device": "shu qurilmada saqlangan",
@@ -1015,6 +1035,8 @@ var keyStrings = {
         "Bu Play ilovasi HTTPS talab qiladi. Provayderdan HTTPS pleylist yoki server URL manzilini soʻrang.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ushbu ulanish havolasi muddati tugagan. Televizoringizda yangi seansni oching.",
+    "This remote command is not supported by the player.":
+        "Pleyer masofadan boshqarishning bu buyrug‘ini qo‘llab-quvvatlamaydi.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ushbu xavfsiz seans mavjud emas yoki muddati tugagan. Televizorda yangi seansni oching va uning to'liq havolasidan foydalaning.",
     Timer: "Taymer",
@@ -1034,6 +1056,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Masshtab rejimini almashtirish",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sozlamalari",
+    "Touchscreen locked": "Sensorli ekran qulflandi",
+    "Touchscreen unlocked": "Sensorli ekran qulfi ochildi",
     "Trust this server for remote support":
         "Masofaviy yordam uchun ushbu serverga ishoning",
     "Trusted access could not be removed from device storage.":
@@ -1054,6 +1078,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X sozlamalari",
     "Unable to load playlist": "Ijro roʻyxatini yuklab boʻlmadi",
+    "Unlock the player's settings before changing its playlist.":
+        "Pleylistni o‘zgartirishdan oldin pleyer sozlamalarining qulfini oching.",
     Untitled: "Nomsiz",
     "Untitled folder": "Nomsiz jild",
     "Update installed. Please restart OttPlay FOSS.":

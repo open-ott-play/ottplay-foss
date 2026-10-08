@@ -44,14 +44,52 @@ vm.runInContext(
     w
 );
 const pick = w.preferredTrackIndex;
-for (const [code, locale] of Object.entries(w.languageLocales)) {
-    assert.equal(pick("audio", code, [{ id: 8, language: locale }]), 8, code);
+const isoLanguages = require("./fixtures/media-language-iso639.json").languages;
+assert.deepEqual(
+    Object.keys(isoLanguages).sort(),
+    Object.keys(w.languageLocales).sort(),
+    "independent ISO fixture covers every shipped language"
+);
+for (const [code, iso] of Object.entries(isoLanguages)) {
+    const tags = iso.iso6392.concat(iso.iso6391 || []);
+    for (const kind of ["audio", "subtitle"])
+        for (const tag of tags)
+            assert.equal(
+                pick(kind, code, [{ id: 8, language: tag }]),
+                8,
+                code + " " + kind + " ISO tag " + tag
+            );
+}
+for (const kind of ["audio", "subtitle"]) {
     assert.equal(
-        pick("subtitle", code, [{ id: 8, language: code.slice(1) }]),
-        8,
-        code + " ISO3"
+        pick(kind, "_lat", [{ id: 2, language: "lat" }]),
+        undefined,
+        "Latin lat is not Latvian despite the persisted _lat identifier"
+    );
+    assert.equal(
+        pick(kind, "_lat", [
+            { id: 2, language: "lat" },
+            { id: 7, language: "lav" },
+        ]),
+        7,
+        "Latvian chooses its actual track ID after an unrelated Latin track"
+    );
+    assert.equal(
+        pick(kind, "_rou", [{ id: 9, language: "rou" }]),
+        9,
+        "retain the previously accepted nonstandard Romanian tag"
     );
 }
+assert.equal(
+    pick("subtitle", "_lat", [{ id: 4, language: "lav-Latn-LV" }]),
+    4,
+    "ISO alias preserves supported subtitle script and region"
+);
+assert.equal(
+    pick("subtitle", "_lat", [{ id: 4, language: "lav-Cyrl" }]),
+    undefined,
+    "ISO alias does not erase an incompatible subtitle script"
+);
 for (const tag of ["ru", "RU", "rus", "ru_RU", "ru-RU"])
     assert.equal(pick("audio", "_rus", [{ id: 5, language: tag }]), 5);
 for (const [code, tag] of [

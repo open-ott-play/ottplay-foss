@@ -143,6 +143,11 @@ var keyStrings = {
         "Badilisha mtoaji. Uteuzi wako utakumbukwa wakati mwingine utakapoanzisha kicheza media.",
     "Change value": "Badilisha thamani",
     "Channel ": "Kituo ",
+    'Channel "%1" not found': 'Kituo "%1" hakijapatikana',
+    "Channel #%1": "Kituo #%1",
+    "Channel #%1 not found (total: %2)": "Kituo #%1 hakijapatikana (jumla: %2)",
+    "Channel #%1 not in any category":
+        "Kituo #%1 hakipo katika kategoria yoyote",
     "Channel has no EPG": "Kituo hakina EPG",
     "Channel is not available!!!": "Kituo hakipatikani!",
     "Channel link": "Kiungo cha kituo",
@@ -295,6 +300,8 @@ var keyStrings = {
         "Nakili JSON ili kuhifadhi nakala. Tumia mipangilio ya Leta ili kuirejesha.",
     "Copy the selected JSON with your device's copy command":
         "Nakili JSON iliyochaguliwa kwa amri ya kunakili ya kifaa chako",
+    "Could not change the playlist.":
+        "Imeshindwa kubadilisha orodha ya kucheza.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Haikuweza kuunganisha kwa Plex. Angalia anwani ya seva, ishara na ufikiaji wa mtandao.",
     "Could not connect to the server.": "Haikuweza kuunganisha kwenye seva.",
@@ -565,6 +572,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Jibu batili la mipangilio ya wingu",
     "Invalid protected source configuration":
         "Usanidi batili wa chanzo kilicholindwa",
+    "Invalid range: %1-%2": "Masafa batili: %1-%2",
     "Invalid setting": "Mpangilio batili",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
@@ -596,6 +604,7 @@ var keyStrings = {
     "Loading M3U...": "Inapakia M3U…",
     "Loading media libraries...": "Inapakia maktaba za midia...",
     "Loading player...": "Inapakia kicheza media...",
+    "Loading the new playlist...": "Inapakia orodha mpya ya kucheza...",
     "Loading via proxy...": "Inapakia kupitia seva mbadala...",
     "Loading. Please wait...": "Inapakia... tafadhali subiri...",
     "Loading...": "Inapakia...",
@@ -638,6 +647,7 @@ var keyStrings = {
     "Next TV program": "Programu inayofuata",
     No: "Hapana",
     "No channel name": "Hakuna jina la kituo",
+    "No channels loaded": "Hakuna vituo vilivyopakiwa",
     "No command server was found on this network.":
         "Hakuna seva ya amri iliyopatikana kwenye mtandao huu.",
     "No Plex servers are available for this account.":
@@ -711,6 +721,7 @@ var keyStrings = {
     "Player could not start": "kicheza media haikuweza kuanza",
     "Player default": "Chaguo-msingi la kichezaji",
     "Player info:": "habari za kicheza media:",
+    "Playing: %1": "Inacheza: %1",
     Playlist: "Orodha ya kucheza",
     "Playlist file": "Faili ya orodha ya kucheza",
     "Playlist is not loading directly...Loading via server...":
@@ -747,9 +758,13 @@ var keyStrings = {
     "Protect Change Provider": "Linda mabadiliko ya mtoaji",
     "Protect Settings": "Linda mipangilio",
     "Protected source is unavailable": "Chanzo kilicholindwa hakipatikani",
+    "Provider switching not available": "Kubadilisha mtoa huduma hakupatikani",
     "p...": "p...",
     paging: "kugeuza kurasa",
     Quality: "Ubora",
+    "Random #%1": "Kituo cha nasibu #%1",
+    "Random channel not in any category":
+        "Kituo kilichochaguliwa bila mpangilio hakipo katika kategoria yoyote",
     Rating: "Ukadiriaji",
     RD: "RD",
     "RD settings": "RD mipangilio",
@@ -787,6 +802,10 @@ var keyStrings = {
         "Ingizo la mbali limekwisha. Fungua kipindi kipya ili ujaribu tena.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Kipindi cha kuingiza data kwa mbali hakipatikani. Fungua kipindi kipya ili ujaribu tena.",
+    "Remote playlist changes require the M3U provider.":
+        "Kubadilisha orodha ya kucheza kwa mbali kunahitaji mtoa huduma wa M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Kubadilisha mipangilio ya mtoa huduma kwa mbali hakutumiki. Tumia mipangilio ya mtoa huduma iliyo ndani ya kichezaji.",
     "Remote screenshots": "Picha za skrini za mbali",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Picha za skrini za mbali zinaruhusiwa kwa dakika 10. Funga mipangilio ili kunasa.",
@@ -981,6 +1000,7 @@ var keyStrings = {
     "Switch sound track": "Badilisha wimbo wa sauti",
     "Switch subtitle": "Badilisha manukuu",
     "Switch to this list": "Badili hadi kwenye orodha hii",
+    "Switching provider...": "Inabadilisha mtoa huduma...",
     "Swop URL": "URL ya SWOP",
     "System language": "Lugha ya mfumo",
     "saved on this device": "imehifadhiwa kwenye kifaa hiki",
@@ -1014,6 +1034,8 @@ var keyStrings = {
         "Programu hii ya Google Play inahitaji HTTPS. Uliza mtoa huduma wako HTTPS orodha ya kucheza au seva URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Kiungo hiki cha kuoanisha kimeisha muda wake. Fungua kipindi kipya kwenye TV yako.",
+    "This remote command is not supported by the player.":
+        "Kichezaji hakitumii amri hii ya udhibiti wa mbali.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Kipindi hiki salama hakipatikani au muda wake umekwisha. Fungua kipindi kipya kwenye TV na utumie kiungo chake kamili.",
     Timer: "Kipima muda",
@@ -1034,6 +1056,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Badilisha modi ya kukuza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv mipangilio",
+    "Touchscreen locked": "Skrini ya mguso imefungwa",
+    "Touchscreen unlocked": "Skrini ya mguso imefunguliwa",
     "Trust this server for remote support":
         "Amini seva hii kwa usaidizi wa mbali",
     "Trusted access could not be removed from device storage.":
@@ -1054,6 +1078,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X mipangilio",
     "Unable to load playlist": "Imeshindwa kupakia orodha ya kucheza",
+    "Unlock the player's settings before changing its playlist.":
+        "Fungua kufuli ya mipangilio ya kichezaji kabla ya kubadilisha orodha yake ya kucheza.",
     Untitled: "Bila kichwa",
     "Untitled folder": "Folda isiyo na jina",
     "Update installed. Please restart OttPlay FOSS.":

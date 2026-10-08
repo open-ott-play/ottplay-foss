@@ -135,6 +135,10 @@ var keyStrings = {
         "પ્રદાતા બદલો. આગલી વખતે જ્યારે તમે પ્લેયર શરૂ કરશો ત્યારે તમારી પસંદગી યાદ રાખવામાં આવશે.",
     "Change value": "મૂલ્ય બદલો",
     "Channel ": "ચેનલ ",
+    'Channel "%1" not found': '"%1" ચેનલ મળી નથી',
+    "Channel #%1": "ચેનલ #%1",
+    "Channel #%1 not found (total: %2)": "ચેનલ #%1 મળી નથી (કુલ: %2)",
+    "Channel #%1 not in any category": "ચેનલ #%1 કોઈ શ્રેણીમાં નથી",
     "Channel has no EPG": "ચેનલ પાસે EPG નથી",
     "Channel is not available!!!": "ચેનલ ઉપલબ્ધ નથી!",
     "Channel link": "ચેનલ લિંક",
@@ -281,6 +285,7 @@ var keyStrings = {
         "બેકઅપ રાખવા માટે JSON કૉપિ કરો. તેને પુનઃસ્થાપિત કરવા માટે આયાત સેટિંગ્સનો ઉપયોગ કરો.",
     "Copy the selected JSON with your device's copy command":
         "પસંદ કરેલ JSON ને તમારા ઉપકરણના નકલ આદેશ વડે નકલ કરો",
+    "Could not change the playlist.": "પ્લેલિસ્ટ બદલી શકાયું નથી.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex થી કનેક્ટ કરી શકાયું નથી. સર્વર સરનામું, ટોકન અને નેટવર્ક એક્સેસ તપાસો.",
     "Could not connect to the server.": "સર્વર સાથે કનેક્ટ કરી શકાયું નથી.",
@@ -541,6 +546,7 @@ var keyStrings = {
         "અમાન્ય ચેનલ લિંક! તમારા પ્રદાતા એકાઉન્ટ પેજ પર URL સ્ટ્રીમમાંથી સંપૂર્ણ હોસ્ટનામ દાખલ કરો (ઉદાહરણ તરીકે subdomain.cdn-domain.tld ).",
     "Invalid cloud settings response": "અમાન્ય ક્લાઉડ સેટિંગ્સ પ્રતિસાદ",
     "Invalid protected source configuration": "અમાન્ય સંરક્ષિત સ્ત્રોત ગોઠવણી",
+    "Invalid range: %1-%2": "અમાન્ય શ્રેણી: %1-%2",
     "Invalid setting": "અમાન્ય સેટિંગ",
     "IPTV token": "IPTV ટોકન",
     "IpStream.one": "IpStream.one",
@@ -573,6 +579,7 @@ var keyStrings = {
     "Loading M3U...": "M3U લોડ કરી રહ્યું છે…",
     "Loading media libraries...": "મીડિયા લાઇબ્રેરીઓ લોડ કરી રહ્યું છે...",
     "Loading player...": "પ્લેયર લોડ કરી રહ્યું છે...",
+    "Loading the new playlist...": "નવું પ્લેલિસ્ટ લોડ થઈ રહ્યું છે...",
     "Loading via proxy...": "પ્રોક્સી દ્વારા લોડ કરી રહ્યું છે...",
     "Loading. Please wait...": "લોડ થઈ રહ્યું છે... કૃપા કરીને રાહ જુઓ...",
     "Loading...": "લોડ કરી રહ્યું છે...",
@@ -614,6 +621,7 @@ var keyStrings = {
     "Next TV program": "આગળનો કાર્યક્રમ",
     No: "ના",
     "No channel name": "કોઈ ચેનલનું નામ નથી",
+    "No channels loaded": "કોઈ ચેનલ લોડ થઈ નથી",
     "No command server was found on this network.":
         "આ નેટવર્ક પર કોઈ કમાન્ડ સર્વર મળ્યું નથી.",
     "No Plex servers are available for this account.":
@@ -687,6 +695,7 @@ var keyStrings = {
     "Player could not start": "પ્લેયર પ્રારંભ કરી શક્યો નથી",
     "Player default": "પ્લેયરની મૂળભૂત પસંદગી",
     "Player info:": "પ્લેયર માહિતી:",
+    "Playing: %1": "ચાલી રહ્યું છે: %1",
     Playlist: "પ્લેલિસ્ટ",
     "Playlist file": "પ્લેલિસ્ટ ફાઇલ",
     "Playlist is not loading directly...Loading via server...":
@@ -721,9 +730,12 @@ var keyStrings = {
     "Protect Change Provider": "પ્રદાતાના ફેરફારને સુરક્ષિત કરો",
     "Protect Settings": "સેટિંગ્સ સુરક્ષિત કરો",
     "Protected source is unavailable": "સંરક્ષિત સ્ત્રોત અનુપલબ્ધ છે",
+    "Provider switching not available": "પ્રદાતા બદલવાની સુવિધા ઉપલબ્ધ નથી",
     "p...": "p...",
     paging: "પેજિંગ",
     Quality: "ગુણવત્તા",
+    "Random #%1": "રેન્ડમ ચેનલ #%1",
+    "Random channel not in any category": "રેન્ડમ પસંદ કરેલી ચેનલ કોઈ શ્રેણીમાં નથી",
     Rating: "રેટિંગ",
     RD: "RD",
     "RD settings": "RD સેટિંગ્સ",
@@ -760,6 +772,10 @@ var keyStrings = {
         "રિમોટ ઇનપુટ સમાપ્ત. ફરી પ્રયાસ કરવા માટે નવું સત્ર ખોલો.",
     "Remote input session is unavailable. Open a new session to try again.":
         "રિમોટ ઇનપુટ સત્ર અનુપલબ્ધ છે. ફરી પ્રયાસ કરવા માટે નવું સત્ર ખોલો.",
+    "Remote playlist changes require the M3U provider.":
+        "દૂરથી પ્લેલિસ્ટ બદલવા માટે M3U પ્રદાતા જરૂરી છે.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "દૂરથી પ્રદાતાનાં સેટિંગ્સ બદલવાનું સમર્થિત નથી. પ્લેયરમાં પ્રદાતાનાં સેટિંગ્સનો ઉપયોગ કરો.",
     "Remote screenshots": "રિમોટ સ્ક્રીનશોટ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "રિમોટ સ્ક્રીનશોટ 10 મિનિટ માટે માન્ય છે. કેપ્ચર કરવા માટે સેટિંગ્સ બંધ કરો.",
@@ -946,6 +962,7 @@ var keyStrings = {
     "Switch sound track": "ઓડિયો ટ્રેક સ્વિચ કરો",
     "Switch subtitle": "સબટાઈટલ સ્વિચ કરો",
     "Switch to this list": "આ સૂચિ પર સ્વિચ કરો",
+    "Switching provider...": "પ્રદાતા બદલાઈ રહ્યા છે...",
     "Swop URL": "SWOP URL",
     "System language": "સિસ્ટમ ભાષા",
     "saved on this device": "આ ઉપકરણ પર સાચવેલ",
@@ -975,6 +992,8 @@ var keyStrings = {
         "આ Play એપ્લિકેશન માટે HTTPS જરૂરી છે. તમારા પ્રદાતાને HTTPS પ્લેલિસ્ટ અથવા સર્વર URL માટે પૂછો.",
     "This pairing link has expired. Open a new session on your TV.":
         "આ જોડી બનાવવાની લિંક સમાપ્ત થઈ ગઈ છે. તમારા ટીવી પર નવું સત્ર ખોલો.",
+    "This remote command is not supported by the player.":
+        "આ રિમોટ કંટ્રોલ આદેશને પ્લેયર સમર્થન આપતું નથી.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "આ સુરક્ષિત સત્ર અનુપલબ્ધ છે અથવા સમાપ્ત થઈ ગયું છે. ટીવી પર નવું સત્ર ખોલો અને તેની સંપૂર્ણ લિંકનો ઉપયોગ કરો.",
     Timer: "ટાઈમર",
@@ -993,6 +1012,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ઝૂમ મોડ બદલો",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv સેટિંગ્સ",
+    "Touchscreen locked": "ટચસ્ક્રીન લૉક કરેલી છે",
+    "Touchscreen unlocked": "ટચસ્ક્રીન અનલૉક કરેલી છે",
     "Trust this server for remote support":
         "રિમોટ સપોર્ટ માટે આ સર્વર પર વિશ્વાસ કરો",
     "Trusted access could not be removed from device storage.":
@@ -1013,6 +1034,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X સેટિંગ્સ",
     "Unable to load playlist": "પ્લેલિસ્ટ લોડ કરવામાં અસમર્થ",
+    "Unlock the player's settings before changing its playlist.":
+        "પ્લેલિસ્ટ બદલતાં પહેલાં પ્લેયરનાં સેટિંગ્સ અનલૉક કરો.",
     Untitled: "શીર્ષક વિનાનું",
     "Untitled folder": "શીર્ષક વિનાનું ફોલ્ડર",
     "Update installed. Please restart OttPlay FOSS.":

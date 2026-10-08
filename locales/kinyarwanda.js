@@ -144,6 +144,10 @@ var keyStrings = {
         "Hindura utanga serivisi. Ibyo uhisemo bizibukwa ubutaha nutangiza porogaramu yo gukina.",
     "Change value": "Hindura agaciro",
     "Channel ": "Shene ",
+    'Channel "%1" not found': 'Shene "%1" ntiyabonetse',
+    "Channel #%1": "Shene #%1",
+    "Channel #%1 not found (total: %2)": "Shene #%1 ntiyabonetse (zose: %2)",
+    "Channel #%1 not in any category": "Shene #%1 nta cyiciro irimo",
     "Channel has no EPG": "Shene nta EPG ifite",
     "Channel is not available!!!": "Shene ntiboneka!",
     "Channel link": "Ihuza rya shene",
@@ -296,6 +300,8 @@ var keyStrings = {
         "Koporora JSON kugira ngo ugire kopi y'ingoboka. Koresha Kwinjiza igenamiterere kugira ngo uyigarure.",
     "Copy the selected JSON with your device's copy command":
         "Koporora JSON yatoranyijwe ukoresheje itegeko ryo gukoporora ry'igikoresho cyawe",
+    "Could not change the playlist.":
+        "Ntibyashobotse guhindura urutonde rwo gukina.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Guhuza na Plex byanze. Reba aderesi ya seriveri, ikimenyetso cyo kwinjira n'uburyo bwo kugera ku rusobe.",
     "Could not connect to the server.": "Guhuza na seriveri byanze.",
@@ -573,6 +579,7 @@ var keyStrings = {
         "Igisubizo cy’igenamiterere kivuye mu bubiko bwo kuri interineti nticyemewe",
     "Invalid protected source configuration":
         "Igenamiterere ry'isoko irinzwe ntiryemewe",
+    "Invalid range: %1-%2": "Intera itemewe: %1-%2",
     "Invalid setting": "Igenamiterere ritemewe",
     "IPTV token": "Ikimenyetso cyo kwinjira cya IPTV",
     "IpStream.one": "IpStream.one",
@@ -604,6 +611,8 @@ var keyStrings = {
     "Loading M3U...": "Turafungura M3U…",
     "Loading media libraries...": "Turafungura amasomero y'ibitangazamakuru…",
     "Loading player...": "Turafungura porogaramu yo gukina…",
+    "Loading the new playlist...":
+        "Harimo gupakirwa urutonde rushya rwo gukina...",
     "Loading via proxy...": "Turafungura dukoresheje porogisi…",
     "Loading. Please wait...": "Turafungura… tegereza…",
     "Loading...": "Turafungura…",
@@ -646,6 +655,7 @@ var keyStrings = {
     "Next TV program": "Ikiganiro gikurikira",
     No: "Oya",
     "No channel name": "Shene nta zina ifite",
+    "No channels loaded": "Nta shene zapakiwe",
     "No command server was found on this network.":
         "Nta seriveri y'amategeko yabonetse kuri uru rusobe.",
     "No Plex servers are available for this account.":
@@ -719,6 +729,7 @@ var keyStrings = {
     "Player could not start": "Porogaramu yo gukina yanze gutangira",
     "Player default": "Ihitamo risanzwe rya porogaramu ikina amashusho",
     "Player info:": "Amakuru ya porogaramu yo gukina:",
+    "Playing: %1": "Birimo gukinwa: %1",
     Playlist: "Urutonde rwo gukina",
     "Playlist file": "Dosiye y'urutonde rwo gukina",
     "Playlist is not loading directly...Loading via server...":
@@ -756,9 +767,14 @@ var keyStrings = {
     "Protect Change Provider": "Rinda guhindura utanga serivisi",
     "Protect Settings": "Rinda igenamiterere",
     "Protected source is unavailable": "Isoko irinzwe ntiboneka",
+    "Provider switching not available":
+        "Guhindura utanga serivisi ntibishoboka",
     "p...": "p...",
     paging: "guhindura paji",
     Quality: "Ubwiza",
+    "Random #%1": "Shene yatoranyijwe ku bw’amahirwe #%1",
+    "Random channel not in any category":
+        "Shene yatoranyijwe ku bw’amahirwe nta cyiciro irimo",
     Rating: "Amanota",
     RD: "RD",
     "RD settings": "Igenamiterere rya RD",
@@ -796,6 +812,10 @@ var keyStrings = {
         "Igihe cyo kwinjiza uri kure cyarangiye. Fungura igihe gishya cyo gukoresha wongere ugerageze.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Igihe cyo kwinjiza uri kure ntikiboneka. Fungura igihe gishya cyo gukoresha wongere ugerageze.",
+    "Remote playlist changes require the M3U provider.":
+        "Guhindura urutonde rwo gukina uri kure bisaba guhitamo utanga serivisi M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Guhindura igenamiterere ry’utanga serivisi uri kure ntibishyigikiwe. Koresha igenamiterere ry’utanga serivisi riri muri porogaramu.",
     "Remote screenshots": "Amafoto ya ecran afatwa kure",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Amafoto ya ecran afatwa kure yemerewe iminota 10. Funga igenamiterere kugira ngo amafoto afatwe.",
@@ -993,6 +1013,7 @@ var keyStrings = {
     "Switch sound track": "Hindura umurongo w'amajwi",
     "Switch subtitle": "Hindura inyandiko zisobanura amajwi",
     "Switch to this list": "Jya kuri uru rutonde",
+    "Switching provider...": "Harimo guhindurwa utanga serivisi...",
     "Swop URL": "URL ya Swop",
     "System language": "Ururimi rwa sisitemu",
     "saved on this device": "byabitswe kuri iki gikoresho",
@@ -1027,6 +1048,8 @@ var keyStrings = {
         "Iyi porogaramu ya Play isaba HTTPS. Saba utanga serivisi URL y'urutonde rwo gukina cyangwa ya seriveri ikoresha HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Igihe cy’iri huza ryo guhuza ibikoresho cyarangiye. Fungura icyiciro gishya kuri TV yawe.",
+    "This remote command is not supported by the player.":
+        "Porogaramu ntishyigikira iri tegeko ry’igenzura ryo kure.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Iki cyiciro gitekanye ntikiboneka cyangwa igihe cyacyo cyarangiye. Fungura icyiciro gishya kuri TV maze ukoreshe ihuza ryacyo ryose.",
     Timer: "Igihe cyateganyijwe",
@@ -1047,6 +1070,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Hindura uburyo bwo gukuza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Igenamiterere rya Top-Tv",
+    "Touchscreen locked": "Ekarani ikorwaho yafunzwe",
+    "Touchscreen unlocked": "Ekarani ikorwaho yafunguwe",
     "Trust this server for remote support":
         "Izere iyi seriveri ku bufasha bwa kure",
     "Trusted access could not be removed from device storage.":
@@ -1067,6 +1092,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Igenamiterere rya ULTIFL1X",
     "Unable to load playlist": "Gufungura urutonde rwo gukina byanze",
+    "Unlock the player's settings before changing its playlist.":
+        "Fungura igenamiterere rya porogaramu ryafunzwe mbere yo guhindura urutonde rwayo rwo gukina.",
     Untitled: "Nta mutwe",
     "Untitled folder": "Ububiko bwa dosiye butagira izina",
     "Update installed. Please restart OttPlay FOSS.":

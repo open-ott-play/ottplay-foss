@@ -93,9 +93,11 @@ import { createPhoneLocalization } from "./phone-localization";
                 if (generation !== revision) return;
                 if (expired()) throw new Error("expired");
             }
-            document.getElementById("caption")!.removeAttribute("data-i18n");
-            document.getElementById("caption")!.textContent =
-                payload.caption || locale.text("Enter text");
+            var caption = document.getElementById("caption")!;
+            if (payload.caption) {
+                caption.removeAttribute("data-i18n");
+                caption.textContent = payload.caption;
+            } else locale.label(caption, "Enter text");
             valueInput.value = payload.draft;
             loaded = true;
             entry.hidden = false;

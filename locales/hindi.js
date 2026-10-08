@@ -136,6 +136,10 @@ var keyStrings = {
         "प्रदाता बदलें. अगली बार जब आप प्लेयर शुरू करेंगे तो आपका चयन याद रखा जाएगा।",
     "Change value": "मान बदलें",
     "Channel ": "चैनल ",
+    'Channel "%1" not found': '"%1" चैनल नहीं मिला',
+    "Channel #%1": "चैनल #%1",
+    "Channel #%1 not found (total: %2)": "चैनल #%1 नहीं मिला (कुल: %2)",
+    "Channel #%1 not in any category": "चैनल #%1 किसी भी श्रेणी में नहीं है",
     "Channel has no EPG": "चैनल का कोई EPG नहीं है",
     "Channel is not available!!!": "चैनल उपलब्ध नहीं है!",
     "Channel link": "चैनल लिंक",
@@ -284,6 +288,7 @@ var keyStrings = {
         "बैकअप रखने के लिए JSON को कॉपी करें। इसे पुनर्स्थापित करने के लिए आयात सेटिंग्स का उपयोग करें।",
     "Copy the selected JSON with your device's copy command":
         "अपने डिवाइस के कॉपी कमांड से चयनित JSON को कॉपी करें",
+    "Could not change the playlist.": "प्लेलिस्ट बदली नहीं जा सकी।",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex से कनेक्ट नहीं हो सका। सर्वर पता, टोकन और नेटवर्क एक्सेस की जाँच करें।",
     "Could not connect to the server.": "सर्वर से कनेक्ट नहीं हो सका.",
@@ -541,6 +546,7 @@ var keyStrings = {
         "अमान्य चैनल लिंक! अपने प्रदाता खाता पृष्ठ पर स्ट्रीम URL से पूरा होस्टनाम दर्ज करें (उदाहरण के लिए subdomain.cdn-domain.tld)।",
     "Invalid cloud settings response": "अमान्य क्लाउड सेटिंग प्रतिक्रिया",
     "Invalid protected source configuration": "अमान्य संरक्षित स्रोत कॉन्फ़िगरेशन",
+    "Invalid range: %1-%2": "अमान्य सीमा: %1-%2",
     "Invalid setting": "अमान्य सेटिंग",
     "IPTV token": "IPTV टोकन",
     "IpStream.one": "IpStream.one",
@@ -572,6 +578,7 @@ var keyStrings = {
     "Loading M3U...": "लोड हो रहा है M3U…",
     "Loading media libraries...": "मीडिया लाइब्रेरी लोड हो रही है…",
     "Loading player...": "प्लेयर लोड हो रहा है...",
+    "Loading the new playlist...": "नई प्लेलिस्ट लोड हो रही है...",
     "Loading via proxy...": "प्रॉक्सी के माध्यम से लोड हो रहा है…",
     "Loading. Please wait...": "लोड हो रहा है... कृपया प्रतीक्षा करें...",
     "Loading...": "लोड हो रहा है...",
@@ -613,6 +620,7 @@ var keyStrings = {
     "Next TV program": "अगला कार्यक्रम",
     No: "नहीं",
     "No channel name": "कोई चैनल नाम नहीं",
+    "No channels loaded": "कोई चैनल लोड नहीं हुआ",
     "No command server was found on this network.":
         "इस नेटवर्क पर कोई कमांड सर्वर नहीं मिला।",
     "No Plex servers are available for this account.":
@@ -686,6 +694,7 @@ var keyStrings = {
     "Player could not start": "प्लेयर प्रारंभ नहीं हो सका",
     "Player default": "प्लेयर का डिफ़ॉल्ट चयन",
     "Player info:": "प्लेयर की जानकारी:",
+    "Playing: %1": "चल रहा है: %1",
     Playlist: "प्लेलिस्ट",
     "Playlist file": "प्लेलिस्ट फ़ाइल",
     "Playlist is not loading directly...Loading via server...":
@@ -721,9 +730,13 @@ var keyStrings = {
     "Protect Change Provider": "प्रदाता परिवर्तन को सुरक्षित रखें",
     "Protect Settings": "सेटिंग्स को सुरक्षित रखें",
     "Protected source is unavailable": "संरक्षित स्रोत अनुपलब्ध है",
+    "Provider switching not available": "प्रदाता बदलने की सुविधा उपलब्ध नहीं है",
     "p...": "p...",
     paging: "पेजिंग",
     Quality: "गुणवत्ता",
+    "Random #%1": "यादृच्छिक चैनल #%1",
+    "Random channel not in any category":
+        "यादृच्छिक रूप से चुना गया चैनल किसी भी श्रेणी में नहीं है",
     Rating: "रेटिंग",
     RD: "RD",
     "RD settings": "आरडी सेटिंग्स",
@@ -761,6 +774,10 @@ var keyStrings = {
         "रिमोट इनपुट की समय सीमा समाप्त हो गई। पुनः प्रयास करने के लिए एक नया सत्र खोलें।",
     "Remote input session is unavailable. Open a new session to try again.":
         "रिमोट इनपुट सत्र अनुपलब्ध है। पुनः प्रयास करने के लिए एक नया सत्र खोलें।",
+    "Remote playlist changes require the M3U provider.":
+        "दूर से प्लेलिस्ट बदलने के लिए M3U प्रदाता आवश्यक है।",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "दूर से प्रदाता की सेटिंग्स बदलना समर्थित नहीं है। प्लेयर की प्रदाता सेटिंग्स का उपयोग करें।",
     "Remote screenshots": "रिमोट स्क्रीनशॉट",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "रिमोट स्क्रीनशॉट की अनुमति 10 मिनट के लिए है। कैप्चर करने के लिए सेटिंग्स बंद करें.",
@@ -947,6 +964,7 @@ var keyStrings = {
     "Switch sound track": "ऑडियो ट्रैक स्विच करें",
     "Switch subtitle": "उपशीर्षक स्विच करें",
     "Switch to this list": "इस सूची पर स्विच करें",
+    "Switching provider...": "प्रदाता बदला जा रहा है...",
     "Swop URL": "SWOP URL",
     "System language": "सिस्टम भाषा",
     "saved on this device": "इस डिवाइस पर सहेजा गया",
@@ -977,6 +995,8 @@ var keyStrings = {
         "इस प्ले ऐप के लिए HTTPS की आवश्यकता है। अपने प्रदाता से HTTPS प्लेलिस्ट या सर्वर URL के लिए पूछें।",
     "This pairing link has expired. Open a new session on your TV.":
         "यह युग्मन लिंक समाप्त हो गया है। अपने टीवी पर एक नया सत्र खोलें.",
+    "This remote command is not supported by the player.":
+        "प्लेयर इस रिमोट कंट्रोल कमांड का समर्थन नहीं करता।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "यह सुरक्षित सत्र अनुपलब्ध है या समाप्त हो गया है। टीवी पर एक नया सत्र खोलें और उसके संपूर्ण लिंक का उपयोग करें।",
     Timer: "टाइमर",
@@ -995,6 +1015,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ज़ूम मोड बदलें",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv सेटिंग्स",
+    "Touchscreen locked": "टचस्क्रीन लॉक है",
+    "Touchscreen unlocked": "टचस्क्रीन अनलॉक है",
     "Trust this server for remote support":
         "दूरस्थ सहायता के लिए इस सर्वर पर भरोसा करें",
     "Trusted access could not be removed from device storage.":
@@ -1015,6 +1037,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X सेटिंग्स",
     "Unable to load playlist": "प्लेलिस्ट लोड करने में असमर्थ",
+    "Unlock the player's settings before changing its playlist.":
+        "प्लेलिस्ट बदलने से पहले प्लेयर की सेटिंग्स अनलॉक करें।",
     Untitled: "शीर्षकहीन",
     "Untitled folder": "शीर्षक रहित फ़ोल्डर",
     "Update installed. Please restart OttPlay FOSS.":

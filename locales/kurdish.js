@@ -143,6 +143,11 @@ var keyStrings = {
         "Pêşkêşker biguhere. Hilbijartina we dê gava din ku hûn lêdêra medyayê dest pê bikin dê were bîranîn.",
     "Change value": "Nirxê biguherîne",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': 'Kanala "%1" nehat dîtin',
+    "Channel #%1": "Kanal #%1",
+    "Channel #%1 not found (total: %2)":
+        "Kanala #%1 nehat dîtin (bi giştî: %2)",
+    "Channel #%1 not in any category": "Kanala #%1 di tu kategoriyê de nîne",
     "Channel has no EPG": "Kanal EPG tune",
     "Channel is not available!!!": "Kanal ne berdest e!",
     "Channel link": "Girêdana kanalê",
@@ -294,6 +299,7 @@ var keyStrings = {
         "Ji bo parastina kopiyeke ewlehiyê JSON kopî bikin. Ji bo vegerandinê «Mîhengan bîne» bi kar bînin.",
     "Copy the selected JSON with your device's copy command":
         "JSON-a hilbijartî bi fermana kopîkirina cîhaza xwe kopî bikin",
+    "Could not change the playlist.": "Lîsteya lêdanê nehat guherandin.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nekarî bi Plex ve were girêdan. Navnîşana serverê, token û gihîştina torê kontrol bikin.",
     "Could not connect to the server.": "Nekarî bi pêşkêşkarê ve were girêdan.",
@@ -559,6 +565,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Bersiva mîhengên ewr nederbasdar",
     "Invalid protected source configuration":
         "Veavakirina çavkaniya parastî nederbasdar",
+    "Invalid range: %1-%2": "Navbera nederbasdar: %1-%2",
     "Invalid setting": "Mîhengek nederbasdar",
     "IPTV token": "Tokena IPTV",
     "IpStream.one": "IpStream.one",
@@ -590,6 +597,7 @@ var keyStrings = {
     "Loading M3U...": "M3U Bar dike…",
     "Loading media libraries...": "Pirtûkxaneyên medyayê tê barkirin…",
     "Loading player...": "Lêdêra medyayê bar dike…",
+    "Loading the new playlist...": "Lîsteya lêdanê ya nû tê barkirin...",
     "Loading via proxy...": "Bi proxy ve tê barkirin…",
     "Loading. Please wait...": "Bar dike… ji kerema xwe li bendê bin…",
     "Loading...": "Barkirin…",
@@ -631,6 +639,7 @@ var keyStrings = {
     "Next TV program": "Bernameya din",
     No: "Na",
     "No channel name": "Navê kanalê tune",
+    "No channels loaded": "Tu kanal nehatine barkirin",
     "No command server was found on this network.":
         "Li ser vê torê serverek fermanê nehat dîtin.",
     "No Plex servers are available for this account.":
@@ -704,6 +713,7 @@ var keyStrings = {
     "Player could not start": "lêdêra medyayê nikarî dest pê bike",
     "Player default": "Mîhenga xwerû ya bernameyê",
     "Player info:": "Agahdariya lêdêrê:",
+    "Playing: %1": "Tê lîstin: %1",
     Playlist: "Lîsteya lêdanê",
     "Playlist file": "Dosya lîsteya lêdanê",
     "Playlist is not loading directly...Loading via server...":
@@ -739,9 +749,13 @@ var keyStrings = {
     "Protect Change Provider": "Guhertina pêşkêşkarê biparêze",
     "Protect Settings": "Mîhengan biparêze",
     "Protected source is unavailable": "Çavkaniya parastî ne berdest e",
+    "Provider switching not available": "Guherandina dabînkerê ne gengaz e",
     "p...": "r...",
     paging: "rûpelkirin",
     Quality: "Qalîteya",
+    "Random #%1": "Kanala tesadufî #%1",
+    "Random channel not in any category":
+        "Kanala ku bi tesaduf hat hilbijartin di tu kategoriyê de nîne",
     Rating: "Nirxandin",
     RD: "RD",
     "RD settings": "Mîhengên RD",
@@ -779,6 +793,10 @@ var keyStrings = {
         "Ketina ji dûr ve qediya. Danişînek nû veke ku dîsa biceribîne.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Danişîna têketina ji dûr ve ne berdest e. Danişînek nû veke ku dîsa biceribîne.",
+    "Remote playlist changes require the M3U provider.":
+        "Ji bo guherandina lîsteya lêdanê ji dûr ve divê dabînkerê M3U were hilbijartin.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Guherandina mîhengên dabînkerê ji dûr ve nayê piştgirîkirin. Mîhengên dabînkerê yên di lêkerê de bi kar bîne.",
     "Remote screenshots": "Wêneyên ekranê ji dûr ve",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Ji bo 10 hûrdeman destûr li wêneyên ekranê ji dûr ve heye. Ji bo girtina wêneyê, mîhengan bigire.",
@@ -977,6 +995,7 @@ var keyStrings = {
     "Switch sound track": "Rêça dengî biguherîne",
     "Switch subtitle": "Binnivîsan biguherîne",
     "Switch to this list": "Derbasî vê lîsteyê bibe",
+    "Switching provider...": "Dabînker tê guherandin...",
     "Swop URL": "Swop URL",
     "System language": "Zimanê sîstemê",
     "saved on this device": "li ser vê amûrê hatiye tomarkirin",
@@ -1010,6 +1029,8 @@ var keyStrings = {
         "Ev sepana Play HTTPS dixwaze. Ji dabînkerê xwe lîsteyeke lêdanê an URL-ya pêşkêskerê ya HTTPS bixwazin.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ev girêdana hevberdanê qediyaye. Li ser TV-ya xwe danişînek nû vekin.",
+    "This remote command is not supported by the player.":
+        "Ev fermana kontrola dûr ji aliyê lêkerê ve nayê piştgirîkirin.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ev danişîna ewle ne berdest e an qediya ye. Li ser TV-yê rûniştinek nû vekin û girêdana wê ya bêkêmasî bikar bînin.",
     Timer: "Demjimêr",
@@ -1030,6 +1051,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Moda mezinkirinê biguherîne",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Mîhengên Top-Tv",
+    "Touchscreen locked": "Ekrana destdanê hat kilîtkirin",
+    "Touchscreen unlocked": "Kilîda ekrana destdanê hat vekirin",
     "Trust this server for remote support":
         "Ji bo piştgiriya dûr bi vê pêşkêşkerê bawer bike",
     "Trusted access could not be removed from device storage.":
@@ -1050,6 +1073,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Mîhengên ULTIFL1X",
     "Unable to load playlist": "Lîsteya lêdanê nehat barkirin",
+    "Unlock the player's settings before changing its playlist.":
+        "Berî guherandina lîsteya lêdanê kilîda mîhengên lêkerê veke.",
     Untitled: "Bênav",
     "Untitled folder": "Peldanka bênav",
     "Update installed. Please restart OttPlay FOSS.":

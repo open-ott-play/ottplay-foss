@@ -142,6 +142,12 @@ var keyStrings = {
         "Tukar penyedia. Pilihan anda akan diingati apabila pemain dimulakan semula.",
     "Change value": "Tukar nilai",
     "Channel ": "Saluran ",
+    'Channel "%1" not found': 'Saluran "%1" tidak ditemui',
+    "Channel #%1": "Saluran #%1",
+    "Channel #%1 not found (total: %2)":
+        "Saluran #%1 tidak ditemui (jumlah: %2)",
+    "Channel #%1 not in any category":
+        "Saluran #%1 tidak berada dalam mana-mana kategori",
     "Channel has no EPG": "Saluran tiada EPG",
     "Channel is not available!!!": "Saluran tidak tersedia!",
     "Channel link": "Pautan saluran",
@@ -290,6 +296,7 @@ var keyStrings = {
         "Salin JSON untuk menyimpan sandaran. Gunakan import tetapan untuk memulihkannya.",
     "Copy the selected JSON with your device's copy command":
         "Salin JSON yang dipilih menggunakan perintah salin peranti anda",
+    "Could not change the playlist.": "Tidak dapat menukar senarai main.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Tidak dapat menyambung ke Plex. Semak alamat pelayan, token dan akses rangkaian.",
     "Could not connect to the server.": "Tidak dapat menyambung ke pelayan.",
@@ -554,6 +561,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Respons tetapan awan tidak sah",
     "Invalid protected source configuration":
         "Konfigurasi sumber yang dilindungi tidak sah",
+    "Invalid range: %1-%2": "Julat tidak sah: %1-%2",
     "Invalid setting": "Tetapan tidak sah",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -586,6 +594,7 @@ var keyStrings = {
     "Loading M3U...": "Memuatkan M3U…",
     "Loading media libraries...": "Memuatkan pustaka media…",
     "Loading player...": "Memuatkan pemain…",
+    "Loading the new playlist...": "Memuatkan senarai main baharu...",
     "Loading via proxy...": "Memuatkan melalui proksi…",
     "Loading. Please wait...": "Memuatkan… sila tunggu…",
     "Loading...": "Memuatkan…",
@@ -627,6 +636,7 @@ var keyStrings = {
     "Next TV program": "Rancangan seterusnya",
     No: "Tidak",
     "No channel name": "Saluran tanpa nama",
+    "No channels loaded": "Tiada saluran dimuatkan",
     "No command server was found on this network.":
         "Tiada pelayan arahan ditemui pada rangkaian ini.",
     "No Plex servers are available for this account.":
@@ -700,6 +710,7 @@ var keyStrings = {
     "Player could not start": "Pemain tidak dapat dimulakan",
     "Player default": "Pilihan lalai pemain",
     "Player info:": "Maklumat pemain:",
+    "Playing: %1": "Sedang dimainkan: %1",
     Playlist: "Senarai main",
     "Playlist file": "Fail senarai main",
     "Playlist is not loading directly...Loading via server...":
@@ -734,9 +745,13 @@ var keyStrings = {
     "Protect Change Provider": "Lindungi pertukaran penyedia",
     "Protect Settings": "Lindungi tetapan",
     "Protected source is unavailable": "Sumber yang dilindungi tidak tersedia",
+    "Provider switching not available": "Penukaran penyedia tidak tersedia",
     "p...": "p...",
     paging: "mengikut halaman",
     Quality: "Kualiti",
+    "Random #%1": "Saluran rawak #%1",
+    "Random channel not in any category":
+        "Saluran yang dipilih secara rawak tidak berada dalam mana-mana kategori",
     Rating: "Penilaian",
     RD: "RD",
     "RD settings": "Tetapan RD",
@@ -774,6 +789,10 @@ var keyStrings = {
         "Input jauh tamat tempoh. Buka sesi baharu untuk mencuba lagi.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesi input jauh tidak tersedia. Buka sesi baharu untuk mencuba lagi.",
+    "Remote playlist changes require the M3U provider.":
+        "Perubahan senarai main dari jauh memerlukan penyedia M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Perubahan tetapan penyedia dari jauh tidak disokong. Gunakan tetapan penyedia dalam pemain media.",
     "Remote screenshots": "Tangkapan skrin jauh",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Tangkapan skrin jauh dibenarkan selama 10 minit. Tutup tetapan untuk ditangkap.",
@@ -967,6 +986,7 @@ var keyStrings = {
     "Switch sound track": "Tukar trek audio",
     "Switch subtitle": "Tukar sari kata",
     "Switch to this list": "Tukar ke senarai ini",
+    "Switching provider...": "Menukar penyedia...",
     "Swop URL": "URL Swop",
     "System language": "Bahasa sistem",
     "saved on this device": "disimpan pada peranti ini",
@@ -1000,6 +1020,8 @@ var keyStrings = {
         "Aplikasi Play ini memerlukan HTTPS. Minta URL senarai main atau pelayan HTTPS daripada penyedia anda.",
     "This pairing link has expired. Open a new session on your TV.":
         "Pautan berpasangan ini telah tamat tempoh. Buka sesi baharu pada TV anda.",
+    "This remote command is not supported by the player.":
+        "Arahan kawalan jauh ini tidak disokong oleh pemain media.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Sesi selamat ini tidak tersedia atau tamat tempoh. Buka sesi baharu di TV dan gunakan pautan lengkapnya.",
     Timer: "Pemasa",
@@ -1019,6 +1041,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Tukar mod zum",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Tetapan Top-Tv",
+    "Touchscreen locked": "Skrin sentuh dikunci",
+    "Touchscreen unlocked": "Kunci skrin sentuh dibuka",
     "Trust this server for remote support":
         "Percayai pelayan ini untuk sokongan jauh",
     "Trusted access could not be removed from device storage.":
@@ -1039,6 +1063,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Tetapan ULTIFL1X",
     "Unable to load playlist": "Tidak dapat memuatkan senarai main",
+    "Unlock the player's settings before changing its playlist.":
+        "Buka kunci tetapan pemain media sebelum menukar senarai mainnya.",
     Untitled: "Tanpa tajuk",
     "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":

@@ -138,6 +138,10 @@ var keyStrings = {
         "ദാതാവിനെ മാറ്റുക. അടുത്ത തവണ നിങ്ങൾ പ്ലെയർ ആരംഭിക്കുമ്പോൾ നിങ്ങളുടെ തിരഞ്ഞെടുപ്പ് ഓർമ്മിക്കപ്പെടും.",
     "Change value": "മൂല്യം മാറ്റുക",
     "Channel ": "ചാനൽ ",
+    'Channel "%1" not found': '"%1" ചാനൽ കണ്ടെത്തിയില്ല',
+    "Channel #%1": "ചാനൽ #%1",
+    "Channel #%1 not found (total: %2)": "ചാനൽ #%1 കണ്ടെത്തിയില്ല (ആകെ: %2)",
+    "Channel #%1 not in any category": "ചാനൽ #%1 ഒരു വിഭാഗത്തിലും ഇല്ല",
     "Channel has no EPG": "ചാനലിന് EPG ഇല്ല",
     "Channel is not available!!!": "ചാനൽ ലഭ്യമല്ല!",
     "Channel link": "ചാനൽ ലിങ്ക്",
@@ -286,6 +290,7 @@ var keyStrings = {
         "ഒരു ബാക്കപ്പ് സൂക്ഷിക്കാൻ JSON പകർത്തുക. അത് പുനഃസ്ഥാപിക്കാൻ ഇറക്കുമതി ക്രമീകരണങ്ങൾ ഉപയോഗിക്കുക.",
     "Copy the selected JSON with your device's copy command":
         "തിരഞ്ഞെടുത്ത JSON നിങ്ങളുടെ ഉപകരണത്തിൻ്റെ കോപ്പി കമാൻഡ് ഉപയോഗിച്ച് പകർത്തുക",
+    "Could not change the playlist.": "പ്ലേലിസ്റ്റ് മാറ്റാനായില്ല.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex-ലേക്ക് ബന്ധിപ്പിക്കാൻ കഴിഞ്ഞില്ല. സെർവർ വിലാസം, ടോക്കൺ, നെറ്റ്‌വർക്ക് ആക്‌സസ് എന്നിവ പരിശോധിക്കുക.",
     "Could not connect to the server.": "സെർവറിലേക്ക് ബന്ധിപ്പിക്കാൻ കഴിഞ്ഞില്ല.",
@@ -547,6 +552,7 @@ var keyStrings = {
         "ചാനൽ ലിങ്ക് അസാധുവാണ്! നിങ്ങളുടെ ദാതാവിൻ്റെ അക്കൗണ്ട് പേജിൽ URL സ്ട്രീമിൽ നിന്ന് പൂർണ്ണമായ ഹോസ്റ്റ്നാമം നൽകുക (ഉദാഹരണത്തിന് subdomain.cdn-domain.tld ).",
     "Invalid cloud settings response": "അസാധുവായ ക്ലൗഡ് ക്രമീകരണ പ്രതികരണം",
     "Invalid protected source configuration": "അസാധുവായ സംരക്ഷിത ഉറവിട കോൺഫിഗറേഷൻ",
+    "Invalid range: %1-%2": "അസാധുവായ പരിധി: %1-%2",
     "Invalid setting": "അസാധുവായ ക്രമീകരണം",
     "IPTV token": "IPTV ടോക്കൺ",
     "IpStream.one": "IpStream.one",
@@ -578,6 +584,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ലോഡുചെയ്യുന്നു…",
     "Loading media libraries...": "മീഡിയ ലൈബ്രറികൾ ലോഡ് ചെയ്യുന്നു...",
     "Loading player...": "പ്ലെയർ ലോഡ് ചെയ്യുന്നു...",
+    "Loading the new playlist...": "പുതിയ പ്ലേലിസ്റ്റ് ലോഡ് ചെയ്യുന്നു...",
     "Loading via proxy...": "പ്രോക്സി വഴി ലോഡുചെയ്യുന്നു...",
     "Loading. Please wait...": "ലോഡ് ചെയ്യുന്നു... ദയവായി കാത്തിരിക്കൂ...",
     "Loading...": "ലോഡ് ചെയ്യുന്നു…",
@@ -619,6 +626,7 @@ var keyStrings = {
     "Next TV program": "അടുത്ത പ്രോഗ്രാം",
     No: "ഇല്ല",
     "No channel name": "ചാനലിൻ്റെ പേരില്ല",
+    "No channels loaded": "ചാനലുകളൊന്നും ലോഡ് ചെയ്തിട്ടില്ല",
     "No command server was found on this network.":
         "ഈ നെറ്റ്‌വർക്കിൽ കമാൻഡ് സെർവറൊന്നും കണ്ടെത്തിയില്ല.",
     "No Plex servers are available for this account.":
@@ -692,6 +700,7 @@ var keyStrings = {
     "Player could not start": "കളിക്കാരന് ആരംഭിക്കാനായില്ല",
     "Player default": "പ്ലേയറിന്റെ സ്വതവേയുള്ള തിരഞ്ഞെടുപ്പ്",
     "Player info:": "പ്ലെയർ്റെ വിവരങ്ങൾ:",
+    "Playing: %1": "പ്ലേ ചെയ്യുന്നു: %1",
     Playlist: "പ്ലേലിസ്റ്റ്",
     "Playlist file": "പ്ലേലിസ്റ്റ് ഫയൽ",
     "Playlist is not loading directly...Loading via server...":
@@ -727,9 +736,13 @@ var keyStrings = {
     "Protect Change Provider": "ദാതാവിൻ്റെ മാറ്റം പരിരക്ഷിക്കുക",
     "Protect Settings": "ക്രമീകരണങ്ങൾ പരിരക്ഷിക്കുക",
     "Protected source is unavailable": "പരിരക്ഷിത ഉറവിടം ലഭ്യമല്ല",
+    "Provider switching not available": "ദാതാവിനെ മാറ്റാനുള്ള സൗകര്യം ലഭ്യമല്ല",
     "p...": "p...",
     paging: "പേജിംഗ്",
     Quality: "ഗുണനിലവാരം",
+    "Random #%1": "ക്രമരഹിത ചാനൽ #%1",
+    "Random channel not in any category":
+        "ക്രമരഹിതമായി തിരഞ്ഞെടുത്ത ചാനൽ ഒരു വിഭാഗത്തിലും ഇല്ല",
     Rating: "റേറ്റിംഗ്",
     RD: "RD",
     "RD settings": "RD ക്രമീകരണങ്ങൾ",
@@ -766,6 +779,10 @@ var keyStrings = {
         "റിമോട്ട് ഇൻപുട്ട് കാലഹരണപ്പെട്ടു. വീണ്ടും ശ്രമിക്കാൻ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
     "Remote input session is unavailable. Open a new session to try again.":
         "റിമോട്ട് ഇൻപുട്ട് സെഷൻ ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാൻ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
+    "Remote playlist changes require the M3U provider.":
+        "വിദൂരമായി പ്ലേലിസ്റ്റ് മാറ്റാൻ M3U ദാതാവ് ആവശ്യമാണ്.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "വിദൂരമായി ദാതാവിന്റെ ക്രമീകരണങ്ങൾ മാറ്റുന്നത് പിന്തുണയ്ക്കുന്നില്ല. പ്ലേയറിലെ ദാതാവിന്റെ ക്രമീകരണങ്ങൾ ഉപയോഗിക്കുക.",
     "Remote screenshots": "റിമോട്ട് സ്ക്രീൻഷോട്ടുകൾ",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "റിമോട്ട് സ്ക്രീൻഷോട്ടുകൾ 10 മിനിറ്റ് അനുവദിച്ചിരിക്കുന്നു. ക്യാപ്‌ചർ ചെയ്യാൻ ക്രമീകരണങ്ങൾ അടയ്ക്കുക.",
@@ -957,6 +974,7 @@ var keyStrings = {
     "Switch sound track": "ഓഡിയോ ട്രാക്ക് മാറുക",
     "Switch subtitle": "സബ്ടൈറ്റിലുകൾ മാറുക",
     "Switch to this list": "ഈ ലിസ്റ്റിലേക്ക് മാറുക",
+    "Switching provider...": "ദാതാവിനെ മാറ്റുന്നു...",
     "Swop URL": "SWOP URL",
     "System language": "സിസ്റ്റം ഭാഷ",
     "saved on this device": "ഈ ഉപകരണത്തിൽ സംരക്ഷിച്ചു",
@@ -987,6 +1005,8 @@ var keyStrings = {
         "ഈ പ്ലേ ആപ്പിന് HTTPS ആവശ്യമാണ്. HTTPS പ്ലേലിസ്റ്റ് അല്ലെങ്കിൽ സെർവർ URL നിങ്ങളുടെ ദാതാവിനോട് ആവശ്യപ്പെടുക.",
     "This pairing link has expired. Open a new session on your TV.":
         "ഈ ജോടിയാക്കൽ ലിങ്ക് കാലഹരണപ്പെട്ടു. നിങ്ങളുടെ ടിവിയിൽ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
+    "This remote command is not supported by the player.":
+        "ഈ വിദൂര നിയന്ത്രണ കമാൻഡ് പ്ലേയർ പിന്തുണയ്ക്കുന്നില്ല.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ഈ സുരക്ഷിത സെഷൻ ലഭ്യമല്ല അല്ലെങ്കിൽ കാലഹരണപ്പെട്ടു. ടിവിയിൽ ഒരു പുതിയ സെഷൻ തുറന്ന് അതിൻ്റെ പൂർണ്ണമായ ലിങ്ക് ഉപയോഗിക്കുക.",
     Timer: "ടൈമർ",
@@ -1005,6 +1025,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "സൂം മോഡ് മാറ്റുക",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ക്രമീകരണങ്ങൾ",
+    "Touchscreen locked": "ടച്ച്‌സ്‌ക്രീൻ ലോക്ക് ചെയ്തു",
+    "Touchscreen unlocked": "ടച്ച്‌സ്‌ക്രീൻ അൺലോക്ക് ചെയ്തു",
     "Trust this server for remote support":
         "വിദൂര പിന്തുണയ്‌ക്കായി ഈ സെർവറിനെ വിശ്വസിക്കുക",
     "Trusted access could not be removed from device storage.":
@@ -1025,6 +1047,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ക്രമീകരണങ്ങൾ",
     "Unable to load playlist": "പ്ലേലിസ്റ്റ് ലോഡുചെയ്യാനായില്ല",
+    "Unlock the player's settings before changing its playlist.":
+        "പ്ലേലിസ്റ്റ് മാറ്റുന്നതിന് മുമ്പ് പ്ലേയറിന്റെ ക്രമീകരണങ്ങളുടെ ലോക്ക് തുറക്കുക.",
     Untitled: "ശീർഷകമില്ല",
     "Untitled folder": "പേരില്ലാത്ത ഫോൾഡർ",
     "Update installed. Please restart OttPlay FOSS.":
