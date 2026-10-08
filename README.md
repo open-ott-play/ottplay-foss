@@ -1089,3 +1089,9 @@ An optional OTT server integration also exposes an existing Plex server's catalo
   provides an optional Worker-based text-entry transport.
 - [ottplay-web-vitrine](https://github.com/open-ott-play/ottplay-web-vitrine)
   owns the browser demo's hosted profile, demo media and publication verification.
+
+## Project maintenance
+
+See [contribution and test requirements](CONTRIBUTING.md), the
+[security reporting policy](SECURITY.md), [security design](docs/security-design.md),
+and the [OpenSSF evidence and remaining criteria](docs/openssf-evidence.md).
