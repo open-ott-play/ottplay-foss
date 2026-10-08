@@ -192,7 +192,11 @@ class _PinnedConnection(http.client.HTTPConnection):
                 transport.connect(sockaddr)
                 if self.parsed.scheme == "https":
                     transport.settimeout(_remaining(self.deadline))
-                    transport = ssl.create_default_context().wrap_socket(transport, server_hostname=self.host)
+                    context = ssl.create_default_context()
+                    # Keep the TLS floor explicit for security analysis without lowering a stricter policy.
+                    if context.minimum_version < ssl.TLSVersion.TLSv1_2:  # noqa: PLR1730
+                        context.minimum_version = ssl.TLSVersion.TLSv1_2
+                    transport = context.wrap_socket(transport, server_hostname=self.host)
                     self.transport = transport
                 self.sock = transport
                 return

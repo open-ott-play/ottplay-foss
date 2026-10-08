@@ -261,13 +261,30 @@ def _fetch_single_xmltv(source):
     return channels, programs
 
 
+def _remove_parentheticals(name):
+    """Remove complete parentheticals without rescanning an unmatched tail."""
+    parts = []
+    start = 0
+    while True:
+        opening = name.find("(", start)
+        if opening == -1:
+            break
+        closing = name.find(")", opening + 1)
+        if closing == -1:
+            break
+        parts.append(name[start:opening])
+        start = closing + 1
+    parts.append(name[start:])
+    return "".join(parts)
+
+
 def normalize_name(name):
     """Normalize channel name for fuzzy matching."""
     name = name.lower().strip()
     # Remove time shift patterns: +N, -N, +Nч, +Nh, +N hours
     name = re.sub(r"[+-]\s*\d+\s*(ч|h|hours?)?", "", name)
     # Remove parentheticals like (Алания)
-    name = re.sub(r"\([^)]*\)", "", name)
+    name = _remove_parentheticals(name)
     # Remove extra whitespace
     name = re.sub(r"\s+", " ", name).strip()
     # Remove common prefixes/suffixes
@@ -783,6 +800,9 @@ if __name__ == "__main__":
             if not HTTPS_PORTS:
                 HTTPS_PORTS = [8443]
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            # Keep the TLS floor explicit for security analysis without lowering a stricter policy.
+            if ctx.minimum_version < ssl.TLSVersion.TLSv1_2:  # noqa: PLR1730
+                ctx.minimum_version = ssl.TLSVersion.TLSv1_2
             ctx.load_cert_chain(CERT_FILE, KEY_FILE)
             for hp in HTTPS_PORTS:
                 httpsd = ReusableTCPServer((HOST, hp), OTTPlayHandler)
