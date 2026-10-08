@@ -109,7 +109,7 @@ for (const input of [
 ]) {
     assert.throws(() => normalize(input), undefined, input);
 }
-function harness(protocol = "http:", execute) {
+function harness(protocol = "http:", execute, accept) {
     const jobs = new Map();
     const requests = [];
     const saved = [];
@@ -141,7 +141,8 @@ function harness(protocol = "http:", execute) {
             if (behavior.onDispatch) behavior.onDispatch();
             return behavior.outcome;
         },
-        execute
+        execute,
+        accept
     );
     function next() {
         assert.equal(jobs.size, 1, "only one retry/poll timer is scheduled");
@@ -1877,3 +1878,61 @@ console.log(
     console.error(error);
     process.exitCode = 1;
 });
+
+// Another document's targeted inspection must neither block this queue nor be ACKed.
+{
+    clock = 5000000;
+    const handled = [];
+    const rpc = harness(
+        "http:",
+        (request, done) => {
+            handled.push(request.id);
+            done({ data: {}, status: "ok" });
+        },
+        (request) =>
+            request.action !== "inspect" ||
+            request.params.runtime === "this-page"
+    );
+    rpc.connect();
+    rpc.respond({
+        commands: [],
+        requests: [
+            {
+                action: "inspect",
+                expires_at: 5030,
+                id: "a".repeat(32),
+                params: { runtime: "other-page" },
+            },
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "b".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    });
+    assert.deepEqual(handled, ["b".repeat(32)]);
+    rpc.next();
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).id,
+        "b".repeat(32)
+    );
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    rpc.respond({
+        commands: [],
+        requests: [
+            {
+                action: "inspect",
+                expires_at: 5030,
+                id: "a".repeat(32),
+                params: { runtime: "other-page" },
+            },
+        ],
+        server_time: 5000,
+    });
+    assert.deepEqual(handled, ["b".repeat(32)]);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.method, "GET");
+}

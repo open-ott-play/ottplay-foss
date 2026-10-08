@@ -25,6 +25,7 @@ const context = {
 };
 vm.runInNewContext(emit("src/commands/remote-restart.ts"), context);
 const execute = context.exports.executeRemoteControl;
+const doctorCapabilities = context.exports.remoteDoctorCapabilities;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function fixture() {
@@ -58,6 +59,7 @@ function fixture() {
     const w = {
         __ottClassicPlayback: { snapshot: () => ({ target: { kind } }) },
         __ottCoreBackend: () => backend,
+        __ottCoreBackendPeek: () => backend,
         __ottCoreTransport: { play },
         __ottKiosk: { enabled: () => kiosk },
         __ottParental: { needs: () => locked },
@@ -147,6 +149,10 @@ function fixture() {
     const f = fixture();
     const caps = f.run("capabilities").result.data;
     assert.equal(caps.version, 1);
+    assert.deepEqual(caps.inspect, {
+        sections: ["doctor", "snapshot", "operation"],
+        version: 1,
+    });
     assert.deepEqual(caps.player, plain(context.exports.remotePlayerInfo(f.w)));
     assert.equal(caps.player.platform, "tauri");
     assert.match(caps.player.runtime, /^[a-z0-9-]{1,64}$/);
@@ -407,6 +413,200 @@ for (const changed of [
 }
 console.log(
     "PASS remote controls: ES5 schemas, public identity, honest capabilities, native ACK fencing, kiosk/PIN/local consent, key collisions and owned playback"
+);
+
+// Doctor uses the same predicates as execution, without creating a decoder or
+// entering effectful screenshot.status()/snapshot() configuration synchronization.
+{
+    const f = fixture();
+    const forbidden = () => {
+        throw new Error("must not run during doctor");
+    };
+    f.w.__ottCoreBackend = forbidden;
+    f.handle.sample = forbidden;
+    f.w.__ottRemoteScreenshot = {
+        peek: () => ({
+            busy: false,
+            connected: true,
+            known: true,
+            needsSourceSelection: true,
+            ready: false,
+            source: null,
+            state: "permission_required",
+            supported: true,
+        }),
+        snapshot: forbidden,
+        status: forbidden,
+    };
+    const generic = f.run("capabilities").result.data;
+    assert.deepEqual(generic.screenshot, {
+        source: null,
+        state: "permission_required",
+    });
+    f.w.__ottRemoteDiagnostics = {
+        status: () => ({
+            enabled: true,
+            runtimeId: "diag-runtime",
+            state: "ready",
+            trusted: true,
+        }),
+    };
+    const caps = plain(doctorCapabilities(f.w));
+    assert.equal(caps.length, 10);
+    assert.equal(
+        caps.find((x) => x.name === "screenshot").reason,
+        "source_selection_required"
+    );
+    assert.equal(caps.find((x) => x.name === "diagnostics").reason, "ready");
+    for (const operation of [
+        "restart_stream",
+        "reload_player",
+        "restart_app",
+        "exit_app",
+        "reboot_device",
+        "standby",
+        "wake",
+    ])
+        assert.equal(
+            caps.find((x) => x.name === operation).state === "available",
+            generic.lifecycle.includes(operation)
+        );
+    assert.equal(f.effects.length, 0);
+    f.w.__ottRemoteScreenshot.peek = () => ({
+        source: "https://private.example/token",
+        state: "ready",
+    });
+    assert.deepEqual(f.run("capabilities").result.data.screenshot, {
+        source: null,
+        state: "unsupported",
+    });
+    delete f.w.__ottCoreBackendPeek;
+    assert.deepEqual(
+        plain(doctorCapabilities(f.w).find((x) => x.name === "restart_stream")),
+        {
+            name: "restart_stream",
+            reason: "producer_unavailable",
+            state: "unknown",
+        }
+    );
+}
+{
+    const f = fixture();
+    const capability = (name) =>
+        plain(doctorCapabilities(f.w).find((x) => x.name === name));
+    f.lock(true);
+    assert.equal(capability("restart_app").reason, "policy_restricted");
+    assert.equal(
+        capability("input").reason,
+        "ready",
+        "volume remains allowed under settings lock"
+    );
+    f.protect(true);
+    assert.equal(capability("input").reason, "policy_restricted");
+    f.protect(false);
+    f.lock(false);
+    f.kiosk(true);
+    assert.equal(capability("restart_app").reason, "policy_restricted");
+    assert.equal(capability("reload_player").reason, "ready");
+    f.kiosk(false);
+    f.active(false);
+    assert.equal(capability("restart_stream").reason, "no_active_media");
+    f.active(true);
+    f.phase("loading");
+    assert.equal(
+        capability("restart_stream").reason,
+        "current_state_unsupported"
+    );
+    f.kind("live");
+    for (const phase of ["loading", "error"]) {
+        f.phase(phase);
+        assert.equal(capability("restart_stream").reason, "ready");
+        assert.ok(
+            f
+                .run("capabilities")
+                .result.data.lifecycle.includes("restart_stream")
+        );
+        assert.equal(
+            f.run("lifecycle", { operation: "restart_stream" }).result.status,
+            "ok"
+        );
+        assert.equal(
+            f.run("playback", { operation: "pause" }).result.status,
+            "unsupported"
+        );
+    }
+    f.phase("stopped");
+    assert.equal(
+        capability("restart_stream").reason,
+        "current_state_unsupported"
+    );
+    assert.equal(
+        f.run("lifecycle", { operation: "restart_stream" }).result.status,
+        "unsupported"
+    );
+}
+{
+    const f = fixture();
+    const capability = (name) =>
+        plain(doctorCapabilities(f.w).find((x) => x.name === name));
+    for (const [facts, expected] of [
+        [{ connected: false }, "remote_disconnected"],
+        [{ connected: true, known: false }, "producer_unavailable"],
+        [{ connected: true, known: true, supported: false }, "not_implemented"],
+        [
+            {
+                busy: true,
+                connected: true,
+                known: true,
+                ready: true,
+                supported: true,
+            },
+            "busy",
+        ],
+        [
+            { connected: true, known: true, ready: true, supported: true },
+            "ready",
+        ],
+    ]) {
+        f.w.__ottRemoteScreenshot = { peek: () => facts };
+        assert.equal(capability("screenshot").reason, expected);
+    }
+    for (const [facts, expected] of [
+        [{ trusted: false }, "remote_disconnected"],
+        [
+            { enabled: true, state: "ready", trusted: true },
+            "producer_unavailable",
+        ],
+        [
+            { enabled: false, state: "unavailable", trusted: true },
+            "current_state_unsupported",
+        ],
+        [
+            {
+                enabled: true,
+                runtimeId: "runtime",
+                state: "active",
+                trusted: true,
+            },
+            "ready",
+        ],
+    ]) {
+        f.w.__ottRemoteDiagnostics = { status: () => facts };
+        assert.equal(capability("diagnostics").reason, expected);
+    }
+    f.w.__ottRemoteScreenshot = {
+        peek: () => {
+            throw new Error("secret");
+        },
+    };
+    assert.deepEqual(capability("screenshot"), {
+        name: "screenshot",
+        reason: "producer_unavailable",
+        state: "unknown",
+    });
+}
+console.log(
+    "PASS doctor capabilities: pure reads, shared lifecycle reasons, live repair eligibility and explicit inspect advertisement"
 );
 
 function sourceFunction(file, name) {

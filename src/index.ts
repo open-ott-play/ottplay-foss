@@ -329,6 +329,7 @@ import {
     ottBottomInfoBandStart,
 } from "./key-handler";
 import { createKiosk } from "./plugins/kiosk";
+import { installRemoteInspection } from "./plugins/remote-inspect";
 // Provider — only import what actually exists
 import {
     edit_dealer,
@@ -6086,6 +6087,7 @@ window.showPopup = showPopup;
 );
 
 (window as any).__ottKiosk = createKiosk(window);
+var remoteInspection = installRemoteInspection(window);
 
 // Runtime authority follows the actual connection, even when saved preferences cannot be updated.
 var remoteControlConnection: {
@@ -6167,12 +6169,20 @@ function remoteControlConfig(): {
     handleCommand,
     function (request, done, afterReply) {
         // This callback is reached only from a live authenticated server delivery.
-        if (request.action === "kiosk") {
-            (window as any).__ottKiosk.request(request.params, done);
-            return;
-        }
-        return executeRemoteRequest(request, done, afterReply);
-    }
+        return remoteInspection.execute(
+            request,
+            done,
+            afterReply,
+            function (item, reply, defer) {
+                if (item.action === "kiosk") {
+                    (window as any).__ottKiosk.request(item.params, reply);
+                    return;
+                }
+                return executeRemoteRequest(item, reply, defer);
+            }
+        );
+    },
+    remoteInspection.accept
 );
 
 installRemoteScreenshot(window, {

@@ -52,6 +52,38 @@ function stampBootstrap(file, version) {
     );
 }
 
+function lockInputsDigest(lock) {
+    const value = JSON.parse(JSON.stringify(lock));
+    // Release sync changes the application identity, not the media inputs.
+    // Preserve field presence and all dependency/root metadata in the key.
+    if (Object.prototype.hasOwnProperty.call(value, "version"))
+        value.version = "";
+    if (
+        value.packages &&
+        value.packages[""] &&
+        Object.prototype.hasOwnProperty.call(value.packages[""], "version")
+    )
+        value.packages[""].version = "";
+    function canonical(item) {
+        if (Array.isArray(item))
+            return "[" + item.map(canonical).join(",") + "]";
+        if (item && typeof item === "object")
+            return (
+                "{" +
+                Object.keys(item)
+                    .sort()
+                    .map(
+                        (key) =>
+                            JSON.stringify(key) + ":" + canonical(item[key])
+                    )
+                    .join(",") +
+                "}"
+            );
+        return JSON.stringify(item);
+    }
+    return sha(canonical(value));
+}
+
 function inputs() {
     const lock = JSON.parse(read("package-lock.json"));
     const packages = {};
@@ -78,7 +110,7 @@ function inputs() {
     }
     return {
         builderSha256: sha(read("scripts/media-runtime.cjs")),
-        lockfileSha256: sha(read("package-lock.json")),
+        lockInputsSha256: lockInputsDigest(lock),
         packages,
         webPolyfillsSha256: sha(read("src/polyfills/runtime.ts")),
     };
@@ -190,7 +222,7 @@ async function buildMediaRuntime() {
     fs.writeFileSync(
         path.join(root, manifestPath),
         JSON.stringify(
-            { schema: 1, ...source, assets: hashes, runtimeVersion },
+            { schema: 2, ...source, assets: hashes, runtimeVersion },
             null,
             2
         ) + "\n"
@@ -209,7 +241,7 @@ function auditMediaRuntime(directory = root) {
     const manifest = JSON.parse(
         fs.readFileSync(path.join(directory, manifestPath))
     );
-    assert.equal(manifest.schema, 1);
+    assert.equal(manifest.schema, 2);
     const expected = inputs();
     assert.equal(
         manifest.runtimeVersion,
@@ -315,7 +347,12 @@ function stageMediaRuntime(directory) {
     auditMediaRuntime(directory);
 }
 
-module.exports = { auditMediaRuntime, buildMediaRuntime, stageMediaRuntime };
+module.exports = {
+    auditMediaRuntime,
+    buildMediaRuntime,
+    lockInputsDigest,
+    stageMediaRuntime,
+};
 if (require.main === module) {
     if (process.argv[2] === "build")
         buildMediaRuntime().catch((error) => {

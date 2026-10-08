@@ -2877,6 +2877,10 @@ export function stbStopPip(): void {
 }
 if (typeof window !== "undefined") {
     (window as any).__ottCoreBackend = getCoreMediaBackend;
+    // Observers must not create a backend or trigger transport reconciliation.
+    (window as any).__ottCoreBackendPeek = function () {
+        return coreMediaBackend;
+    };
     (window as any).__ottCoreTransport = {
         configure: function (effects: any) {
             Object.keys(effects).forEach(function (key) {
