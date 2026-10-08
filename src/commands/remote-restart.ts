@@ -576,6 +576,34 @@ export function remoteDoctorCapabilities(w: any): DoctorCapability[] {
     });
 }
 
+function remoteScreenshotSnapshot(w: any): any {
+    var fallback = { source: null, state: "unsupported" };
+    try {
+        var hook = w.__ottRemoteScreenshot;
+        if (!hook || typeof hook.peek !== "function") return fallback;
+        var view = hook.peek();
+        var source = view && view.source;
+        var state = view && view.state;
+        if (
+            ["ready", "permission_required", "unsupported"].indexOf(state) <
+                0 ||
+            (source !== null &&
+                [
+                    "player-view",
+                    "player-window",
+                    "browser-tab",
+                    "window",
+                    "display",
+                ].indexOf(source) < 0) ||
+            (state === "ready" && source === null)
+        )
+            return fallback;
+        return { source: source, state: state };
+    } catch (_) {
+        return fallback;
+    }
+}
+
 /** Typed, bounded controls share the command transport's exact-result ACK fence. */
 export function executeRemoteControl(
     w: any,
@@ -654,9 +682,7 @@ export function executeRemoteControl(
             playback: playback,
             player: remotePlayerInfo(w),
             plex_queue: plexQueue.capability,
-            screenshot: w.__ottRemoteScreenshot
-                ? w.__ottRemoteScreenshot.snapshot()
-                : { source: null, state: "unsupported" },
+            screenshot: remoteScreenshotSnapshot(w),
             version: 1,
         });
         return;

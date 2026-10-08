@@ -164,6 +164,8 @@ async function test(name, fn) {
         assert.equal(native.hook.peek().busy, true);
         await native.accept();
         assert.equal(native.hook.peek().ready, true);
+        assert.equal(native.hook.peek().state, "ready");
+        assert.equal(native.hook.peek().source, "player-view");
         const calls = native.calls.length;
         const statuses = native.statuses.length;
         native.config({ token: "E".repeat(32) });
@@ -173,6 +175,8 @@ async function test(name, fn) {
             "Changed connection must not inherit cached ready state"
         );
         assert.equal(native.hook.peek().ready, false);
+        assert.equal(native.hook.peek().state, "permission_required");
+        assert.equal(native.hook.peek().source, null);
         assert.equal(native.calls.length, calls);
         assert.equal(native.statuses.length, statuses);
 
@@ -209,8 +213,12 @@ async function test(name, fn) {
         browser.hook.selectSource(true);
         await tick();
         assert.equal(browser.hook.peek().ready, true);
+        assert.equal(browser.hook.peek().state, "ready");
+        assert.equal(browser.hook.peek().source, "browser-tab");
         browser.config({ address: "https://other.example" });
         assert.equal(browser.hook.peek().known, false);
+        assert.equal(browser.hook.peek().state, "permission_required");
+        assert.equal(browser.hook.peek().source, null);
         assert.equal(
             stopped,
             0,

@@ -184,7 +184,12 @@ export function installRemoteScreenshot(
                 !nativeCapture &&
                 !available,
             ready: available,
-            source: source,
+            source: current ? source : null,
+            state: !supported
+                ? "unsupported"
+                : available
+                  ? "ready"
+                  : "permission_required",
             supported: supported,
         };
     }

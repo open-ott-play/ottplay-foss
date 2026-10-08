@@ -424,7 +424,6 @@ console.log(
     };
     f.w.__ottCoreBackend = forbidden;
     f.handle.sample = forbidden;
-    const generic = f.run("capabilities").result.data;
     f.w.__ottRemoteScreenshot = {
         peek: () => ({
             busy: false,
@@ -432,11 +431,18 @@ console.log(
             known: true,
             needsSourceSelection: true,
             ready: false,
+            source: null,
+            state: "permission_required",
             supported: true,
         }),
         snapshot: forbidden,
         status: forbidden,
     };
+    const generic = f.run("capabilities").result.data;
+    assert.deepEqual(generic.screenshot, {
+        source: null,
+        state: "permission_required",
+    });
     f.w.__ottRemoteDiagnostics = {
         status: () => ({
             enabled: true,
@@ -466,6 +472,14 @@ console.log(
             generic.lifecycle.includes(operation)
         );
     assert.equal(f.effects.length, 0);
+    f.w.__ottRemoteScreenshot.peek = () => ({
+        source: "https://private.example/token",
+        state: "ready",
+    });
+    assert.deepEqual(f.run("capabilities").result.data.screenshot, {
+        source: null,
+        state: "unsupported",
+    });
     delete f.w.__ottCoreBackendPeek;
     assert.deepEqual(
         plain(doctorCapabilities(f.w).find((x) => x.name === "restart_stream")),
