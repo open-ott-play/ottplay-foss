@@ -33,8 +33,13 @@ builder/source hashes, and generated asset hashes. Native staging also writes
 its own runtime manifest. The staged bytes and licenses must match the
 corresponding checked-in inputs.
 
-The generator fingerprints the lockfile, installed build-tool versions and
-runtime sources into a deterministic `runtimeVersion`. It stamps that version
+The generator fingerprints canonical lockfile inputs, installed build-tool
+versions and runtime sources into a deterministic `runtimeVersion`. The lock
+digest excludes only the values of the two root project-version fields, so a
+release version overlay does not rebuild unchanged media assets. Dependency
+versions, integrity values and other lockfile metadata remain part of the key.
+Manifest schema 2 calls this digest `lockInputsSha256`; it is not a hash of the
+raw lockfile bytes. The generator stamps the runtime version
 into both source HTML bootstrap URLs; hls.js and Worker URLs use the same value
 published by the bootstrap. Native staging preserves the version when rewriting
 paths. Distinct versions use separate cache keys; the worker additionally rejects
