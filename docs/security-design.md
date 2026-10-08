@@ -22,6 +22,32 @@ unavailable dependencies, authorization failures and cancellation. A passing
 test run describes its fixtures and environment; it does not certify every
 upstream service, hardware model or production deployment.
 
+## Rust server certificate configuration
+
+Before opening either listener, the Rust server checks every certificate in its
+supplied PEM chain. RSA and RSA-PSS public keys must have a modulus of at least
+2048 bits. Supported EC named curves are P-224, P-256, secp256k1, P-384 and P-521;
+Ed25519 keys must contain 32 bytes. Unknown algorithms, unsupported curves,
+malformed algorithm parameters and invalid DER encodings reject startup with the
+certificate's position in the chain. Strict typed RustCrypto X.509 and PKCS#1
+decoders perform the DER parsing. This minimum-strength policy does not add
+support for private-key types that the TLS backend cannot load.
+
+The check covers the leaf, intermediates and any root explicitly included in the
+configured chain. It cannot inspect an omitted root in a client's trust store.
+Clients remain responsible for normal trust-chain, signature, validity and
+hostname verification. This server configuration check does not establish the
+policy of outbound connections, browser/native platform transports or external
+reverse proxies.
+
+Keep the existing certificate PEM and PKCS#8 key formats. Replace an undersized
+certificate or unsupported key before upgrading; removing a weak intermediate
+from the file does not repair its chain. The
+[binary startup tests](../src-rs/server/tests/tls_chain_policy.rs) generate local
+synthetic chains and verify rejection before listening, as well as successful
+verified HTTPS for supported strong RSA, EC and Ed25519 configurations. They also
+retain P-224 and RSA-PSS intermediate compatibility.
+
 ## Static-analysis scope
 
 The [CodeQL workflow](../.github/workflows/codeql.yml) analyzes JavaScript/TypeScript,

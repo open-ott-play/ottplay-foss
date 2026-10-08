@@ -33,10 +33,13 @@
 
 ### Upgrade
 
-Rebuild with the committed Cargo lockfile. Existing certificate chains and
-PKCS#8 server keys remain compatible; malformed later PEM sections still reject
-startup. This dependency update does not require a database migration or TLS
-file conversion.
+Rebuild with the committed Cargo lockfile. The Rust server now rejects supplied
+certificate chains with RSA keys below 2048 bits, unsupported or undersized EC
+curves, unknown key algorithms or malformed encodings before opening a listener.
+Replace affected certificates before upgrading. Certificate PEM and PKCS#8 key
+formats are unchanged; malformed later PEM sections still reject startup. No
+database migration is required. See the
+[supported certificate policy](docs/security-design.md#rust-server-certificate-configuration).
 
 Retain provider profiles and exported settings before replacing a web, desktop or
 container installation. Follow the platform-specific build/install instructions;
@@ -63,7 +66,12 @@ The archived Python server handles unmatched parentheses in channel names in a
 linear pass, avoiding excessive CPU use from malformed EPG names. Its HTTPS
 listener and proxy explicitly require TLS 1.2 or newer while retaining normal
 upstream certificate and hostname verification. Archived-server users must
-ensure HTTPS peers support TLS 1.2; the current Rust server is unchanged.
+ensure HTTPS peers support TLS 1.2.
+
+The Rust server validates key strength in every supplied TLS certificate,
+including intermediates and included roots. This prevents weak server
+configuration from being accepted; it does not inspect omitted client trust
+anchors or replace clients' normal certificate and hostname verification.
 
 The application dependency update removes seven maintenance warnings while
 retaining the existing Tauri/Wry/Tao/GLib patches. Three upstream maintenance
