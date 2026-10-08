@@ -11,6 +11,10 @@
   reasons, loaded-bundle identity and a bounded journal of operation receipts.
   Inspection does not create a playback backend, capture a screen or change
   saved settings.
+- The webOS Simulator launcher now selects the newest matching installed LG
+  Simulator using Node built-ins and passes the app path without a shell.
+  Automatic installation of the external webOS CLI is removed.
+- Python CI dependencies now use a complete SHA-256 archive lock.
 - Security analysis now includes Python release tools, Actions workflows, Rust
   source and the compiled iOS Swift application.
 - Release publication now reads this version's reviewed notes from the exact
@@ -32,6 +36,12 @@ journal retains at most 128 request IDs; retained entries expire after ten
 minutes, while eviction or reload makes them unknown. Never replay a mutation
 automatically because its receipt is missing.
 
+Default Simulator SDK discovery and automatic installation of the official
+Simulator ZIP remain available. Use `--sdk` or `WEBOS_SDK_PATH` for a custom
+location. The explicit `--cli` or `WEBOS_CLI` override uses an operator-maintained
+external CLI; setup `--cli-only` is now a compatibility no-op. Existing external
+CLI installations are left in place.
+
 ### Security
 
 Release artifacts retain their immutable build provenance and checksums. The new
@@ -47,3 +57,9 @@ exclusive routing for mutation commands. An `accepted` receipt records a queued
 effect and can remain after transport cancellation. `invoked` is not proof of
 the effect, and the journal does not emit `observed`. Decoder progress does not
 prove physical screen or audio output.
+
+The default Simulator setup no longer installs the vulnerable external CLI
+dependency tree. Paths are passed as separate process arguments. This does not
+repair an external CLI chosen explicitly by the operator; see
+[the CLI audit and override boundary](docs/webos-cli-security.md). Automated
+launcher tests do not establish a physical TV or vendor Simulator display result.
