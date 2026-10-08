@@ -148,6 +148,7 @@ var _keysSymbol: any[] = [
     },
     {
         a: function () {
+            editPos = textBoundary((window as any).editvar, editPos, 0);
             (window as any).editvar =
                 (window as any).editvar.substr(0, editPos) +
                 " " +
@@ -159,6 +160,7 @@ var _keysSymbol: any[] = [
     },
     {
         a: function () {
+            editPos = textBoundary((window as any).editvar, editPos, 0);
             if (editPos) {
                 var previous = textBoundary(
                     (window as any).editvar,
@@ -3245,20 +3247,24 @@ export function showEdit(): void {
  * Update the edit text preview in the `#ee` element, placing a blinking cursor div at the current position.
  *
  * @returns void
- * @sideeffect Sets `#ee` innerHTML with text before cursor + cursor div + text after cursor.
+ * @sideeffect Sets `#ee` text nodes around the cursor, preserving literal controls.
  *             Clears and restarts the cursor blink interval (500ms toggle).
  */
 export function _changeEdit(): void {
-    $("#ee").html(
-        metadataText((window as any).editvar.substr(0, editPos)) +
-            '<div id="cursor" style="background-color:' +
-            (window as any).curColor +
-            ';"></div>' +
-            metadataText((window as any).editvar.substr(editPos))
-    );
+    var value = (window as any).editvar;
+    // External drafts and adjoining marks can move a boundary after any edit.
+    editPos = textBoundary(value, editPos, 0);
     var field = document.getElementById("ee");
-    var caret = document.getElementById("cursor");
-    if (field && caret) field.scrollTop = caret.offsetTop - field.offsetTop;
+    if (field) {
+        field.textContent = "";
+        var caret = document.createElement("div");
+        caret.id = "cursor";
+        caret.style.backgroundColor = (window as any).curColor;
+        field.appendChild(document.createTextNode(value.substr(0, editPos)));
+        field.appendChild(caret);
+        field.appendChild(document.createTextNode(value.substr(editPos)));
+        field.scrollTop = caret.offsetTop - field.offsetTop;
+    }
     clearInterval(cursorInterval);
     var owner = (window as any).__ottClassicScreenPort.owner("editor");
     if (!owner || !owner.active()) return;
@@ -3362,6 +3368,7 @@ export function editKey1(e: number): void {
         case (window as any).keys.ENTER:
             if (_keys.charCodeAt(_keyCur) > 9) {
                 var character = _keyboardCharacter(_keys[_keyCur]);
+                editPos = textBoundary((window as any).editvar, editPos, 0);
                 (window as any).editvar =
                     (window as any).editvar.substr(0, editPos) +
                     character +
