@@ -106,12 +106,14 @@ function classicPlaybackOwnedState(): any {
 }
 
 function classicPlaybackProjectionValue(w: any): any {
+    var channel = classicPlaybackChannel(w, w.catIndex, w.primaryIndex);
     return {
         catalog: w.channels,
-        channel: classicPlaybackChannel(w, w.catIndex, w.primaryIndex),
+        channel: channel,
         configuration: classicPlaybackSourceConfiguration(w),
         media: w.__ottMedia && w.__ottMedia.current(),
         mode: w.playType,
+        record: (w.channels || {})[channel],
         source: classicPlaybackSource(w),
     };
 }
@@ -121,26 +123,58 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
     var store = classicPlaybackOwnedState();
     var value = classicPlaybackProjectionValue(w);
     var previous = classicPlaybackProjection;
+    var sameConfiguration =
+        previous &&
+        classicPlaybackConfigurationMatches(
+            value.configuration,
+            previous.configuration
+        );
     if (
         !previous ||
         value.source !== previous.source ||
         value.channel !== previous.channel ||
+        value.record !== previous.record ||
         value.catalog !== previous.catalog ||
         value.mode !== previous.mode ||
-        !classicPlaybackConfigurationMatches(
-            value.configuration,
-            previous.configuration
-        ) ||
+        !sameConfiguration ||
         (value.mode === -1e11 && value.media !== previous.media)
     ) {
         var target = classicPlaybackDecode(w);
+        var before = store.snapshot();
+        var managed =
+            w.__ottCoreTransport && w.stbPlay === w.__ottCoreTransport.play;
+        var sameTarget =
+            target &&
+            before.target &&
+            target.kind === before.target.kind &&
+            target.sourceId === before.target.sourceId &&
+            target.channelId === before.target.channelId &&
+            target.archiveStart === before.target.archiveStart;
+        if (
+            managed &&
+            sameTarget &&
+            previous &&
+            value.source === previous.source &&
+            value.channel === previous.channel &&
+            value.record === previous.record &&
+            value.mode === previous.mode &&
+            value.media === previous.media &&
+            sameConfiguration
+        ) {
+            // Republishing the catalog does not replace this decoder or reset
+            // its measured position, paused state or terminal stop.
+            classicPlaybackProjection = value;
+            return before;
+        }
         store.open(
             target,
             classicPlaybackDecode(w, true),
             target && target.kind === "archive" ? Number(w.playTime) || 0 : 0,
             false
         );
-        store.phase("playing", false);
+        // Only the managed decoder can confirm playback. Importing a changed
+        // UI projection must not revive a stopped/failed source or invent play.
+        if (!managed) store.phase("playing", false);
         classicPlaybackProjection = value;
     }
     return store.snapshot();
@@ -352,7 +386,6 @@ function classicPlaybackObservation(): PlaybackObservation & {
                     !!identity &&
                     playbackIdentity.sourceId === identity.sourceId &&
                     playbackIdentity.channelId === identity.channelId)) &&
-            catalog === w.channels &&
             channel === (w.channels || {})[id] &&
             get === w.providerGetItem &&
             set === w.providerSetItem &&
@@ -380,6 +413,7 @@ function classicPlaybackObservation(): PlaybackObservation & {
         isCurrent: function (): boolean {
             return (
                 isCurrentBackend() &&
+                catalog === w.channels &&
                 categoryIndex === w.catIndex &&
                 selectionIndex === w.primaryIndex &&
                 categories === w.catsArray &&

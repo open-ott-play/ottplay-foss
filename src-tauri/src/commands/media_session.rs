@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 
-const JS_PLAY: &str = "if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;";
+const JS_PLAY: &str = "if(typeof window.stbResume==='function')window.stbResume();else if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;";
 const JS_PAUSE: &str = "if(window.stbPause)window.stbPause(); true;";
 const JS_STOP: &str = "if(window.stbStop)window.stbStop(); true;";
 const JS_NEXT: &str = "(function(){if(window._doKey&&window.keys)window._doKey(window.keys.NEXT);})();";

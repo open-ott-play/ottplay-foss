@@ -7,13 +7,17 @@ import importlib.util
 import io
 import ipaddress
 import os
+import runpy
 import socket
+import ssl
+import subprocess
 import sys
 import tempfile
 import threading
 import time
 import unittest
 import urllib.parse
+import warnings
 from pathlib import Path
 from unittest import mock
 
@@ -81,6 +85,94 @@ class ProxySecurityTests(unittest.TestCase):
         self.environment = mock.patch.dict(os.environ, {"OTTPLAY_PROXY_LAN_ORIGINS": ""})
         self.environment.start()
         self.addCleanup(self.environment.stop)
+
+    def test_channel_normalization_preserves_parenthetical_and_quality_rules(self):
+        cases = {
+            "  HD РОССИЯ (Алания) +4ч  ": "россия",
+            "Channel (outer (inner) tail) FHD": "channel tail)",
+            "Channel (open (tail UHD": "channel (open (tail",
+            "Channel ) unmatched": "channel ) unmatched",
+            "A()B(one)C": "abc",
+            "HD\tChannel\u2003FHD": "channel",
+            "Channel (line\nbreak) +2h": "channel",
+            "HD": "hd",
+        }
+        for name, expected in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(server.normalize_name(name), expected)
+
+    def test_unclosed_parenthetical_tail_has_bounded_processing_time(self):
+        # The old regex retries the entire unmatched tail at each opening
+        # parenthesis. A separate process bounds that failure without a hung CI.
+        script = (
+            "import sys; sys.argv=['server.py','0','--no-epg']; "
+            "from archive.server import normalize_name; "
+            "name='(' * 300000; assert normalize_name(name)==name"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script], cwd=ROOT,
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_proxy_sets_tls_floor_and_preserves_peer_verification(self):
+        for initial_floor in (ssl.TLSVersion.TLSv1, ssl.TLSVersion.TLSv1_3):
+            with self.subTest(initial_floor=initial_floor):
+                context = ssl.create_default_context()
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    context.minimum_version = initial_floor
+                transport = mock.Mock()
+                wrapped = mock.Mock()
+                parsed = proxy._http_url("https://tls-fixture.invalid/list")
+                connection = proxy._PinnedConnection(parsed, [answer("127.0.0.1", 443)], time.monotonic() + 3)
+                with (
+                    mock.patch.object(proxy.socket, "socket", return_value=transport),
+                    mock.patch.object(proxy.ssl, "create_default_context", return_value=context),
+                    mock.patch.object(context, "wrap_socket", return_value=wrapped) as wrap,
+                ):
+                    connection.connect()
+                self.assertEqual(context.minimum_version, max(initial_floor, ssl.TLSVersion.TLSv1_2))
+                self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+                self.assertTrue(context.check_hostname)
+                wrap.assert_called_once_with(transport, server_hostname="tls-fixture.invalid")
+                self.assertIs(connection.sock, wrapped)
+                connection.close()
+
+    def test_archived_https_entrypoint_sets_tls_floor_before_listening(self):
+        for initial_floor in (ssl.TLSVersion.TLSv1, ssl.TLSVersion.TLSv1_3):
+            with self.subTest(initial_floor=initial_floor):
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    context.minimum_version = initial_floor
+                listener = mock.Mock()
+                listener.serve_forever.side_effect = KeyboardInterrupt
+                arguments = ["server.py", "0", "--no-epg", "--cert", "fixture.crt", "--key", "fixture.key"]
+                observed = []
+                ssl_module = mock.Mock(wraps=ssl)
+                ssl_module.SSLContext = mock.Mock(return_value=context)
+                ssl_module.TLSVersion = ssl.TLSVersion
+
+                def wrap(sock, *, server_side, context=context, observed=observed):
+                    observed.append((context.minimum_version, server_side))
+                    return sock
+
+                with (
+                    mock.patch.object(sys, "argv", arguments),
+                    mock.patch("os.chdir"),
+                    mock.patch("socketserver.TCPServer.__new__", return_value=listener),
+                    mock.patch.dict(sys.modules, {"ssl": ssl_module}),
+                    mock.patch.object(context, "load_cert_chain") as load,
+                    mock.patch.object(context, "wrap_socket", side_effect=wrap),
+                    mock.patch("threading.Thread"),
+                    mock.patch("builtins.print"),
+                    self.assertRaises(SystemExit) as exited,
+                ):
+                    runpy.run_path(str(ROOT / "archive/server.py"), run_name="__main__")
+                self.assertEqual(exited.exception.code, 0)
+                self.assertEqual(observed, [(max(initial_floor, ssl.TLSVersion.TLSv1_2), True)])
+                load.assert_called_once_with("fixture.crt", "fixture.key")
 
     def test_special_ipv4_ipv6_and_non_http_schemes_are_rejected(self):
         for address in (

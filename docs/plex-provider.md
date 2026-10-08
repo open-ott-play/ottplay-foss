@@ -57,12 +57,86 @@ A successful response contains only the field names, `provider: "plex"`, and `sa
 
 Account sign-in tokens remain in memory during server discovery. No environment variables, central player-server configuration or NAS deployment are required. A settings backup containing this profile also contains its server credential.
 
+## Ordered queues from the command server
+
+An updated player and controller support an explicit list of Plex `ratingKey` IDs:
+
+```sh
+ott l plex preview 78777 78776 78775
+ott l plex play 78777 78776 78775
+ott l plex queue
+ott l plex next
+ott l plex prev
+ott l plex stop
+```
+
+The player uses its existing saved Plex profile even while a TV provider such as
+M3U is selected. It checks the server and all requested metadata, then resolves
+the first stream before handing playback over. The selected TV provider and
+saved credentials remain unchanged. A failed preparation leaves existing
+playback and any previously accepted queue intact. `preview` checks ordered
+metadata without starting playback or replacing a queue. If another remote
+request is preparing playback, preview waits behind it. It does not test
+physical decoder compatibility.
+
+`play` starts the first ID at zero, ignores saved resume positions, and plays the
+IDs exactly in the supplied order. It never shuffles or repeats; completion of
+the last item stops playback. Manual next/previous at a boundary returns an
+error without stopping the current item. The completed queue remains available
+for status and previous. `ott l next` and `ott l prev` use that accepted queue
+until `plex stop` clears it. A failed first queue request does not take over TV
+channel navigation. Stop only stops video still owned by the queue, so clearing
+an old queue cannot stop a TV channel selected afterwards.
+
+Status distinguishes `preparing`, `playing`, `paused`, `ended`, `error`, and
+`idle`; its index is zero-based. Requests contain 1–100 positive decimal IDs
+without leading zeros. Responses contain IDs, bounded titles and static errors,
+never stream URLs or credentials. Commands target the discovered player runtime;
+a reload creates a new runtime and clears this in-memory queue. Disconnecting
+remote control cancels a pending launch, but an already accepted queue continues
+autonomously through natural completion. A CLI timeout does not prove whether
+playback started: inspect status before issuing another play request. The player
+processes remote requests serially, so a status or preview command queued during
+slow preparation waits for that bounded request to finish.
+
+After restarting the player, use `ott l` to check that it is ready before
+starting or stepping a queue. Playback requests are refused while the initial
+provider load is incomplete; preview, status and stop remain available. An old
+archive-resume prompt cannot override a newer playback command.
+
+`playing` confirms the managed video decoder's state, not that its picture is
+visible above every window or overlay. When diagnosing a TV, check the physical
+screen as well as status. Decoder errors remove the `playing` state until
+playback is confirmed again; they never count as natural completion or skip to
+the next film.
+
+If preview reports missing configuration, save a Plex profile on that player.
+If it reports connection failure, check that the saved endpoint is reachable
+from the player, rather than only from the CLI machine. HTTPS browser players
+can still be blocked by mixed-content, CORS or local-network policies; the queue
+does not bypass those restrictions or invent a proxy. Native platforms use their
+existing Plex transport. Kiosk restrictions still apply when playback is
+committed. Ordinary films work with the default parental settings; items
+explicitly marked adult require local parental access before starting the queue.
+A refused handoff restores the prior media runtime, including its natural-end
+continuation, rather than publishing a replacement queue that never started.
+Successful playback closes the channel/media list and cancels its stale TV
+preview, without restoring PiP. It does not discard an open unsaved settings or
+input dialog; close or finish that local draft to uncover the full video.
+
+The wire contract is `plex_queue` with `op`, exact `runtime`, and `ids` for
+`play`/`preview`. `capabilities.plex_queue` advertises version 1, supported
+operations and `max_items: 100`. The shared examples and bounds are in
+[`contracts/plex-queue-v1.json`](../contracts/plex-queue-v1.json).
+
 For access away from home, the selected Plex server must have a reachable remote connection. Plex may impose account or subscription requirements for remote personal-media playback; see [Plex remote playback requirements](https://support.plex.tv/articles/requirements-for-remote-playback-of-personal-media/).
 
 Developer checks:
 
 ```sh
 node tests/test_plex_provider.cjs
+node tests/test_remote_plex.cjs
+npx playwright test tests/browser/remote-plex.spec.cjs
 npx tsc --noEmit
 ```
 

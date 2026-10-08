@@ -109,7 +109,7 @@ for (const input of [
 ]) {
     assert.throws(() => normalize(input), undefined, input);
 }
-function harness(protocol = "http:", execute) {
+function harness(protocol = "http:", execute, accept) {
     const jobs = new Map();
     const requests = [];
     const saved = [];
@@ -141,7 +141,8 @@ function harness(protocol = "http:", execute) {
             if (behavior.onDispatch) behavior.onDispatch();
             return behavior.outcome;
         },
-        execute
+        execute,
+        accept
     );
     function next() {
         assert.equal(jobs.size, 1, "only one retry/poll timer is scheduled");
@@ -798,6 +799,69 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
     );
 }
 
+// Plex and media-step implementations use a local deadline internally. A TV's
+// wall clock may differ from the controller, but network delay still consumes TTL.
+{
+    const previousClock = clock;
+    for (const action of ["plex_queue", "playback"])
+        for (const skew of [-120, 120])
+            for (const lifetime of [30, 90]) {
+                clock = 5000000;
+                const started = clock;
+                const serverTime = started / 1000 + skew;
+                const params =
+                    action === "plex_queue"
+                        ? { ids: ["1", "2"], op: "play", runtime: "page-1" }
+                        : { operation: "next_channel" };
+                let dispatched;
+                let completeWork;
+                let cancellations = 0;
+                const rpc = harness("http:", (request, done) => {
+                    dispatched = request;
+                    completeWork = done;
+                    return () => cancellations++;
+                });
+                rpc.connect();
+                clock += 2500;
+                rpc.respond({
+                    commands: [],
+                    requests: [
+                        {
+                            action,
+                            expires_at: serverTime + lifetime,
+                            id: "c".repeat(32),
+                            params,
+                        },
+                    ],
+                    server_time: serverTime,
+                });
+                const deadline = Math.min(
+                    started + lifetime * 1000,
+                    clock + 40000
+                );
+                assert.deepEqual(JSON.parse(JSON.stringify(dispatched)), {
+                    action,
+                    expires_at: deadline / 1000,
+                    id: "c".repeat(32),
+                    params,
+                });
+                assert(dispatched.expires_at * 1000 > clock);
+                const remaining = deadline - clock;
+                clock = deadline;
+                assert.equal(rpc.next(), remaining);
+                assert.equal(cancellations, 1);
+                completeWork({ data: { dispatched: true }, status: "ok" });
+                rpc.next();
+                const result = JSON.parse(rpc.requests.at(-1).request.body);
+                assert.equal(result.status, "rejected");
+                assert.match(result.data.error, /timed out/i);
+            }
+    clock = previousClock;
+    console.log(
+        "PASS Plex/media-step local deadlines: clock skew, network delay, execution cap and late completion"
+    );
+}
+
 // A malformed result must become an explicit rejection, not strand the poller
 // after its execution timer was already cleared.
 for (const value of [
@@ -1339,7 +1403,28 @@ const restartCode = ts.transpileModule(
     }
 ).outputText;
 acorn.parse(restartCode, { ecmaVersion: 5 });
-const restartContext = { exports: {} };
+const plexContext = { Date: moduleContext.Date, exports: {} };
+const plexCode = ts.transpileModule(
+    fs.readFileSync(
+        path.join(__dirname, "../src/commands/remote-plex.ts"),
+        "utf8"
+    ),
+    {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }
+).outputText;
+acorn.parse(plexCode, { ecmaVersion: 5 });
+vm.runInNewContext(plexCode, plexContext);
+const restartContext = {
+    exports: {},
+    require(name) {
+        assert.equal(name, "./remote-plex");
+        return plexContext.exports;
+    },
+};
 vm.runInNewContext(restartCode, restartContext);
 const executeRestart = restartContext.exports.executeRemoteRestart;
 {
@@ -1793,3 +1878,61 @@ console.log(
     console.error(error);
     process.exitCode = 1;
 });
+
+// Another document's targeted inspection must neither block this queue nor be ACKed.
+{
+    clock = 5000000;
+    const handled = [];
+    const rpc = harness(
+        "http:",
+        (request, done) => {
+            handled.push(request.id);
+            done({ data: {}, status: "ok" });
+        },
+        (request) =>
+            request.action !== "inspect" ||
+            request.params.runtime === "this-page"
+    );
+    rpc.connect();
+    rpc.respond({
+        commands: [],
+        requests: [
+            {
+                action: "inspect",
+                expires_at: 5030,
+                id: "a".repeat(32),
+                params: { runtime: "other-page" },
+            },
+            {
+                action: "status",
+                expires_at: 5030,
+                id: "b".repeat(32),
+                params: {},
+            },
+        ],
+        server_time: 5000,
+    });
+    assert.deepEqual(handled, ["b".repeat(32)]);
+    rpc.next();
+    assert.equal(
+        JSON.parse(rpc.requests.at(-1).request.body).id,
+        "b".repeat(32)
+    );
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    rpc.respond({
+        commands: [],
+        requests: [
+            {
+                action: "inspect",
+                expires_at: 5030,
+                id: "a".repeat(32),
+                params: { runtime: "other-page" },
+            },
+        ],
+        server_time: 5000,
+    });
+    assert.deepEqual(handled, ["b".repeat(32)]);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.method, "GET");
+}

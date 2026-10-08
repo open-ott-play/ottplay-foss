@@ -144,6 +144,7 @@ function remote(f) {
                 "../utils/caseless",
                 "./index",
                 "./remote-profiles",
+                "./remote-plex",
                 "./remote-restart",
                 "./remote-archive",
             ].includes(name)

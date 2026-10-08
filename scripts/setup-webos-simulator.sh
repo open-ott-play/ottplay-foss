@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Install LG's official Apple Silicon simulator and CLI only when missing.
+# Install LG's official Apple Silicon simulator only when missing.
 set -euo pipefail
 
 VERSION=26
 SIMULATOR_VERSION=1.5.0
-CLI_VERSION=3.2.6
 ARCHIVE_SIZE=111268559
 # SHA-256 of the official RF00021097 download, verified on 2026-09-15.
 ARCHIVE_SHA256=f09068359f5cbab4da6fae3faac6239da17ea63ee34560df2471e469becf1cd4
@@ -18,14 +17,14 @@ Usage: scripts/setup-webos-simulator.sh [options]
   --destination DIR  Directory containing the installed Simulator .app
                      (default: ~/.local/share/ottplay/webos-tv-simulator/26)
   --archive FILE     Use an already downloaded official ZIP (checksum checked)
-  --cli-only         Install only a missing @webos-tools/cli
+  --cli-only         Compatibility no-op; the launcher no longer needs a CLI
   --dry-run          Print the plan without downloading or installing
   -h, --help         Show this help
 
-Installs LG webOS TV 26 Simulator 1.5.0 on macOS ARM64 and CLI 3.2.6 under
-~/.local/share/ottplay/webos-cli if ares-launch is missing. Existing working
+Installs LG webOS TV 26 Simulator 1.5.0 on macOS ARM64. Existing working
 installations are reused. Downloads are temporary and removed after setup.
-Node.js/npm, Python 3 and macOS ditto are required for missing components.
+Python 3 and macOS ditto are required for missing components.
+The bundled Node.js launcher needs no npm packages or webOS CLI installation.
 LG SDK terms: https://webostv.developer.lge.com/develop/tools/simulator-installation
 EOF
 }
@@ -50,6 +49,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 [[ "$version" =~ ^[1-9][0-9]*$ ]] || die "webOS version must be a positive integer"
+if [[ "$cli_only" == 1 ]]; then
+    printf 'No CLI installation is needed; the bundled launcher starts the Simulator directly.\n'
+    exit 0
+fi
 simulator_ready() {
     local candidate
     [[ -d "$1" ]] || return 1
@@ -78,18 +81,6 @@ JS
     done
 fi
 destination="${destination:-$HOME/.local/share/ottplay/webos-tv-simulator/$version}"
-cli_directory="$HOME/.local/share/ottplay/webos-cli"
-cli="${WEBOS_CLI:-}"
-if [[ -n "$cli" ]]; then
-    cli="$(command -v "$cli")" || die "WEBOS_CLI is not executable"
-    [[ -x "$cli" ]] || die "WEBOS_CLI is not executable"
-else
-    cli="$(command -v ares-launch || true)"
-    if [[ -z "$cli" && -x "$cli_directory/node_modules/.bin/ares-launch" ]]; then
-        cli="$cli_directory/node_modules/.bin/ares-launch"
-    fi
-fi
-
 install_simulator=0
 if [[ "$cli_only" == 0 ]]; then
     if simulator_ready "$destination"; then
@@ -101,11 +92,6 @@ if [[ "$cli_only" == 0 ]]; then
         printf 'Install LG webOS TV %s Simulator %s (%s bytes): %s\n' "$VERSION" "$SIMULATOR_VERSION" "$ARCHIVE_SIZE" "$destination"
         printf 'Official source: https://webostv.developer.lge.com/develop/tools/simulator-installation (RF00021097)\n'
     fi
-fi
-if [[ -z "$cli" ]]; then
-    printf 'Install CLI:'
-    printf ' %q' npm install --prefix "$cli_directory" --no-audit --no-fund --package-lock=false "@webos-tools/cli@$CLI_VERSION"
-    printf '\n'
 fi
 [[ "$dry_run" == 0 ]] || exit 0
 
@@ -189,12 +175,5 @@ PY
     rm -rf "$staging"
     trap - EXIT
     printf 'LG Simulator installed: %s\n' "$destination"
-fi
-
-if [[ -z "$cli" ]]; then
-    command -v node >/dev/null || die "Node.js is required to install webOS CLI"
-    command -v npm >/dev/null || die "npm is required to install webOS CLI"
-    npm install --prefix "$cli_directory" --no-audit --no-fund --package-lock=false "@webos-tools/cli@$CLI_VERSION"
-    [[ -x "$cli_directory/node_modules/.bin/ares-launch" ]] || die "Installed ares-launch was not found"
 fi
 printf 'LG Simulator setup complete.\n'

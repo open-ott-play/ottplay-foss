@@ -160,6 +160,7 @@ function moduleOf(file, requireFn, window) {
                 paused = 0,
                 resumed = 0,
                 seeks = 0,
+                backendAccesses = 0,
                 nativeExits = 0,
                 nativeRestarts = 0,
                 channelSteps = 0,
@@ -288,7 +289,7 @@ function moduleOf(file, requireFn, window) {
             ).installRemoteLifecycle(host, { prepare: () => {} });
             host.stbPlay = () => {};
             host.__ottCoreTransport = { play: host.stbPlay };
-            host.__ottCoreBackend = () => ({
+            const backend = {
                 current: () => ({
                     active: () => true,
                     pause: () => {
@@ -314,7 +315,14 @@ function moduleOf(file, requireFn, window) {
                         target: "stream",
                     };
                 },
-            });
+            };
+            host.__ottCoreBackend = () => {
+                backendAccesses++;
+                return backend;
+            };
+            // An active player has an existing backend. Capability discovery
+            // peeks at it without calling the potentially initializing getter.
+            host.__ottCoreBackendPeek = () => backend;
             const kioskStorage = {};
             host.stbGetItem = (key) =>
                 kioskStorage[key] || (key === "ottplayprov" ? "demo" : null);
@@ -377,15 +385,21 @@ function moduleOf(file, requireFn, window) {
                         )
                       : name === "../plugins/vportal"
                         ? moduleOf("src/plugins/vportal.ts", dependencies, host)
-                        : name === "./remote-restart"
+                        : name === "./remote-plex"
                           ? moduleOf(
-                                "src/commands/remote-restart.ts",
+                                "src/commands/remote-plex.ts",
                                 dependencies,
                                 host
                             )
-                          : name === "../utils/caseless"
-                            ? caseless
-                            : { handleCommand: dispatch };
+                          : name === "./remote-restart"
+                            ? moduleOf(
+                                  "src/commands/remote-restart.ts",
+                                  dependencies,
+                                  host
+                              )
+                            : name === "../utils/caseless"
+                              ? caseless
+                              : { handleCommand: dispatch };
             const execute = moduleOf(
                 "src/commands/remote-requests.ts",
                 dependencies,
@@ -503,6 +517,7 @@ function moduleOf(file, requireFn, window) {
             });
             controllers.push(controller);
             return () => ({
+                backendAccesses,
                 channelSteps,
                 configuration: clone(configuration),
                 controlsReceived: clone(controlsReceived),
@@ -1076,6 +1091,7 @@ function moduleOf(file, requireFn, window) {
         assert.equal(television().nativeExits + television().nativeRestarts, 0);
 
         television().playback("vod");
+        const beforeCapabilities = television().backendAccesses;
         assert.deepEqual((await jsonOn("tv", "caps")).playback, [
             "pause",
             "resume",
@@ -1084,6 +1100,11 @@ function moduleOf(file, requireFn, window) {
             "next_channel",
             "step_channel",
         ]);
+        assert.equal(
+            television().backendAccesses,
+            beforeCapabilities,
+            "capability discovery must only peek at the existing backend"
+        );
         for (const operation of ["pause", "resume"])
             assert.deepEqual(await jsonOn("tv", operation), {
                 dispatched: true,

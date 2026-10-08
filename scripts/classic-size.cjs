@@ -119,6 +119,14 @@ const { gzipSync } = require("node:zlib");
 // Remote screenshots add a bounded capture adapter, local permission UI and
 // expiring image delivery. Reserve 13 KB raw / 4 KB gzip for this feature;
 // external dictionaries and native capture implementations remain separate.
+// Explicit Plex queues keep their implementation in the optional Plex asset.
+// Node 22.23.3, level-9 gzip: web entry 750532/230056, native 750490/230118.
+// The lazy dispatcher and transactional media handoff exceed the prior caps by
+// 1082 raw / 318 gzip bytes. Increase those caps by 1650 / 600, leaving at least
+// 568 raw / 282 gzip bytes for native and candidate-version variation.
+// Decoder-confirmed state, catalog lease preservation and recoverable native
+// errors add 560 raw / 164 gzip bytes on Node 22: web 751092 / 230220.
+// Allocate 600 / 200 to preserve the existing release-version headroom.
 // Complete localization, system/media language preferences and pinned Unicode 17
 // measure 783615 / 243951 web and 783573 / 244023 native on Node 22.23.3,
 // compared with 746380 / 228703 web and 746338 / 228765 native at 8c240190.
@@ -126,7 +134,19 @@ const { gzipSync } = require("node:zlib");
 // inside the measured entry. Bounded cookie recovery uses part of the original
 // reserve; the unchanged cap leaves at least 685 raw / 477 gzip bytes at 1.1.53.
 // Do not exclude these tables or storage helpers from the measurement.
-const BUDGET = Object.freeze({ bytes: 784300, gzipBytes: 244500 });
+// Both branches consumed the same historical reserve: common source 6f497732
+// measures 746380 / 228703, below its 749450 / 229800 cap. Adding only cap
+// increments therefore undercounts their combined cost. Latest main 3d7b65b7
+// measures 783764 / 243995; Plex, decoder ownership and explicit native Resume
+// together measure 788914 / 245600 on Node 22.23.3. Add their measured 5150 /
+// 1605 cost, rounded to 5200 / 1650, to main's 784300 / 244500 cap so the
+// existing native and release-version reserve is retained exactly once.
+// Read-only doctor snapshots, exact-target inspection and bounded operation
+// receipts, pure capability reads and the integrated Unicode fixes measure
+// 804298 raw bytes on Node 22.23.3 before the embedded clean-source hash.
+// Allocate 15500 / 4800 over 67618611 for this combined feature cost, retaining
+// native transforms, the source hash and release suffix room. No provider moved.
+const BUDGET = Object.freeze({ bytes: 805000, gzipBytes: 250950 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -186,11 +206,22 @@ const BUDGET = Object.freeze({ bytes: 784300, gzipBytes: 244500 });
 // 450 raw / 200 gzip allowance for signed channel offsets from main.
 // Include the same 2100 raw / 700 gzip frame-loss recovery allowance once.
 // Include the same screenshot feature once in the complete payload bound.
+// Including all provider assets, explicit queues measure 862700/271732 web
+// and 862658/271794 native. The prior caps were 855550/269000: measured excess
+// is 7150 raw / 2794 gzip bytes. Add 7650 / 3100, retaining at least 500 / 306
+// bytes for native and release-version variation rather than hiding lazy code.
+// Apply the same decoder-state increment once; provider assets are unchanged.
 // The same localized build plus all seven provider families is 888391 / 283217
 // web and 888349 / 283289 native. Only Stalker's locale adds provider bytes
 // (+24 raw / +7 gzip). The unchanged complete-payload cap leaves at least
 // 2009 raw / 411 gzip bytes at 1.1.53, counting every provider and table.
-const TOTAL_BUDGET = Object.freeze({ bytes: 890400, gzipBytes: 283700 });
+// Common source 6f497732 totals 851132 / 267962, below its 855550 / 269000
+// cap. Latest main totals 888540 / 283261; the combined player totals 901237 /
+// 287304, including every optional provider. Add the measured 12697 / 4043
+// cost, rounded to 12700 / 4100, to main's 890400 / 283700 cap. This preserves
+// main's reserve without counting the common branch reserve twice.
+// The workbench entry increment is counted once in the complete payload too.
+const TOTAL_BUDGET = Object.freeze({ bytes: 918600, gzipBytes: 292600 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

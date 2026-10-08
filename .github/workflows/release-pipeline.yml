@@ -45,6 +45,11 @@ jobs:
       run: ${{ steps.scope.outputs.run }}
       reason: ${{ steps.scope.outputs.reason }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -70,6 +75,11 @@ jobs:
       build: ${{ steps.metadata.outputs.build }}
       plan_artifact: ${{ steps.metadata.outputs.plan_artifact }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -134,6 +144,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+
       - env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
@@ -155,6 +170,11 @@ jobs:
       contents: write
       actions: read
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+
       - &id001
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -178,7 +198,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 scripts/release_versioned.py publish --repo "$GITHUB_REPOSITORY" --assets .release-assets
       - name: Store immutable promotion evidence
-        if: ${{ steps.publication.outputs.status != 'superseded' }}
+        if: ${{ steps.publication.outputs.status != 'superseded' && steps.publication.outputs.status != 'reused' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-evidence
@@ -196,6 +216,11 @@ jobs:
       contents: write
       actions: read
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+
       - *id001
       - name: Promote RC bytes after approval
         env:
@@ -213,6 +238,11 @@ jobs:
       contents: write
       actions: read
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -235,7 +265,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 scripts/release_versioned.py publish --repo "$GITHUB_REPOSITORY" --assets .release-assets
       - name: Store immutable promotion evidence
-        if: ${{ steps.publication.outputs.status != 'superseded' }}
+        if: ${{ steps.publication.outputs.status != 'superseded' && steps.publication.outputs.status != 'reused' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-evidence

@@ -109,11 +109,13 @@ const ctx = {
                 ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
                 : name === "./remote-archive"
                   ? loadRemoteHelper("remote-archive")
-                  : name === "./remote-restart"
-                    ? loadRemoteHelper("remote-restart")
-                    : name === "../utils/caseless"
-                      ? casingContext.exports
-                      : { handleCommand: () => "accepted" },
+                  : name === "./remote-plex"
+                    ? loadRemoteHelper("remote-plex")
+                    : name === "./remote-restart"
+                      ? loadRemoteHelper("remote-restart")
+                      : name === "../utils/caseless"
+                        ? casingContext.exports
+                        : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };

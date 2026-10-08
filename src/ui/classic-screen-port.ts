@@ -1,3 +1,9 @@
+declare function textBoundary(
+    value: string,
+    position: number,
+    direction: number
+): number;
+
 /** The only mutable classic ABI. Its fields project the current owned screen. */
 function createClassicScreenPort(host: any) {
     var screens = host.__ottScreenController.create();
@@ -65,20 +71,23 @@ function createClassicScreenPort(host: any) {
             call("changeSelect", steps[command.id]);
     }
     function editorInput(command: ScreenCommand) {
-        var value = String(host.editvar || "");
-        var position = host.editPos === undefined ? value.length : host.editPos;
-        if (command.text) {
-            host.editvar =
-                value.slice(0, position) + command.text + value.slice(position);
-            host.editPos = position + command.text.length;
-            call("_changeEdit");
-        } else if (command.event && command.event.key === "Backspace") {
-            if (position > 0) {
-                host.editvar =
-                    value.slice(0, position - 1) + value.slice(position);
-                host.editPos = position - 1;
-                call("_changeEdit");
+        var key = command.event && command.event.key;
+        if (command.text || key === "Backspace" || key === "Delete") {
+            var value = String(host.editvar || "");
+            var start = textBoundary(
+                value,
+                host.editPos === undefined ? value.length : host.editPos,
+                0
+            );
+            var end = start;
+            var text = command.text || "";
+            if (!text) {
+                if (key === "Backspace") start = textBoundary(value, start, -1);
+                else end = textBoundary(value, end, 1);
             }
+            host.editvar = value.slice(0, start) + text + value.slice(end);
+            host.editPos = textBoundary(host.editvar, start + text.length, 0);
+            call("_changeEdit");
         } else if (typeof host.editKey === "function") {
             var editor = overlays.editor;
             var nativeInput =

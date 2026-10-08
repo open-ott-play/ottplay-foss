@@ -28,7 +28,7 @@ function include(c, file, names) {
     vm.runInContext(code, c);
 }
 
-function fixture() {
+function fixture(managed = false) {
     const values = {};
     const listeners = {};
     const video = {
@@ -91,6 +91,10 @@ function fixture() {
         stbGetPosTime: () => video.currentTime,
         video,
     };
+    if (managed) {
+        c.stbPlay = function () {};
+        c.__ottCoreTransport = { play: c.stbPlay };
+    }
     c.window = c;
     vm.createContext(c);
     sharedCore(c);
@@ -176,6 +180,124 @@ function fixture() {
     assert.equal(adopted.position, 9);
     assert.equal(c.api.reconcile().generation, adopted.generation);
     assert.deepEqual(c.values, {});
+}
+
+// Managed projection imports cannot manufacture decoder observations.
+{
+    const c = fixture(true);
+    c.channels = { ...c.channels };
+    assert.equal(
+        c.api.reconcile().phase,
+        "loading",
+        "No backend confirmed play"
+    );
+    c.api.command({ type: "pause" });
+    c.channels = { ...c.channels };
+    assert.equal(c.api.reconcile().phase, "paused");
+    c.api.command({ type: "stop" });
+    c.channels = { ...c.channels };
+    assert.equal(
+        c.api.reconcile().phase,
+        "stopped",
+        "Catalog refresh cannot revive stop"
+    );
+    c.primaryIndex = 1;
+    assert.equal(
+        c.api.reconcile().phase,
+        "loading",
+        "A new target awaits its decoder"
+    );
+    c.stbPlay = function legacyPlay() {};
+    c.primaryIndex = 0;
+    assert.equal(
+        c.api.reconcile().phase,
+        "playing",
+        "Unmanaged legacy fallback remains"
+    );
+}
+for (const phase of ["pause", "stop"]) {
+    const c = fixture(true);
+    c.api.command({ type: phase });
+    c.channels[101] = { ...c.channels[101], rec: 1 };
+    assert.equal(
+        c.api.reconcile().phase,
+        "loading",
+        "A replacement source cannot inherit " + phase
+    );
+}
+{
+    const c = fixture(true);
+    c.api.command({ archiveStart: 1000, channelId: 101, type: "archive" });
+    const handle = c.openBackend();
+    c.video.readyState = 2;
+    c.video.paused = false;
+    c.emit("playing");
+    c.video.currentTime = 24;
+    c.emit("timeupdate");
+    const before = c.api.snapshot();
+    const owner = c.api.context();
+    c.channels = { ...c.channels };
+    const after = c.api.reconcile();
+    assert.equal(
+        after.generation,
+        before.generation,
+        "Catalog publication keeps the decoder generation"
+    );
+    assert.equal(
+        after.position,
+        before.position,
+        "Catalog publication keeps measured position"
+    );
+    assert.equal(after.phase, "playing");
+    assert.equal(handle.active(), true);
+    assert.equal(owner.isCurrent(), false, "Old UI callbacks still retire");
+    c.video.currentTime = 25;
+    c.emit("timeupdate");
+    assert.equal(c.api.snapshot().position, before.position + 1);
+    c.channels[101] = { ...c.channels[101], rec: 1 };
+    assert.equal(
+        c.api.reconcile().phase,
+        "loading",
+        "A replacement channel record retires its old decoder"
+    );
+    assert.equal(handle.active(), false);
+    c.p_pref = "other-provider";
+    assert.equal(
+        c.api.reconcile().phase,
+        "loading",
+        "A real source change awaits a new decoder"
+    );
+    assert.notEqual(c.api.snapshot().generation, before.generation);
+    assert.equal(handle.active(), false);
+}
+{
+    const c = fixture();
+    c.openMedia({ stream_url: "failed-native.mp4" });
+    const handle = c.openBackend();
+    c.video.readyState = 2;
+    c.video.paused = false;
+    c.emit("playing");
+    let ended = 0;
+    c.__ottMedia.ended = () => ended++;
+    c.emit("error");
+    assert.equal(handle.snapshot().phase, "loading");
+    assert.equal(
+        c.api.snapshot().phase,
+        "loading",
+        "Native error stops reporting play"
+    );
+    const generation = c.api.snapshot().generation;
+    c.emit("ended");
+    assert.equal(c.api.snapshot().generation, generation);
+    assert.equal(ended, 0, "Decoder failure is not natural queue completion");
+    c.emit("playing");
+    assert.equal(
+        c.api.snapshot().phase,
+        "playing",
+        "In-place recovery remains valid"
+    );
+    c.emit("ended");
+    assert.equal(ended, 1, "Recovered playback may finish normally");
 }
 
 // A new item cannot borrow the previous engine's position while attachment is pending.

@@ -140,7 +140,7 @@
         "value": "package"
       }
     ],
-    "toolkit_revision": "fadf720a452d216f81c60ee74096febd63c0caec"
+    "toolkit_revision": "ab9f337e5fa49c263c873d65c9e50dde7249af56"
   },
   "asset_restrictions": [
     {
@@ -164,5 +164,6 @@
     "documentation_paths": ["vendor/README.md"],
     "required_paths": ["docs/privacy-policy.md"],
     "always_validate_workflows": ["codeql.yml"]
-  }
+  },
+  "release_notes": "CHANGELOG.md"
 }

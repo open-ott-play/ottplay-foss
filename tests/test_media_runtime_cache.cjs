@@ -56,7 +56,11 @@ function createFixture() {
             })
         );
     }
-    write("package-lock.json", JSON.stringify({ packages }));
+    packages[""] = { name: "ottplay-fixture", version: "1.0.0" };
+    write(
+        "package-lock.json",
+        JSON.stringify({ lockfileVersion: 3, packages, version: "1.0.0" })
+    );
     write("src/polyfills/runtime.ts", "export function fixtureRuntime() {}\n");
     write(
         "node_modules/hls.js/dist/hls.min.js",
@@ -83,6 +87,9 @@ function createFixture() {
 
 function fixtureBuild() {
     const lock = JSON.parse(read("package-lock.json"));
+    const { lockInputsDigest } = require(
+        path.join(root, "scripts/media-runtime.cjs")
+    );
     const packages = {};
     for (const name of names) {
         const installed = JSON.parse(
@@ -95,7 +102,7 @@ function fixtureBuild() {
     }
     const source = {
         builderSha256: sha(read("scripts/media-runtime.cjs")),
-        lockfileSha256: sha(read("package-lock.json")),
+        lockInputsSha256: lockInputsDigest(lock),
         packages,
         webPolyfillsSha256: sha(read("src/polyfills/runtime.ts")),
     };
@@ -127,7 +134,7 @@ function fixtureBuild() {
     }
     write(
         "js/media-runtime.json",
-        JSON.stringify({ schema: 1, ...source, assets, runtimeVersion })
+        JSON.stringify({ schema: 2, ...source, assets, runtimeVersion })
     );
     for (const name of [
         "core-js",
@@ -181,6 +188,44 @@ async function main() {
     assert.equal(builds, 0, "Valid artifacts are never rebuilt");
     console.log("PASS media cache: complete fresh audit permits reuse");
 
+    async function reuses(name, mutate) {
+        const beforeBuilds = builds;
+        const beforeVersion = auditMediaRuntime(root).runtimeVersion;
+        mutate();
+        const result = await ensureMediaRuntime(root, dependencies);
+        assert.equal(result.rebuilt, false, name);
+        assert.equal(builds, beforeBuilds, name + " must not rebuild");
+        assert.equal(result.manifest.runtimeVersion, beforeVersion);
+        console.log("PASS media cache: " + name);
+    }
+
+    await reuses("release root versions do not change media inputs", () => {
+        const lock = JSON.parse(read("package-lock.json"));
+        lock.version = "1.0.0-beta.43";
+        lock.packages[""].version = "1.0.0-beta.43";
+        write("package-lock.json", JSON.stringify(lock));
+    });
+    await reuses(
+        "JSON formatting and object order do not change media inputs",
+        () => {
+            const lock = JSON.parse(read("package-lock.json"));
+            function reverse(value) {
+                if (Array.isArray(value)) return value.map(reverse);
+                if (value && typeof value === "object")
+                    return Object.fromEntries(
+                        Object.keys(value)
+                            .reverse()
+                            .map((key) => [key, reverse(value[key])])
+                    );
+                return value;
+            }
+            write(
+                "package-lock.json",
+                JSON.stringify(reverse(lock), null, 4) + "\n"
+            );
+        }
+    );
+
     async function invalidates(name, mutate) {
         const beforeAudits = audits;
         const beforeBuilds = builds;
@@ -202,11 +247,54 @@ async function main() {
             "export function changedRuntime() {}\n"
         );
     });
-    await invalidates("changed lockfile input", () => {
-        write(
-            "package-lock.json",
-            Buffer.concat([read("package-lock.json"), Buffer.from("\n")])
-        );
+    function editLock(edit) {
+        const lock = JSON.parse(read("package-lock.json"));
+        edit(lock);
+        write("package-lock.json", JSON.stringify(lock));
+    }
+    await invalidates("changed dependency version", () => {
+        editLock((lock) => {
+            lock.packages["node_modules/core-js"].version = "1.0.1";
+        });
+        const installed = JSON.parse(read("node_modules/core-js/package.json"));
+        installed.version = "1.0.1";
+        write("node_modules/core-js/package.json", JSON.stringify(installed));
+    });
+    await invalidates("changed dependency integrity", () => {
+        editLock((lock) => {
+            lock.packages["node_modules/core-js"].integrity =
+                "different-integrity";
+        });
+    });
+    await invalidates("changed root package metadata", () => {
+        editLock((lock) => {
+            lock.packages[""].engines = { node: ">=22" };
+        });
+    });
+    await invalidates("changed non-media dependency", () => {
+        editLock((lock) => {
+            lock.packages["node_modules/other"] = { version: "2.0.0" };
+        });
+    });
+    await invalidates("changed top-level lock metadata", () => {
+        editLock((lock) => {
+            lock.requires = true;
+        });
+    });
+    await invalidates("added dependency array metadata", () => {
+        editLock((lock) => {
+            lock.packages["node_modules/other"].os = ["darwin", "linux"];
+        });
+    });
+    await invalidates("changed dependency array ordering", () => {
+        editLock((lock) => {
+            lock.packages["node_modules/other"].os.reverse();
+        });
+    });
+    await invalidates("removed root version field", () => {
+        editLock((lock) => {
+            delete lock.packages[""].version;
+        });
     });
     await invalidates("changed builder input", () => {
         write(
@@ -330,6 +418,11 @@ async function main() {
     });
     await invalidates("missing manifest", () => {
         fs.unlinkSync(path.join(root, "js/media-runtime.json"));
+    });
+    await invalidates("legacy manifest schema", () => {
+        const manifest = JSON.parse(read("js/media-runtime.json"));
+        manifest.schema = 1;
+        write("js/media-runtime.json", JSON.stringify(manifest));
     });
 
     write("js/runtime-polyfills.js", "var broken = true;\n");

@@ -1,3 +1,10 @@
+import type {
+    DoctorCapability,
+    DoctorCapabilityName,
+    DoctorCapabilityReason,
+} from "../plugins/remote-doctor";
+import { remotePlexQueue } from "./remote-plex";
+
 function remoteSettingsLocked(w: any): boolean {
     return w.__ottParental
         ? w.__ottParental.needs("providers") ||
@@ -370,27 +377,231 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
         return null;
     }
 }
-function remoteOwnedPlayback(w: any): any {
+function remotePlaybackProbe(w: any, readonly = false): any {
+    if (!w.__ottCoreTransport || w.stbPlay !== w.__ottCoreTransport.play)
+        return { owned: null, reason: "not_implemented" };
+    var getBackend = readonly ? w.__ottCoreBackendPeek : w.__ottCoreBackend;
     if (
-        !w.__ottCoreTransport ||
-        w.stbPlay !== w.__ottCoreTransport.play ||
-        typeof w.__ottCoreBackend !== "function" ||
+        typeof getBackend !== "function" ||
         !w.__ottClassicPlayback ||
         typeof w.__ottClassicPlayback.snapshot !== "function"
     )
-        return null;
-    var backend = w.__ottCoreBackend();
-    var handle =
-        backend && typeof backend.current === "function" && backend.current();
+        return { owned: null, reason: "producer_unavailable" };
+    var backend = getBackend.call(w);
+    if (!backend) return { owned: null, reason: "no_active_media" };
+    if (typeof backend.current !== "function")
+        return { owned: null, reason: "producer_unavailable" };
+    var handle = backend.current();
+    if (!handle) return { owned: null, reason: "no_active_media" };
+    if (
+        typeof handle.active !== "function" ||
+        typeof handle.snapshot !== "function"
+    )
+        return { owned: null, reason: "producer_unavailable" };
+    if (!handle.active()) return { owned: null, reason: "no_active_media" };
     var state = w.__ottClassicPlayback.snapshot();
-    return handle &&
-        handle.active() &&
-        state &&
-        state.target &&
-        /^(live|vod|archive)$/.test(state.target.kind) &&
-        /^(playing|paused)$/.test(handle.snapshot().phase)
-        ? { backend: backend, handle: handle, kind: state.target.kind }
+    if (!state || !state.target)
+        return { owned: null, reason: "no_active_media" };
+    if (["live", "vod", "archive"].indexOf(state.target.kind) < 0)
+        return { owned: null, reason: "current_state_unsupported" };
+    var snapshot = handle.snapshot();
+    return {
+        owned: {
+            backend: backend,
+            handle: handle,
+            kind: state.target.kind,
+            phase: snapshot && snapshot.phase,
+        },
+        reason: "ready",
+    };
+}
+function remoteOwnedPlayback(w: any, readonly = false): any {
+    var owned = remotePlaybackProbe(w, readonly).owned;
+    return owned && ["playing", "paused"].indexOf(owned.phase) >= 0
+        ? owned
         : null;
+}
+function remoteCapability(
+    name: DoctorCapabilityName,
+    reason: DoctorCapabilityReason
+): DoctorCapability {
+    return {
+        name: name,
+        reason: reason,
+        state:
+            reason === "ready"
+                ? "available"
+                : reason === "producer_unavailable"
+                  ? "unknown"
+                  : "unavailable",
+    };
+}
+function remoteLifecycleCapability(
+    w: any,
+    operation: DoctorCapabilityName,
+    readonly = false
+): DoctorCapability {
+    function result(reason: DoctorCapabilityReason): DoctorCapability {
+        return remoteCapability(operation, reason);
+    }
+    if (operation === "restart_stream") {
+        var probe = remotePlaybackProbe(w, readonly);
+        var owned = probe.owned;
+        if (!owned) return result(probe.reason);
+        if (typeof owned.backend.restart !== "function")
+            return result("not_implemented");
+        // Live repair can be attempted while loading or recovering from error.
+        // The backend still validates engine readiness and ownership at dispatch.
+        var phases =
+            owned.kind === "live"
+                ? ["loading", "playing", "paused", "error", "ended"]
+                : ["playing", "paused"];
+        return result(
+            phases.indexOf(owned.phase) >= 0
+                ? "ready"
+                : "current_state_unsupported"
+        );
+    }
+    if (remoteSettingsLocked(w)) return result("policy_restricted");
+    if (operation === "reload_player")
+        return result(
+            typeof w.restart === "function" ? "ready" : "not_implemented"
+        );
+    if (remoteKiosk(w)) return result("policy_restricted");
+    if (operation === "standby" || operation === "wake")
+        return result(
+            typeof w.stbToggleStandby === "function" &&
+                typeof w.stbIsStandby === "function"
+                ? "ready"
+                : "not_implemented"
+        );
+    var hooks = w.__ottRemoteLifecycle;
+    return result(
+        hooks &&
+            Object.prototype.hasOwnProperty.call(
+                remoteLifecycleMethods,
+                operation
+            ) &&
+            typeof hooks[remoteLifecycleMethods[operation]] === "function"
+            ? "ready"
+            : "not_implemented"
+    );
+}
+
+/** Shared predicates, read-only producers, no backend creation or native probes. */
+export function remoteDoctorCapabilities(w: any): DoctorCapability[] {
+    var names: DoctorCapabilityName[] = [
+        "screenshot",
+        "diagnostics",
+        "input",
+        "restart_stream",
+        "reload_player",
+        "restart_app",
+        "exit_app",
+        "reboot_device",
+        "standby",
+        "wake",
+    ];
+    return names.map(function (name): DoctorCapability {
+        try {
+            if (name === "screenshot") {
+                var hook = w.__ottRemoteScreenshot;
+                if (!hook || typeof hook.peek !== "function")
+                    return remoteCapability(name, "producer_unavailable");
+                var shot = hook.peek();
+                if (!shot || typeof shot.connected !== "boolean")
+                    return remoteCapability(name, "producer_unavailable");
+                if (!shot.connected)
+                    return remoteCapability(name, "remote_disconnected");
+                if (shot.known !== true)
+                    return remoteCapability(name, "producer_unavailable");
+                if (shot.supported === false)
+                    return remoteCapability(name, "not_implemented");
+                if (shot.busy === true) return remoteCapability(name, "busy");
+                if (shot.ready === true) return remoteCapability(name, "ready");
+                return remoteCapability(
+                    name,
+                    shot.needsSourceSelection === true
+                        ? "source_selection_required"
+                        : "producer_unavailable"
+                );
+            }
+            if (name === "diagnostics") {
+                var diagnostics = w.__ottRemoteDiagnostics;
+                if (!diagnostics || typeof diagnostics.status !== "function")
+                    return remoteCapability(name, "producer_unavailable");
+                var status = diagnostics.status();
+                if (!status || typeof status.trusted !== "boolean")
+                    return remoteCapability(name, "producer_unavailable");
+                if (!status.trusted)
+                    return remoteCapability(name, "remote_disconnected");
+                if (status.state === "unavailable")
+                    return remoteCapability(name, "current_state_unsupported");
+                if (
+                    status.enabled === true &&
+                    (status.state === "ready" || status.state === "active") &&
+                    typeof status.runtimeId === "string" &&
+                    status.runtimeId.length > 0
+                )
+                    return remoteCapability(name, "ready");
+                return remoteCapability(name, "producer_unavailable");
+            }
+            if (name === "input") {
+                if (
+                    typeof w.keyHandler !== "function" ||
+                    !w.keys ||
+                    !w.__ottClassicScreenPort ||
+                    typeof w.__ottClassicScreenPort.normalize !== "function"
+                )
+                    return remoteCapability(name, "producer_unavailable");
+                var keys = Object.keys(remoteKeys);
+                var supported = false;
+                for (var i = 0; i < keys.length; i++) {
+                    if (!remoteInputCode(w, keys[i])) continue;
+                    supported = true;
+                    if (remoteInputAllowed(w, keys[i]))
+                        return remoteCapability(name, "ready");
+                }
+                return remoteCapability(
+                    name,
+                    supported
+                        ? "policy_restricted"
+                        : "current_state_unsupported"
+                );
+            }
+            return remoteLifecycleCapability(w, name, true);
+        } catch (_) {
+            return remoteCapability(name, "producer_unavailable");
+        }
+    });
+}
+
+function remoteScreenshotSnapshot(w: any): any {
+    var fallback = { source: null, state: "unsupported" };
+    try {
+        var hook = w.__ottRemoteScreenshot;
+        if (!hook || typeof hook.peek !== "function") return fallback;
+        var view = hook.peek();
+        var source = view && view.source;
+        var state = view && view.state;
+        if (
+            ["ready", "permission_required", "unsupported"].indexOf(state) <
+                0 ||
+            (source !== null &&
+                [
+                    "player-view",
+                    "player-window",
+                    "browser-tab",
+                    "window",
+                    "display",
+                ].indexOf(source) < 0) ||
+            (state === "ready" && source === null)
+        )
+            return fallback;
+        return { source: source, state: state };
+    } catch (_) {
+        return fallback;
+    }
 }
 
 /** Typed, bounded controls share the command transport's exact-result ACK fence. */
@@ -399,8 +610,9 @@ export function executeRemoteControl(
     action: string,
     params: any,
     done: (result: any) => void,
-    afterReply?: (effect: () => void) => void
-): void {
+    afterReply?: (effect: () => void) => void,
+    expiresAt?: number
+): (() => void) | void {
     function fail(status: string, error: string): void {
         done({ data: { error: error }, status: status });
     }
@@ -427,26 +639,14 @@ export function executeRemoteControl(
         return;
     }
     var hooks = w.__ottRemoteLifecycle;
-    var owned = remoteOwnedPlayback(w);
+    var owned = remoteOwnedPlayback(w, action === "capabilities");
     function lifecycleAvailable(operation: string): boolean {
-        if (operation === "restart_stream")
-            return !!(owned && typeof owned.backend.restart === "function");
-        if (remoteSettingsLocked(w)) return false;
-        if (operation === "reload_player")
-            return typeof w.restart === "function";
-        if (remoteKiosk(w)) return false;
-        if (operation === "standby" || operation === "wake")
-            return (
-                typeof w.stbToggleStandby === "function" &&
-                typeof w.stbIsStandby === "function"
-            );
-        return !!(
-            hooks &&
-            Object.prototype.hasOwnProperty.call(
-                remoteLifecycleMethods,
-                operation
-            ) &&
-            typeof hooks[remoteLifecycleMethods[operation]] === "function"
+        return (
+            remoteLifecycleCapability(
+                w,
+                operation as DoctorCapabilityName,
+                action === "capabilities"
+            ).state === "available"
         );
     }
     var playback =
@@ -454,8 +654,11 @@ export function executeRemoteControl(
             ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
             : [];
     if (action === "capabilities") {
-        if (remoteChannelStep(w, -1)) playback.push("previous_channel");
-        if (remoteChannelStep(w, 1)) playback.push("next_channel");
+        var plexQueue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
+        if (plexQueue.retained() || remoteChannelStep(w, -1))
+            playback.push("previous_channel");
+        if (plexQueue.retained() || remoteChannelStep(w, 1))
+            playback.push("next_channel");
         // Generic availability describes the selection state, not the PIN
         // policy of either neighbour. Every requested destination is checked.
         if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
@@ -463,6 +666,10 @@ export function executeRemoteControl(
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),
+            inspect: {
+                sections: ["doctor", "snapshot", "operation"],
+                version: 1,
+            },
             lifecycle: [
                 "restart_stream",
                 "reload_player",
@@ -474,9 +681,8 @@ export function executeRemoteControl(
             ].filter(lifecycleAvailable),
             playback: playback,
             player: remotePlayerInfo(w),
-            screenshot: w.__ottRemoteScreenshot
-                ? w.__ottRemoteScreenshot.snapshot()
-                : { source: null, state: "unsupported" },
+            plex_queue: plexQueue.capability,
+            screenshot: remoteScreenshotSnapshot(w),
             version: 1,
         });
         return;
@@ -506,6 +712,34 @@ export function executeRemoteControl(
                         : "Channel movement accepts only an operation."
                 );
                 return;
+            }
+            if (!relative) {
+                var queue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
+                if (queue.retained()) {
+                    return queue.execute(
+                        {
+                            expires_at: expiresAt,
+                            params: {
+                                op:
+                                    operation === "next_channel"
+                                        ? "next"
+                                        : "previous",
+                                runtime: remotePlayerInfo(w).runtime,
+                            },
+                        },
+                        function (result: any) {
+                            if (result.status !== "ok") {
+                                done(result);
+                                return;
+                            }
+                            reply({
+                                dispatched: true,
+                                operation: operation,
+                                plex_queue: result.data,
+                            });
+                        }
+                    );
+                }
             }
             var selected = remoteChannelStep(
                 w,
@@ -649,6 +883,16 @@ export function executeRemoteControl(
         return;
     }
     if (operation === "restart_stream" || operation === "reload_player") {
+        var capability = remoteLifecycleCapability(w, operation);
+        if (capability.state !== "available") {
+            fail(
+                capability.reason === "policy_restricted"
+                    ? "rejected"
+                    : "unsupported",
+                "This lifecycle operation is unavailable."
+            );
+            return;
+        }
         executeRemoteRestart(
             w,
             { target: operation === "restart_stream" ? "stream" : "player" },

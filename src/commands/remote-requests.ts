@@ -8,6 +8,7 @@ import {
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
 import { handleRemoteArchive } from "./remote-archive";
+import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 import {
     executeRemoteControl,
@@ -45,6 +46,13 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    if (request.action === "inspect" && w.__ottRemoteInspect)
+        return w.__ottRemoteInspect.request(request, done);
+    if (request.action === "plex_queue")
+        return remotePlexQueue(w, remotePlayerInfo(w).runtime).execute(
+            request,
+            done
+        );
     if (
         w.__ottKiosk &&
         w.__ottKiosk.enabled() &&
@@ -158,8 +166,14 @@ export function executeRemoteRequest(
             request.action
         ) >= 0
     ) {
-        executeRemoteControl(w, request.action, params, done, afterReply);
-        return;
+        return executeRemoteControl(
+            w,
+            request.action,
+            params,
+            done,
+            afterReply,
+            request.expires_at
+        );
     }
     if (request.action === "status") {
         reply({

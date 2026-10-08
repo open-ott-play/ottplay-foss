@@ -1,7 +1,7 @@
 {
-  "schema": 1,
-  "builderSha256": "442d33357161b5ba1cdeaf2c55eacedbfa154f58e4c9d94ed6756a835a836370",
-  "lockfileSha256": "6b648e0f5d1b06bf0a7c778c2db99d16c973c829a06f0dcbec63ac58a4b53016",
+  "schema": 2,
+  "builderSha256": "71631d5951f81fa60d4b90531800b8b1357201764882659dbed3067f60bffbd3",
+  "lockInputsSha256": "566284c2d6c833d8651eb354504064e4e92a10294b308687649f965a500622c5",
   "packages": {
     "core-js": {
       "integrity": "sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==",
@@ -43,9 +43,9 @@
   "webPolyfillsSha256": "5e14970ea932f18c571a94e03758a08a6d3f559d04cf6033fd3970af895b9aab",
   "assets": {
     "hls.min.js": "a12e7ee1cd64a69dcdb314157e45dafcba705bfb0b1440b7935cb265d374423e",
-    "hls.worker.js": "8b90f8ef25c9615d56c4338f0e5323bd54820a5f9216b7e48d2892a517115af3",
-    "runtime-polyfills.js": "9dc05914e2755eaacdd2fe9ea8364360b97ef0db160728fca23d3f0592f29f88",
+    "hls.worker.js": "a032b48f43522215cd463fb06e7035799240a09a916ed71930b2739560997b4b",
+    "runtime-polyfills.js": "eeaa951c947093b6c4fc5c93426a84053f1039ea8c382bd5a176b99b295ce08a",
     "video.min.js": "820388ecff9bbd8108047f3a7f3913835613773940b8dd42527d580cc8629ac0"
   },
-  "runtimeVersion": "c7564ba78dd35b8a"
+  "runtimeVersion": "730b66cc33bfce0b"
 }

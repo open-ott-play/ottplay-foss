@@ -14,6 +14,7 @@ interface ClassicMediaSource {
 }
 var mediaClassicContext: ClassicMediaSource | null = null;
 var mediaClassicContextRevision = 0;
+var mediaClassicSourceHandoff: any = null;
 
 /** A label is generated only while its original value has not been edited. */
 function classicMediaLabel(item: any): any {
@@ -839,9 +840,12 @@ function classicMediaRuntime(): any {
                 resolve(
                     item,
                     {
+                        explicit: sequence.explicit,
                         index: index,
                         items: sequence.items,
+                        onError: sequence.onError,
                         ordered: sequence.ordered,
+                        queueId: sequence.queueId,
                         repeat: sequence.repeat,
                     },
                     true,
@@ -887,8 +891,8 @@ function classicMediaRuntime(): any {
         automatic = false,
         guard: () => boolean = current,
         dispatched?: () => void,
-        startup?: { position: number; unavailable(): void },
-        settled?: () => void
+        startup?: { position: number; unavailable(): void; resolved?: any },
+        settled?: (dispatched?: boolean) => void
     ) {
         if (!automatic && !cancelNavigationAuto()) return;
         rememberNavigation(item);
@@ -938,6 +942,10 @@ function classicMediaRuntime(): any {
                     };
                     refreshed.isCurrent = done.isCurrent;
                     abortLoad = load(origin, refreshed);
+                } else if (startup && startup.resolved) {
+                    var ready = copy(startup.resolved);
+                    ready.__ottMediaRef = copy(item.ref);
+                    done(ready);
                 } else accept(copy(item.payload));
                 return function () {
                     if (abortLoad) abortLoad();
@@ -956,6 +964,7 @@ function classicMediaRuntime(): any {
                 if (!valid()) return;
                 if (automatic) automaticRequest = null;
                 if (!payload) {
+                    if (sequence && sequence.onError) sequence.onError();
                     if (settled) settled();
                     if (startup) startup.unavailable();
                     return;
@@ -971,26 +980,29 @@ function classicMediaRuntime(): any {
                     valid: guard,
                 };
                 var previousPlayback = mediaClassicPlayback;
+                var previousGeneration =
+                    w.__ottClassicPlayback.snapshot().generation;
                 pendingStart = start;
                 try {
                     w._playMedia(payload, automatic);
                 } finally {
                     if (pendingStart === start) pendingStart = null;
-                    if (settled) settled();
+                    var state = w.__ottClassicPlayback.snapshot();
+                    var started = !!(
+                        current() &&
+                        mediaClassicPlayback &&
+                        mediaClassicPlayback !== previousPlayback &&
+                        mediaClassicPlayback.ref.itemId === item.ref.itemId &&
+                        state.generation !== previousGeneration &&
+                        state.target &&
+                        state.target.kind === "vod" &&
+                        state.target.sourceId === source &&
+                        state.target.channelId === item.ref.itemId &&
+                        state.phase !== "stopped"
+                    );
+                    if (settled) settled(started);
+                    if (started && dispatched && current()) dispatched();
                 }
-                var state = w.__ottClassicPlayback.snapshot();
-                if (
-                    dispatched &&
-                    current() &&
-                    mediaClassicPlayback &&
-                    mediaClassicPlayback !== previousPlayback &&
-                    mediaClassicPlayback.ref.itemId === item.ref.itemId &&
-                    state.target &&
-                    state.target.kind === "vod" &&
-                    state.target.channelId === item.ref.itemId &&
-                    state.phase !== "stopped"
-                )
-                    dispatched();
             }
         );
     }
@@ -1073,6 +1085,12 @@ function classicMediaRuntime(): any {
             }
         },
         cycleRepeat: function () {
+            if (
+                mediaClassicPlayback &&
+                mediaClassicPlayback.sequence &&
+                mediaClassicPlayback.sequence.explicit
+            )
+                return;
             var admitted = library.capture();
             var completion = completionRequest;
             var reschedule =
@@ -1175,10 +1193,13 @@ function classicMediaRuntime(): any {
                     resolve(
                         item,
                         {
+                            explicit: sequence.explicit,
                             index: index,
                             items: sequence.items,
+                            onError: sequence.onError,
                             ordered: sequence.ordered,
                             placeholder: sequence.placeholder,
+                            queueId: sequence.queueId,
                             repeat: mode,
                         },
                         true,
@@ -1333,6 +1354,45 @@ function classicMediaRuntime(): any {
                 reset
             );
         },
+        playOrderedQueue: function (
+            records: any[],
+            index: number,
+            queueId: string,
+            resolved: any,
+            guard: () => boolean,
+            dispatched: () => void,
+            failed: () => void
+        ) {
+            var items = describe(records, {
+                kind: "catalog",
+                target: "",
+                title: "Plex",
+            });
+            if (!items[index] || !current() || !guard()) return failed();
+            api.cancelAuto();
+            resolve(
+                items[index],
+                {
+                    explicit: true,
+                    index: index,
+                    items: items,
+                    onError: failed,
+                    queueId: queueId,
+                    repeat: "off",
+                    replace: true,
+                },
+                true,
+                guard,
+                dispatched,
+                { position: 0, resolved: resolved, unavailable: failed },
+                function (started) {
+                    if (!started) failed();
+                }
+            );
+            return function () {
+                api.cancelAuto();
+            };
+        },
         playQueue: function (
             records: any[],
             query: string,
@@ -1429,7 +1489,11 @@ function classicMediaRuntime(): any {
             if (
                 departing &&
                 departing.context &&
-                departing.client !== classicMediaClient()
+                departing.client !== classicMediaClient() &&
+                !(
+                    mediaClassicSourceHandoff &&
+                    mediaClassicSourceHandoff.playback === departing
+                )
             ) {
                 departing.client.stop(departing.payload.stream_url);
                 if (!admitted()) return null;
@@ -1891,6 +1955,7 @@ function classicMediaRuntime(): any {
             var playback = mediaClassicPlayback;
             var sequence =
                 playback && playback.runtime === api && playback.sequence;
+            if (sequence && sequence.explicit) return;
             if (!shuffleRequest && !(sequence && sequence.ordered)) {
                 api.shufflePlay();
                 return;
@@ -1950,6 +2015,54 @@ function classicMediaRuntime(): any {
 (window as any).__ottMedia = {
     back: function () {
         classicMediaRuntime().back();
+    },
+    // Queue admission is synchronous after metadata resolves. Keep the previous
+    // runtime intact until the host confirms that its replacement was dispatched.
+    beginSource: function (source: ClassicMediaSource) {
+        var previous = {
+            context: mediaClassicContext,
+            instance: mediaClassicInstance,
+            playback: mediaClassicPlayback,
+            provider: mediaClassicProvider,
+            source: mediaClassicSource,
+        };
+        var token = ++mediaClassicContextRevision;
+        mediaClassicSourceHandoff = previous;
+        mediaClassicContext = source;
+        mediaClassicInstance = null;
+        function owned() {
+            return (
+                token === mediaClassicContextRevision &&
+                mediaClassicContext === source
+            );
+        }
+        return {
+            commit: function () {
+                if (!owned()) return false;
+                mediaClassicSourceHandoff = null;
+                if (previous.instance) previous.instance.cancel();
+                var departing = previous.playback;
+                if (
+                    departing &&
+                    departing.context &&
+                    departing.client !== source.client
+                )
+                    departing.client.stop(departing.payload.stream_url);
+                return true;
+            },
+            rollback: function () {
+                if (!owned()) return;
+                var candidate = mediaClassicInstance;
+                ++mediaClassicContextRevision;
+                mediaClassicSourceHandoff = null;
+                mediaClassicContext = previous.context;
+                mediaClassicInstance = previous.instance;
+                mediaClassicPlayback = previous.playback;
+                mediaClassicProvider = previous.provider;
+                mediaClassicSource = previous.source;
+                if (candidate) candidate.cancel();
+            },
+        };
     },
     cancel: function () {
         var host = window as any;
@@ -2093,6 +2206,25 @@ function classicMediaRuntime(): any {
         if (client && typeof client.stop === "function")
             client.stop(playback.payload.stream_url);
     },
+    playOrderedQueue: function (
+        records: any[],
+        index: number,
+        queueId: string,
+        resolved: any,
+        guard: () => boolean,
+        dispatched: () => void,
+        failed: () => void
+    ) {
+        return classicMediaRuntime().playOrderedQueue(
+            records,
+            index,
+            queueId,
+            resolved,
+            guard,
+            dispatched,
+            failed
+        );
+    },
     playQueue: function (
         records: any[],
         query: string,
@@ -2138,6 +2270,7 @@ function classicMediaRuntime(): any {
     useSource: function (source: ClassicMediaSource | null) {
         if (source === mediaClassicContext) return;
         var token = ++mediaClassicContextRevision;
+        mediaClassicSourceHandoff = null;
         var host = window as any;
         var previous = mediaClassicInstance;
         // Capture a final confirmed position before the new storage owner is selected.

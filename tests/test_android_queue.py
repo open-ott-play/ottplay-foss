@@ -160,6 +160,24 @@ private fun request(port: Int, request: String, fragments: Boolean = false): Str
 // A parsed request can outlive cancellation: socket.close() cannot erase bytes
 // already buffered on its worker. Pause the final read to make this interleaving
 // deterministic, then run the real private HTTP handler after stop/restart.
+private fun assertRemoteClosed(source: InputStream) {
+    // A peer close may arrive as FIN/EOF or RST; a timeout or data is not closure.
+    val next = try { source.read() } catch (_: SocketException) { return }
+    check(next == -1) { "Closed peer unexpectedly returned data" }
+}
+
+private fun verifyRemoteCloseAssertion() {
+    assertRemoteClosed(ByteArrayInputStream(byteArrayOf()))
+    assertRemoteClosed(object : InputStream() {
+        override fun read(): Int = throw SocketException("Connection reset")
+    })
+    check(runCatching { assertRemoteClosed(ByteArrayInputStream(byteArrayOf(1))) }
+        .exceptionOrNull() is IllegalStateException)
+    check(runCatching { assertRemoteClosed(object : InputStream() {
+        override fun read(): Int = throw SocketTimeoutException("still open")
+    }) }.exceptionOrNull() is SocketTimeoutException)
+}
+
 private class PausedRequestSocket(request: String) : Socket() {
     val paused = CountDownLatch(1)
     val resume = CountDownLatch(1)
@@ -227,6 +245,7 @@ private fun revokedContinuation(plugin: MobileCommandQueuePlugin, method: String
 }
 
 fun main() = runBlocking {
+    verifyRemoteCloseAssertion()
     val port = System.getenv("OTTPLAY_QUEUE_PORT")!!.toInt()
     val plugin = MobileCommandQueuePlugin()
     plugin.load()
@@ -299,7 +318,7 @@ fun main() = runBlocking {
     plugin.handleOnDestroy()
     withTimeout(5000) { runningJob.join() }
     idleClient.soTimeout = 1000
-    check(idleClient.getInputStream().read() == -1); idleClient.close()
+    idleClient.use { assertRemoteClosed(it.getInputStream()) }
     check(!runningJob.isActive)
     repeat(20) {
         val transient = MobileCommandQueuePlugin(); val transientJob = job(transient)
