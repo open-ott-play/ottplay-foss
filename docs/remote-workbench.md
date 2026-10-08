@@ -4,7 +4,18 @@ The workbench extends an existing remote-control connection. It needs no second
 permission switch or temporary screenshot grant. Local parental restrictions,
 browser screen-selection requirements and platform capabilities still apply.
 
-Use a controller and CLI revision that implements `inspect` v1:
+Install the CLI, controller and player separately. The controller's
+[CLI installation guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/cli.md#installation-and-connection)
+provides a pinned source installation containing all seven Python modules,
+including the offline report verifier. Stable CLI v0.1.0 does not contain this
+workbench. Updating a launcher or running `restart` does not install a new player.
+For a local Mac installation, use the
+[delivery and recovery runbook](macos-local-delivery.md); verify the loaded
+runtime after the files have been replaced.
+
+Use a controller and player that implement `inspect` v1, and replace `l`/`a1`
+below with your registered aliases. Each report path must be a new directory
+inside an existing parent:
 
 ```sh
 ott l doctor
@@ -13,6 +24,9 @@ ott a1 inspect --lane native --json
 ott l bundle --out ./lg-case
 ott l test run health --report ./lg-health
 ott -t 45 l test run media-progress --duration 5 --report ./lg-progress
+ott -t 45 a1 test run media-progress --lane native --duration 5 --report ./android-progress
+ott report verify ./lg-progress --json
+ott report verify ./android-progress --json
 ```
 
 See the controller's [workbench reference](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/workbench.md)
@@ -22,6 +36,27 @@ two samples from the same runtime, media generation and decoder handle. Neither
 test proves that pixels appeared on the physical TV, that sound was audible, or
 that a specific requested movie played. User input between samples can affect
 the observation; the runner does not acquire exclusive ownership.
+
+The native lane in these examples requires a separately provisioned Android
+maintenance agent. It is not a generic native inspector for Tauri, LG or iOS.
+Without that binding, `not_bound` is expected. Offline verification needs no
+controller or credentials: it validates the export and recomputes the verdict,
+but does not authenticate the report's origin.
+
+For an intentionally requested reload, retain its request ID and inspect the
+receipt instead of repeating the effect:
+
+```sh
+ott --receipt l restart
+# Replace the example ID with request_id from the JSON line on stderr.
+ott l operation 0123456789abcdef0123456789abcdef --json
+```
+
+Web receipt history is lost on reload, so this lookup may return `unknown` even
+when the reload succeeded. Check the new runtime with `doctor`; an
+`accepted`/`handler_completed` receipt alone does not establish that playback
+recovered. The Android agent's separate durable history is described in the
+controller's workbench reference.
 
 ## What the player exposes
 

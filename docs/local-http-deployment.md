@@ -1,5 +1,12 @@
 # Local HTTP player deployment
 
+This page describes the repository's source-build installation scripts and
+their default four-HTTP-listener layout. For coordinated replacement of an
+existing macOS app, local server and web files, see the
+[local delivery and recovery runbook](macos-local-delivery.md). That runbook
+distinguishes the separately supplied deployment toolkit from these scripts,
+and covers backups, preserved profiles, runtime acceptance and rollback.
+
 The local macOS player runs one `ottplay-server` process with four HTTP
 listeners bound to `0.0.0.0` (all IPv4 interfaces, including loopback and LAN).
 On this Mac the addresses remain:
