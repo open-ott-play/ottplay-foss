@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Update SQLx and tauri-utils within their existing version requirements and use
+  Rustls PKI types for PEM input, removing seven unmaintained packages from the
+  application lockfile.
+
 - The 1.1.53 development line adds ordered remote Plex queues, preserves an
   explicit native Play request while buffering, and improves contextual Unicode
   search and grapheme-safe editor input.
@@ -29,6 +33,11 @@
 
 ### Upgrade
 
+Rebuild with the committed Cargo lockfile. Existing certificate chains and
+PKCS#8 server keys remain compatible; malformed later PEM sections still reject
+startup. This dependency update does not require a database migration or TLS
+file conversion.
+
 Retain provider profiles and exported settings before replacing a web, desktop or
 container installation. Follow the platform-specific build/install instructions;
 Android APK/AAB packages are maintained in ottplay-android. Automatic updating is
@@ -49,6 +58,13 @@ external CLI; setup `--cli-only` is now a compatibility no-op. Existing external
 CLI installations are left in place.
 
 ### Security
+
+The application dependency update removes seven maintenance warnings while
+retaining the existing Tauri/Wry/Tao/GLib patches. Three upstream maintenance
+warnings, the already-backported GLib version warning and historical vendor
+lockfile findings remain documented in the
+[Rust dependency security review](docs/rust-dependency-security.md). No advisory
+ignore list is added.
 
 Release artifacts retain their immutable build provenance and checksums. The new
 notes validation rejects incomplete publication metadata before modifying durable

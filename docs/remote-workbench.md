@@ -61,8 +61,9 @@ routing for existing protocol-1 mutation commands.
 The operation journal holds at most 128 request IDs. It stores action names and
 receipt stages, never parameters or raw errors. `accepted` means an after-ACK
 effect was queued; it does not establish that the effect is still pending. A
-disconnect, server rejection or ACK deadline can discard the effect without
-updating that receipt. `invoked` means the handler ran; the handler can still
+disconnect or ACK deadline can discard the effect without updating that
+receipt. An HTTP 404 response to the result post also discards the pending effect
+without updating that receipt. `invoked` means the handler ran; the handler can still
 decline its effect if policy or ownership changed. The current journal does not
 emit `observed`: a moving decoder could belong to a later command or a local
 seek. A retained receipt reports `expired` after ten minutes. Eviction or reload

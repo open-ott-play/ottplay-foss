@@ -5,6 +5,7 @@ mod msx;
 mod nas_library;
 mod stalker_api;
 mod swop;
+mod tls;
 mod vportal_api;
 
 use anyhow::{bail, Context};
@@ -19,14 +20,10 @@ use axum::{
 use chrono::Utc;
 use clap::Parser;
 use once_cell::sync::{Lazy, OnceCell};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::ServerConfig;
-use rustls_pemfile::certs as pemfile_certs;
-use rustls_pemfile::pkcs8_private_keys;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::BufReader;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::net::TcpListener;
@@ -405,21 +402,12 @@ where
 
 fn build_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<ServerConfig>> {
     // Load certificate
-    let mut cert_file = BufReader::new(File::open(cert_path).context("cannot open certificate")?);
-    let certs: Vec<CertificateDer> = pemfile_certs(&mut cert_file)
-        .collect::<Result<Vec<_>, _>>()
-        .context("invalid certificate")?;
+    let cert_file = File::open(cert_path).context("cannot open certificate")?;
+    let certs = tls::read_certificates(cert_file)?;
 
     // Load private key
-    let mut key_file = BufReader::new(File::open(key_path).context("cannot open private key")?);
-    let keys: Vec<PrivateKeyDer> = pkcs8_private_keys(&mut key_file)
-        .map(|k| k.map(PrivateKeyDer::from))
-        .collect::<Result<Vec<_>, _>>()
-        .context("invalid private key")?;
-    let key = keys
-        .into_iter()
-        .next()
-        .context("no PKCS#8 private key found")?;
+    let key_file = File::open(key_path).context("cannot open private key")?;
+    let key = tls::read_private_key(key_file)?;
 
     let mut config = ServerConfig::builder()
         .with_no_client_auth()

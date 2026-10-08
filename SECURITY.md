@@ -24,3 +24,5 @@ unmaintained historical versions. These are project policies, not assertions
 about the existence or response times of past reports.
 
 See [security design](docs/security-design.md) for project-specific trust boundaries.
+See the [Rust dependency review](docs/rust-dependency-security.md) for resolved
+advisories, remaining maintenance warnings and preserved upstream lockfiles.
