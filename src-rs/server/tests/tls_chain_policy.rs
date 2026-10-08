@@ -155,6 +155,8 @@ fn run_server(fixture: &Fixture, accepted: bool) {
             ])
             .current_dir(&fixture.0)
             .env_clear()
+            // Winsock loads system providers using SystemRoot on Windows.
+            .envs(std::env::var_os("SystemRoot").map(|value| ("SystemRoot", value)))
             .env("EPG_URLS", "http://127.0.0.1:1/synthetic-unavailable")
             .stdout(log.try_clone().unwrap())
             .stderr(log)
