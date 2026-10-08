@@ -189,6 +189,89 @@ assert.equal(
     "expired"
 );
 
+// Redelivery refreshes one journal position, rather than leaving a second
+// eviction entry that can delete the newer receipt. Old callbacks keep their
+// own record object and cannot rewrite the refreshed operation's outcome.
+{
+    const journal = install(w);
+    const replayId = "e".repeat(32);
+    const unique = (value) => value.toString(16).padStart(32, "0");
+    function receipt(operationId) {
+        let value;
+        journal.request(
+            {
+                params: {
+                    operation_id: operationId,
+                    runtime,
+                    section: "operation",
+                    version: 1,
+                },
+            },
+            (response) => {
+                value = response.data.data;
+            }
+        );
+        return value;
+    }
+    function record(operationId, status = "ok") {
+        journal.execute(
+            { action: "play", id: operationId, params: {} },
+            () => {},
+            undefined,
+            (_item, done) => done({ data: {}, status })
+        );
+    }
+    let oldEffect;
+    journal.execute(
+        { action: "restart", id: replayId, params: {} },
+        () => {},
+        (effect) => {
+            oldEffect = effect;
+        },
+        (_item, done, defer) => {
+            defer(() => {});
+            done({ data: {}, status: "ok" });
+        }
+    );
+    for (let index = 0; index < 127; index++) record(unique(index));
+    record(replayId, "unsupported");
+    assert.equal(
+        receipt(replayId).state,
+        "unsupported",
+        "Refreshing a full journal keeps the newest receipt"
+    );
+    oldEffect();
+    assert.equal(
+        receipt(replayId).state,
+        "unsupported",
+        "A stale ACK callback cannot replace the replay receipt"
+    );
+    assert.equal(receipt(replayId).action, "play");
+    record(unique(127));
+    assert.equal(receipt(replayId).state, "unsupported");
+    assert.equal(
+        receipt(unique(0)).state,
+        "unknown",
+        "Eviction removes the actual oldest distinct operation"
+    );
+    time += 600001;
+    assert.equal(receipt(replayId).state, "expired");
+    record(replayId);
+    assert.equal(
+        receipt(replayId).state,
+        "invoked",
+        "An expired ID may have a new receipt, without an observed outcome claim"
+    );
+    for (let index = 1000; index < 1127; index++) record(unique(index));
+    assert.equal(
+        receipt(replayId).state,
+        "invoked",
+        "Exactly 128 distinct receipts remain retained"
+    );
+    record(unique(1127));
+    assert.equal(receipt(replayId).state, "unknown");
+}
+
 // Build identity describes the loaded code and explicitly degrades dirty sources.
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "ott-build-identity-"));
 try {

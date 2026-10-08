@@ -195,6 +195,8 @@ export function installRemoteInspection(w: any): any {
                 time: Date.now(),
             };
             records[item.id] = record;
+            var previous = order.indexOf(item.id);
+            if (previous >= 0) order.splice(previous, 1);
             order.push(item.id);
             while (order.length > 128) delete records[order.shift()!];
             var deferred = false;
