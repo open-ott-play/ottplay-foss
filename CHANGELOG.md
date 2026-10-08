@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Make full-screen Plex Left/Right seek backward/forward by 10 seconds on LG TVs
+  and other players, including remote Plex queues, instead of triggering the
+  configured volume, menu or information shortcuts.
 - Translate remote-command notifications and touchscreen-lock messages in all
   88 interface languages. Use the same Unicode search rules for remote channel
   selection and media-library filtering, including filtered shuffle playback.

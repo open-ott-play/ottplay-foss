@@ -256,8 +256,13 @@ test("Fullscreen arrows follow the playing Plex source without changing the sele
         );
         h.c.settings.auFun = 19;
         h.c.settings.adFun = 18;
+        h.c.settings.alFun = 14;
+        h.c.settings.arFun = 13;
+        h.c.sVolumeStep = 5;
         const seeks = [];
+        const volumes = [];
         h.c.shiftArchive = (seconds) => seeks.push(seconds);
+        h.c.changeVolume = (delta) => volumes.push(delta);
         const press = (key) =>
             h.c.handleMainKey(key, {
                 preventDefault() {},
@@ -266,6 +271,12 @@ test("Fullscreen arrows follow the playing Plex source without changing the sele
         h.call("play", ["1", "2", "3"]);
         h.prepare(["1", "2", "3"]);
         h.resolve("1");
+        press(h.c.keys.LEFT);
+        press(h.c.keys.RIGHT);
+        assert.deepEqual(seeks.splice(0), [-10, 10]);
+        assert.deepEqual(volumes, []);
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.queue.snapshot().index, 0);
         press(h.c.keys.UP);
         assert.equal(
             h.requests.length,
@@ -294,6 +305,9 @@ test("Fullscreen arrows follow the playing Plex source without changing the sele
             [60, -60],
             "The selected provider's own video keeps configured seeking"
         );
+        press(h.c.keys.LEFT);
+        press(h.c.keys.RIGHT);
+        assert.deepEqual(volumes, [-5, 5]);
     }
 });
 test("preview validates order without publishing, resolving streams or modifying saved settings", () => {

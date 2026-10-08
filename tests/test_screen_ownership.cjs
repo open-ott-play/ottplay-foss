@@ -213,6 +213,54 @@ for (const name of [
         { ecmaVersion: 5 }
     );
 }
+test("webOS Plex arrows seek only behind no list or dialog and preserve volume keys", ({
+    w,
+    key,
+    events,
+}) => {
+    w.version = "test";
+    w.eval(functions("src/core/index.ts", ["stbEventToKeyCode"]));
+    w.eval(
+        fs.readFileSync(path.join(root, "devices/lg/webos/device.js"), "utf8")
+    );
+    w.eval(functions("src/key-handler/index.ts", ["handleMainKey", "keyFun"]));
+    const seeks = [];
+    w.playType = -1e11;
+    w.settings = { alFun: 14, arFun: 13, volumeStep: 5 };
+    w.__ottMedia = { current: () => ({ ref: { sourceId: "plex@remote" } }) };
+    w.shiftArchive = (seconds) => seeks.push(seconds);
+    key(37);
+    key(39);
+    for (const arrow of ["ArrowLeft", "ArrowRight"])
+        w.keyHandler({ key: arrow, preventDefault() {}, stopPropagation() {} });
+    assert.deepEqual(seeks.splice(0), [-10, 10, -10, 10]);
+    assert.deepEqual(events, []);
+
+    w.listArray = ["One", "Two"];
+    w.listKeyHandler = () => false;
+    w.showPage();
+    key(39);
+    assert.deepEqual(events.splice(0), [["move", 25]]);
+    assert.deepEqual(seeks, []);
+    const dialogKeys = [];
+    w.$("#dialogbox").show();
+    w.dialogBoxKeyHandler = (code) => dialogKeys.push(code);
+    key(37);
+    assert.deepEqual(dialogKeys, [37]);
+    assert.deepEqual(seeks, []);
+    w.$("#dialogbox").hide();
+    w.dialogBoxKeyHandler = null;
+    w.closeList();
+    events.length = 0;
+    w.sVolumeStep = 5;
+    key(447);
+    key(448);
+    assert.deepEqual(events, [
+        ["volume", 5],
+        ["volume", -5],
+    ]);
+    assert.deepEqual(seeks, []);
+});
 test("screen invalidation detaches every old owner before reentrant cleanup", ({
     w,
 }) => {
