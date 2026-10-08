@@ -58,14 +58,16 @@ runtime and section. Updated players leave another runtime's inspection queued.
 This is response validation, not a new authentication mechanism or exclusive
 routing for existing protocol-1 mutation commands.
 
-The operation journal holds at most 128 request IDs for ten minutes. It stores
-action names and receipt stages, never parameters or raw errors. `accepted`
-means an after-ACK effect is pending; `invoked` means the handler ran. Even an
-invoked handler can decline its deferred effect if policy or ownership changed.
-The current journal does not emit `observed`: a moving decoder could belong to a
-later command or a local seek. A reload loses this in-memory history; `unknown`
-does not mean that an earlier command was not executed. Never replay a mutation
-automatically after losing its response.
+The operation journal holds at most 128 request IDs. It stores action names and
+receipt stages, never parameters or raw errors. `accepted` means an after-ACK
+effect was queued; it does not establish that the effect is still pending. A
+disconnect, server rejection or ACK deadline can discard the effect without
+updating that receipt. `invoked` means the handler ran; the handler can still
+decline its effect if policy or ownership changed. The current journal does not
+emit `observed`: a moving decoder could belong to a later command or a local
+seek. A retained receipt reports `expired` after ten minutes. Eviction or reload
+loses this in-memory history; `unknown` does not mean that an earlier command was
+not executed. Never replay a mutation automatically after losing its response.
 
 An older player without `caps.inspect` is reported as unsupported. An older
 controller that rejects the new action is reported as `unsupported_controller`.
