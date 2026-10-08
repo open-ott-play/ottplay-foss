@@ -720,6 +720,149 @@ test("list handler opening replacement cannot move replacement focus on fallthro
     key(40);
     assert.deepEqual(events, []);
 });
+test("physical editor deletion and insertion preserve grapheme boundaries", ({
+    w,
+}) => {
+    w.eval(keyboardCode());
+    w._setCase(false);
+    w.editKey = w.editKey1;
+    w.$("#listEdit").show();
+    const port = w.__ottClassicScreenPort;
+    port.openEditor();
+    function key(value, code) {
+        port.dispatch(code, { key: value }, () =>
+            assert.fail("editor owns input")
+        );
+    }
+    for (const value of [
+        "📺",
+        "e\u0301",
+        "👨‍👩‍👧‍👦",
+        "🇮🇳",
+        "\u0301\u0308",
+        "\r\n",
+    ]) {
+        w.editvar = "\n" + value + "z";
+        w.editPos = 1 + value.length;
+        key("Backspace", 8);
+        assert.equal(
+            w.editvar,
+            "\nz",
+            "physical Backspace removes one grapheme"
+        );
+        assert.equal(w.editPos, 1);
+        w.editvar = "\n" + value + "z";
+        w.editPos = 1;
+        key("Delete", 46);
+        assert.equal(w.editvar, "\nz", "physical Delete removes one grapheme");
+        assert.equal(w.editPos, 1);
+    }
+    for (const [physical, position] of [
+        ["Backspace", 3],
+        ["Delete", 2],
+    ]) {
+        w.editvar = "🇦x🇧🇨";
+        w.editPos = position;
+        key(physical, physical === "Delete" ? 46 : 8);
+        assert.equal(w.editvar, "🇦🇧🇨");
+        assert.equal(
+            w.editPos,
+            4,
+            "joined regional indicators realign the caret"
+        );
+    }
+    w.editvar = "\u0301";
+    w.editPos = 0;
+    key("a", 65);
+    assert.equal(w.editvar, "a\u0301");
+    assert.equal(w.editPos, 2, "physical insertion joins the following mark");
+    key("Backspace", 8);
+    assert.equal(w.editvar, "");
+    for (const [position, snapped] of [
+        [-4, 0],
+        [NaN, 0],
+        [0.5, 2],
+        [1, 2],
+        [99, 3],
+    ]) {
+        w.editvar = "📺z";
+        w.editPos = position;
+        key("a", 65);
+        assert.equal(
+            w.editvar,
+            "📺z".slice(0, snapped) + "a" + "📺z".slice(snapped)
+        );
+        assert.equal(w.editPos, snapped + 1);
+    }
+    for (const character of ["𐐀", "𐒰", "📺"]) {
+        w.editvar = "az";
+        w.editPos = 1;
+        key(character, 65);
+        assert.equal(
+            w.editvar,
+            "a" + character + "z",
+            "physical supplementary scalar inserts intact"
+        );
+        assert.equal(w.editPos, 3);
+        key("Backspace", 8);
+        assert.equal(w.editvar, "az");
+    }
+    for (const name of [
+        "Dead",
+        "Delete",
+        "Backspace",
+        "ArrowLeft",
+        "Enter",
+        "ab",
+        "\ud800x",
+        "x\udc00",
+        "\udc00\ud800",
+    ]) {
+        assert.equal(
+            port.normalize(0, { key: name }).text,
+            undefined,
+            "named key or malformed pair is not text"
+        );
+    }
+    w.editvar = "📺";
+    w.editPos = 1;
+    key("Backspace", 8);
+    assert.equal(
+        w.editvar,
+        "",
+        "interior cursor never leaves half a surrogate"
+    );
+    w.editvar = "📺";
+    w.editPos = 2;
+    key("Delete", 46);
+    assert.equal(w.editvar, "📺", "Delete at end is inert, not a period");
+    w.editPos = 0;
+    key("Backspace", 8);
+    assert.equal(w.editvar, "📺", "Backspace at start is inert");
+});
+test("native input Backspace and Delete remain browser-owned", ({ w }) => {
+    w.editvar = "📺";
+    w.showEditKey2();
+    const input = w.document.getElementById("editvar");
+    let prevented = false;
+    for (const [key, code] of [
+        ["Backspace", 8],
+        ["Delete", 46],
+    ]) {
+        w.keyHandler({
+            key,
+            keyCode: code,
+            preventDefault() {
+                prevented = true;
+            },
+            stopPropagation() {},
+            target: input,
+        });
+    }
+    assert.equal(prevented, false, "native editor handles its own deletion");
+    assert.equal(input.value, "📺");
+    assert.equal(w.editvar, "📺");
+});
 test("nested dialog/editor suspend list and dialog closes once", ({
     w,
     key,
