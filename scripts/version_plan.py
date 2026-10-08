@@ -25,7 +25,8 @@ import os
 import plistlib
 import re
 import stat
-import subprocess
+# Subprocess calls below use argument vectors with shell=False.
+import subprocess  # nosec B404
 import sys
 import tarfile
 import tempfile
@@ -785,6 +786,11 @@ def _python_edit(raw, declaration, value):
     start = sum(map(len, lines[: node.lineno - 1])) + node.col_offset
     end = sum(map(len, lines[: node.end_lineno - 1])) + node.end_col_offset
     literal = repr(replacement).encode()
+    if isinstance(replacement, str) and raw[start:end].startswith(b'"'):
+        # Preserve double-quoted source constants so version-only PRs do not
+        # change a repository's formatter style. JSON strings are Python
+        # string literals for the validated numeric/candidate version values.
+        literal = json.dumps(replacement, ensure_ascii=False).encode()
     result = raw[:start] + literal + raw[end:]
     ast.parse(result)
     return result, [node.value]
@@ -1043,7 +1049,8 @@ def verify_checkout(root, policy, plan):
     root = Path(root).resolve(strict=True)
     if not (root / ".git").exists():
         return
-    head = subprocess.check_output(
+    # Developer/CI toolchain selected by the invoking operator via PATH.
+    head = subprocess.check_output(  # nosec B603, B607
         ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
     ).strip()
     require(
@@ -1061,7 +1068,8 @@ def verify_checkout(root, policy, plan):
     }
     for name, declarations in grouped.items():
         _relative(name)
-        original = subprocess.check_output(
+        # Developer/CI toolchain selected by the invoking operator via PATH.
+        original = subprocess.check_output(  # nosec B603, B607
             [
                 "git",
                 "-C",
