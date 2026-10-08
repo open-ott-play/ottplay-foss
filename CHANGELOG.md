@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Run a shorter validation suite for beta publication after pull-request checks:
+  lint, types and core playback/provider/UI regressions. Pull requests, nightlies
+  and release candidates retain full validation; every beta still builds and
+  verifies the complete package inventory.
 - Make full-screen Plex Left/Right seek backward/forward by 10 seconds on LG TVs
   and other players, including remote Plex queues, instead of triggering the
   configured volume, menu or information shortcuts.

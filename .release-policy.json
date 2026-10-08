@@ -7,6 +7,9 @@
     "dependency-review.yml",
     "container-validation.yml"
   ],
+  "channel_validation_workflows": {
+    "beta": ["beta-checks.yml"]
+  },
   "artifact_pattern": "release-assets*",
   "local_checks": [
     "npm ci --ignore-scripts",
@@ -140,7 +143,7 @@
         "value": "package"
       }
     ],
-    "toolkit_revision": "ab9f337e5fa49c263c873d65c9e50dde7249af56"
+    "toolkit_revision": "1bd42a9dcaf2695ff6a4c28cf94ce4329ebb9267"
   },
   "asset_restrictions": [
     {
