@@ -141,7 +141,11 @@ const { gzipSync } = require("node:zlib");
 // together measure 788914 / 245600 on Node 22.23.3. Add their measured 5150 /
 // 1605 cost, rounded to 5200 / 1650, to main's 784300 / 244500 cap so the
 // existing native and release-version reserve is retained exactly once.
-const BUDGET = Object.freeze({ bytes: 789500, gzipBytes: 246150 });
+// Read-only doctor snapshots, exact-target inspection and bounded operation
+// receipts add 14407 raw / 4466 gzip bytes over 67618611 on Node 22.23.3:
+// entry 803321 / 250066. Allocate 14500 / 4500 and retain the prior native,
+// embedded source hash and release suffix allowance. No provider code moved.
+const BUDGET = Object.freeze({ bytes: 804000, gzipBytes: 250650 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -215,7 +219,8 @@ const BUDGET = Object.freeze({ bytes: 789500, gzipBytes: 246150 });
 // 287304, including every optional provider. Add the measured 12697 / 4043
 // cost, rounded to 12700 / 4100, to main's 890400 / 283700 cap. This preserves
 // main's reserve without counting the common branch reserve twice.
-const TOTAL_BUDGET = Object.freeze({ bytes: 903100, gzipBytes: 287800 });
+// The workbench entry increment is counted once in the complete payload too.
+const TOTAL_BUDGET = Object.freeze({ bytes: 917600, gzipBytes: 292300 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

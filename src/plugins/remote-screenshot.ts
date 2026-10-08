@@ -36,6 +36,7 @@ export function installRemoteScreenshot(
     var binding: ScreenshotConfig | null = null;
     var generation = 0;
     var pending = false;
+    var probing = false;
     var capturing = false;
     var disposed = false;
     var cancelBrowser: (() => void) | null = null;
@@ -161,6 +162,30 @@ export function installRemoteScreenshot(
                 : available
                   ? "ready"
                   : "permission_required",
+        };
+    }
+    // Pure observation for doctor: never synchronize configuration or release
+    // a selected source. A stale binding is unknown until normal lifecycle sync.
+    function peek(): any {
+        var config = currentConfig();
+        var current =
+            !disposed &&
+            w.__ottRemoteScreenshot === hook &&
+            sameConfig(config, activeConfig);
+        var available = current && ready(config);
+        return {
+            busy: capturing || pending || probing,
+            connected: !!config,
+            known: current && !probing,
+            needsSourceSelection:
+                current &&
+                !!config &&
+                supported &&
+                !nativeCapture &&
+                !available,
+            ready: available,
+            source: source,
+            supported: supported,
         };
     }
     function notify(): void {
@@ -508,6 +533,7 @@ export function installRemoteScreenshot(
         configurationChanged: function () {
             stop();
         },
+        peek: peek,
         selectSource: selectSource,
         snapshot: function () {
             var view = status();
@@ -527,9 +553,11 @@ export function installRemoteScreenshot(
         current: () => boolean
     ): void {
         nativeCurrent = current;
+        probing = true;
         try {
             probe().then(
                 function (caps: any) {
+                    probing = false;
                     // Discovery is read-only and can settle while this page is
                     // suspended; connection authority stays disabled until resume.
                     if (w.__ottRemoteScreenshot !== hook || !current()) return;
@@ -546,10 +574,12 @@ export function installRemoteScreenshot(
                     notify();
                 },
                 function () {
+                    probing = false;
                     notify();
                 }
             );
         } catch (_) {
+            probing = false;
             /* Older shell: remain unsupported. */
         }
     }

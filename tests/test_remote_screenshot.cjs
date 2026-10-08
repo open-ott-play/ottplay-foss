@@ -154,6 +154,76 @@ async function test(name, fn) {
     console.log("PASS " + name);
 }
 (async () => {
+    await test("doctor peek reads capabilities without syncing or releasing a source", async () => {
+        const native = harness();
+        assert.equal(
+            native.hook.peek().known,
+            false,
+            "Pending native probe is unknown"
+        );
+        assert.equal(native.hook.peek().busy, true);
+        await native.accept();
+        assert.equal(native.hook.peek().ready, true);
+        const calls = native.calls.length;
+        const statuses = native.statuses.length;
+        native.config({ token: "E".repeat(32) });
+        assert.equal(
+            native.hook.peek().known,
+            false,
+            "Changed connection must not inherit cached ready state"
+        );
+        assert.equal(native.hook.peek().ready, false);
+        assert.equal(native.calls.length, calls);
+        assert.equal(native.statuses.length, statuses);
+
+        let stopped = 0;
+        let prompts = 0;
+        const track = {
+            addEventListener() {},
+            getSettings: () => ({ displaySurface: "browser" }),
+            readyState: "live",
+            stop: () => stopped++,
+        };
+        const stream = {
+            active: true,
+            getAudioTracks: () => [],
+            getTracks: () => [track],
+            getVideoTracks: () => [track],
+        };
+        const browser = harness(false, {
+            ImageCapture: class {
+                grabFrame() {}
+            },
+            isSecureContext: true,
+            navigator: {
+                mediaDevices: {
+                    getDisplayMedia: () => {
+                        prompts++;
+                        return Promise.resolve(stream);
+                    },
+                },
+            },
+        });
+        assert.equal(browser.hook.peek().needsSourceSelection, true);
+        assert.equal(prompts, 0);
+        browser.hook.selectSource(true);
+        await tick();
+        assert.equal(browser.hook.peek().ready, true);
+        browser.config({ address: "https://other.example" });
+        assert.equal(browser.hook.peek().known, false);
+        assert.equal(
+            stopped,
+            0,
+            "Read-only peek must not stop selected tracks"
+        );
+        assert.equal(prompts, 1);
+        browser.hook.configurationChanged();
+        assert.equal(
+            stopped,
+            1,
+            "Normal lifecycle still retires the old source"
+        );
+    });
     await test("connected native probe is read-only and automatically enables screenshots", async () => {
         const h = harness();
         assert.equal(h.hook.snapshot().state, "unsupported");

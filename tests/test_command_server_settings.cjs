@@ -221,6 +221,21 @@ function fixture(initial = []) {
     );
     w.eval(compile(connectionState.getText(index)));
     w.eval(functions("src/index.ts", ["remoteControlConfig"]));
+    w.eval(
+        functions("src/plugins/remote-inspect.ts", ["installRemoteInspection"])
+    );
+    const inspectionState = index.statements.find(
+        (node) =>
+            ts.isVariableStatement(node) &&
+            node.declarationList.declarations.some(
+                (decl) => decl.name.getText(index) === "remoteInspection"
+            )
+    );
+    assert.ok(
+        inspectionState,
+        "Production inspection wrapper is installed before delivery"
+    );
+    w.eval(compile(inspectionState.getText(index)));
     w.eval(assignment("__ottCommandServer"));
     w.eval(
         functions("src/plugins/control-discovery.ts", [

@@ -30,6 +30,7 @@ module.exports = defineConfig({
         "remote-diagnostics.spec.cjs",
         "remote-screenshot.spec.cjs",
         "remote-plex.spec.cjs",
+        "remote-doctor.spec.cjs",
     ],
     timeout: 30000,
     use: {
