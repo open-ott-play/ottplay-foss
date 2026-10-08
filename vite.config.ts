@@ -42,6 +42,9 @@ const { stageHostedSwop } = classicRequire(
 const { configureNativeDev } = classicRequire(
     resolve(__dirname, "scripts/native-dev.cjs")
 );
+const { embedPlayerBuildIdentity } = classicRequire(
+    resolve(__dirname, "scripts/player-build-identity.cjs")
+);
 const { assembleClassic, CLASSIC_MAIN_MODULES, CLASSIC_PROVIDER_BUNDLES } =
     classicRequire(resolve(__dirname, "scripts/classic-bundle.cjs"));
 const { isRetiredRuntimeScript } = classicRequire(
@@ -383,7 +386,10 @@ export default defineConfig(({ mode }) => ({
 
                 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
                 const version = pkg.version || "local";
-                bundle = bundle.replace(/__OTTP_VERSION__/g, version);
+                bundle = embedPlayerBuildIdentity(
+                    bundle.replace(/__OTTP_VERSION__/g, version),
+                    __dirname
+                );
 
                 const outPath = join(outDir, "player.js");
                 // Optimize local implementation details while preserving the classic ABI.
