@@ -11,6 +11,8 @@
   reasons, loaded-bundle identity and a bounded journal of operation receipts.
   Inspection does not create a playback backend, capture a screen or change
   saved settings.
+- Security analysis now includes Python release tools, Actions workflows, Rust
+  source and the compiled iOS Swift application.
 - Release publication now reads this version's reviewed notes from the exact
   source commit and verifies them before writing publication evidence or
   advancing the durable publication counter.
