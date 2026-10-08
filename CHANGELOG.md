@@ -40,6 +40,13 @@
 - Release notes accept optional closing hashes in Markdown headings while
   continuing to reject duplicate version sections.
 
+- Plex file selection immediately shows a loading indicator with a cancel action;
+  full-screen Up/Down controls select the next/previous file, including remote
+  queues, while stale loading callbacks cannot replace a newer selection.
+- macOS releases built without Apple signing credentials now receive a complete
+  ad-hoc app signature before packaging. Publication verifies both the original
+  app and its extracted ZIP copy, rejecting incomplete or damaged signatures.
+
 ### Upgrade
 
 Rebuild with the committed Cargo lockfile. The Rust server now rejects supplied
