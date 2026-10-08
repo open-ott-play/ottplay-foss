@@ -6,6 +6,7 @@ mod nas_library;
 mod stalker_api;
 mod swop;
 mod tls;
+mod tls_key_policy;
 mod vportal_api;
 
 use anyhow::{bail, Context};
@@ -404,6 +405,7 @@ fn build_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<Serve
     // Load certificate
     let cert_file = File::open(cert_path).context("cannot open certificate")?;
     let certs = tls::read_certificates(cert_file)?;
+    tls_key_policy::validate_chain(&certs)?;
 
     // Load private key
     let key_file = File::open(key_path).context("cannot open private key")?;
