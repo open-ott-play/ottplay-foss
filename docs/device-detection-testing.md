@@ -75,7 +75,7 @@ and [system UI visibility events](https://webostv.developer.lge.com/develop/guid
 ## Official LG webOS TV Simulator
 
 The launcher installs the official [LG Simulator](https://webostv.developer.lge.com/develop/tools/simulator-installation)
-and webOS CLI if missing. Automatic simulator installation targets webOS TV 26
+if missing; it does not install or require the webOS CLI. Automatic simulator installation targets webOS TV 26
 on Apple Silicon; other versions and hosts can use a separately installed SDK
 via `--sdk`. SDK packages are downloaded from LG, never redistributed here.
 
@@ -87,7 +87,7 @@ Run the hosted app against the existing local stack:
 
 The defaults are webOS TV 26 and `http://127.0.0.1:8443/`. The launcher checks
 `/health` and the player page, prepares `build/device-webos-simulator`, then
-calls LG's `ares-launch`. It does not start another server, deploy a build or
+starts the newest compatible installed Simulator with the app directory. It does not start another server, deploy a build or
 require local `dist/` files. The player uses the build already deployed to the
 stack. Port 8090 belongs to the playlist proxy, not the player.
 
@@ -97,25 +97,27 @@ To install prerequisites without launching the player:
 ./scripts/setup-webos-simulator.sh
 ```
 
-The shell launcher checks `WEBOS_CLI`, then `ares-launch` on `PATH`, then that
-user-local installation at `~/.local/share/ottplay/webos-cli`. Existing simulator
-registrations and installations are reused when their files still exist. A
-missing default SDK is restored automatically; temporary download files are
-removed after setup. Setup checks the pinned archive size and SHA-256 before
-extraction. The CLI tarball is separately checked against its pinned size and
-SHA-512 before npm runs. CLI installation disables dependency lifecycle scripts
-and publishes only a complete staged installation; an existing incomplete CLI
-directory is left untouched. Read [CLI dependency security](webos-cli-security.md)
-for upstream limitations. `--no-install` disables automatic setup on launch; setup's `--archive`
-option accepts an already downloaded official ZIP. To select another extracted
+The bundled launcher uses only Node.js built-ins and passes arguments without a
+shell. Existing simulator registrations and installations are reused when their
+files still exist. A missing default SDK is restored automatically; temporary
+download files are removed after setup. Setup checks the pinned archive size and
+SHA-256 before extraction. `--no-install` disables automatic setup on launch;
+setup's `--archive` option accepts an already downloaded official ZIP.
+
+An explicit `--cli /path/to/ares-launch` or `WEBOS_CLI` selects an externally
+managed CLI. It is never installed or selected from `PATH` automatically.
+Read [CLI dependency security](webos-cli-security.md) before using this override.
+The older setup `--cli-only` option is a compatibility no-op because the bundled
+launcher needs no npm installation. To select another extracted
 Simulator directory:
 
 ```sh
 ./scripts/run-webos-simulator.sh --sdk "$HOME/Applications/webOS_TV_26_Simulator_1.5.0"
 ```
 
-The CLI remembers the directory for subsequent launches. Keep the SDK in a
-persistent directory, not `/tmp`. The directory passed to `--sdk` contains the
+Use `WEBOS_SDK_PATH` or repeat `--sdk` for subsequent launches from a custom
+location. Existing CLI registrations remain readable and are not rewritten.
+Keep the SDK in a persistent directory, not `/tmp`. The directory passed to `--sdk` contains the
 Simulator `.app` on macOS, rather than being the `.app` itself. Review the vendor
 license documents; any license dialogs remain interactive.
 

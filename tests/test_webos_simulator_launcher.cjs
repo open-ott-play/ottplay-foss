@@ -7,6 +7,7 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const { promisify } = require("node:util");
+const nativeLauncher = require("../scripts/launch-webos-simulator.cjs");
 
 const exec = promisify(execFile);
 const root = path.resolve(__dirname, "..");
@@ -44,6 +45,11 @@ for (const file of [
     fs.mkdirSync(path.dirname(path.join(fixture, file)), { recursive: true });
     fs.copyFileSync(path.join(root, file), path.join(fixture, file));
 }
+// This fixture isolates shell routing; real native argv execution is covered below.
+fs.writeFileSync(
+    path.join(fixture, "scripts/launch-webos-simulator.cjs"),
+    'require("node:fs").writeFileSync(process.env.CAPTURE_FILE, JSON.stringify(process.argv.slice(2)));\n'
+);
 fs.mkdirSync(sdk);
 fs.mkdirSync(env.HOME);
 // Keep a globally installed ares-launch from escaping the fixture.
@@ -113,9 +119,6 @@ if (!args.includes('--cli-only')) {
     fs.mkdirSync(path.dirname(binary), { recursive: true });
     fs.writeFileSync(binary, '#!/bin/sh\\nexit 0\\n', {mode: 0o755});
 }
-const cli = path.join(process.env.HOME, '.local/share/ottplay/webos-cli/node_modules/.bin/ares-launch');
-fs.mkdirSync(path.dirname(cli), {recursive: true});
-fs.copyFileSync(process.env.MOCK_CLI, cli);
 JS
 `,
     { mode: 0o755 }
@@ -221,12 +224,16 @@ const server = http.createServer((request, response) => {
             ["--version", "26", "--destination", managedSdk]
         );
         assert.deepEqual(JSON.parse(fs.readFileSync(capture, "utf8")), [
-            "-s",
             "26",
-            "-sp",
             managedSdk,
             app,
         ]);
+        assert(
+            !fs.existsSync(
+                path.join(env.HOME, ".local/share/ottplay/webos-cli")
+            ),
+            "Default launch must never install the vulnerable external CLI"
+        );
         fs.unlinkSync(capture);
         fs.unlinkSync(bootstrapCapture);
         await run(["--url", origin], { WEBOS_CLI: "" });
@@ -405,118 +412,107 @@ const server = http.createServer((request, response) => {
             "Failed setup must remove its temporary downloads"
         );
         const cliHome = path.join(fixture, "CLI-only home");
-        const npmCapture = path.join(fixture, "npm args.json");
+        const noCli = await exec("bash", [realSetup, "--cli-only"], {
+            env: { ...setupEnv, HOME: cliHome, WEBOS_CLI: "" },
+        });
+        assert.match(noCli.stdout, /No CLI installation is needed/);
+        assert(
+            !fs.existsSync(cliHome),
+            "Compatibility option must not install npm packages"
+        );
+
+        // Real native launcher: exact argv, numerical release ordering and no shell.
+        const nativeSdk = path.join(
+            fixture,
+            "native SDK 'quotes' $(touch NEVER_CREATED)"
+        );
+        const nativeApp = path.join(
+            fixture,
+            'native app "quotes"; touch NEVER_CREATED'
+        );
+        fs.mkdirSync(nativeSdk);
+        fs.mkdirSync(nativeApp);
+        fs.writeFileSync(path.join(nativeApp, "appinfo.json"), "{}");
+        createSimulator(nativeSdk, "26", "1.9.0");
+        createSimulator(nativeSdk, "26", "1.10.0");
+        createSimulator(nativeSdk, "25", "99.99.99");
+        const nativeOptions = { app: nativeApp, sdk: nativeSdk, version: "26" };
+        const macCommand = nativeLauncher.launchCommand(
+            nativeOptions,
+            "darwin"
+        );
+        assert.equal(macCommand.file, "/usr/bin/open");
+        assert.deepEqual(macCommand.args, [
+            path.join(nativeSdk, "webOS_TV_26_Simulator_1.10.0.app"),
+            "--args",
+            nativeApp,
+            "{}",
+        ]);
+        assert.throws(
+            () =>
+                nativeLauncher.launchCommand(
+                    { ...nativeOptions, version: "24" },
+                    "darwin"
+                ),
+            /No executable/
+        );
+        assert.throws(
+            () =>
+                nativeLauncher.launchCommand(
+                    { ...nativeOptions, version: "26;echo injected" },
+                    "darwin"
+                ),
+            /positive integer/
+        );
+        assert.throws(
+            () =>
+                nativeLauncher.launchCommand(
+                    { ...nativeOptions, sdk: path.join(fixture, "absent") },
+                    "darwin"
+                ),
+            /ENOENT/
+        );
+        const linuxPath = path.join(
+            nativeSdk,
+            "webOS_TV_26_Simulator_1.10.0.AppImage"
+        );
+        const nativeCapture = path.join(fixture, "native argv.json");
         fs.writeFileSync(
-            path.join(binaries, "npm"),
-            `#!/usr/bin/env node
-const fs = require('node:fs'), path = require('node:path');
-fs.writeFileSync(process.env.NPM_CAPTURE, JSON.stringify(process.argv.slice(2)));
-const prefix = process.argv[process.argv.indexOf('--prefix') + 1];
-const binary = path.join(prefix, 'node_modules/.bin/ares-launch');
-fs.mkdirSync(path.dirname(binary), {recursive: true});
-fs.copyFileSync(process.env.MOCK_CLI, binary);
-`,
+            linuxPath,
+            "#!" +
+                process.execPath +
+                '\nrequire("node:fs").writeFileSync(' +
+                JSON.stringify(nativeCapture) +
+                ", JSON.stringify(process.argv.slice(2)));\n",
             { mode: 0o755 }
         );
-        const archiveCapture = path.join(fixture, "verified archive args.json");
+        assert.equal(nativeLauncher.launch(nativeOptions, "linux"), 0);
+        assert.deepEqual(JSON.parse(fs.readFileSync(nativeCapture, "utf8")), [
+            nativeApp,
+            "{}",
+        ]);
+        assert(!fs.existsSync(path.join(process.cwd(), "NEVER_CREATED")));
         fs.writeFileSync(
-            path.join(binaries, "python3"),
-            `#!/usr/bin/env node
-const fs = require('node:fs');
-if (!process.argv[2].endsWith('/download-verified-archive.py')) process.exit(2);
-fs.writeFileSync(process.env.ARCHIVE_CAPTURE, JSON.stringify(process.argv.slice(2)));
-if (process.env.FAIL_CLI_INTEGRITY) { console.error('archive verification failed'); process.exit(1); }
-fs.writeFileSync(process.argv[4], 'verified archive test double');
-`,
-            { mode: 0o755 }
+            linuxPath,
+            "#!" + process.execPath + "\nprocess.exit(17);\n"
         );
-        const cliEnv = {
-            ...setupEnv,
-            ARCHIVE_CAPTURE: archiveCapture,
-            HOME: cliHome,
-            NPM_CAPTURE: npmCapture,
-            PATH: binaries + path.delimiter + setupEnv.PATH,
-            WEBOS_CLI: "",
-        };
-        const cliDestination = path.join(
-            cliHome,
-            ".local/share/ottplay/webos-cli"
+        assert.equal(nativeLauncher.launch(nativeOptions, "linux"), 17);
+        const windowsPath = path.join(
+            nativeSdk,
+            "webOS_TV_26_Simulator_1.10.0.exe"
         );
-        await exec("bash", [realSetup, "--cli-only", "--dry-run"], {
-            env: cliEnv,
+        fs.writeFileSync(windowsPath, "fixture", { mode: 0o755 });
+        assert.deepEqual(nativeLauncher.launchCommand(nativeOptions, "win32"), {
+            args: [nativeApp, "{}"],
+            file: windowsPath,
         });
-        assert(!fs.existsSync(archiveCapture));
-        assert(!fs.existsSync(npmCapture));
-        await assert.rejects(
-            exec("bash", [realSetup, "--cli-only"], {
-                env: { ...cliEnv, FAIL_CLI_INTEGRITY: "1" },
-            }),
-            (error) => /archive verification failed/.test(error.stderr)
-        );
-        assert(
-            !fs.existsSync(npmCapture),
-            "Unverified archive must never reach npm"
-        );
-        assert(
-            !fs.existsSync(cliDestination),
-            "Failed verification must not publish an installation"
-        );
-        assert(
-            !fs
-                .readdirSync(path.dirname(cliDestination))
-                .some((name) => name.startsWith(".webos-cli-install.")),
-            "Failed verification must remove staging files"
-        );
-        await exec("bash", [realSetup, "--cli-only", "--version", "25"], {
-            env: cliEnv,
-        });
-        const installArgs = JSON.parse(fs.readFileSync(npmCapture, "utf8"));
-        assert(installArgs.includes("--ignore-scripts"));
-        assert(installArgs.includes("--no-save"));
-        assert(installArgs.at(-1).endsWith("/cli.tgz"));
-        const archiveArgs = JSON.parse(fs.readFileSync(archiveCapture, "utf8"));
-        assert.equal(
-            archiveArgs[1],
-            "https://registry.npmjs.org/@webos-tools/cli/-/cli-3.2.6.tgz"
-        );
-        assert.equal(archiveArgs[3], "5901117");
-        assert.match(archiveArgs[4], /^[a-f0-9]{128}$/);
-        assert(
-            fs.existsSync(
-                path.join(cliDestination, "node_modules/.bin/ares-launch")
-            )
-        );
-        fs.unlinkSync(npmCapture);
-        await exec("bash", [realSetup, "--cli-only", "--version", "25"], {
-            env: cliEnv,
-        });
-        assert(
-            !fs.existsSync(npmCapture),
-            "Installed CLI must not be reinstalled"
-        );
-        const incompleteCliHome = path.join(fixture, "incomplete CLI home");
-        const incompleteCli = path.join(
-            incompleteCliHome,
-            ".local/share/ottplay/webos-cli"
-        );
-        fs.mkdirSync(incompleteCli, { recursive: true });
-        fs.writeFileSync(
-            path.join(incompleteCli, "keep.txt"),
-            "existing contents"
-        );
-        await assert.rejects(
-            exec("bash", [realSetup, "--cli-only"], {
-                env: { ...cliEnv, HOME: incompleteCliHome },
-            }),
-            (error) =>
-                /CLI destination exists but is incomplete/.test(error.stderr)
-        );
-        assert.equal(
-            fs.readFileSync(path.join(incompleteCli, "keep.txt"), "utf8"),
-            "existing contents"
+        fs.unlinkSync(path.join(nativeApp, "appinfo.json"));
+        assert.throws(
+            () => nativeLauncher.launchCommand(nativeOptions, "linux"),
+            /ENOENT/
         );
         console.log(
-            "PASS webOS shell launcher: missing-tool bootstrap, reuse, stale registration, setup failure, dry run, archive rejection, exact CLI arguments and preflight"
+            "PASS webOS shell launcher: missing-tool bootstrap, reuse, stale registration, setup failure, dry run, archive rejection, native argv without CLI dependencies, exact explicit CLI arguments and preflight"
         );
     } finally {
         server.close();
