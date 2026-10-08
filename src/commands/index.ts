@@ -82,6 +82,35 @@ function findChannelIndices(chId: number): [number, number] {
     return [-1, -1];
 }
 
+/** Numbered and random commands share category lookup and playback feedback. */
+function playListedChannel(index: number, random: boolean): void {
+    var w = window;
+    var chId = w.curList[index];
+    var indices = findChannelIndices(chId);
+    if (indices[0] === -1) {
+        showPopup(
+            _(
+                random
+                    ? "Random channel not in any category"
+                    : "Channel #%1 not in any category",
+                formatLocaleNumber(index + 1)
+            )
+        );
+        return;
+    }
+    if (typeof w.playChannel === "function") {
+        w.playChannel(indices[0], indices[1], true);
+    }
+    var chName =
+        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
+    showPopup(
+        _(
+            random ? "Random #%1" : "Channel #%1",
+            formatLocaleNumber(index + 1)
+        ) + (chName ? ": " + chName : "")
+    );
+}
+
 // ─── Command implementations ───────────────────────────────────────────────────
 
 /**
@@ -108,23 +137,7 @@ function channelByNumber(num: number): void {
         );
         return;
     }
-    var chId = w.curList[idx];
-    var indices = findChannelIndices(chId);
-    if (indices[0] === -1) {
-        showPopup(
-            _("Channel #%1 not in any category", formatLocaleNumber(num))
-        );
-        return;
-    }
-    if (typeof w.playChannel === "function") {
-        w.playChannel(indices[0], indices[1], true);
-    }
-    var chName =
-        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
-    showPopup(
-        _("Channel #%1", formatLocaleNumber(num)) +
-            (chName ? ": " + chName : "")
-    );
+    playListedChannel(idx, false);
 }
 
 /**
@@ -137,9 +150,6 @@ function channelByName(name: string): void {
     if (!name) return;
     var w = window;
     var needle = normalizeSearchText(name);
-    var bestChId: number | string | null = null;
-    var bestCatIdx = -1;
-    var bestChIdx = -1;
 
     // Search all categories
     for (var ci = 0; w.catsArray && w.cats && ci < w.catsArray.length; ci++) {
@@ -153,28 +163,21 @@ function channelByName(name: string): void {
                 ch.channel_name &&
                 normalizeSearchText(ch.channel_name).indexOf(needle) !== -1
             ) {
-                bestChId = chId;
-                bestCatIdx = ci;
-                bestChIdx = i;
-                break;
+                // Preserve the legacy null-ID sentinel; channel IDs are strings/numbers.
+                if (chId === null) break;
+                if (typeof w.playChannel === "function") {
+                    w.playChannel(ci, i, true);
+                }
+                var chName =
+                    w.channels && w.channels[chId]
+                        ? w.channels[chId].channel_name
+                        : "";
+                showPopup(_("Playing: %1", chName));
+                return;
             }
         }
-        if (bestChId !== null) break;
     }
-
-    if (bestChId === null) {
-        showPopup(_('Channel "%1" not found', name));
-        return;
-    }
-
-    if (typeof w.playChannel === "function") {
-        w.playChannel(bestCatIdx, bestChIdx, true);
-    }
-    var chName =
-        w.channels && w.channels[bestChId]
-            ? w.channels[bestChId].channel_name
-            : "";
-    showPopup(_("Playing: %1", chName));
+    showPopup(_('Channel "%1" not found', name));
 }
 
 /**
@@ -217,22 +220,7 @@ function randomChannel(rangeStart?: number, rangeEnd?: number): void {
 
     var pickIdx =
         startIdx + Math.floor(Math.random() * (endIdx - startIdx + 1));
-    var chId = w.curList[pickIdx];
-    var indices = findChannelIndices(chId);
-    if (indices[0] === -1) {
-        showPopup(_("Random channel not in any category"));
-        return;
-    }
-
-    if (typeof w.playChannel === "function") {
-        w.playChannel(indices[0], indices[1], true);
-    }
-    var chName =
-        w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
-    showPopup(
-        _("Random #%1", formatLocaleNumber(pickIdx + 1)) +
-            (chName ? ": " + chName : "")
-    );
+    playListedChannel(pickIdx, true);
 }
 
 /**
