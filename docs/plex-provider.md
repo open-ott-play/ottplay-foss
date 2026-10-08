@@ -24,6 +24,11 @@ Subfolders are excluded. **Shuffle: Off** starts its videos in a random order. T
 queue includes every page of that folder and applies the current title filter;
 it does not descend into subfolders. A failed page cancels the new queue.
 
+During full-screen Plex playback, **Left/Right** seek backward/forward by
+10 seconds and **Up/Down** play the next/previous file. These controls also apply
+to a remote Plex queue while another TV provider is selected. Dedicated volume
+buttons still control volume; open lists and dialogs retain their own navigation.
+
 The playback buttons appear beside the description. **Repeat** cycles through
 **All**, **One**, and **Off**: repeat the queue, repeat the current video, or finish
 after its last video. Remote shortcuts are **5** (or **Play**) for shuffle and

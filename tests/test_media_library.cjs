@@ -2839,25 +2839,57 @@ function coldFolderResumeFixture() {
     return c;
 }
 
-test("Full-screen Plex arrows select adjacent videos instead of the configured minute seek", () => {
+test("Full-screen Plex arrows seek horizontally and select adjacent videos vertically", () => {
     const c = coldFolderResumeFixture();
     vm.runInContext(
         sourceFunctions("src/key-handler/index.ts", [
             "handleMainKey",
             "keyFun",
+            "toggleMainPlayback",
         ]),
         c
     );
     c.settings.auFun = 19;
     c.settings.adFun = 18;
+    c.settings.alFun = 14;
+    c.settings.arFun = 13;
+    c.sVolumeStep = 5;
     const seeks = [];
+    const volumes = [];
     c.shiftArchive = (seconds) => seeks.push(seconds);
+    c.changeVolume = (delta) => volumes.push(delta);
     const press = (key) =>
         c.handleMainKey(key, {
             preventDefault() {},
             stopPropagation() {},
         });
     c.__ottMedia.restoreLast();
+    const current = plain(c.__ottMedia.current().ref);
+    for (const [left, right] of [
+        [14, 13],
+        [1, 4],
+    ]) {
+        c.settings.alFun = left;
+        c.settings.arFun = right;
+        press(c.keys.LEFT);
+        press(c.keys.RIGHT);
+        assert.deepEqual(seeks.splice(0), [-10, 10]);
+    }
+    c.settings.alFun = 14;
+    c.settings.arFun = 13;
+    assert.deepEqual(volumes, []);
+    assert.deepEqual(plain(c.__ottMedia.current().ref), current);
+    const levels = [];
+    let volume = 50;
+    c.keys.VOL_UP = 447;
+    c.keys.VOL_DOWN = 448;
+    c.settings.volumeStep = 5;
+    c.stbGetVolume = () => volume;
+    c.stbSetVolume = (value) => levels.push((volume = value));
+    press(c.keys.VOL_UP);
+    press(c.keys.VOL_DOWN);
+    assert.deepEqual(levels, [55, 50]);
+    assert.deepEqual(seeks, []);
     press(c.keys.UP);
     assert.equal(
         c.__ottMedia.current().payload.request.path,
@@ -2882,6 +2914,9 @@ test("Full-screen Plex arrows select adjacent videos instead of the configured m
         [60, -60],
         "Other providers keep their configured bindings"
     );
+    press(c.keys.LEFT);
+    press(c.keys.RIGHT);
+    assert.deepEqual(volumes, [-5, 5]);
 });
 
 function resumedWithoutFolder(repeat) {

@@ -818,6 +818,104 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     expect(state.journals.length).toBeGreaterThan(0);
     expect(JSON.stringify(state.journals)).not.toContain(token);
     expect(requests).toContain("/video/:/transcode/universal/decision");
+    // LG sends 37/39. Even saved volume bindings must yield to full-screen
+    // Plex seeking; exercise the real DOM router and decoded 60-second HLS.
+    const arrow = (key, keyCode) =>
+        page.evaluate(
+            ({ key, keyCode }) =>
+                document.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        bubbles: true,
+                        cancelable: true,
+                        code: key,
+                        key,
+                        keyCode,
+                        which: keyCode,
+                    })
+                ),
+            { key, keyCode }
+        );
+    const playbackIdentity = () =>
+        page.evaluate(() => ({
+            generation: window.__ottClassicPlayback.snapshot().generation,
+            ref: window.__ottMedia.current().ref,
+            trail: window.__ottMedia
+                .snapshot()
+                .frames.map((frame) => frame.route.title),
+            volume: document.querySelector("video").volume,
+        }));
+    const savedBindings = await page.evaluate(() => {
+        const saved = [window.sALfun, window.sARfun, window.sArrowFun];
+        window.sALfun = 14;
+        window.sARfun = 13;
+        window.sArrowFun = 0;
+        window.closeList();
+        document.querySelector("video").volume = 0.42;
+        return saved;
+    });
+    const beforeSeek = await playbackIdentity();
+    for (const [key, keyCode, position] of [
+        ["ArrowLeft", 37, 15],
+        ["ArrowRight", 39, 35],
+    ]) {
+        await page.evaluate(() => {
+            const video = document.querySelector("video");
+            video.pause();
+            video.currentTime = 25;
+        });
+        await page.waitForFunction(() => {
+            const video = document.querySelector("video");
+            return !video.seeking && Math.abs(video.currentTime - 25) < 0.05;
+        });
+        await arrow(key, keyCode);
+        expect(await playbackIdentity()).toEqual(beforeSeek);
+        await page.waitForFunction((position) => {
+            const video = document.querySelector("video");
+            return (
+                !video.seeking && Math.abs(video.currentTime - position) < 0.2
+            );
+        }, position);
+        expect(await playbackIdentity()).toEqual(beforeSeek);
+        await expect(page.locator("#list")).toBeHidden();
+        await expect(page.locator("#dialogbox")).toBeHidden();
+        await expect(page.locator("#listPopUp")).toBeHidden();
+    }
+    // Visible list/dialog owners still receive arrows without seeking the
+    // underlying paused movie or falling through to the volume bindings.
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#listCaption")).toContainText("Folder 3");
+    for (const [key, keyCode] of [
+        ["ArrowLeft", 37],
+        ["ArrowRight", 39],
+    ])
+        await arrow(key, keyCode);
+    await expect(page.locator("#list")).toBeVisible();
+    expect(await playbackIdentity()).toEqual(beforeSeek);
+    expect(
+        await page.evaluate(() => document.querySelector("video").currentTime)
+    ).toBeCloseTo(35, 1);
+    await page.evaluate(() => {
+        window.closeList();
+        window.showPlaybackSeekDialog(0);
+    });
+    await expect(page.locator("#dialogbox")).toBeVisible();
+    await arrow("ArrowRight", 39);
+    await expect(page.locator("#step")).toContainText("10");
+    expect(
+        await page.evaluate(() => document.querySelector("video").currentTime)
+    ).toBeCloseTo(35, 1);
+    await arrow("ArrowLeft", 37);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    expect(await playbackIdentity()).toEqual(beforeSeek);
+    expect(
+        await page.evaluate(() => document.querySelector("video").currentTime)
+    ).toBeCloseTo(35, 1);
+    await page.evaluate(([left, right, listArrows]) => {
+        window.sALfun = left;
+        window.sARfun = right;
+        window.sArrowFun = listArrows;
+    }, savedBindings);
     await page.evaluate(() => {
         const video = document.querySelector("video");
         video.pause();
