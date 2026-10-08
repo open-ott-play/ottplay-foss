@@ -187,6 +187,60 @@ test("explicit saved Plex queue preserves provider until preflight, starts at ze
     assert.equal(h.queue.snapshot().state, "idle");
     assert.equal(h.queue.snapshot().active, false);
 });
+test("manual sibling arrows retain the remote queue identity and exact stop boundary", () => {
+    const h = setup();
+    const ids = ["1", "2", "3"];
+    h.call("play", ids);
+    h.prepare(ids);
+    h.resolve("1");
+    h.c.__ottMedia.skip(-1);
+    assert.equal(
+        h.requests.length,
+        0,
+        "The first item has no previous sibling"
+    );
+    h.c.__ottMedia.skip(1);
+    h.resolve("2");
+    assert.deepEqual(plain(h.queue.snapshot().ids), ids);
+    assert.equal(h.queue.snapshot().active, true);
+    assert.equal(h.queue.snapshot().index, 1);
+    assert.equal(h.queue.snapshot().state, "playing");
+    h.c.__ottMedia.cycleRepeat();
+    h.c.__ottMedia.toggleShuffle();
+    assert.equal(h.c.__ottMedia.current().sequence.repeat, "off");
+    h.c.__ottMedia.skip(-1);
+    h.resolve("1");
+    assert.equal(h.queue.snapshot().index, 0);
+    h.c.__ottMedia.skip(1);
+    h.resolve("2");
+    h.end();
+    h.resolve("3");
+    assert.equal(h.queue.snapshot().index, 2);
+    h.c.__ottMedia.skip(1);
+    assert.equal(
+        h.requests.length,
+        0,
+        "The final item does not wrap on an arrow"
+    );
+    h.end();
+    assert.equal(h.queue.snapshot().state, "ended");
+    assert.equal(h.requests.length, 0);
+});
+test("a failed arrow resolution still reports failure to the owning remote queue", () => {
+    const h = setup();
+    h.call("play", ["1", "2", "3"]);
+    h.prepare(["1", "2", "3"]);
+    h.resolve("1");
+    h.c.__ottMedia.skip(1);
+    h.resolve("2");
+    h.c.__ottMedia.skip(1);
+    h.reply([]);
+    assert.equal(h.queue.snapshot().state, "error");
+    assert.equal(
+        h.c.__ottMedia.current().payload.request.path,
+        "/library/metadata/2"
+    );
+});
 test("Fullscreen arrows follow the playing Plex source without changing the selected provider", () => {
     for (const provider of ["m3u", "vportal", "stalker"]) {
         const h = setup();
