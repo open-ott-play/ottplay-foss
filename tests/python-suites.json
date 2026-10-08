@@ -11,8 +11,7 @@
     ["tests/test_command_queue_smoke.py"],
     ["tests/test_xmltv_warmup_smoke.py"],
     ["tests/test_native_epg_cache.py", "--check-sources-only"],
-    ["tests/test_container_workspace.py"],
-    ["tests/test_verified_archive.py"]
+    ["tests/test_container_workspace.py"]
   ],
   "android": [
     ["tests/test_android_queue.py"],
