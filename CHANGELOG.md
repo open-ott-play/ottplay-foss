@@ -21,6 +21,9 @@
   source commit and verifies them before writing publication evidence or
   advancing the durable publication counter.
 
+- Version updates preserve quoted TOML keys containing `=` or `#`, including
+  unrelated keys, without changing comments or surrounding file layout.
+
 ### Upgrade
 
 Retain provider profiles and exported settings before replacing a web, desktop or
