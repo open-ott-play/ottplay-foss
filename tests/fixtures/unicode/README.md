@@ -9,6 +9,10 @@ only comparison keys and editor cursor boundaries use these routines.
 Search preserves accents and compatibility distinctions: `cafe` and `café` differ.
 Canonical equivalents match. Default folding preserves dotless `ı`; Turkish and
 Azeri add the Unicode `Before_Dot` tailoring, including intervening marks.
+Search keys apply NFD before case folding and NFC afterwards. This preserves
+canonical caseless equivalence when folding introduces a starter or exposes a
+new composition, while keeping accent-sensitive substrings intact. Tests cover
+contextual folds, key idempotence and actual channel/history filtering.
 Case-fold expansions remain searchable. Normalization and grapheme behavior stay
 pinned even if older native `normalize` or `Intl.Segmenter` APIs are present.
 
@@ -43,6 +47,9 @@ The 2,081 canonical decompositions and 961 compositions are unchanged; their has
 are checked. All 34 added combining classes are applied, giving 968 nonzero classes.
 `--verify-normalization` additionally downloads the pinned Unicode 17 sources and
 verifies every decomposition, composition and combining class.
+`--check-inputs` validates the offline metadata without requiring that host
+database or writing output. The portable generator tests reject malformed or
+overlapping ranges and invalid combining classes before generated data changes.
 
 ## Grapheme boundaries
 

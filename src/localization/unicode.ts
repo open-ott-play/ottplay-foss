@@ -248,8 +248,10 @@ function caseFoldText(value: string): string {
 /** A comparison key; never write it back to user/provider text. */
 export function unicodeSearchKey(value: string, locale: string): string {
     var text = canonicalSearchText(String(value || ""));
-    if (/^(tr|az)(-|$)/i.test(locale)) {
-        var classes = loadCombiningClasses();
+    if (/^(tr|az)(-|$)/i.test(locale) && text.indexOf("I") >= 0) {
+        var classes = loadCombiningClasses(),
+            parts: string[] = [],
+            start = 0;
         for (var at = 0; at < text.length; at++) {
             if (text.charAt(at) !== "I") continue;
             var dot = -1;
@@ -264,19 +266,21 @@ export function unicodeSearchKey(value: string, locale: string): string {
                 if (!order || order === 230) break;
                 next += point > 0xffff ? 2 : 1;
             }
-            text =
-                text.substring(0, at) +
-                (dot < 0
-                    ? "ı" + text.substring(at + 1)
-                    : "i" +
-                      text.substring(at + 1, dot) +
-                      text.substring(dot + 1));
+            parts.push(text.substring(start, at), dot < 0 ? "ı" : "i");
+            start = at + 1;
+            if (dot >= 0) {
+                parts.push(text.substring(start, dot));
+                start = dot + 1;
+                at = dot;
+            }
         }
+        // Copy each unchanged span once, including long pasted/provider text.
+        parts.push(text.substring(start));
+        text = parts.join("");
     }
-    // Recompose before casing: accent-sensitive substrings stay intact, while
-    // existing case expansions (including dotted I) remain searchable.
-    text = canonicalComposedText(text);
-    return caseFoldText(text);
+    // Fold decomposed text first: U+0345 can become a starter, and expansions
+    // can expose new compositions. Final NFC keeps substring accents intact.
+    return canonicalComposedText(caseFoldText(text));
 }
 
 function unicodeRanges(data: string, withProperty: boolean): number[][] {
@@ -369,13 +373,18 @@ function legacyTextBoundaries(value: string): number[] {
     return boundaries;
 }
 
-/** Previous/next whole grapheme; the fallback also never splits a surrogate pair. */
+/** Previous/next whole grapheme; direction 0 moves to a boundary at or after position. */
 export function textBoundary(
     value: string,
     position: number,
     direction: number
 ): number {
-    position = Math.max(0, Math.min(value.length, position));
+    position = Math.max(0, Math.min(value.length, position || 0));
+    if (!direction) {
+        if (!position) return 0;
+        position = Math.ceil(position) - 1;
+        direction = 1;
+    }
     if (
         (direction < 0 && !position) ||
         (direction > 0 && position === value.length)
