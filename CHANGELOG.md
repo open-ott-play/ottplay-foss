@@ -1,0 +1,71 @@
+# Changelog
+
+## [1.1.53] - Development line
+
+### Changes
+
+- The 1.1.53 development line adds ordered remote Plex queues, preserves an
+  explicit native Play request while buffering, and improves contextual Unicode
+  search and grapheme-safe editor input.
+- Remote diagnostics now expose read-only UI/media snapshots, capability
+  reasons, loaded-bundle identity and a bounded journal of operation receipts.
+  Inspection does not create a playback backend, capture a screen or change
+  saved settings.
+- The webOS Simulator launcher now selects the newest matching installed LG
+  Simulator using Node built-ins and passes the app path without a shell.
+  Automatic installation of the external webOS CLI is removed.
+- Python CI dependencies now use a complete SHA-256 archive lock.
+- Security analysis now includes Python release tools, Actions workflows, Rust
+  source and the compiled iOS Swift application.
+- Release publication now reads this version's reviewed notes from the exact
+  source commit and verifies them before writing publication evidence or
+  advancing the durable publication counter.
+
+- Version updates preserve quoted TOML keys containing `=` or `#`, including
+  unrelated keys, without changing comments or surrounding file layout.
+
+- Release notes accept optional closing hashes in Markdown headings while
+  continuing to reject duplicate version sections.
+
+### Upgrade
+
+Retain provider profiles and exported settings before replacing a web, desktop or
+container installation. Follow the platform-specific build/install instructions;
+Android APK/AAB packages are maintained in ottplay-android. Automatic updating is
+not configured, and unsigned iOS packages require operator signing/sideloading.
+Validate playback, remote input and saved settings on the intended TV/STB/native
+platform; automated tests do not establish physical-device acceptance.
+
+Use a controller and CLI revision supporting `inspect` v1 for the new workbench
+commands. Older combinations report unsupported capabilities. The operation
+journal retains at most 128 request IDs; retained entries expire after ten
+minutes, while eviction or reload makes them unknown. Never replay a mutation
+automatically because its receipt is missing.
+
+Default Simulator SDK discovery and automatic installation of the official
+Simulator ZIP remain available. Use `--sdk` or `WEBOS_SDK_PATH` for a custom
+location. The explicit `--cli` or `WEBOS_CLI` override uses an operator-maintained
+external CLI; setup `--cli-only` is now a compatibility no-op. Existing external
+CLI installations are left in place.
+
+### Security
+
+Release artifacts retain their immutable build provenance and checksums. The new
+notes validation rejects incomplete publication metadata before modifying durable
+publication state. It does not announce a new application CVE. Protect provider
+credentials and remote-control consent codes, and keep local server access within
+the documented trust boundary.
+
+Diagnostic snapshots omit DOM text, media titles/URLs, settings and credentials.
+Runtime and section checks validate inspection responses under the existing
+authorized connection; they do not introduce a new authentication mechanism or
+exclusive routing for mutation commands. An `accepted` receipt records a queued
+effect and can remain after transport cancellation. `invoked` is not proof of
+the effect, and the journal does not emit `observed`. Decoder progress does not
+prove physical screen or audio output.
+
+The default Simulator setup no longer installs the vulnerable external CLI
+dependency tree. Paths are passed as separate process arguments. This does not
+repair an external CLI chosen explicitly by the operator; see
+[the CLI audit and override boundary](docs/webos-cli-security.md). Automated
+launcher tests do not establish a physical TV or vendor Simulator display result.

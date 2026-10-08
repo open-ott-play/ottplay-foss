@@ -198,7 +198,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 scripts/release_versioned.py publish --repo "$GITHUB_REPOSITORY" --assets .release-assets
       - name: Store immutable promotion evidence
-        if: ${{ steps.publication.outputs.status != 'superseded' }}
+        if: ${{ steps.publication.outputs.status != 'superseded' && steps.publication.outputs.status != 'reused' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-evidence
@@ -265,7 +265,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: python3 scripts/release_versioned.py publish --repo "$GITHUB_REPOSITORY" --assets .release-assets
       - name: Store immutable promotion evidence
-        if: ${{ steps.publication.outputs.status != 'superseded' }}
+        if: ${{ steps.publication.outputs.status != 'superseded' && steps.publication.outputs.status != 'reused' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-evidence
