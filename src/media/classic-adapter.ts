@@ -760,7 +760,8 @@ function classicMediaRuntime(): any {
             recovering &&
             skipRequest &&
             skipRequest.playback === playback &&
-            skipRequest.recovering
+            skipRequest.recovering &&
+            skipRequest.valid()
         ) {
             skipRequest.offset += direction;
             return;
@@ -804,6 +805,7 @@ function classicMediaRuntime(): any {
                 offset: direction,
                 playback: playback,
                 recovering: true,
+                valid: valid,
             };
             skipRequest = request;
             var saved = describe([playback.payload], {

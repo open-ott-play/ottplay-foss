@@ -2986,6 +2986,41 @@ test("Pending folder recovery combines arrow presses without restarting the requ
     );
 });
 
+test("A stopped or ended fallback file can retry an invalidated folder recovery", () => {
+    for (const ended of [false, true]) {
+        for (const finishBeforeRetry of [false, true]) {
+            const c = resumedWithoutFolder();
+            c.__ottMedia.skip(1);
+            const stale = c.completeFolder;
+            c.__ottClassicPlayback.command({ type: "stop" });
+            if (ended)
+                c.__ottMedia.ended(
+                    c.__ottClassicPlayback.snapshot().generation
+                );
+            if (finishBeforeRetry) stale(true);
+            assert.equal(c.resolutions.length, 1);
+            c.__ottMedia.skip(1);
+            assert.equal(
+                c.collections.length,
+                2,
+                "A new arrow starts a fresh folder request"
+            );
+            stale(true);
+            assert.equal(
+                c.resolutions.length,
+                1,
+                "The stale folder reply cannot start a video"
+            );
+            c.completeFolder();
+            assert.equal(
+                c.__ottMedia.current().payload.request.path,
+                "/library/metadata/43"
+            );
+            assert.equal(c.resolutions.length, 2);
+        }
+    }
+});
+
 test("Cancelled folder recovery cannot replace newer playback or navigation", () => {
     for (const cancel of [
         (c) => c.__ottMedia.cancelAuto(),
