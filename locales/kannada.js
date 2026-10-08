@@ -136,6 +136,10 @@ var keyStrings = {
         "ಪೂರೈಕೆದಾರರನ್ನು ಬದಲಾಯಿಸಿ. ಮುಂದಿನ ಬಾರಿ ನೀವು ಪ್ಲೇಯರ್ ಅನ್ನು ಪ್ರಾರಂಭಿಸಿದಾಗ ನಿಮ್ಮ ಆಯ್ಕೆಯನ್ನು ನೆನಪಿಸಿಕೊಳ್ಳಲಾಗುತ್ತದೆ.",
     "Change value": "ಮೌಲ್ಯವನ್ನು ಬದಲಾಯಿಸಿ",
     "Channel ": "ಚಾನಲ್ ",
+    'Channel "%1" not found': '"%1" ಚಾನೆಲ್ ಕಂಡುಬಂದಿಲ್ಲ',
+    "Channel #%1": "ಚಾನೆಲ್ #%1",
+    "Channel #%1 not found (total: %2)": "ಚಾನೆಲ್ #%1 ಕಂಡುಬಂದಿಲ್ಲ (ಒಟ್ಟು: %2)",
+    "Channel #%1 not in any category": "ಚಾನೆಲ್ #%1 ಯಾವುದೇ ವರ್ಗದಲ್ಲಿಲ್ಲ",
     "Channel has no EPG": "ಚಾನಲ್ ಯಾವುದೇ EPG ಅನ್ನು ಹೊಂದಿಲ್ಲ",
     "Channel is not available!!!": "ಚಾನಲ್ ಲಭ್ಯವಿಲ್ಲ!",
     "Channel link": "ಚಾನಲ್ ಲಿಂಕ್",
@@ -284,6 +288,7 @@ var keyStrings = {
         "ಬ್ಯಾಕಪ್ ಇರಿಸಿಕೊಳ್ಳಲು JSON ಅನ್ನು ನಕಲಿಸಿ. ಅದನ್ನು ಮರುಸ್ಥಾಪಿಸಲು ಆಮದು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಬಳಸಿ.",
     "Copy the selected JSON with your device's copy command":
         "ಆಯ್ಕೆಮಾಡಿದ JSON ಅನ್ನು ನಿಮ್ಮ ಸಾಧನದ ನಕಲು ಆಜ್ಞೆಯೊಂದಿಗೆ ನಕಲಿಸಿ",
+    "Could not change the playlist.": "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಬದಲಾಯಿಸಲಾಗಲಿಲ್ಲ.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex ಗೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಸರ್ವರ್ ವಿಳಾಸ, ಟೋಕನ್ ಮತ್ತು ನೆಟ್ವರ್ಕ್ ಪ್ರವೇಶವನ್ನು ಪರಿಶೀಲಿಸಿ.",
     "Could not connect to the server.": "ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
@@ -542,6 +547,7 @@ var keyStrings = {
         "ಅಮಾನ್ಯ ಚಾನಲ್ ಲಿಂಕ್! ನಿಮ್ಮ ಪೂರೈಕೆದಾರರ ಖಾತೆ ಪುಟದಲ್ಲಿ URL ಸ್ಟ್ರೀಮ್‌ನಿಂದ ಸಂಪೂರ್ಣ ಹೋಸ್ಟ್ ಹೆಸರನ್ನು ನಮೂದಿಸಿ (ಉದಾಹರಣೆಗೆ subdomain.cdn-domain.tld ).",
     "Invalid cloud settings response": "ಅಮಾನ್ಯ ಕ್ಲೌಡ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳ ಪ್ರತಿಕ್ರಿಯೆ",
     "Invalid protected source configuration": "ಅಮಾನ್ಯ ಸಂರಕ್ಷಿತ ಮೂಲ ಕಾನ್ಫಿಗರೇಶನ್",
+    "Invalid range: %1-%2": "ಅಮಾನ್ಯ ವ್ಯಾಪ್ತಿ: %1-%2",
     "Invalid setting": "ಅಮಾನ್ಯ ಸೆಟ್ಟಿಂಗ್",
     "IPTV token": "IPTV ಟೋಕನ್",
     "IpStream.one": "IpStream.one",
@@ -574,6 +580,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
     "Loading media libraries...": "ಮಾಧ್ಯಮ ಲೈಬ್ರರಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
     "Loading player...": "ಪ್ಲೇಯರ್ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "Loading the new playlist...": "ಹೊಸ ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
     "Loading via proxy...": "ಪ್ರಾಕ್ಸಿ ಮೂಲಕ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
     "Loading. Please wait...": "ಲೋಡ್ ಆಗುತ್ತಿದೆ... ದಯವಿಟ್ಟು ನಿರೀಕ್ಷಿಸಿ...",
     "Loading...": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
@@ -615,6 +622,7 @@ var keyStrings = {
     "Next TV program": "ಮುಂದಿನ ಕಾರ್ಯಕ್ರಮ",
     No: "ಇಲ್ಲ",
     "No channel name": "ಯಾವುದೇ ಚಾನಲ್ ಹೆಸರಿಲ್ಲ",
+    "No channels loaded": "ಯಾವುದೇ ಚಾನೆಲ್‌ಗಳು ಲೋಡ್ ಆಗಿಲ್ಲ",
     "No command server was found on this network.":
         "ಈ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿ ಯಾವುದೇ ಕಮಾಂಡ್ ಸರ್ವರ್ ಕಂಡುಬಂದಿಲ್ಲ.",
     "No Plex servers are available for this account.":
@@ -688,6 +696,7 @@ var keyStrings = {
     "Player could not start": "ಪ್ಲೇಯರ್ನು ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
     "Player default": "ಪ್ಲೇಯರ್‌ನ ಪೂರ್ವನಿಯೋಜಿತ ಆಯ್ಕೆ",
     "Player info:": "ಪ್ಲೇಯರ್ರ ಮಾಹಿತಿ:",
+    "Playing: %1": "ಪ್ಲೇ ಆಗುತ್ತಿದೆ: %1",
     Playlist: "ಪ್ಲೇಪಟ್ಟಿ",
     "Playlist file": "ಪ್ಲೇಪಟ್ಟಿ ಫೈಲ್",
     "Playlist is not loading directly...Loading via server...":
@@ -723,9 +732,13 @@ var keyStrings = {
     "Protect Change Provider": "ಪೂರೈಕೆದಾರರ ಬದಲಾವಣೆಯನ್ನು ರಕ್ಷಿಸಿ",
     "Protect Settings": "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ರಕ್ಷಿಸಿ",
     "Protected source is unavailable": "ರಕ್ಷಿತ ಮೂಲವು ಲಭ್ಯವಿಲ್ಲ",
+    "Provider switching not available": "ಪೂರೈಕೆದಾರರನ್ನು ಬದಲಾಯಿಸುವ ಸೌಲಭ್ಯ ಲಭ್ಯವಿಲ್ಲ",
     "p...": "p...",
     paging: "ಪೇಜಿಂಗ್",
     Quality: "ಗುಣಮಟ್ಟ",
+    "Random #%1": "ಯಾದೃಚ್ಛಿಕ ಚಾನೆಲ್ #%1",
+    "Random channel not in any category":
+        "ಯಾದೃಚ್ಛಿಕವಾಗಿ ಆಯ್ಕೆಮಾಡಿದ ಚಾನೆಲ್ ಯಾವುದೇ ವರ್ಗದಲ್ಲಿಲ್ಲ",
     Rating: "ರೇಟಿಂಗ್",
     RD: "RD",
     "RD settings": "RD ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
@@ -762,6 +775,10 @@ var keyStrings = {
         "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಅವಧಿ ಮೀರಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
     "Remote input session is unavailable. Open a new session to try again.":
         "ರಿಮೋಟ್ ಇನ್‌ಪುಟ್ ಸೆಷನ್ ಲಭ್ಯವಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
+    "Remote playlist changes require the M3U provider.":
+        "ದೂರದಿಂದ ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಬದಲಾಯಿಸಲು M3U ಪೂರೈಕೆದಾರರು ಅಗತ್ಯವಿದೆ.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "ದೂರದಿಂದ ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಬದಲಾಯಿಸುವುದು ಬೆಂಬಲಿತವಾಗಿಲ್ಲ. ಪ್ಲೇಯರ್‌ನ ಪೂರೈಕೆದಾರರ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಬಳಸಿ.",
     "Remote screenshots": "ರಿಮೋಟ್ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳು",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "ರಿಮೋಟ್ ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು 10 ನಿಮಿಷಗಳವರೆಗೆ ಅನುಮತಿಸಲಾಗಿದೆ. ಸೆರೆಹಿಡಿಯಲು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಮುಚ್ಚಿ.",
@@ -949,6 +966,7 @@ var keyStrings = {
     "Switch sound track": "ಆಡಿಯೋ ಟ್ರ್ಯಾಕ್ ಬದಲಿಸಿ",
     "Switch subtitle": "ಉಪಶೀರ್ಷಿಕೆಗಳನ್ನು ಬದಲಿಸಿ",
     "Switch to this list": "ಈ ಪಟ್ಟಿಗೆ ಬದಲಿಸಿ",
+    "Switching provider...": "ಪೂರೈಕೆದಾರರನ್ನು ಬದಲಾಯಿಸಲಾಗುತ್ತಿದೆ...",
     "Swop URL": "SWOP URL",
     "System language": "ಸಿಸ್ಟಂ ಭಾಷೆ",
     "saved on this device": "ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ",
@@ -980,6 +998,8 @@ var keyStrings = {
         "ಈ Play ಅಪ್ಲಿಕೇಶನ್‌ಗೆ HTTPS ಅಗತ್ಯವಿದೆ. HTTPS ಪ್ಲೇಪಟ್ಟಿ ಅಥವಾ ಸರ್ವರ್ URL ಗಾಗಿ ನಿಮ್ಮ ಪೂರೈಕೆದಾರರನ್ನು ಕೇಳಿ.",
     "This pairing link has expired. Open a new session on your TV.":
         "ಈ ಜೋಡಣೆ ಲಿಂಕ್ ಅವಧಿ ಮೀರಿದೆ. ನಿಮ್ಮ ಟಿವಿಯಲ್ಲಿ ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
+    "This remote command is not supported by the player.":
+        "ಈ ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಆದೇಶವನ್ನು ಪ್ಲೇಯರ್ ಬೆಂಬಲಿಸುವುದಿಲ್ಲ.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ಈ ಸುರಕ್ಷಿತ ಸೆಷನ್ ಲಭ್ಯವಿಲ್ಲ ಅಥವಾ ಅವಧಿ ಮೀರಿದೆ. ಟಿವಿಯಲ್ಲಿ ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ ಮತ್ತು ಅದರ ಸಂಪೂರ್ಣ ಲಿಂಕ್ ಬಳಸಿ.",
     Timer: "ಟೈಮರ್",
@@ -998,6 +1018,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ಜೂಮ್ ಮೋಡ್ ಅನ್ನು ಬದಲಾಯಿಸಿ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "Touchscreen locked": "ಟಚ್‌ಸ್ಕ್ರೀನ್ ಲಾಕ್ ಆಗಿದೆ",
+    "Touchscreen unlocked": "ಟಚ್‌ಸ್ಕ್ರೀನ್ ಅನ್‌ಲಾಕ್ ಆಗಿದೆ",
     "Trust this server for remote support": "ರಿಮೋಟ್ ಬೆಂಬಲಕ್ಕಾಗಿ ಈ ಸರ್ವರ್ ಅನ್ನು ನಂಬಿರಿ",
     "Trusted access could not be removed from device storage.":
         "ಸಾಧನ ಸಂಗ್ರಹಣೆಯಿಂದ ವಿಶ್ವಾಸಾರ್ಹ ಪ್ರವೇಶವನ್ನು ತೆಗೆದುಹಾಕಲಾಗಲಿಲ್ಲ.",
@@ -1017,6 +1039,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Unable to load playlist": "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ",
+    "Unlock the player's settings before changing its playlist.":
+        "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಬದಲಾಯಿಸುವ ಮೊದಲು ಪ್ಲೇಯರ್‌ನ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಿ.",
     Untitled: "ಶೀರ್ಷಿಕೆಯಿಲ್ಲ",
     "Untitled folder": "ಶೀರ್ಷಿಕೆರಹಿತ ಫೋಲ್ಡರ್",
     "Update installed. Please restart OttPlay FOSS.":

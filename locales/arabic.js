@@ -139,6 +139,10 @@ var keyStrings = {
         "تغيير المزود. سيتم تذكر اختيارك في المرة التالية التي تقوم فيها بتشغيل المشغل.",
     "Change value": "تغيير القيمة",
     "Channel ": "القناة ",
+    'Channel "%1" not found': 'القناة "%1" غير موجودة',
+    "Channel #%1": "القناة #%1",
+    "Channel #%1 not found (total: %2)": "القناة #%1 غير موجودة (الإجمالي: %2)",
+    "Channel #%1 not in any category": "القناة #%1 ليست ضمن أي فئة",
     "Channel has no EPG": "القناة لا تحتوي على EPG",
     "Channel is not available!!!": "القناة غير متوفرة!",
     "Channel link": "رابط القناة",
@@ -285,6 +289,7 @@ var keyStrings = {
         "انسخ JSON للاحتفاظ بنسخة احتياطية. استخدم إعدادات الاستيراد لاستعادتها.",
     "Copy the selected JSON with your device's copy command":
         "انسخ JSON المحدد باستخدام أمر النسخ الموجود بجهازك",
+    "Could not change the playlist.": "تعذر تغيير قائمة التشغيل.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "تعذر الاتصال بـ Plex. تحقق من عنوان الخادم والرمز المميز والوصول إلى الشبكة.",
     "Could not connect to the server.": "تعذر الاتصال بالخادم.",
@@ -542,6 +547,7 @@ var keyStrings = {
         "رابط القناة غير صالح! أدخل المضيف الكامل كما هو الحال في دفق الخزانة URL (على سبيل المثال، subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "استجابة إعدادات السحابة غير صالحة",
     "Invalid protected source configuration": "تكوين المصدر المحمي غير صالح",
+    "Invalid range: %1-%2": "نطاق غير صالح: %1-%2",
     "Invalid setting": "الإعداد غير صالح",
     "IPTV token": "رمز IPTV",
     "IpStream.one": "IpStream.one",
@@ -573,6 +579,7 @@ var keyStrings = {
     "Loading M3U...": "جارٍ تحميل M3U...",
     "Loading media libraries...": "جارٍ تحميل مكتبات الوسائط...",
     "Loading player...": "جارٍ تحميل المشغّل...",
+    "Loading the new playlist...": "جارٍ تحميل قائمة التشغيل الجديدة...",
     "Loading via proxy...": "جاري التحميل عبر البروكسي...",
     "Loading. Please wait...": "جاري التحميل...يرجى الإنتظار...",
     "Loading...": "جاري التحميل...",
@@ -614,6 +621,7 @@ var keyStrings = {
     "Next TV program": "البرنامج التالي",
     No: "لا",
     "No channel name": "لا يوجد اسم القناة",
+    "No channels loaded": "لم يتم تحميل أي قنوات",
     "No command server was found on this network.":
         "لم يتم العثور على خادم أوامر على هذه الشبكة.",
     "No Plex servers are available for this account.":
@@ -687,6 +695,7 @@ var keyStrings = {
     "Player could not start": "تعذر بدء تشغيل المشغل",
     "Player default": "الخيار الافتراضي للمشغّل",
     "Player info:": "معلومات المشغّل:",
+    "Playing: %1": "قيد التشغيل: %1",
     Playlist: "قائمة التشغيل",
     "Playlist file": "ملف قائمة التشغيل",
     "Playlist is not loading directly...Loading via server...":
@@ -722,9 +731,13 @@ var keyStrings = {
     "Protect Change Provider": "يتطلب رمز الوصول لتغيير مقدمي الخدمات",
     "Protect Settings": "يتطلب رمز الوصول لتغيير الإعدادات",
     "Protected source is unavailable": "المصدر المحمي غير متوفر",
+    "Provider switching not available": "تبديل المزود غير متاح",
     "p...": "p...",
     paging: "الترحيل",
     Quality: "الجودة",
+    "Random #%1": "قناة عشوائية #%1",
+    "Random channel not in any category":
+        "القناة المختارة عشوائيًا ليست ضمن أي فئة",
     Rating: "التقييم",
     RD: "RD",
     "RD settings": "إعدادات RD",
@@ -761,6 +774,10 @@ var keyStrings = {
         "انتهت صلاحية الإدخال عن بعد. افتح جلسة جديدة للمحاولة مرة أخرى.",
     "Remote input session is unavailable. Open a new session to try again.":
         "جلسة الإدخال عن بعد غير متاحة. افتح جلسة جديدة للمحاولة مرة أخرى.",
+    "Remote playlist changes require the M3U provider.":
+        "يتطلب تغيير قائمة التشغيل عن بُعد مزود M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "إعدادات المزود عن بُعد غير مدعومة. استخدم إعدادات المزود في المشغل.",
     "Remote screenshots": "لقطات الشاشة عن بعد",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "يُسمح بلقطات الشاشة عن بعد لمدة 10 دقائق. أغلق الإعدادات لالتقاطها.",
@@ -952,6 +969,7 @@ var keyStrings = {
     "Switch sound track": "تبديل المسار الصوتي",
     "Switch subtitle": "تبديل الترجمة",
     "Switch to this list": "قم بالتبديل إلى هذه القائمة",
+    "Switching provider...": "جارٍ تبديل المزود...",
     "Swop URL": "سووب URL",
     "System language": "لغة النظام",
     "saved on this device": "المحفوظة على هذا الجهاز",
@@ -984,6 +1002,8 @@ var keyStrings = {
         "يتطلب تطبيق Play هذا وجود HTTPS. اطلب من مزود الخدمة الخاص بك الحصول على قائمة تشغيل HTTPS أو خادم URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "انتهت صلاحية رابط الاقتران هذا. افتح جلسة جديدة على جهاز التلفزيون.",
+    "This remote command is not supported by the player.":
+        "أمر التحكم عن بُعد هذا غير مدعوم في المشغل.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "هذه الجلسة الآمنة غير متوفرة أو منتهية الصلاحية. افتح جلسة جديدة على التلفاز واستخدم رابطها الكامل.",
     Timer: "الموقت",
@@ -1002,6 +1022,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "تغيير وضع التكبير/التصغير",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "إعدادات Top-Tv",
+    "Touchscreen locked": "تم قفل شاشة اللمس",
+    "Touchscreen unlocked": "تم فتح قفل شاشة اللمس",
     "Trust this server for remote support":
         "ثق بهذا الخادم للحصول على الدعم عن بعد",
     "Trusted access could not be removed from device storage.":
@@ -1022,6 +1044,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "إعدادات ULTIFL1X",
     "Unable to load playlist": "غير قادر على تحميل قائمة التشغيل",
+    "Unlock the player's settings before changing its playlist.":
+        "افتح قفل إعدادات المشغل قبل تغيير قائمة التشغيل.",
     Untitled: "بدون عنوان",
     "Untitled folder": "مجلد بدون عنوان",
     "Update installed. Please restart OttPlay FOSS.":

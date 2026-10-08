@@ -145,6 +145,11 @@ var keyStrings = {
         "Athraigh an soláthraí. Cuimhneofar ar do rogha an chéad uair eile a thosóidh tú an seinnteoir.",
     "Change value": "Athraigh luach",
     "Channel ": "Cainéal ",
+    'Channel "%1" not found': 'Níor aimsíodh cainéal "%1"',
+    "Channel #%1": "Cainéal #%1",
+    "Channel #%1 not found (total: %2)":
+        "Níor aimsíodh cainéal #%1 (iomlán: %2)",
+    "Channel #%1 not in any category": "Níl cainéal #%1 in aon chatagóir",
     "Channel has no EPG": "Níl EPG ag an gcainéal",
     "Channel is not available!!!": "Níl an cainéal ar fáil!",
     "Channel link": "Nasc an chainéil",
@@ -296,6 +301,7 @@ var keyStrings = {
         "Cóipeáil an JSON chun cúltaca a choinneáil. Úsáid «Iompórtáil socruithe» chun é a athchóiriú.",
     "Copy the selected JSON with your device's copy command":
         "Cóipeáil an JSON roghnaithe le hordú cóipeála an ghléis",
+    "Could not change the playlist.": "Níorbh fhéidir an seinmliosta a athrú.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Níorbh fhéidir ceangal le Plex. Seiceáil seoladh an fhreastalaí, an comhartha rochtana agus rochtain ar an líonra.",
     "Could not connect to the server.":
@@ -567,6 +573,7 @@ var keyStrings = {
         "Freagairt neamhbhailí ar shocruithe néil",
     "Invalid protected source configuration":
         "Cumraíocht neamhbhailí na foinse cosanta",
+    "Invalid range: %1-%2": "Raon neamhbhailí: %1-%2",
     "Invalid setting": "Socrú neamhbhailí",
     "IPTV token": "Comhartha IPTV",
     "IpStream.one": "IpStream.one",
@@ -598,6 +605,7 @@ var keyStrings = {
     "Loading M3U...": "M3U á luchtú…",
     "Loading media libraries...": "Leabharlanna meán á luchtú…",
     "Loading player...": "Seinnteoir á luchtú…",
+    "Loading the new playlist...": "An seinmliosta nua á luchtú...",
     "Loading via proxy...": "Á luchtú tríd an seachfhreastalaí…",
     "Loading. Please wait...": "Á luchtú… fan go fóill…",
     "Loading...": "Á luchtú…",
@@ -640,6 +648,7 @@ var keyStrings = {
     "Next TV program": "An chéad chlár eile",
     No: "Níl",
     "No channel name": "Gan ainm cainéil",
+    "No channels loaded": "Níl aon chainéal luchtaithe",
     "No command server was found on this network.":
         "Níor aimsíodh freastalaí orduithe ar an líonra seo.",
     "No Plex servers are available for this account.":
@@ -713,6 +722,7 @@ var keyStrings = {
     "Player could not start": "Níorbh fhéidir an seinnteoir a thosú",
     "Player default": "Rogha réamhshocraithe an tseinnteora",
     "Player info:": "Faisnéis faoin seinnteoir:",
+    "Playing: %1": "Á sheinm: %1",
     Playlist: "Seinmliosta",
     "Playlist file": "Comhad seinmliosta",
     "Playlist is not loading directly...Loading via server...":
@@ -748,9 +758,13 @@ var keyStrings = {
     "Protect Change Provider": "Cosain athrú an tsoláthraí",
     "Protect Settings": "Cosain socruithe",
     "Protected source is unavailable": "Níl an fhoinse chosanta ar fáil",
+    "Provider switching not available": "Níl athrú soláthraí ar fáil",
     "p...": "p...",
     paging: "leathanú",
     Quality: "Cáilíocht",
+    "Random #%1": "Cainéal randamach #%1",
+    "Random channel not in any category":
+        "Níl an cainéal a roghnaíodh go randamach in aon chatagóir",
     Rating: "Rátáil",
     RD: "RD",
     "RD settings": "Socruithe RD",
@@ -788,6 +802,10 @@ var keyStrings = {
         "Chuaigh an cianionchur in éag. Oscail seisiún nua chun triail eile a bhaint as.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Níl an seisiún cianionchuir ar fáil. Oscail seisiún nua chun triail eile a bhaint as.",
+    "Remote playlist changes require the M3U provider.":
+        "Tá an soláthraí M3U de dhíth chun an seinmliosta a athrú ó chian.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Ní thacaítear le socruithe an tsoláthraí a athrú ó chian. Úsáid socruithe an tsoláthraí sa seinnteoir.",
     "Remote screenshots": "Gabhálacha scáileáin cianda",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Ceadaítear gabhálacha scáileáin cianda ar feadh 10 nóiméad. Dún na socruithe chun gabháil a dhéanamh.",
@@ -985,6 +1003,7 @@ var keyStrings = {
     "Switch sound track": "Athraigh an rian fuaime",
     "Switch subtitle": "Athraigh na fotheidil",
     "Switch to this list": "Athraigh chuig an liosta seo",
+    "Switching provider...": "An soláthraí á athrú...",
     "Swop URL": "URL Swop",
     "System language": "Teanga chórais",
     "saved on this device": "sábháilte ar an ngléas seo",
@@ -1019,6 +1038,8 @@ var keyStrings = {
         "Tá HTTPS de dhíth ar an aip Play seo. Iarr URL seinmliosta nó freastalaí HTTPS ar do sholáthraí.",
     "This pairing link has expired. Open a new session on your TV.":
         "Tá an nasc péireála seo imithe in éag. Oscail seisiún nua ar do theilifíseán.",
+    "This remote command is not supported by the player.":
+        "Ní thacaíonn an seinnteoir leis an gcianordú seo.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Níl an seisiún slán seo ar fáil nó tá sé imithe in éag. Oscail seisiún nua ar an teilifís agus úsáid a nasc iomlán.",
     Timer: "Amadóir",
@@ -1038,6 +1059,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Athraigh an mód súmála",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Socruithe Top-Tv",
+    "Touchscreen locked": "An scáileán tadhaill glasáilte",
+    "Touchscreen unlocked": "An scáileán tadhaill díghlasáilte",
     "Trust this server for remote support":
         "Cuir muinín sa fhreastalaí seo le haghaidh ciantacaíochta",
     "Trusted access could not be removed from device storage.":
@@ -1058,6 +1081,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Socruithe ULTIFL1X",
     "Unable to load playlist": "Níorbh fhéidir an seinmliosta a luchtú",
+    "Unlock the player's settings before changing its playlist.":
+        "Díghlasáil socruithe an tseinnteora sula n-athraíonn tú a sheinmliosta.",
     Untitled: "Gan teideal",
     "Untitled folder": "Fillteán gan teideal",
     "Update installed. Please restart OttPlay FOSS.":

@@ -4,8 +4,10 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const { JSDOM } = require("jsdom");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const localeCode = localizationRuntime();
 
 function functions(file, names) {
     const ast = ts.createSourceFile(
@@ -114,6 +116,7 @@ function touchFixture(platform) {
     if (platform === "capacitor") w.Capacitor = {};
     if (platform === "tauri") w.__TAURI__ = {};
     vm.createContext(w);
+    vm.runInContext(localeCode, w);
     require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(touchCode, w);
     return { calls, clock, w };
@@ -770,6 +773,32 @@ for (const fingers of [1, 4]) {
     });
     assert.equal(prevented, 1);
     assert.equal(w.touch_locked, fingers !== 4);
+}
+
+// The four-finger lock uses the loaded player dictionary on each gesture.
+{
+    const { w } = touchFixture("capacitor");
+    const messages = [];
+    w.alert = (message) => messages.push(message);
+    vm.runInContext(read("locales/russian.js"), w);
+    w.__ottInterfaceLanguage = "_rus";
+    const gesture = {
+        preventDefault() {},
+        touches: Array.from({ length: 4 }, () => ({
+            screenX: 20,
+            screenY: 30,
+        })),
+    };
+    w.handleTouchStart(gesture);
+    assert.equal(w.touch_locked, true);
+    assert.equal(messages.at(-1), w.keyStrings["Touchscreen locked"]);
+    assert.notEqual(messages.at(-1), "Touchscreen locked");
+    vm.runInContext(read("locales/arabic.js"), w);
+    w.__ottInterfaceLanguage = "_ara";
+    w.handleTouchStart(gesture);
+    assert.equal(w.touch_locked, false);
+    assert.equal(messages.at(-1), w.keyStrings["Touchscreen unlocked"]);
+    assert.notEqual(messages.at(-1), "Touchscreen unlocked");
 }
 
 // Main-window drag exclusions and the body click bands must use the same

@@ -487,8 +487,8 @@ function classicMediaRuntime(): any {
         });
     }
     function normalizedFilter(value: string) {
-        return value
-            .toLowerCase()
+        return w
+            .normalizeSearchText(value)
             .replace(/ё/g, "е")
             .replace(/\s+/g, " ")
             .trim();

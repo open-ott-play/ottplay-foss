@@ -148,6 +148,12 @@ var keyStrings = {
         "Ovao ny mpamatsy. Hotadidina ny safidinao rehefa manomboka ny mpamaky amin'ny manaraka.",
     "Change value": "Ovao ny sanda",
     "Channel ": "Fantsona ",
+    'Channel "%1" not found': 'Tsy hita ny fantsona "%1"',
+    "Channel #%1": "Fantsona #%1",
+    "Channel #%1 not found (total: %2)":
+        "Tsy hita ny fantsona #%1 (fitambarany: %2)",
+    "Channel #%1 not in any category":
+        "Tsy ao anatin’ny sokajy na iray aza ny fantsona #%1",
     "Channel has no EPG": "Tsy manana EPG ny fantsona",
     "Channel is not available!!!": "Tsy misy ny fantsona!",
     "Channel link": "Rohin'ny fantsona",
@@ -300,6 +306,8 @@ var keyStrings = {
         "Adikao ny JSON mba hitazonana tahiry fiarovana. Ampiasao ny Ampidiro ny fikirakirana mba hamerenana azy.",
     "Copy the selected JSON with your device's copy command":
         "Adikao ny JSON voafantina amin'ny baiko fandikana an'ny fitaovanao",
+    "Could not change the playlist.":
+        "Tsy afaka nanova ny lisitra fandefasana.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Tsy afaka nifandray tamin'ny Plex. Jereo ny adiresin'ny lohamilina, mari-pidirana ary fidirana amin'ny tambajotra.",
     "Could not connect to the server.":
@@ -579,6 +587,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Valin'ny firafitry ny rahona tsy mety",
     "Invalid protected source configuration":
         "Fikirakirana loharano voaaro tsy manan-kery",
+    "Invalid range: %1-%2": "Elanelana tsy mety: %1-%2",
     "Invalid setting": "Fikirana tsy mety",
     "IPTV token": "Mari-pidirana IPTV",
     "IpStream.one": "IpStream.one",
@@ -612,6 +621,8 @@ var keyStrings = {
     "Loading M3U...": "Maka M3U…",
     "Loading media libraries...": "Maka tranombokin'ny haino aman-jery…",
     "Loading player...": "Maka ny mpamaky…",
+    "Loading the new playlist...":
+        "Mampiditra ny lisitra fandefasana vaovao...",
     "Loading via proxy...": "Maka amin'ny alalan'ny lohamilina mpanelanelana…",
     "Loading. Please wait...": "Maka… andraso azafady…",
     "Loading...": "Maka…",
@@ -654,6 +665,7 @@ var keyStrings = {
     "Next TV program": "Fandaharana manaraka",
     No: "Tsia",
     "No channel name": "Tsy misy anaran'ny fantsona",
+    "No channels loaded": "Tsy misy fantsona voapetraka",
     "No command server was found on this network.":
         "Tsy nahitana lohamilina baiko amin'ity tambajotra ity.",
     "No Plex servers are available for this account.":
@@ -728,6 +740,7 @@ var keyStrings = {
     "Player could not start": "Tsy afaka nanomboka ny mpamaky",
     "Player default": "Safidy mahazatra an’ilay mpamaky",
     "Player info:": "Mombamomba ny mpamaky:",
+    "Playing: %1": "Alefa izao: %1",
     Playlist: "Lisitra fandefasana",
     "Playlist file": "Rakitra lisitra fandefasana",
     "Playlist is not loading directly...Loading via server...":
@@ -764,9 +777,14 @@ var keyStrings = {
     "Protect Change Provider": "Arovy ny fanovana mpamatsy",
     "Protect Settings": "Arovy ny fikirakirana",
     "Protected source is unavailable": "Tsy misy ny loharano voaaro",
+    "Provider switching not available":
+        "Tsy azo atao ny manova mpanome tolotra",
     "p...": "p...",
     paging: "fanovana pejy",
     Quality: "Kalitao",
+    "Random #%1": "Fantsona kisendrasendra #%1",
+    "Random channel not in any category":
+        "Tsy ao anatin’ny sokajy na iray aza ny fantsona nofidina kisendrasendra",
     Rating: "Naoty",
     RD: "RD",
     "RD settings": "Fikirakirana RD",
@@ -806,6 +824,10 @@ var keyStrings = {
         "Tapitra ny fe-potoana fampidirana lavitra. Manokafa fotoana vaovao mba hanandrana indray.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Tsy misy ny fotoam-pampidirana lavitra. Manokafa fotoana vaovao mba hanandrana indray.",
+    "Remote playlist changes require the M3U provider.":
+        "Tsy maintsy misafidy ny mpanome tolotra M3U vao afaka manova lavitra ny lisitra fandefasana.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Tsy tohanana ny fanovana lavitra ny fikirakiran’ny mpanome tolotra. Ampiasao ny fikirakiran’ny mpanome tolotra ao amin’ny mpilalao haino aman-jery.",
     "Remote screenshots": "Pikantsary lavitra",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Avela mandritra ny 10 minitra ny fakana pikantsary lavitra. Akatona ny fikirana mba hahafahana maka sary.",
@@ -1009,6 +1031,7 @@ var keyStrings = {
     "Switch sound track": "Ovao ny raki-peo",
     "Switch subtitle": "Ovao ny dikanteny",
     "Switch to this list": "Mifindra amin'ity lisitra ity",
+    "Switching provider...": "Manova mpanome tolotra...",
     "Swop URL": "URL SWOP",
     "System language": "Fiteny rafitra",
     "saved on this device": "voatahiry amin'ity fitaovana ity",
@@ -1043,6 +1066,8 @@ var keyStrings = {
         "Mitaky HTTPS ity rindranasa Play ity. Mangataha lisitra fandefasana HTTPS na URL lohamilina amin'ny mpamatsinao.",
     "This pairing link has expired. Open a new session on your TV.":
         "Lany daty ity rohy mampiaraka ity. Sokafy fivoriana vaovao amin'ny fahitalavitra.",
+    "This remote command is not supported by the player.":
+        "Tsy tohanan’ny mpilalao haino aman-jery ity baiko fanaraha-maso lavitra ity.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ity session azo antoka ity dia tsy misy na lany daty. Sokafy fivoriana vaovao amin'ny fahitalavitra ary ampiasao ny rohy feno.",
     Timer: "Fameram-potoana",
@@ -1064,6 +1089,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ovao ny fomba fanalehibiazana",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Fikirakirana Top-Tv",
+    "Touchscreen locked": "Voahidy ny efijery fikasihana",
+    "Touchscreen unlocked": "Nesorina ny hidin’ny efijery fikasihana",
     "Trust this server for remote support":
         "Atokiso ity lohamilina ity ho an'ny fanohanana lavitra",
     "Trusted access could not be removed from device storage.":
@@ -1084,6 +1111,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Fikirakirana ULTIFL1X",
     "Unable to load playlist": "Tsy afaka naka ny lisitra fandefasana",
+    "Unlock the player's settings before changing its playlist.":
+        "Vohay ny hidin’ny fikirakiran’ny mpilalao haino aman-jery alohan’ny hanovana ny lisitra fandefasany.",
     Untitled: "Tsy misy lohateny",
     "Untitled folder": "Lahatahiry tsy misy anarana",
     "Update installed. Please restart OttPlay FOSS.":

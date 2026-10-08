@@ -142,6 +142,12 @@ var keyStrings = {
         "Sağlayıcıyı değiştirin. Seçiminiz oynatıcıyı bir sonraki başlatışınızda hatırlanır.",
     "Change value": "Değeri değiştir",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': '"%1" kanalı bulunamadı',
+    "Channel #%1": "Kanal #%1",
+    "Channel #%1 not found (total: %2)":
+        "%1 numaralı kanal bulunamadı (toplam: %2)",
+    "Channel #%1 not in any category":
+        "%1 numaralı kanal hiçbir kategoride değil",
     "Channel has no EPG": "Kanalda EPG yok",
     "Channel is not available!!!": "Kanal kullanılamıyor!!!",
     "Channel link": "Kanal bağlantısı",
@@ -293,6 +299,7 @@ var keyStrings = {
         "Yedek saklamak için JSON'u kopyalayın. Geri yüklemek için ayarları içe aktarma işlevini kullanın.",
     "Copy the selected JSON with your device's copy command":
         "Seçili JSON'u cihazınızın kopyalama komutuyla kopyalayın",
+    "Could not change the playlist.": "Oynatma listesi değiştirilemedi.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex'ye bağlanılamadı. Sunucu adresini, belirteci ve ağ erişimini kontrol edin.",
     "Could not connect to the server.": "Sunucuya bağlanılamadı.",
@@ -556,6 +563,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Geçersiz bulut ayarları yanıtı",
     "Invalid protected source configuration":
         "Korumalı kaynak yapılandırması geçersiz",
+    "Invalid range: %1-%2": "Geçersiz aralık: %1-%2",
     "Invalid setting": "Geçersiz ayar",
     "IPTV token": "IPTV belirteci",
     "IpStream.one": "IpStream.one",
@@ -588,6 +596,7 @@ var keyStrings = {
     "Loading M3U...": "M3U yükleniyor…",
     "Loading media libraries...": "Medya kitaplıkları yükleniyor…",
     "Loading player...": "Oynatıcı yükleniyor…",
+    "Loading the new playlist...": "Yeni oynatma listesi yükleniyor...",
     "Loading via proxy...": "Vekil sunucu üzerinden yükleniyor…",
     "Loading. Please wait...": "Yükleniyor… lütfen bekleyin…",
     "Loading...": "Yükleniyor…",
@@ -629,6 +638,7 @@ var keyStrings = {
     "Next TV program": "Sonraki program",
     No: "Hayır",
     "No channel name": "Kanal adı yok",
+    "No channels loaded": "Yüklenmiş kanal yok",
     "No command server was found on this network.":
         "Bu ağda komut sunucusu bulunamadı.",
     "No Plex servers are available for this account.":
@@ -702,6 +712,7 @@ var keyStrings = {
     "Player could not start": "Oynatıcı başlatılamadı",
     "Player default": "Oynatıcının varsayılan seçimi",
     "Player info:": "Oynatıcı bilgileri:",
+    "Playing: %1": "Oynatılıyor: %1",
     Playlist: "Oynatma listesi",
     "Playlist file": "Oynatma listesi dosyası",
     "Playlist is not loading directly...Loading via server...":
@@ -737,9 +748,13 @@ var keyStrings = {
     "Protect Change Provider": "Sağlayıcı değişikliğini koru",
     "Protect Settings": "Ayarları koru",
     "Protected source is unavailable": "Korumalı kaynağa erişilemiyor",
+    "Provider switching not available": "Sağlayıcı değiştirme kullanılamıyor",
     "p...": "p...",
     paging: "sayfalama",
     Quality: "Kalite",
+    "Random #%1": "Rastgele kanal #%1",
+    "Random channel not in any category":
+        "Rastgele seçilen kanal hiçbir kategoride değil",
     Rating: "Puan",
     RD: "RD",
     "RD settings": "RD ayarları",
@@ -776,6 +791,10 @@ var keyStrings = {
         "Uzaktan girişin süresi doldu. Tekrar denemek için yeni bir oturum açın.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Uzaktan giriş oturumu kullanılamıyor. Tekrar denemek için yeni bir oturum açın.",
+    "Remote playlist changes require the M3U provider.":
+        "Oynatma listesini uzaktan değiştirmek için M3U sağlayıcısı seçili olmalıdır.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Sağlayıcı ayarlarının uzaktan değiştirilmesi desteklenmiyor. Oynatıcıdaki sağlayıcı ayarlarını kullanın.",
     "Remote screenshots": "Uzaktan ekran görüntüleri",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Uzaktan ekran görüntülerine 10 dakika süreyle izin verilir. Yakalamak için ayarları kapatın.",
@@ -969,6 +988,7 @@ var keyStrings = {
     "Switch sound track": "Ses parçasını değiştir",
     "Switch subtitle": "Altyazıları değiştir",
     "Switch to this list": "Bu listeye geç",
+    "Switching provider...": "Sağlayıcı değiştiriliyor...",
     "Swop URL": "Swop URL'si",
     "System language": "Sistem dili",
     "saved on this device": "bu cihazda kayıtlı",
@@ -1001,6 +1021,8 @@ var keyStrings = {
         "Bu Play uygulaması HTTPS gerektirir. Sağlayıcınızdan HTTPS oynatma listesi veya sunucu URL'si isteyin.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu eşleştirme bağlantısının süresi doldu. TV'nizde yeni bir oturum açın.",
+    "This remote command is not supported by the player.":
+        "Oynatıcı bu uzaktan kumanda komutunu desteklemiyor.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Bu güvenli oturum kullanılamıyor veya süresi dolmuş. TV'de yeni bir oturum açın ve tam bağlantısını kullanın.",
     Timer: "Zamanlayıcı",
@@ -1019,6 +1041,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Yakınlaştırma modunu değiştir",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ayarları",
+    "Touchscreen locked": "Dokunmatik ekran kilitlendi",
+    "Touchscreen unlocked": "Dokunmatik ekranın kilidi açıldı",
     "Trust this server for remote support":
         "Uzaktan destek için bu sunucuya güvenin",
     "Trusted access could not be removed from device storage.":
@@ -1039,6 +1063,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ayarları",
     "Unable to load playlist": "Oynatma listesi yüklenemedi",
+    "Unlock the player's settings before changing its playlist.":
+        "Oynatma listesini değiştirmeden önce oynatıcı ayarlarının kilidini açın.",
     Untitled: "Başlıksız",
     "Untitled folder": "Adsız klasör",
     "Update installed. Please restart OttPlay FOSS.":

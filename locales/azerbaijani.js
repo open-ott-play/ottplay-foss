@@ -142,6 +142,10 @@ var keyStrings = {
         "Provayderi dəyişin. Seçiminiz pleyerin növbəti açılışında yadda saxlanacaq.",
     "Change value": "Dəyəri dəyiş",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': '"%1" kanalı tapılmadı',
+    "Channel #%1": "Kanal #%1",
+    "Channel #%1 not found (total: %2)": "#%1 kanalı tapılmadı (cəmi: %2)",
+    "Channel #%1 not in any category": "#%1 kanalı heç bir kateqoriyada deyil",
     "Channel has no EPG": "Kanalın proqram cədvəli yoxdur",
     "Channel is not available!!!": "Kanal əlçatan deyil!",
     "Channel link": "Kanal keçidi",
@@ -292,6 +296,8 @@ var keyStrings = {
         "Ehtiyat nüsxəni saxlamaq üçün JSON-u kopyalayın. Bərpa etmək üçün parametrlərin idxalından istifadə edin.",
     "Copy the selected JSON with your device's copy command":
         "Seçilmiş JSON-u cihazın kopyalama əmri ilə kopyalayın",
+    "Could not change the playlist.":
+        "Oynatma siyahısını dəyişmək mümkün olmadı.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex-ə qoşulmaq mümkün olmadı. Server ünvanını, tokeni və şəbəkəyə girişi yoxlayın.",
     "Could not connect to the server.": "Serverə qoşulmaq mümkün olmadı.",
@@ -558,6 +564,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Yanlış bulud parametrləri cavabı",
     "Invalid protected source configuration":
         "Qorunan mənbənin konfiqurasiyası yanlışdır",
+    "Invalid range: %1-%2": "Yanlış aralıq: %1-%2",
     "Invalid setting": "Yanlış parametr",
     "IPTV token": "IPTV tokeni",
     "IpStream.one": "IpStream.one",
@@ -589,6 +596,7 @@ var keyStrings = {
     "Loading M3U...": "M3U yüklənir…",
     "Loading media libraries...": "Media kitabxanaları yüklənir…",
     "Loading player...": "Pleyer yüklənir…",
+    "Loading the new playlist...": "Yeni oynatma siyahısı yüklənir...",
     "Loading via proxy...": "Proksi vasitəsilə yüklənir…",
     "Loading. Please wait...": "Yüklənir. Gözləyin…",
     "Loading...": "Yüklənir…",
@@ -630,6 +638,7 @@ var keyStrings = {
     "Next TV program": "Növbəti veriliş",
     No: "Xeyr",
     "No channel name": "Kanalın adı yoxdur",
+    "No channels loaded": "Heç bir kanal yüklənməyib",
     "No command server was found on this network.":
         "Bu şəbəkədə əmr serveri tapılmadı.",
     "No Plex servers are available for this account.":
@@ -703,6 +712,7 @@ var keyStrings = {
     "Player could not start": "Pleyeri başlatmaq mümkün olmadı",
     "Player default": "Pleyerin standart seçimi",
     "Player info:": "Pleyer məlumatı:",
+    "Playing: %1": "Oynadılır: %1",
     Playlist: "Pleylist",
     "Playlist file": "Pleylist faylı",
     "Playlist is not loading directly...Loading via server...":
@@ -739,9 +749,13 @@ var keyStrings = {
     "Protect Change Provider": "Provayder dəyişməsini qoru",
     "Protect Settings": "Ayarları qoru",
     "Protected source is unavailable": "Qorunan mənbə əlçatan deyil",
+    "Provider switching not available": "Provayderi dəyişmək mümkün deyil",
     "p...": "p…",
     paging: "səhifələmə",
     Quality: "Keyfiyyət",
+    "Random #%1": "Təsadüfi kanal #%1",
+    "Random channel not in any category":
+        "Təsadüfi seçilmiş kanal heç bir kateqoriyada deyil",
     Rating: "Reytinq",
     RD: "RD",
     "RD settings": "RD ayarları",
@@ -778,6 +792,10 @@ var keyStrings = {
         "Uzaqdan daxiletmənin vaxtı bitdi. Yenidən cəhd etmək üçün yeni sessiya açın.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Uzaqdan daxiletmə sessiyası mövcud deyil. Yenidən cəhd etmək üçün yeni sessiya açın.",
+    "Remote playlist changes require the M3U provider.":
+        "Oynatma siyahısını uzaqdan dəyişmək üçün M3U provayderi seçilməlidir.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Provayder ayarlarının uzaqdan dəyişdirilməsi dəstəklənmir. Pleyerin provayder ayarlarından istifadə edin.",
     "Remote screenshots": "Uzaqdan ekran görüntüləri",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Uzaqdan ekran görüntülərinə 10 dəqiqə icazə verilir. Çəkmək üçün parametrləri bağlayın.",
@@ -972,6 +990,7 @@ var keyStrings = {
     "Switch sound track": "Səs yolunu dəyiş",
     "Switch subtitle": "Altyazını dəyiş",
     "Switch to this list": "Bu siyahıya keç",
+    "Switching provider...": "Provayder dəyişdirilir...",
     "Swop URL": "Swop URL-i",
     "System language": "Sistem dili",
     "saved on this device": "bu cihazda saxlanıb",
@@ -1006,6 +1025,8 @@ var keyStrings = {
         "Bu Play tətbiqi HTTPS tələb edir. Provayderdən HTTPS pleylist və ya server URL-i istəyin.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu cütləşmə linkinin vaxtı keçib. Televizorunuzda yeni sessiya açın.",
+    "This remote command is not supported by the player.":
+        "Bu uzaqdan idarəetmə əmri pleyer tərəfindən dəstəklənmir.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Bu təhlükəsiz seans mövcud deyil və ya müddəti bitib. Televiziyada yeni sessiya açın və onun tam linkindən istifadə edin.",
     Timer: "Taymer",
@@ -1024,6 +1045,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Miqyas rejimini dəyiş",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ayarları",
+    "Touchscreen locked": "Toxunma ekranı kilidləndi",
+    "Touchscreen unlocked": "Toxunma ekranının kilidi açıldı",
     "Trust this server for remote support":
         "Uzaqdan dəstək üçün bu serverə etibar edin",
     "Trusted access could not be removed from device storage.":
@@ -1044,6 +1067,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ayarları",
     "Unable to load playlist": "Oynatma siyahısını yükləmək mümkün olmadı",
+    "Unlock the player's settings before changing its playlist.":
+        "Oynatma siyahısını dəyişməzdən əvvəl pleyerin ayarlarının kilidini açın.",
     Untitled: "Adsız",
     "Untitled folder": "Adsız qovluq",
     "Update installed. Please restart OttPlay FOSS.":

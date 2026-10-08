@@ -136,6 +136,10 @@ var keyStrings = {
         "更改提供商。下次启动播放器时，系统会记住您的选择。",
     "Change value": "更改值",
     "Channel ": "频道 ",
+    'Channel "%1" not found': "找不到频道“%1”",
+    "Channel #%1": "频道 #%1",
+    "Channel #%1 not found (total: %2)": "找不到频道 #%1（共 %2 个）",
+    "Channel #%1 not in any category": "频道 #%1 不属于任何分类",
     "Channel has no EPG": "该频道没有 EPG",
     "Channel is not available!!!": "频道不可用！",
     "Channel link": "频道链接",
@@ -278,6 +282,7 @@ var keyStrings = {
         "复制JSON 以保留备份。使用导入设置来恢复它。",
     "Copy the selected JSON with your device's copy command":
         "使用设备的复制命令复制选定的 JSON",
+    "Could not change the playlist.": "无法更改播放列表。",
     "Could not connect to Plex. Check the server address, token and network access.":
         "无法连接到Plex。检查服务器地址、令牌和网络访问权限。",
     "Could not connect to the server.": "无法连接到服务器。",
@@ -526,6 +531,7 @@ var keyStrings = {
         "频道链接无效！输入内阁流 URL 中的完整主机（例如 subdomain.cdn-domain.tld）",
     "Invalid cloud settings response": "无效的云设置响应",
     "Invalid protected source configuration": "受保护源配置无效",
+    "Invalid range: %1-%2": "范围无效：%1-%2",
     "Invalid setting": "无效设置",
     "IPTV token": "IPTV 代币",
     "IpStream.one": "IpStream.one",
@@ -557,6 +563,7 @@ var keyStrings = {
     "Loading M3U...": "加载M3U…",
     "Loading media libraries...": "正在加载媒体库...",
     "Loading player...": "正在加载播放器...",
+    "Loading the new playlist...": "正在加载新播放列表...",
     "Loading via proxy...": "通过代理加载...",
     "Loading. Please wait...": "加载中...请稍候...",
     "Loading...": "加载中...",
@@ -598,6 +605,7 @@ var keyStrings = {
     "Next TV program": "下一个节目",
     No: "否",
     "No channel name": "无频道名称",
+    "No channels loaded": "尚未加载任何频道",
     "No command server was found on this network.":
         "在此网络上未找到命令服务器。",
     "No Plex servers are available for this account.":
@@ -670,6 +678,7 @@ var keyStrings = {
     "Player could not start": "播放器无法启动",
     "Player default": "播放器默认选项",
     "Player info:": "播放器信息：",
+    "Playing: %1": "正在播放：%1",
     Playlist: "播放列表",
     "Playlist file": "播放列表文件",
     "Playlist is not loading directly...Loading via server...":
@@ -703,9 +712,12 @@ var keyStrings = {
     "Protect Change Provider": "需要访问代码才能更改提供商",
     "Protect Settings": "需要访问代码才能更改设置",
     "Protected source is unavailable": "受保护的源不可用",
+    "Provider switching not available": "无法切换服务商",
     "p...": "p...",
     paging: "寻呼",
     Quality: "品质",
+    "Random #%1": "随机频道 #%1",
+    "Random channel not in any category": "随机选中的频道不属于任何分类",
     Rating: "评级",
     RD: "RD",
     "RD settings": "RD设定",
@@ -742,6 +754,10 @@ var keyStrings = {
         "远程输入已过期。打开一个新会话重试。",
     "Remote input session is unavailable. Open a new session to try again.":
         "远程输入会话不可用。打开一个新会话重试。",
+    "Remote playlist changes require the M3U provider.":
+        "远程更改播放列表需要使用 M3U 服务商。",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "不支持远程设置服务商。请使用播放器中的服务商设置。",
     "Remote screenshots": "远程截图",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "已允许远程截图，持续10分钟。关闭设置界面后即可截图。",
@@ -923,6 +939,7 @@ var keyStrings = {
     "Switch sound track": "切换音轨",
     "Switch subtitle": "切换字幕",
     "Switch to this list": "切换到此列表",
+    "Switching provider...": "正在切换服务商...",
     "Swop URL": "Swop 地址",
     "System language": "系统语言",
     "saved on this device": "保存在此设备上",
@@ -952,6 +969,8 @@ var keyStrings = {
         "此Play 应用程序需要HTTPS。向您的提供商询问 HTTPS 播放列表或服务器 URL。",
     "This pairing link has expired. Open a new session on your TV.":
         "该配对链接已过期。在电视上打开一个新会话。",
+    "This remote command is not supported by the player.":
+        "播放器不支持此远程控制命令。",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "此安全会话不可用或已过期。在电视上打开一个新会话并使用其完整链接。",
     Timer: "定时器",
@@ -969,6 +988,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "更改缩放模式",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv设定",
+    "Touchscreen locked": "触摸屏已锁定",
+    "Touchscreen unlocked": "触摸屏已解锁",
     "Trust this server for remote support": "信任此服务器以提供远程支持",
     "Trusted access could not be removed from device storage.":
         "无法从设备存储中删除可信访问。",
@@ -988,6 +1009,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X设定",
     "Unable to load playlist": "无法加载播放列表",
+    "Unlock the player's settings before changing its playlist.":
+        "更改播放列表前，请先解锁播放器设置。",
     Untitled: "无标题",
     "Untitled folder": "无标题文件夹",
     "Update installed. Please restart OttPlay FOSS.":

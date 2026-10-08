@@ -4,6 +4,15 @@
 
 ### Changes
 
+- Translate remote-command notifications and touchscreen-lock messages in all
+  88 interface languages. Use the same Unicode search rules for remote channel
+  selection and media-library filtering, including filtered shuffle playback.
+- Retry the dictionary download when a saved system language fails to load at
+  startup. Keep generated phone-input captions translatable when the browser
+  dictionary arrives after a legacy TV offer.
+- Recognize standard French, Romanian and Latvian audio/subtitle language tags
+  without confusing Latin with Latvian.
+
 - Update SQLx and tauri-utils within their existing version requirements and use
   Rustls PKI types for PEM input, removing seven unmaintained packages from the
   application lockfile.

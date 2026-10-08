@@ -141,6 +141,10 @@ var keyStrings = {
         "Провайдерді ауыстырыңыз. Таңдауыңыз ойнатқышты келесі іске қосқанда сақталады.",
     "Change value": "Мәнді өзгерту",
     "Channel ": "Арна ",
+    'Channel "%1" not found': "«%1» арнасы табылмады",
+    "Channel #%1": "№%1 арна",
+    "Channel #%1 not found (total: %2)": "№%1 арна табылмады (барлығы: %2)",
+    "Channel #%1 not in any category": "№%1 арна ешбір санатқа кірмейді",
     "Channel has no EPG": "Арнаның бағдарлама кестесі жоқ",
     "Channel is not available!!!": "Арна қолжетімсіз!",
     "Channel link": "Арна сілтемесі",
@@ -289,6 +293,7 @@ var keyStrings = {
         "Сақтық көшірмені сақтау үшін JSON мәтінін көшіріңіз. Қалпына келтіру үшін параметрлерді импорттауды пайдаланыңыз.",
     "Copy the selected JSON with your device's copy command":
         "Таңдалған JSON мәтінін құрылғының көшіру пәрменімен көшіріңіз",
+    "Could not change the playlist.": "Ойнату тізімін өзгерту мүмкін болмады.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex желісіне қосылу мүмкін болмады. Сервер мекенжайын, таңбалауышты және желіге кіруді тексеріңіз.",
     "Could not connect to the server.": "Серверге қосылу мүмкін болмады.",
@@ -557,6 +562,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Бұлт параметрлерінің жауабы жарамсыз",
     "Invalid protected source configuration":
         "Қорғалған дереккөздің конфигурациясы жарамсыз",
+    "Invalid range: %1-%2": "Жарамсыз аралық: %1-%2",
     "Invalid setting": "Жарамсыз параметр",
     "IPTV token": "IPTV токені",
     "IpStream.one": "IpStream.one",
@@ -589,6 +595,7 @@ var keyStrings = {
     "Loading M3U...": "M3U жүктелуде…",
     "Loading media libraries...": "Медиакітапханалар жүктелуде…",
     "Loading player...": "Ойнатқыш жүктелуде…",
+    "Loading the new playlist...": "Жаңа ойнату тізімі жүктелуде...",
     "Loading via proxy...": "Прокси арқылы жүктелуде…",
     "Loading. Please wait...": "Жүктелуде. Күтіңіз…",
     "Loading...": "Жүктелуде…",
@@ -630,6 +637,7 @@ var keyStrings = {
     "Next TV program": "Келесі бағдарлама",
     No: "Жоқ",
     "No channel name": "Арна атауы жоқ",
+    "No channels loaded": "Арналар жүктелмеген",
     "No command server was found on this network.":
         "Бұл желіде пәрмен сервері табылмады.",
     "No Plex servers are available for this account.":
@@ -703,6 +711,7 @@ var keyStrings = {
     "Player could not start": "Ойнатқышты іске қосу мүмкін болмады",
     "Player default": "Ойнатқыштың әдепкі таңдауы",
     "Player info:": "Ойнатқыш туралы ақпарат:",
+    "Playing: %1": "Ойнатылуда: %1",
     Playlist: "Ойнату тізімі",
     "Playlist file": "Ойнату тізімінің файлы",
     "Playlist is not loading directly...Loading via server...":
@@ -739,9 +748,13 @@ var keyStrings = {
     "Protect Change Provider": "Провайдерді ауыстыруды қорғау",
     "Protect Settings": "Баптауларды қорғау",
     "Protected source is unavailable": "Қорғалған дереккөз қолжетімсіз",
+    "Provider switching not available": "Провайдерді ауыстыру қолжетімсіз",
     "p...": "т…",
     paging: "беттерді ауыстыру",
     Quality: "Сапа",
+    "Random #%1": "Кездейсоқ арна №%1",
+    "Random channel not in any category":
+        "Кездейсоқ таңдалған арна ешбір санатқа кірмейді",
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "RD баптаулары",
@@ -778,6 +791,10 @@ var keyStrings = {
         "Қашықтан енгізудің мерзімі аяқталды. Әрекетті қайталау үшін жаңа сеанс ашыңыз.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Қашықтан енгізу сеансы қолжетімсіз. Әрекетті қайталау үшін жаңа сеанс ашыңыз.",
+    "Remote playlist changes require the M3U provider.":
+        "Ойнату тізімін қашықтан өзгерту үшін M3U провайдері таңдалуы керек.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Провайдер баптауларын қашықтан өзгертуге қолдау көрсетілмейді. Ойнатқыштағы провайдер баптауларын пайдаланыңыз.",
     "Remote screenshots": "Қашықтағы скриншоттар",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Қашықтағы скриншоттарға 10 минут ішінде рұқсат етіледі. Түсіру үшін параметрлерді жабыңыз.",
@@ -971,6 +988,7 @@ var keyStrings = {
     "Switch sound track": "Дыбыс жолын ауыстыру",
     "Switch subtitle": "Субтитрді ауыстыру",
     "Switch to this list": "Осы тізімге ауысу",
+    "Switching provider...": "Провайдер ауыстырылуда...",
     "Swop URL": "Swop URL мекенжайы",
     "System language": "Жүйе тілі",
     "saved on this device": "осы құрылғыда сақталған",
@@ -1004,6 +1022,8 @@ var keyStrings = {
         "Бұл Play қолданбасына HTTPS қажет. Провайдерден HTTPS ойнату тізімін немесе сервер URL мекенжайын сұраңыз.",
     "This pairing link has expired. Open a new session on your TV.":
         "Бұл жұптастыру сілтемесінің мерзімі аяқталды. Теледидарда жаңа сеанс ашыңыз.",
+    "This remote command is not supported by the player.":
+        "Ойнатқыш бұл қашықтан басқару пәрменін қолдамайды.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Бұл қауіпсіз сеанс қолжетімсіз немесе мерзімі өтіп кеткен. Теледидарда жаңа сеанс ашып, оның толық сілтемесін пайдаланыңыз.",
     Timer: "Таймер",
@@ -1023,6 +1043,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Масштаб режимін өзгерту",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv баптаулары",
+    "Touchscreen locked": "Сенсорлық экран құлыпталды",
+    "Touchscreen unlocked": "Сенсорлық экранның құлпы ашылды",
     "Trust this server for remote support":
         "Қашықтан қолдау көрсету үшін осы серверге сеніңіз",
     "Trusted access could not be removed from device storage.":
@@ -1043,6 +1065,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X баптаулары",
     "Unable to load playlist": "Ойнату тізімін жүктеу мүмкін болмады",
+    "Unlock the player's settings before changing its playlist.":
+        "Ойнату тізімін өзгертпес бұрын ойнатқыш баптауларының құлпын ашыңыз.",
     Untitled: "Атаусыз",
     "Untitled folder": "Атаусыз қалта",
     "Update installed. Please restart OttPlay FOSS.":

@@ -241,6 +241,13 @@ function fixture(code, nativeMode = "working") {
     vm.createContext(w);
     require("./helpers/screen-runtime.cjs")(w);
     vm.runInContext(handlers, w);
+    // This remote-key fixture begins after a successful English bootstrap.
+    // A stored language alone no longer represents a loaded dictionary.
+    vm.runInContext(
+        fs.readFileSync(path.join(root, "locales/english.js"), "utf8"),
+        w
+    );
+    w.applyLanguageMetadata("_eng");
     if (useBundle) {
         // Extracted production handlers depend on the production bootstrap's
         // live alias map. Load it from this artifact, never from source fixtures.
@@ -314,7 +321,7 @@ for (const [name, code] of Object.entries(adapters)) {
     f.w.selectLang();
     assert.equal(f.elements.listCaption.innerHTML, "Choose language");
     f.key(13);
-    assert.equal(f.elements.listCaption.innerHTML, "First Run Setup");
+    assert.equal(f.elements.listCaption.innerHTML, "First-run setup");
     f.key(13);
     assert.equal(f.storage.ottplayprov, "demo", "OK activates the menu item");
     assert.deepEqual(f.calls.at(-1), ["loadProv", "demo"]);
@@ -374,7 +381,7 @@ for (const [name, code] of Object.entries(adapters)) {
         else assert.deepEqual(broken.registered, []);
         broken.w.selectLang();
         broken.key(13);
-        assert.equal(broken.elements.listCaption.innerHTML, "First Run Setup");
+        assert.equal(broken.elements.listCaption.innerHTML, "First-run setup");
         broken.close();
     }
     f.close();

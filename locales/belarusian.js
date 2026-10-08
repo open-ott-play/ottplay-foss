@@ -139,6 +139,11 @@ var keyStrings = {
         "Змяніце правайдара. Выбар захаваецца пры наступным запуску прайгравальніка.",
     "Change value": "Змяніць значэнне",
     "Channel ": "Канал ",
+    'Channel "%1" not found': "Канал «%1» не знойдзены",
+    "Channel #%1": "Канал №%1",
+    "Channel #%1 not found (total: %2)": "Канал №%1 не знойдзены (усяго: %2)",
+    "Channel #%1 not in any category":
+        "Канал №%1 не ўваходзіць ні ў адну катэгорыю",
     "Channel has no EPG": "Для канала няма праграмы перадач",
     "Channel is not available!!!": "Канал недаступны!!!",
     "Channel link": "Спасылка на канал",
@@ -289,6 +294,7 @@ var keyStrings = {
         "Скапіруйце JSON, каб захаваць рэзервовую копію. Для аднаўлення скарыстайцеся імпартам налад.",
     "Copy the selected JSON with your device's copy command":
         "Скапіруйце вылучаны JSON з дапамогай каманды капіравання на прыладзе",
+    "Could not change the playlist.": "Не ўдалося змяніць плэйліст.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Немагчыма падключыцца да Plex. Праверце адрас сервера, токен і доступ да сеткі.",
     "Could not connect to the server.": "Не ўдалося падключыцца да сервера.",
@@ -554,6 +560,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Няправільны адказ налад воблака",
     "Invalid protected source configuration":
         "Няправільная канфігурацыя абароненай крыніцы",
+    "Invalid range: %1-%2": "Няправільны дыяпазон: %1-%2",
     "Invalid setting": "Няправільная налада",
     "IPTV token": "IPTV-токен",
     "IpStream.one": "IpStream.one",
@@ -585,6 +592,7 @@ var keyStrings = {
     "Loading M3U...": "Загрузка M3U…",
     "Loading media libraries...": "Загрузка медыябібліятэк…",
     "Loading player...": "Загрузка плэера…",
+    "Loading the new playlist...": "Загрузка новага плэйліста...",
     "Loading via proxy...": "Загрузка праз проксі…",
     "Loading. Please wait...": "Загрузка. Пачакайце…",
     "Loading...": "Загрузка…",
@@ -626,6 +634,7 @@ var keyStrings = {
     "Next TV program": "Наступная перадача",
     No: "Не",
     "No channel name": "Няма назвы канала",
+    "No channels loaded": "Каналы не загружаны",
     "No command server was found on this network.":
         "У гэтай сетцы не знойдзены сервер каманд.",
     "No Plex servers are available for this account.":
@@ -699,6 +708,7 @@ var keyStrings = {
     "Player could not start": "Не ўдалося запусціць плэер",
     "Player default": "Прадвызначаны выбар плэера",
     "Player info:": "Звесткі пра прайгравальнік:",
+    "Playing: %1": "Прайграецца: %1",
     Playlist: "Плэйліст",
     "Playlist file": "Файл плэйліста",
     "Playlist is not loading directly...Loading via server...":
@@ -735,9 +745,13 @@ var keyStrings = {
     "Protect Change Provider": "Абараніць змену правайдара",
     "Protect Settings": "Абараніць налады",
     "Protected source is unavailable": "Абароненая крыніца недаступная",
+    "Provider switching not available": "Пераключэнне правайдара недаступнае",
     "p...": "п…",
     paging: "гартанне старонак",
     Quality: "Якасць",
+    "Random #%1": "Выпадковы №%1",
+    "Random channel not in any category":
+        "Выпадковы канал не ўваходзіць ні ў адну катэгорыю",
     Rating: "Рэйтынг",
     RD: "RD",
     "RD settings": "Налады RD",
@@ -774,6 +788,10 @@ var keyStrings = {
         "Тэрмін дзеяння аддаленага ўводу скончыўся. Каб паўтарыць спробу, адкрыйце новы сеанс.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сеанс дыстанцыйнага ўводу недаступны. Каб паўтарыць спробу, адкрыйце новы сеанс.",
+    "Remote playlist changes require the M3U provider.":
+        "Для дыстанцыйнай змены плэйліста патрэбны правайдар M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Дыстанцыйная налада правайдара не падтрымліваецца. Скарыстайцеся наладамі правайдара ў плэеры.",
     "Remote screenshots": "Дыстанцыйныя скрыншоты",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Дыстанцыйныя скрыншоты дазволены на працягу 10 хвілін. Закрыйце налады для здымкі.",
@@ -964,6 +982,7 @@ var keyStrings = {
     "Switch sound track": "Змяніць гукавую дарожку",
     "Switch subtitle": "Змяніць субцітры",
     "Switch to this list": "Пераключыцца на гэты спіс",
+    "Switching provider...": "Пераключэнне правайдара...",
     "Swop URL": "Адрас Swop",
     "System language": "Мова сістэмы",
     "saved on this device": "захавана на гэтай прыладзе",
@@ -998,6 +1017,8 @@ var keyStrings = {
         "Для гэтай версіі з Play патрэбны HTTPS. Запытайце ў правайдара HTTPS-адрас плэйліста або сервера.",
     "This pairing link has expired. Open a new session on your TV.":
         "Тэрмін дзеяння спасылкі для спалучэння скончыўся. Адкрыйце новы сеанс на вашым тэлевізары.",
+    "This remote command is not supported by the player.":
+        "Плэер не падтрымлівае гэтую дыстанцыйную каманду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Гэты бяспечны сеанс недаступны або скончыўся. Адкрыйце новы сеанс на тэлевізары і скарыстайцеся яго поўнай спасылкай.",
     Timer: "Таймер",
@@ -1016,6 +1037,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змяніць рэжым маштабавання",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налады Top-Tv",
+    "Touchscreen locked": "Сэнсарны экран заблакаваны",
+    "Touchscreen unlocked": "Сэнсарны экран разблакаваны",
     "Trust this server for remote support":
         "Давярайце гэтаму серверу аддаленую падтрымку",
     "Trusted access could not be removed from device storage.":
@@ -1036,6 +1059,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Налады ULTIFL1X",
     "Unable to load playlist": "Не ўдалося загрузіць спіс прайгравання",
+    "Unlock the player's settings before changing its playlist.":
+        "Разблакуйце налады плэера перад зменай плэйліста.",
     Untitled: "Без назвы",
     "Untitled folder": "Папка без назвы",
     "Update installed. Please restart OttPlay FOSS.":

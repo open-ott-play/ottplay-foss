@@ -1608,6 +1608,15 @@ for (const scenario of [
         name: "unavailable automatic dictionary",
     },
     {
+        expected: "",
+        failedDictionary: true,
+        languages: ["ru-RU"],
+        mode: "system",
+        name: "retry the saved system language after a failed dictionary",
+        retrySystem: true,
+        saved: "_rus",
+    },
+    {
         expected: "_rus",
         languages: ["ru-RU"],
         name: "cookie fallback after storage quota",
@@ -1627,7 +1636,11 @@ for (const scenario of [
                     return route.abort("blockedbyclient");
                 if (url.pathname.startsWith("/locales/")) {
                     dictionaries.push(url.pathname);
-                    if (scenario.failedDictionary) return route.abort("failed");
+                    if (
+                        scenario.failedDictionary &&
+                        (!scenario.retrySystem || dictionaries.length === 1)
+                    )
+                        return route.abort("failed");
                 }
                 return route.continue();
             });
@@ -1643,6 +1656,8 @@ for (const scenario of [
                     window.__ottPreferredLanguages = choice.native;
                 if (choice.saved)
                     localStorage.setItem("ottplaylang", choice.saved);
+                if (choice.mode)
+                    localStorage.setItem("ottplaylangmode", choice.mode);
                 if (choice.storageQuota)
                     Storage.prototype.setItem = function () {
                         throw new DOMException(
@@ -1662,7 +1677,31 @@ for (const scenario of [
             await expect(page.locator("#list")).toBeVisible();
             expect(
                 await page.evaluate(() => stbGetItem("ottplaylang") || "")
-            ).toBe(scenario.expected);
+            ).toBe(scenario.retrySystem ? scenario.saved : scenario.expected);
+            if (scenario.retrySystem) {
+                expect(dictionaries).toEqual(["/locales/russian.js"]);
+                await page.keyboard.press("Enter");
+                await expect(page.locator("#listCaption")).toHaveText(
+                    "Первоначальная настройка"
+                );
+                expect(dictionaries).toEqual([
+                    "/locales/russian.js",
+                    "/locales/russian.js",
+                ]);
+                expect(
+                    await page.evaluate(() => ({
+                        effective: window.__ottInterfaceLanguage,
+                        lang: document.documentElement.lang,
+                        mode: stbGetItem("ottplaylangmode"),
+                        saved: stbGetItem("ottplaylang"),
+                    }))
+                ).toEqual({
+                    effective: "_rus",
+                    lang: "ru",
+                    mode: "system",
+                    saved: "_rus",
+                });
+            }
             if (scenario.expected) {
                 expect(dictionaries).toEqual([
                     scenario.expected === "_rus"

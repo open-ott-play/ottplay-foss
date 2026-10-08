@@ -13,11 +13,14 @@ function mediaLanguage(tag: string): string {
         ell: "el",
         eus: "eu",
         fas: "fa",
+        fre: "fr",
         hye: "hy",
         in: "id",
         isl: "is",
         iw: "he",
         kat: "ka",
+        lat: "la",
+        lav: "lv",
         mkd: "mk",
         msa: "ms",
         mya: "my",
@@ -26,6 +29,7 @@ function mediaLanguage(tag: string): string {
         nob: "nb",
         nor: "nb",
         ron: "ro",
+        rum: "ro",
         slk: "sk",
         sqi: "sq",
         tgl: "fil",
@@ -34,6 +38,8 @@ function mediaLanguage(tag: string): string {
     };
     if (Object.prototype.hasOwnProperty.call(aliases, base))
         return aliases[base];
+    // Most stored IDs use ISO 639-2; _lat is Latvian, not Latin, and _rou
+    // remains a nonstandard Romanian alias for existing media manifests.
     var code = "_" + base;
     return Object.prototype.hasOwnProperty.call(languageLocales, code)
         ? languageLocaleTag(code).split("-")[0]

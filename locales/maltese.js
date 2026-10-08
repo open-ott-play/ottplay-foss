@@ -144,6 +144,10 @@ var keyStrings = {
         "Ibdel il-fornitur. L-għażla tiegħek tinżamm għad-darba li jmiss li tibda l-plejer.",
     "Change value": "Ibdel il-valur",
     "Channel ": "Kanal ",
+    'Channel "%1" not found': 'Il-kanal "%1" ma nstabx',
+    "Channel #%1": "Kanal #%1",
+    "Channel #%1 not found (total: %2)": "Il-kanal #%1 ma nstabx (total: %2)",
+    "Channel #%1 not in any category": "Il-kanal #%1 mhu f’ebda kategorija",
     "Channel has no EPG": "Il-kanal m’għandux EPG",
     "Channel is not available!!!": "Il-kanal mhux disponibbli!",
     "Channel link": "Link tal-kanal",
@@ -297,6 +301,7 @@ var keyStrings = {
         "Ikkopja JSON biex iżżomm kopja ta’ riżerva. Uża Importa l-issettjar biex tirrestawrah.",
     "Copy the selected JSON with your device's copy command":
         "Ikkopja JSON magħżul bil-kmand tal-ikkopjar tal-apparat tiegħek",
+    "Could not change the playlist.": "Ma setgħetx tinbidel il-lista tad-daqq.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Ma setgħetx issir konnessjoni ma’ Plex. Iċċekkja l-indirizz tas-server, it-token u l-aċċess għan-netwerk.",
     "Could not connect to the server.":
@@ -569,6 +574,7 @@ var keyStrings = {
         "Rispons mhux validu għall-issettjar fil-cloud",
     "Invalid protected source configuration":
         "Konfigurazzjoni tas-sors protett mhux valida",
+    "Invalid range: %1-%2": "Medda mhux valida: %1-%2",
     "Invalid setting": "Issettjar mhux validu",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -601,6 +607,7 @@ var keyStrings = {
     "Loading M3U...": "Qed jitgħabba M3U…",
     "Loading media libraries...": "Qed jitgħabbew il-libreriji tal-midja…",
     "Loading player...": "Qed jitgħabba l-plejer…",
+    "Loading the new playlist...": "Qed titgħabba l-lista l-ġdida tad-daqq...",
     "Loading via proxy...": "Qed jitgħabba permezz ta’ proksi…",
     "Loading. Please wait...": "Qed jitgħabba… jekk jogħġbok stenna…",
     "Loading...": "Qed jitgħabba…",
@@ -643,6 +650,7 @@ var keyStrings = {
     "Next TV program": "Il-programm li jmiss",
     No: "Le",
     "No channel name": "Il-kanal m’għandux isem",
+    "No channels loaded": "Ma hemm l-ebda kanal mgħobbi",
     "No command server was found on this network.":
         "Ma nstab l-ebda server tal-kmandi fuq dan in-netwerk.",
     "No Plex servers are available for this account.":
@@ -716,6 +724,7 @@ var keyStrings = {
     "Player could not start": "Il-plejer ma setax jibda",
     "Player default": "Għażla predefinita tal-plejer",
     "Player info:": "Informazzjoni tal-plejer:",
+    "Playing: %1": "Qed jindaqq: %1",
     Playlist: "Lista tad-daqq",
     "Playlist file": "Fajl tal-lista tad-daqq",
     "Playlist is not loading directly...Loading via server...":
@@ -750,9 +759,14 @@ var keyStrings = {
     "Protect Change Provider": "Ipproteġi l-bidla tal-fornitur",
     "Protect Settings": "Ipproteġi l-issettjar",
     "Protected source is unavailable": "Is-sors protett mhux disponibbli",
+    "Provider switching not available":
+        "Il-bidla tal-fornitur mhix disponibbli",
     "p...": "p...",
     paging: "paġnar",
     Quality: "Kwalità",
+    "Random #%1": "Kanal bl-addoċċ #%1",
+    "Random channel not in any category":
+        "Il-kanal magħżul bl-addoċċ mhu f’ebda kategorija",
     Rating: "Klassifikazzjoni",
     RD: "RD",
     "RD settings": "Issettjar ta’ RD",
@@ -793,6 +807,10 @@ var keyStrings = {
         "Id-dħul remot skada. Iftaħ sessjoni ġdida biex terġa’ tipprova.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Is-sessjoni tad-dħul remot mhix disponibbli. Iftaħ sessjoni ġdida biex terġa’ tipprova.",
+    "Remote playlist changes require the M3U provider.":
+        "Biex tibdel il-lista tad-daqq mill-bogħod irid jintgħażel il-fornitur M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Il-bidla tal-issettjar tal-fornitur mill-bogħod mhix appoġġjata. Uża l-issettjar tal-fornitur fil-plejer.",
     "Remote screenshots": "Ritratti tal-iskrin mill-bogħod",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Ir-ritratti tal-iskrin mill-bogħod huma permessi għal 10 minuti. Agħlaq l-issettjar biex ikunu jistgħu jittieħdu.",
@@ -988,6 +1006,7 @@ var keyStrings = {
     "Switch sound track": "Ibdel il-binarju tal-awdjo",
     "Switch subtitle": "Ibdel is-sottotitli",
     "Switch to this list": "Aqleb għal din il-lista",
+    "Switching provider...": "Qed jinbidel il-fornitur...",
     "Swop URL": "Swop URL",
     "System language": "Lingwa tas-sistema",
     "saved on this device": "issejvjat fuq dan l-apparat",
@@ -1022,6 +1041,8 @@ var keyStrings = {
         "Din l-app Play teħtieġ HTTPS. Itlob lill-fornitur tiegħek URL HTTPS tal-lista tad-daqq jew tas-server.",
     "This pairing link has expired. Open a new session on your TV.":
         "Din il-link ta' tqabbil skadiet. Iftaħ sessjoni ġdida fuq it-TV tiegħek.",
+    "This remote command is not supported by the player.":
+        "Il-plejer ma jappoġġjax dan il-kmand mill-bogħod.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Din is-sessjoni sigura mhix disponibbli jew skadiet. Iftaħ sessjoni ġdida fuq it-TV u uża l-link sħiħa tagħha.",
     Timer: "Tajmer",
@@ -1041,6 +1062,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ibdel il-modalità taż-żum",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Issettjar ta’ Top-Tv",
+    "Touchscreen locked": "L-iskrin tal-mess imsakkar",
+    "Touchscreen unlocked": "L-iskrin tal-mess mhux imsakkar",
     "Trust this server for remote support":
         "Afda dan is-server għall-appoġġ mill-bogħod",
     "Trusted access could not be removed from device storage.":
@@ -1061,6 +1084,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Issettjar ta’ ULTIFL1X",
     "Unable to load playlist": "Il-lista tad-daqq ma setgħetx titgħabba",
+    "Unlock the player's settings before changing its playlist.":
+        "Neħħi l-imblukkar tal-issettjar tal-plejer qabel tibdel il-lista tad-daqq tiegħu.",
     Untitled: "Bla titlu",
     "Untitled folder": "Fowlder bla titlu",
     "Update installed. Please restart OttPlay FOSS.":

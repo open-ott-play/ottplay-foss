@@ -135,6 +135,10 @@ var keyStrings = {
         "አቅራቢውን ይቀይሩ። ማጫወቻውን በሚቀጥለው ጊዜ ሲጀምሩ ምርጫዎ ይታወሳል።",
     "Change value": "እሴት ቀይር",
     "Channel ": "ሰርጥ ",
+    'Channel "%1" not found': 'ሰርጥ "%1" አልተገኘም',
+    "Channel #%1": "ሰርጥ #%1",
+    "Channel #%1 not found (total: %2)": "ሰርጥ #%1 አልተገኘም (ጠቅላላ፦ %2)",
+    "Channel #%1 not in any category": "ሰርጥ #%1 በማንኛውም ምድብ ውስጥ የለም",
     "Channel has no EPG": "ሰርጡ EPG የለውም",
     "Channel is not available!!!": "ሰርጡ አይገኝም!",
     "Channel link": "የሰርጥ አገናኝ",
@@ -281,6 +285,7 @@ var keyStrings = {
         "መጠባበቂያ ለማስቀመጥ JSONን ይቅዱ። ለመመለስ «ቅንብሮችን አስመጣ» ይጠቀሙ።",
     "Copy the selected JSON with your device's copy command":
         "የተመረጠውን JSON በመሣሪያዎ የቅጂ ትእዛዝ ይቅዱ",
+    "Could not change the playlist.": "የማጫወቻ ዝርዝሩን መቀየር አልተቻለም።",
     "Could not connect to Plex. Check the server address, token and network access.":
         "ከPlex ጋር መገናኘት አልተቻለም። የአገልጋዩን አድራሻ፣ የመዳረሻ ማስመሰያ እና የአውታረ መረብ መዳረሻ ያረጋግጡ።",
     "Could not connect to the server.": "ከአገልጋዩ ጋር መገናኘት አልተቻለም።",
@@ -532,6 +537,7 @@ var keyStrings = {
         "ልክ ያልሆነ የሰርጥ አገናኝ! በአቅራቢዎ መለያ ያለውን የዥረት URL ሙሉ አስተናጋጅ ስም ያስገቡ (ለምሳሌ subdomain.cdn-domain.tld)",
     "Invalid cloud settings response": "ልክ ያልሆነ የደመና ቅንብሮች ምላሽ",
     "Invalid protected source configuration": "ልክ ያልሆነ የተጠበቀ ምንጭ ውቅር",
+    "Invalid range: %1-%2": "ልክ ያልሆነ ክልል፦ %1-%2",
     "Invalid setting": "ልክ ያልሆነ ቅንብር",
     "IPTV token": "የIPTV ማስመሰያ",
     "IpStream.one": "IpStream.one",
@@ -563,6 +569,7 @@ var keyStrings = {
     "Loading M3U...": "M3U በመጫን ላይ…",
     "Loading media libraries...": "የሚዲያ ቤተ መጻሕፍቶችን በመጫን ላይ…",
     "Loading player...": "ማጫወቻውን በመጫን ላይ…",
+    "Loading the new playlist...": "አዲሱ የማጫወቻ ዝርዝር እየተጫነ ነው...",
     "Loading via proxy...": "በተኪ አገልጋይ በኩል በመጫን ላይ…",
     "Loading. Please wait...": "በመጫን ላይ… እባክዎ ይጠብቁ…",
     "Loading...": "በመጫን ላይ…",
@@ -604,6 +611,7 @@ var keyStrings = {
     "Next TV program": "ቀጣይ ፕሮግራም",
     No: "አይ",
     "No channel name": "የሰርጥ ስም የለም",
+    "No channels loaded": "ምንም ሰርጦች አልተጫኑም",
     "No command server was found on this network.":
         "በዚህ አውታረ መረብ ላይ የትእዛዝ አገልጋይ አልተገኘም።",
     "No Plex servers are available for this account.":
@@ -677,6 +685,7 @@ var keyStrings = {
     "Player could not start": "ማጫወቻው መጀመር አልቻለም",
     "Player default": "የማጫወቻው ነባሪ ምርጫ",
     "Player info:": "የማጫወቻ መረጃ፦",
+    "Playing: %1": "እየተጫወተ ነው፦ %1",
     Playlist: "አጫዋች ዝርዝር",
     "Playlist file": "የአጫዋች ዝርዝር ፋይል",
     "Playlist is not loading directly...Loading via server...":
@@ -711,9 +720,12 @@ var keyStrings = {
     "Protect Change Provider": "አቅራቢ መቀየርን ጠብቅ",
     "Protect Settings": "ቅንብሮችን ጠብቅ",
     "Protected source is unavailable": "የተጠበቀው ምንጭ አይገኝም",
+    "Provider switching not available": "አቅራቢ መቀየር አይቻልም",
     "p...": "p...",
     paging: "ገጽ መቀየር",
     Quality: "ጥራት",
+    "Random #%1": "በዘፈቀደ የተመረጠ ሰርጥ #%1",
+    "Random channel not in any category": "በዘፈቀደ የተመረጠው ሰርጥ በማንኛውም ምድብ ውስጥ የለም",
     Rating: "ደረጃ",
     RD: "RD",
     "RD settings": "የRD ቅንብሮች",
@@ -750,6 +762,10 @@ var keyStrings = {
         "የርቀት ግቤት ጊዜ አልፏል። ዳግም ለመሞከር አዲስ ክፍለ ጊዜ ይክፈቱ።",
     "Remote input session is unavailable. Open a new session to try again.":
         "የርቀት ግቤት ክፍለ ጊዜ አይገኝም። ዳግም ለመሞከር አዲስ ክፍለ ጊዜ ይክፈቱ።",
+    "Remote playlist changes require the M3U provider.":
+        "የማጫወቻ ዝርዝሩን በርቀት ለመቀየር M3U አቅራቢ መመረጥ አለበት።",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "የአቅራቢ ቅንብሮችን በርቀት መቀየር አይደገፍም። በአጫዋቹ ውስጥ ያሉትን የአቅራቢ ቅንብሮች ይጠቀሙ።",
     "Remote screenshots": "የርቀት ቅጽበታዊ ገጽ እይታዎች",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "የርቀት ቅጽበታዊ ገጽ እይታዎች ለ10 ደቂቃዎች ይፈቀዳሉ። ለማንሳት ቅንብሮችን ዝጋ።",
@@ -933,6 +949,7 @@ var keyStrings = {
     "Switch sound track": "የድምፅ ትራክ ቀይር",
     "Switch subtitle": "የግርጌ ጽሑፎችን ቀይር",
     "Switch to this list": "ወደዚህ ዝርዝር ቀይር",
+    "Switching provider...": "አቅራቢ እየተቀየረ ነው...",
     "Swop URL": "የSWOP URL",
     "System language": "የስርዓት ቋንቋ",
     "saved on this device": "በዚህ መሣሪያ ተቀምጧል",
@@ -963,6 +980,8 @@ var keyStrings = {
         "ይህ የPlay መተግበሪያ HTTPS ይፈልጋል። የHTTPS አጫዋች ዝርዝር ወይም የአገልጋይ URL ከአቅራቢዎ ይጠይቁ።",
     "This pairing link has expired. Open a new session on your TV.":
         "ይህ የማጣመሪያ ማገናኛ ጊዜው አልፎበታል። በቲቪዎ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ።",
+    "This remote command is not supported by the player.":
+        "ይህ የርቀት መቆጣጠሪያ ትዕዛዝ በአጫዋቹ አይደገፍም።",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ይህ ደህንነቱ የተጠበቀ ክፍለ ጊዜ አይገኝም ወይም ጊዜው አልፎበታል። በቴሌቪዥኑ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ እና ሙሉውን ማገናኛ ይጠቀሙ።",
     Timer: "ሰዓት ቆጣሪ",
@@ -981,6 +1000,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "የማጉላት ሁነታ ቀይር",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "የTop-Tv ቅንብሮች",
+    "Touchscreen locked": "የንክኪ ማያ ገጹ ተቆልፏል",
+    "Touchscreen unlocked": "የንክኪ ማያ ገጹ ቁልፍ ተከፍቷል",
     "Trust this server for remote support": "ይህን አገልጋይ ለርቀት ድጋፍ እመን",
     "Trusted access could not be removed from device storage.":
         "የታመነ መዳረሻን ከመሣሪያ ማከማቻ ማስወገድ አልተቻለም።",
@@ -1000,6 +1021,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "የULTIFL1X ቅንብሮች",
     "Unable to load playlist": "አጫዋች ዝርዝሩን መጫን አልተቻለም",
+    "Unlock the player's settings before changing its playlist.":
+        "የማጫወቻ ዝርዝሩን ከመቀየርዎ በፊት የአጫዋቹን ቅንብሮች ቁልፍ ይክፈቱ።",
     Untitled: "ያለ ርዕስ",
     "Untitled folder": "ስም የሌለው አቃፊ",
     "Update installed. Please restart OttPlay FOSS.":

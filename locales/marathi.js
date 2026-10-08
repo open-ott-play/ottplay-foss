@@ -136,6 +136,10 @@ var keyStrings = {
         "प्रदाता बदला. पुढच्या वेळी तुम्ही प्लेअर सुरू कराल तेव्हा तुमची निवड लक्षात ठेवली जाईल.",
     "Change value": "मूल्य बदला",
     "Channel ": "चॅनल ",
+    'Channel "%1" not found': '"%1" चॅनेल सापडले नाही',
+    "Channel #%1": "चॅनेल #%1",
+    "Channel #%1 not found (total: %2)": "चॅनेल #%1 सापडले नाही (एकूण: %2)",
+    "Channel #%1 not in any category": "चॅनेल #%1 कोणत्याही श्रेणीत नाही",
     "Channel has no EPG": "चॅनेलमध्ये EPG नाही",
     "Channel is not available!!!": "चॅनल उपलब्ध नाही!",
     "Channel link": "चॅनल लिंक",
@@ -283,6 +287,7 @@ var keyStrings = {
         "बॅकअप ठेवण्यासाठी JSON कॉपी करा. ते पुनर्संचयित करण्यासाठी आयात सेटिंग्ज वापरा.",
     "Copy the selected JSON with your device's copy command":
         "निवडलेल्या JSON तुमच्या डिव्हाइसच्या कॉपी कमांडसह कॉपी करा",
+    "Could not change the playlist.": "प्लेलिस्ट बदलता आली नाही.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex शी कनेक्ट करू शकलो नाही. सर्व्हर पत्ता, टोकन आणि नेटवर्क प्रवेश तपासा.",
     "Could not connect to the server.": "सर्व्हरशी कनेक्ट करू शकलो नाही.",
@@ -544,6 +549,7 @@ var keyStrings = {
         "अवैध चॅनल लिंक! तुमच्या प्रदाता खाते पृष्ठावरील URL प्रवाहातील संपूर्ण होस्टनाव प्रविष्ट करा (उदाहरणार्थ subdomain.cdn-domain.tld ).",
     "Invalid cloud settings response": "अवैध क्लाउड सेटिंग्ज प्रतिसाद",
     "Invalid protected source configuration": "अवैध संरक्षित स्रोत कॉन्फिगरेशन",
+    "Invalid range: %1-%2": "अवैध श्रेणी: %1-%2",
     "Invalid setting": "अवैध सेटिंग",
     "IPTV token": "IPTV टोकन",
     "IpStream.one": "IpStream.one",
@@ -575,6 +581,7 @@ var keyStrings = {
     "Loading M3U...": "M3U लोड करत आहे…",
     "Loading media libraries...": "मीडिया लायब्ररी लोड करत आहे...",
     "Loading player...": "प्लेअर लोड करत आहे...",
+    "Loading the new playlist...": "नवीन प्लेलिस्ट लोड होत आहे...",
     "Loading via proxy...": "प्रॉक्सीद्वारे लोड करत आहे...",
     "Loading. Please wait...": "लोड होत आहे... कृपया प्रतीक्षा करा...",
     "Loading...": "लोड करत आहे...",
@@ -616,6 +623,7 @@ var keyStrings = {
     "Next TV program": "पुढील कार्यक्रम",
     No: "नाही",
     "No channel name": "चॅनेलचे नाव नाही",
+    "No channels loaded": "कोणतेही चॅनेल लोड झालेले नाहीत",
     "No command server was found on this network.":
         "या नेटवर्कवर कोणताही कमांड सर्व्हर आढळला नाही.",
     "No Plex servers are available for this account.":
@@ -689,6 +697,7 @@ var keyStrings = {
     "Player could not start": "प्लेअर सुरू करू शकला नाही",
     "Player default": "प्लेयरची पूर्वनियोजित निवड",
     "Player info:": "प्लेअर माहिती:",
+    "Playing: %1": "प्ले होत आहे: %1",
     Playlist: "प्लेलिस्ट",
     "Playlist file": "प्लेलिस्ट फाइल",
     "Playlist is not loading directly...Loading via server...":
@@ -722,9 +731,13 @@ var keyStrings = {
     "Protect Change Provider": "प्रदाता बदल संरक्षित करा",
     "Protect Settings": "सेटिंग्ज संरक्षित करा",
     "Protected source is unavailable": "संरक्षित स्रोत अनुपलब्ध आहे",
+    "Provider switching not available": "प्रदाता बदलण्याची सुविधा उपलब्ध नाही",
     "p...": "p...",
     paging: "पेजिंग",
     Quality: "गुणवत्ता",
+    "Random #%1": "यादृच्छिक चॅनेल #%1",
+    "Random channel not in any category":
+        "यादृच्छिकपणे निवडलेले चॅनेल कोणत्याही श्रेणीत नाही",
     Rating: "रेटिंग",
     RD: "RD",
     "RD settings": "RD सेटिंग्ज",
@@ -761,6 +774,10 @@ var keyStrings = {
         "रिमोट इनपुट कालबाह्य झाले. पुन्हा प्रयत्न करण्यासाठी नवीन सत्र उघडा.",
     "Remote input session is unavailable. Open a new session to try again.":
         "रिमोट इनपुट सत्र अनुपलब्ध आहे. पुन्हा प्रयत्न करण्यासाठी नवीन सत्र उघडा.",
+    "Remote playlist changes require the M3U provider.":
+        "दूरस्थपणे प्लेलिस्ट बदलण्यासाठी M3U प्रदाता आवश्यक आहे.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "दूरस्थपणे प्रदात्याची सेटिंग्ज बदलणे समर्थित नाही. प्लेयरमधील प्रदात्याची सेटिंग्ज वापरा.",
     "Remote screenshots": "रिमोट स्क्रीनशॉट",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "रिमोट स्क्रीनशॉटला 10 मिनिटांसाठी अनुमती आहे. कॅप्चर करण्यासाठी सेटिंग्ज बंद करा.",
@@ -948,6 +965,7 @@ var keyStrings = {
     "Switch sound track": "ऑडिओ ट्रॅक स्विच करा",
     "Switch subtitle": "उपशीर्षके स्विच करा",
     "Switch to this list": "या सूचीवर स्विच करा",
+    "Switching provider...": "प्रदाता बदलत आहे...",
     "Swop URL": "SWOP URL",
     "System language": "सिस्टम भाषा",
     "saved on this device": "या डिव्हाइसवर सेव्ह केले",
@@ -978,6 +996,8 @@ var keyStrings = {
         "या Play ॲपसाठी HTTPS आवश्यक आहे. तुमच्या प्रदात्याला HTTPS प्लेलिस्ट किंवा सर्व्हर URL साठी विचारा.",
     "This pairing link has expired. Open a new session on your TV.":
         "ही जोडणी लिंक कालबाह्य झाली आहे. तुमच्या टीव्हीवर नवीन सत्र उघडा.",
+    "This remote command is not supported by the player.":
+        "प्लेयर या दूरस्थ नियंत्रण आदेशाला समर्थन देत नाही.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "हे सुरक्षित सत्र अनुपलब्ध आहे किंवा कालबाह्य झाले आहे. टीव्हीवर नवीन सत्र उघडा आणि त्याची संपूर्ण लिंक वापरा.",
     Timer: "टाइमर",
@@ -996,6 +1016,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "झूम मोड बदला",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv सेटिंग्ज",
+    "Touchscreen locked": "टचस्क्रीन लॉक केली आहे",
+    "Touchscreen unlocked": "टचस्क्रीन अनलॉक केली आहे",
     "Trust this server for remote support":
         "रिमोट सपोर्टसाठी या सर्व्हरवर विश्वास ठेवा",
     "Trusted access could not be removed from device storage.":
@@ -1016,6 +1038,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X सेटिंग्ज",
     "Unable to load playlist": "प्लेलिस्ट लोड करण्यात अक्षम",
+    "Unlock the player's settings before changing its playlist.":
+        "प्लेलिस्ट बदलण्यापूर्वी प्लेयरची सेटिंग्ज अनलॉक करा.",
     Untitled: "शीर्षकहीन",
     "Untitled folder": "शीर्षक नसलेले फोल्डर",
     "Update installed. Please restart OttPlay FOSS.":

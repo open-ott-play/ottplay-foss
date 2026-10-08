@@ -3,6 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { JSDOM } = require("jsdom");
+const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(
     path.join(root, "src/commands/index.ts"),
@@ -124,6 +126,9 @@ const w = {
         volume = value;
     },
 };
+const localeRuntime = { window: w };
+vm.createContext(localeRuntime);
+vm.runInContext(localizationRuntime(), localeRuntime);
 const cmdContext = {
     console,
     document: {
@@ -133,6 +138,7 @@ const cmdContext = {
     },
     exports: {},
     require(name) {
+        if (name === "../localization") return localeRuntime;
         if (name === "../shared/wire-contracts")
             return require("./load-wire.cjs")();
         assert.equal(name, "../provider");
@@ -447,4 +453,298 @@ assert.equal(
 );
 console.log(
     "PASS command outcomes: active M3U persistence/reload, unsupported provider settings, protocol/parental/Play validation and startup deferral"
+);
+
+// Exercise the real dictionaries, interpolation and Unicode search policy at
+// the visible notification boundary. Remote-authored messages remain literal.
+const dom = new JSDOM('<div id="notifications"></div>', {
+    runScripts: "outside-only",
+});
+try {
+    const host = dom.window;
+    host.eval(localizationRuntime());
+    function language(file, code) {
+        host.eval(
+            fs.readFileSync(path.join(root, "locales", file + ".js"), "utf8")
+        );
+        host.__ottInterfaceLanguage = code;
+    }
+    const played = [];
+    let providerAvailable = false;
+    Object.assign(host, {
+        cats: { main: ["one"] },
+        catsArray: ["main"],
+        channels: { one: { channel_name: "Первый" } },
+        commandChannelsReady: true,
+        curList: ["one"],
+        playChannel: (...args) => played.push(args),
+        stbGetVolume: () => 40,
+        stbSetVolume() {},
+    });
+    const c = {
+        document: host.document,
+        exports: {},
+        require(name) {
+            if (name === "../localization") return host;
+            if (name === "../shared/wire-contracts")
+                return require("./load-wire.cjs")();
+            assert.equal(name, "../provider");
+            return {
+                checkProviderUrl: () => true,
+                selectProviderByIndex: () => providerAvailable,
+            };
+        },
+        setTimeout() {},
+        URL,
+        window: host,
+    };
+    vm.runInNewContext(emit(source), c);
+    const command = c.exports.handleCommand;
+    const notifications = host.document.getElementById("notifications");
+    function last() {
+        return notifications.lastElementChild;
+    }
+    function expectMessage(input, key, ...args) {
+        assert.notEqual(
+            host.keyStrings[key],
+            undefined,
+            "real catalog must contain " + key
+        );
+        assert.notEqual(
+            host.keyStrings[key],
+            key,
+            "Russian message must be translated: " + key
+        );
+        command(input);
+        assert.equal(last().textContent, host._(key, ...args));
+        assert.equal(last().dir, "auto");
+    }
+    language("russian", "_rus");
+    command({ command: "set_volume", volume: 55 });
+    assert.equal(last().textContent, "громкость: 55%");
+    command({ command: "set_volume", volume_step: 5 });
+    assert.equal(last().textContent, "громкость: 45%");
+    const volumeWrites = [];
+    host.stbSetVolume = (value) => volumeWrites.push(value);
+    host.stbGetVolume = () => {
+        throw new Error("absolute volume must not read current volume");
+    };
+    command({ command: "set_volume", volume: 20, volume_step: 90 });
+    assert.deepEqual(
+        volumeWrites,
+        [20],
+        "absolute volume keeps priority over step"
+    );
+    for (const missing of [undefined, null]) {
+        host.stbGetVolume = () => missing;
+        const count = notifications.children.length;
+        command({ command: "set_volume", volume_step: 5 });
+        assert.equal(notifications.children.length, count);
+        assert.deepEqual(
+            volumeWrites,
+            [20],
+            "missing current volume ignores relative changes"
+        );
+    }
+    host.stbGetVolume = () => 40;
+    expectMessage(
+        { channel_number: 2, command: "channel_by_number" },
+        "Channel #%1 not found (total: %2)",
+        "2",
+        "1"
+    );
+    host.cats.main = [];
+    expectMessage(
+        { channel_number: 1, command: "channel_by_number" },
+        "Channel #%1 not in any category",
+        "1"
+    );
+    expectMessage(
+        { command: "random_channel" },
+        "Random channel not in any category"
+    );
+    host.cats.main = ["one"];
+    command({ channel_number: 1, command: "channel_by_number" });
+    assert.equal(last().textContent, host._("Channel #%1", "1") + ": Первый");
+    command({ command: "random_channel" });
+    assert.equal(last().textContent, host._("Random #%1", "1") + ": Первый");
+    expectMessage(
+        { command: "random_channel", random_range: [2, 3] },
+        "Invalid range: %1-%2",
+        "2",
+        "3"
+    );
+    expectMessage(
+        { channel_name: "Отсутствующий", command: "channel_by_name" },
+        'Channel "%1" not found',
+        "Отсутствующий"
+    );
+    const literal = "<img src=x onerror=alert(1)> $& %1 العربية";
+    host.channels.one.channel_name = literal;
+    expectMessage(
+        { channel_name: "onerror", command: "channel_by_name" },
+        "Playing: %1",
+        literal
+    );
+    assert.equal(
+        last().children.length,
+        0,
+        "provider names are text, never markup"
+    );
+    host.curList = [];
+    expectMessage(
+        { channel_number: 1, command: "channel_by_number" },
+        "No channels loaded"
+    );
+    expectMessage(
+        { command: "change_provider", provider: 0 },
+        "Provider switching not available"
+    );
+    providerAvailable = true;
+    expectMessage(
+        { command: "change_provider", provider: 0 },
+        "Switching provider..."
+    );
+    expectMessage(
+        { command: "change_provider_settings", provider_settings: "{}" },
+        "Remote provider settings are not supported. Use the player's provider settings."
+    );
+    const playlistCommand = {
+        command: "change_playlist",
+        playlist: "https://example.invalid/next.m3u",
+    };
+    expectMessage(
+        playlistCommand,
+        "Remote playlist changes require the M3U provider."
+    );
+    Object.assign(host, {
+        loadPlaylist() {},
+        m3uArr: {
+            active: 0,
+            M3Us: [{ www: "https://example.invalid/old.m3u" }],
+        },
+        p_pref: "m3u",
+        parentAccess: false,
+        parentPIN: "1234",
+        providerSetItem() {},
+        sPSoptions: true,
+    });
+    expectMessage(
+        playlistCommand,
+        "Unlock the player's settings before changing its playlist."
+    );
+    host.parentAccess = true;
+    expectMessage(playlistCommand, "Loading the new playlist...");
+    host.loadPlaylist = () => {
+        throw new Error("raw backend detail");
+    };
+    expectMessage(playlistCommand, "Could not change the playlist.");
+
+    // Locale changes affect the next command without reconstructing its handler.
+    language("arabic", "_ara");
+    command({ command: "set_volume", volume: 55 });
+    assert.equal(
+        last().textContent,
+        host._("volume") +
+            ": " +
+            new host.Intl.NumberFormat("ar", { useGrouping: false }).format(
+                55
+            ) +
+            "%"
+    );
+    assert.equal(last().dir, "auto");
+    command({ command: "popup_message", message: literal });
+    assert.equal(last().textContent, literal);
+    assert.equal(last().children.length, 0);
+    command({ command: "popup_message", message: "No channels loaded" });
+    assert.equal(
+        last().textContent,
+        "No channels loaded",
+        "remote-authored text is never a translation key"
+    );
+
+    host.curList = ["one"];
+    for (const [file, code, title, query] of [
+        ["german", "_ger", "Straße", "STRASSE"],
+        ["german", "_ger", "Café", "CAFE\u0301"],
+        ["turkish", "_tur", "IŞIK", "ışık"],
+        ["turkish", "_tur", "İzmir", "izmir"],
+    ]) {
+        language(file, code);
+        host.channels.one.channel_name = title;
+        const before = played.length;
+        command({ channel_name: query, command: "channel_by_name" });
+        assert.equal(played.length, before + 1, file + ": " + query);
+        assert.deepEqual(played.at(-1), [0, 0, true]);
+        assert.equal(last().textContent, host._("Playing: %1", title));
+    }
+    host.channels.one.channel_name = "Café";
+    const before = played.length;
+    command({ channel_name: "Cafe", command: "channel_by_name" });
+    assert.equal(played.length, before, "search preserves accent distinctions");
+
+    const keySource = ts.createSourceFile(
+        "keys.ts",
+        fs.readFileSync(path.join(root, "src/key-handler/index.ts"), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const mainKey = keySource.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            node.name?.text === "handleMainKey"
+    );
+    host.eval(emit(mainKey.getText(keySource)));
+    host.settings = { volumeStep: 5 };
+    host.toggleMainPlayback = () => {};
+    host.__ottClassicScreenPort = { normalize: () => ({ id: "volume-up" }) };
+    const shifts = [];
+    host.showShift = (message) => shifts.push(message);
+    language("russian", "_rus");
+    host.handleMainKey(175, { preventDefault() {}, stopPropagation() {} });
+    assert.equal(shifts.at(-1), "громкость: 45");
+    language("arabic", "_ara");
+    host.handleMainKey(175, { preventDefault() {}, stopPropagation() {} });
+    assert.equal(
+        shifts.at(-1),
+        host._("volume") +
+            ": " +
+            new host.Intl.NumberFormat("ar", { useGrouping: false }).format(45)
+    );
+} finally {
+    dom.window.close();
+}
+
+// New app-owned prose cannot silently bypass localization at this UI sink.
+// Translated template literals and remote/channel identifiers remain allowed.
+const commandAst = ts.createSourceFile(
+    "commands.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    true
+);
+function assertNoRawMessage(node) {
+    if (
+        ts.isCallExpression(node) &&
+        node.expression.getText(commandAst) === "_"
+    )
+        return;
+    if (ts.isStringLiteralLike(node))
+        assert(
+            !/[A-Za-z]/.test(node.text),
+            "Untranslated notification literal: " + node.text
+        );
+    ts.forEachChild(node, assertNoRawMessage);
+}
+function visitNotifications(node) {
+    if (
+        ts.isCallExpression(node) &&
+        node.expression.getText(commandAst) === "showPopup"
+    )
+        assertNoRawMessage(node.arguments[0]);
+    ts.forEachChild(node, visitNotifications);
+}
+visitNotifications(commandAst);
+console.log(
+    "PASS command localization: real RU/AR notifications, literal remote text, safe RTL DOM, Unicode name search and keyboard volume"
 );

@@ -7,6 +7,7 @@ const ts = require("typescript");
 const { JSDOM } = require("jsdom");
 const { settingsSource } = require("./helpers/settings-source-fixture.cjs");
 const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
+const localizationCode = localizationRuntime();
 const root = path.resolve(__dirname, "..");
 const selectorDocument = new JSDOM("").window.document;
 
@@ -224,6 +225,7 @@ function fixture() {
     };
     c.window = c;
     const context = vm.createContext(c);
+    vm.runInContext(localizationCode, context);
     const initialPreferences = Object.fromEntries(
         Object.entries(c).filter(
             ([key]) => /^s[A-Z]/.test(key) || key === "parentPIN"

@@ -140,6 +140,10 @@ var keyStrings = {
         "வழங்குநரை மாற்றவும். அடுத்த முறை பிளேயரைத் தொடங்கும்போது உங்கள் தேர்வு நினைவில் வைக்கப்படும்.",
     "Change value": "மதிப்பை மாற்றவும்",
     "Channel ": "சேனல் ",
+    'Channel "%1" not found': '"%1" சேனல் கிடைக்கவில்லை',
+    "Channel #%1": "சேனல் #%1",
+    "Channel #%1 not found (total: %2)": "சேனல் #%1 கிடைக்கவில்லை (மொத்தம்: %2)",
+    "Channel #%1 not in any category": "சேனல் #%1 எந்த வகையிலும் இல்லை",
     "Channel has no EPG": "சேனலில் EPG இல்லை",
     "Channel is not available!!!": "சேனல் கிடைக்கவில்லை!",
     "Channel link": "சேனல் இணைப்பு",
@@ -289,6 +293,7 @@ var keyStrings = {
         "காப்புப்பிரதியை வைத்திருக்க JSON ஐ நகலெடுக்கவும். அதை மீட்டெடுக்க, இறக்குமதி அமைப்புகளைப் பயன்படுத்தவும்.",
     "Copy the selected JSON with your device's copy command":
         "உங்கள் சாதனத்தின் நகல் கட்டளையுடன் தேர்ந்தெடுக்கப்பட்ட JSON ஐ நகலெடுக்கவும்",
+    "Could not change the playlist.": "இயக்கப்பட்டியலை மாற்ற முடியவில்லை.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex உடன் இணைக்க முடியவில்லை. சேவையக முகவரி, டோக்கன் மற்றும் நெட்வொர்க் அணுகலைச் சரிபார்க்கவும்.",
     "Could not connect to the server.": "சேவையகத்துடன் இணைக்க முடியவில்லை.",
@@ -552,6 +557,7 @@ var keyStrings = {
         "தவறான சேனல் இணைப்பு! உங்கள் வழங்குநர் கணக்குப் பக்கத்தில் உள்ள ஸ்ட்ரீம் URL இலிருந்து முழுமையான ஹோஸ்ட்பெயரை உள்ளிடவும் (எடுத்துக்காட்டாக subdomain.cdn-domain.tld ).",
     "Invalid cloud settings response": "தவறான கிளவுட் அமைப்புகளின் பதில்",
     "Invalid protected source configuration": "தவறான பாதுகாக்கப்பட்ட மூல உள்ளமைவு",
+    "Invalid range: %1-%2": "செல்லாத வரம்பு: %1-%2",
     "Invalid setting": "தவறான அமைப்பு",
     "IPTV token": "IPTV டோக்கன்",
     "IpStream.one": "IpStream.one",
@@ -584,6 +590,7 @@ var keyStrings = {
     "Loading M3U...": "M3U ஐ ஏற்றுகிறது…",
     "Loading media libraries...": "மீடியா லைப்ரரிகளை ஏற்றுகிறது…",
     "Loading player...": "பிளேயரை ஏற்றுகிறது…",
+    "Loading the new playlist...": "புதிய இயக்கப்பட்டியல் ஏற்றப்படுகிறது...",
     "Loading via proxy...": "ப்ராக்ஸி வழியாக ஏற்றுகிறது…",
     "Loading. Please wait...": "ஏற்றுகிறது... காத்திருக்கவும்...",
     "Loading...": "ஏற்றுகிறது…",
@@ -625,6 +632,7 @@ var keyStrings = {
     "Next TV program": "அடுத்த திட்டம்",
     No: "இல்லை",
     "No channel name": "சேனல் பெயர் இல்லை",
+    "No channels loaded": "எந்தச் சேனலும் ஏற்றப்படவில்லை",
     "No command server was found on this network.":
         "இந்த நெட்வொர்க்கில் கட்டளை சேவையகம் எதுவும் இல்லை.",
     "No Plex servers are available for this account.":
@@ -698,6 +706,7 @@ var keyStrings = {
     "Player could not start": "பிளேயர் தொடங்க முடியவில்லை",
     "Player default": "பிளேயரின் இயல்புநிலைத் தேர்வு",
     "Player info:": "பிளேயர் தகவல்:",
+    "Playing: %1": "இயங்குகிறது: %1",
     Playlist: "பிளேலிஸ்ட்",
     "Playlist file": "பிளேலிஸ்ட் கோப்பு",
     "Playlist is not loading directly...Loading via server...":
@@ -733,9 +742,13 @@ var keyStrings = {
     "Protect Change Provider": "வழங்குநர் மாற்றத்தைப் பாதுகாக்கவும்",
     "Protect Settings": "அமைப்புகளைப் பாதுகாக்கவும்",
     "Protected source is unavailable": "பாதுகாக்கப்பட்ட ஆதாரம் கிடைக்கவில்லை",
+    "Provider switching not available": "வழங்குநரை மாற்றும் வசதி இல்லை",
     "p...": "p...",
     paging: "பேஜிங்",
     Quality: "தரம்",
+    "Random #%1": "சீரற்ற சேனல் #%1",
+    "Random channel not in any category":
+        "சீரற்ற முறையில் தேர்ந்தெடுத்த சேனல் எந்த வகையிலும் இல்லை",
     Rating: "மதிப்பீடு",
     RD: "RD",
     "RD settings": "RD அமைப்புகள்",
@@ -772,6 +785,10 @@ var keyStrings = {
         "தொலைநிலை உள்ளீடு காலாவதியானது. மீண்டும் முயற்சிக்க, புதிய அமர்வைத் திறக்கவும்.",
     "Remote input session is unavailable. Open a new session to try again.":
         "தொலைநிலை உள்ளீட்டு அமர்வு கிடைக்கவில்லை. மீண்டும் முயற்சிக்க, புதிய அமர்வைத் திறக்கவும்.",
+    "Remote playlist changes require the M3U provider.":
+        "இயக்கப்பட்டியலைத் தொலைவிலிருந்து மாற்ற M3U வழங்குநர் தேவை.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "வழங்குநரின் அமைப்புகளைத் தொலைவிலிருந்து மாற்ற ஆதரவில்லை. இயக்கியின் வழங்குநர் அமைப்புகளைப் பயன்படுத்தவும்.",
     "Remote screenshots": "ரிமோட் ஸ்கிரீன்ஷாட்கள்",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "ரிமோட் ஸ்கிரீன்ஷாட்கள் 10 நிமிடங்களுக்கு அனுமதிக்கப்படும். பிடிக்க அமைப்புகளை மூடு.",
@@ -963,6 +980,7 @@ var keyStrings = {
     "Switch sound track": "ஆடியோ டிராக்கை மாற்றவும்",
     "Switch subtitle": "வசனங்களை மாற்றவும்",
     "Switch to this list": "இந்தப் பட்டியலுக்கு மாறவும்",
+    "Switching provider...": "வழங்குநர் மாற்றப்படுகிறது...",
     "Swop URL": "SWOP URL",
     "System language": "கணினி மொழி",
     "saved on this device": "இந்தச் சாதனத்தில் சேமிக்கப்பட்டது",
@@ -994,6 +1012,8 @@ var keyStrings = {
         "இந்த Play பயன்பாட்டிற்கு HTTPS தேவை. HTTPS பிளேலிஸ்ட் அல்லது சர்வர் URL உங்கள் வழங்குநரிடம் கேளுங்கள்.",
     "This pairing link has expired. Open a new session on your TV.":
         "இந்த இணைத்தல் இணைப்பு காலாவதியானது. உங்கள் டிவியில் புதிய அமர்வைத் திறக்கவும்.",
+    "This remote command is not supported by the player.":
+        "இந்தத் தொலைக்கட்டுப்பாட்டுக் கட்டளையை இயக்கி ஆதரிக்கவில்லை.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "இந்த பாதுகாப்பான அமர்வு கிடைக்கவில்லை அல்லது காலாவதியானது. டிவியில் புதிய அமர்வைத் திறந்து அதன் முழுமையான இணைப்பைப் பயன்படுத்தவும்.",
     Timer: "டைமர்",
@@ -1012,6 +1032,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "ஜூம் பயன்முறையை மாற்றவும்",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv அமைப்புகள்",
+    "Touchscreen locked": "தொடுதிரை பூட்டப்பட்டது",
+    "Touchscreen unlocked": "தொடுதிரையின் பூட்டு நீக்கப்பட்டது",
     "Trust this server for remote support":
         "தொலைநிலை ஆதரவுக்காக இந்த சேவையகத்தை நம்புங்கள்",
     "Trusted access could not be removed from device storage.":
@@ -1032,6 +1054,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X அமைப்புகள்",
     "Unable to load playlist": "பிளேலிஸ்ட்டை ஏற்ற முடியவில்லை",
+    "Unlock the player's settings before changing its playlist.":
+        "இயக்கப்பட்டியலை மாற்றும் முன் இயக்கியின் அமைப்புகளின் பூட்டை நீக்கவும்.",
     Untitled: "தலைப்பு இல்லை",
     "Untitled folder": "பெயரிடப்படாத கோப்புறை",
     "Update installed. Please restart OttPlay FOSS.":

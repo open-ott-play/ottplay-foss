@@ -141,6 +141,11 @@ var keyStrings = {
         "Mainiet pakalpojuma sniedzēju. Izvēle tiks saglabāta nākamajai atskaņotāja palaišanai.",
     "Change value": "Mainīt vērtību",
     "Channel ": "Kanāls ",
+    'Channel "%1" not found': "Kanāls “%1” nav atrasts",
+    "Channel #%1": "Kanāls Nr. %1",
+    "Channel #%1 not found (total: %2)": "Kanāls Nr. %1 nav atrasts (kopā: %2)",
+    "Channel #%1 not in any category":
+        "Kanāls Nr. %1 nepieder nevienai kategorijai",
     "Channel has no EPG": "Kanālam nav EPG",
     "Channel is not available!!!": "Kanāls nav pieejams!!!",
     "Channel link": "Kanāla saite",
@@ -292,6 +297,7 @@ var keyStrings = {
         "Nokopējiet JSON, lai saglabātu rezerves kopiju. Atjaunojiet to, izmantojot iestatījumu importēšanu.",
     "Copy the selected JSON with your device's copy command":
         "Nokopējiet atlasīto JSON ar ierīces kopēšanas komandu",
+    "Could not change the playlist.": "Neizdevās mainīt atskaņošanas sarakstu.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nevarēja izveidot savienojumu ar Plex. Pārbaudiet servera adresi, pilnvaru un piekļuvi tīklam.",
     "Could not connect to the server.": "Neizdevās savienoties ar serveri.",
@@ -562,6 +568,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Nederīga mākoņa iestatījumu atbilde",
     "Invalid protected source configuration":
         "Nederīga aizsargātā avota konfigurācija",
+    "Invalid range: %1-%2": "Nederīgs diapazons: %1-%2",
     "Invalid setting": "Nederīgs iestatījums",
     "IPTV token": "IPTV piekļuves pilnvara",
     "IpStream.one": "IpStream.one",
@@ -593,6 +600,7 @@ var keyStrings = {
     "Loading M3U...": "Ielādē M3U…",
     "Loading media libraries...": "Ielādē multivides bibliotēkas…",
     "Loading player...": "Ielādē atskaņotāju…",
+    "Loading the new playlist...": "Jaunā atskaņošanas saraksta ielāde...",
     "Loading via proxy...": "Ielādē caur starpniekserveri…",
     "Loading. Please wait...": "Ielādē… lūdzu, uzgaidiet…",
     "Loading...": "Ielādē…",
@@ -635,6 +643,7 @@ var keyStrings = {
     "Next TV program": "Nākamais raidījums",
     No: "Nē",
     "No channel name": "Nav kanāla nosaukuma",
+    "No channels loaded": "Nav ielādēts neviens kanāls",
     "No command server was found on this network.":
         "Šajā tīklā nav atrasts neviens komandu serveris.",
     "No Plex servers are available for this account.":
@@ -708,6 +717,7 @@ var keyStrings = {
     "Player could not start": "Neizdevās palaist atskaņotāju",
     "Player default": "Atskaņotāja noklusējuma izvēle",
     "Player info:": "Atskaņotāja informācija:",
+    "Playing: %1": "Tiek atskaņots: %1",
     Playlist: "Atskaņošanas saraksts",
     "Playlist file": "Atskaņošanas saraksta fails",
     "Playlist is not loading directly...Loading via server...":
@@ -744,9 +754,14 @@ var keyStrings = {
     "Protect Change Provider": "Aizsargāt pakalpojuma sniedzēja maiņu",
     "Protect Settings": "Aizsargāt iestatījumus",
     "Protected source is unavailable": "Aizsargātais avots nav pieejams",
+    "Provider switching not available":
+        "Pakalpojumu sniedzēja pārslēgšana nav pieejama",
     "p...": "p...",
     paging: "pa lapām",
     Quality: "Kvalitāte",
+    "Random #%1": "Nejauši izvēlēts Nr. %1",
+    "Random channel not in any category":
+        "Nejauši izvēlētais kanāls nepieder nevienai kategorijai",
     Rating: "Vērtējums",
     RD: "RD",
     "RD settings": "RD iestatījumi",
@@ -784,6 +799,10 @@ var keyStrings = {
         "Attālās ievades derīguma termiņš ir beidzies. Atveriet jaunu sesiju, lai mēģinātu vēlreiz.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Attālās ievades sesija nav pieejama. Atveriet jaunu sesiju, lai mēģinātu vēlreiz.",
+    "Remote playlist changes require the M3U provider.":
+        "Atskaņošanas saraksta attālinātai maiņai nepieciešams M3U pakalpojumu sniedzējs.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Pakalpojumu sniedzēja attālinātā iestatīšana netiek atbalstīta. Izmantojiet tā iestatījumus atskaņotājā.",
     "Remote screenshots": "Attālināti ekrānuzņēmumi",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Attālināti ekrānuzņēmumi ir atļauti 10 minūtes. Aizveriet iestatījumus, lai uzņemtu.",
@@ -977,6 +996,7 @@ var keyStrings = {
     "Switch sound track": "Mainīt skaņas celiņu",
     "Switch subtitle": "Mainīt subtitrus",
     "Switch to this list": "Pārslēgties uz šo sarakstu",
+    "Switching provider...": "Pakalpojumu sniedzēja pārslēgšana...",
     "Swop URL": "Swop adrese",
     "System language": "Sistēmas valoda",
     "saved on this device": "saglabāts šajā ierīcē",
@@ -1009,6 +1029,8 @@ var keyStrings = {
         "Šai Play lietotnei nepieciešams HTTPS. Lūdziet pakalpojuma sniedzējam HTTPS sarakstu vai servera URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Šīs savienošanas saites derīguma termiņš ir beidzies. Televizorā atveriet jaunu sesiju.",
+    "This remote command is not supported by the player.":
+        "Atskaņotājs neatbalsta šo attālināto komandu.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Šī drošā sesija nav pieejama vai tās derīguma termiņš ir beidzies. Televizorā atveriet jaunu sesiju un izmantojiet tās pilno saiti.",
     Timer: "Taimeris",
@@ -1027,6 +1049,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Mainīt tālummaiņas režīmu",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv iestatījumi",
+    "Touchscreen locked": "Skārienekrāns ir bloķēts",
+    "Touchscreen unlocked": "Skārienekrāns ir atbloķēts",
     "Trust this server for remote support":
         "Uzticieties šim serverim, lai saņemtu attālo atbalstu",
     "Trusted access could not be removed from device storage.":
@@ -1047,6 +1071,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X iestatījumi",
     "Unable to load playlist": "Neizdevās ielādēt atskaņošanas sarakstu",
+    "Unlock the player's settings before changing its playlist.":
+        "Pirms atskaņošanas saraksta maiņas atbloķējiet atskaņotāja iestatījumus.",
     Untitled: "Bez nosaukuma",
     "Untitled folder": "Mape bez nosaukuma",
     "Update installed. Please restart OttPlay FOSS.":

@@ -151,7 +151,11 @@ const { gzipSync } = require("node:zlib");
 // including pointer/wheel admission behind the dialog and a clean source hash.
 // Node 22.23.3 measures a 332-byte native gzip increment before that hash;
 // allocate 900 raw / 400 gzip bytes to preserve the release-version reserve.
-const BUDGET = Object.freeze({ bytes: 805900, gzipBytes: 251350 });
+// Localized remote/touch feedback and language recovery share command playback
+// code instead of repeating it. On clean Node 22.23.3 the combined web entry is
+// 805979 raw / 251002 gzip; native is 805937 / 251071. Add only 200 raw bytes,
+// leaving 121 before the release suffix; gzip and complete-payload caps stay put.
+const BUDGET = Object.freeze({ bytes: 806100, gzipBytes: 251350 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small

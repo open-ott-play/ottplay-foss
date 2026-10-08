@@ -140,6 +140,10 @@ var keyStrings = {
         "Yí olùpèsè padà. A ó rántí ohun tí o yàn nígbà tí o bá tún bẹ̀rẹ̀ ẹ̀rọ ìṣeré.",
     "Change value": "Yí iye padà",
     "Channel ": "Ìkànnì ",
+    'Channel "%1" not found': 'A kò rí ìkànnì "%1"',
+    "Channel #%1": "Ìkànnì #%1",
+    "Channel #%1 not found (total: %2)": "A kò rí ìkànnì #%1 (àpapọ̀: %2)",
+    "Channel #%1 not in any category": "Ìkànnì #%1 kò sí nínú ẹ̀ka kankan",
     "Channel has no EPG": "Ìkànnì kò ní EPG",
     "Channel is not available!!!": "Ìkànnì kò sí lárọ̀ọ́wọ́tó!",
     "Channel link": "Ọ̀nà asopọ̀ ìkànnì",
@@ -286,6 +290,7 @@ var keyStrings = {
         "Ṣe ẹ̀dà JSON náà láti pa ẹ̀dà àfẹ́yìntì mọ́. Lo Gbé ètò wọlé láti dá a padà.",
     "Copy the selected JSON with your device's copy command":
         "Ṣe ẹ̀dà JSON tí a yàn pẹ̀lú àṣẹ ṣíṣe ẹ̀dà ẹ̀rọ rẹ",
+    "Could not change the playlist.": "A kò lè yí àkójọ ìṣeré padà.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "A kò lè sopọ̀ mọ́ Plex. Ṣàyẹ̀wò àdírẹ́sì sáfà, àmi ìwọlé àti ìwọlé nẹ́tíwọ́ọ̀kì.",
     "Could not connect to the server.": "A kò lè sopọ̀ mọ́ sáfà.",
@@ -545,6 +550,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Idahun awọn eto awọsanma ti ko tọ",
     "Invalid protected source configuration":
         "Ètò orísun tí a dáàbò bò kò péye",
+    "Invalid range: %1-%2": "Ààlà tí kò tọ́: %1-%2",
     "Invalid setting": "Eto ti ko tọ",
     "IPTV token": "Àmi ìwọlé IPTV",
     "IpStream.one": "IpStream.one",
@@ -577,6 +583,7 @@ var keyStrings = {
     "Loading M3U...": "Ń gbé M3U wọlé…",
     "Loading media libraries...": "Ń gbé àwọn ilé-ìkàwé mídíà wọlé…",
     "Loading player...": "Ń gbé ẹ̀rọ ìṣeré wọlé…",
+    "Loading the new playlist...": "Ń kó àkójọ ìṣeré tuntun wọlé...",
     "Loading via proxy...": "Ń gbé wọlé nípasẹ̀ aṣojú nẹ́tíwọ́ọ̀kì…",
     "Loading. Please wait...": "Ń gbé wọlé… jọ̀wọ́ dúró…",
     "Loading...": "Ń gbé wọlé…",
@@ -618,6 +625,7 @@ var keyStrings = {
     "Next TV program": "Ètò tó kàn",
     No: "Rárá",
     "No channel name": "Ìkànnì kò ní orúkọ",
+    "No channels loaded": "Kò sí ìkànnì tí a ti kó wọlé",
     "No command server was found on this network.":
         "A kò rí sáfà àṣẹ lórí nẹ́tíwọ́ọ̀kì yìí.",
     "No Plex servers are available for this account.":
@@ -691,6 +699,7 @@ var keyStrings = {
     "Player could not start": "Ẹ̀rọ ìṣeré kò lè bẹ̀rẹ̀",
     "Player default": "Àṣàyàn àiyípadà ẹ̀rọ orin",
     "Player info:": "Ìwífún ẹ̀rọ ìṣeré:",
+    "Playing: %1": "Ń ṣeré: %1",
     Playlist: "Àkójọ ìṣeré",
     "Playlist file": "Fáìlì àkójọ ìṣeré",
     "Playlist is not loading directly...Loading via server...":
@@ -727,9 +736,13 @@ var keyStrings = {
     "Protect Change Provider": "Dáàbò bo yíyí olùpèsè padà",
     "Protect Settings": "Dáàbò bo ètò",
     "Protected source is unavailable": "Orísun tí a dáàbò bò kò sí lárọ̀ọ́wọ́tó",
+    "Provider switching not available": "Yíyí olùpèsè padà kò ṣeé ṣe",
     "p...": "p...",
     paging: "yíyí ojú ìwé",
     Quality: "Dídára",
+    "Random #%1": "Ìkànnì tí a yàn láìlétòlétò #%1",
+    "Random channel not in any category":
+        "Ìkànnì tí a yàn láìlétòlétò kò sí nínú ẹ̀ka kankan",
     Rating: "Ìdíwọ̀n",
     RD: "RD",
     "RD settings": "Ètò RD",
@@ -767,6 +780,10 @@ var keyStrings = {
         "Àkókò títẹ ọ̀rọ̀ láti ọ̀nà jíjìn ti parí. Ṣí sáà tuntun láti tún gbìyànjú.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sáà títẹ ọ̀rọ̀ láti ọ̀nà jíjìn kò sí lárọ̀ọ́wọ́tó. Ṣí sáà tuntun láti tún gbìyànjú.",
+    "Remote playlist changes require the M3U provider.":
+        "Láti yí àkójọ ìṣeré padà láti ọ̀nà jíjìn, o gbọ́dọ̀ yan olùpèsè M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "A kò ṣe àtìlẹ́yìn fún yíyí ètò olùpèsè padà láti ọ̀nà jíjìn. Lo ètò olùpèsè inú ẹ̀rọ ìṣeré.",
     "Remote screenshots": "Awọn àwòrán iboju jijin",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Awọn àwòrán iboju jijin ni a gba laaye fun ìṣẹ́jú 10. Pa awọn eto lati yaworan.",
@@ -956,6 +973,7 @@ var keyStrings = {
     "Switch sound track": "Yí ọ̀nà ohùn padà",
     "Switch subtitle": "Yí àkọlé ìsàlẹ̀ padà",
     "Switch to this list": "Yí sí àkójọ yìí",
+    "Switching provider...": "Ń yí olùpèsè padà...",
     "Swop URL": "URL Swop",
     "System language": "Èdè ètò",
     "saved on this device": "tí a fi pamọ́ lórí ẹ̀rọ yìí",
@@ -988,6 +1006,8 @@ var keyStrings = {
         "Ohun èlò Play yìí nílò HTTPS. Béèrè lọ́wọ́ olùpèsè rẹ fún àkójọ ìṣeré HTTPS tàbí URL sáfà HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ọna asopọ sisopọ yii ti pari. Ṣii igba titun lori TV rẹ.",
+    "This remote command is not supported by the player.":
+        "Ẹ̀rọ ìṣeré kò ṣe àtìlẹ́yìn fún àṣẹ ìṣàkóso láti ọ̀nà jíjìn yìí.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Igba aabo yii ko si tabi ti pari. Ṣii igba tuntun lori TV ki o lo ọna asopọ pipe rẹ.",
     Timer: "Aago ìṣètò",
@@ -1006,6 +1026,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Yí ipò súnmọ́/súnjìnnà padà",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ètò Top-Tv",
+    "Touchscreen locked": "A ti ti iboju ìfọwọ́kàn pa",
+    "Touchscreen unlocked": "A ti ṣí iboju ìfọwọ́kàn",
     "Trust this server for remote support":
         "Fọkàn tán sáfà yìí fún ìrànlọ́wọ́ láti ọ̀nà jíjìn",
     "Trusted access could not be removed from device storage.":
@@ -1026,6 +1048,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ètò ULTIFL1X",
     "Unable to load playlist": "A kò lè gbé àkójọ ìṣeré wọlé",
+    "Unlock the player's settings before changing its playlist.":
+        "Ṣí títìpa ètò ẹ̀rọ ìṣeré kí o tó yí àkójọ ìṣeré rẹ̀ padà.",
     Untitled: "Kò ní àkọlé",
     "Untitled folder": "Fódà tí kò ní àkọlé",
     "Update installed. Please restart OttPlay FOSS.":

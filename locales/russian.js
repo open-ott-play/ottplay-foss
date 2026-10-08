@@ -139,6 +139,11 @@ var keyStrings = {
         "Смените провайдера. Выбор сохранится при следующем запуске плеера.",
     "Change value": "Изменить значение",
     "Channel ": "Канал ",
+    'Channel "%1" not found': "Канал «%1» не найден",
+    "Channel #%1": "Канал №%1",
+    "Channel #%1 not found (total: %2)": "Канал №%1 не найден (всего: %2)",
+    "Channel #%1 not in any category":
+        "Канал №%1 не входит ни в одну категорию",
     "Channel has no EPG": "Для канала нет программы передач",
     "Channel is not available!!!": "Канал не доступен!!!",
     "Channel link": "Ссылка на канал",
@@ -289,6 +294,7 @@ var keyStrings = {
         "Скопируйте JSON, чтобы сохранить резервную копию. Для восстановления используйте «Импорт настроек».",
     "Copy the selected JSON with your device's copy command":
         "Скопируйте выделенный JSON с помощью команды копирования на устройстве",
+    "Could not change the playlist.": "Не удалось сменить плейлист.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Не удалось подключиться к Plex. Проверьте адрес сервера, токен и доступ к сети.",
     "Could not connect to the server.": "Не удалось подключиться к серверу.",
@@ -555,6 +561,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Облако вернуло некорректные настройки",
     "Invalid protected source configuration":
         "Неверная конфигурация защищённого источника",
+    "Invalid range: %1-%2": "Неверный диапазон: %1-%2",
     "Invalid setting": "Некорректное значение настройки",
     "IPTV token": "IPTV-токен",
     "IpStream.one": "IpStream.one",
@@ -586,6 +593,7 @@ var keyStrings = {
     "Loading M3U...": "Загрузка M3U…",
     "Loading media libraries...": "Загрузка медиабиблиотек…",
     "Loading player...": "Загрузка плеера…",
+    "Loading the new playlist...": "Загрузка нового плейлиста...",
     "Loading via proxy...": "Загрузка через прокси…",
     "Loading. Please wait...": "Загрузка. Подождите…",
     "Loading...": "Загрузка…",
@@ -627,6 +635,7 @@ var keyStrings = {
     "Next TV program": "Следующая передача",
     No: "Нет",
     "No channel name": "Нет названия канала",
+    "No channels loaded": "Каналы не загружены",
     "No command server was found on this network.":
         "В этой сети не найден сервер команд.",
     "No Plex servers are available for this account.":
@@ -700,6 +709,7 @@ var keyStrings = {
     "Player could not start": "Не удалось запустить плеер",
     "Player default": "По умолчанию в плеере",
     "Player info:": "Информация о плеере:",
+    "Playing: %1": "Воспроизводится: %1",
     Playlist: "Плейлист",
     "Playlist file": "Файл плейлиста",
     "Playlist is not loading directly...Loading via server...":
@@ -736,9 +746,13 @@ var keyStrings = {
     "Protect Change Provider": "Защитить смену провайдера",
     "Protect Settings": "Защитить настройки",
     "Protected source is unavailable": "Защищённый источник недоступен",
+    "Provider switching not available": "Переключение провайдера недоступно",
     "p...": "п…",
     paging: "листание страниц",
     Quality: "Качество",
+    "Random #%1": "Случайный №%1",
+    "Random channel not in any category":
+        "Случайный канал не входит ни в одну категорию",
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "Настройки RD",
@@ -775,6 +789,10 @@ var keyStrings = {
         "Время удалённого ввода истекло. Откройте новый сеанс.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Сеанс удалённого ввода недоступен. Откройте новый сеанс.",
+    "Remote playlist changes require the M3U provider.":
+        "Для удалённой смены плейлиста нужен провайдер M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Удалённая настройка провайдера не поддерживается. Используйте настройки провайдера в плеере.",
     "Remote screenshots": "Удалённые снимки экрана",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Удалённые снимки экрана разрешены на 10 минут. Закройте настройки для съёмки.",
@@ -966,6 +984,7 @@ var keyStrings = {
     "Switch sound track": "Сменить звуковую дорожку",
     "Switch subtitle": "Сменить субтитры",
     "Switch to this list": "Переключиться на этот список",
+    "Switching provider...": "Переключение провайдера...",
     "Swop URL": "Адрес Swop",
     "System language": "Язык системы",
     "saved on this device": "сохранено на этом устройстве",
@@ -1000,6 +1019,8 @@ var keyStrings = {
         "Для этой версии из Play требуется HTTPS. Запросите у провайдера HTTPS-адрес плейлиста или сервера.",
     "This pairing link has expired. Open a new session on your TV.":
         "Срок действия ссылки истёк. Откройте новый сеанс на телевизоре.",
+    "This remote command is not supported by the player.":
+        "Плеер не поддерживает эту удалённую команду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Защищённый сеанс недоступен или срок его действия истёк. Откройте новый сеанс на телевизоре и используйте полную ссылку.",
     Timer: "Таймер",
@@ -1018,6 +1039,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Изменить режим масштабирования",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Настройки Top-Tv",
+    "Touchscreen locked": "Сенсорный экран заблокирован",
+    "Touchscreen unlocked": "Сенсорный экран разблокирован",
     "Trust this server for remote support":
         "Разрешить этому серверу удалённую поддержку",
     "Trusted access could not be removed from device storage.":
@@ -1038,6 +1061,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Настройки ULTIFL1X",
     "Unable to load playlist": "Не удалось загрузить список воспроизведения",
+    "Unlock the player's settings before changing its playlist.":
+        "Разблокируйте настройки плеера перед сменой плейлиста.",
     Untitled: "Без названия",
     "Untitled folder": "Папка без названия",
     "Update installed. Please restart OttPlay FOSS.":

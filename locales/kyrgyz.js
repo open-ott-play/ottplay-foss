@@ -144,6 +144,10 @@ var keyStrings = {
         "Провайдерди өзгөртүңүз. Тандооңуз ойноткуч кийинки жолу иштетилгенде сакталат.",
     "Change value": "Маанини өзгөртүү",
     "Channel ": "Канал ",
+    'Channel "%1" not found': "«%1» каналы табылган жок",
+    "Channel #%1": "№%1 канал",
+    "Channel #%1 not found (total: %2)": "№%1 канал табылган жок (бардыгы: %2)",
+    "Channel #%1 not in any category": "№%1 канал эч бир категорияга кирбейт",
     "Channel has no EPG": "Каналдын EPG маалыматы жок",
     "Channel is not available!!!": "Канал жеткиликсиз!",
     "Channel link": "Каналдын шилтемеси",
@@ -294,6 +298,8 @@ var keyStrings = {
         "Камдык көчүрмө үчүн JSON көчүрүңүз. Калыбына келтирүү үчүн жөндөөлөрдү импорттоону колдонуңуз.",
     "Copy the selected JSON with your device's copy command":
         "Тандалган JSON текстин түзмөктүн көчүрүү буйругу менен көчүрүңүз",
+    "Could not change the playlist.":
+        "Ойнотуу тизмесин өзгөртүү мүмкүн болгон жок.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Plex менен туташкан жок. Сервердин дарегин, токенди жана тармакка кирүүнү текшериңиз.",
     "Could not connect to the server.": "Серверге туташкан жок.",
@@ -566,6 +572,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Булут жөндөөлөрү туура эмес жооп",
     "Invalid protected source configuration":
         "Корголгон булактын жөндөөлөрү жараксыз",
+    "Invalid range: %1-%2": "Жараксыз аралык: %1-%2",
     "Invalid setting": "Жараксыз орнотуу",
     "IPTV token": "IPTV токени",
     "IpStream.one": "IpStream.one",
@@ -598,6 +605,7 @@ var keyStrings = {
     "Loading M3U...": "M3U жүктөлүүдө…",
     "Loading media libraries...": "Медиатекалар жүктөлүүдө…",
     "Loading player...": "Плеер жүктөлүүдө…",
+    "Loading the new playlist...": "Жаңы ойнотуу тизмеси жүктөлүүдө...",
     "Loading via proxy...": "Прокси аркылуу жүктөлүүдө…",
     "Loading. Please wait...": "Жүктөлүүдө… күтө туруңуз…",
     "Loading...": "Жүктөлүүдө…",
@@ -640,6 +648,7 @@ var keyStrings = {
     "Next TV program": "Кийинки берүү",
     No: "Жок",
     "No channel name": "Каналдын аты жок",
+    "No channels loaded": "Каналдар жүктөлө элек",
     "No command server was found on this network.":
         "Бул тармакта буйрук сервери табылган жок.",
     "No Plex servers are available for this account.":
@@ -713,6 +722,7 @@ var keyStrings = {
     "Player could not start": "Плеер ишке кирген жок",
     "Player default": "Ойноткучтагы демейки тандоо",
     "Player info:": "Плеер жөнүндө маалымат:",
+    "Playing: %1": "Ойнотулууда: %1",
     Playlist: "Ойнотуу тизмеси",
     "Playlist file": "Ойнотуу тизмесинин файлы",
     "Playlist is not loading directly...Loading via server...":
@@ -749,9 +759,13 @@ var keyStrings = {
     "Protect Change Provider": "Провайдерди өзгөртүүнү коргоо",
     "Protect Settings": "Жөндөөлөрдү коргоо",
     "Protected source is unavailable": "Корголгон булак жеткиликсиз",
+    "Provider switching not available": "Провайдерди алмаштыруу жеткиликсиз",
     "p...": "б...",
     paging: "барактоо",
     Quality: "Сапат",
+    "Random #%1": "Кокус канал №%1",
+    "Random channel not in any category":
+        "Кокус тандалган канал эч бир категорияга кирбейт",
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "RD жөндөөлөрү",
@@ -789,6 +803,10 @@ var keyStrings = {
         "Алыстан киргизүүнүн мөөнөтү бүттү. Кайра аракет кылуу үчүн жаңы сеанс ачыңыз.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Алыстан киргизүү сеансы жеткиликсиз. Кайра аракет кылуу үчүн жаңы сеанс ачыңыз.",
+    "Remote playlist changes require the M3U provider.":
+        "Ойнотуу тизмесин алыстан өзгөртүү үчүн M3U провайдерин тандоо керек.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Провайдердин жөндөөлөрүн алыстан өзгөртүү колдоого алынбайт. Ойноткучтагы провайдердин жөндөөлөрүн колдонуңуз.",
     "Remote screenshots": "Алыскы скриншоттор",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Алыскы скриншотторго 10 мүнөткө уруксат берилет. Тартуу үчүн орнотууларды жабыңыз.",
@@ -981,6 +999,7 @@ var keyStrings = {
     "Switch sound track": "Аудио жолчону алмаштыруу",
     "Switch subtitle": "Субтитрлерди алмаштыруу",
     "Switch to this list": "Бул тизмеге өтүү",
+    "Switching provider...": "Провайдер алмаштырылууда...",
     "Swop URL": "Swop URL дареги",
     "System language": "Система тили",
     "saved on this device": "бул түзмөктө сакталган",
@@ -1014,6 +1033,8 @@ var keyStrings = {
         "Бул Play тиркемесине HTTPS керек. Провайдериңизден HTTPS ойнотуу тизмесин же сервердин URL дарегин сураңыз.",
     "This pairing link has expired. Open a new session on your TV.":
         "Бул жупташтыруу шилтемесинин мөөнөтү бүттү. Сыналгыңызда жаңы сеансты ачыңыз.",
+    "This remote command is not supported by the player.":
+        "Ойноткуч бул алыстан башкаруу буйругун колдобойт.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Бул коопсуз сеанс жеткиликсиз же мөөнөтү бүткөн. Сыналгыда жаңы сессияны ачып, анын толук шилтемесин колдонуңуз.",
     Timer: "Таймер",
@@ -1033,6 +1054,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Масштаб режимин өзгөртүү",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv жөндөөлөрү",
+    "Touchscreen locked": "Сенсордук экран кулпуланды",
+    "Touchscreen unlocked": "Сенсордук экрандын кулпусу ачылды",
     "Trust this server for remote support":
         "Алыстан колдоо үчүн бул серверге ишенүү",
     "Trusted access could not be removed from device storage.":
@@ -1053,6 +1076,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X жөндөөлөрү",
     "Unable to load playlist": "Ойнотуу тизмеси жүктөлгөн жок",
+    "Unlock the player's settings before changing its playlist.":
+        "Ойнотуу тизмесин өзгөртүүдөн мурун ойноткучтун жөндөөлөрүнүн кулпусун ачыңыз.",
     Untitled: "Аталышы жок",
     "Untitled folder": "Аталышы жок папка",
     "Update installed. Please restart OttPlay FOSS.":

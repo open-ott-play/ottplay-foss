@@ -141,6 +141,12 @@ var keyStrings = {
         "Váltson szolgáltatót. A lejátszó a következő indításkor is megjegyzi a választását.",
     "Change value": "Érték módosítása",
     "Channel ": "Csatorna ",
+    'Channel "%1" not found': "A(z) „%1” csatorna nem található",
+    "Channel #%1": "%1. csatorna",
+    "Channel #%1 not found (total: %2)":
+        "A(z) %1. csatorna nem található (összesen: %2)",
+    "Channel #%1 not in any category":
+        "A(z) %1. csatorna egyik kategóriába sem tartozik",
     "Channel has no EPG": "A csatornához nincs műsorújság",
     "Channel is not available!!!": "A csatorna nem elérhető!!!",
     "Channel link": "Csatorna hivatkozása",
@@ -291,6 +297,8 @@ var keyStrings = {
         "Másolja ki a JSON-t a biztonsági másolat megőrzéséhez. A visszaállításhoz használja a beállítások importálását.",
     "Copy the selected JSON with your device's copy command":
         "Másolja ki a kijelölt JSON-t az eszköz másolási parancsával",
+    "Could not change the playlist.":
+        "Nem sikerült módosítani a lejátszási listát.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Nem sikerült csatlakozni a Plex-hez. Ellenőrizze a szerver címét, a tokent és a hálózati hozzáférést.",
     "Could not connect to the server.":
@@ -560,6 +568,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Érvénytelen felhőbeállítási válasz",
     "Invalid protected source configuration":
         "Érvénytelen védettforrás-konfiguráció",
+    "Invalid range: %1-%2": "Érvénytelen tartomány: %1-%2",
     "Invalid setting": "Érvénytelen beállítás",
     "IPTV token": "IPTV-token",
     "IpStream.one": "IpStream.one",
@@ -592,6 +601,7 @@ var keyStrings = {
     "Loading M3U...": "M3U betöltése…",
     "Loading media libraries...": "Médiakönyvtárak betöltése…",
     "Loading player...": "Lejátszó betöltése…",
+    "Loading the new playlist...": "Az új lejátszási lista betöltése...",
     "Loading via proxy...": "Betöltés proxyn keresztül…",
     "Loading. Please wait...": "Betöltés… kis türelmet…",
     "Loading...": "Betöltés…",
@@ -633,6 +643,7 @@ var keyStrings = {
     "Next TV program": "Következő műsor",
     No: "Nem",
     "No channel name": "Nincs csatornanév",
+    "No channels loaded": "Nincsenek betöltött csatornák",
     "No command server was found on this network.":
         "Ezen a hálózaton nem található parancskiszolgáló.",
     "No Plex servers are available for this account.":
@@ -706,6 +717,7 @@ var keyStrings = {
     "Player could not start": "A lejátszó nem indítható el",
     "Player default": "A lejátszó alapértelmezett választása",
     "Player info:": "Lejátszóinformációk:",
+    "Playing: %1": "Lejátszás: %1",
     Playlist: "Lejátszási lista",
     "Playlist file": "Playlist fájl",
     "Playlist is not loading directly...Loading via server...":
@@ -742,9 +754,13 @@ var keyStrings = {
     "Protect Change Provider": "Szolgáltatóváltás védelme",
     "Protect Settings": "Beállítások védelme",
     "Protected source is unavailable": "A védett forrás nem érhető el",
+    "Provider switching not available": "A szolgáltatóváltás nem érhető el",
     "p...": "p...",
     paging: "lapozás",
     Quality: "Minőség",
+    "Random #%1": "Véletlenszerű: %1.",
+    "Random channel not in any category":
+        "A véletlenszerű csatorna egyik kategóriába sem tartozik",
     Rating: "Értékelés",
     RD: "RD",
     "RD settings": "RD beállításai",
@@ -782,6 +798,10 @@ var keyStrings = {
         "A távoli bemenet lejárt. Nyisson meg egy új munkamenetet az újrapróbálkozáshoz.",
     "Remote input session is unavailable. Open a new session to try again.":
         "A távoli beviteli munkamenet nem érhető el. Nyisson meg egy új munkamenetet az újrapróbálkozáshoz.",
+    "Remote playlist changes require the M3U provider.":
+        "A lejátszási lista távoli módosításához az M3U-szolgáltató szükséges.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "A szolgáltató távoli beállítása nem támogatott. Használja a lejátszó szolgáltatói beállításait.",
     "Remote screenshots": "Távoli képernyőképek",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "A távoli képernyőképek 10 percig engedélyezettek. A képernyőképek készítéséhez zárja be a beállításokat.",
@@ -982,6 +1002,7 @@ var keyStrings = {
     "Switch sound track": "Hangsáv váltása",
     "Switch subtitle": "Felirat váltása",
     "Switch to this list": "Váltás erre a listára",
+    "Switching provider...": "Szolgáltatóváltás...",
     "Swop URL": "Swop URL-cím",
     "System language": "Rendszernyelv",
     "saved on this device": "mentve ezen az eszközön",
@@ -1016,6 +1037,8 @@ var keyStrings = {
         "Ez a Play-alkalmazás HTTPS-t igényel. Kérjen a szolgáltatótól HTTPS-lejátszási listát vagy kiszolgáló-URL-t.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ez a párosítási hivatkozás lejárt. Nyisson meg egy új munkamenetet a tévén.",
+    "This remote command is not supported by the player.":
+        "A lejátszó nem támogatja ezt a távoli parancsot.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ez a biztonságos munkamenet nem érhető el vagy lejárt. Nyisson új munkamenetet a tévén, és használja a teljes hivatkozást.",
     Timer: "Időzítő",
@@ -1035,6 +1058,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Nagyítási mód váltása",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv beállításai",
+    "Touchscreen locked": "Érintőképernyő zárolva",
+    "Touchscreen unlocked": "Érintőképernyő feloldva",
     "Trust this server for remote support":
         "Bízzon ebben a szerverben a távoli támogatásért",
     "Trusted access could not be removed from device storage.":
@@ -1055,6 +1080,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X beállításai",
     "Unable to load playlist": "Nem sikerült betölteni a lejátszási listát",
+    "Unlock the player's settings before changing its playlist.":
+        "A lejátszási lista módosítása előtt oldja fel a lejátszó beállításainak zárolását.",
     Untitled: "Névtelen",
     "Untitled folder": "Névtelen mappa",
     "Update installed. Please restart OttPlay FOSS.":

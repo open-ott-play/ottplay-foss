@@ -715,6 +715,10 @@ test("native list swipe leaves editor defaults and multifinger shortcuts intact"
                 alerts,
                 clicks: window.__touchClicks,
                 editorDefaults,
+                expectedAlerts: [
+                    window._("Touchscreen locked"),
+                    window._("Touchscreen unlocked"),
+                ],
                 expectedKeys: [window.keys.ENTER, window.keys.SETUP],
                 index: window.selIndex,
                 keys,
@@ -724,10 +728,7 @@ test("native list swipe leaves editor defaults and multifinger shortcuts intact"
         });
         expect(result.editorDefaults).toEqual(Array(18).fill(false));
         expect(result.keys).toEqual(result.expectedKeys);
-        expect(result.alerts).toEqual([
-            "Touchscreen LOCKED",
-            "Touchscreen UNLOCKED",
-        ]);
+        expect(result.alerts).toEqual(result.expectedAlerts);
         expect(result.lockedIndex).toBe(0);
         expect(result.index).toBe(3);
         expect(result.clicks).toEqual([]);

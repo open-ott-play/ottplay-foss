@@ -142,6 +142,12 @@ var keyStrings = {
         "Ganti penyedia. Pilihan Anda akan diingat saat pemutar dimulai lagi.",
     "Change value": "Ubah nilai",
     "Channel ": "Saluran ",
+    'Channel "%1" not found': 'Saluran "%1" tidak ditemukan',
+    "Channel #%1": "Saluran #%1",
+    "Channel #%1 not found (total: %2)":
+        "Saluran #%1 tidak ditemukan (total: %2)",
+    "Channel #%1 not in any category":
+        "Saluran #%1 tidak berada dalam kategori mana pun",
     "Channel has no EPG": "Saluran tidak memiliki EPG",
     "Channel is not available!!!": "Saluran tidak tersedia!",
     "Channel link": "Tautan saluran",
@@ -292,6 +298,7 @@ var keyStrings = {
         "Salin JSON untuk menyimpan cadangan. Gunakan impor pengaturan untuk memulihkannya.",
     "Copy the selected JSON with your device's copy command":
         "Salin JSON yang dipilih dengan perintah salin perangkat Anda",
+    "Could not change the playlist.": "Tidak dapat mengubah daftar putar.",
     "Could not connect to Plex. Check the server address, token and network access.":
         "Tidak dapat tersambung ke Plex. Periksa alamat server, token, dan akses jaringan.",
     "Could not connect to the server.": "Tidak dapat terhubung ke server.",
@@ -557,6 +564,7 @@ var keyStrings = {
     "Invalid cloud settings response": "Respon pengaturan cloud tidak valid",
     "Invalid protected source configuration":
         "Konfigurasi sumber yang dilindungi tidak valid",
+    "Invalid range: %1-%2": "Rentang tidak valid: %1-%2",
     "Invalid setting": "Pengaturan tidak valid",
     "IPTV token": "Token IPTV",
     "IpStream.one": "IpStream.one",
@@ -588,6 +596,7 @@ var keyStrings = {
     "Loading M3U...": "Memuat M3U…",
     "Loading media libraries...": "Memuat pustaka media…",
     "Loading player...": "Memuat pemutar…",
+    "Loading the new playlist...": "Memuat daftar putar baru...",
     "Loading via proxy...": "Memuat melalui proksi…",
     "Loading. Please wait...": "Memuat… harap tunggu…",
     "Loading...": "Memuat…",
@@ -629,6 +638,7 @@ var keyStrings = {
     "Next TV program": "Program berikutnya",
     No: "Tidak",
     "No channel name": "Saluran tanpa nama",
+    "No channels loaded": "Belum ada saluran yang dimuat",
     "No command server was found on this network.":
         "Tidak ditemukan server perintah di jaringan ini.",
     "No Plex servers are available for this account.":
@@ -702,6 +712,7 @@ var keyStrings = {
     "Player could not start": "Pemutar tidak dapat dimulai",
     "Player default": "Pilihan bawaan pemutar",
     "Player info:": "Informasi pemutar:",
+    "Playing: %1": "Sedang memutar: %1",
     Playlist: "Daftar putar",
     "Playlist file": "File daftar putar",
     "Playlist is not loading directly...Loading via server...":
@@ -737,9 +748,13 @@ var keyStrings = {
     "Protect Change Provider": "Lindungi pergantian penyedia",
     "Protect Settings": "Lindungi pengaturan",
     "Protected source is unavailable": "Sumber yang dilindungi tidak tersedia",
+    "Provider switching not available": "Pergantian penyedia tidak tersedia",
     "p...": "p...",
     paging: "per halaman",
     Quality: "Kualitas",
+    "Random #%1": "Saluran acak #%1",
+    "Random channel not in any category":
+        "Saluran yang dipilih secara acak tidak berada dalam kategori mana pun",
     Rating: "Penilaian",
     RD: "RD",
     "RD settings": "Pengaturan RD",
@@ -777,6 +792,10 @@ var keyStrings = {
         "Input jarak jauh telah habis masa berlakunya. Buka sesi baru untuk mencoba lagi.",
     "Remote input session is unavailable. Open a new session to try again.":
         "Sesi input jarak jauh tidak tersedia. Buka sesi baru untuk mencoba lagi.",
+    "Remote playlist changes require the M3U provider.":
+        "Perubahan daftar putar dari jarak jauh memerlukan penyedia M3U.",
+    "Remote provider settings are not supported. Use the player's provider settings.":
+        "Pengaturan penyedia tidak dapat diubah dari jarak jauh. Gunakan pengaturan penyedia di pemutar.",
     "Remote screenshots": "Tangkapan layar jarak jauh",
     "Remote screenshots are allowed for 10 minutes. Close settings to capture.":
         "Tangkapan layar jarak jauh diperbolehkan selama 10 menit. Tutup pengaturan untuk mengambil gambar.",
@@ -971,6 +990,7 @@ var keyStrings = {
     "Switch sound track": "Ganti trek audio",
     "Switch subtitle": "Ganti subtitel",
     "Switch to this list": "Beralih ke daftar ini",
+    "Switching provider...": "Mengganti penyedia...",
     "Swop URL": "URL Swop",
     "System language": "Bahasa sistem",
     "saved on this device": "tersimpan di perangkat ini",
@@ -1004,6 +1024,8 @@ var keyStrings = {
         "Aplikasi Play ini memerlukan HTTPS. Minta URL daftar putar atau server HTTPS kepada penyedia.",
     "This pairing link has expired. Open a new session on your TV.":
         "Tautan penyandingan ini telah kedaluwarsa. Buka sesi baru di TV Anda.",
+    "This remote command is not supported by the player.":
+        "Perintah jarak jauh ini tidak didukung oleh pemutar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Sesi aman ini tidak tersedia atau kedaluwarsa. Buka sesi baru di TV dan gunakan tautan lengkapnya.",
     Timer: "Pengatur waktu",
@@ -1023,6 +1045,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ubah mode zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Pengaturan Top-Tv",
+    "Touchscreen locked": "Layar sentuh dikunci",
+    "Touchscreen unlocked": "Layar sentuh dibuka kuncinya",
     "Trust this server for remote support":
         "Percayai server ini untuk dukungan jarak jauh",
     "Trusted access could not be removed from device storage.":
@@ -1043,6 +1067,8 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Pengaturan ULTIFL1X",
     "Unable to load playlist": "Gagal memuat daftar putar",
+    "Unlock the player's settings before changing its playlist.":
+        "Buka kunci pengaturan pemutar sebelum mengubah daftar putarnya.",
     Untitled: "Tanpa judul",
     "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":
