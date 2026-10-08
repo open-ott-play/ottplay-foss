@@ -12,6 +12,7 @@ const { parse } = require("acorn");
 const { minify } = require("terser");
 const { assembleClassic, CLASSIC_MODULES } = require("./classic-bundle.cjs");
 const { classicOptimizerMetadata } = require("./classic-optimizer.cjs");
+const { embedPlayerBuildIdentity } = require("./player-build-identity.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const OUTPUT = "build/experiments/classic-options";
@@ -170,9 +171,12 @@ function readRounds(args) {
 async function main() {
     const rounds = readRounds(process.argv.slice(2));
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json")));
-    const source = assembleClassic(ROOT, CLASSIC_MODULES).replace(
-        /__OTTP_VERSION__/g,
-        pkg.version || "local"
+    const source = embedPlayerBuildIdentity(
+        assembleClassic(ROOT, CLASSIC_MODULES).replace(
+            /__OTTP_VERSION__/g,
+            pkg.version || "local"
+        ),
+        ROOT
     );
     const inputGlobals = globals(source);
     const metadata = classicOptimizerMetadata();

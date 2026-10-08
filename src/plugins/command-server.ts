@@ -109,7 +109,8 @@ export function createCommandServer(
         request: any,
         done: (result: any) => void,
         afterReply: (effect: () => void) => void
-    ) => (() => void) | void
+    ) => (() => void) | void,
+    acceptRequest?: (request: any) => boolean
 ): any {
     var config: CommandServerConfig = {
         address: "",
@@ -416,7 +417,12 @@ export function createCommandServer(
                     Array.isArray(data.requests) &&
                     data.requests.length
                 ) {
-                    var item = data.requests[0];
+                    var eligible = acceptRequest
+                        ? data.requests.filter(function (request: any) {
+                              return request && acceptRequest(request);
+                          })
+                        : data.requests;
+                    var item = eligible[0];
                     if (
                         item &&
                         typeof item.id === "string" &&
@@ -430,7 +436,7 @@ export function createCommandServer(
                     ) {
                         // A replay does not prove the server made queue progress.
                         moreRequests =
-                            data.requests.length > 1 &&
+                            eligible.length > 1 &&
                             !responseHistory[item.id] &&
                             !screenshotSeen[item.id];
                         if (responseHistory[item.id] || screenshotSeen[item.id])

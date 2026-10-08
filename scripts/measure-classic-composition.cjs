@@ -13,6 +13,10 @@ const {
 } = require("./classic-bundle.cjs");
 const { classicOptimizerOptions } = require("./classic-optimizer.cjs");
 const { CLASSIC_PLAYER_NAME_POLICY } = require("./classic-function-names.cjs");
+const {
+    applyPlayerBuildIdentity,
+    createPlayerBuildIdentity,
+} = require("./player-build-identity.cjs");
 
 function tokenKind(token) {
     const label = token.type.label;
@@ -173,28 +177,47 @@ function attributeModules(code, map) {
     return result;
 }
 
+async function optimizeComposition(linked, version, root, emitted) {
+    const substitute = (code) => code.replace(/__OTTP_VERSION__/g, version);
+    const source = substitute(
+        linked.prelude + linked.parts.map((part) => part.code).join("\n")
+    );
+    const identity = createPlayerBuildIdentity(source, root);
+    // Building can change tracked generated files after the clean revision was
+    // embedded. Only current HEAD and the partial (empty) revision are valid;
+    // the full compiled-source digest and every emitted byte must still match.
+    const revisions = [identity.sourceRevision];
+    const alternative = identity.sourceRevision ? "" : identity.sourceHead;
+    if (alternative !== identity.sourceRevision) revisions.push(alternative);
+    for (const sourceRevision of revisions) {
+        const candidate = { ...identity, sourceRevision };
+        const apply = (code) =>
+            applyPlayerBuildIdentity(substitute(code), candidate);
+        const input = { "<linker-prelude>": apply(linked.prelude) };
+        for (const part of linked.parts) input[part.file] = apply(part.code);
+        const optimized = await minify(input, {
+            ...classicOptimizerOptions(
+                applyPlayerBuildIdentity(source, candidate),
+                CLASSIC_PLAYER_NAME_POLICY
+            ),
+            sourceMap: { asObject: true },
+        });
+        if (typeof optimized.code !== "string")
+            throw new Error("Optimizer returned no player code");
+        if (optimized.code === emitted) return optimized;
+    }
+    throw new Error(
+        "Composition input does not match dist/player.js; run npm run build first"
+    );
+}
+
 async function measureComposition(root, comparison) {
     const version =
         JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
             .version || "local";
     const linked = assembleClassic(root, CLASSIC_MAIN_MODULES, { parts: true });
-    const substitute = (code) => code.replace(/__OTTP_VERSION__/g, version);
-    const input = { "<linker-prelude>": substitute(linked.prelude) };
-    for (const part of linked.parts) input[part.file] = substitute(part.code);
-    const source = substitute(
-        linked.prelude + linked.parts.map((part) => part.code).join("\n")
-    );
-    const optimized = await minify(input, {
-        ...classicOptimizerOptions(source, CLASSIC_PLAYER_NAME_POLICY),
-        sourceMap: { asObject: true },
-    });
-    if (typeof optimized.code !== "string")
-        throw new Error("Optimizer returned no player code");
     const emitted = fs.readFileSync(path.join(root, "dist/player.js"), "utf8");
-    if (optimized.code !== emitted)
-        throw new Error(
-            "Composition input does not match dist/player.js; run npm run build first"
-        );
+    const optimized = await optimizeComposition(linked, version, root, emitted);
     const result = {
         artifact: "dist/player.js",
         attribution:
@@ -258,6 +281,7 @@ module.exports = {
     attributeModules,
     measureComposition,
     measureSource,
+    optimizeComposition,
 };
 if (require.main === module)
     main().catch((error) => {

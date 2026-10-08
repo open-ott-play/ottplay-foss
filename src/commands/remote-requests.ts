@@ -46,6 +46,8 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    if (request.action === "inspect" && w.__ottRemoteInspect)
+        return w.__ottRemoteInspect.request(request, done);
     if (request.action === "plex_queue")
         return remotePlexQueue(w, remotePlayerInfo(w).runtime).execute(
             request,
