@@ -36,6 +36,25 @@ resolve_base() {
 BASE="$(resolve_base)"
 echo "Collect base: $BASE (TAURI_TARGET=${TARGET:-host})"
 
+# Verify the complete bundle, not just the linker's executable signature, before
+# publishing any of the archives produced from it.
+if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
+  for app in "$BASE"/macos/*.app; do
+    codesign --verify --deep --strict --verbose=2 "$app"
+  done
+fi
+
+verify_app_zip() {
+  local archive="$1" app_name="$2" extracted
+  extracted="$(mktemp -d "${TMPDIR:-/tmp}/ottplay-app-zip.XXXXXX")"
+  if ! ditto -x -k "$archive" "$extracted" \
+    || ! codesign --verify --deep --strict --verbose=2 "$extracted/$app_name"; then
+    rm -rf "$extracted"
+    return 1
+  fi
+  rm -rf "$extracted"
+}
+
 # Stable release asset name: spaces → dots (matches softprops/GitHub normalize)
 sanitize_name() {
   local s="$1"
@@ -87,6 +106,7 @@ if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
     app_base="$(basename "$app" .app)"
     dest="tauri-artifacts/$(sanitize_name "${app_base}${TARGET:+_${TARGET}}").app.zip"
     ditto -c -k --sequesterRsrc --keepParent "$app" "$dest"
+    verify_app_zip "$dest" "$(basename "$app")"
     echo "Zipped $app -> $dest"
   done
 fi
