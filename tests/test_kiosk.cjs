@@ -831,6 +831,23 @@ for (const failure of ["policy-write", "cooldown-readback", "source-change"]) {
 }
 {
     const r = rig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.request({ mode: "on", query: "1" });
+    r.w.commandChannelsReady = false;
+    r.w.navigator = { onLine: false };
+    r.advance(100);
+    assert.equal(reloads, 0);
+    r.w.navigator.onLine = true;
+    r.advance(40);
+    assert.equal(
+        reloads,
+        1,
+        "a provider that failed during offline startup can reload after reconnect"
+    );
+}
+{
+    const r = rig();
     r.w.__ottActiveProviderDriver = { id: "vportal" };
     r.w.__ottMedia = {
         kioskSelection: () => null,

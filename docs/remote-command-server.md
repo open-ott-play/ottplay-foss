@@ -422,7 +422,9 @@ The reload first saves and verifies the locked selection and media position.
 A persistent 10-minute cooldown prevents reload loops; stream retries continue
 during that cooldown. While the runtime reports that the network is offline,
 recovery waits instead of restarting. This cannot reconnect Android Wi-Fi or
-repair an unavailable NAS. An authenticated `ott tv restart player` also reloads
+repair an unavailable NAS. A provider that failed during offline startup can
+reload after connectivity returns even before its catalog becomes ready.
+An authenticated `ott tv restart player` also reloads
 the player while retaining its saved kiosk policy.
 
 Arming without a channel does not capture the already playing channel. The first

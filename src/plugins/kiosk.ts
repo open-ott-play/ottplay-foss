@@ -220,7 +220,6 @@ export function createKiosk(w: any): any {
         try {
             if (
                 typeof w.restart !== "function" ||
-                w.commandChannelsReady !== true ||
                 provider() !== policy.provider ||
                 (policy.media
                     ? !w.__ottMedia || w.__ottMedia.sourceId() !== policy.source
