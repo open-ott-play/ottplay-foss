@@ -180,6 +180,24 @@ function fixture() {
     assert.ok(!JSON.stringify(browser).includes("credentials"));
 }
 
+{
+    const f = fixture();
+    f.w.keys.MENU = 0;
+    f.w.keys.TOOLS = 82;
+    f.w.keys.SETUP = 82;
+    assert(f.run("capabilities").result.data.input.includes("menu"));
+    assert(!f.run("capabilities").result.data.input.includes("settings"));
+    const request = f.run("input", { key: "menu" });
+    assert.equal(request.result.status, "ok");
+    assert.equal(f.effects.length, 0);
+    request.effect();
+    assert.deepEqual(f.effects, [["key", 82]]);
+    const stale = f.run("input", { key: "menu" });
+    f.kiosk(true);
+    stale.effect();
+    assert.equal(f.effects.length, 1, "kiosk still fences the Android alias");
+}
+
 for (const [action, invalid] of [
     ["capabilities", [{ unknown: true }, [], null, 5]],
     [

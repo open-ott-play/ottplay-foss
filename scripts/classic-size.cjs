@@ -236,7 +236,9 @@ const BUDGET = Object.freeze({ bytes: 809650, gzipBytes: 252200 });
 // The Plex error handoff adds 14 more gzip bytes in its optional provider.
 // Include the same 400-byte compressed allowance in the complete player;
 // its raw payload remains within the existing cap.
-const TOTAL_BUDGET = Object.freeze({ bytes: 922150, gzipBytes: 293850 });
+// Native Node 22 output with kiosk recovery measures 293871 gzip bytes.
+// Include the Android menu alias and retain candidate-version headroom.
+const TOTAL_BUDGET = Object.freeze({ bytes: 922150, gzipBytes: 294000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
