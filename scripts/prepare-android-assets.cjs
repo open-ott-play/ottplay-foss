@@ -159,6 +159,9 @@ async function prepare(flavor, output) {
             )
         );
         if (api22) {
+            fs.mkdirSync(path.join(output, "public/licenses/native"), {
+                recursive: true,
+            });
             for (const name of ["core", "app"]) {
                 fs.copyFileSync(
                     path.join(
