@@ -261,7 +261,10 @@ const BUDGET = Object.freeze({ bytes: 828250, gzipBytes: 258300 });
 // Count the same kiosk frame-progress increment once; providers are unchanged.
 // The same runtime feature costs 8327 raw / 2573 gzip in the complete payload;
 // provider assets are unchanged and all remain included in this size gate.
-const TOTAL_BUDGET = Object.freeze({ bytes: 940750, gzipBytes: 300100 });
+// Exact movie selection measures 940789 raw web / 940829 native bytes in CI.
+// Add 250 raw bytes for this bounded selector and release identity variation;
+// retain the compressed and entry limits and count every optional provider.
+const TOTAL_BUDGET = Object.freeze({ bytes: 941000, gzipBytes: 300100 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
