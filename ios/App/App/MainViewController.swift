@@ -62,6 +62,7 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(DashExoPlayer())
         bridge?.registerPluginInstance(StalkerPortalPlugin())
         bridge?.registerPluginInstance(RemoteScreenshot())
+        bridge?.registerPluginInstance(RuntimeDiagnostics())
     }
 
     override var prefersStatusBarHidden: Bool {

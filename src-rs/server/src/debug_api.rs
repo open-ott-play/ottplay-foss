@@ -12,11 +12,12 @@ use chrono::Utc;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
+use ottplay_core::runtime_diagnostics::{Metric, Platform, RuntimeDiagnostics};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 
 const DEBUG_ARCHIVE_MAX: u64 = 100 * 1024 * 1024;
@@ -24,6 +25,7 @@ const DEBUG_RETENTION: Duration = Duration::from_secs(7 * 24 * 3600);
 const DEBUG_BODY_MAX: usize = 256 * 1024;
 
 struct DebugState {
+    started: Instant,
     log: PathBuf,
     archive: PathBuf,
     marker: PathBuf,
@@ -41,6 +43,7 @@ impl DebugState {
 pub fn routes() -> Router {
     let cwd = std::env::current_dir().expect("server working directory");
     routes_for(Arc::new(DebugState {
+        started: Instant::now(),
         log: cwd.join("debug-playback.log"),
         archive: debug_archive_dir(),
         marker: cwd.join("debug.enabled"),
@@ -55,6 +58,7 @@ pub fn routes() -> Router {
 fn routes_for(state: Arc<DebugState>) -> Router {
     Router::new()
         .route("/debug/config", get(debug_config))
+        .route("/debug/runtime", get(debug_runtime))
         .route("/debug/ingest", post(debug_ingest))
         .route("/debug/tail", get(debug_tail))
         .route("/debug/status", get(debug_status))
@@ -88,15 +92,52 @@ fn permitted(state: &DebugState, headers: &HeaderMap) -> bool {
 }
 
 async fn authorize(State(state): State<Arc<DebugState>>, request: Request, next: Next) -> Response {
-    let enabled = state.enabled();
+    let runtime = request.uri().path() == "/debug/runtime";
+    // A value-only runtime read does not start or require diagnostic log capture.
+    let enabled = runtime || state.enabled();
     let allowed = permitted(&state, request.headers());
     if !enabled || !allowed {
         if request.uri().path() == "/debug/config" {
             return Json(serde_json::json!({"enabled":false})).into_response();
         }
-        return StatusCode::FORBIDDEN.into_response();
+        let mut response = StatusCode::FORBIDDEN.into_response();
+        if runtime {
+            response
+                .headers_mut()
+                .insert("cache-control", "no-store".parse().unwrap());
+        }
+        return response;
     }
-    next.run(request).await
+    let mut response = next.run(request).await;
+    if runtime {
+        response
+            .headers_mut()
+            .insert("cache-control", "no-store".parse().unwrap());
+    }
+    response
+}
+
+async fn debug_runtime(
+    State(state): State<Arc<DebugState>>,
+) -> Result<Json<RuntimeDiagnostics>, StatusCode> {
+    let started = state.started;
+    let mut result = tokio::task::spawn_blocking(move || {
+        RuntimeDiagnostics::collect(Platform::Server, env!("CARGO_PKG_VERSION"), started)
+    })
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    // O(1) cached counts only. Never trigger a refresh or wait for a writer.
+    if let Ok(cache) = crate::EPG_CACHE.try_read() {
+        result.metric(Metric::EpgChannels, cache.cache.channels.len() as u64);
+        result.metric(Metric::EpgProgrammes, cache.programme_count as u64);
+    }
+    if let Ok(mapping) = crate::EPG_TO_XMLTV.try_read() {
+        result.metric(Metric::EpgMappings, mapping.len() as u64);
+    }
+    if let Ok(shifts) = crate::TIME_SHIFT_BY_EPG.try_read() {
+        result.metric(Metric::EpgShifts, shifts.len() as u64);
+    }
+    Ok(Json(result))
 }
 
 fn redact_text(text: &str) -> String {
@@ -622,6 +663,7 @@ mod tests {
             std::fs::create_dir(&directory).unwrap();
             Self {
                 state: Arc::new(DebugState {
+                    started: Instant::now(),
                     log: directory.join("debug.log"),
                     archive: directory.join("archive"),
                     marker: directory.join("debug.enabled"),
@@ -665,6 +707,38 @@ mod tests {
         fn drop(&mut self) {
             std::fs::remove_dir_all(&self.directory).unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn runtime_snapshot_requires_bearer_but_does_not_enable_log_capture() {
+        let fixture = Fixture::new(false);
+        for token in [None, Some("wrong"), fixture.state.token.as_deref()] {
+            let response = fixture.request("/debug/runtime", None, "127.0.0.1:42", Some("http://localhost:8080"), token).await;
+            assert_eq!(response.headers()["cache-control"], "no-store");
+            if token != fixture.state.token.as_deref() {
+                assert_eq!(response.status(), StatusCode::FORBIDDEN);
+                continue;
+            }
+            assert_eq!(response.status(), StatusCode::OK);
+            let bytes = to_bytes(response.into_body(), 4096).await.unwrap();
+            let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(value.as_object().unwrap().len(), 6);
+            assert_eq!(value["version"], 1);
+            assert_eq!(value["platform"], "server");
+            assert_eq!(value["appVersion"], env!("CARGO_PKG_VERSION"));
+            assert!(value["webviewVersion"].is_null());
+            for (key, metric) in value["metrics"].as_object().unwrap() {
+                assert!(["uptimeMs", "residentBytes", "systemAvailableBytes", "systemTotalBytes", "logicalProcessors", "epgChannels", "epgProgrammes", "epgMappings", "epgShifts"].contains(&key.as_str()), "{key}");
+                assert!(metric.as_u64().is_some_and(|n| n <= 9_007_199_254_740_991));
+            }
+        }
+        assert!(!fixture.state.log.exists());
+        assert!(!fixture.state.archive.exists());
+        assert!(!fixture.state.marker.exists());
+        let response = fixture.request("/debug/config", None, "127.0.0.1:42", None, fixture.state.token.as_deref()).await;
+        assert_eq!(to_bytes(response.into_body(), 1024).await.unwrap().as_ref(), br#"{"enabled":false}"#);
+        let response = fixture.request("/debug/tail", None, "127.0.0.1:42", None, fixture.state.token.as_deref()).await;
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]

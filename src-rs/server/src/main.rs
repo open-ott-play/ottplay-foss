@@ -42,14 +42,20 @@ use ottplay_core::xmltv::{self, XmltvCache};
 struct EpgSnapshot {
     cache: XmltvCache,
     index: OnceCell<xmltv::MatchIndex>,
+    programme_count: usize,
 }
 
 impl EpgSnapshot {
     fn new(cache: XmltvCache) -> anyhow::Result<Self> {
         let index = xmltv::build_http_match_index(&cache.channels)?;
+        let programme_count = cache
+            .programs
+            .values()
+            .fold(0usize, |count, rows| count.saturating_add(rows.len()));
         Ok(Self {
             cache,
             index: OnceCell::with_value(index),
+            programme_count,
         })
     }
 
@@ -57,6 +63,7 @@ impl EpgSnapshot {
         Self {
             cache: XmltvCache::default(),
             index: OnceCell::new(),
+            programme_count: 0,
         }
     }
 

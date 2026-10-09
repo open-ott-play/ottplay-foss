@@ -22,7 +22,8 @@
     ["tests/test_android_epg_editions.py"],
     ["tests/test_native_epg_cache.py", "--platform", "android"],
     ["tests/test_native_xmltv_records.py", "--platform", "android"],
-    ["tests/test_native_media_lifecycle.py", "--platform", "android"]
+    ["tests/test_native_media_lifecycle.py", "--platform", "android"],
+    ["tests/test_runtime_diagnostics_native.py", "--platform", "android"]
   ],
   "ios": [
     ["tests/test_ios_command_queue.py"],
@@ -35,6 +36,7 @@
     ["tests/test_native_screenshot_transport_swift.py"],
     ["tests/test_native_epg_cache.py", "--platform", "ios"],
     ["tests/test_native_xmltv_records.py", "--platform", "ios"],
-    ["tests/test_native_media_lifecycle.py", "--platform", "ios"]
+    ["tests/test_native_media_lifecycle.py", "--platform", "ios"],
+    ["tests/test_runtime_diagnostics_native.py", "--platform", "ios"]
   ]
 }

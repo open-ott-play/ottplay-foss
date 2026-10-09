@@ -789,6 +789,14 @@ export function createCommandServer(
     }
     return {
         configure: configure,
+        debugSnapshot: function () {
+            return {
+                controlActive: active,
+                controlConsecutiveFailures: failures,
+                controlPendingRequests: pending.length,
+                controlPendingResponses: responses.length,
+            };
+        },
         discardScreenshots: discardScreenshots,
         poll: poll,
         status: status,

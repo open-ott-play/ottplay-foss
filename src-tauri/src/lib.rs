@@ -48,6 +48,7 @@ pub fn run() {
         .manage(commands::queue::QueueHttpRuntime::default())
         .manage(MediaSessionState::default())
         .manage(commands::native_hls::NativeHlsState::default())
+        .manage(commands::runtime_diagnostics::RuntimeDiagnosticsState::default())
         .manage(PipState::default())
         .manage(TauriState {
             xmltv_cache: Arc::new(RwLock::new(None)),
@@ -59,6 +60,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
+            commands::runtime_diagnostics::runtime_diagnostics,
             commands::tauri_commands::get_epg,
             commands::m3u::match_channels,
             commands::m3u::match_logos,

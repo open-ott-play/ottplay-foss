@@ -4,6 +4,11 @@
 
 ### Changes
 
+- Add bounded runtime debug snapshots with event history, JavaScript scheduling
+  and frame counters, Capacitor Android/iOS and Tauri native process metadata,
+  and authenticated Rust companion diagnostics; remote connection authorization
+  applies without a second player permission switch.
+
 - Allow tapping or dragging the video footer timeline to seek within the current
   episode in strict kiosk mode, while retaining the other input restrictions.
 

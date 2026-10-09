@@ -10,6 +10,7 @@ pub mod db;
 pub mod control_discovery;
 pub mod m3u;
 pub mod native_xmltv;
+pub mod runtime_diagnostics;
 mod proxy;
 pub mod stalker;
 pub mod tmdb;

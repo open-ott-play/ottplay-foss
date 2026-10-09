@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DD1A60000000000000000002 /* RuntimeDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1A60000000000000000001 /* RuntimeDiagnostics.swift */; };
+		DD1A60000000000000000004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DD1A60000000000000000003 /* PrivacyInfo.xcprivacy */; };
 		DEADB0000000000000000002 /* RemoteScreenshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADB0000000000000000001 /* RemoteScreenshot.swift */; };
 		E6D5F40AFEDC1B000F3C39F /* ottplay-core.LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = E6D5F409FEDC1B000F3C39F /* ottplay-core.LICENSE.txt */; };
 		E6D5F408FEDC1B000F3C39F /* ottplay-core.manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = E6D5F407FEDC1B000F3C39F /* ottplay-core.manifest.json */; };
@@ -33,6 +35,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		DD1A60000000000000000001 /* RuntimeDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeDiagnostics.swift; sourceTree = "<group>"; };
+		DD1A60000000000000000003 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DEADB0000000000000000001 /* RemoteScreenshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteScreenshot.swift; sourceTree = "<group>"; };
 		E6D5F409FEDC1B000F3C39F /* ottplay-core.LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "ottplay-core.LICENSE.txt"; path = "../../../vendor/ottplay-core.LICENSE.txt"; sourceTree = "<group>"; };
 		E6D5F407FEDC1B000F3C39F /* ottplay-core.manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "ottplay-core.manifest.json"; path = "../../../vendor/ottplay-core.manifest.json"; sourceTree = "<group>"; };
@@ -92,6 +96,7 @@
 		6A7B8C9D0E1F2A3B4C5D6E9 /* Plugins */ = {
 			isa = PBXGroup;
 			children = (
+				DD1A60000000000000000001 /* RuntimeDiagnostics.swift */,
 				DEADB0000000000000000001 /* RemoteScreenshot.swift */,
 				DAACC0000000000000000011 /* AccessMediaPolicy.swift */,
 				DAACC0000000000000000021 /* AccessMedia.swift */,
@@ -107,6 +112,7 @@
 		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				DD1A60000000000000000003 /* PrivacyInfo.xcprivacy */,
 				E6D5F403FEDC1B000F3C39F /* MobileXmltvEpg.swift */,
 				E6D5F405FEDC1B000F3C39F /* ottplay-core.js */,
 				E6D5F409FEDC1B000F3C39F /* ottplay-core.LICENSE.txt */,
@@ -192,6 +198,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD1A60000000000000000004 /* PrivacyInfo.xcprivacy in Resources */,
 				E6D5F406FEDC1B000F3C39F /* ottplay-core.js in Resources */,
 				E6D5F40AFEDC1B000F3C39F /* ottplay-core.LICENSE.txt in Resources */,
 				E6D5F408FEDC1B000F3C39F /* ottplay-core.manifest.json in Resources */,
@@ -211,6 +218,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD1A60000000000000000002 /* RuntimeDiagnostics.swift in Sources */,
 				DEADB0000000000000000002 /* RemoteScreenshot.swift in Sources */,
 				E6D5F404FEDC1B000F3C39F /* MobileXmltvEpg.swift in Sources */,
 				A3B2C1D2FEDC1B000F3C39C /* M3UProxy.swift in Sources */,

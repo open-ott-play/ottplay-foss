@@ -40,6 +40,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MobileCommandQueuePlugin.class);
         registerPlugin(DashExoPlayerPlugin.class);
         registerPlugin(RemoteScreenshotPlugin.class);
+        registerPlugin(RuntimeDiagnosticsPlugin.class);
         registerPlugin(AppUpdatePlugin.class);
         super.onCreate(savedInstanceState);
         playerDecor = getWindow().getDecorView();

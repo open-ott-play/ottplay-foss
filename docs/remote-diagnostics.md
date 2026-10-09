@@ -101,9 +101,10 @@ and these two repairs. It has no arbitrary JavaScript execution,
 shell, native invocation, file access or general HTTP request tool.
 
 Browser, LG webOS, Tauri and Capacitor use the same frontend diagnostic lifecycle.
-Native platforms reuse their existing protected HTTP bridge. Native decoders,
-Rust server internals and OS logs require separate platform-specific producers;
-this frontend feature does not claim to inspect or repair them. Older WebViews
+Native platforms reuse their existing protected HTTP bridge. The separate [runtime diagnostics](runtime-debug.md) command adds native
+app/process observations and server counters. Protocol-2 streaming events remain
+frontend observations; arbitrary OS logs and complete native decoder internals
+are not included. Older WebViews
 without the required monotonic clock or secure transport report unavailable.
 Local Chrome DevTools, webOS inspection and native debugging remain useful for
 those deeper cases.
