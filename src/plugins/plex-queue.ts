@@ -150,6 +150,10 @@ function createRemotePlexQueue(
             done({ data: state(), status: "ok" });
             return;
         }
+        if (w.__ottKiosk && w.__ottKiosk.enabled() && op !== "preview") {
+            reject("Kiosk mode does not allow a Plex queue.");
+            return;
+        }
         if (op === "stop") {
             stop();
             done({ data: state(), status: "ok" });
@@ -181,10 +185,6 @@ function createRemotePlexQueue(
                     ? "Plex queue is already at its first item."
                     : "Plex queue is already at its last item."
             );
-            return;
-        }
-        if (w.__ottKiosk && w.__ottKiosk.enabled() && op !== "preview") {
-            reject("Kiosk mode does not allow a Plex queue.");
             return;
         }
         if (

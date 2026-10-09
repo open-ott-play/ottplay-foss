@@ -1,11 +1,12 @@
 # Changelog
 
-- Plex: up to 500 remote queue items and persistent looping media kiosk across web and native shells.
-
 ## [1.1.53] - Development line
 
 ### Changes
 
+- Plex: up to 500 remote queue items and persistent looping media kiosk across web and native shells.
+- Recover stalled kiosks with stream retries and a bounded player reload that
+  preserves the locked selection, queue and position; wait while offline.
 - Restore signed Full Capacitor Android APKs in beta, RC and stable releases,
   using the current shared frontend and preserving existing installations.
 - Add staged APK updates through OTT with HTTPS, SHA-256, package, version and
@@ -75,8 +76,9 @@ database migration is required. See the
 
 Retain provider profiles and exported settings before replacing a web, desktop or
 container installation. Follow the platform-specific build/install instructions;
-Android APK/AAB packages are maintained in ottplay-android. Automatic updating is
-not configured, and unsigned iOS packages require operator signing/sideloading.
+Full Capacitor Android APKs ship from this repository and support staged updates
+through OTT. Android TV APK/AAB packages remain in ottplay-android. Unsigned iOS
+packages require operator signing/sideloading.
 Validate playback, remote input and saved settings on the intended TV/STB/native
 platform; automated tests do not establish physical-device acceptance.
 

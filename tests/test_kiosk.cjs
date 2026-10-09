@@ -628,7 +628,7 @@ for (const provider of ["vportal", "plex"]) {
     r.w.__ottActiveProviderDriver = { id: provider };
     r.w.cList = [];
     r.w.curList = [];
-    const records = [0, 1].map((i) => ({
+    const records = [0, 1, 0].map((i) => ({
         __ottMediaRef: { itemId: "episode:" + i, sourceId: source },
         request: { episode: i },
         title: "Episode " + i,
@@ -642,6 +642,7 @@ for (const provider of ["vportal", "plex"]) {
         current: () => ({
             ended: ended,
             ref: selection.records[selection.index].__ottMediaRef,
+            sequence: { index: selection.index, queueId: "test-queue" },
         }),
         keepKioskLoop: () => looped++,
         kioskSelection: () => selection,
@@ -662,11 +663,12 @@ for (const provider of ["vportal", "plex"]) {
             },
         }),
     };
+    selection.queueId = "test-queue";
     const result = r.request({ mode: "on" });
     assert.equal(result.status, "ok");
     assert.equal(result.data.state, "locked");
     assert.equal(result.data.channel, null);
-    assert.equal(result.data.media.total, 2);
+    assert.equal(result.data.media.total, 3);
     assert.equal(looped, 1);
     assert.equal(
         r.kiosk.allowed("a"),
@@ -742,16 +744,35 @@ for (const provider of ["vportal", "plex"]) {
         "episode cursor persists"
     );
     assert.equal(r.kiosk.snapshot().media.index, 1);
+    selection = { index: 2, position: 17, records, source };
+    r.advance(6, true);
+    assert.equal(
+        JSON.parse(r.storage.__ottKioskV1).media.index,
+        2,
+        "checkpoint retains the second occurrence of the same episode"
+    );
     const reloaded = rig(r.storage);
     reloaded.source(source);
     reloaded.w.__ottActiveProviderDriver = { id: provider };
     reloaded.w.__ottMedia = r.w.__ottMedia;
     assert.equal(reloaded.kiosk.restoreMedia(), true);
-    assert.equal(restored.at(-1).value.index, 1);
+    assert.equal(restored.at(-1).value.index, 2);
     const guard = restored.at(-1).guard;
     assert.equal(guard(), true);
     reloaded.request({ mode: "off" });
     assert.equal(guard(), false, "unlock invalidates delayed resume");
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.play(false);
+    r.advance(200);
+    assert.equal(
+        reloads,
+        1,
+        "failed VOD recovery escalates to a player reload"
+    );
+    const persisted = JSON.parse(r.storage.__ottKioskV1);
+    assert.equal(persisted.media.index, 2);
+    assert.equal(persisted.media.position, 17);
     r.w.__ottMedia.sourceId = () => "vportal:1@two";
     r.advance(60);
     assert.equal(
@@ -761,6 +782,52 @@ for (const provider of ["vportal", "plex"]) {
     );
     r.request({ mode: "off" });
     assert.equal(r.kiosk.allowedMedia(null), true);
+}
+{
+    const r = rig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.w.navigator = { onLine: false };
+    r.request({ mode: "on", query: "1", strict: true });
+    const before = r.played.length;
+    r.advance(100);
+    assert.equal(
+        r.played.length,
+        before,
+        "offline kiosks do not hammer sources"
+    );
+    assert.equal(reloads, 0);
+    r.w.navigator.onLine = true;
+    r.advance(30);
+    assert.equal(reloads, 0, "three soft retries precede reload");
+    r.advance(10);
+    assert.equal(reloads, 1);
+    const persisted = JSON.parse(r.storage.__ottKioskV1);
+    assert.equal(persisted.channel.id, "a");
+    assert.equal(persisted.strict, true);
+    const booted = rig(r.storage);
+    booted.w.restart = () => reloads++;
+    booted.advance(100);
+    assert.equal(reloads, 1, "reload cooldown survives a new runtime");
+    assert(booted.played.length > 3, "soft recovery continues during cooldown");
+    r.request({ mode: "off" });
+    r.advance(100);
+    assert.equal(reloads, 1, "unlocked kiosks never auto-reload");
+}
+for (const failure of ["policy-write", "cooldown-readback", "source-change"]) {
+    const r = rig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.request({ mode: "on", query: "1" });
+    const write = r.w.stbSetItem;
+    if (failure === "source-change") r.source("m3u:1@other");
+    else
+        r.w.stbSetItem = (key, value) => {
+            if (failure === "policy-write") throw Error("quota");
+            if (key !== "__ottKioskReloadV1") write(key, value);
+        };
+    r.advance(80);
+    assert.equal(reloads, 0, failure + " prevents an unsafe player reload");
 }
 {
     const r = rig();

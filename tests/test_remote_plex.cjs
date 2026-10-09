@@ -529,6 +529,22 @@ test("policy changes during preflight cancel admission, and stopping an old queu
         stopped
     );
 });
+test("a locked kiosk rejects queue stop without disposing playback", () => {
+    const h = setup();
+    h.call("play", ["1", "2"]);
+    h.prepare(["1", "2"]);
+    h.resolve("1");
+    const before = plain(h.queue.snapshot());
+    const calls = h.c.calls.length;
+    h.c.__ottKiosk = { enabled: () => true };
+    assert.equal(h.call("stop").replies[0].status, "rejected");
+    assert.deepEqual(plain(h.queue.snapshot()), before);
+    assert.equal(h.c.calls.length, calls);
+    assert.equal(h.call("status").replies[0].status, "ok");
+    h.c.__ottKiosk.enabled = () => false;
+    assert.equal(h.call("stop").replies[0].status, "ok");
+    assert.equal(h.queue.snapshot().active, false);
+});
 test("cancel, timeout, changed provider and expired requests cannot start later", () => {
     for (const action of ["cancel", "timeout", "provider", "config"]) {
         const h = setup();

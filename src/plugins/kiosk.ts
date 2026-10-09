@@ -9,6 +9,7 @@ export function createKiosk(w: any): any {
     var lastProgress = 0;
     var lastPosition: number | null = null;
     var retries = 0;
+    var recoveryAttempts = 0;
     var health = "idle";
     var lastSaved = 0;
     var lastMediaId = "";
@@ -35,6 +36,7 @@ export function createKiosk(w: any): any {
         return locked() && policy.strict === true;
     }
     function reset(): void {
+        recoveryAttempts = 0;
         lastPosition = null;
         lastProgress = now();
         lastSaved = lastProgress;
@@ -214,6 +216,35 @@ export function createKiosk(w: any): any {
         // an old stream URL, list position, or a different provider's identical ID.
         w.playChannel(indices[0], indices[1]);
     }
+    function restartPlayer(): boolean {
+        try {
+            if (
+                typeof w.restart !== "function" ||
+                w.commandChannelsReady !== true ||
+                provider() !== policy.provider ||
+                (policy.media
+                    ? !w.__ottMedia || w.__ottMedia.sourceId() !== policy.source
+                    : source() !== policy.source)
+            )
+                return false;
+            // Reserve a durable cooldown before reloading so a broken source cannot
+            // create a boot loop. Keep soft stream recovery available throughout.
+            var reloadKey = "__ottKioskReloadV1";
+            var time = Date.now();
+            var previous = Number(w.stbGetItem(reloadKey) || 0);
+            if (previous > 0 && time - previous < 600000) return false;
+            var stored = JSON.stringify(policy);
+            w.stbSetItem(key, stored);
+            if (w.stbGetItem(key) !== stored) return false;
+            w.stbSetItem(reloadKey, String(time));
+            if (w.stbGetItem(reloadKey) !== String(time)) return false;
+            w.restart();
+            recoveryAttempts = 0;
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
     function tick(): void {
         if (!locked()) return;
         var time = now();
@@ -249,10 +280,22 @@ export function createKiosk(w: any): any {
                             lastProgress = time;
                             mediaStarting = true;
                         }
+                        var sequence = selection.sequence;
+                        var cursor = sequence && sequence.index;
+                        var exactCursor =
+                            sequence &&
+                            sequence.queueId === policy.media.queueId &&
+                            typeof cursor === "number" &&
+                            Math.floor(cursor) === cursor &&
+                            cursor >= 0 &&
+                            cursor < policy.media.records.length &&
+                            policy.media.records[cursor].__ottMediaRef
+                                .itemId === selectedRef.itemId;
                         for (var i = 0; i < policy.media.records.length; i++) {
                             if (
                                 policy.media.records[i].__ottMediaRef.itemId ===
-                                selectedRef.itemId
+                                    selectedRef.itemId &&
+                                (!exactCursor || i === cursor)
                             ) {
                                 policy.media.index = i;
                                 policy.media.position =
@@ -300,6 +343,7 @@ export function createKiosk(w: any): any {
                 lastProgress = time;
                 health = "playing";
                 mediaStarting = false;
+                recoveryAttempts = 0;
             }
             lastPosition = valid ? position : null;
         } catch (_) {
@@ -310,7 +354,10 @@ export function createKiosk(w: any): any {
         lastProgress = time;
         lastPosition = null;
         health = "retrying";
+        if (w.navigator && w.navigator.onLine === false) return;
+        if (recoveryAttempts >= 3 && restartPlayer()) return;
         retries++;
+        recoveryAttempts++;
         try {
             play();
         } catch (_) {
