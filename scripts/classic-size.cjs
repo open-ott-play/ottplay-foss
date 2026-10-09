@@ -164,7 +164,10 @@ const { gzipSync } = require("node:zlib");
 // to preserve the existing native and release-suffix reserve once.
 // Combined with Android updates and durable kiosk cooldown checks, Node 22.23.3
 // measures 814350 / 253386 web and 814308 / 253454 native within that allowance.
-const BUDGET = Object.freeze({ bytes: 814550, gzipBytes: 253600 });
+// Guarded kiosk frame-progress sampling and persistent retry evidence measure
+// 817201 raw web bytes on Node 26.8.2. Allocate 3200 raw / 1100 gzip bytes for
+// this shared recovery feature, retaining native and release-suffix headroom.
+const BUDGET = Object.freeze({ bytes: 817750, gzipBytes: 254700 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -248,7 +251,8 @@ const BUDGET = Object.freeze({ bytes: 814550, gzipBytes: 253600 });
 // unchanged. Complete web measures 923327 / 294108; native 923285 / 294176.
 // The integrated Android/aspect build is 926823 / 295139 web and
 // 926781 / 295207 native on Node 22.23.3, including the durable kiosk guard.
-const TOTAL_BUDGET = Object.freeze({ bytes: 927050, gzipBytes: 295400 });
+// Count the same kiosk frame-progress increment once; providers are unchanged.
+const TOTAL_BUDGET = Object.freeze({ bytes: 930250, gzipBytes: 296500 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
