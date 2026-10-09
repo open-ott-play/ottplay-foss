@@ -9,6 +9,175 @@ const { promisify } = require("node:util");
 const execFile = promisify(require("node:child_process").execFile);
 const net = require("node:net");
 const http = require("node:http");
+const { performance } = require("node:perf_hooks");
+
+// Pace dispatch, never HTTP completion: player long-polls must not block replies.
+// These gaps leave headroom below Go's fixed-minute admin240/device120 buckets.
+function requestPacer(
+    intervals,
+    now = () => performance.now(),
+    later = setTimeout,
+    clear = clearTimeout
+) {
+    const queues = new Map(
+        [...intervals].map(([key, interval]) => [
+            key,
+            { interval, next: 0, pending: [] },
+        ])
+    );
+    let timer = null,
+        closed = false;
+    function schedule() {
+        if (timer !== null) clear(timer);
+        timer = null;
+        if (closed) return;
+        const ready = [...queues.values()].filter(
+            (queue) => queue.pending.length
+        );
+        if (ready.length)
+            timer = later(
+                dispatch,
+                Math.max(
+                    0,
+                    Math.min(...ready.map((queue) => queue.next)) - now()
+                )
+            );
+    }
+    function dispatch() {
+        timer = null;
+        if (closed) return;
+        for (const queue of queues.values()) {
+            if (!queue.pending.length || queue.next > now()) continue;
+            const forward = queue.pending.shift();
+            // A late timer gets one slot, not a catch-up burst of overdue slots.
+            queue.next = now() + queue.interval;
+            forward();
+        }
+        schedule();
+    }
+    return {
+        close() {
+            closed = true;
+            if (timer !== null) clear(timer);
+            timer = null;
+            for (const queue of queues.values()) queue.pending.length = 0;
+        },
+        enqueue(key, forward) {
+            assert(!closed, "request pacer is closed");
+            const queue = queues.get(key);
+            assert(queue, "unexpected test credential");
+            queue.pending.push(forward);
+            schedule();
+            return () => {
+                const index = queue.pending.indexOf(forward);
+                if (index >= 0) queue.pending.splice(index, 1);
+                schedule();
+            };
+        },
+    };
+}
+
+function testRequestPacing() {
+    let clock = 0,
+        sequence = 0;
+    const timers = new Map(),
+        sent = [];
+    const pace = requestPacer(
+        new Map([
+            ["admin", 300],
+            ["first", 600],
+            ["second", 600],
+        ]),
+        () => clock,
+        (run, delay) => {
+            timers.set(++sequence, { at: clock + delay, run });
+            return sequence;
+        },
+        (id) => timers.delete(id)
+    );
+    function advance(to, stalled = false) {
+        if (stalled) clock = to;
+        for (;;) {
+            const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+            if (!next || next[1].at > to) break;
+            timers.delete(next[0]);
+            clock = Math.max(clock, next[1].at);
+            next[1].run();
+        }
+        clock = to;
+    }
+    function enqueue(key) {
+        return pace.enqueue(key, () => sent.push({ key, time: clock }));
+    }
+    enqueue("admin");
+    enqueue("admin");
+    enqueue("first");
+    enqueue("first");
+    advance(0);
+    assert.deepEqual(
+        sent.map((item) => item.key),
+        ["admin", "first"],
+        "another credential does not wait for a long-poll response"
+    );
+    advance(299);
+    assert.equal(sent.length, 2);
+    advance(300);
+    assert.equal(sent.length, 3);
+    advance(599);
+    assert.equal(sent.length, 3);
+    advance(600);
+    assert.equal(sent.length, 4);
+    for (let i = 0; i < 500; i++) {
+        enqueue("admin");
+        enqueue("first");
+        enqueue("second");
+    }
+    const beforeStall = sent.length;
+    advance(10000, true);
+    assert.equal(
+        sent.length,
+        beforeStall + 3,
+        "late timers cannot release a burst"
+    );
+    advance(400000);
+    for (const [key, limit, gap] of [
+        ["admin", 240, 300],
+        ["first", 120, 600],
+        ["second", 120, 600],
+        [null, 480, 0],
+    ]) {
+        const events = sent.filter((item) => key === null || item.key === key);
+        let start = -Infinity,
+            count = 0;
+        events.forEach((event, index) => {
+            if (event.time - start >= 60000) {
+                start = event.time;
+                count = 0;
+            }
+            assert(
+                ++count <= limit,
+                "real fixed-minute credential/aggregate budget"
+            );
+            if (index) assert(event.time - events[index - 1].time >= gap);
+        });
+    }
+    const cancel = pace.enqueue("admin", () =>
+        assert.fail("cancelled request dispatched")
+    );
+    cancel();
+    assert.equal(timers.size, 0);
+    pace.enqueue("first", () => assert.fail("closed pacer dispatched"));
+    const lateCallback = [...timers.values()][0].run;
+    pace.close();
+    assert.equal(timers.size, 0);
+    lateCallback();
+    console.log(
+        "PASS smoke pacing: fixed-minute budgets, independent credentials, late timers, cancellation and teardown"
+    );
+}
+testRequestPacing();
+if (process.argv.includes("--test-pacing")) process.exit(0);
+
 const binary = process.env.OTT_CONTROL_BINARY,
     cli = process.env.OTT_CLI;
 assert(binary && cli, "Set OTT_CONTROL_BINARY and OTT_CLI");
@@ -77,52 +246,67 @@ function moduleOf(file, requireFn, window) {
     const prefix = "/ott-control";
     const submissions = [];
     let lostStepSubmission = null;
+    const pace = requestPacer(
+        new Map([
+            ["Bearer " + serverConfig.admin_token, 300],
+            ...serverConfig.devices.map((device) => [
+                "Bearer " + device.token,
+                600,
+            ]),
+        ])
+    );
     const proxy = http.createServer((request, response) => {
         if (!request.url.startsWith(prefix + "/")) {
             response.writeHead(404).end();
             return;
         }
-        const requestChunks = [];
-        request.on("data", (chunk) => requestChunks.push(chunk));
-        const upstream = http.request(
-            "http://127.0.0.1:" + port + request.url.slice(prefix.length),
-            { headers: request.headers, method: request.method },
-            (incoming) => {
-                if (
-                    request.method === "POST" &&
-                    request.url.startsWith(prefix + "/api/requests?")
-                ) {
-                    const body = JSON.parse(Buffer.concat(requestChunks));
-                    submissions.push({
-                        action: body.action,
-                        device: new URL(
-                            request.url,
-                            addressForProxy()
-                        ).searchParams.get("device_id"),
-                        operation: body.params.operation,
-                        ...(body.params.offset === undefined
-                            ? {}
-                            : { offset: body.params.offset }),
-                    });
+        const cancel = pace.enqueue(request.headers.authorization, () => {
+            if (request.destroyed || response.destroyed) return;
+            const requestChunks = [];
+            request.on("data", (chunk) => requestChunks.push(chunk));
+            const upstream = http.request(
+                "http://127.0.0.1:" + port + request.url.slice(prefix.length),
+                { headers: request.headers, method: request.method },
+                (incoming) => {
                     if (
-                        lostStepSubmission &&
-                        !lostStepSubmission.dropped &&
-                        body.action === "playback" &&
-                        body.params.operation === lostStepSubmission.operation
+                        request.method === "POST" &&
+                        request.url.startsWith(prefix + "/api/requests?")
                     ) {
-                        assert.equal(incoming.statusCode, 202);
-                        lostStepSubmission.dropped = true;
-                        incoming.resume();
-                        response.destroy();
-                        return;
+                        const body = JSON.parse(Buffer.concat(requestChunks));
+                        submissions.push({
+                            action: body.action,
+                            device: new URL(
+                                request.url,
+                                addressForProxy()
+                            ).searchParams.get("device_id"),
+                            operation: body.params.operation,
+                            ...(body.params.offset === undefined
+                                ? {}
+                                : { offset: body.params.offset }),
+                        });
+                        if (
+                            lostStepSubmission &&
+                            !lostStepSubmission.dropped &&
+                            body.action === "playback" &&
+                            body.params.operation ===
+                                lostStepSubmission.operation
+                        ) {
+                            assert.equal(incoming.statusCode, 202);
+                            lostStepSubmission.dropped = true;
+                            incoming.resume();
+                            response.destroy();
+                            return;
+                        }
                     }
+                    response.writeHead(incoming.statusCode, incoming.headers);
+                    incoming.pipe(response);
                 }
-                response.writeHead(incoming.statusCode, incoming.headers);
-                incoming.pipe(response);
-            }
-        );
-        upstream.on("error", () => response.writeHead(502).end());
-        request.pipe(upstream);
+            );
+            upstream.on("error", () => response.writeHead(502).end());
+            request.pipe(upstream);
+        });
+        request.on("aborted", cancel);
+        response.on("close", cancel);
     });
     function addressForProxy() {
         return "http://127.0.0.1:" + proxy.address().port;
@@ -1477,6 +1661,7 @@ function moduleOf(file, requireFn, window) {
             "PASS real Go + TS + Python through reverse-proxy prefix: device isolation, lost-response deduplication, searches, providers, atomic M3U profile edits, secret-free replies and acknowledged restarts"
         );
     } finally {
+        pace.close();
         for (const controller of controllers)
             controller.configure({ address: "", enabled: false, token: "" });
         proxy.closeAllConnections();

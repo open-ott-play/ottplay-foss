@@ -6,7 +6,13 @@ const plex = "https://plex.fixture";
 const token = "fixture-plex-secret";
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
 test.use({
-    launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
+    launchOptions: async ({ browserName }, use) => {
+        await use(
+            browserName === "chromium"
+                ? { args: ["--autoplay-policy=no-user-gesture-required"] }
+                : {}
+        );
+    },
 });
 
 for (const language of ["_eng", "_rus"]) {

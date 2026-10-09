@@ -8,6 +8,8 @@ function create() {
     const resolutions = [];
     c.p_pref = "plex";
     c.sFavorites = 1;
+    // The production favorites module initializes this even without TV channels.
+    c.favoritesArray = [];
     c.cList = [];
     c.stbGetItem = (key) => c.stored[key] ?? null;
     c.getMediaArray = (target, done) => {
@@ -266,6 +268,8 @@ for (const stage of ["collection", "resolve"]) {
     assert.equal(c.stored.ottplayprov, "plex");
     assert.equal(c._pendingProvId, "");
     assert.equal(c.listArray[0].title, "Folder 1");
+    assert.equal(c.__ottChannels.setPreference("aAspects", null, 1), true);
+    assert.equal(c.__ottChannels.preference("aAspects", null), 1);
     assert(!JSON.stringify(c.elements).includes("Channel list not received"));
     assert(!c.calls.some((call) => call[0] === "popup"));
 }
