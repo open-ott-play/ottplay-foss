@@ -1395,7 +1395,7 @@ for (const { engine, strict } of [
 ]) {
     test(
         "Plex aspect persists through media changes and " +
-            (strict ? "strict kiosk " : "") +
+            (strict ? "strict kiosk natural episode end and " : "") +
             "reload: " +
             engine,
         async ({ page, context, baseURL, browserName }) => {
@@ -1409,7 +1409,18 @@ for (const { engine, strict } of [
             const films = [
                 { ratingKey: "42", title: "First aspect film", type: "movie" },
                 { ratingKey: "43", title: "Next aspect film", type: "movie" },
-            ];
+            ].map((item, index) =>
+                strict
+                    ? {
+                          ...item,
+                          grandparentTitle: "Aspect series",
+                          index: index + 1,
+                          parentIndex: 1,
+                          title: "Aspect episode " + (index + 1),
+                          type: "episode",
+                      }
+                    : item
+            );
             page.on("pageerror", (error) => errors.push(error.message));
             await context.route("**/*", (route) => {
                 const url = new URL(route.request().url());
@@ -1422,7 +1433,7 @@ for (const { engine, strict } of [
                             {
                                 key: "7",
                                 title: "Aspect library",
-                                type: "movie",
+                                type: strict ? "show" : "movie",
                             },
                         ],
                     });
@@ -1480,7 +1491,7 @@ for (const { engine, strict } of [
                     const play = HTMLMediaElement.prototype.play;
                     HTMLMediaElement.prototype.play = function () {
                         this.muted = true;
-                        this.loop = true;
+                        this.loop = !window.__aspectNaturalEnd;
                         return play.call(this);
                     };
                     localStorage.setItem("ottplaylang", "_eng");
@@ -1647,11 +1658,6 @@ for (const { engine, strict } of [
                     await geometry(mode);
                 }
             }
-            await page.keyboard.press("Enter");
-            await select(page, films[1].title);
-            await ready("43");
-            expect(await aspect()).toEqual({ mode: "fill", savedMode: "fill" });
-            await geometry("fill");
             if (strict) {
                 const kiosk = await page.evaluate(
                     () =>
@@ -1663,7 +1669,89 @@ for (const { engine, strict } of [
                         )
                 );
                 expect(kiosk.status).toBe("ok");
+                expect(kiosk.data).toMatchObject({
+                    media: { index: 0, title: films[0].title, total: 2 },
+                    strict: true,
+                });
+                expect(await aspect()).toEqual({
+                    mode: "fill",
+                    savedMode: "fill",
+                });
+                // Observe the real decoder event before the application's target
+                // listener advances the queue. Only this episode may reach its end;
+                // the next one loops to keep later assertions independent of timing.
+                const ending = await page.evaluate(() => {
+                    const media = window.video;
+                    const duration = media.duration;
+                    if (!Number.isFinite(duration) || duration <= 0.5)
+                        throw new Error("Expected finite episode duration");
+                    window.__aspectNaturalEnd = true;
+                    document.addEventListener(
+                        "ended",
+                        function ended(event) {
+                            if (event.target !== media) return;
+                            document.removeEventListener("ended", ended, true);
+                            const target = window.captureAspectTarget();
+                            window.__aspectEnded = {
+                                aspect: target && {
+                                    mode: target.mode,
+                                    savedMode: target.savedMode,
+                                },
+                                duration: media.duration,
+                                ended: media.ended,
+                                isTrusted: event.isTrusted,
+                                itemId: window.__ottMedia.current().ref.itemId,
+                                position: media.currentTime,
+                                strict: window.__ottKiosk.strict(),
+                            };
+                            window.__aspectNaturalEnd = false;
+                        },
+                        true
+                    );
+                    media.loop = false;
+                    media.currentTime = duration - 0.3;
+                    window.stbResume();
+                    return { duration, loop: media.loop };
+                });
+                expect(ending.loop).toBe(false);
+                await ready("43");
+                const ended = await page.evaluate(() => window.__aspectEnded);
+                expect(ended).toMatchObject({
+                    aspect: { mode: "fill", savedMode: "fill" },
+                    ended: true,
+                    isTrusted: true,
+                    itemId: 'request:{"path":"/library/metadata/42"}',
+                    strict: true,
+                });
+                expect(ended.position).toBeCloseTo(ending.duration, 1);
+                expect(ended.duration).toBe(ending.duration);
+                await test.info().attach("decoder-ended", {
+                    body: JSON.stringify(ended, null, 2),
+                    contentType: "application/json",
+                });
+                // Kiosk checkpoints its cursor every five seconds. Wait for the
+                // real durable write before testing fresh-page restoration.
+                await page.waitForFunction(() => {
+                    const saved = JSON.parse(
+                        window.stbGetPersistedItem("__ottKioskV1") || "null"
+                    );
+                    return (
+                        saved?.strict === true &&
+                        saved.media.index === 1 &&
+                        saved.media.records[1].request.path ===
+                            "/library/metadata/43"
+                    );
+                });
+            } else {
+                await page.keyboard.press("Enter");
+                await select(page, films[1].title);
+                await ready("43");
             }
+            expect(await page.evaluate(() => window.__ottKiosk.strict())).toBe(
+                strict
+            );
+            expect(await aspect()).toEqual({ mode: "fill", savedMode: "fill" });
+            await geometry("fill");
             await page.reload();
             await ready("43");
             expect(await page.evaluate(() => window.__ottKiosk.strict())).toBe(
