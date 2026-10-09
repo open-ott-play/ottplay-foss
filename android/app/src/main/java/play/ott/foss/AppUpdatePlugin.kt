@@ -108,7 +108,7 @@ internal object AppUpdates {
         executor.execute {
             val partial = File(app.filesDir, "app-update.part")
             try {
-                download(address, partial)
+                download(app, address, partial)
                 require(fileDigest(partial) == hash)
                 val info = verify(app, partial)
                 synchronized(this) {
@@ -116,8 +116,9 @@ internal object AppUpdates {
                     check(p.edit().putLong("targetCode", version(info)).putString("targetVersion", info.versionName)
                         .putString("phase", "ready").commit())
                 }
-            } catch (_: Exception) {
-                synchronized(this) { runCatching { state(app, "failed", "download_or_verification_failed") } }
+            } catch (error: Exception) {
+                val reason = if (error is javax.net.ssl.SSLException) "tls_connection_failed" else "download_or_verification_failed"
+                synchronized(this) { runCatching { state(app, "failed", reason) } }
             } finally {
                 partial.delete()
                 synchronized(this) { downloading = false }
@@ -125,11 +126,15 @@ internal object AppUpdates {
         }
         return status(app)
     }
-    private fun download(address: String, output: File) {
+    private fun download(context: Context, address: String, output: File) {
         var url = https(address)
+        val legacyTls = if (Build.VERSION.SDK_INT < 24)
+            context.resources.openRawResource(R.raw.isrg_root_x1).use { LegacyUpdateTls.create(it) }
+        else null
         val deadline = android.os.SystemClock.elapsedRealtime() + 180000
         for (redirect in 0..5) {
             val connection = url.openConnection() as HttpsURLConnection
+            if (legacyTls != null) connection.sslSocketFactory = legacyTls
             connection.instanceFollowRedirects = false
             connection.connectTimeout = 15000
             connection.readTimeout = 15000

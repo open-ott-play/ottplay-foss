@@ -60,6 +60,7 @@ jobs:
           python3 tests/test_command_queue_smoke.py
           node tests/test_android_activity.cjs
           node tests/test_remote_app_update.cjs
+          python3 tests/test_android_update_tls.py
           node tests/android_provider_policy.cjs
           node tests/test_play_system_icons.cjs
           npm run test:native:runtime

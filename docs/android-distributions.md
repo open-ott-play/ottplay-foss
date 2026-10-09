@@ -35,6 +35,16 @@ Local unsigned builds remain available; see [build instructions](../android/READ
 
 ## Update through OTT
 
+On Android 5.1–6, the APK downloader supplements the platform trust store with
+[ISRG Root X1](https://letsencrypt.org/certificates/), whose self-signed PEM is
+bundled from `https://letsencrypt.org/certs/isrgrootx1.pem`. Its SHA-256 certificate
+fingerprint is `96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6`.
+This allows HTTPS downloads from the GitHub release CDN on older Fire tablets.
+It applies only to APK download connections on API 22–23; chain validation,
+certificate validity, hostname checks and APK hash/signature checks remain active.
+Review this bundled root before its published trust horizon of June 2030.
+Modern Android uses its platform TLS configuration unchanged.
+
 The first version with `AppUpdate` must be installed normally. Subsequent updates
 can be downloaded and installed over Wi-Fi through the authenticated controller:
 
