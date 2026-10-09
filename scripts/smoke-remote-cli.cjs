@@ -555,7 +555,13 @@ function moduleOf(file, requireFn, window) {
                               () => {},
                               host
                           )
-                        : caseless,
+                        : name.includes("kiosk-video-progress")
+                          ? moduleOf(
+                                "src/plugins/kiosk-video-progress.ts",
+                                () => {},
+                                host
+                            )
+                          : caseless,
                 host
             ).createKiosk(host);
             host.__ottKiosk.init();

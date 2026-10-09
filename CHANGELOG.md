@@ -4,9 +4,14 @@
 
 ### Changes
 
+- Allow tapping or dragging the video footer timeline to seek within the current
+  episode in strict kiosk mode, while retaining the other input restrictions.
+
 - Plex: up to 500 remote queue items and persistent looping media kiosk across web and native shells.
 - Recover stalled kiosks with stream retries and a bounded player reload that
   preserves the locked selection, queue and position; wait while offline.
+- Detect a stalled HTML video frame counter in kiosk even when its media clock
+  continues advancing, with guarded recovery and remote counter diagnostics.
 - Keep Plex connection failures from opening settings or modal errors beneath
   a kiosk lock; explicitly turning kiosk off restores settings access.
 - Restore signed Full Capacitor Android APKs in beta, RC and stable releases,

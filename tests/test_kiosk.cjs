@@ -21,8 +21,14 @@ const unicode = {};
 vm.runInNewContext(localizationRuntime(), unicode);
 const casing = load("src/utils/caseless.ts", { require: () => unicode });
 const strictInput = load("src/plugins/strict-kiosk-input.ts");
+const videoProgress = load("src/plugins/kiosk-video-progress.ts");
 const { createKiosk } = load("src/plugins/kiosk.ts", {
-    require: (name) => (name.includes("strict-kiosk") ? strictInput : casing),
+    require: (name) =>
+        name.includes("strict-kiosk")
+            ? strictInput
+            : name.includes("kiosk-video-progress")
+              ? videoProgress
+              : casing,
 });
 function rig(storage = {}) {
     let time = 0,
@@ -1208,4 +1214,574 @@ for (const failure of ["missing", "unreadable"]) {
 }
 console.log(
     "Kiosk full reload requires durable policy/cooldown; memory fallback retains soft recovery"
+);
+
+function decoderRig(fps = 25) {
+    const r = rig();
+    let frozen = null;
+    const video = {
+        buffered: { end: () => 10000, length: 1, start: () => 0 },
+        get currentTime() {
+            return r.w.stbGetPosTime();
+        },
+        ended: false,
+        error: null,
+        getVideoPlaybackQuality: () => ({
+            droppedVideoFrames: 0,
+            totalVideoFrames:
+                frozen === null
+                    ? Math.floor(r.w.stbGetPosTime() * fps)
+                    : frozen,
+        }),
+        paused: false,
+        playbackRate: 1,
+        readyState: 4,
+        seeking: false,
+        videoHeight: 1080,
+        videoWidth: 1920,
+    };
+    r.w.document.getElementById = () => video;
+    r.w.document.visibilityState = "visible";
+    r.w.document.hasFocus = () => true;
+    r.w.getComputedStyle = () => ({
+        display: "block",
+        opacity: "1",
+        visibility: "visible",
+    });
+    r.w.__ottClassicPlayback = { snapshot: () => ({ generation: 1 }) };
+    r.request({ mode: "on", query: "1", strict: true });
+    r.play(true);
+    return {
+        ...r,
+        freeze: () => {
+            frozen = Math.floor(r.w.stbGetPosTime() * fps);
+        },
+        resume: () => {
+            frozen = null;
+        },
+        video,
+    };
+}
+{
+    const r = decoderRig();
+    r.advance(5, true);
+    r.freeze();
+    r.advance(23, true);
+    assert.equal(
+        r.played.length,
+        1,
+        "a short frame gap must not restart playback"
+    );
+    assert.equal(r.kiosk.snapshot().video_progress.state, "stalled");
+    r.advance(2, true);
+    assert.equal(
+        r.played.length,
+        2,
+        "frozen decoded frames recover even while the media clock advances"
+    );
+    assert.equal(r.kiosk.snapshot().strict, true);
+    assert.equal(r.kiosk.snapshot().retries, 1);
+}
+{
+    const r = decoderRig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.advance(5, true);
+    r.freeze();
+    r.advance(205, true);
+    assert.equal(
+        reloads,
+        1,
+        "a failed decoder retry must escalate to a bounded player reload"
+    );
+    assert.equal(r.kiosk.snapshot().retries, 3);
+    assert.equal(r.kiosk.snapshot().strict, true);
+    r.advance(300, true);
+    assert.equal(
+        reloads,
+        1,
+        "persistent reload cooldown prevents a decoder reload loop"
+    );
+    assert(
+        r.kiosk.snapshot().retries > 3,
+        "soft retries continue during cooldown"
+    );
+}
+{
+    const r = decoderRig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.advance(5, true);
+    for (let i = 0; i < 4; i++) {
+        r.freeze();
+        r.advance(25, true);
+        r.resume();
+        r.advance(3, true);
+    }
+    assert.equal(
+        reloads,
+        1,
+        "brief frame bursts cannot continually erase the recovery budget"
+    );
+}
+for (const fps of [1, 25]) {
+    const r = decoderRig(fps);
+    r.advance(90, true);
+    assert.equal(
+        r.played.length,
+        1,
+        `${fps}fps playback must remain uninterrupted`
+    );
+    assert.equal(r.kiosk.snapshot().video_progress.state, "progressing");
+}
+for (const fps of [1 / 30, 1 / 10]) {
+    const r = decoderRig(fps);
+    r.advance(180, true);
+    assert.equal(
+        r.played.length,
+        1,
+        "sparse slideshow frames must not be called a decoder stall"
+    );
+    assert.equal(r.kiosk.snapshot().video_progress.state, "warming");
+}
+for (const suppress of [
+    (r) => {
+        r.video.paused = true;
+    },
+    (r) => {
+        r.video.seeking = true;
+    },
+    (r) => {
+        r.video.ended = true;
+    },
+    (r) => {
+        r.video.readyState = 2;
+    },
+    (r) => {
+        r.video.playbackRate = 2;
+    },
+    (r) => {
+        r.video.videoWidth = 0;
+    },
+    (r) => {
+        r.video.videoTracks = [];
+    },
+    (r) => {
+        r.video.buffered.end = () => r.video.currentTime + 1;
+    },
+    (r) => {
+        r.w.document.visibilityState = "hidden";
+    },
+    (r) => {
+        r.w.document.hasFocus = () => false;
+    },
+    (r) => {
+        r.w.getComputedStyle = () => ({ display: "none" });
+    },
+    (r) => {
+        r.w.getComputedStyle = () => ({ visibility: "hidden" });
+    },
+    (r) => {
+        r.w.getComputedStyle = () => ({ opacity: "0" });
+    },
+    (r) => {
+        r.video.parentElement = {};
+        r.w.getComputedStyle = (el) => ({
+            opacity: el === r.video ? "1" : "0",
+        });
+    },
+    (r) => {
+        r.video.parentElement = r.video;
+    },
+    (r) => {
+        r.video.getBoundingClientRect = () => ({ height: 0, width: 0 });
+    },
+    (r) => {
+        r.w.innerWidth = 1280;
+        r.video.getBoundingClientRect = () => ({
+            bottom: 800,
+            height: 800,
+            left: 1280,
+            right: 2560,
+            top: 0,
+            width: 1280,
+        });
+    },
+    (r) => {
+        r.video.getVideoPlaybackQuality = undefined;
+    },
+    (r) => {
+        r.video.getVideoPlaybackQuality = () => {
+            throw new Error("unavailable");
+        };
+    },
+    (r) => {
+        r.video.getVideoPlaybackQuality = () => ({
+            droppedVideoFrames: 0,
+            totalVideoFrames: 0,
+        });
+    },
+    (r) => {
+        r.video.getVideoPlaybackQuality = () => ({
+            droppedVideoFrames: 0,
+            totalVideoFrames: NaN,
+        });
+    },
+    (r) => {
+        r.video.getVideoPlaybackQuality = () => ({
+            droppedVideoFrames: 100,
+            totalVideoFrames: 1,
+        });
+    },
+]) {
+    const r = decoderRig();
+    r.advance(5, true);
+    suppress(r);
+    r.freeze();
+    r.advance(60, true);
+    assert.equal(
+        r.played.length,
+        1,
+        "missing, suspended or never-progressing frame evidence cannot force recovery"
+    );
+}
+for (const transition of [
+    (r) => {
+        r.w.__ottClassicPlayback.snapshot = () => ({ generation: 2 });
+    },
+    (r) => {
+        r.w.document.getElementById = () => ({ ...r.video });
+    },
+    (r) => {
+        r.video.getVideoPlaybackQuality = undefined;
+        r.video.webkitDecodedFrameCount = 125;
+        r.video.webkitDroppedFrameCount = 0;
+    },
+    (r) => {
+        r.w.performance.now = () => 600000;
+    },
+]) {
+    const r = decoderRig();
+    r.advance(5, true);
+    r.freeze();
+    r.advance(12, true);
+    transition(r);
+    r.advance(30, true);
+    assert.equal(
+        r.played.length,
+        1,
+        "a new source/counter/clock needs fresh evidence"
+    );
+}
+{
+    const r = decoderRig();
+    const count = r.video.getVideoPlaybackQuality;
+    r.video.getVideoPlaybackQuality = undefined;
+    Object.defineProperty(r.video, "webkitDecodedFrameCount", {
+        get: () => count().totalVideoFrames,
+    });
+    r.video.webkitDroppedFrameCount = 0;
+    r.advance(5, true);
+    assert.equal(r.kiosk.snapshot().video_progress.source, "webkit-decoded");
+    r.freeze();
+    r.advance(25, true);
+    assert.equal(
+        r.played.length,
+        2,
+        "legacy WebKit counters also detect a stall"
+    );
+}
+console.log(
+    "Kiosk decoder progress catches frozen frames with an advancing clock without restarting low-fps or unobservable playback"
+);
+
+function seekRig() {
+    const r = rig();
+    const source = "plex:0@local";
+    const records = [0, 1].map((i) => ({
+        __ottMediaRef: { itemId: "episode:" + i, sourceId: source },
+        request: { id: i },
+        title: "Episode " + i,
+        vportalSource: source,
+    }));
+    const selection = {
+        index: 0,
+        position: 10,
+        queueId: "seek-queue",
+        records,
+        source,
+    };
+    const state = {
+        generation: 1,
+        target: { channelId: "episode:0", kind: "vod", sourceId: source },
+    };
+    const sample = { duration: 120, phase: "playing" };
+    const seeks = [];
+    const handle = {
+        active: () => true,
+        seek: (value) => seeks.push(value),
+        snapshot: () => sample,
+    };
+    const backend = { current: () => handle };
+    r.source(source);
+    r.w.__ottActiveProviderDriver = { id: "plex" };
+    r.w.__ottCoreTransport = { play() {} };
+    r.w.stbPlay = r.w.__ottCoreTransport.play;
+    r.w.__ottCoreBackendPeek = () => backend;
+    r.w.__ottClassicPlayback = { snapshot: () => state };
+    r.w.__ottMedia = {
+        current: () => ({ ref: records[selection.index].__ottMediaRef }),
+        keepKioskLoop() {},
+        kioskSelection: () => selection,
+        sourceId: () => source,
+    };
+    r.request({ mode: "on", strict: true });
+    return { ...r, backend, handle, sample, seeks, selection, state };
+}
+{
+    const r = seekRig();
+    assert.equal(r.kiosk.beginSeek()(0.75), true);
+    assert.equal(r.kiosk.beginSeek()(0.25), true);
+    assert.equal(r.kiosk.beginSeek()(-2), true);
+    assert.equal(r.kiosk.beginSeek()(2), true);
+    assert.deepEqual(r.seeks, [90, 30, 0, 119]);
+    assert.equal(r.kiosk.snapshot().strict, true);
+    assert.equal(r.kiosk.snapshot().media.total, 2);
+    assert.equal(r.selection.index, 0);
+}
+for (const change of [
+    (r) => r.state.generation++,
+    (r) => {
+        r.selection.index = 1;
+        r.state.target.channelId = "episode:1";
+    },
+    (r) => {
+        r.w.__ottMedia.sourceId = () => "plex:1@other";
+    },
+    (r) => {
+        r.backend.current = () => ({ ...r.handle });
+    },
+    (r) => {
+        r.handle.active = () => false;
+    },
+    (r) => {
+        r.w.stbPlay = () => {};
+    },
+    (r) => {
+        r.sample.phase = "loading";
+    },
+    (r) => {
+        r.sample.duration = Infinity;
+    },
+    (r) => {
+        r.request({ mode: "off" });
+    },
+    (r) => {
+        r.request({ mode: "on", strict: false });
+    },
+]) {
+    const r = seekRig();
+    const commit = r.kiosk.beginSeek();
+    assert.equal(typeof commit, "function");
+    change(r);
+    assert.equal(
+        commit(0.5),
+        false,
+        "a changed player or kiosk retires the gesture"
+    );
+    assert.deepEqual(r.seeks, []);
+}
+{
+    const r = seekRig();
+    assert.equal(r.kiosk.beginSeek()(NaN), false);
+    r.state.target.kind = "live";
+    assert.equal(r.kiosk.beginSeek(), null);
+    assert.deepEqual(r.seeks, []);
+}
+for (const frozenSeconds of [20, 25]) {
+    const r = seekRig();
+    const clockPosition = r.w.stbGetPosTime;
+    let offset = 0,
+        frozenFrames = null,
+        reloads = 0;
+    r.sample.duration = 1200;
+    r.w.stbGetPosTime = () => clockPosition() + offset;
+    r.handle.seek = (value) => {
+        r.seeks.push(value);
+        offset = value - clockPosition();
+    };
+    r.w.__ottClassicPlayback.snapshot = () => ({
+        ...r.state,
+        position: r.w.stbGetPosTime(),
+    });
+    r.w.__ottMedia.restoreKiosk = () => true;
+    r.w.restart = () => reloads++;
+    const video = {
+        buffered: { end: () => 10000, length: 1, start: () => 0 },
+        get currentTime() {
+            return r.w.stbGetPosTime();
+        },
+        ended: false,
+        error: null,
+        getVideoPlaybackQuality: () => ({
+            droppedVideoFrames: 0,
+            totalVideoFrames:
+                frozenFrames === null
+                    ? Math.floor(clockPosition() * 25)
+                    : frozenFrames,
+        }),
+        paused: false,
+        playbackRate: 1,
+        readyState: 4,
+        seeking: false,
+        videoHeight: 1080,
+        videoWidth: 1920,
+    };
+    r.w.document.getElementById = () => video;
+    r.w.document.visibilityState = "visible";
+    r.w.document.hasFocus = () => true;
+    r.w.getComputedStyle = () => ({
+        display: "block",
+        opacity: "1",
+        visibility: "visible",
+    });
+    r.play(true);
+    r.advance(5, true);
+    frozenFrames = Math.floor(clockPosition() * 25);
+    r.advance(frozenSeconds, true);
+    const before = r.kiosk.snapshot().retries;
+    assert.equal(before, frozenSeconds === 20 ? 0 : 1);
+    assert.equal(
+        r.kiosk.snapshot().video_progress.state,
+        frozenSeconds === 20 ? "stalled" : "warming"
+    );
+    assert.equal(r.kiosk.beginSeek()(0.5), true);
+    assert.deepEqual(r.seeks, [600]);
+    r.advance(59, true);
+    assert.equal(
+        r.kiosk.snapshot().retries,
+        before,
+        "intentional seek receives its startup grace"
+    );
+    r.advance(1, true);
+    assert.equal(
+        r.kiosk.snapshot().retries,
+        before + 1,
+        "seek must preserve unresolved frame recovery"
+    );
+    r.advance(240, true);
+    assert.equal(
+        reloads,
+        1,
+        "frozen frames still reach bounded reload after seeking"
+    );
+    assert.equal(r.kiosk.snapshot().strict, true);
+    assert.equal(video.getVideoPlaybackQuality().totalVideoFrames, 125);
+}
+console.log(
+    "Kiosk footer seek stays within the captured episode, decoder and policy"
+);
+
+{
+    const dom = new JSDOM(
+        '<body><div id="info1"><div id="progress_div"><div id="progress"></div></div></div><button id="elsewhere"></button></body>'
+    );
+    const w = dom.window;
+    const bar = w.document.getElementById("progress_div");
+    const child = w.document.getElementById("progress");
+    const other = w.document.getElementById("elsewhere");
+    let time = 1000,
+        leaked = 0;
+    const seeks = [];
+    bar.getBoundingClientRect = () => ({
+        bottom: 124,
+        height: 24,
+        left: 40,
+        right: 240,
+        top: 100,
+        width: 200,
+    });
+    Object.defineProperty(w.performance, "now", { value: () => time });
+    w.showChannelInfo = () => {};
+    w.__ottKiosk = {
+        beginSeek: () => (f) => {
+            seeks.push(f);
+            return true;
+        },
+    };
+    strictInput.createStrictKioskInput(w, () => true);
+    for (const type of [
+        "touchstart",
+        "touchmove",
+        "touchend",
+        "click",
+        "pointerdown",
+        "pointerup",
+    ])
+        w.document.addEventListener(type, () => leaked++);
+    function send(node, type, props) {
+        const e = new w.Event(type, { bubbles: true, cancelable: true });
+        Object.assign(e, props);
+        node.dispatchEvent(e);
+        assert(e.defaultPrevented);
+    }
+    const point = (x, y = 110, identifier = 1) => ({
+        clientX: x,
+        clientY: y,
+        identifier,
+    });
+    function touch(node, type, points, changed = points) {
+        send(node, type, { changedTouches: changed, touches: points });
+    }
+    touch(child, "touchstart", [point(90)]);
+    touch(child, "touchmove", [point(200)]);
+    touch(child, "touchend", [], [point(200)]);
+    assert.deepEqual(seeks, [0.8], "one commit on drag release");
+    send(child, "click", { clientX: 200, clientY: 110, detail: 1 });
+    assert.equal(seeks.length, 1, "compatibility click cannot seek twice");
+    time += 1000;
+    touch(child, "touchstart", [point(90)]);
+    touch(child, "touchmove", [point(90, 180)]);
+    touch(child, "touchmove", [point(90)]);
+    touch(child, "touchend", [], [point(90)]);
+    assert.equal(seeks.length, 1, "returning vertical swipe remains cancelled");
+    touch(child, "touchstart", [point(190)]);
+    touch(child, "touchmove", [point(190, 135)]);
+    touch(child, "touchend", [], [point(190, 135)]);
+    assert.equal(seeks.length, 1, "short vertical swipe cannot become a seek");
+    touch(child, "touchstart", [point(90)]);
+    touch(child, "touchstart", [point(90), point(180, 110, 2)]);
+    touch(child, "touchend", [], [point(90)]);
+    assert.equal(seeks.length, 1, "multi-touch cannot seek");
+    touch(other, "touchstart", [point(90)]);
+    touch(child, "touchend", [], [point(90)]);
+    assert.equal(seeks.length, 1, "gesture must begin on the progress bar");
+    time += 1000;
+    send(child, "pointerdown", {
+        button: 0,
+        clientX: 140,
+        clientY: 110,
+        pointerId: 3,
+        pointerType: "mouse",
+    });
+    send(child, "pointerup", {
+        clientX: 90,
+        clientY: 110,
+        pointerId: 3,
+        pointerType: "mouse",
+    });
+    assert.deepEqual(seeks, [0.8, 0.25]);
+    touch(child, "touchstart", [point(90)]);
+    bar.id = "old-progress";
+    touch(child, "touchend", [], [point(90)]);
+    assert.equal(seeks.length, 2, "retired footer cannot commit");
+    assert.equal(
+        leaked,
+        0,
+        "seek exception never dispatches to ordinary controls"
+    );
+    dom.window.close();
+}
+console.log(
+    "Strict footer drag/tap has one seek, no escaped input, and cancels stale or multi-touch gestures"
 );

@@ -142,6 +142,7 @@ function restoreKiosk(f, strict = true) {
                 );
             },
         },
+        "./kiosk-video-progress": load("src/plugins/kiosk-video-progress.ts"),
         "./strict-kiosk-input": load("src/plugins/strict-kiosk-input.ts"),
     });
     const source = f.host.__ottSourceIdentity.media(f.host);

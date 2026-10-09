@@ -454,7 +454,23 @@ first; an empty media library cannot be locked. For a shuffled Plex library, use
 requests and resumes the saved item/position when the application starts again.
 
 The local watchdog retries after 10 seconds without playback progress, allowing
-60 seconds for media startup and episode transitions. After three unsuccessful
+60 seconds for media startup and episode transitions. On a visible HTML video,
+it also samples playback-quality or WebKit decoded-frame counters. After a
+counter has advanced at least three times with gaps no greater than five seconds,
+15 seconds without another non-dropped frame
+stops treating an advancing media clock as healthy; the normal 10-second recovery
+grace then applies. Paused/seeking/ended video, insufficient buffered data,
+background pages, source changes and unavailable counters cannot trigger this
+additional signal. These counters cannot prove that the display or audio hardware
+is actually presenting output. The additive `video_progress` object in the raw
+kiosk response reports counter source, state, counts and frame age, without media
+URLs; older CLI versions may omit it from their formatted output.
+After a frame stall triggers a retry, the same locked item retains its failure
+state until ten seconds of steady frame progress. A counter that remains stuck
+after that retry gets the 60-second startup grace before another attempt. Brief
+bursts cannot clear the retry budget. Changing the locked item resets this state.
+
+After three unsuccessful
 stream retries, a subsequent stall reloads the player if its source still matches.
 The reload first saves and verifies the locked selection and media position.
 A persistent 10-minute cooldown prevents reload loops; stream retries continue
@@ -487,10 +503,15 @@ Use `kiosk off` before changing provider/profile or unlocking parental access,
 then enable kiosk again on the intended channel. Parental restrictions still apply.
 
 Add `--strict` for a child-facing player: `ott tv kiosk on --strict "Новости"`
-locks the channel and permits only a short tap or the Info key to show the
-read-only video footer for five seconds. Swipes, long presses, multiple fingers,
-double-click actions, pause, seeking, menus, player exit and local volume/mute
-controls are blocked. Repeated taps never expand the description. Remote
+locks the channel and permits a short tap or the Info key to show the video
+footer for five seconds. In a media queue, tapping or dragging the footer timeline
+seeks within the current episode. The gesture is cancelled if the episode, source,
+player or policy changes; multiple fingers and vertical swipes cancel it too.
+This exception requires the active core player and a known finite duration, and
+stops one second before the end instead of directly triggering the next episode.
+Outside the timeline, swipes and long presses remain blocked. Double-click actions,
+pause, keyboard/remote seeking, menus, player exit and local volume/mute controls
+are blocked. Repeated taps never expand the description. Remote
 volume/mute, status and recovery remain available; stopping the current diagnostic
 capture remains available locally without disconnecting the remote controller.
 

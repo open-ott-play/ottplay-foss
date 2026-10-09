@@ -214,7 +214,7 @@ for (const provider of ["m3u", "vportal"]) {
                 touchPoints: points.map(([x, y, id = 1]) => ({ id, x, y })),
                 type,
             });
-        // The ordinary footer tap must never expand details or seek on its progress bar.
+        // Ordinary taps never expand details; only the media progress bar can seek.
         await page.evaluate(() => window.infoBarHide());
         await page.touchscreen.tap(195, 300);
         await expect(page.locator("#info1")).toBeVisible();
@@ -271,6 +271,50 @@ for (const provider of ["m3u", "vportal"]) {
         );
         expect(after).toBeGreaterThan(before);
         expect(after - before).toBeLessThan(10);
+        if (provider === "vportal") {
+            const bar = await page.locator("#progress_div").boundingBox();
+            expect(bar.height).toBeGreaterThanOrEqual(24);
+            const y = bar.y + bar.height / 2;
+            const currentItem = await page.evaluate(
+                () => window.__ottMedia.current().ref.itemId
+            );
+            await page.touchscreen.tap(bar.x + bar.width * 0.75, y);
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () => document.querySelector("video").currentTime
+                    )
+                )
+                .toBeGreaterThan(85);
+            await page.touchscreen.tap(bar.x + bar.width * 0.25, y);
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () => document.querySelector("video").currentTime
+                    )
+                )
+                .toBeLessThan(35);
+            await touch("touchStart", [[bar.x + bar.width * 0.25, y]]);
+            await touch("touchMove", [[bar.x + bar.width * 0.6, y]]);
+            await touch("touchEnd", []);
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () => document.querySelector("video").currentTime
+                    )
+                )
+                .toBeGreaterThan(68);
+            expect(
+                await page.evaluate(
+                    () => window.__ottMedia.current().ref.itemId
+                )
+            ).toBe(currentItem);
+            expect((await rpc("kiosk", { mode: "status" })).data).toMatchObject(
+                { media: { total: 2 }, strict: true }
+            );
+            await expect(page.locator("#list")).toBeHidden();
+            await expect(page.locator("#descr")).toBeHidden();
+        }
         expect((await rpc("profile", { number: 2 })).status).toBe("rejected");
         await page.evaluate(() => {
             window.infoBarHide();
