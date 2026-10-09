@@ -861,6 +861,68 @@ for (const failure of ["policy-write", "cooldown-readback", "source-change"]) {
     );
     assert.equal(r.kiosk.enabled(), false);
 }
+{
+    const r = rig();
+    const config = {
+        address: "https://plex.example:32400",
+        token: "saved-token",
+    };
+    r.storage.plexcfg = JSON.stringify(config);
+    r.w.__ottActiveProviderDriver = {
+        credentials: () => ({ password: config.token, server: config.address }),
+        id: "plex",
+    };
+    r.w.commandChannelsReady = false;
+    r.w.providerMediaClient = null;
+    load("src/provider/source-identity.ts", { window: r.w });
+    load("src/media/classic-adapter.ts", { window: r.w });
+    const source = r.w.__ottMedia.sourceId();
+    assert.match(source, /^plex@/);
+    assert.equal(r.w.__ottMedia.current(), null);
+    const policy = JSON.stringify({
+        channel: null,
+        media: {
+            index: 0,
+            position: 12,
+            records: [
+                {
+                    __ottMediaRef: { itemId: "7", sourceId: source },
+                    request: { id: "7" },
+                    title: "Retained film",
+                },
+            ],
+            source,
+        },
+        provider: "plex",
+        source,
+        strict: true,
+    });
+    r.storage.__ottKioskV1 = policy;
+    let reloads = 0,
+        settings = 0;
+    r.w.restart = () => reloads++;
+    r.w.__ottEditProvider = r.w.alert = () => settings++;
+    r.kiosk.init();
+    r.advance(239);
+    assert.equal(
+        reloads,
+        0,
+        "unready media retains all three startup retry intervals"
+    );
+    assert.equal(r.kiosk.snapshot().retries, 3);
+    r.advance(1);
+    assert.equal(
+        reloads,
+        1,
+        "same-source Plex startup failure reloads without a backend"
+    );
+    assert.equal(settings, 0);
+    assert.equal(r.kiosk.strict(), true);
+    assert.equal(r.w.commandChannelsReady, false);
+    assert.equal(r.w.providerMediaClient, null);
+    assert.equal(r.storage.__ottKioskV1, policy);
+    assert.equal(r.storage.plexcfg, JSON.stringify(config));
+}
 console.log(
     "VPortal kiosk persistence, episode admission, startup grace and cancellation passed"
 );

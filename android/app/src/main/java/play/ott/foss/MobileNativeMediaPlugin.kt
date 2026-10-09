@@ -119,12 +119,14 @@ class MobileNativeMediaPlugin : Plugin() {
             return
         }
 
-        val params = PictureInPictureParams.Builder()
-            .setAspectRatio(android.util.Rational(16, 9))
-            .build()
-
         activity.runOnUiThread {
             try {
+                // Keep API 26 objects inside the guarded callback. Capturing
+                // params adds PictureInPictureParams to a synthetic method's
+                // signature, which Capacitor reflects at startup on API 22.
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(android.util.Rational(16, 9))
+                    .build()
                 val entered = activity.enterPictureInPictureMode(params)
                 call.resolve(JSObject().apply { put("ok", entered) })
             } catch (e: Exception) {

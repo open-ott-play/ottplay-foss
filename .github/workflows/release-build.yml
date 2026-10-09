@@ -304,14 +304,18 @@ jobs:
       run: npm ci --ignore-scripts
     - name: Build and audit Full Capacitor APK
       run: npm run android:full:release
+    - name: Build and audit API 22 Capacitor APK
+      run: npm run android:api22:release
     - name: Sign the verified APK for in-place updates
       env:
         CAPACITOR_KEYSTORE_BASE64: ${{ secrets.CAPACITOR_KEYSTORE_BASE64 }}
         CAPACITOR_KEY_ALIAS: ${{ secrets.CAPACITOR_KEY_ALIAS }}
         CAPACITOR_KEY_PASSWORD: ${{ secrets.CAPACITOR_KEY_PASSWORD }}
-      run: python3 scripts/sign-android-apk.py android/app/build/outputs/apk/full/release/app-full-release-unsigned.apk ottplay-foss-android-full.apk
+      run: |
+        python3 scripts/sign-android-apk.py android/app/build/outputs/apk/full/release/app-full-release-unsigned.apk ottplay-foss-android-full.apk
+        python3 scripts/sign-android-apk.py android/app/build-api22/outputs/apk/full/release/app-full-release-unsigned.apk ottplay-foss-android-api22.apk
     - name: Stage APK under the frozen release version
-      run: python3 scripts/stage_release_assets.py --target mobile-android --pattern ottplay-foss-android-full.apk
+      run: python3 scripts/stage_release_assets.py --target mobile-android --pattern ottplay-foss-android-full.apk --pattern ottplay-foss-android-api22.apk
     - name: Store release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:

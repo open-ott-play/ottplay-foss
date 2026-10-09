@@ -4,6 +4,8 @@
   "description": "OTT-play FOSS - IPTV/OTT set-top-box player",
   "type": "module",
   "scripts": {
+    "android:api22": "node scripts/build-android.cjs api22",
+    "android:api22:release": "node scripts/build-android.cjs api22-release",
     "android:full": "node scripts/build-android.cjs full",
     "android:full:release": "node scripts/build-android.cjs full-release",
     "android:sync": "node scripts/build-android.cjs sync",

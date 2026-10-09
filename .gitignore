@@ -71,3 +71,6 @@ release-assets/
 
 /js/licenses/rquickjs-LICENSE.txt
 /js/licenses/QuickJS-NG-LICENSE.txt
+
+# Isolated Capacitor 6 / Android 5.1 native outputs.
+**/build-api22/

@@ -56,7 +56,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     void restoreImmersiveMode() {
-        if (playerDecor == null || !hasWindowFocus() || isInPictureInPictureMode()) return;
+        if (playerDecor == null || !hasWindowFocus() || (Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode())) return;
         WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(playerDecor);
         // Do not interfere with the IME's navigation controls. Restore when it closes.
         if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) return;

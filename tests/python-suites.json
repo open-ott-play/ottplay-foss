@@ -14,6 +14,7 @@
     ["tests/test_container_workspace.py"]
   ],
   "android": [
+    ["tests/test_android_update_tls.py"],
     ["tests/test_android_queue.py"],
     ["tests/test_android_screenshot.py"],
     ["tests/test_android_network_policy.py"],

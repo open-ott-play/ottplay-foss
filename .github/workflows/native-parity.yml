@@ -60,6 +60,7 @@ jobs:
           python3 tests/test_command_queue_smoke.py
           node tests/test_android_activity.cjs
           node tests/test_remote_app_update.cjs
+          python3 tests/test_android_update_tls.py
           node tests/android_provider_policy.cjs
           node tests/test_play_system_icons.cjs
           npm run test:native:runtime
@@ -67,6 +68,10 @@ jobs:
           python3 tests/test_android_emoji_policy.py
       - name: Build and audit the Full Capacitor APK
         run: npm run android:full:release
+      - name: Build and audit the API 22 Capacitor APK
+        run: npm run android:api22:release
+      - name: Verify API 22 runtime calls and manifest classes
+        run: cd android && ./gradlew --no-daemon -PottplayApi22=true -PottplayApiCheck=true :app:lintFullRelease
       - name: Exercise native queue JSON and socket cleanup
         run: |
           curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip -o "$RUNNER_TEMP/kotlin.zip"

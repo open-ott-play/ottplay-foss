@@ -28,3 +28,14 @@ The maintained XMLTV plugin lives in
 included directly in the Gradle source set. Do not add another copy.
 
 See [Android distributions and remote updates](../docs/android-distributions.md).
+
+## Android 5.1 compatibility APK
+
+`npm run android:api22:release` builds the same Full interface and native plugins
+using the isolated, lockfile-pinned Capacitor 6 runtime. It writes
+`app/build-api22/outputs/apk/full/release/app-full-release-unsigned.apk`.
+The modern `android:full:release` output remains in `app/build/`.
+`npm run android:api22` builds a debuggable device-test package.
+Both targets use the same Java 21 / SDK 36 build tools. API 22 uses compatible
+AndroidX, Media3 and OkHttp versions plus core library desugaring. Keep the two
+build roots separate and test changes on a real API 22 device.

@@ -7,6 +7,8 @@
 - Plex: up to 500 remote queue items and persistent looping media kiosk across web and native shells.
 - Recover stalled kiosks with stream retries and a bounded player reload that
   preserves the locked selection, queue and position; wait while offline.
+- Keep Plex connection failures from opening settings or modal errors beneath
+  a kiosk lock; explicitly turning kiosk off restores settings access.
 - Restore signed Full Capacitor Android APKs in beta, RC and stable releases,
   using the current shared frontend and preserving existing installations.
 - Add staged APK updates through OTT with HTTPS, SHA-256, package, version and

@@ -17,6 +17,12 @@ buildscript {
 }
 
 apply from: "variables.gradle"
+ext.ottplayApi22 = providers.gradleProperty('ottplayApi22').orNull == 'true'
+if (ottplayApi22) {
+    apply from: 'compat/variables.gradle'
+    // Never reuse modern Capacitor intermediate outputs for the API 22 runtime.
+    allprojects { layout.buildDirectory.set(file("$projectDir/build-api22")) }
+}
 
 allprojects {
     repositories {

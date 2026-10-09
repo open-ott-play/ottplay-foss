@@ -114,6 +114,67 @@ function create(initial = {}, integration = false) {
     };
 }
 
+function restoreKiosk(f, strict = true) {
+    function load(file, dependencies = {}) {
+        const context = {
+            exports: {},
+            require(name) {
+                assert(Object.hasOwn(dependencies, name));
+                return dependencies[name];
+            },
+        };
+        vm.runInNewContext(
+            ts.transpileModule(fs.readFileSync(path.join(root, file), "utf8"), {
+                compilerOptions: {
+                    module: ts.ModuleKind.CommonJS,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }).outputText,
+            context
+        );
+        return context.exports;
+    }
+    const { createKiosk } = load("src/plugins/kiosk.ts", {
+        "../utils/caseless": {
+            caselessKey() {
+                throw new Error(
+                    "Restoring a media kiosk must not search channels"
+                );
+            },
+        },
+        "./strict-kiosk-input": load("src/plugins/strict-kiosk-input.ts"),
+    });
+    const source = f.host.__ottSourceIdentity.media(f.host);
+    f.saved.set(
+        "__ottKioskV1",
+        JSON.stringify({
+            channel: null,
+            media: {
+                index: 0,
+                position: 12,
+                records: [
+                    {
+                        __ottMediaRef: { itemId: "7", sourceId: source },
+                        request: { id: "7" },
+                        title: "Retained film",
+                    },
+                ],
+                source,
+            },
+            provider: "plex",
+            source,
+            strict,
+        })
+    );
+    f.host.setInterval = () => 1;
+    const kiosk = createKiosk(f.host);
+    f.host.__ottKiosk = kiosk;
+    kiosk.init();
+    assert.equal(kiosk.locked(), true);
+    assert.equal(kiosk.strict(), strict);
+    return kiosk;
+}
+
 const remoteCode = ts.transpileModule(
     fs.readFileSync(path.join(root, "src/commands/remote-requests.ts"), "utf8"),
     {
@@ -282,6 +343,87 @@ test("Connection failure keeps the library unready and displays a sanitized reco
     assert.equal(f.clients[0].disposed, 1);
     assert.equal(f.host.listCaption.innerHTML, "Plex settings");
     assert(!f.errors.join(" ").includes(config.token));
+});
+
+test("Restored kiosk suppresses Plex failure dialogs and settings while preserving retry and remote unlock", () => {
+    for (const strict of [true, false]) {
+        for (const configured of [true, false]) {
+            const initial = configured
+                ? { plexcfg: JSON.stringify(config) }
+                : {};
+            const f = create(initial);
+            const kiosk = restoreKiosk(f, strict);
+            const saved = [...f.saved];
+            let opened = 0;
+            let completed = 0;
+            f.host.showPage = () => opened++;
+            f.host.listCaption.innerHTML = "Player";
+            f.host.getChannelsArray(() => completed++);
+            if (configured) f.clients[0].ready("private network failure");
+            assert.equal(completed, 0);
+            assert.equal(f.driver.libraryReady(), false);
+            assert.equal(f.host.listCaption.innerHTML, "Player");
+            assert.equal(opened, 0);
+            assert.deepEqual(f.errors, []);
+            assert.deepEqual([...f.saved], saved);
+            assert.equal(kiosk.locked(), true);
+            if (configured) {
+                f.host.getChannelsArray(() => completed++);
+                f.clients[1].ready();
+                assert.equal(completed, 1);
+                assert.equal(f.driver.libraryReady(), true);
+                assert.equal(f.host.providerMediaClient, f.clients[1]);
+            }
+            let unlocked;
+            kiosk.request({ mode: "off" }, (result) => {
+                unlocked = result;
+            });
+            assert.equal(unlocked.status, "ok");
+            assert.equal(unlocked.data.state, "off");
+            assert.equal(kiosk.locked(), false);
+            f.host.getChannelsArray(() => completed++);
+            if (configured) f.clients.at(-1).ready("network failure");
+            assert.equal(f.host.listCaption.innerHTML, "Plex settings");
+            assert.equal(opened, 1);
+            assert.equal(f.errors.length, configured ? 1 : 0);
+        }
+    }
+});
+
+test("Direct Plex editor cannot interrupt a pending connection under restored strict kiosk", () => {
+    const f = create({ plexcfg: JSON.stringify(config) });
+    const kiosk = restoreKiosk(f);
+    let completed = 0;
+    let opened = 0;
+    f.host.showPage = () => opened++;
+    f.host.getChannelsArray(() => completed++);
+    assert.equal(f.host.__ottEditProvider(), false);
+    assert.equal(f.clients[0].disposed, 0);
+    assert.equal(opened, 0);
+    f.clients[0].ready();
+    assert.equal(completed, 1);
+    assert.equal(f.driver.libraryReady(), true);
+    assert.equal(kiosk.strict(), true);
+});
+
+test("Plex sign-in callbacks cannot reopen settings or launch sign-in after kiosk locks", () => {
+    const f = create({ plexcfg: JSON.stringify(config) });
+    f.host.__ottEditProvider();
+    f.enter(0);
+    const callbacks = f.signIns[0].callbacks;
+    restoreKiosk(f);
+    let opened = 0;
+    f.host.showPage = () => opened++;
+    f.host.listCaption.innerHTML = "Player";
+    const saved = [...f.saved];
+    callbacks.onPin({ code: "LATE", url: "https://plex.tv/link/?pin=LATE" });
+    callbacks.onServers([{ name: "Late server" }]);
+    callbacks.onError();
+    assert.equal(f.host.listCaption.innerHTML, "Player");
+    assert.equal(opened, 0);
+    assert.deepEqual(f.opened, []);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual([...f.saved], saved);
 });
 
 test("Provider changes invalidate pending connection results and stale editor callbacks", () => {

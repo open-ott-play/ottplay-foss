@@ -55,9 +55,11 @@ async function pluginMetadata(config) {
 }
 
 async function prepare(flavor, output) {
+    const api22 = flavor === "full-api22";
+    if (api22) flavor = "full";
     if (flavor !== "full" || !output) {
         throw new Error(
-            "Usage: node scripts/prepare-android-assets.cjs <full> <assets-directory>"
+            "Usage: node scripts/prepare-android-assets.cjs <full|full-api22> <assets-directory>"
         );
     }
     process.chdir(root);
@@ -65,7 +67,9 @@ async function prepare(flavor, output) {
     // Restrict destructive cleanup to the documented generated root.
     const allowed = path.join(
         root,
-        "android/app/build/generated/ottplay",
+        api22
+            ? "android/app/build-api22/generated/ottplay"
+            : "android/app/build/generated/ottplay",
         flavor,
         "assets"
     );
@@ -144,7 +148,9 @@ async function prepare(flavor, output) {
             JSON.stringify(
                 {
                     applicationId: packaged.appId,
+                    capacitorMajor: api22 ? 6 : 8,
                     distribution: flavor,
+                    minSdk: api22 ? 22 : 24,
                     version: version.versionName,
                     versionCode: version.versionCode,
                 },
@@ -152,6 +158,26 @@ async function prepare(flavor, output) {
                 2
             )
         );
+        if (api22) {
+            fs.mkdirSync(path.join(output, "public/licenses/native"), {
+                recursive: true,
+            });
+            for (const name of ["core", "app"]) {
+                fs.copyFileSync(
+                    path.join(
+                        root,
+                        "android/compat/node_modules/@capacitor",
+                        name,
+                        "LICENSE"
+                    ),
+                    path.join(
+                        output,
+                        "public/licenses/native",
+                        "capacitor-" + name + "-LICENSE.txt"
+                    )
+                );
+            }
+        }
         auditAssets(output, flavor);
         console.log(
             "Prepared and audited Android " + flavor + " assets: " + output

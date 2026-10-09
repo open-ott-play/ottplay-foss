@@ -323,7 +323,8 @@ function mountPlexProvider(
         return fields;
     };
     function edit(): boolean {
-        if (!active()) return false;
+        if (!active() || (host.__ottKiosk && host.__ottKiosk.locked()))
+            return false;
         driver.cancelConnection();
         cancelAuth();
         var editor = ++revision;
@@ -335,7 +336,11 @@ function mountPlexProvider(
             host._("Compatible HLS"),
         ];
         function current(): boolean {
-            return active() && revision === editor;
+            return (
+                active() &&
+                revision === editor &&
+                !(host.__ottKiosk && host.__ottKiosk.locked())
+            );
         }
         function render(): void {
             host.listArray = [
@@ -632,6 +637,8 @@ function reportPlexProviderLoad(
     error?: string
 ): boolean {
     if (!driver.libraryReady()) {
+        // A restored kiosk cannot interact with setup or dismiss a modal error.
+        if (host.__ottKiosk && host.__ottKiosk.locked()) return false;
         if (error && error !== "credentials")
             host.alert(
                 host._(
