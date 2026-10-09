@@ -132,12 +132,13 @@ does not substitute for acceptance of the selected RC.
 
 ## Project-specific limits
 
-- Retains web/server, desktop and iOS build targets. Native Android APK/AAB builds and publication belong to open-ott-play/ottplay-android.
+- Retains web/server, desktop, iOS and Full Capacitor Android APK targets. The independent Kotlin Android app and Play Store publication belong to open-ott-play/ottplay-android.
 - Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.
 - Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.
 - OCI container archives are promoted without rebuild; deployment remains explicit.
 - Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels; package and Cargo metadata retain the full candidate identity.
 - Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.
+- Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation.
 
 Local checks run all commands in `local_checks`; missing toolchains, container
 runtimes or credentials are failures, not successful skips. They help reproduce

@@ -341,7 +341,8 @@ There are two independent distribution decisions:
 - **Full versus Play frontend policy:** [android-distribution.cjs](../scripts/android-distribution.cjs)
   removes `OTTPLAY_FULL_ONLY` regions and filters providers. Play retains Demo,
   M3U, Stalker and Xtream. This compatibility frontend transform remains in this
-  repository; Android APK/AAB creation belongs to `ottplay-android`. Markers must
+  repository; Full Capacitor APKs use it here, while native Android and Play AAB
+  creation belongs to `ottplay-android`. Markers must
   survive the distribution compiler step, including TypeScript interface erasure.
   Menu restrictions alone are not proof that excluded code/assets are absent.
 

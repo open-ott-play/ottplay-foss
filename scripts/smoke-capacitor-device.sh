@@ -72,7 +72,7 @@ Flags:
   --require-android-tools Fail if adb missing
   --adb-forward          Run: adb forward tcp:18081 tcp:18081
   --open-ios             Run: npm run cap:ios
-  --open-android         Report the separate Android application repository
+  --open-android         Open the Capacitor Android project in Android Studio
   -h, --help             Show this help
 
 Env:
@@ -190,8 +190,7 @@ if [[ "$DO_OPEN_IOS" -eq 1 ]]; then
 fi
 
 if [[ "$DO_OPEN_ANDROID" -eq 1 ]]; then
-  echo "Android app builds moved to https://github.com/open-ott-play/ottplay-android (private preview; access required)." >&2
-  exit 3
+  npm run cap:android
 fi
 
 queue_listening() {

@@ -16,9 +16,18 @@ function emit(file) {
 }
 const plexContext = { exports: {} };
 vm.runInNewContext(emit("src/commands/remote-plex.ts"), plexContext);
+const updateContext = {
+    exports: {},
+    require: () => ({
+        resolveNativePlugin: () =>
+            assert.fail("capabilities must not resolve an installer"),
+    }),
+};
+vm.runInNewContext(emit("src/commands/remote-app-update.ts"), updateContext);
 const context = {
     exports: {},
     require(name) {
+        if (name === "./remote-app-update") return updateContext.exports;
         assert.equal(name, "./remote-plex");
         return plexContext.exports;
     },
@@ -176,6 +185,24 @@ function fixture() {
     assert.equal(browser.player.runtime, caps.player.runtime);
     assert.ok(!browser.lifecycle.includes("exit_app"));
     assert.ok(!JSON.stringify(browser).includes("credentials"));
+}
+
+{
+    const f = fixture();
+    f.w.keys.MENU = 0;
+    f.w.keys.TOOLS = 82;
+    f.w.keys.SETUP = 82;
+    assert(f.run("capabilities").result.data.input.includes("menu"));
+    assert(!f.run("capabilities").result.data.input.includes("settings"));
+    const request = f.run("input", { key: "menu" });
+    assert.equal(request.result.status, "ok");
+    assert.equal(f.effects.length, 0);
+    request.effect();
+    assert.deepEqual(f.effects, [["key", 82]]);
+    const stale = f.run("input", { key: "menu" });
+    f.kiosk(true);
+    stale.effect();
+    assert.equal(f.effects.length, 1, "kiosk still fences the Android alias");
 }
 
 for (const [action, invalid] of [
@@ -452,6 +479,30 @@ function aspectFixture() {
             supported = value;
         },
     });
+}
+{
+    const f = aspectFixture();
+    f.w.Capacitor = {
+        getPlatform: () => "android",
+        isNativePlatform: () => true,
+        isPluginAvailable: (name) => name === "AppUpdate",
+    };
+    const caps = f.run("capabilities").result.data;
+    assert.deepEqual(caps.app_update, {
+        operations: ["status", "prepare", "install"],
+        version: 1,
+    });
+    assert.deepEqual(caps.aspect, {
+        modes: ["fit", "fill"],
+        operations: ["get", "set"],
+        version: 1,
+    });
+    assert.equal(caps.player.runtime, f.runtime);
+    assert.equal(f.aspect().result.data.runtime, f.runtime);
+    f.w.Capacitor.getPlatform = () => "ios";
+    assert.equal(f.run("capabilities").result.data.app_update, null);
+    assert.deepEqual(f.run("capabilities").result.data.aspect, caps.aspect);
+    assert.deepEqual(f.effects, []);
 }
 {
     const f = aspectFixture();

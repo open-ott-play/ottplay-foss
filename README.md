@@ -78,27 +78,23 @@ When debug is enabled:
   - Else: sets `ottplay_debug=1` + `ottplay_debug_hud=1` and prompts restart
 - Persistence: HUD state saved to `localStorage.ottplay_debug_hud` ("1"/"0") by `ottDebugSetHud`
 
-## iOS and native Android
+## Capacitor iOS and Android
 
-This repository packages the shared TypeScript frontend with Capacitor for **iOS**.
-Tauri desktop and Capacitor iOS use system fonts and the npm-locked native runtime;
-the browser and legacy STB builds retain their existing vendor assets.
+This repository packages the shared TypeScript frontend with Capacitor for iOS and
+Android 7+. Both use system fonts and the npm-locked native runtime. The Full APK
+is signed and included in beta, RC and stable releases, alongside the iOS IPA.
+The independent Kotlin app remains in
+[ottplay-android](https://github.com/open-ott-play/ottplay-android).
 
-The native Android application, including all APK/AAB creation, signing and release
-workflows, has moved to [open-ott-play/ottplay-android](https://github.com/open-ott-play/ottplay-android).
-The repository is public and has a separate release workflow. This repository no longer builds or publishes Android packages.
-Its Android browser/STB profiles and TypeScript bridge compatibility remain supported.
-The old Kotlin/manifest files under `android/` are [archived test fixtures](android/README.md).
-
-```bash
+```sh
 npm ci
 npm run build:ios             # build and audit the frontend, then sync iOS
 npm run cap:ios               # open in Xcode
+npm run android:full:release  # build and audit the Full Capacitor APK
 ```
 
-See [Capacitor iOS](docs/capacitor-mobile.md) for configuration and smoke checks.
-The [historical Android distributions](docs/android-distributions.md) page explains
-the extraction; old Full/Play packaging instructions do not apply to the native app.
+See [Capacitor configuration](docs/capacitor-mobile.md) and
+[Android distribution and remote updates](docs/android-distributions.md).
 
 The iOS interface uses landscape orientation. Settings, provider configuration,
 remote-control consent and JSON import/export continue to use the shared frontend.

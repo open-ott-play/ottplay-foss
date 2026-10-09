@@ -19,4 +19,4 @@ After the build, `build-local.sh` / `run-tauri-local.sh` quit running `ottplay-t
 
 `build-local.sh` / `run-tauri-local.sh` pass `--bundles app` so Tauri skips DMG packaging (unreliable in some CI/agent environments). The `.app` under `target/release/bundle/macos/` is what gets copied to `/Applications`.
 
-Android APK/AAB builds moved to [ottplay-android](https://github.com/open-ott-play/ottplay-android), currently a private preview requiring repository access. This repository has no Android packaging script.
+Build the Full Capacitor APK with `npm run android:full:release` using Java 21 and Android SDK 36. See [Android build instructions](../android/README.md). Play Store AABs and the independent Kotlin app remain in [ottplay-android](https://github.com/open-ott-play/ottplay-android).

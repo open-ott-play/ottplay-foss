@@ -529,6 +529,22 @@ test("policy changes during preflight cancel admission, and stopping an old queu
         stopped
     );
 });
+test("a locked kiosk rejects queue stop without disposing playback", () => {
+    const h = setup();
+    h.call("play", ["1", "2"]);
+    h.prepare(["1", "2"]);
+    h.resolve("1");
+    const before = plain(h.queue.snapshot());
+    const calls = h.c.calls.length;
+    h.c.__ottKiosk = { enabled: () => true };
+    assert.equal(h.call("stop").replies[0].status, "rejected");
+    assert.deepEqual(plain(h.queue.snapshot()), before);
+    assert.equal(h.c.calls.length, calls);
+    assert.equal(h.call("status").replies[0].status, "ok");
+    h.c.__ottKiosk.enabled = () => false;
+    assert.equal(h.call("stop").replies[0].status, "ok");
+    assert.equal(h.queue.snapshot().active, false);
+});
 test("cancel, timeout, changed provider and expired requests cannot start later", () => {
     for (const action of ["cancel", "timeout", "provider", "config"]) {
         const h = setup();
@@ -562,7 +578,7 @@ test("canonical IDs, bounded titles and exact runtime are enforced", () => {
         ["1.0"],
         [1],
         [],
-        Array(101).fill("1"),
+        Array(501).fill("1"),
         ["1".repeat(21)],
     ]) {
         const h = setup();
@@ -574,11 +590,11 @@ test("canonical IDs, bounded titles and exact runtime are enforced", () => {
         h.call("play", ["1"], { runtime: "wrong" }).replies[0].status,
         "rejected"
     );
-    const ids = Array.from({ length: 100 }, (_, i) => String(i + 1));
+    const ids = Array.from({ length: 500 }, (_, i) => String(i + 1));
     const preview = h.call("preview", ids);
     h.reply();
     h.reply(ids.map((id) => h.item(id, "🙂".repeat(200) + "\ud800")));
-    assert.equal(preview.replies[0].data.titles.length, 100);
+    assert.equal(preview.replies[0].data.titles.length, 500);
     assert(
         preview.replies[0].data.titles.every((x) => Buffer.byteLength(x) <= 512)
     );
@@ -606,5 +622,47 @@ test("shared contract capability and maximum escaped preview stay bounded", () =
         ))
             assert(contract.errors.includes(match[1]), match[1]);
     }
+});
+test("Plex kiosk retains 265 ordered requests, loops, and restores without media URLs", () => {
+    const h = setup();
+    h.c.__ottActiveProviderDriver = { id: "plex" };
+    const ids = Array.from({ length: 265 }, (_, i) => String(265 - i));
+    const request = h.call("play", ids);
+    h.prepare(ids);
+    h.resolve(ids[0]);
+    assert.equal(request.replies[0].status, "ok");
+    h.c.__ottMedia.keepKioskLoop();
+    assert.equal(h.queue.snapshot().repeat, "all");
+    const selection = plain(h.c.__ottMedia.kioskSelection());
+    assert.equal(selection.records.length, 265);
+    assert.equal(selection.records[0].request.path, "/library/metadata/265");
+    assert(
+        selection.records.every((row) => row.plexSource === selection.source)
+    );
+    assert(selection.records.every((row) => !row.stream_url));
+    assert(!JSON.stringify(selection).includes("synthetic-only"));
+    assert(selection.queueId);
+    assert.equal(
+        h.c.__ottMedia.restoreKiosk({ ...selection, index: 264 }, () => true),
+        true
+    );
+    h.resolve(ids[264]);
+    assert.equal(h.queue.snapshot().index, 264);
+    assert.equal(h.queue.snapshot().repeat, "all");
+    h.end();
+    h.resolve(ids[0]);
+    assert.equal(h.queue.snapshot().index, 0);
+    assert.equal(h.queue.snapshot().state, "playing");
+});
+test("Plex kiosk captures the actual cursor when IDs repeat", () => {
+    const h = setup();
+    h.c.__ottActiveProviderDriver = { id: "plex" };
+    h.call("play", ["1", "1"]);
+    h.prepare(["1", "1"]);
+    h.resolve("1");
+    assert.equal(h.c.__ottMedia.kioskSelection().index, 0);
+    h.c.__ottMedia.current().sequence = null;
+    assert.equal(h.c.__ottMedia.kioskSelection().queueId, undefined);
+    assert.equal(h.c.__ottMedia.kioskSelection().records.length, 1);
 });
 console.log("PASS Plex queue: " + groups + " behavior groups");

@@ -387,6 +387,11 @@ class MobileNativeMediaPlugin : Plugin() {
     }
 
     private fun restoreSystemUi(systemUi: View) {
-        systemUi.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        val playerActivity = activity as? MainActivity
+        if (playerActivity != null) {
+            playerActivity.restoreImmersiveMode()
+        } else {
+            systemUi.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        }
     }
 }

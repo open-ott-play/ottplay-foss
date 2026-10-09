@@ -1,23 +1,30 @@
-# Archived Android bridge fixtures
+# Capacitor Android
 
-This directory is **not an Android build project**. APK/AAB creation, signing and
-publication moved to [open-ott-play/ottplay-android](https://github.com/open-ott-play/ottplay-android).
-The new repository is currently a private preview and requires access.
+This project packages the current shared TypeScript player as a **Full Capacitor
+APK**, with application ID `play.ott.foss`, for Android 7 (API 24) and later.
+It is separate from the Kotlin/Compose application in
+[ottplay-android](https://github.com/open-ott-play/ottplay-android).
 
-The old Capacitor Kotlin/Java sources, manifests and resources remain here because
-the shared player has regression tests for their bridge behavior, command queue,
-EPG cache, playback lifecycle, input handling and security configuration.
+Use Node 22, Java 21, Android SDK 36 and Build Tools 36.0.0:
 
-Gradle configuration, Gradle Wrapper, APK/AAB packaging tools and Android release
-jobs have been removed. Do not run `cap sync android` here. Capacitor scripts in
-this repository now target iOS explicitly. `@capacitor/android` is a development
-dependency used by legacy JVM/security test harnesses, not an application target.
+```sh
+npm ci
+npm run android:full          # debug APK
+npm run android:full:release  # unsigned release APK, unless KEYSTORE_FILE is set
+npm run cap:android          # Android Studio
+```
 
-The shared TypeScript Android/STB profiles and native bridge contracts are retained.
-The standalone native application owns its own UI, media stack and Android tests;
-the archived Full/Play wrapper configuration does not describe that application.
+The build synchronizes native plugins, generates isolated assets from the current
+frontend, then audits the final APK. Do not use `cap copy android` or copy an old
+`dist-mobile` tree into the application. `android/version.json` is the input for
+native version metadata; release CI projects the frozen version plan into it.
 
-The XMLTV Kotlin fixture has one maintained source at
-`mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt`.
-The JVM regression harness compiles that file directly. Do not restore a copy
-under `android/app`: this tree does not build an application.
+Beta and RC builds publish `ottplay-foss-android-full.apk`, signed with the existing
+Full certificate. Stable promotes the verified RC bytes. iOS remains part of the
+same release pipeline. Play Store AAB publication belongs to the native repository.
+
+The maintained XMLTV plugin lives in
+`mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt` and is
+included directly in the Gradle source set. Do not add another copy.
+
+See [Android distributions and remote updates](../docs/android-distributions.md).

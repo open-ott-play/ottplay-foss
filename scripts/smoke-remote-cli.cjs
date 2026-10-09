@@ -427,15 +427,21 @@ function moduleOf(file, requireFn, window) {
                                   dependencies,
                                   host
                               ))
-                            : name === "./remote-doctor"
+                            : name === "./remote-app-update"
                               ? moduleOf(
-                                    "src/plugins/remote-doctor.ts",
+                                    "src/commands/remote-app-update.ts",
                                     dependencies,
                                     host
                                 )
-                              : name === "../utils/caseless"
-                                ? caseless
-                                : { handleCommand: dispatch };
+                              : name === "./remote-doctor"
+                                ? moduleOf(
+                                      "src/plugins/remote-doctor.ts",
+                                      dependencies,
+                                      host
+                                  )
+                                : name === "../utils/caseless"
+                                  ? caseless
+                                  : { handleCommand: dispatch };
             let execute, inspection;
             function loadRuntime() {
                 restartModule = undefined;

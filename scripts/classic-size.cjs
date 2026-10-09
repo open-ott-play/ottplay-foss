@@ -155,11 +155,16 @@ const { gzipSync } = require("node:zlib");
 // code instead of repeating it. On clean Node 22.23.3 the combined web entry is
 // 805979 raw / 251002 gzip; native is 805937 / 251071. Add only 200 raw bytes,
 // leaving 121 before the release suffix; gzip and complete-payload caps stay put.
+// Explicit Capacitor update dispatch adds 2367 raw bytes; retain release suffix room.
+// Bounded kiosk reload and duplicate-item checkpoints measure 809372 raw web
+// bytes on Node 26.8.2 (+661); retain native and release suffix headroom.
 // Explicit aspect control, fenced persistence and media-only restore add 4889
 // raw / at most 1353 gzip bytes over 57d8dd1 on Node 22.23.3.
 // Web measures 810945 / 252390; native 810903 / 252458. Add 4900 / 1400
 // to preserve the existing native and release-suffix reserve once.
-const BUDGET = Object.freeze({ bytes: 811000, gzipBytes: 252750 });
+// Combined with Android updates and durable kiosk cooldown checks, Node 22.23.3
+// measures 814350 / 253386 web and 814308 / 253454 native within that allowance.
+const BUDGET = Object.freeze({ bytes: 814550, gzipBytes: 253600 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -237,9 +242,13 @@ const BUDGET = Object.freeze({ bytes: 811000, gzipBytes: 252750 });
 // The Plex error handoff adds 14 more gzip bytes in its optional provider.
 // Include the same 400-byte compressed allowance in the complete player;
 // its raw payload remains within the existing cap.
+// Native Node 22 output with kiosk recovery measures 293871 gzip bytes.
+// Include the Android menu alias and retain candidate-version headroom.
 // The same aspect increment is counted here; all seven provider assets are
 // unchanged. Complete web measures 923327 / 294108; native 923285 / 294176.
-const TOTAL_BUDGET = Object.freeze({ bytes: 923500, gzipBytes: 294400 });
+// The integrated Android/aspect build is 926823 / 295139 web and
+// 926781 / 295207 native on Node 22.23.3, including the durable kiosk guard.
+const TOTAL_BUDGET = Object.freeze({ bytes: 927050, gzipBytes: 295400 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

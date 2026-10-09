@@ -530,7 +530,7 @@ export default defineConfig(({ mode }) => ({
                 stageHostedEpg(outDir);
                 await stageHostedSwop(
                     outDir,
-                    androidCompileRoot || resolve(__dirname, "build")
+                    resolve(androidCompileRoot || __dirname, "build")
                 );
                 if (androidFlavor === "play") {
                     // This translation belongs to the excluded legacy adapter.

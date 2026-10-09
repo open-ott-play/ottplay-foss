@@ -435,7 +435,7 @@ See [Remote diagnostics](remote-diagnostics.md) for connection-authorized suppor
 ### Kiosk mode
 
 Updated players, control servers and CLI builds support a device-local live-channel
-lock. Only an authenticated request delivered by the configured command server
+lock, plus persistent VPortal and Plex media queues. Only an authenticated request delivered by the configured command server
 can enable, replace or disable it. There is no local kiosk toggle.
 
 ```sh
@@ -446,6 +446,24 @@ ott tv kiosk set 7          # replace the locked channel through the controller
 ott tv kiosk status         # policy, channel metadata, health and retry count
 ott tv kiosk off            # release the lock
 ```
+
+With the VPortal or Plex provider selected, `kiosk on` without a channel query
+captures the current video or complete media queue and repeats it. Start playback
+first; an empty media library cannot be locked. For a shuffled Plex library, use
+`plex play --shuffle ID...` before `kiosk on --strict`. Media kiosk stores source
+requests and resumes the saved item/position when the application starts again.
+
+The local watchdog retries after 10 seconds without playback progress, allowing
+60 seconds for media startup and episode transitions. After three unsuccessful
+stream retries, a subsequent stall reloads the player if its source still matches.
+The reload first saves and verifies the locked selection and media position.
+A persistent 10-minute cooldown prevents reload loops; stream retries continue
+during that cooldown. While the runtime reports that the network is offline,
+recovery waits instead of restarting. This cannot reconnect Android Wi-Fi or
+repair an unavailable NAS. A provider that failed during offline startup can
+reload after connectivity returns even before its catalog becomes ready.
+An authenticated `ott tv restart player` also reloads
+the player while retaining its saved kiosk policy.
 
 Arming without a channel does not capture the already playing channel. The first
 subsequent live selection that passes parental admission is retained, including
