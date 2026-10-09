@@ -20,18 +20,25 @@ const diagnostics = process.env.OTTP_DEVICE_TEST_DIAGNOSTICS === "1";
 let aspectFixture;
 function aspectMedia() {
     if (!aspectFixture) {
-        // The legacy Shaka bundle consumes fMP4 directly. Reuse the existing
-        // synthetic TS bytes without adding binary fixtures or requiring FFmpeg.
+        // Separate fMP4 renditions exercise real HLS audio/video decoding without
+        // depending on GStreamer's multiplexed SourceBuffer path. Shaka consumes
+        // fMP4 directly; reuse the TS bytes without FFmpeg or new binary fixtures.
+        aspectFixture = {};
         const transmuxer = new (require("mux.js").mp4.Transmuxer)({
-            remux: true,
+            remux: false,
         });
         transmuxer.on("data", (segment) => {
-            aspectFixture = {
-                "fmp4.m3u8":
-                    '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="init.mp4"\n#EXTINF:2,\nsegment.m4s\n#EXT-X-ENDLIST\n',
-                "init.mp4": Buffer.from(segment.initSegment),
-                "segment.m4s": Buffer.from(segment.data),
-            };
+            const type = segment.type;
+            aspectFixture[type + ".m3u8"] =
+                '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="' +
+                type +
+                '-init.mp4"\n#EXTINF:2,\n' +
+                type +
+                "-segment.m4s\n#EXT-X-ENDLIST\n";
+            aspectFixture[type + "-init.mp4"] = Buffer.from(
+                segment.initSegment
+            );
+            aspectFixture[type + "-segment.m4s"] = Buffer.from(segment.data);
         });
         transmuxer.push(
             new Uint8Array(
@@ -152,7 +159,7 @@ http.createServer((request, response) => {
     const plexFixture = pathname === "/video/:/transcode/universal/start.m3u8";
     if (
         plexFixture ||
-        /^\/__device_test_media\/(fmp4\.m3u8|init\.mp4|segment\.m4s)$/.test(
+        /^\/__device_test_media\/(audio|video)(\.m3u8|-init\.mp4|-segment\.m4s)$/.test(
             pathname
         )
     ) {
@@ -160,12 +167,14 @@ http.createServer((request, response) => {
             "Cache-Control": "no-store",
             "Content-Type": pathname.endsWith(".m3u8")
                 ? "application/vnd.apple.mpegurl"
-                : "video/mp4",
+                : pathname.includes("/audio-")
+                  ? "audio/mp4"
+                  : "video/mp4",
         });
         let fixture;
         if (plexFixture)
             fixture =
-                '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,CODECS="avc1.42c01e,mp4a.40.2"\n/__device_test_media/fmp4.m3u8\n';
+                '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Synthetic audio",DEFAULT=YES,AUTOSELECT=YES,URI="/__device_test_media/audio.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,CODECS="avc1.42c01e,mp4a.40.2",AUDIO="audio"\n/__device_test_media/video.m3u8\n';
         else fixture = aspectMedia()[path.basename(pathname)];
         response.end(fixture);
         return;

@@ -1526,13 +1526,24 @@ for (const { engine, strict } of [
                     "request:" +
                     JSON.stringify({ path: "/library/metadata/" + id });
                 await page.waitForFunction(
-                    (target) =>
-                        window.__ottMedia?.current()?.ref.itemId === target &&
-                        window.video?.videoWidth === 640 &&
-                        window.video?.videoHeight === 360 &&
-                        window.video?.readyState >= 2 &&
-                        window.video.currentTime > 0.1 &&
-                        !window.video.error,
+                    (target) => {
+                        const media = window.video;
+                        if (media?.error)
+                            throw new Error(
+                                "Decoder error " +
+                                    media.error.code +
+                                    ": " +
+                                    media.error.message
+                            );
+                        return (
+                            window.__ottMedia?.current()?.ref.itemId ===
+                                target &&
+                            media?.videoWidth === 640 &&
+                            media?.videoHeight === 360 &&
+                            media?.readyState >= 2 &&
+                            media.currentTime > 0.1
+                        );
+                    },
                     target,
                     { timeout: 15000 }
                 );
