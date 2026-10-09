@@ -985,10 +985,7 @@ for (const rows of [
         result = value;
     });
     f.requests[0].receive(page(rows));
-    assert.equal(
-        result.error,
-        "Exact VPortal selection is missing or ambiguous"
-    );
+    assert.equal(result.error, "Missing or ambiguous VPortal title");
     assert.equal(
         result.items.length,
         0,
@@ -1008,10 +1005,7 @@ for (const query of [
     f.client.search(query, (value) => {
         result = value;
     });
-    assert.equal(
-        result.error,
-        "Exact VPortal selection requires 1 to 20 distinct titles"
-    );
+    assert.equal(result.error, "Invalid exact VPortal titles");
     assert.equal(f.requests.length, 0);
     assert.equal(f.timers(), 0);
 }

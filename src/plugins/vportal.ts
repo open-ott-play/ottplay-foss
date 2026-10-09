@@ -527,7 +527,7 @@ export function createVPortalClient(
                 });
             } catch (_) {
                 done({
-                    error: "Exact VPortal selection requires 1 to 20 distinct titles",
+                    error: "Invalid exact VPortal titles",
                     items: [],
                 });
                 return function () {};
@@ -576,8 +576,7 @@ export function createVPortalClient(
                         );
                     });
                     if (matches.length !== 1) {
-                        error =
-                            "Exact VPortal selection is missing or ambiguous";
+                        error = "Missing or ambiguous VPortal title";
                         break;
                     }
                     ordered.push(matches[0]);
