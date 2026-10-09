@@ -53,7 +53,7 @@ class AssetIdentity(TypedDict):
 JSONObject = dict[str, object]
 ReleaseSnapshot = tuple[JSONObject, JSONObject, list[JSONObject]]
 ASSET_RESTRICTIONS: tuple[AssetRestriction, ...]
-ASSET_RESTRICTIONS = ({'suffixes': ['.apk', '.aab'], 'reason': 'Android APK/AAB publication moved to open-ott-play/ottplay-android'},)
+ASSET_RESTRICTIONS = ({'suffixes': ['.aab'], 'reason': 'Play Store AAB publication belongs to open-ott-play/ottplay-android'},)
 VERSION_PATTERN = r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
 VERSION_RE = re.compile(VERSION_PATTERN, re.ASCII)
 TAG_RE = re.compile(

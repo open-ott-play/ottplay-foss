@@ -9,7 +9,7 @@ function createRemotePlexQueue(
     var pending: any = null;
     var serial = 0;
     var capability = {
-        max_items: 100,
+        max_items: 500,
         operations: ["play", "preview", "status", "next", "previous", "stop"],
         version: 1,
     };
@@ -61,9 +61,11 @@ function createRemotePlexQueue(
                 playback.target.channelId === media.ref.itemId
             ) {
                 queue.index = media.sequence.index;
+                queue.repeat = media.sequence.repeat === "all" ? "all" : "none";
                 if (!queue.error)
                     queue.state = media.ended
-                        ? queue.index === queue.ids.length - 1
+                        ? queue.index === queue.ids.length - 1 &&
+                          queue.repeat !== "all"
                             ? "ended"
                             : "preparing"
                         : playback.phase === "paused"
@@ -86,7 +88,7 @@ function createRemotePlexQueue(
             ids: shown ? shown.ids.slice() : [],
             index: shown ? shown.index : null,
             order: "listed",
-            repeat: "none",
+            repeat: shown && shown.repeat === "all" ? "all" : "none",
             runtime: runtime,
             state: shown ? shown.state : lastError ? "error" : "idle",
             version: 1,
@@ -148,6 +150,10 @@ function createRemotePlexQueue(
             done({ data: state(), status: "ok" });
             return;
         }
+        if (w.__ottKiosk && w.__ottKiosk.enabled() && op !== "preview") {
+            reject("Kiosk mode does not allow a Plex queue.");
+            return;
+        }
         if (op === "stop") {
             stop();
             done({ data: state(), status: "ok" });
@@ -162,7 +168,7 @@ function createRemotePlexQueue(
         if (
             !Array.isArray(ids) ||
             !ids.length ||
-            ids.length > 100 ||
+            ids.length > 500 ||
             ids.some(function (id: any) {
                 return typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id);
             })
@@ -179,10 +185,6 @@ function createRemotePlexQueue(
                     ? "Plex queue is already at its first item."
                     : "Plex queue is already at its last item."
             );
-            return;
-        }
-        if (w.__ottKiosk && w.__ottKiosk.enabled() && op !== "preview") {
-            reject("Kiosk mode does not allow a Plex queue.");
             return;
         }
         if (

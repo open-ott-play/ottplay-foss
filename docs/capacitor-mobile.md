@@ -1,10 +1,8 @@
-# Capacitor iOS
+# Capacitor mobile
 
-The shared TypeScript player is packaged with Capacitor for iOS in this repository.
-Android APK/AAB creation, signing and publication moved to
-[ottplay-android](https://github.com/open-ott-play/ottplay-android), currently a private
-preview requiring repository access. Android browser/STB profiles and legacy bridge
-behavior remain in the shared frontend.
+The shared player is packaged for iOS and Android in this repository. See
+[Android distributions](android-distributions.md) for APK builds and OTT updates.
+The Kotlin/Compose Android application remains a separate project.
 
 ## Build and open
 
@@ -18,13 +16,12 @@ npm run cap:ios
 
 `build:ios` builds and audits `dist-mobile`, syncs only iOS, then audits the copied
 runtime. `build:mobile` is a compatibility alias for `build:ios`; `cap:copy` and
-`cap:sync` also target iOS explicitly. No Android Gradle project or packaging command
-is maintained here. `build-ios-local.sh` and `build-ios-sim-local.sh` remain available;
+`cap:sync` also target iOS explicitly. Android uses the separate `android:full` and `android:full:release` commands. `build-ios-local.sh` and `build-ios-sim-local.sh` remain available;
 see [local build scripts](local-build-scripts.md).
 
 ## Configuration and native behavior
 
-`capacitor.config.ts` defines the iOS container. The app uses the same provider,
+`capacitor.config.ts` defines both containers. The app uses the same provider,
 settings, channel-list and playback logic as the shared player. Native Swift plugins
 supply command-queue HTTP control, authenticated stream proxying, XMLTV cache and
 native media/PiP integration. HTTP remote control remains off until explicit opt-in.
@@ -37,10 +34,10 @@ not establish those behaviors.
 Use [the device checklist](mode-b-device-smoke.md) and
 `./scripts/smoke-capacitor-device.sh --check-native --check-ios-tools` for setup.
 `--build-sync` builds iOS; `--open-ios` opens Xcode. Queue probing remains available
-for existing legacy installations. `--open-android` only reports the new repository.
+for existing legacy installations. `--open-android` opens the Capacitor Android project in Android Studio.
 
-## Compatibility references
+## Native bridge tests
 
-The `android/` tree now contains [archived source fixtures](../android/README.md).
-Their JVM/security tests continue to check the shared TypeScript/native bridge
-contracts; they do not assemble an Android application.
+The [Android project](../android/README.md) is compiled and its APK is audited in
+native CI. JVM regression tests additionally exercise bridge behavior without a
+device. Physical playback, system dialogs and Fire OS behavior need device tests.

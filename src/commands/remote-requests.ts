@@ -7,6 +7,7 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
+import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
@@ -57,6 +58,7 @@ export function executeRemoteRequest(
         w.__ottKiosk &&
         w.__ottKiosk.enabled() &&
         [
+            "app_update",
             "status",
             "screenshot",
             "channels",
@@ -153,6 +155,9 @@ export function executeRemoteRequest(
     ) {
         handleRemoteProfiles(request, done);
         return;
+    }
+    if (request.action === "app_update") {
+        return executeRemoteAppUpdate(w, params, done, afterReply);
     }
     if (request.action === "screenshot") {
         return executeRemoteScreenshot(w, params, done);

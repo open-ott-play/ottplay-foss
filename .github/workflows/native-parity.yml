@@ -49,22 +49,24 @@ jobs:
         with:
           # The action installs command-line tools; its legacy "tools" default is unavailable.
           packages: platform-tools
-      - name: Install Android API stubs for legacy JVM tests
+      - name: Install Android SDK for bridge tests and APK compilation
         run: |
-          sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-36" </dev/null
-          test -s "$ANDROID_HOME/platforms/android-36/android.jar"
+          bash scripts/ci-android-install-sdk.sh
       - run: npm ci --ignore-scripts
       - name: Verify Android TV WebView test host
         run: node tests/test_android_tv_webview.cjs
-      - name: Verify archived Android bridge contracts without building an application
+      - name: Verify Android bridge contracts
         run: |
           python3 tests/test_command_queue_smoke.py
           node tests/test_android_activity.cjs
+          node tests/test_remote_app_update.cjs
           node tests/android_provider_policy.cjs
           node tests/test_play_system_icons.cjs
           npm run test:native:runtime
           node tests/test_android_privacy_viewer.cjs
           python3 tests/test_android_emoji_policy.py
+      - name: Build and audit the Full Capacitor APK
+        run: npm run android:full:release
       - name: Exercise native queue JSON and socket cleanup
         run: |
           curl --fail --location --retry 3 https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip -o "$RUNNER_TEMP/kotlin.zip"

@@ -391,9 +391,10 @@ function moduleOf(file, requireFn, window) {
                                 dependencies,
                                 host
                             )
-                          : name === "./remote-restart"
+                          : name === "./remote-restart" ||
+                              name === "./remote-app-update"
                             ? moduleOf(
-                                  "src/commands/remote-restart.ts",
+                                  "src/commands/" + name.slice(2) + ".ts",
                                   dependencies,
                                   host
                               )

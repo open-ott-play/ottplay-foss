@@ -3,6 +3,7 @@ import type {
     DoctorCapabilityName,
     DoctorCapabilityReason,
 } from "../plugins/remote-doctor";
+import { remoteAppUpdateAvailable } from "./remote-app-update";
 import { remotePlexQueue } from "./remote-plex";
 
 function remoteSettingsLocked(w: any): boolean {
@@ -199,14 +200,20 @@ function remoteInputCode(w: any, key: string): number {
     )
         return 0;
     var pair = remoteKeys[key];
-    var code = w.keys[pair[0]];
+    // Android names its physical menu key TOOLS; both open the player menu.
+    var menuAlias = key === "menu" && !w.keys.MENU;
+    var code = w.keys[menuAlias ? "TOOLS" : pair[0]];
     if (typeof code !== "number" || !isFinite(code) || code <= 0) return 0;
     var mapped =
         w.__ottDevice && w.__ottDevice.eventToKeyCode
             ? w.__ottDevice.eventToKeyCode({ keyCode: code, which: code })
             : code;
     // Hardware key aliases can collide (for example AUDIO and STOP on a PC).
-    if (w.__ottClassicScreenPort.normalize(mapped).id !== pair[1]) return 0;
+    if (
+        w.__ottClassicScreenPort.normalize(mapped).id !==
+        (menuAlias ? "tools" : pair[1])
+    )
+        return 0;
     if (key === "fullscreen" && w.__ottClassicScreenPort.screens.current())
         return 0;
     return code;
@@ -663,6 +670,9 @@ export function executeRemoteControl(
         // policy of either neighbour. Every requested destination is checked.
         if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
         reply({
+            app_update: remoteAppUpdateAvailable(w)
+                ? { operations: ["status", "prepare", "install"], version: 1 }
+                : null,
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),

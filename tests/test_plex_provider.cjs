@@ -146,6 +146,7 @@ function remote(f) {
                 "./remote-profiles",
                 "./remote-plex",
                 "./remote-restart",
+                "./remote-app-update",
                 "./remote-archive",
             ].includes(name)
         );

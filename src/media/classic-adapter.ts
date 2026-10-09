@@ -1608,7 +1608,7 @@ function classicMediaRuntime(): any {
                 return false;
             var items = describe(selection.records, {
                 kind: "history",
-                title: "VPortal",
+                title: "Media",
             });
             var index = selection.index;
             if (
@@ -1640,7 +1640,12 @@ function classicMediaRuntime(): any {
                 if (!valid()) return;
                 resolve(
                     items[index],
-                    { index: index, items: items, repeat: "all" },
+                    {
+                        index: index,
+                        items: items,
+                        queueId: selection.queueId,
+                        repeat: "all",
+                    },
                     true,
                     valid,
                     undefined,
@@ -2209,7 +2214,8 @@ function classicMediaRuntime(): any {
             !playing ||
             playing.ref.sourceId !== source ||
             !w.__ottActiveProviderDriver ||
-            w.__ottActiveProviderDriver.id !== "vportal" ||
+            (w.__ottActiveProviderDriver.id !== "vportal" &&
+                w.__ottActiveProviderDriver.id !== "plex") ||
             !state ||
             state.phase === "stopped" ||
             state.phase === "idle" ||
@@ -2228,12 +2234,18 @@ function classicMediaRuntime(): any {
             var item = items[i];
             if (!item.payload.request || item.ref.sourceId !== source)
                 return null;
-            if (item.ref.itemId === playing.ref.itemId) index = i;
+            if (
+                item.ref.itemId === playing.ref.itemId &&
+                (!sequence || i === sequence.index)
+            )
+                index = i;
             // Persist provider requests/identities, never resolved or expiring media URLs.
             records.push({
                 __ottMediaRef: item.ref,
-                __ottVPortalQueue: true,
+                __ottMediaSequence: item.payload.__ottMediaSequence,
+                __ottVPortalQueue: w.__ottActiveProviderDriver.id === "vportal",
                 adult: item.payload.adult,
+                plexSource: item.payload.plexSource,
                 request: item.payload.request,
                 title: String(item.payload.title || ""),
                 vportalSource: item.payload.vportalSource,
@@ -2246,6 +2258,7 @@ function classicMediaRuntime(): any {
                 isFinite(state.position) && state.position >= 0
                     ? state.position
                     : 0,
+            queueId: sequence ? sequence.queueId : undefined,
             records: records,
             source: source,
         };

@@ -1421,6 +1421,8 @@ vm.runInNewContext(plexCode, plexContext);
 const restartContext = {
     exports: {},
     require(name) {
+        if (name === "./remote-app-update")
+            return { remoteAppUpdateAvailable: () => false };
         assert.equal(name, "./remote-plex");
         return plexContext.exports;
     },
