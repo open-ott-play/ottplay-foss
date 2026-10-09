@@ -65,6 +65,7 @@ function mountChannelLibrary(host: any): void {
     var generation = ++channelLibraryGeneration;
     var source = host.__ottSourceIdentity.current(host);
     var get = host.providerGetItem;
+    var getPersisted = host.providerGetPersistedItem;
     var set = host.providerSetItem;
     var rows: any[] = [];
     (host.cList || []).forEach(function (id: number) {
@@ -93,11 +94,17 @@ function mountChannelLibrary(host: any): void {
                     generation === channelLibraryGeneration &&
                     source === host.__ottSourceIdentity.current(host) &&
                     get === host.providerGetItem &&
+                    getPersisted === host.providerGetPersistedItem &&
                     set === host.providerSetItem
                 );
             },
             get: function (key: string) {
                 return get.call(host, key);
+            },
+            getPersisted: function (key: string) {
+                return typeof getPersisted === "function"
+                    ? getPersisted.call(host, key)
+                    : null;
             },
             legacySelection: {
                 category: host.catIndex,
@@ -178,6 +185,42 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
                     id
                 );
                 return index < 0 ? null : [category, index];
+            },
+        };
+    },
+    capturePreference: function (name: string, channelId: number | null) {
+        var host = window as any;
+        var library = channelLibraryInstance;
+        var catalog = host.channels;
+        var kind = channelPreferenceKinds[name];
+        function active(): boolean {
+            return !!(
+                kind &&
+                library &&
+                library === channelLibraryInstance &&
+                library.active() &&
+                catalog === host.channels &&
+                (channelId === null || library.itemId(channelId))
+            );
+        }
+        if (!active()) return null;
+        return {
+            active: active,
+            get: function () {
+                return active()
+                    ? library.preference(kind, channelId)
+                    : undefined;
+            },
+            saved: function () {
+                return active()
+                    ? library.savedPreference(kind, channelId)
+                    : undefined;
+            },
+            set: function (value: number) {
+                return (
+                    active() &&
+                    library.setPreference(kind, channelId, value, true)
+                );
             },
         };
     },

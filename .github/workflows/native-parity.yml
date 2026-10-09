@@ -110,6 +110,21 @@ jobs:
       - name: Verify optional authenticated HTTP smoke contract
         run: python3 tests/test_command_queue_smoke.py
       - run: npm run build:ios
+      # Native HLS and Shaka's Safari path use the macOS media stack.
+      - name: Install WebKit for native HLS playback checks
+        run: npx playwright install webkit
+      - name: Test every aspect engine in macOS WebKit
+        run: npx playwright test tests/browser/plex-provider.spec.cjs --grep 'Plex aspect persists' --browser=webkit
+      - name: Preserve macOS WebKit playback failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-hls-browser-failures-${{ github.sha }}
+          path: |
+            build/device-browser-report/
+            build/device-browser-results/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Test demo playback lifecycle and XMLTV warmup
         run: |
           python3 tests/test_ios_demo_media.py

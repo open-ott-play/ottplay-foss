@@ -9,6 +9,175 @@ const { promisify } = require("node:util");
 const execFile = promisify(require("node:child_process").execFile);
 const net = require("node:net");
 const http = require("node:http");
+const { performance } = require("node:perf_hooks");
+
+// Pace dispatch, never HTTP completion: player long-polls must not block replies.
+// These gaps leave headroom below Go's fixed-minute admin240/device120 buckets.
+function requestPacer(
+    intervals,
+    now = () => performance.now(),
+    later = setTimeout,
+    clear = clearTimeout
+) {
+    const queues = new Map(
+        [...intervals].map(([key, interval]) => [
+            key,
+            { interval, next: 0, pending: [] },
+        ])
+    );
+    let timer = null,
+        closed = false;
+    function schedule() {
+        if (timer !== null) clear(timer);
+        timer = null;
+        if (closed) return;
+        const ready = [...queues.values()].filter(
+            (queue) => queue.pending.length
+        );
+        if (ready.length)
+            timer = later(
+                dispatch,
+                Math.max(
+                    0,
+                    Math.min(...ready.map((queue) => queue.next)) - now()
+                )
+            );
+    }
+    function dispatch() {
+        timer = null;
+        if (closed) return;
+        for (const queue of queues.values()) {
+            if (!queue.pending.length || queue.next > now()) continue;
+            const forward = queue.pending.shift();
+            // A late timer gets one slot, not a catch-up burst of overdue slots.
+            queue.next = now() + queue.interval;
+            forward();
+        }
+        schedule();
+    }
+    return {
+        close() {
+            closed = true;
+            if (timer !== null) clear(timer);
+            timer = null;
+            for (const queue of queues.values()) queue.pending.length = 0;
+        },
+        enqueue(key, forward) {
+            assert(!closed, "request pacer is closed");
+            const queue = queues.get(key);
+            assert(queue, "unexpected test credential");
+            queue.pending.push(forward);
+            schedule();
+            return () => {
+                const index = queue.pending.indexOf(forward);
+                if (index >= 0) queue.pending.splice(index, 1);
+                schedule();
+            };
+        },
+    };
+}
+
+function testRequestPacing() {
+    let clock = 0,
+        sequence = 0;
+    const timers = new Map(),
+        sent = [];
+    const pace = requestPacer(
+        new Map([
+            ["admin", 300],
+            ["first", 600],
+            ["second", 600],
+        ]),
+        () => clock,
+        (run, delay) => {
+            timers.set(++sequence, { at: clock + delay, run });
+            return sequence;
+        },
+        (id) => timers.delete(id)
+    );
+    function advance(to, stalled = false) {
+        if (stalled) clock = to;
+        for (;;) {
+            const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+            if (!next || next[1].at > to) break;
+            timers.delete(next[0]);
+            clock = Math.max(clock, next[1].at);
+            next[1].run();
+        }
+        clock = to;
+    }
+    function enqueue(key) {
+        return pace.enqueue(key, () => sent.push({ key, time: clock }));
+    }
+    enqueue("admin");
+    enqueue("admin");
+    enqueue("first");
+    enqueue("first");
+    advance(0);
+    assert.deepEqual(
+        sent.map((item) => item.key),
+        ["admin", "first"],
+        "another credential does not wait for a long-poll response"
+    );
+    advance(299);
+    assert.equal(sent.length, 2);
+    advance(300);
+    assert.equal(sent.length, 3);
+    advance(599);
+    assert.equal(sent.length, 3);
+    advance(600);
+    assert.equal(sent.length, 4);
+    for (let i = 0; i < 500; i++) {
+        enqueue("admin");
+        enqueue("first");
+        enqueue("second");
+    }
+    const beforeStall = sent.length;
+    advance(10000, true);
+    assert.equal(
+        sent.length,
+        beforeStall + 3,
+        "late timers cannot release a burst"
+    );
+    advance(400000);
+    for (const [key, limit, gap] of [
+        ["admin", 240, 300],
+        ["first", 120, 600],
+        ["second", 120, 600],
+        [null, 480, 0],
+    ]) {
+        const events = sent.filter((item) => key === null || item.key === key);
+        let start = -Infinity,
+            count = 0;
+        events.forEach((event, index) => {
+            if (event.time - start >= 60000) {
+                start = event.time;
+                count = 0;
+            }
+            assert(
+                ++count <= limit,
+                "real fixed-minute credential/aggregate budget"
+            );
+            if (index) assert(event.time - events[index - 1].time >= gap);
+        });
+    }
+    const cancel = pace.enqueue("admin", () =>
+        assert.fail("cancelled request dispatched")
+    );
+    cancel();
+    assert.equal(timers.size, 0);
+    pace.enqueue("first", () => assert.fail("closed pacer dispatched"));
+    const lateCallback = [...timers.values()][0].run;
+    pace.close();
+    assert.equal(timers.size, 0);
+    lateCallback();
+    console.log(
+        "PASS smoke pacing: fixed-minute budgets, independent credentials, late timers, cancellation and teardown"
+    );
+}
+testRequestPacing();
+if (process.argv.includes("--test-pacing")) process.exit(0);
+
 const binary = process.env.OTT_CONTROL_BINARY,
     cli = process.env.OTT_CLI;
 assert(binary && cli, "Set OTT_CONTROL_BINARY and OTT_CLI");
@@ -77,52 +246,67 @@ function moduleOf(file, requireFn, window) {
     const prefix = "/ott-control";
     const submissions = [];
     let lostStepSubmission = null;
+    const pace = requestPacer(
+        new Map([
+            ["Bearer " + serverConfig.admin_token, 300],
+            ...serverConfig.devices.map((device) => [
+                "Bearer " + device.token,
+                600,
+            ]),
+        ])
+    );
     const proxy = http.createServer((request, response) => {
         if (!request.url.startsWith(prefix + "/")) {
             response.writeHead(404).end();
             return;
         }
-        const requestChunks = [];
-        request.on("data", (chunk) => requestChunks.push(chunk));
-        const upstream = http.request(
-            "http://127.0.0.1:" + port + request.url.slice(prefix.length),
-            { headers: request.headers, method: request.method },
-            (incoming) => {
-                if (
-                    request.method === "POST" &&
-                    request.url.startsWith(prefix + "/api/requests?")
-                ) {
-                    const body = JSON.parse(Buffer.concat(requestChunks));
-                    submissions.push({
-                        action: body.action,
-                        device: new URL(
-                            request.url,
-                            addressForProxy()
-                        ).searchParams.get("device_id"),
-                        operation: body.params.operation,
-                        ...(body.params.offset === undefined
-                            ? {}
-                            : { offset: body.params.offset }),
-                    });
+        const cancel = pace.enqueue(request.headers.authorization, () => {
+            if (request.destroyed || response.destroyed) return;
+            const requestChunks = [];
+            request.on("data", (chunk) => requestChunks.push(chunk));
+            const upstream = http.request(
+                "http://127.0.0.1:" + port + request.url.slice(prefix.length),
+                { headers: request.headers, method: request.method },
+                (incoming) => {
                     if (
-                        lostStepSubmission &&
-                        !lostStepSubmission.dropped &&
-                        body.action === "playback" &&
-                        body.params.operation === lostStepSubmission.operation
+                        request.method === "POST" &&
+                        request.url.startsWith(prefix + "/api/requests?")
                     ) {
-                        assert.equal(incoming.statusCode, 202);
-                        lostStepSubmission.dropped = true;
-                        incoming.resume();
-                        response.destroy();
-                        return;
+                        const body = JSON.parse(Buffer.concat(requestChunks));
+                        submissions.push({
+                            action: body.action,
+                            device: new URL(
+                                request.url,
+                                addressForProxy()
+                            ).searchParams.get("device_id"),
+                            operation: body.params.operation,
+                            ...(body.params.offset === undefined
+                                ? {}
+                                : { offset: body.params.offset }),
+                        });
+                        if (
+                            lostStepSubmission &&
+                            !lostStepSubmission.dropped &&
+                            body.action === "playback" &&
+                            body.params.operation ===
+                                lostStepSubmission.operation
+                        ) {
+                            assert.equal(incoming.statusCode, 202);
+                            lostStepSubmission.dropped = true;
+                            incoming.resume();
+                            response.destroy();
+                            return;
+                        }
                     }
+                    response.writeHead(incoming.statusCode, incoming.headers);
+                    incoming.pipe(response);
                 }
-                response.writeHead(incoming.statusCode, incoming.headers);
-                incoming.pipe(response);
-            }
-        );
-        upstream.on("error", () => response.writeHead(502).end());
-        request.pipe(upstream);
+            );
+            upstream.on("error", () => response.writeHead(502).end());
+            request.pipe(upstream);
+        });
+        request.on("aborted", cancel);
+        response.on("close", cancel);
     });
     function addressForProxy() {
         return "http://127.0.0.1:" + proxy.address().port;
@@ -145,6 +329,9 @@ function moduleOf(file, requireFn, window) {
             } catch {}
             await new Promise((r) => setTimeout(r, 50));
         }
+        // This fixture supplies only the display/storage port. Browser tests
+        // separately exercise the real core geometry and durable library.
+        const aspectPreferences = new Map();
         function player(device, token, initialVolume, native = false) {
             let volume = initialVolume,
                 dispatches = 0,
@@ -168,6 +355,11 @@ function moduleOf(file, requireFn, window) {
                 droppedStepReceipt = false,
                 protectedInput = false,
                 pendingAck = null;
+            let aspectMode = aspectPreferences.get(device) || "fit",
+                aspectChanges = 0,
+                aspectGeneration = 0,
+                aspectSupported = true,
+                reloadOnAspect = false;
             const keysReceived = [],
                 controlsReceived = [],
                 receipts = [];
@@ -213,6 +405,25 @@ function moduleOf(file, requireFn, window) {
                         return () => {};
                     },
                     source: () => "demo",
+                },
+                captureAspectTarget: () => {
+                    if (!aspectSupported) return null;
+                    const generation = aspectGeneration;
+                    const current = () =>
+                        aspectSupported && aspectGeneration === generation;
+                    return {
+                        current,
+                        mode: aspectMode,
+                        savedMode: aspectPreferences.get(device) || null,
+                        set(mode) {
+                            if (!current()) return false;
+                            aspectPreferences.set(device, mode);
+                            aspectMode = mode;
+                            aspectGeneration++;
+                            aspectChanges++;
+                            return true;
+                        },
+                    };
                 },
                 catIndex: 0,
                 cats: { one: ["a", "b"] },
@@ -368,6 +579,7 @@ function moduleOf(file, requireFn, window) {
                 else if (command.volume !== undefined) volume = command.volume;
                 return "accepted";
             };
+            let restartModule;
             const dependencies = (name) =>
                 name === "../provider"
                     ? {
@@ -392,20 +604,43 @@ function moduleOf(file, requireFn, window) {
                                 host
                             )
                           : name === "./remote-restart" ||
-                              name === "./remote-app-update"
-                            ? moduleOf(
-                                  "src/commands/" + name.slice(2) + ".ts",
+                              name === "../commands/remote-restart"
+                            ? restartModule ||
+                              (restartModule = moduleOf(
+                                  "src/commands/remote-restart.ts",
                                   dependencies,
                                   host
-                              )
-                            : name === "../utils/caseless"
-                              ? caseless
-                              : { handleCommand: dispatch };
-            const execute = moduleOf(
-                "src/commands/remote-requests.ts",
-                dependencies,
-                host
-            ).executeRemoteRequest;
+                              ))
+                            : name === "./remote-app-update"
+                              ? moduleOf(
+                                    "src/commands/remote-app-update.ts",
+                                    dependencies,
+                                    host
+                                )
+                              : name === "./remote-doctor"
+                                ? moduleOf(
+                                      "src/plugins/remote-doctor.ts",
+                                      dependencies,
+                                      host
+                                  )
+                                : name === "../utils/caseless"
+                                  ? caseless
+                                  : { handleCommand: dispatch };
+            let execute, inspection;
+            function loadRuntime() {
+                restartModule = undefined;
+                execute = moduleOf(
+                    "src/commands/remote-requests.ts",
+                    dependencies,
+                    host
+                ).executeRemoteRequest;
+                inspection = moduleOf(
+                    "src/plugins/remote-inspect.ts",
+                    dependencies,
+                    host
+                ).installRemoteInspection(host);
+            }
+            loadRuntime();
             const transport = moduleOf(
                 "src/plugins/command-server.ts",
                 () => require("../tests/load-wire.cjs")(),
@@ -506,10 +741,30 @@ function moduleOf(file, requireFn, window) {
                 dispatch,
                 (request, done, afterReply) => {
                     controlsReceived.push(clone(request));
-                    return request.action === "kiosk"
-                        ? host.__ottKiosk.request(request.params, done)
-                        : execute(request, done, afterReply);
-                }
+                    if (reloadOnAspect && request.action === "aspect") {
+                        reloadOnAspect = false;
+                        // A real page reload retires its old transport too. The
+                        // new runtime must leave the old request for its owner.
+                        controller.configure({
+                            address: "",
+                            enabled: false,
+                            token: "",
+                        });
+                        loadRuntime();
+                        controller.configure({ address, enabled: true, token });
+                        return;
+                    }
+                    return inspection.execute(
+                        request,
+                        done,
+                        afterReply,
+                        (item, reply, defer) =>
+                            item.action === "kiosk"
+                                ? host.__ottKiosk.request(item.params, reply)
+                                : execute(item, reply, defer)
+                    );
+                },
+                (request) => inspection.accept(request)
             );
             controller.configure({
                 address,
@@ -518,7 +773,14 @@ function moduleOf(file, requireFn, window) {
             });
             controllers.push(controller);
             return () => ({
+                aspectChanges,
+                aspectMode,
+                aspectSaved: aspectPreferences.get(device) || null,
+                aspectSupported: (value) => {
+                    aspectSupported = value;
+                },
                 backendAccesses,
+                changeAspectTarget: () => aspectGeneration++,
                 channelSteps,
                 configuration: clone(configuration),
                 controlsReceived: clone(controlsReceived),
@@ -566,6 +828,9 @@ function moduleOf(file, requireFn, window) {
                     protectedInput = value;
                 },
                 receipts: clone(receipts),
+                reloadOnAspect: () => {
+                    reloadOnAspect = true;
+                },
                 reloads,
                 rename: (id, name) => {
                     host.channels[id].channel_name = name;
@@ -587,11 +852,17 @@ function moduleOf(file, requireFn, window) {
                     host.curList = host.cats.steps;
                     host.primaryIndex = 0;
                 },
+                stop: () =>
+                    controller.configure({
+                        address: "",
+                        enabled: false,
+                        token: "",
+                    }),
                 streamRestarts,
                 volume,
             });
         }
-        const television = player("dev_test", "b".repeat(32), 30);
+        let television = player("dev_test", "b".repeat(32), 30);
         const desktop = player("dev_second", "c".repeat(32), 70, true);
         async function runOn(name, ...args) {
             return execFile("python3", [
@@ -936,6 +1207,136 @@ function moduleOf(file, requireFn, window) {
         ]);
         assert(browserCaps.input.includes("ok"));
 
+        const aspectBefore = television();
+        assert.deepEqual(browserCaps.aspect, {
+            modes: ["fit", "fill"],
+            operations: ["get", "set"],
+            version: 1,
+        });
+        assert.deepEqual(await jsonOn("tv", "aspect"), {
+            mode: "fit",
+            operation: "get",
+            persisted: false,
+            runtime: browserCaps.player.runtime,
+            saved_mode: null,
+            version: 1,
+        });
+        assert.equal(
+            television().backendAccesses,
+            aspectBefore.backendAccesses
+        );
+        for (const [alias, mode] of [
+            ["fill", "fill"],
+            ["Fit to screen", "fit"],
+            ["Fill screen", "fill"],
+            ["fill", "fill"],
+        ]) {
+            const before = await deferred(
+                "tv",
+                television,
+                ["aspect", alias],
+                "aspect",
+                "set",
+                () => television().aspectChanges,
+                undefined,
+                { mode, runtime: browserCaps.player.runtime, version: 1 }
+            );
+            assert.equal(television().aspectChanges, before + 1);
+            assert.deepEqual(await jsonOn("tv", "aspect", "get"), {
+                mode,
+                operation: "get",
+                persisted: true,
+                runtime: browserCaps.player.runtime,
+                saved_mode: mode,
+                version: 1,
+            });
+        }
+        assert.equal(
+            desktop().aspectMode,
+            "fit",
+            "aspect persists only for the selected player"
+        );
+        assert.equal(desktop().aspectSaved, null);
+        assert.deepEqual(
+            television().keysReceived,
+            aspectBefore.keysReceived,
+            "typed aspect never injects menu keys"
+        );
+        const invalidAspectPosted = submissions.length;
+        await assert.rejects(jsonOn("tv", "aspect", "stretch"));
+        assert.equal(submissions.length, invalidAspectPosted);
+        for (const policy of ["unsupported", "protected"]) {
+            if (policy === "unsupported") television().aspectSupported(false);
+            else television().protectInput(true);
+            const before = television();
+            assert.deepEqual((await jsonOn("tv", "caps")).aspect, {
+                modes: policy === "unsupported" ? [] : ["fit", "fill"],
+                operations: policy === "unsupported" ? [] : ["get"],
+                version: 1,
+            });
+            await assert.rejects(jsonOn("tv", "aspect", "fit"), (error) => {
+                assert.equal(error.stdout, "");
+                assert.match(error.stderr, /No aspect command was sent/);
+                return true;
+            });
+            assert(
+                television()
+                    .controlsReceived.slice(before.controlsReceived.length)
+                    .every((request) => request.action === "capabilities")
+            );
+            assert.equal(television().aspectChanges, before.aspectChanges);
+            if (policy === "protected")
+                assert.equal((await jsonOn("tv", "aspect")).mode, "fill");
+            television().aspectSupported(true);
+            television().protectInput(false);
+        }
+        for (const change of [
+            () => television().changeAspectTarget(),
+            () => television().protectInput(true),
+        ]) {
+            const before = await deferred(
+                "tv",
+                television,
+                ["aspect", "fit"],
+                "aspect",
+                "set",
+                () => television().aspectChanges,
+                change,
+                { mode: "fit", runtime: browserCaps.player.runtime, version: 1 }
+            );
+            assert.equal(
+                television().aspectChanges,
+                before,
+                "a stale target or new protected surface cancels the accepted write"
+            );
+            assert.equal(television().aspectMode, "fill");
+            television().protectInput(false);
+        }
+        const staleAspectBefore = television();
+        television().reloadOnAspect();
+        await assert.rejects(jsonOn("tv", "aspect", "fit"), (error) => {
+            assert.equal(error.stdout, "");
+            assert.match(error.stderr, /did not respond/);
+            return true;
+        });
+        assert.equal(
+            television().aspectChanges,
+            staleAspectBefore.aspectChanges
+        );
+        assert.deepEqual(
+            television()
+                .controlsReceived.slice(
+                    staleAspectBefore.controlsReceived.length
+                )
+                .map((request) => request.action),
+            ["capabilities", "aspect"],
+            "runtime mismatch never falls back or retries"
+        );
+        const replacedAspect = await jsonOn("tv", "aspect");
+        assert.notEqual(replacedAspect.runtime, browserCaps.player.runtime);
+        assert.equal(replacedAspect.mode, "fill");
+        assert.equal(replacedAspect.persisted, true);
+
         async function unsupported(name, get, args, action, params) {
             const before = get().controlsReceived.length;
             await assert.rejects(runOn(name, ...args), (error) => {
@@ -982,7 +1383,8 @@ function moduleOf(file, requireFn, window) {
             action,
             value,
             readEffect,
-            afterIntent
+            afterIntent,
+            fields = {}
         ) {
             const gate = get().defer(action, value);
             const before = readEffect();
@@ -992,6 +1394,7 @@ function moduleOf(file, requireFn, window) {
                 accepted: true,
                 dispatched: false,
                 effect: action + "-after-ack",
+                ...fields,
             });
             assert(
                 gate.dropped,
@@ -1000,7 +1403,7 @@ function moduleOf(file, requireFn, window) {
             assert.equal(
                 readEffect(),
                 before,
-                "CLI acceptance must precede the native/input effect"
+                "CLI acceptance must precede the control effect"
             );
             if (afterIntent) afterIntent();
             gate.release();
@@ -1135,6 +1538,36 @@ function moduleOf(file, requireFn, window) {
         assert.equal(desktop().paused + desktop().resumed + desktop().seeks, 0);
 
         const malformed = [
+            { action: "aspect", params: { operation: "get" } },
+            {
+                action: "aspect",
+                params: {
+                    mode: "fit",
+                    operation: "get",
+                    runtime: replacedAspect.runtime,
+                },
+            },
+            {
+                action: "aspect",
+                params: {
+                    mode: "stretch",
+                    operation: "set",
+                    runtime: replacedAspect.runtime,
+                },
+            },
+            {
+                action: "aspect",
+                params: {
+                    force: true,
+                    mode: "fit",
+                    operation: "set",
+                    runtime: replacedAspect.runtime,
+                },
+            },
+            {
+                action: "aspect",
+                params: { mode: "fit", operation: "set", runtime: "INVALID" },
+            },
             { action: "capabilities", params: { all: true } },
             {
                 action: "lifecycle",
@@ -1178,6 +1611,7 @@ function moduleOf(file, requireFn, window) {
             },
         ];
         const malformedStepCount = television().channelSteps;
+        const malformedAspectCount = television().aspectChanges;
         for (const payload of malformed) {
             const result = await fetch(
                 address + "/api/requests?device_id=dev_test",
@@ -1197,6 +1631,23 @@ function moduleOf(file, requireFn, window) {
             );
         }
         assert.equal(television().channelSteps, malformedStepCount);
+        assert.equal(television().aspectChanges, malformedAspectCount);
+        const priorAspectRuntime = (await jsonOn("tv", "aspect")).runtime;
+        television().stop();
+        television = player("dev_test", "b".repeat(32), 30);
+        const restoredAspect = await jsonOn("tv", "aspect");
+        assert.notEqual(restoredAspect.runtime, priorAspectRuntime);
+        assert.equal(restoredAspect.mode, "fill");
+        assert.equal(restoredAspect.saved_mode, "fill");
+        assert.equal(restoredAspect.persisted, true);
+        assert.equal(
+            television().aspectChanges,
+            0,
+            "fixture restart restores saved mode without a remote write"
+        );
+        console.log(
+            "PASS aspect via real Go + compiled TS + Python: fit/fill aliases, truthful pre-ACK acceptance, exact lost-ACK retries, idempotent setting, readback, device isolation, unsupported/read-only gating, protected/target/runtime fences and restored saved state"
+        );
         console.log(
             "PASS previous/prev/next and signed offsets through real Go + compiled TS + Python: category wraps, exact safe-integer offsets, catalogue receipts, one mutation, device isolation, malformed rejection and no replay after lost POST/receipt responses"
         );
@@ -1210,6 +1661,7 @@ function moduleOf(file, requireFn, window) {
             "PASS real Go + TS + Python through reverse-proxy prefix: device isolation, lost-response deduplication, searches, providers, atomic M3U profile edits, secret-free replies and acknowledged restarts"
         );
     } finally {
+        pace.close();
         for (const controller of controllers)
             controller.configure({ address: "", enabled: false, token: "" });
         proxy.closeAllConnections();

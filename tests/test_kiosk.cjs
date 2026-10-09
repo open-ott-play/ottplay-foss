@@ -64,6 +64,7 @@ function rig(storage = {}) {
             return 1;
         },
         stbGetItem: (key) => storage[key],
+        stbGetPersistedItem: (key) => storage[key],
         stbGetPosTime: () => {
             if (fail) throw Error("decoder");
             return position;
@@ -1040,4 +1041,109 @@ console.log(
 }
 console.log(
     "Strict kiosk persistence, gesture isolation and read-only input tests passed"
+);
+
+// Full-page recovery must survive the next runtime, unlike a session fallback.
+function quotaKioskStorage(saved) {
+    const document = {};
+    Object.defineProperty(document, "cookie", {
+        get() {
+            throw Error("cookies denied");
+        },
+        set() {
+            throw Error("cookies denied");
+        },
+    });
+    const localStorage = {
+        clear() {
+            throw Error("quota");
+        },
+        getItem: (key) => saved[key] ?? null,
+        key: (index) => Object.keys(saved)[index],
+        get length() {
+            return Object.keys(saved).length;
+        },
+        removeItem() {
+            throw Error("quota");
+        },
+        setItem() {
+            throw Error("quota");
+        },
+    };
+    return load("src/storage/index.ts", {
+        console,
+        document,
+        window: { document, localStorage },
+    });
+}
+{
+    const seed = rig();
+    seed.request({ mode: "on", query: "1", strict: true });
+    const saved = { ...seed.storage };
+    let reloads = 0;
+    for (let boot = 0; boot < 2; boot++) {
+        const storage = quotaKioskStorage(saved);
+        const r = rig();
+        r.w.stbGetItem = storage.stbGetItem;
+        r.w.stbSetItem = storage.stbSetItem;
+        r.w.stbGetPersistedItem = storage.stbGetPersistedItem;
+        r.w.restart = () => reloads++;
+        r.kiosk.init();
+        assert.equal(
+            r.kiosk.strict(),
+            true,
+            "pre-existing policy survives quota failure"
+        );
+        r.advance(80);
+        assert.equal(saved.__ottKioskReloadV1, undefined);
+        assert.equal(
+            reloads,
+            0,
+            "memory-only cooldown cannot authorize a full reload"
+        );
+        assert(
+            r.played.length >= 7,
+            "soft recovery continues with failed backing storage"
+        );
+    }
+}
+for (const failure of ["missing", "unreadable"]) {
+    const r = rig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.request({ mode: "on", query: "1", strict: true });
+    if (failure === "missing") delete r.w.stbGetPersistedItem;
+    else
+        r.w.stbGetPersistedItem = () => {
+            throw Error("backing unreadable");
+        };
+    r.advance(80);
+    assert.equal(
+        reloads,
+        0,
+        failure + " durable reader keeps full reload disabled"
+    );
+    assert(
+        r.played.length >= 7,
+        "soft recovery does not depend on durable read support"
+    );
+}
+{
+    const r = rig();
+    let reloads = 0;
+    r.w.restart = () => reloads++;
+    r.request({ mode: "on", query: "1", strict: true });
+    r.storage.__ottKioskReloadV1 = String(Date.now());
+    const read = r.w.stbGetItem;
+    r.w.stbGetItem = (key) => (key === "__ottKioskReloadV1" ? null : read(key));
+    r.advance(80);
+    assert.equal(
+        reloads,
+        0,
+        "persisted cooldown wins over a transient session view"
+    );
+    assert(r.played.length >= 7);
+}
+console.log(
+    "Kiosk full reload requires durable policy/cooldown; memory fallback retains soft recovery"
 );

@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: open-ott-play/ottplay-control-server
-          ref: 7caf6763e1ef134480f2804a7e8af69b992fe10c
+          ref: 19cf5029fe1a0427d2a16beaa16003d4efff37e3
           path: .control-integration
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -156,6 +156,11 @@ jobs:
 
       - name: Test device boot and remote navigation in Chromium
         run: npm run test:devices:browser
+
+      # Linux WebKit exercises MSE here; native HLS needs the macOS media stack.
+      # The complete engine matrix is required by Native Shells' apple job.
+      - name: Test MSE aspect persistence in Linux WebKit
+        run: npx playwright test tests/browser/plex-provider.spec.cjs --grep 'Plex aspect persists.*(hls\.js|video\.js)$' --browser=webkit
 
       - name: Test native channel formatting with enforced CSP
         run: npm run test:native:ui

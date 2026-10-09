@@ -220,6 +220,7 @@ export function createKiosk(w: any): any {
         try {
             if (
                 typeof w.restart !== "function" ||
+                typeof w.stbGetPersistedItem !== "function" ||
                 provider() !== policy.provider ||
                 (policy.media
                     ? !w.__ottMedia || w.__ottMedia.sourceId() !== policy.source
@@ -230,13 +231,13 @@ export function createKiosk(w: any): any {
             // create a boot loop. Keep soft stream recovery available throughout.
             var reloadKey = "__ottKioskReloadV1";
             var time = Date.now();
-            var previous = Number(w.stbGetItem(reloadKey) || 0);
+            var previous = Number(w.stbGetPersistedItem(reloadKey) || 0);
             if (previous > 0 && time - previous < 600000) return false;
             var stored = JSON.stringify(policy);
             w.stbSetItem(key, stored);
-            if (w.stbGetItem(key) !== stored) return false;
+            if (w.stbGetPersistedItem(key) !== stored) return false;
             w.stbSetItem(reloadKey, String(time));
-            if (w.stbGetItem(reloadKey) !== String(time)) return false;
+            if (w.stbGetPersistedItem(reloadKey) !== String(time)) return false;
             w.restart();
             recoveryAttempts = 0;
             return true;
