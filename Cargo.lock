@@ -3367,6 +3367,7 @@ dependencies = [
  "axum",
  "chrono",
  "flate2",
+ "libc",
  "quick-xml",
  "reqwest 0.12.28",
  "rquickjs",

@@ -1056,6 +1056,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 - [Classic ES5 build pipeline](./docs/build-pipeline.md) — compilation, compatibility checks and artifact size limits.
 - [Runtime asset names and deployment migration](./docs/asset-layout.md) — descriptive paths shared by web and native packages.
 - [Remote workbench](./docs/remote-workbench.md) — UI/media inspection, operation receipts and saved evidence.
+- [Runtime diagnostics](./docs/runtime-debug.md) — error history, frame/loop counters, Capacitor/Tauri native metrics and server debugging.
 - [Local macOS delivery](./docs/macos-local-delivery.md) — checkout builds, local installation and verification.
 
 ## License

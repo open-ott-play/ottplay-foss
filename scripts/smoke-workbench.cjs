@@ -22,7 +22,7 @@ const token = "b".repeat(32);
 const secret = "synthetic-private-url-token";
 const version = "1.1.53-beta.13+workbench-smoke";
 const source = "1".repeat(40);
-let server, controller;
+let server, controller, runtimeDebug;
 let transportFailure = null;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -245,6 +245,14 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const inspection = load(
         "plugins/remote-inspect.js"
     ).installRemoteInspection(host);
+    runtimeDebug = host.__ottRuntimeDebug = load(
+        "plugins/runtime-debug.js"
+    ).installRuntimeDebug(host, {
+        getConfig: () => ({ address: origin, enabled: true, token }),
+        runtime: () =>
+            load("commands/remote-restart.js").remotePlayerInfo(host).runtime,
+    });
+    runtimeDebug.configurationChanged();
     const execute = load("commands/remote-requests.js").executeRemoteRequest;
     const transport = load("plugins/command-server.js");
     const executed = [];
@@ -387,6 +395,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         "snapshot",
         "operation",
     ]);
+    const debug = await run(["debug"]);
+    assert.equal(debug.observations[0].status, "observed");
+    assert.equal(debug.observations[0].data.native.state, "unsupported");
+    assert.equal(debug.observations[0].data.media[0].generation, 3);
+    assert.equal(debug.observations[0].data.events[0].code, "started");
+    assert.equal(state.mutations, 0, "Debug request changed playback");
     state.hidden = state.overlay = true;
     const hidden = await run([
         "inspect",
@@ -473,6 +487,16 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const output = path.join(directory, "bundle");
     const bundle = await run(["bundle", "--lane", "web", "--out", output]);
     assert.equal(bundle.verdict, "observed");
+    assert.equal(bundle.debug_observations[0].status, "observed");
+    const verified = await execFile("python3", [
+        cli,
+        "report",
+        "verify",
+        output,
+        "--json",
+    ]);
+    assert.equal(JSON.parse(verified.stdout).valid, true);
+    assert.equal(JSON.parse(verified.stdout).integrity, "verified");
     const bytes = fs.readFileSync(path.join(output, "result.json"));
     const manifest = JSON.parse(
         fs.readFileSync(path.join(output, "manifest.json"), "utf8")
@@ -506,6 +530,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         process.exitCode = 1;
     })
     .finally(async () => {
+        if (runtimeDebug) runtimeDebug.dispose();
         if (controller)
             controller.configure({ address: "", enabled: false, token: "" });
         if (server) {

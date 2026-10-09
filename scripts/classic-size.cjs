@@ -169,7 +169,12 @@ const { gzipSync } = require("node:zlib");
 // this shared recovery feature, retaining native and release-suffix headroom.
 // Episode-bound strict-kiosk footer gestures add 2011 raw / 600 gzip bytes on Node 26.8.2.
 // Budget this local seek control while retaining native/version headroom.
-const BUDGET = Object.freeze({ bytes: 819750, gzipBytes: 255500 });
+// Connected-runtime diagnostics add the bounded event ring, loop/frame counters,
+// native projection and cancellable inspection. Same Node 26.8.2 toolchain:
+// base 5c7bc823 = 819252 / 254180; candidate = 827579 / 256753 before the
+// clean-source hash. Allocate 8500 raw / 2800 gzip for this reviewed feature,
+// preserving the existing native, clean-source and release-suffix headroom.
+const BUDGET = Object.freeze({ bytes: 828250, gzipBytes: 258300 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -254,7 +259,9 @@ const BUDGET = Object.freeze({ bytes: 819750, gzipBytes: 255500 });
 // The integrated Android/aspect build is 926823 / 295139 web and
 // 926781 / 295207 native on Node 22.23.3, including the durable kiosk guard.
 // Count the same kiosk frame-progress increment once; providers are unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 932250, gzipBytes: 297300 });
+// The same runtime feature costs 8327 raw / 2573 gzip in the complete payload;
+// provider assets are unchanged and all remain included in this size gate.
+const TOTAL_BUDGET = Object.freeze({ bytes: 940750, gzipBytes: 300100 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

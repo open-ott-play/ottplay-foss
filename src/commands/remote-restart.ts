@@ -799,6 +799,7 @@ export function executeRemoteControl(
                 ? { operations: ["status", "prepare", "install"], version: 1 }
                 : null,
             aspect: remoteAspectCapabilities(w),
+            debug: w.__ottRuntimeDebug ? { version: 1 } : undefined,
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),

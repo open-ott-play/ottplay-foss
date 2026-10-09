@@ -19,6 +19,7 @@ inside an existing parent:
 
 ```sh
 ott l doctor
+ott l debug --json
 ott l inspect --view ui,media --json
 ott a1 inspect --lane native --json
 ott l bundle --out ./lg-case
@@ -57,6 +58,9 @@ when the reload succeeded. Check the new runtime with `doctor`; an
 `accepted`/`handler_completed` receipt alone does not establish that playback
 recovered. The Android agent's separate durable history is described in the
 controller's workbench reference.
+
+For cross-platform runtime/native snapshots, the bounded event history and server
+counters, see [Runtime diagnostics](runtime-debug.md).
 
 ## What the player exposes
 

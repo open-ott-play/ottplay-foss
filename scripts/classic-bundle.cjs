@@ -113,6 +113,7 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-screenshot.js",
     "build/plugins/remote-doctor.js",
     "build/plugins/remote-inspect.js",
+    "build/plugins/runtime-debug.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
     "build/plugins/stalker-portal.js",

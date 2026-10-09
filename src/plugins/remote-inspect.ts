@@ -105,7 +105,10 @@ export function installRemoteInspection(w: any): any {
             state: record.state,
         };
     }
-    function request(item: any, done: (result: any) => void): void {
+    function request(
+        item: any,
+        done: (result: any) => void
+    ): void | (() => void) {
         var params = item.params || {};
         function finish(status: string, value: any): void {
             var result: any = {
@@ -122,7 +125,9 @@ export function installRemoteInspection(w: any): any {
         }
         if (
             params.version !== 1 ||
-            ["doctor", "snapshot", "operation"].indexOf(params.section) < 0 ||
+            ["doctor", "snapshot", "operation", "debug"].indexOf(
+                params.section
+            ) < 0 ||
             Object.keys(params).sort().join(",") !==
                 (params.section === "operation"
                     ? "operation_id,runtime,section,version"
@@ -133,6 +138,35 @@ export function installRemoteInspection(w: any): any {
         ) {
             finish("rejected", "invalid_request");
             return;
+        }
+        if (params.section === "debug") {
+            var collector = w.__ottRuntimeDebug;
+            if (!collector || typeof collector.snapshot !== "function") {
+                finish("unsupported", "unsupported");
+                return;
+            }
+            var cancelled = false;
+            try {
+                collector.snapshot().then(
+                    function (value: any) {
+                        if (cancelled) return;
+                        if (
+                            w.__ottRuntimeDebug !== collector ||
+                            params.runtime !== runtime()
+                        )
+                            finish("rejected", "unavailable");
+                        else finish("ok", value);
+                    },
+                    function () {
+                        if (!cancelled) finish("rejected", "unavailable");
+                    }
+                );
+            } catch (_) {
+                finish("rejected", "unavailable");
+            }
+            return function () {
+                cancelled = true;
+            };
         }
         try {
             finish(
@@ -186,8 +220,7 @@ export function installRemoteInspection(w: any): any {
             ) => any
         ): any {
             if (item.action === "inspect") {
-                request(item, done);
-                return;
+                return request(item, done);
             }
             if (!mutation(item)) return execute(item, done, afterReply);
             var record = {

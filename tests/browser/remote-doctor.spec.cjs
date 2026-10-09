@@ -331,3 +331,90 @@ test("inspection identifies the loaded artifact and rejects an old runtime after
     ).toBe(false);
     expect(observed.errors).toEqual([]);
 });
+
+test("runtime debug captures real frame counters and lifecycle without changing playback", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    await fixture(page, context, baseURL);
+    await context.route("**/runtime-debug-control/**", (route) =>
+        route.fulfill({ json: { error: "fixture" }, status: 403 })
+    );
+    const initial = await caps(page);
+    expect(initial.data.debug).toEqual({ version: 1 });
+    expect(initial.data.inspect.sections).toEqual([
+        "doctor",
+        "snapshot",
+        "operation",
+    ]);
+    await page.evaluate((address) => {
+        window.__ottCommandServer.configure({
+            address,
+            enabled: true,
+            token: "c".repeat(32),
+        });
+        window.dispatchEvent(
+            new ErrorEvent("error", {
+                filename: "https://private.invalid/token",
+                message: "PRIVATE-DEBUG-MESSAGE",
+            })
+        );
+    }, new URL("/runtime-debug-control/", baseURL).href);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                async () =>
+                    (await window.__ottRuntimeDebug.snapshot()).metrics
+                        .loopSamples
+            )
+        )
+        .toBeGreaterThan(0);
+    const before = await page.evaluate(() => ({
+        generation: window.__ottClassicPlayback.snapshot().generation,
+        source: document.getElementById("video").currentSrc,
+    }));
+    const reply = await page.evaluate(
+        (runtime) =>
+            new Promise((resolve) => {
+                window.executeRemoteRequest(
+                    {
+                        action: "inspect",
+                        params: { runtime, section: "debug", version: 1 },
+                    },
+                    resolve
+                );
+            }),
+        initial.data.player.runtime
+    );
+    expect(reply.status).toBe("ok");
+    const data = reply.data.data;
+    expect(data.native).toEqual({ data: null, state: "unsupported" });
+    expect(data.metrics.errorCount).toBe(1);
+    expect(data.events.some((event) => event.code === "error")).toBe(true);
+    expect(data.media[0].metrics.totalFrames).toBeGreaterThan(0);
+    expect(data.media[0].generation).toBe(before.generation);
+    expect(data.metrics.controlConsecutiveFailures).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(data)).not.toContain("PRIVATE-DEBUG-MESSAGE");
+    expect(JSON.stringify(data)).not.toContain("private.invalid");
+    expect(JSON.stringify(data)).not.toContain(SECRET);
+    const after = await page.evaluate(() => ({
+        generation: window.__ottClassicPlayback.snapshot().generation,
+        source: document.getElementById("video").currentSrc,
+    }));
+    expect(after).toEqual(before);
+    const disconnected = await page.evaluate(async () => {
+        window.__ottCommandServer.configure({
+            address: "",
+            enabled: false,
+            token: "",
+        });
+        try {
+            await window.__ottRuntimeDebug.snapshot();
+            return false;
+        } catch {
+            return true;
+        }
+    });
+    expect(disconnected).toBe(true);
+});

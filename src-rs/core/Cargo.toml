@@ -23,6 +23,7 @@ rquickjs = { version = "=0.14.0", features = ["parallel"] }
 system-resolver = "=0.2.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
 system-configuration = "=0.7.0"
 
 [target.'cfg(windows)'.dependencies]

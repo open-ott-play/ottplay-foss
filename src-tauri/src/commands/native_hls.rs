@@ -352,6 +352,15 @@ impl NativeHlsState {
         })
     }
 
+    /// Nonblocking metadata only; does not start the relay or inspect URLs/cookies.
+    pub fn diagnostic_session_count(&self) -> Option<usize> {
+        let guard = self.server.try_lock().ok()?;
+        match guard.as_ref() {
+            Some(server) => Some(server.sessions.try_lock().ok()?.len()),
+            None => Some(0),
+        }
+    }
+
     async fn stats(&self, token: &str) -> Result<NativeHlsStats, String> {
         let guard = self.server.lock().await;
         let server = guard.as_ref().ok_or("Native HLS session not found")?;
@@ -996,3 +1005,19 @@ fn rewrite_manifest(
 #[cfg(test)]
 #[path = "native_hls_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn runtime_diagnostic_count_never_starts_or_waits_for_a_relay() {
+        let state = NativeHlsState::default();
+        assert_eq!(state.diagnostic_session_count(), Some(0));
+        let held = state.server.lock().await;
+        assert!(held.is_none());
+        assert_eq!(state.diagnostic_session_count(), None);
+        drop(held);
+        assert_eq!(state.diagnostic_session_count(), Some(0));
+    }
+}

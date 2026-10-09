@@ -369,3 +369,53 @@ try {
 console.log(
     "remote inspection: pure snapshots, target fencing, bounded truthful receipts and loaded build identity PASS"
 );
+
+(async () => {
+    let settle;
+    let replies = [];
+    const item = {
+        action: "inspect",
+        params: { runtime, section: "debug", version: 1 },
+    };
+    w.__ottRuntimeDebug = {
+        snapshot: () =>
+            new Promise((resolve) => {
+                settle = resolve;
+            }),
+    };
+    const cancel = api.execute(
+        item,
+        (value) => replies.push(value),
+        undefined,
+        forbidden
+    );
+    assert.equal(typeof cancel, "function");
+    cancel();
+    settle({ version: 1 });
+    await Promise.resolve();
+    assert.equal(replies.length, 0, "cancelled inspection replied");
+    api.request(item, (value) => replies.push(value));
+    w.__ottRuntimeDebug = { snapshot: () => Promise.resolve({}) };
+    settle({ version: 1 });
+    await Promise.resolve();
+    assert.equal(
+        replies[0].data.error,
+        "unavailable",
+        "retired collector was relabelled"
+    );
+    replies = [];
+    const data = { metrics: {}, runtime, version: 1 };
+    w.__ottRuntimeDebug = { snapshot: () => Promise.resolve(data) };
+    api.request(item, (value) => replies.push(value));
+    await Promise.resolve();
+    assert.equal(replies[0].status, "ok");
+    assert.equal(replies[0].data.data, data);
+    delete w.__ottRuntimeDebug;
+    assert.equal(query("debug").status, "unsupported");
+    console.log(
+        "remote debug inspection: asynchronous cancellation and collector ownership PASS"
+    );
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

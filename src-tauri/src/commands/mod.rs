@@ -1,4 +1,5 @@
 pub mod native_hls;
+pub mod runtime_diagnostics;
 pub mod lifecycle;
 pub mod screenshot;
 pub mod plex_auth;
