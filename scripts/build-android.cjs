@@ -23,10 +23,10 @@ async function main() {
     const target = process.argv[2];
     const api22 = target === "api22" || target === "api22-release";
     const tasks = {
-        full: [":app:assembleFullDebug"],
-        "full-release": [":app:assembleFullRelease"],
         api22: ["-PottplayApi22=true", ":app:assembleFullDebug"],
         "api22-release": ["-PottplayApi22=true", ":app:assembleFullRelease"],
+        full: [":app:assembleFullDebug"],
+        "full-release": [":app:assembleFullRelease"],
     };
     if (target !== "sync" && !tasks[target])
         throw new Error(
@@ -35,7 +35,14 @@ async function main() {
     if (api22) {
         execFileSync(
             process.platform === "win32" ? "npm.cmd" : "npm",
-            ["ci", "--prefix", "android/compat", "--ignore-scripts", "--no-audit", "--no-fund"],
+            [
+                "ci",
+                "--prefix",
+                "android/compat",
+                "--ignore-scripts",
+                "--no-audit",
+                "--no-fund",
+            ],
             { cwd: root, stdio: "inherit" }
         );
     } else await sync();
@@ -62,9 +69,19 @@ async function main() {
     auditTarget(apk, "full", api22 ? 22 : 24);
     if (api22) {
         const variant = target === "api22" ? "fullDebug" : "fullRelease";
-        execFileSync("python3", ["scripts/verify-android-plugin-apis.py",
-            path.join(root, "android/app/build-api22/tmp/kotlin-classes", variant), "22"],
-            {cwd: root, stdio: "inherit"});
+        execFileSync(
+            "python3",
+            [
+                "scripts/verify-android-plugin-apis.py",
+                path.join(
+                    root,
+                    "android/app/build-api22/tmp/kotlin-classes",
+                    variant
+                ),
+                "22",
+            ],
+            { cwd: root, stdio: "inherit" }
+        );
     }
 }
 if (require.main === module)

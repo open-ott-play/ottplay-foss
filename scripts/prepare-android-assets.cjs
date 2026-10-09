@@ -67,7 +67,9 @@ async function prepare(flavor, output) {
     // Restrict destructive cleanup to the documented generated root.
     const allowed = path.join(
         root,
-        api22 ? "android/app/build-api22/generated/ottplay" : "android/app/build/generated/ottplay",
+        api22
+            ? "android/app/build-api22/generated/ottplay"
+            : "android/app/build/generated/ottplay",
         flavor,
         "assets"
     );
@@ -146,11 +148,11 @@ async function prepare(flavor, output) {
             JSON.stringify(
                 {
                     applicationId: packaged.appId,
+                    capacitorMajor: api22 ? 6 : 8,
                     distribution: flavor,
+                    minSdk: api22 ? 22 : 24,
                     version: version.versionName,
                     versionCode: version.versionCode,
-                    minSdk: api22 ? 22 : 24,
-                    capacitorMajor: api22 ? 6 : 8,
                 },
                 null,
                 2
@@ -158,8 +160,19 @@ async function prepare(flavor, output) {
         );
         if (api22) {
             for (const name of ["core", "app"]) {
-                fs.copyFileSync(path.join(root, "android/compat/node_modules/@capacitor", name, "LICENSE"),
-                    path.join(output, "public/licenses/native", "capacitor-" + name + "-LICENSE.txt"));
+                fs.copyFileSync(
+                    path.join(
+                        root,
+                        "android/compat/node_modules/@capacitor",
+                        name,
+                        "LICENSE"
+                    ),
+                    path.join(
+                        output,
+                        "public/licenses/native",
+                        "capacitor-" + name + "-LICENSE.txt"
+                    )
+                );
             }
         }
         auditAssets(output, flavor);
