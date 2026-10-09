@@ -176,8 +176,9 @@ const { gzipSync } = require("node:zlib");
 // preserving the existing native, clean-source and release-suffix headroom.
 // Android screen/lifecycle suspension adds 1640 raw bytes on Node 26.8.2
 // (829840 total entry bytes). Retain clean-source and release suffix headroom;
-// the existing compressed budget still covers this playback lifecycle fix.
-const BUDGET = Object.freeze({ bytes: 830250, gzipBytes: 258300 });
+// CI Node 22 measures 258390 gzip entry bytes before the native variant;
+// allow the measured ~490-byte compressed feature cost plus suffix headroom.
+const BUDGET = Object.freeze({ bytes: 830250, gzipBytes: 258900 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -268,7 +269,7 @@ const BUDGET = Object.freeze({ bytes: 830250, gzipBytes: 258300 });
 // Add 250 raw bytes for this bounded selector and release identity variation;
 // retain the compressed and entry limits and count every optional provider.
 // Count the same 1640-byte screen suspension addition once in the full payload.
-const TOTAL_BUDGET = Object.freeze({ bytes: 943000, gzipBytes: 300100 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 943000, gzipBytes: 300700 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
