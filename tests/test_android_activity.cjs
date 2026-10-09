@@ -100,6 +100,9 @@ try {
         "com/getcapacitor/BridgeActivity.java",
         `package com.getcapacitor; public class BridgeActivity {
         public Bridge bridge; public int fallback; public java.util.List<String> plugins=new java.util.ArrayList<>();
+        public static final String AUDIO_SERVICE="audio";
+        public android.media.AudioManager audio=new android.media.AudioManager();
+        public Object getSystemService(String name){if(!AUDIO_SERVICE.equals(name))throw new AssertionError();return audio;}
         public void registerPlugin(Class<?> plugin){if(bridge!=null)throw new AssertionError("late plugin registration");plugins.add(plugin.getName());}
         protected void onCreate(android.os.Bundle state){bridge=new Bridge();}
         public android.view.Window window=new android.view.Window(); public boolean focus=true,pip=false;
@@ -117,6 +120,14 @@ try {
             "package android.content.res; public class Configuration {}",
         "android/graphics/Color.java":
             "package android.graphics; public class Color { public static final int BLACK=0xff000000; }",
+        "android/media/AudioManager.java": `package android.media; public class AudioManager {
+            public static final int STREAM_MUSIC=3, ADJUST_RAISE=1, ADJUST_LOWER=-1, FLAG_SHOW_UI=1;
+            public int volume=5, calls;
+            public void adjustStreamVolume(int stream,int direction,int flags){
+                if(stream!=STREAM_MUSIC || flags!=FLAG_SHOW_UI)throw new AssertionError();
+                volume+=direction;calls++;
+            }
+        }`,
         "android/os/Build.java":
             "package android.os; public class Build { public static class VERSION { public static int SDK_INT=29; } }",
         "android/view/View.java": `package android.view; public class View {
@@ -194,6 +205,10 @@ try {
             MainActivity app=new MainActivity();
             check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_DPAD_UP,0)));
             check(app.fallback==1);
+            check(app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_VOLUME_UP,0)));
+            check(app.audio.volume==6 && app.audio.calls==1);
+            check(app.dispatchKeyEvent(new KeyEvent(1,KeyEvent.KEYCODE_VOLUME_UP,0)));
+            check(app.audio.calls==1);
             app.onCreate(new android.os.Bundle());
             check(androidx.core.view.WindowInsetsControllerCompat.hides==1);
             check(app.window.cleared==2048);
@@ -218,6 +233,18 @@ try {
             String[] names={${keys.map((key) => '"' + key + '"').join(",")}};
             for(int i=0;i<codes.length;i++){
                 int previous=app.bridge.view.scripts.size();
+                if(codes[i]==KeyEvent.KEYCODE_VOLUME_UP || codes[i]==KeyEvent.KEYCODE_VOLUME_DOWN){
+                    int volume=app.audio.volume, calls=app.audio.calls;
+                    int direction=codes[i]==KeyEvent.KEYCODE_VOLUME_UP?1:-1;
+                    check(app.dispatchKeyEvent(new KeyEvent(0,codes[i],0)));
+                    check(app.audio.volume==volume+direction && app.audio.calls==calls+1);
+                    check(app.dispatchKeyEvent(new KeyEvent(0,codes[i],1)));
+                    check(app.audio.volume==volume+direction*2 && app.audio.calls==calls+2);
+                    check(app.dispatchKeyEvent(new KeyEvent(1,codes[i],0)));
+                    check(app.audio.calls==calls+2);
+                    check(app.bridge.view.scripts.size()==previous);
+                    continue;
+                }
                 check(app.dispatchKeyEvent(new KeyEvent(0,codes[i],0)));
                 check(app.bridge.view.scripts.size()==previous+1);
                 System.out.println(names[i]+" "+java.util.Base64.getEncoder().encodeToString(app.bridge.view.scripts.get(previous).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
@@ -229,6 +256,11 @@ try {
             app.onDestroy();
             check(app.window.decor.observer.listener==null);
             app.bridge.view=null;
+            int calls=app.audio.calls;
+            check(app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_VOLUME_DOWN,0)));
+            check(app.audio.calls==calls+1);
+            app.audio=null;
+            check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_VOLUME_UP,0)));
             check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,0)));
         }
     }`
@@ -268,8 +300,6 @@ try {
         ENTER: "ENTER",
         MEDIA_NEXT: "NEXT",
         MEDIA_PREVIOUS: "PREV",
-        VOLUME_DOWN: "VOL_DOWN",
-        VOLUME_UP: "VOL_UP",
     };
     for (const adapter of ["pc", "android"]) {
         const source = read(`src/devices/${adapter}/device.ts`);
@@ -396,7 +426,7 @@ try {
     assert.equal(destroyed, 1);
     assert.equal(video.paused, true);
     console.log(
-        "PASS Android activity: plugin registration before bridge, boot fallback, media repeat suppression, actual PC/Android keymaps, idempotent Play/Pause and toggle lifecycle"
+        "PASS Android activity: native hardware volume independent of WebView, plugin registration before bridge, boot fallback, media repeat suppression, actual PC/Android keymaps, idempotent Play/Pause and toggle lifecycle"
     );
 } finally {
     fs.rmSync(temp, { force: true, recursive: true });

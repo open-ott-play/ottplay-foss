@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Keep Android hardware volume buttons working in strict kiosk mode and while
+  the WebView is loading or stalled by controlling media volume natively.
+
 - Add bounded runtime debug snapshots with event history, JavaScript scheduling
   and frame counters, Capacitor Android/iOS and Tauri native process metadata,
   and authenticated Rust companion diagnostics; remote connection authorization
