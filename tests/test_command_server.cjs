@@ -1504,7 +1504,7 @@ console.log(
 
 // Real controls use the transport's retained exact response; a lost reply never
 // repeats an input or native lifecycle effect, and retirement cancels both.
-for (const action of ["lifecycle", "input"]) {
+for (const action of ["lifecycle", "input", "aspect"]) {
     for (const outcome of ["ack", "disabled", "expired", "policy"]) {
         let effects = 0,
             locked = false;
@@ -1516,6 +1516,15 @@ for (const action of ["lifecycle", "input"]) {
             __ottParental: { needs: () => locked },
             __ottRemoteLifecycle: { exit: () => effects++, platform: "tauri" },
             $: () => ({ is: () => locked }),
+            captureAspectTarget: () => ({
+                current: () => true,
+                mode: "fit",
+                savedMode: null,
+                set: () => {
+                    effects++;
+                    return true;
+                },
+            }),
             keyHandler: () => effects++,
             keys: { UP: 38 },
         };
@@ -1538,7 +1547,16 @@ for (const action of ["lifecycle", "input"]) {
                     params:
                         action === "lifecycle"
                             ? { operation: "exit_app" }
-                            : { key: "up" },
+                            : action === "aspect"
+                              ? {
+                                    mode: "fill",
+                                    operation: "set",
+                                    runtime:
+                                        restartContext.exports.remotePlayerInfo(
+                                            w
+                                        ).runtime,
+                                }
+                              : { key: "up" },
                 },
             ],
             server_time: 5000,
@@ -1577,7 +1595,7 @@ for (const action of ["lifecycle", "input"]) {
     }
 }
 console.log(
-    "PASS actual lifecycle/input transport: lost ACK, byte-identical retry, single dispatch, duplicate replay, disable, expiry and local policy changes"
+    "PASS actual lifecycle/input/aspect transport: lost ACK, byte-identical retry, single dispatch, duplicate replay, disable, expiry and local policy changes"
 );
 
 // Image bytes expire independently of network progress and ordinary receipt caching.

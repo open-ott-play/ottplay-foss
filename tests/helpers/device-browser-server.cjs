@@ -17,6 +17,36 @@ const playerScripts = new Set([
 const dist = path.resolve(__dirname, "../../dist");
 const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 4179);
 const diagnostics = process.env.OTTP_DEVICE_TEST_DIAGNOSTICS === "1";
+let aspectFixture;
+function aspectMedia() {
+    if (!aspectFixture) {
+        // The legacy Shaka bundle consumes fMP4 directly. Reuse the existing
+        // synthetic TS bytes without adding binary fixtures or requiring FFmpeg.
+        const transmuxer = new (require("mux.js").mp4.Transmuxer)({
+            remux: true,
+        });
+        transmuxer.on("data", (segment) => {
+            aspectFixture = {
+                "fmp4.m3u8":
+                    '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="init.mp4"\n#EXTINF:2,\nsegment.m4s\n#EXT-X-ENDLIST\n',
+                "init.mp4": Buffer.from(segment.initSegment),
+                "segment.m4s": Buffer.from(segment.data),
+            };
+        });
+        transmuxer.push(
+            new Uint8Array(
+                fs.readFileSync(
+                    path.join(
+                        __dirname,
+                        "../fixtures/media-runtime/segment00.ts"
+                    )
+                )
+            )
+        );
+        transmuxer.flush();
+    }
+    return aspectFixture;
+}
 const diagnosticScript = diagnostics
     ? fs.readFileSync(
           path.join(__dirname, "device-browser-diagnostics.js"),
@@ -115,6 +145,29 @@ http.createServer((request, response) => {
         response
             .writeHead(200, { "Content-Type": "application/json" })
             .end("{}");
+        return;
+    }
+    // Native WebKit media requests can bypass Playwright route interception.
+    // Serve only the checked-in synthetic HLS fixture for real decoder tests.
+    const plexFixture = pathname === "/video/:/transcode/universal/start.m3u8";
+    if (
+        plexFixture ||
+        /^\/__device_test_media\/(fmp4\.m3u8|init\.mp4|segment\.m4s)$/.test(
+            pathname
+        )
+    ) {
+        response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Type": pathname.endsWith(".m3u8")
+                ? "application/vnd.apple.mpegurl"
+                : "video/mp4",
+        });
+        let fixture;
+        if (plexFixture)
+            fixture =
+                '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,CODECS="avc1.42c01e,mp4a.40.2"\n/__device_test_media/fmp4.m3u8\n';
+        else fixture = aspectMedia()[path.basename(pathname)];
+        response.end(fixture);
         return;
     }
     let relative;

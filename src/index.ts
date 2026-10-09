@@ -83,6 +83,7 @@ import {
     aSubs,
     aZooms,
     bucketsList,
+    captureChannelPreference,
     catIndex,
     cats,
     catsArray,
@@ -185,6 +186,7 @@ import {
     stbDelItem,
     stbGetAllItems,
     stbGetItem,
+    stbGetPersistedItem,
     stbSetItem,
     storage,
 } from "./storage";
@@ -196,6 +198,7 @@ import { queueFeedbackPost, sendClientFeedback } from "./utils/helpers";
 // Core
 import {
     bufferSizes,
+    captureAspectTarget,
     loadAllOptions,
     playerMode,
     playerModeNames,
@@ -2829,6 +2832,8 @@ window.updateChannelInfo = updateChannelInfo;
 window.updateMediaInfo = updateMediaInfo;
 window.refreshAudioBadge = refreshAudioBadge;
 window.stbPlay = stbPlay;
+(window as any).captureAspectTarget = captureAspectTarget;
+(window as any).captureChannelPreference = captureChannelPreference;
 window.stbStop = stbStop;
 window.stbPause = stbPause;
 window.stbResume = stbResume;
@@ -5437,6 +5442,7 @@ installRemoteLifecycle(window, {
 });
 window.setPlayer = setPlayer;
 window.stbGetItem = stbGetItem;
+(window as any).stbGetPersistedItem = stbGetPersistedItem;
 window.stbSetItem = stbSetItem;
 window.stbDelItem = stbDelItem;
 window.stbClearAllItems = stbClearAllItems;

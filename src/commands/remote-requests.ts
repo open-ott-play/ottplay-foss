@@ -70,6 +70,7 @@ export function executeRemoteRequest(
             "lifecycle",
             "input",
             "playback",
+            "aspect",
         ].indexOf(request.action) < 0
     ) {
         done({
@@ -162,7 +163,7 @@ export function executeRemoteRequest(
         return;
     }
     if (
-        ["capabilities", "lifecycle", "input", "playback"].indexOf(
+        ["capabilities", "lifecycle", "input", "playback", "aspect"].indexOf(
             request.action
         ) >= 0
     ) {

@@ -1379,3 +1379,293 @@ test("Plex appends folder pages without changing selection or Back ownership and
     await expect(page.locator("#list")).not.toContainText("Film 09");
     expect(errors).toEqual([]);
 });
+
+for (const { engine, strict } of [
+    { engine: "html5", strict: false },
+    { engine: "hls.js", strict: false },
+    { engine: "shaka", strict: false },
+    { engine: "video.js", strict: false },
+    { engine: "hls.js", strict: true },
+]) {
+    test(
+        "Plex aspect persists through media changes and " +
+            (strict ? "strict kiosk " : "") +
+            "reload: " +
+            engine,
+        async ({ page, context, baseURL, browserName }) => {
+            test.skip(
+                engine === "html5" && browserName !== "webkit",
+                "Native HLS requires WebKit"
+            );
+            test.setTimeout(60000);
+            const local = new URL(baseURL).origin;
+            const errors = [];
+            const films = [
+                { ratingKey: "42", title: "First aspect film", type: "movie" },
+                { ratingKey: "43", title: "Next aspect film", type: "movie" },
+            ];
+            page.on("pageerror", (error) => errors.push(error.message));
+            await context.route("**/*", (route) => {
+                const url = new URL(route.request().url());
+                if (url.origin !== local) return route.abort();
+                const json = (body) =>
+                    route.fulfill({ json: { MediaContainer: body } });
+                if (url.pathname === "/library/sections")
+                    return json({
+                        Directory: [
+                            {
+                                key: "7",
+                                title: "Aspect library",
+                                type: "movie",
+                            },
+                        ],
+                    });
+                if (url.pathname === "/library/sections/7/all")
+                    return json({ Metadata: [] });
+                if (url.pathname === "/library/sections/7/folder")
+                    return json({
+                        Metadata: films,
+                        offset: 0,
+                        size: 2,
+                        totalSize: 2,
+                    });
+                if (url.pathname.endsWith("/decision"))
+                    return json({
+                        generalDecisionCode: 1001,
+                        Metadata: [
+                            { Media: [{ Part: [{ decision: "transcode" }] }] },
+                        ],
+                    });
+                if (
+                    url.pathname.endsWith("/stop") ||
+                    url.pathname.endsWith("/ping")
+                )
+                    return route.fulfill({ body: "" });
+                if (/^\/library\/metadata\/(42|43)$/.test(url.pathname)) {
+                    const id = url.pathname.split("/").pop();
+                    return json({
+                        Metadata: [
+                            {
+                                ...films.find((film) => film.ratingKey === id),
+                                Media: [
+                                    {
+                                        audioCodec: "aac",
+                                        container: "mpegts",
+                                        Part: [
+                                            {
+                                                key:
+                                                    "/library/parts/" +
+                                                    id +
+                                                    "/file.ts",
+                                            },
+                                        ],
+                                        videoCodec: "h264",
+                                    },
+                                ],
+                            },
+                        ],
+                    });
+                }
+                return route.continue();
+            });
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.addInitScript(
+                ({ local, engine }) => {
+                    const play = HTMLMediaElement.prototype.play;
+                    HTMLMediaElement.prototype.play = function () {
+                        this.muted = true;
+                        this.loop = true;
+                        return play.call(this);
+                    };
+                    localStorage.setItem("ottplaylang", "_eng");
+                    localStorage.setItem("ottplayprov", "plex");
+                    localStorage.setItem(
+                        "plexsPlayers",
+                        engine === "shaka"
+                            ? "2"
+                            : engine === "html5"
+                              ? "0"
+                              : "1"
+                    );
+                    localStorage.setItem(
+                        "plexcfg",
+                        JSON.stringify({
+                            address: local,
+                            playback: "compatible",
+                            token: "synthetic-aspect-token",
+                        })
+                    );
+                },
+                { engine, local }
+            );
+            await page.setViewportSize({ height: 720, width: 960 });
+            await page.goto(engine === "video.js" ? "/f/pc2/" : "/f/pc/");
+            await page.keyboard.press("Shift");
+            await select(page, "Aspect library");
+            await select(page, "Browse folders");
+            await select(page, films[0].title);
+            async function ready(id) {
+                const target =
+                    "request:" +
+                    JSON.stringify({ path: "/library/metadata/" + id });
+                await page.waitForFunction(
+                    (target) =>
+                        window.__ottMedia?.current()?.ref.itemId === target &&
+                        window.video?.videoWidth === 640 &&
+                        window.video?.videoHeight === 360 &&
+                        window.video?.readyState >= 2 &&
+                        window.video.currentTime > 0.1 &&
+                        !window.video.error,
+                    target,
+                    { timeout: 15000 }
+                );
+                expect(
+                    await page.evaluate(() => ({
+                        aspect: !!window.captureAspectTarget?.(),
+                        target: window.__ottMedia?.current()?.ref.itemId,
+                    }))
+                ).toEqual({
+                    aspect: true,
+                    target,
+                });
+                await page.evaluate(() => {
+                    window.stbPause();
+                    window.stbToFullScreen();
+                });
+            }
+            async function aspect() {
+                return page.evaluate(() => {
+                    const target = window.captureAspectTarget();
+                    return (
+                        target && {
+                            mode: target.mode,
+                            savedMode: target.savedMode,
+                        }
+                    );
+                });
+            }
+            async function geometry(mode) {
+                const value = await page.evaluate(() => {
+                    const media = window.video;
+                    const box = media.getBoundingClientRect();
+                    const wrapper = document
+                        .getElementById("video")
+                        .getBoundingClientRect();
+                    return {
+                        box: {
+                            height: box.height,
+                            width: box.width,
+                            x: box.x,
+                            y: box.y,
+                        },
+                        height: window.innerHeight,
+                        width: window.innerWidth,
+                        wrapper: {
+                            height: wrapper.height,
+                            width: wrapper.width,
+                            x: wrapper.x,
+                            y: wrapper.y,
+                        },
+                    };
+                });
+                const scale = (mode === "fit" ? Math.min : Math.max)(
+                    value.width / 640,
+                    value.height / 360
+                );
+                const expected = {
+                    height: Math.round(360 * scale),
+                    width: Math.round(640 * scale),
+                };
+                expected.x = Math.round((value.width - expected.width) / 2);
+                expected.y = Math.round((value.height - expected.height) / 2);
+                for (const box of [value.box, value.wrapper])
+                    for (const property of ["width", "height", "x", "y"])
+                        expect(
+                            Math.abs(box[property] - expected[property]),
+                            property + " uses centered " + mode
+                        ).toBeLessThanOrEqual(1);
+            }
+            await ready("42");
+            expect(await page.evaluate(() => window.playerMode)).toBe(
+                engine === "shaka" ? 2 : engine === "html5" ? 0 : 1
+            );
+            if (engine === "video.js")
+                expect(
+                    await page.evaluate(
+                        () =>
+                            window.videojs
+                                .getPlayer("video")
+                                .tech({ IWillNotUseThisInPlugins: true })
+                                .el() === window.video
+                    )
+                ).toBe(true);
+            else {
+                expect(
+                    await page.evaluate(() => window._corePlaybackMode)
+                ).toBe(engine === "shaka" ? 2 : engine === "html5" ? 0 : 1);
+                if (engine === "hls.js")
+                    expect(
+                        await page.evaluate(
+                            () => window.hlsInstance.media === window.video
+                        )
+                    ).toBe(true);
+                if (engine === "shaka")
+                    expect(
+                        await page.evaluate(
+                            () =>
+                                window.player.getMediaElement() === window.video
+                        )
+                    ).toBe(true);
+            }
+            // Library-only providers have no TV channels, but still own durable media preferences.
+            expect(await page.evaluate(() => window.cList.length)).toBe(0);
+            await page.evaluate(() => window.stbToggleAspectRatio());
+            await page
+                .getByRole("button", { exact: true, name: "Fill screen" })
+                .click();
+            expect(await aspect()).toEqual({ mode: "fill", savedMode: "fill" });
+            await geometry("fill");
+            for (const viewport of [
+                { height: 720, width: 960 },
+                { height: 960, width: 720 },
+            ]) {
+                await page.setViewportSize(viewport);
+                for (const mode of ["fit", "fill"]) {
+                    expect(
+                        await page.evaluate(
+                            (mode) => window.captureAspectTarget().set(mode),
+                            mode
+                        )
+                    ).toBe(true);
+                    expect(await aspect()).toEqual({ mode, savedMode: mode });
+                    await geometry(mode);
+                }
+            }
+            await page.keyboard.press("Enter");
+            await select(page, films[1].title);
+            await ready("43");
+            expect(await aspect()).toEqual({ mode: "fill", savedMode: "fill" });
+            await geometry("fill");
+            if (strict) {
+                const kiosk = await page.evaluate(
+                    () =>
+                        new Promise((resolve) =>
+                            window.__ottKiosk.request(
+                                { mode: "on", strict: true },
+                                resolve
+                            )
+                        )
+                );
+                expect(kiosk.status).toBe("ok");
+            }
+            await page.reload();
+            await ready("43");
+            expect(await page.evaluate(() => window.__ottKiosk.strict())).toBe(
+                strict
+            );
+            expect(await aspect()).toEqual({ mode: "fill", savedMode: "fill" });
+            await geometry("fill");
+            expect(errors).toEqual([]);
+        }
+    );
+}

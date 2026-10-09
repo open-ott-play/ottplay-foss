@@ -157,6 +157,9 @@ jobs:
       - name: Test device boot and remote navigation in Chromium
         run: npm run test:devices:browser
 
+      - name: Test aspect persistence in WebKit
+        run: npx playwright test tests/browser/plex-provider.spec.cjs --grep 'Plex aspect persists' --browser=webkit
+
       - name: Test native channel formatting with enforced CSP
         run: npm run test:native:ui
 

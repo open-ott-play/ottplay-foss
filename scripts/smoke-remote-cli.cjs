@@ -145,6 +145,9 @@ function moduleOf(file, requireFn, window) {
             } catch {}
             await new Promise((r) => setTimeout(r, 50));
         }
+        // This fixture supplies only the display/storage port. Browser tests
+        // separately exercise the real core geometry and durable library.
+        const aspectPreferences = new Map();
         function player(device, token, initialVolume, native = false) {
             let volume = initialVolume,
                 dispatches = 0,
@@ -168,6 +171,11 @@ function moduleOf(file, requireFn, window) {
                 droppedStepReceipt = false,
                 protectedInput = false,
                 pendingAck = null;
+            let aspectMode = aspectPreferences.get(device) || "fit",
+                aspectChanges = 0,
+                aspectGeneration = 0,
+                aspectSupported = true,
+                reloadOnAspect = false;
             const keysReceived = [],
                 controlsReceived = [],
                 receipts = [];
@@ -213,6 +221,25 @@ function moduleOf(file, requireFn, window) {
                         return () => {};
                     },
                     source: () => "demo",
+                },
+                captureAspectTarget: () => {
+                    if (!aspectSupported) return null;
+                    const generation = aspectGeneration;
+                    const current = () =>
+                        aspectSupported && aspectGeneration === generation;
+                    return {
+                        current,
+                        mode: aspectMode,
+                        savedMode: aspectPreferences.get(device) || null,
+                        set(mode) {
+                            if (!current()) return false;
+                            aspectPreferences.set(device, mode);
+                            aspectMode = mode;
+                            aspectGeneration++;
+                            aspectChanges++;
+                            return true;
+                        },
+                    };
                 },
                 catIndex: 0,
                 cats: { one: ["a", "b"] },
@@ -368,6 +395,7 @@ function moduleOf(file, requireFn, window) {
                 else if (command.volume !== undefined) volume = command.volume;
                 return "accepted";
             };
+            let restartModule;
             const dependencies = (name) =>
                 name === "../provider"
                     ? {
@@ -391,20 +419,38 @@ function moduleOf(file, requireFn, window) {
                                 dependencies,
                                 host
                             )
-                          : name === "./remote-restart"
-                            ? moduleOf(
+                          : name === "./remote-restart" ||
+                              name === "../commands/remote-restart"
+                            ? restartModule ||
+                              (restartModule = moduleOf(
                                   "src/commands/remote-restart.ts",
                                   dependencies,
                                   host
-                              )
-                            : name === "../utils/caseless"
-                              ? caseless
-                              : { handleCommand: dispatch };
-            const execute = moduleOf(
-                "src/commands/remote-requests.ts",
-                dependencies,
-                host
-            ).executeRemoteRequest;
+                              ))
+                            : name === "./remote-doctor"
+                              ? moduleOf(
+                                    "src/plugins/remote-doctor.ts",
+                                    dependencies,
+                                    host
+                                )
+                              : name === "../utils/caseless"
+                                ? caseless
+                                : { handleCommand: dispatch };
+            let execute, inspection;
+            function loadRuntime() {
+                restartModule = undefined;
+                execute = moduleOf(
+                    "src/commands/remote-requests.ts",
+                    dependencies,
+                    host
+                ).executeRemoteRequest;
+                inspection = moduleOf(
+                    "src/plugins/remote-inspect.ts",
+                    dependencies,
+                    host
+                ).installRemoteInspection(host);
+            }
+            loadRuntime();
             const transport = moduleOf(
                 "src/plugins/command-server.ts",
                 () => require("../tests/load-wire.cjs")(),
@@ -505,10 +551,30 @@ function moduleOf(file, requireFn, window) {
                 dispatch,
                 (request, done, afterReply) => {
                     controlsReceived.push(clone(request));
-                    return request.action === "kiosk"
-                        ? host.__ottKiosk.request(request.params, done)
-                        : execute(request, done, afterReply);
-                }
+                    if (reloadOnAspect && request.action === "aspect") {
+                        reloadOnAspect = false;
+                        // A real page reload retires its old transport too. The
+                        // new runtime must leave the old request for its owner.
+                        controller.configure({
+                            address: "",
+                            enabled: false,
+                            token: "",
+                        });
+                        loadRuntime();
+                        controller.configure({ address, enabled: true, token });
+                        return;
+                    }
+                    return inspection.execute(
+                        request,
+                        done,
+                        afterReply,
+                        (item, reply, defer) =>
+                            item.action === "kiosk"
+                                ? host.__ottKiosk.request(item.params, reply)
+                                : execute(item, reply, defer)
+                    );
+                },
+                (request) => inspection.accept(request)
             );
             controller.configure({
                 address,
@@ -517,7 +583,14 @@ function moduleOf(file, requireFn, window) {
             });
             controllers.push(controller);
             return () => ({
+                aspectChanges,
+                aspectMode,
+                aspectSaved: aspectPreferences.get(device) || null,
+                aspectSupported: (value) => {
+                    aspectSupported = value;
+                },
                 backendAccesses,
+                changeAspectTarget: () => aspectGeneration++,
                 channelSteps,
                 configuration: clone(configuration),
                 controlsReceived: clone(controlsReceived),
@@ -565,6 +638,9 @@ function moduleOf(file, requireFn, window) {
                     protectedInput = value;
                 },
                 receipts: clone(receipts),
+                reloadOnAspect: () => {
+                    reloadOnAspect = true;
+                },
                 reloads,
                 rename: (id, name) => {
                     host.channels[id].channel_name = name;
@@ -586,11 +662,17 @@ function moduleOf(file, requireFn, window) {
                     host.curList = host.cats.steps;
                     host.primaryIndex = 0;
                 },
+                stop: () =>
+                    controller.configure({
+                        address: "",
+                        enabled: false,
+                        token: "",
+                    }),
                 streamRestarts,
                 volume,
             });
         }
-        const television = player("dev_test", "b".repeat(32), 30);
+        let television = player("dev_test", "b".repeat(32), 30);
         const desktop = player("dev_second", "c".repeat(32), 70, true);
         async function runOn(name, ...args) {
             return execFile("python3", [
@@ -935,6 +1017,136 @@ function moduleOf(file, requireFn, window) {
         ]);
         assert(browserCaps.input.includes("ok"));
 
+        const aspectBefore = television();
+        assert.deepEqual(browserCaps.aspect, {
+            modes: ["fit", "fill"],
+            operations: ["get", "set"],
+            version: 1,
+        });
+        assert.deepEqual(await jsonOn("tv", "aspect"), {
+            mode: "fit",
+            operation: "get",
+            persisted: false,
+            runtime: browserCaps.player.runtime,
+            saved_mode: null,
+            version: 1,
+        });
+        assert.equal(
+            television().backendAccesses,
+            aspectBefore.backendAccesses
+        );
+        for (const [alias, mode] of [
+            ["fill", "fill"],
+            ["Fit to screen", "fit"],
+            ["Fill screen", "fill"],
+            ["fill", "fill"],
+        ]) {
+            const before = await deferred(
+                "tv",
+                television,
+                ["aspect", alias],
+                "aspect",
+                "set",
+                () => television().aspectChanges,
+                undefined,
+                { mode, runtime: browserCaps.player.runtime, version: 1 }
+            );
+            assert.equal(television().aspectChanges, before + 1);
+            assert.deepEqual(await jsonOn("tv", "aspect", "get"), {
+                mode,
+                operation: "get",
+                persisted: true,
+                runtime: browserCaps.player.runtime,
+                saved_mode: mode,
+                version: 1,
+            });
+        }
+        assert.equal(
+            desktop().aspectMode,
+            "fit",
+            "aspect persists only for the selected player"
+        );
+        assert.equal(desktop().aspectSaved, null);
+        assert.deepEqual(
+            television().keysReceived,
+            aspectBefore.keysReceived,
+            "typed aspect never injects menu keys"
+        );
+        const invalidAspectPosted = submissions.length;
+        await assert.rejects(jsonOn("tv", "aspect", "stretch"));
+        assert.equal(submissions.length, invalidAspectPosted);
+        for (const policy of ["unsupported", "protected"]) {
+            if (policy === "unsupported") television().aspectSupported(false);
+            else television().protectInput(true);
+            const before = television();
+            assert.deepEqual((await jsonOn("tv", "caps")).aspect, {
+                modes: policy === "unsupported" ? [] : ["fit", "fill"],
+                operations: policy === "unsupported" ? [] : ["get"],
+                version: 1,
+            });
+            await assert.rejects(jsonOn("tv", "aspect", "fit"), (error) => {
+                assert.equal(error.stdout, "");
+                assert.match(error.stderr, /No aspect command was sent/);
+                return true;
+            });
+            assert(
+                television()
+                    .controlsReceived.slice(before.controlsReceived.length)
+                    .every((request) => request.action === "capabilities")
+            );
+            assert.equal(television().aspectChanges, before.aspectChanges);
+            if (policy === "protected")
+                assert.equal((await jsonOn("tv", "aspect")).mode, "fill");
+            television().aspectSupported(true);
+            television().protectInput(false);
+        }
+        for (const change of [
+            () => television().changeAspectTarget(),
+            () => television().protectInput(true),
+        ]) {
+            const before = await deferred(
+                "tv",
+                television,
+                ["aspect", "fit"],
+                "aspect",
+                "set",
+                () => television().aspectChanges,
+                change,
+                { mode: "fit", runtime: browserCaps.player.runtime, version: 1 }
+            );
+            assert.equal(
+                television().aspectChanges,
+                before,
+                "a stale target or new protected surface cancels the accepted write"
+            );
+            assert.equal(television().aspectMode, "fill");
+            television().protectInput(false);
+        }
+        const staleAspectBefore = television();
+        television().reloadOnAspect();
+        await assert.rejects(jsonOn("tv", "aspect", "fit"), (error) => {
+            assert.equal(error.stdout, "");
+            assert.match(error.stderr, /did not respond/);
+            return true;
+        });
+        assert.equal(
+            television().aspectChanges,
+            staleAspectBefore.aspectChanges
+        );
+        assert.deepEqual(
+            television()
+                .controlsReceived.slice(
+                    staleAspectBefore.controlsReceived.length
+                )
+                .map((request) => request.action),
+            ["capabilities", "aspect"],
+            "runtime mismatch never falls back or retries"
+        );
+        const replacedAspect = await jsonOn("tv", "aspect");
+        assert.notEqual(replacedAspect.runtime, browserCaps.player.runtime);
+        assert.equal(replacedAspect.mode, "fill");
+        assert.equal(replacedAspect.persisted, true);
+
         async function unsupported(name, get, args, action, params) {
             const before = get().controlsReceived.length;
             await assert.rejects(runOn(name, ...args), (error) => {
@@ -981,7 +1193,8 @@ function moduleOf(file, requireFn, window) {
             action,
             value,
             readEffect,
-            afterIntent
+            afterIntent,
+            fields = {}
         ) {
             const gate = get().defer(action, value);
             const before = readEffect();
@@ -991,6 +1204,7 @@ function moduleOf(file, requireFn, window) {
                 accepted: true,
                 dispatched: false,
                 effect: action + "-after-ack",
+                ...fields,
             });
             assert(
                 gate.dropped,
@@ -999,7 +1213,7 @@ function moduleOf(file, requireFn, window) {
             assert.equal(
                 readEffect(),
                 before,
-                "CLI acceptance must precede the native/input effect"
+                "CLI acceptance must precede the control effect"
             );
             if (afterIntent) afterIntent();
             gate.release();
@@ -1134,6 +1348,36 @@ function moduleOf(file, requireFn, window) {
         assert.equal(desktop().paused + desktop().resumed + desktop().seeks, 0);
 
         const malformed = [
+            { action: "aspect", params: { operation: "get" } },
+            {
+                action: "aspect",
+                params: {
+                    mode: "fit",
+                    operation: "get",
+                    runtime: replacedAspect.runtime,
+                },
+            },
+            {
+                action: "aspect",
+                params: {
+                    mode: "stretch",
+                    operation: "set",
+                    runtime: replacedAspect.runtime,
+                },
+            },
+            {
+                action: "aspect",
+                params: {
+                    force: true,
+                    mode: "fit",
+                    operation: "set",
+                    runtime: replacedAspect.runtime,
+                },
+            },
+            {
+                action: "aspect",
+                params: { mode: "fit", operation: "set", runtime: "INVALID" },
+            },
             { action: "capabilities", params: { all: true } },
             {
                 action: "lifecycle",
@@ -1177,6 +1421,7 @@ function moduleOf(file, requireFn, window) {
             },
         ];
         const malformedStepCount = television().channelSteps;
+        const malformedAspectCount = television().aspectChanges;
         for (const payload of malformed) {
             const result = await fetch(
                 address + "/api/requests?device_id=dev_test",
@@ -1196,6 +1441,23 @@ function moduleOf(file, requireFn, window) {
             );
         }
         assert.equal(television().channelSteps, malformedStepCount);
+        assert.equal(television().aspectChanges, malformedAspectCount);
+        const priorAspectRuntime = (await jsonOn("tv", "aspect")).runtime;
+        television().stop();
+        television = player("dev_test", "b".repeat(32), 30);
+        const restoredAspect = await jsonOn("tv", "aspect");
+        assert.notEqual(restoredAspect.runtime, priorAspectRuntime);
+        assert.equal(restoredAspect.mode, "fill");
+        assert.equal(restoredAspect.saved_mode, "fill");
+        assert.equal(restoredAspect.persisted, true);
+        assert.equal(
+            television().aspectChanges,
+            0,
+            "fixture restart restores saved mode without a remote write"
+        );
+        console.log(
+            "PASS aspect via real Go + compiled TS + Python: fit/fill aliases, truthful pre-ACK acceptance, exact lost-ACK retries, idempotent setting, readback, device isolation, unsupported/read-only gating, protected/target/runtime fences and restored saved state"
+        );
         console.log(
             "PASS previous/prev/next and signed offsets through real Go + compiled TS + Python: category wraps, exact safe-integer offsets, catalogue receipts, one mutation, device isolation, malformed rejection and no replay after lost POST/receipt responses"
         );

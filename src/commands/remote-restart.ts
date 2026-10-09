@@ -604,6 +604,48 @@ function remoteScreenshotSnapshot(w: any): any {
     }
 }
 
+function remoteAspectTarget(w: any): any {
+    try {
+        if (typeof w.captureAspectTarget !== "function") return null;
+        var target = w.captureAspectTarget();
+        return target &&
+            (target.mode === "fit" || target.mode === "fill") &&
+            (target.savedMode === null ||
+                target.savedMode === "fit" ||
+                target.savedMode === "fill") &&
+            typeof target.current === "function" &&
+            typeof target.set === "function" &&
+            target.current()
+            ? target
+            : null;
+    } catch (_) {
+        return null;
+    }
+}
+function remoteAspectAllowed(w: any): boolean {
+    try {
+        return (
+            !remoteProtectedInput(w) &&
+            !remoteKiosk(w) &&
+            !remoteSettingsLocked(w)
+        );
+    } catch (_) {
+        return false;
+    }
+}
+function remoteAspectCapabilities(w: any): any {
+    var target = remoteAspectTarget(w);
+    return {
+        modes: target ? ["fit", "fill"] : [],
+        operations: target
+            ? remoteAspectAllowed(w)
+                ? ["get", "set"]
+                : ["get"]
+            : [],
+        version: 1,
+    };
+}
+
 /** Typed, bounded controls share the command transport's exact-result ACK fence. */
 export function executeRemoteControl(
     w: any,
@@ -626,7 +668,9 @@ export function executeRemoteControl(
               ? ["key"]
               : action === "playback"
                 ? ["operation", "position", "offset"]
-                : [];
+                : action === "aspect"
+                  ? ["operation", "runtime", "mode"]
+                  : [];
     if (
         !params ||
         typeof params !== "object" ||
@@ -636,6 +680,87 @@ export function executeRemoteControl(
         })
     ) {
         fail("rejected", "Invalid control parameters.");
+        return;
+    }
+    if (action === "aspect") {
+        var runtime = remotePlayerInfo(w).runtime;
+        var setting = params.operation === "set";
+        var aspectFail = function (status: string, code: string): void {
+            var data: any = {
+                error: code,
+                operation: params.operation,
+                runtime: runtime,
+                version: 1,
+            };
+            if (setting) data.mode = params.mode;
+            done({ data: data, status: status });
+        };
+        if (
+            (params.operation !== "get" && !setting) ||
+            Object.keys(params).sort().join(",") !==
+                (setting ? "mode,operation,runtime" : "operation,runtime") ||
+            typeof params.runtime !== "string" ||
+            !/^[a-z0-9-]{1,64}$/.test(params.runtime) ||
+            (setting && params.mode !== "fit" && params.mode !== "fill")
+        ) {
+            fail(
+                "rejected",
+                "Use aspect get or set for the current player runtime."
+            );
+            return;
+        }
+        if (params.runtime !== runtime) {
+            aspectFail("rejected", "runtime_mismatch");
+            return;
+        }
+        if (setting && !remoteAspectAllowed(w)) {
+            aspectFail("rejected", "restricted");
+            return;
+        }
+        var target = remoteAspectTarget(w);
+        if (!target || (setting && !afterReply)) {
+            aspectFail("unsupported", "unsupported");
+            return;
+        }
+        if (!setting) {
+            reply({
+                mode: target.mode,
+                operation: "get",
+                persisted:
+                    target.savedMode !== null &&
+                    target.savedMode === target.mode,
+                runtime: runtime,
+                saved_mode: target.savedMode,
+                version: 1,
+            });
+            return;
+        }
+        var capture = w.captureAspectTarget;
+        var mode = params.mode;
+        var consumed = false;
+        afterReply!(function (): boolean {
+            if (consumed) return false;
+            consumed = true;
+            try {
+                if (
+                    w.captureAspectTarget === capture &&
+                    remotePlayerInfo(w).runtime === runtime &&
+                    remoteAspectAllowed(w) &&
+                    target.current()
+                )
+                    return target.set(mode) === true;
+            } catch (_) {}
+            return false;
+        });
+        reply({
+            accepted: true,
+            dispatched: false,
+            effect: "aspect-after-ack",
+            mode: mode,
+            operation: "set",
+            runtime: runtime,
+            version: 1,
+        });
         return;
     }
     var hooks = w.__ottRemoteLifecycle;
@@ -663,6 +788,7 @@ export function executeRemoteControl(
         // policy of either neighbour. Every requested destination is checked.
         if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
         reply({
+            aspect: remoteAspectCapabilities(w),
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),

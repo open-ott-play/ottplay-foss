@@ -155,7 +155,11 @@ const { gzipSync } = require("node:zlib");
 // code instead of repeating it. On clean Node 22.23.3 the combined web entry is
 // 805979 raw / 251002 gzip; native is 805937 / 251071. Add only 200 raw bytes,
 // leaving 121 before the release suffix; gzip and complete-payload caps stay put.
-const BUDGET = Object.freeze({ bytes: 806100, gzipBytes: 251350 });
+// Explicit aspect control, fenced persistence and media-only restore add 4889
+// raw / at most 1353 gzip bytes over 57d8dd1 on Node 22.23.3.
+// Web measures 810945 / 252390; native 810903 / 252458. Add 4900 / 1400
+// to preserve the existing native and release-suffix reserve once.
+const BUDGET = Object.freeze({ bytes: 811000, gzipBytes: 252750 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -233,7 +237,9 @@ const BUDGET = Object.freeze({ bytes: 806100, gzipBytes: 251350 });
 // The Plex error handoff adds 14 more gzip bytes in its optional provider.
 // Include the same 400-byte compressed allowance in the complete player;
 // its raw payload remains within the existing cap.
-const TOTAL_BUDGET = Object.freeze({ bytes: 918600, gzipBytes: 293000 });
+// The same aspect increment is counted here; all seven provider assets are
+// unchanged. Complete web measures 923327 / 294108; native 923285 / 294176.
+const TOTAL_BUDGET = Object.freeze({ bytes: 923500, gzipBytes: 294400 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

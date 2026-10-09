@@ -148,6 +148,33 @@ for (const mode of ["native", "access", "read", "write", "missing"]) {
         assert.equal(storage.get("after-clear"), "works");
     }
 }
+// A remote persistence receipt must describe a fresh boot, not session memory.
+for (const mode of ["native", "access", "read", "write", "missing"]) {
+    for (const denied of [false, true]) {
+        const state = { cookies: {}, saved: { aspect: "fit" } };
+        const runtime = storageFixture(mode, denied, state, true);
+        runtime.storage.set("aspect", "fill");
+        const before = JSON.stringify(state);
+        assert.equal(
+            runtime.stbGetPersistedItem("aspect"),
+            storageFixture(mode, denied, state).get("aspect"),
+            "Persisted read follows fresh boot: " + mode + "/" + denied
+        );
+        assert.equal(JSON.stringify(state), before, "Durability read is pure");
+        assert.equal(
+            runtime.stbGetPersistedItem("ottplayStorageFallback"),
+            null
+        );
+    }
+}
+{
+    const state = { cookies: {}, saved: { aspect: "fit" } };
+    const runtime = storageFixture("write", true, state, true);
+    runtime.storage.set("aspect", "fill");
+    assert.equal(runtime.storage.get("aspect"), "fill");
+    assert.equal(runtime.stbGetPersistedItem("aspect"), "fit");
+    assert.equal(runtime.stbGetPersistedItem("missing"), null);
+}
 const cookieStorage = storageFixture("missing");
 assert.equal(cookieStorage.get("valid"), "stored");
 assert.equal(cookieStorage.get("malformed"), null);
