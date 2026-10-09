@@ -2,8 +2,17 @@
 
 `ottplay-foss` publishes the **Full Capacitor APK** alongside its web, desktop and
 iOS artifacts. It contains the current shared interface, translations, provider
-profiles, remote commands and native media bridges. Minimum Android is 7 / API 24;
-Fire devices below API 24 need the separate legacy kiosk.
+profiles, remote commands and native media bridges. Two APKs share the same Full
+features, application ID, settings origin and signing certificate:
+
+- `ottplay-foss-android-full.apk`: Capacitor 8, Android 7 / API 24 and newer.
+- `ottplay-foss-android-api22.apk`: Capacitor 6.2.2, Android 5.1 / API 22 and
+  newer, including Fire HD 8 (KFDOWI / Fire OS 5). Requires WebView 60 or newer.
+
+Use the modern APK on newer devices. API 22 dependencies are isolated in
+`android/compat/package-lock.json` and `android/compat/variables.gradle`; do not
+lower the modern application's SDK or override library manifest checks.
+Android 4.4 / API 19 still requires the separate legacy kiosk.
 
 The independent Kotlin/Compose app and Play Store submission are maintained in
 [ottplay-android](https://github.com/open-ott-play/ottplay-android). That app has a
@@ -12,7 +21,7 @@ different identity and does not replace a Capacitor installation in place.
 ## Release identity
 
 Beta and RC use the same `release-build.yml` job and frozen version plan. The
-published `ottplay-foss-android-full.apk` is signed with the established Full
+published Full and API 22 APKs are signed with the established Full
 certificate. Stable promotion copies the verified RC bytes without rebuilding or
 changing the certificate. `android/version.json`, the real APK manifest and bundled
 `android-distribution.json` are checked during the build. Native build numbers are

@@ -207,7 +207,7 @@ class StalkerPortalPlugin : Plugin() {
                     try {
                         response.use {
                             require(response.code !in 300..399)
-                            val responseBody = response.body
+                            val responseBody = response.body ?: throw IOException("Empty HTTP response")
                             require(responseBody.contentLength() <= limit)
                             val output = ByteArrayOutputStream()
                             responseBody.byteStream().use { stream ->

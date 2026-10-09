@@ -346,20 +346,20 @@ class DashExoPlayerPlugin : Plugin() {
                 .setCategory(Notification.CATEGORY_TRANSPORT)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build()
-        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        val nm = (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? NotificationManager) ?: return
         nm.notify(NOTIFICATION_ID, notification)
     }
 
     private fun cancelNotification() {
         val ctx = context ?: return
-        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        val nm = (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? NotificationManager) ?: return
         nm.cancel(NOTIFICATION_ID)
     }
 
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val ctx = context ?: return
-        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        val nm = (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? NotificationManager) ?: return
         if (nm.getNotificationChannel(CHANNEL_ID) != null) return
         nm.createNotificationChannel(
             NotificationChannel(

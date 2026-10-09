@@ -8,7 +8,9 @@
     "container-validation.yml"
   ],
   "channel_validation_workflows": {
-    "beta": ["beta-checks.yml"]
+    "beta": [
+      "beta-checks.yml"
+    ]
   },
   "artifact_pattern": "release-assets*",
   "local_checks": [
@@ -32,7 +34,8 @@
     "OCI container archives are promoted without rebuild; deployment remains explicit.",
     "Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels; package and Cargo metadata retain the full candidate identity.",
     "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.",
-    "Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation."
+    "Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation.",
+    "The separate Capacitor 6 API 22 APK supports Android 5.1/6 devices with WebView 60+. It shares the Full application ID, profile origin and signing certificate; modern devices keep Capacitor 8. Both APKs are built for beta/RC and promoted unchanged to stable."
   ],
   "version_companions": [
     "src-tauri/Cargo.toml",
@@ -153,7 +156,11 @@
       {
         "path": "ottplay-foss-container.oci.tar",
         "format": "oci",
-        "field": ["config", "Labels", "org.opencontainers.image.version"],
+        "field": [
+          "config",
+          "Labels",
+          "org.opencontainers.image.version"
+        ],
         "value": "package"
       },
       {
@@ -169,13 +176,29 @@
         "value": "build",
         "member": "assets/public/android-distribution.json",
         "field": "versionCode"
+      },
+      {
+        "path": "ottplay-foss-android-api22.apk",
+        "format": "zip-json",
+        "value": "package",
+        "member": "assets/public/android-distribution.json",
+        "field": "version"
+      },
+      {
+        "path": "ottplay-foss-android-api22.apk",
+        "format": "zip-json",
+        "value": "build",
+        "member": "assets/public/android-distribution.json",
+        "field": "versionCode"
       }
     ],
     "toolkit_revision": "1bd42a9dcaf2695ff6a4c28cf94ce4329ebb9267"
   },
   "asset_restrictions": [
     {
-      "suffixes": [".aab"],
+      "suffixes": [
+        ".aab"
+      ],
       "reason": "Play Store AAB publication belongs to open-ott-play/ottplay-android"
     }
   ],
@@ -195,9 +218,15 @@
   ],
   "single_entry_ci": true,
   "change_scope": {
-    "documentation_paths": ["vendor/README.md"],
-    "required_paths": ["docs/privacy-policy.md"],
-    "always_validate_workflows": ["codeql.yml"]
+    "documentation_paths": [
+      "vendor/README.md"
+    ],
+    "required_paths": [
+      "docs/privacy-policy.md"
+    ],
+    "always_validate_workflows": [
+      "codeql.yml"
+    ]
   },
   "release_notes": "CHANGELOG.md"
 }

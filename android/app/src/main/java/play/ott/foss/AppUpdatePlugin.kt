@@ -141,7 +141,8 @@ internal object AppUpdates {
                     url = https(URL(url, connection.getHeaderField("Location") ?: "").toString())
                     continue
                 }
-                require(code == 200 && connection.contentLengthLong <= LIMIT)
+                val announcedLength = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
+                require(code == 200 && announcedLength <= LIMIT)
                 connection.inputStream.use { input ->
                     output.outputStream().use { out ->
                         val buffer = ByteArray(65536)

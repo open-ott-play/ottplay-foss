@@ -23,7 +23,7 @@ class MobileCommandQueuePlugin : Plugin() {
     private val queueLock = Any()
     private var serverJob: Job? = null
     private var serverSocket: ServerSocket? = null
-    private val activeClients = ConcurrentHashMap.newKeySet<Socket>()
+    private val activeClients = java.util.Collections.newSetFromMap(ConcurrentHashMap<Socket, Boolean>())
     @Volatile private var isRunningFlag = true
     @Volatile private var boundPort = 0
     @Volatile private var destroyed = false

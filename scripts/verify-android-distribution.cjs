@@ -115,12 +115,12 @@ function auditAssets(directory, flavor) {
     );
 }
 
-function auditTarget(target, flavor) {
+function auditTarget(target, flavor, minSdk = 24) {
     if (fs.statSync(target).isDirectory()) return auditAssets(target, flavor);
     assert.equal(path.extname(target), ".apk");
     execFileSync(
         "python3",
-        [path.join(__dirname, "verify-android-apk.py"), path.resolve(target)],
+        [path.join(__dirname, "verify-android-apk.py"), path.resolve(target), String(minSdk)],
         { stdio: "inherit" }
     );
     const temporary = fs.mkdtempSync(
@@ -153,10 +153,13 @@ function auditTarget(target, flavor) {
             { stdio: "inherit" }
         );
         auditAssets(temporary, flavor);
+        const distribution = JSON.parse(fs.readFileSync(path.join(temporary, "public/android-distribution.json")));
+        assert.equal(distribution.minSdk, minSdk, "Packaged runtime target differs from APK manifest");
+        assert.equal(distribution.capacitorMajor, minSdk === 22 ? 6 : 8);
         auditNativeRuntimeCopy(
             path.join(
                 root,
-                "android/app/build/generated/ottplay/full/assets/public"
+                minSdk === 22 ? "android/app/build-api22/generated/ottplay/full/assets/public" : "android/app/build/generated/ottplay/full/assets/public"
             ),
             path.join(temporary, "public")
         );
@@ -166,7 +169,7 @@ function auditTarget(target, flavor) {
 }
 if (require.main === module) {
     try {
-        auditTarget(process.argv[2], process.argv[3] || "full");
+        auditTarget(process.argv[2], process.argv[3] || "full", Number(process.argv[4] || 24));
     } catch (error) {
         console.error(error.message);
         process.exitCode = 1;
