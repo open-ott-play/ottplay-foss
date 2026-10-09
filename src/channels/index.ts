@@ -1460,6 +1460,8 @@ export function onChannelsLoaded(): void {
                 window._pendingProvId = "";
             }
             if (libraryOnly) {
+                // Media-only providers still own shared aspect/zoom preferences.
+                (window as any).__ottChannels.mount(window);
                 window.playType = 0;
                 var host = window as any;
                 var media = host.__ottMedia;
@@ -3341,6 +3343,26 @@ export function getChannelPreference(arrayName: string): number {
     return value === undefined ? 0 : value;
 }
 
+/** Capture a preference owner without creating a catalog or writing storage. */
+export function captureChannelPreference(arrayName: string): any {
+    var target = channelPreferenceTarget(arrayName);
+    var adapter = (window as any).__ottChannels;
+    var capture =
+        target !== undefined && adapter && adapter.capturePreference
+            ? adapter.capturePreference(arrayName, target)
+            : null;
+    if (!capture) return null;
+    var active = capture.active;
+    capture.active = function () {
+        return (
+            adapter === (window as any).__ottChannels &&
+            target === channelPreferenceTarget(arrayName) &&
+            active()
+        );
+    };
+    return capture;
+}
+
 export function applyChannelPreference(
     arrayName: string,
     callback: (value: number) => void
@@ -3390,10 +3412,16 @@ export function applyChannelPreference(
 export function saveChannelPreference(
     arrayName: string,
     value: number | undefined | null
-): void {
+): boolean {
     var target = channelPreferenceTarget(arrayName);
-    if (target !== undefined)
-        (window as any).__ottChannels.setPreference(arrayName, target, value);
+    return (
+        target !== undefined &&
+        (window as any).__ottChannels.setPreference(
+            arrayName,
+            target,
+            value
+        ) === true
+    );
 }
 
 /* ---------------------------------------------------------------------------

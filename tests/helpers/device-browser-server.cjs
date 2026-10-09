@@ -17,6 +17,43 @@ const playerScripts = new Set([
 const dist = path.resolve(__dirname, "../../dist");
 const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 4179);
 const diagnostics = process.env.OTTP_DEVICE_TEST_DIAGNOSTICS === "1";
+let aspectFixture;
+function aspectMedia() {
+    if (!aspectFixture) {
+        // Separate fMP4 renditions exercise real HLS audio/video decoding without
+        // depending on GStreamer's multiplexed SourceBuffer path. Shaka consumes
+        // fMP4 directly; reuse the TS bytes without FFmpeg or new binary fixtures.
+        aspectFixture = {};
+        const transmuxer = new (require("mux.js").mp4.Transmuxer)({
+            remux: false,
+        });
+        transmuxer.on("data", (segment) => {
+            const type = segment.type;
+            aspectFixture[type + ".m3u8"] =
+                '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="' +
+                type +
+                '-init.mp4"\n#EXTINF:2,\n' +
+                type +
+                "-segment.m4s\n#EXT-X-ENDLIST\n";
+            aspectFixture[type + "-init.mp4"] = Buffer.from(
+                segment.initSegment
+            );
+            aspectFixture[type + "-segment.m4s"] = Buffer.from(segment.data);
+        });
+        transmuxer.push(
+            new Uint8Array(
+                fs.readFileSync(
+                    path.join(
+                        __dirname,
+                        "../fixtures/media-runtime/segment00.ts"
+                    )
+                )
+            )
+        );
+        transmuxer.flush();
+    }
+    return aspectFixture;
+}
 const diagnosticScript = diagnostics
     ? fs.readFileSync(
           path.join(__dirname, "device-browser-diagnostics.js"),
@@ -115,6 +152,31 @@ http.createServer((request, response) => {
         response
             .writeHead(200, { "Content-Type": "application/json" })
             .end("{}");
+        return;
+    }
+    // Native WebKit media requests can bypass Playwright route interception.
+    // Serve only the checked-in synthetic HLS fixture for real decoder tests.
+    const plexFixture = pathname === "/video/:/transcode/universal/start.m3u8";
+    if (
+        plexFixture ||
+        /^\/__device_test_media\/(audio|video)(\.m3u8|-init\.mp4|-segment\.m4s)$/.test(
+            pathname
+        )
+    ) {
+        response.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Type": pathname.endsWith(".m3u8")
+                ? "application/vnd.apple.mpegurl"
+                : pathname.includes("/audio-")
+                  ? "audio/mp4"
+                  : "video/mp4",
+        });
+        let fixture;
+        if (plexFixture)
+            fixture =
+                '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Synthetic audio",DEFAULT=YES,AUTOSELECT=YES,URI="/__device_test_media/audio.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,CODECS="avc1.42c01e,mp4a.40.2",AUDIO="audio"\n/__device_test_media/video.m3u8\n';
+        else fixture = aspectMedia()[path.basename(pathname)];
+        response.end(fixture);
         return;
     }
     let relative;

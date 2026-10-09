@@ -16,11 +16,18 @@ function emit(file) {
 }
 const plexContext = { exports: {} };
 vm.runInNewContext(emit("src/commands/remote-plex.ts"), plexContext);
+const updateContext = {
+    exports: {},
+    require: () => ({
+        resolveNativePlugin: () =>
+            assert.fail("capabilities must not resolve an installer"),
+    }),
+};
+vm.runInNewContext(emit("src/commands/remote-app-update.ts"), updateContext);
 const context = {
     exports: {},
     require(name) {
-        if (name === "./remote-app-update")
-            return { remoteAppUpdateAvailable: () => false };
+        if (name === "./remote-app-update") return updateContext.exports;
         assert.equal(name, "./remote-plex");
         return plexContext.exports;
     },
@@ -433,6 +440,248 @@ for (const changed of [
 }
 console.log(
     "PASS remote controls: ES5 schemas, public identity, honest capabilities, native ACK fencing, kiosk/PIN/local consent, key collisions and owned playback"
+);
+
+function aspectFixture() {
+    const f = fixture();
+    let mode = "fit",
+        savedMode = null,
+        generation = 1,
+        supported = true;
+    f.w.captureAspectTarget = () => {
+        if (!supported) return null;
+        const captured = generation;
+        const current = () => supported && captured === generation;
+        return {
+            current,
+            mode,
+            savedMode,
+            set(value) {
+                if (!current()) return false;
+                mode = savedMode = value;
+                f.effects.push(["aspect", value]);
+                return true;
+            },
+        };
+    };
+    const runtime = f.run("capabilities").result.data.player.runtime;
+    return Object.assign(f, {
+        aspect(operation = "get", value) {
+            return f.run("aspect", {
+                operation,
+                runtime,
+                ...(value === undefined ? {} : { mode: value }),
+            });
+        },
+        changeTarget: () => generation++,
+        runtime,
+        supported: (value) => {
+            supported = value;
+        },
+    });
+}
+{
+    const f = aspectFixture();
+    f.w.Capacitor = {
+        getPlatform: () => "android",
+        isNativePlatform: () => true,
+        isPluginAvailable: (name) => name === "AppUpdate",
+    };
+    const caps = f.run("capabilities").result.data;
+    assert.deepEqual(caps.app_update, {
+        operations: ["status", "prepare", "install"],
+        version: 1,
+    });
+    assert.deepEqual(caps.aspect, {
+        modes: ["fit", "fill"],
+        operations: ["get", "set"],
+        version: 1,
+    });
+    assert.equal(caps.player.runtime, f.runtime);
+    assert.equal(f.aspect().result.data.runtime, f.runtime);
+    f.w.Capacitor.getPlatform = () => "ios";
+    assert.equal(f.run("capabilities").result.data.app_update, null);
+    assert.deepEqual(f.run("capabilities").result.data.aspect, caps.aspect);
+    assert.deepEqual(f.effects, []);
+}
+{
+    const f = aspectFixture();
+    f.w.__ottCoreBackend = () =>
+        assert.fail("aspect must not create a decoder");
+    assert.deepEqual(f.run("capabilities").result.data.aspect, {
+        modes: ["fit", "fill"],
+        operations: ["get", "set"],
+        version: 1,
+    });
+    assert.deepEqual(f.aspect().result.data, {
+        mode: "fit",
+        operation: "get",
+        persisted: false,
+        runtime: f.runtime,
+        saved_mode: null,
+        version: 1,
+    });
+    const pending = f.aspect("set", "fill");
+    assert.deepEqual(pending.result.data, {
+        accepted: true,
+        dispatched: false,
+        effect: "aspect-after-ack",
+        mode: "fill",
+        operation: "set",
+        runtime: f.runtime,
+        version: 1,
+    });
+    assert.deepEqual(
+        f.effects,
+        [],
+        "acceptance does not mutate presentation or storage"
+    );
+    assert.equal(f.aspect().result.data.mode, "fit");
+    pending.effect();
+    pending.effect();
+    assert.deepEqual(f.effects, [["aspect", "fill"]], "effect is one-shot");
+    assert.deepEqual(f.aspect().result.data, {
+        mode: "fill",
+        operation: "get",
+        persisted: true,
+        runtime: f.runtime,
+        saved_mode: "fill",
+        version: 1,
+    });
+    f.aspect("set", "fill").effect();
+    assert.equal(
+        f.aspect().result.data.mode,
+        "fill",
+        "explicit set never toggles"
+    );
+}
+for (const params of [
+    {},
+    [],
+    null,
+    1,
+    { operation: "get" },
+    { operation: "get", runtime: "stale" },
+    { operation: "toggle" },
+    { mode: "stretch", operation: "set" },
+    { mode: 1, operation: "set" },
+    { mode: "fit", operation: "get" },
+    { extra: true, operation: "get" },
+]) {
+    const f = aspectFixture();
+    const input =
+        params && !Array.isArray(params) && typeof params === "object"
+            ? { runtime: f.runtime, ...params }
+            : params;
+    // The missing-runtime case is checked separately below.
+    if (
+        params &&
+        Object.keys(params).join() === "operation" &&
+        params.operation === "get"
+    ) {
+        assert.equal(f.run("aspect", params).result.status, "rejected");
+        continue;
+    }
+    assert.equal(f.run("aspect", input).result.status, "rejected");
+    assert.deepEqual(f.effects, []);
+}
+for (const policy of ["lock", "kiosk", "protect"]) {
+    const f = aspectFixture();
+    f[policy](true);
+    assert.deepEqual(f.run("capabilities").result.data.aspect.operations, [
+        "get",
+    ]);
+    assert.equal(
+        f.aspect().result.status,
+        "ok",
+        "policy keeps read-only aspect available"
+    );
+    assert.equal(f.aspect("set", "fill").result.status, "rejected");
+    assert.deepEqual(f.aspect("set", "fill").result.data, {
+        error: "restricted",
+        mode: "fill",
+        operation: "set",
+        runtime: f.runtime,
+        version: 1,
+    });
+    assert.deepEqual(f.effects, []);
+}
+for (const change of [
+    "lock",
+    "kiosk",
+    "protect",
+    "target",
+    "support",
+    "producer",
+    "throw",
+]) {
+    const f = aspectFixture();
+    const pending = f.aspect("set", "fill");
+    if (["lock", "kiosk", "protect"].includes(change)) f[change](true);
+    if (change === "target") f.changeTarget();
+    if (change === "support") f.supported(false);
+    if (change === "producer") f.w.captureAspectTarget = () => null;
+    if (change === "throw")
+        f.w.__ottKiosk.enabled = () => {
+            throw new Error("policy unavailable");
+        };
+    pending.effect();
+    assert.deepEqual(f.effects, [], "ACK rechecks " + change);
+    if (["lock", "kiosk", "protect"].includes(change)) f[change](false);
+    pending.effect();
+    assert.deepEqual(f.effects, [], "a cancelled ACK is never revived");
+}
+{
+    const f = aspectFixture();
+    assert.equal(
+        f.run(
+            "aspect",
+            { mode: "fill", operation: "set", runtime: f.runtime },
+            false
+        ).result.status,
+        "unsupported"
+    );
+    for (const capture of [
+        undefined,
+        () => null,
+        () => {
+            throw new Error("unavailable");
+        },
+        () => ({ mode: 2 }),
+    ]) {
+        f.w.captureAspectTarget = capture;
+        assert.deepEqual(f.run("capabilities").result.data.aspect, {
+            modes: [],
+            operations: [],
+            version: 1,
+        });
+        assert.equal(f.aspect().result.status, "unsupported");
+        assert.deepEqual(f.aspect().result.data, {
+            error: "unsupported",
+            operation: "get",
+            runtime: f.runtime,
+            version: 1,
+        });
+        assert.equal(f.aspect("set", "fill").result.status, "unsupported");
+    }
+    assert.deepEqual(
+        f.run("aspect", {
+            mode: "fill",
+            operation: "set",
+            runtime: "stale-page",
+        }).result.data,
+        {
+            error: "runtime_mismatch",
+            mode: "fill",
+            operation: "set",
+            runtime: f.runtime,
+            version: 1,
+        },
+        "negative receipts identify the actual runtime, never echo another page"
+    );
+}
+console.log(
+    "PASS remote aspect: strict runtime-bound schemas, pure read, honest capabilities, saved mode, one-shot ACK, policy and target fencing"
 );
 
 // Doctor uses the same predicates as execution, without creating a decoder or

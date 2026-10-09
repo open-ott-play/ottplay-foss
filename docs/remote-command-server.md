@@ -200,6 +200,44 @@ URL only for a local availability probe; ordinary catalogue and guide replies
 remain metadata-only. Playback uses the existing archive controller and validates
 the current catalogue receipt, channel access and a maximum 144-hour retention.
 
+### Aspect ratio
+
+`ott PLAYER aspect` reads the current main-video mode. `ott PLAYER aspect fit`
+uses **Fit to screen** (contain); `ott PLAYER aspect fill` uses **Fill screen**
+(cover). Fill preserves the video's proportions and crops its edges. It does
+not stretch the image or change the separate PiP window.
+
+The shared HTML player supports this during an active main-video session in
+Tauri, the OTT Server and here.now web frontends, and Capacitor iOS/Android.
+Other device engines must advertise support;
+the CLI never falls back to pressing a key or opening a menu.
+
+The typed `aspect` request accepts exactly `{operation:"get",runtime}` or
+`{operation:"set",runtime,mode:"fit"|"fill"}`. Obtain `runtime` from the current
+player capabilities. `capabilities.aspect` contains `version:1`, an `operations`
+array and a `modes` array. Unsupported players expose empty arrays; a locked
+player may advertise only `get`. Kiosk mode, protected local dialogs and parental
+settings locks prevent remote writes.
+
+A successful set reply contains `{version:1,runtime,operation:"set",mode,
+accepted:true,dispatched:false,effect:"aspect-after-ack"}`. Application and storage
+wait for the server acknowledgement and recheck the playback target and access
+policy. This reply confirms acceptance, not successful persistence. Read the mode
+again to verify the result. A get reply contains `{version:1,runtime,
+operation:"get",mode,saved_mode,persisted}`. `saved_mode` is `fit`, `fill` or
+`null`; `persisted` is true only when backing storage contains the current mode.
+Session-memory fallback does not count as saved.
+
+Rejected and unsupported replies also bind to the current `runtime` and
+`operation`; set replies include the requested `mode`. Their `error` code is one
+of `invalid_request`, `runtime_mismatch`, `restricted`, `unsupported` or
+`unavailable`. An older page's unbound reply cannot retire another page's request.
+
+Preferences keep their normal scope: the current channel for live TV and a shared
+media preference within the active provider/profile for VOD. The media setting
+is restored for subsequent videos and after a player restart, including kiosk
+restoration. Setting one live channel does not override all other channels.
+
 ### M3U profiles and restarts
 
 Select M3U with `ott NAME provider m3u` before using profile commands.

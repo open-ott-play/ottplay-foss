@@ -88,6 +88,12 @@ assert.equal(
     false
 );
 assert.equal(api.accept({ action: "inspect", params: { runtime } }), true);
+assert.equal(api.accept({ action: "aspect", params: { runtime } }), true);
+assert.equal(
+    api.accept({ action: "aspect", params: { runtime: "other-runtime" } }),
+    false
+);
+assert.equal(api.accept({ action: "aspect", params: {} }), false);
 assert.equal(api.accept({ action: "play" }), true);
 
 const id = "a".repeat(32);
@@ -137,6 +143,7 @@ for (const [action, params] of [
     ["maintenance", { operation: "health" }],
     ["vportal_search", { query: "fixture" }],
     ["kiosk", { mode: "status" }],
+    ["aspect", { operation: "get", runtime }],
 ]) {
     api.execute(
         { action, id: readId, params },
@@ -149,6 +156,57 @@ for (const [action, params] of [
         "unknown"
     );
 }
+// An aspect receipt records acceptance first, then only a successful setter's
+// completion. A fenced-out setter is not evidence of application or persistence.
+for (const outcome of ["applied", "storage", "target", "policy"]) {
+    const success = outcome === "applied";
+    const aspectId = String(
+        ["applied", "storage", "target", "policy"].indexOf(outcome) + 4
+    ).repeat(32);
+    let current = true,
+        locked = false;
+    w.__ottParental = { needs: () => locked };
+    w.captureAspectTarget = () => ({
+        current: () => current,
+        mode: "fit",
+        savedMode: null,
+        set: () => outcome !== "storage",
+    });
+    let aspectEffect;
+    api.execute(
+        {
+            action: "aspect",
+            id: aspectId,
+            params: { mode: "fill", operation: "set", runtime },
+        },
+        () => {},
+        (effect) => {
+            aspectEffect = effect;
+        },
+        (item, done, afterReply) =>
+            load("src/commands/remote-restart.ts").executeRemoteControl(
+                w,
+                item.action,
+                item.params,
+                done,
+                afterReply
+            )
+    );
+    const readAspect = () =>
+        query("operation", { operation_id: aspectId }).data.data;
+    assert.equal(readAspect().state, "accepted");
+    assert.equal(readAspect().evidence.kind, "none");
+    if (outcome === "target") current = false;
+    if (outcome === "policy") locked = true;
+    aspectEffect();
+    assert.equal(readAspect().state, success ? "invoked" : "rejected");
+    assert.equal(
+        readAspect().evidence.kind,
+        success ? "handler_completed" : "none"
+    );
+}
+delete w.captureAspectTarget;
+delete w.__ottParental;
 time += 600001;
 assert.equal(result().state, "expired");
 for (let i = 0; i < 130; i++) {

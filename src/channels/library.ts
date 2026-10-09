@@ -29,6 +29,7 @@ interface LibraryDocument {
 interface ChannelLibraryPorts {
     current(): boolean;
     get(key: string): string | null;
+    getPersisted?(key: string): string | null;
     legacySelection?: {
         category: number;
         index: number;
@@ -414,7 +415,10 @@ function createChannelLibrary(
             return !hidden[group.id];
         });
     }
-    function commit(change: (draft: LibraryDocument) => void): boolean {
+    function commit(
+        change: (draft: LibraryDocument) => void,
+        durable = false
+    ): boolean {
         if (!writable || readFailed || !ports.current()) return false;
         var draft = clone(state!);
         change(draft);
@@ -434,8 +438,21 @@ function createChannelLibrary(
                 )
                     return false;
             }
-            if (prior !== text) ports.set(key, text);
+            if (
+                prior !== text ||
+                (durable &&
+                    ports.getPersisted &&
+                    ports.getPersisted(key) !== text)
+            )
+                ports.set(key, text);
             if (!ports.current() || ports.get(key) !== text || !ports.current())
+                return false;
+            if (
+                durable &&
+                (!ports.getPersisted ||
+                    ports.getPersisted(key) !== text ||
+                    !ports.current())
+            )
                 return false;
             state = draft;
             return true;
@@ -610,6 +627,24 @@ function createChannelLibrary(
                 if (group) group.label = label;
             });
         },
+        savedPreference: function (
+            kind: string,
+            channelId: number | null
+        ): number | undefined {
+            if (!ports.current() || !ports.getPersisted) return undefined;
+            var id = channelId === null ? "media" : ids[String(channelId)];
+            if (!id) return undefined;
+            try {
+                var saved = decode(
+                    JSON.parse(ports.getPersisted(key) || "null")
+                );
+                return ports.current() && saved && saved.preferences[kind]
+                    ? saved.preferences[kind][id]
+                    : undefined;
+            } catch (_) {
+                return undefined;
+            }
+        },
         select: function (groupId: string, channelId: number): boolean {
             var id = ids[String(channelId)];
             if (!id) return false;
@@ -626,7 +661,8 @@ function createChannelLibrary(
         setPreference: function (
             kind: string,
             channelId: number | null,
-            value: number | null | undefined
+            value: number | null | undefined,
+            durable = false
         ): boolean {
             var id = channelId === null ? "media" : ids[String(channelId)];
             if (
@@ -640,7 +676,7 @@ function createChannelLibrary(
                     draft.preferences[kind] || (draft.preferences[kind] = {});
                 if (value == null) delete prefs[id!];
                 else prefs[id!] = value;
-            });
+            }, durable);
         },
         snapshot: function () {
             var visible = groups();

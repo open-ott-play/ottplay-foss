@@ -63,6 +63,27 @@ test("KB retains Cyrillic adult category classification", () => {
     assert(!f.host.parental.test("News"));
 });
 
+test("persisted preferences use the active provider namespace and owned storage", () => {
+    const f = fixture(stored());
+    f.host.ottpStorage = { get: f.host.stbGetItem, set: f.host.stbSetItem };
+    f.host.stbGetPersistedItem = (key) => f.saved.get(key) ?? null;
+    f.mount("demo");
+    f.host.providerSetItem("aspect-proof", "fill");
+    const previous = f.host.providerGetPersistedItem;
+    assert.equal(previous("aspect-proof"), "fill");
+    f.mount("xtream");
+    assert.equal(
+        previous("aspect-proof"),
+        null,
+        "Retired source is unreadable"
+    );
+    assert.equal(f.host.providerGetPersistedItem("aspect-proof"), null);
+    f.host.providerSetItem("aspect-proof", "fit");
+    assert.equal(f.host.providerGetPersistedItem("aspect-proof"), "fit");
+    f.host.stbGetItem = () => "unowned";
+    assert.equal(f.host.providerGetPersistedItem("aspect-proof"), null);
+});
+
 for (const [index, row] of captured.cases.entries())
     test("Xtream captured catalog " + index, () => {
         const f = fixture(stored(row.input.config || config));

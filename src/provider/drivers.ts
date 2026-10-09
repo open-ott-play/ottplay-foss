@@ -1820,6 +1820,19 @@ function mountProviderDriver(
         return host.stbGetItem(storageKey(key));
     }
     host.providerGetItem = providerValue;
+    var persistedRead = host.stbGetPersistedItem;
+    host.providerGetPersistedItem = function (key: string) {
+        // Foreign device storage needs its own durability contract.
+        var storage = host.ottpStorage;
+        return owner.active() &&
+            storage &&
+            host.stbGetItem === storage.get &&
+            host.stbSetItem === storage.set &&
+            typeof persistedRead === "function" &&
+            host.stbGetPersistedItem === persistedRead
+            ? persistedRead(storageKey(key))
+            : null;
+    };
     host.providerSetItem = function (key: string, value: string) {
         if (owner.active()) host.stbSetItem(storageKey(key), value);
     };

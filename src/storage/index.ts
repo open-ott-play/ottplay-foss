@@ -701,6 +701,22 @@ export function loadValue(key: string): string {
  */
 export const stbGetItem = storage.get;
 
+/** Read the value a fresh page can recover, excluding session-memory fallbacks. */
+export function stbGetPersistedItem(key: string): string | null {
+    if (isStorageMetadataKey(key)) return null;
+    const cookies = readStorageCookies();
+    const overrides = readStorageFallback(cookies);
+    if (overrides !== null && overrides.indexOf(key) < 0) {
+        try {
+            const backing = window.localStorage;
+            if (backing) return backing.getItem(key);
+        } catch (_unavailable) {}
+    }
+    return Object.prototype.hasOwnProperty.call(cookies, key)
+        ? cookies[key]
+        : null;
+}
+
 /**
  * Backward-compatible alias — store an item in the underlying storage.
  * @see StorageAdapter.set

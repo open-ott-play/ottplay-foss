@@ -244,7 +244,9 @@ test("native late-track listeners belong to their engine lease", () => {
         },
     };
     let restores = 0;
-    w.applyChannelPreference = () => restores++;
+    w.applyChannelPreference = (name) => {
+        if (name === "aSubs") restores++;
+    };
     w.playerMode = 0;
     w.stbPlay("a.mp4");
     assert.equal(listeners.length, 1);
@@ -259,6 +261,23 @@ test("native late-track listeners belong to their engine lease", () => {
     assert.equal(restores, 2);
     w.stbStop();
     assert.equal(listeners.length, 0);
+});
+test("main engine restores aspect before metadata, including the next video", () => {
+    const { w, styles } = fixture();
+    w.document.getElementById = () => null;
+    w.document.body.classList = { add() {}, remove() {} };
+    let saved = 1;
+    w.applyChannelPreference = (name, callback) => {
+        if (name === "aAspects") callback(saved);
+    };
+    w.stbPlay("first.mp4");
+    assert.equal(w.video.readyState, 0);
+    assert.equal(styles["#video"]["object-fit"], "cover");
+    saved = 0;
+    w.stbPlay("second.mp4");
+    assert.equal(w.video.readyState, 0);
+    assert.equal(styles["#video"]["object-fit"], "contain");
+    w.stbStop();
 });
 test("PiP starts after manifest and ignores callbacks after switch/stop", () => {
     const { w, players, hidden } = fixture();
