@@ -2576,6 +2576,11 @@ const server = http.createServer((request, response) => {
         assert(!details.includes("EPG_HTTP"));
         const beforeRetry = calls;
         await page.evaluate(() => aboutKeyHandler(keys.ENTER));
+        // The previous cache can remain ready until the worker receives retry.
+        // Observe the new download before accepting its final ready state.
+        const retryDeadline = Date.now() + 45000;
+        while (calls === beforeRetry && Date.now() < retryDeadline)
+            await new Promise((resolve) => setTimeout(resolve, 10));
         await page.waitForFunction(
             () => __ottHostedEpg.diagnostics().phase === "ready",
             null,
