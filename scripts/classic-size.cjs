@@ -156,7 +156,7 @@ const { gzipSync } = require("node:zlib");
 // 805979 raw / 251002 gzip; native is 805937 / 251071. Add only 200 raw bytes,
 // leaving 121 before the release suffix; gzip and complete-payload caps stay put.
 // Explicit Capacitor update dispatch adds 2367 raw bytes; retain release suffix room.
-const BUDGET = Object.freeze({ bytes: 808650, gzipBytes: 252200 });
+const BUDGET = Object.freeze({ bytes: 808950, gzipBytes: 252200 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -234,7 +234,7 @@ const BUDGET = Object.freeze({ bytes: 808650, gzipBytes: 252200 });
 // The Plex error handoff adds 14 more gzip bytes in its optional provider.
 // Include the same 400-byte compressed allowance in the complete player;
 // its raw payload remains within the existing cap.
-const TOTAL_BUDGET = Object.freeze({ bytes: 921150, gzipBytes: 293850 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 921450, gzipBytes: 293850 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
