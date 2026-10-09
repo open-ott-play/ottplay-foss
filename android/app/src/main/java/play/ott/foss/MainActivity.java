@@ -1,12 +1,34 @@
 package play.ott.foss;
 
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.webkit.WebView;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import play.ott.foss.plugin.MobileXmltvEpgPlugin;
 
 public class MainActivity extends BridgeActivity {
+    private View playerDecor;
+    private boolean keyboardWasVisible;
+    private final ViewTreeObserver.OnGlobalLayoutListener keyboardLayoutListener = () -> {
+        if (playerDecor == null) return;
+        WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(playerDecor);
+        if (insets == null) return;
+        boolean visible = insets.isVisible(WindowInsetsCompat.Type.ime());
+        boolean keyboardClosed = keyboardWasVisible && !visible;
+        keyboardWasVisible = visible;
+        if (keyboardClosed) restoreImmersiveMode();
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // These local Kotlin plugins are not in Capacitor's generated npm plugin list.
@@ -18,7 +40,61 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MobileCommandQueuePlugin.class);
         registerPlugin(DashExoPlayerPlugin.class);
         registerPlugin(RemoteScreenshotPlugin.class);
+        registerPlugin(AppUpdatePlugin.class);
         super.onCreate(savedInstanceState);
+        playerDecor = getWindow().getDecorView();
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        // Keep transient system bars dark while entering text or opening a dialog.
+        getWindow().setStatusBarColor(Color.BLACK);
+        getWindow().setNavigationBarColor(Color.BLACK);
+        if (Build.VERSION.SDK_INT >= 29) {
+            getWindow().setStatusBarContrastEnforced(false);
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
+        playerDecor.getViewTreeObserver().addOnGlobalLayoutListener(keyboardLayoutListener);
+        restoreImmersiveMode();
+    }
+
+    void restoreImmersiveMode() {
+        if (playerDecor == null || !hasWindowFocus() || isInPictureInPictureMode()) return;
+        WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(playerDecor);
+        // Do not interfere with the IME's navigation controls. Restore when it closes.
+        if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) return;
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(getWindow(), playerDecor);
+        controller.setAppearanceLightStatusBars(false);
+        controller.setAppearanceLightNavigationBars(false);
+        controller.setSystemBarsBehavior(
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        controller.hide(WindowInsetsCompat.Type.systemBars());
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (playerDecor != null) playerDecor.post(this::restoreImmersiveMode);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && playerDecor != null) playerDecor.post(this::restoreImmersiveMode);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        if (playerDecor != null) playerDecor.post(this::restoreImmersiveMode);
+    }
+
+    @Override
+    public void onDestroy() {
+        if (playerDecor != null && playerDecor.getViewTreeObserver().isAlive()) {
+            playerDecor.getViewTreeObserver().removeOnGlobalLayoutListener(keyboardLayoutListener);
+        }
+        playerDecor = null;
+        super.onDestroy();
     }
 
     private static String dispatchKey(String name) {

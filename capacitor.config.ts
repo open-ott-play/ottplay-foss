@@ -1,6 +1,10 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
+    android: {
+        allowMixedContent: true,
+        backgroundAudio: true,
+    },
     appId: "play.ott.foss",
     appName: "OTT-play FOSS",
     ios: {

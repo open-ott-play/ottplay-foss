@@ -3,6 +3,7 @@ import type {
     DoctorCapabilityName,
     DoctorCapabilityReason,
 } from "../plugins/remote-doctor";
+import { remoteAppUpdateAvailable } from "./remote-app-update";
 import { remotePlexQueue } from "./remote-plex";
 
 function remoteSettingsLocked(w: any): boolean {
@@ -663,6 +664,9 @@ export function executeRemoteControl(
         // policy of either neighbour. Every requested destination is checked.
         if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
         reply({
+            app_update: remoteAppUpdateAvailable(w)
+                ? { operations: ["status", "prepare", "install"], version: 1 }
+                : null,
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),

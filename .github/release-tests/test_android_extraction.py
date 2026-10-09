@@ -1,74 +1,59 @@
-"""Android builds live in the native repository; old RCs cannot republish APK/AAB."""
+"""Capacitor APKs belong to every release channel; Play AABs remain separate."""
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("android_extraction_release", ROOT / "scripts/release_control.py")
-RELEASE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(RELEASE)
+sys.path.insert(0, str(ROOT / "scripts"))
+import release_control as release
+import version_plan
+
+spec = importlib.util.spec_from_file_location("verify_android_apk", ROOT / "scripts/verify-android-apk.py")
+apk = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(apk)
 
 
-class AndroidExtractionTests(unittest.TestCase):
-    def test_repository_has_no_android_application_build_entry_points(self):
-        package = json.loads((ROOT / "package.json").read_text())
-        self.assertFalse(any(name.startswith("android:") or name == "cap:android" for name in package["scripts"]))
-        self.assertEqual(package["scripts"]["build:mobile"], "npm run build:ios")
-        self.assertEqual(package["scripts"]["cap:sync"], "npx cap sync ios")
-        self.assertNotIn("@capacitor/android", package["dependencies"])
-        for path in ("android/gradlew", "android/gradlew.bat", "android/build.gradle", "android/app/build.gradle",
-                     "scripts/build-android.cjs", "build-android-local.sh", ".github/workflows/play-bundle.yml"):
-            self.assertFalse((ROOT / path).exists(), path)
-        self.assertTrue((ROOT / "android/app/src/main/java/play/ott/foss/MainActivity.java").is_file())
+class CapacitorReleaseTests(unittest.TestCase):
+    def test_channels_keep_android_and_ios_version_contracts(self):
         policy = json.loads((ROOT / ".release-policy.json").read_text())
-        self.assertFalse(any(path.startswith("android/") for path in policy["version_companions"]))
-
-    def test_workflows_do_not_assemble_or_upload_android_packages(self):
-        for workflow in (ROOT / ".github/workflows").glob("*.yml"):
-            source = workflow.read_text()
-            for forbidden in ("./gradlew", "scripts/build-android.cjs", "release-assets-mobile-android", "build-tools;"):
-                self.assertNotIn(forbidden, source, workflow.name)
-        parity = (ROOT / ".github/workflows/native-parity.yml").read_text()
-        self.assertIn('"platforms;android-36"', parity)
-        self.assertIn('test -s "$ANDROID_HOME/platforms/android-36/android.jar"', parity)
+        self.assertIn("android/version.json", policy["version_companions"])
+        artifacts = policy["versioning"]["artifacts"]
+        self.assertEqual({row["field"] for row in artifacts if row["path"] == "ottplay-foss-android-full.apk"}, {"version", "versionCode"})
+        self.assertTrue(any(row["path"].endswith(".ipa") for row in artifacts))
+        for channel, sequence in (("beta", 2), ("rc", 3), ("stable", None)):
+            plan = version_plan.create_plan("1.1.53", channel, sequence, "a" * 40, policy, build_number=10154)
+            self.assertEqual(plan["channel"], channel)
         build = (ROOT / ".github/workflows/release-build.yml").read_text()
+        self.assertIn("npm run android:full:release", build)
         self.assertIn("npm run build:ios", build)
-        self.assertIn("npx tauri build", build)
-        self.assertIn("npm run package:modea", build)
+        self.assertIn("scripts/sign-android-apk.py", build)
+        self.assertFalse((ROOT / ".github/workflows/play-bundle.yml").exists())
 
-    def test_candidate_staging_rejects_apk_and_aab_case_insensitively(self):
+    def test_apks_stage_but_aabs_remain_blocked(self):
         for extension in ("apk", "APK", "aab", "AaB"):
             with self.subTest(extension=extension), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 source, target = root / "source", root / "target"
                 source.mkdir(); target.mkdir()
-                (source / f"retired.{extension}").write_bytes(b"old Android release")
-                with self.assertRaisesRegex(Exception, "APK/AAB publication moved"):
-                    RELEASE.stage_assets(source, target)
-                self.assertEqual(list(target.iterdir()), [])
+                (source / f"player.{extension}").write_bytes(b"release bytes")
+                if extension.lower() == "aab":
+                    with self.assertRaisesRegex(Exception, "Play Store AAB"):
+                        release.stage_assets(source, target)
+                    self.assertEqual(list(target.iterdir()), [])
+                else:
+                    release.stage_assets(source, target)
+                    self.assertEqual((target / f"player.{extension}").read_bytes(), b"release bytes")
 
-    def test_old_rc_publish_rejects_android_before_any_github_call(self):
-        class NoGitHubCalls:
-            def __getattr__(self, name):
-                raise AssertionError(f"Publication must be rejected before GitHub call: {name}")
-        with tempfile.TemporaryDirectory() as directory:
-            stage = Path(directory)
-            (stage / "retired.apk").write_bytes(b"previously verified RC bytes")
-            with self.assertRaisesRegex(Exception, "APK/AAB publication moved"):
-                RELEASE.publish(NoGitHubCalls(), "v1.2.3", "a" * 40, stage, False, "")
-
-    def test_desktop_ios_and_web_assets_still_stage_without_changes(self):
-        payloads = {"player.ipa": b"ios", "player.dmg": b"mac", "player.exe": b"win", "player.tar.gz": b"web"}
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source, target = root / "source", root / "target"
-            source.mkdir(); target.mkdir()
-            for name, content in payloads.items(): (source / name).write_bytes(content)
-            staged = RELEASE.stage_assets(source, target)
-            self.assertEqual({item["name"] for item in staged}, set(payloads))
-            for name, content in payloads.items(): self.assertEqual((target / name).read_bytes(), content)
+    def test_real_manifest_must_match_bundle_identity_and_sdk(self):
+        version = {"versionName": "1.1.53-beta.26", "versionCode": 10154}
+        valid = "package: name='play.ott.foss' versionCode='10154' versionName='1.1.53-beta.26'\nsdkVersion:'24'\ntargetSdkVersion:'36'\nlaunchable-activity: name='play.ott.foss.MainActivity'\n"
+        apk.verify_badging(valid, version)
+        for before, after in (("10154", "10153"), ("beta.26", "beta.25"), ("play.ott.foss'", "other.app'"), ("sdkVersion:'24'", "sdkVersion:'26'"), ("targetSdkVersion:'36'", "targetSdkVersion:'35'"), ("MainActivity", "WrongActivity")):
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                apk.verify_badging(valid.replace(before, after), version)
 
 
 if __name__ == "__main__":

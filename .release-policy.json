@@ -26,17 +26,19 @@
     "cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml"
   ],
   "notes": [
-    "Retains web/server, desktop and iOS build targets. Native Android APK/AAB builds and publication belong to open-ott-play/ottplay-android.",
+    "Retains web/server, desktop, iOS and Full Capacitor Android APK targets. The independent Kotlin Android app and Play Store publication belong to open-ott-play/ottplay-android.",
     "Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.",
     "Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.",
     "OCI container archives are promoted without rebuild; deployment remains explicit.",
     "Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels; package and Cargo metadata retain the full candidate identity.",
-    "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading."
+    "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.",
+    "Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation."
   ],
   "version_companions": [
     "src-tauri/Cargo.toml",
     "src-tauri/tauri.conf.json",
-    "ios/App/App.xcodeproj/project.pbxproj"
+    "ios/App/App.xcodeproj/project.pbxproj",
+    "android/version.json"
   ],
   "container_assets": {
     "ottplay-foss-container.oci.tar": "docker.io/alvit/ottplay-foss"
@@ -106,9 +108,21 @@
         "value": "apple-build",
         "package": "504EC3181FED79650016851F",
         "field": "CURRENT_PROJECT_VERSION"
+      },
+      {
+        "path": "android/version.json",
+        "format": "json",
+        "value": "package",
+        "field": "versionName"
+      },
+      {
+        "path": "android/version.json",
+        "format": "json",
+        "value": "build",
+        "field": "versionCode"
       }
     ],
-    "build_number_floor": 10142,
+    "build_number_floor": 10153,
     "artifacts": [
       {
         "path": "ottplay-foss-modea.tar.gz",
@@ -141,14 +155,28 @@
         "format": "oci",
         "field": ["config", "Labels", "org.opencontainers.image.version"],
         "value": "package"
+      },
+      {
+        "path": "ottplay-foss-android-full.apk",
+        "format": "zip-json",
+        "value": "package",
+        "member": "assets/public/android-distribution.json",
+        "field": "version"
+      },
+      {
+        "path": "ottplay-foss-android-full.apk",
+        "format": "zip-json",
+        "value": "build",
+        "member": "assets/public/android-distribution.json",
+        "field": "versionCode"
       }
     ],
     "toolkit_revision": "1bd42a9dcaf2695ff6a4c28cf94ce4329ebb9267"
   },
   "asset_restrictions": [
     {
-      "suffixes": [".apk", ".aab"],
-      "reason": "Android APK/AAB publication moved to open-ott-play/ottplay-android"
+      "suffixes": [".aab"],
+      "reason": "Play Store AAB publication belongs to open-ott-play/ottplay-android"
     }
   ],
   "build_secrets": [
@@ -160,7 +188,10 @@
     "APPLE_TEAM_ID",
     "KEYCHAIN_PASSWORD",
     "TAURI_SIGNING_PRIVATE_KEY",
-    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
+    "CAPACITOR_KEYSTORE_BASE64",
+    "CAPACITOR_KEY_ALIAS",
+    "CAPACITOR_KEY_PASSWORD"
   ],
   "single_entry_ci": true,
   "change_scope": {

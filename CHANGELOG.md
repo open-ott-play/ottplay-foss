@@ -4,6 +4,13 @@
 
 ### Changes
 
+- Restore signed Full Capacitor Android APKs in beta, RC and stable releases,
+  using the current shared frontend and preserving existing installations.
+- Add staged APK updates through OTT with HTTPS, SHA-256, package, version and
+  signing-certificate checks. Android may require on-device confirmation.
+- Keep Fire tablet system bars hidden after keyboard dismissal and app resume,
+  with dark transient bars and the shared proportional startup logo.
+
 - Run a shorter validation suite for beta publication after pull-request checks:
   lint, types and core playback/provider/UI regressions. Pull requests, nightlies
   and release candidates retain full validation; every beta still builds and

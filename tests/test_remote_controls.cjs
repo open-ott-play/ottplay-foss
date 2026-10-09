@@ -19,6 +19,8 @@ vm.runInNewContext(emit("src/commands/remote-plex.ts"), plexContext);
 const context = {
     exports: {},
     require(name) {
+        if (name === "./remote-app-update")
+            return { remoteAppUpdateAvailable: () => false };
         assert.equal(name, "./remote-plex");
         return plexContext.exports;
     },

@@ -55,8 +55,8 @@ Python tooling, GitHub Actions and Rust source. Swift extraction uses the actual
 unsigned iOS App build on macOS. A successful run covers the extracted code and
 enabled queries; it does not establish that every vulnerability is absent.
 
-The archived [Android source](../android/README.md) has no application build in
-this repository and is not claimed as Kotlin CodeQL coverage. The maintained
+The [Capacitor Android project](../android/README.md) is compiled and audited in
+native CI; this is not claimed as Kotlin CodeQL coverage. The separate
 Android application and shared Kotlin core have separate analyses in
 [ottplay-android](https://github.com/open-ott-play/ottplay-android) and
 [ottplay-core](https://github.com/open-ott-play/ottplay-core). The Objective-C drag

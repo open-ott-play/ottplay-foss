@@ -102,10 +102,65 @@ try {
         public Bridge bridge; public int fallback; public java.util.List<String> plugins=new java.util.ArrayList<>();
         public void registerPlugin(Class<?> plugin){if(bridge!=null)throw new AssertionError("late plugin registration");plugins.add(plugin.getName());}
         protected void onCreate(android.os.Bundle state){bridge=new Bridge();}
+        public android.view.Window window=new android.view.Window(); public boolean focus=true,pip=false;
+        public android.view.Window getWindow(){return window;}
+        public boolean hasWindowFocus(){return focus;} public boolean isInPictureInPictureMode(){return pip;}
+        public void onResume(){} public void onDestroy(){}
+        public void onWindowFocusChanged(boolean value){focus=value;}
+        public void onConfigurationChanged(android.content.res.Configuration value){}
         public Bridge getBridge(){return bridge;}
         public boolean dispatchKeyEvent(android.view.KeyEvent event){fallback++;return false;}
     }`
     );
+    const uiStubs = {
+        "android/content/res/Configuration.java":
+            "package android.content.res; public class Configuration {}",
+        "android/graphics/Color.java":
+            "package android.graphics; public class Color { public static final int BLACK=0xff000000; }",
+        "android/os/Build.java":
+            "package android.os; public class Build { public static class VERSION { public static int SDK_INT=29; } }",
+        "android/view/View.java": `package android.view; public class View {
+            public ViewTreeObserver observer=new ViewTreeObserver();
+            public ViewTreeObserver getViewTreeObserver(){return observer;}
+            public void post(Runnable task){task.run();}
+        }`,
+        "android/view/ViewTreeObserver.java": `package android.view; public class ViewTreeObserver {
+            public interface OnGlobalLayoutListener {void onGlobalLayout();}
+            public OnGlobalLayoutListener listener;
+            public boolean isAlive(){return true;}
+            public void addOnGlobalLayoutListener(OnGlobalLayoutListener value){listener=value;}
+            public void removeOnGlobalLayoutListener(OnGlobalLayoutListener value){if(listener!=value)throw new AssertionError();listener=null;}
+        }`,
+        "android/view/Window.java": `package android.view; public class Window {
+            public View decor=new View(); public int cleared;
+            public View getDecorView(){return decor;}
+            public void setStatusBarColor(int value){} public void setNavigationBarColor(int value){}
+            public void setStatusBarContrastEnforced(boolean value){} public void setNavigationBarContrastEnforced(boolean value){}
+            public void clearFlags(int value){cleared=value;}
+        }`,
+        "android/view/WindowManager.java":
+            "package android.view; public class WindowManager { public static class LayoutParams { public static final int FLAG_FORCE_NOT_FULLSCREEN=2048; } }",
+        "androidx/core/view/ViewCompat.java": `package androidx.core.view; public class ViewCompat {
+            public static WindowInsetsCompat getRootWindowInsets(android.view.View view){return new WindowInsetsCompat();}
+        }`,
+        "androidx/core/view/WindowCompat.java": `package androidx.core.view; public class WindowCompat {
+            public static void setDecorFitsSystemWindows(android.view.Window window,boolean value){if(value)throw new AssertionError();}
+            public static WindowInsetsControllerCompat getInsetsController(android.view.Window window,android.view.View view){return new WindowInsetsControllerCompat();}
+        }`,
+        "androidx/core/view/WindowInsetsCompat.java": `package androidx.core.view; public class WindowInsetsCompat {
+            public static boolean imeVisible;
+            public boolean isVisible(int type){return imeVisible;}
+            public static class Type { public static int ime(){return 1;} public static int systemBars(){return 2;} }
+        }`,
+        "androidx/core/view/WindowInsetsControllerCompat.java": `package androidx.core.view; public class WindowInsetsControllerCompat {
+            public static final int BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE=2;
+            public static int hides;
+            public void setAppearanceLightStatusBars(boolean value){} public void setAppearanceLightNavigationBars(boolean value){}
+            public void setSystemBarsBehavior(int value){}
+            public void hide(int type){if(type!=2)throw new AssertionError();hides++;}
+        }`,
+    };
+    for (const [name, source] of Object.entries(uiStubs)) write(name, source);
     const pluginDir = "android/app/src/main/java/play/ott/foss";
     const plugins = [];
     const pluginSources = [pluginDir, "mobile-xmltv-epg/src/android"];
@@ -140,6 +195,23 @@ try {
             check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_DPAD_UP,0)));
             check(app.fallback==1);
             app.onCreate(new android.os.Bundle());
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==1);
+            check(app.window.cleared==2048);
+            androidx.core.view.WindowInsetsCompat.imeVisible=true;
+            app.window.decor.observer.listener.onGlobalLayout();
+            app.onResume();
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==1);
+            androidx.core.view.WindowInsetsCompat.imeVisible=false;
+            app.window.decor.observer.listener.onGlobalLayout();
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==2);
+            app.onWindowFocusChanged(false); app.onResume();
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==2);
+            app.onWindowFocusChanged(true);
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==3);
+            app.pip=true; app.onResume();
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==3);
+            app.pip=false; app.onConfigurationChanged(new android.content.res.Configuration());
+            check(androidx.core.view.WindowInsetsControllerCompat.hides==4);
             check(new java.util.HashSet<>(app.plugins).size()==app.plugins.size());
             for(String plugin:app.plugins)System.out.println("PLUGIN "+plugin);
             int[] codes={${keys.map((key) => "KeyEvent.KEYCODE_" + key).join(",")}};
@@ -154,6 +226,8 @@ try {
             }
             check(!app.dispatchKeyEvent(new KeyEvent(0,999,0)));
             check(!app.dispatchKeyEvent(new KeyEvent(1,KeyEvent.KEYCODE_DPAD_UP,0)));
+            app.onDestroy();
+            check(app.window.decor.observer.listener==null);
             app.bridge.view=null;
             check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,0)));
         }
