@@ -150,7 +150,9 @@ source identity, cursor and position without retaining expiring stream URLs.
 After a page reload, use `kiosk status` for the durable queue; the separate remote
 queue controller is in-memory. Use `kiosk off` before replacing the queue or
 updating the application. Strict mode blocks local navigation and playback
-controls while allowing the short read-only information footer. This support
+controls while allowing the information footer for five seconds. On the active
+core player, tapping or dragging its timeline seeks within the current episode;
+other controls remain locked. This support
 is shared by browser/hosted, server, Tauri, and Capacitor Android/iOS builds.
 
 If Plex cannot connect while kiosk is locked, the player keeps the saved kiosk

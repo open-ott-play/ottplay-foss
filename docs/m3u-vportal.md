@@ -48,9 +48,10 @@ ott l vp "три кота"
 ott l kiosk on --strict
 ```
 
-The matched episode queue repeats automatically. Local taps only show a read-only
-video footer for five seconds; playback, seeking, menus and player exit are
-blocked. `ott l kiosk off` releases the lock remotely. A website cannot block
+The matched episode queue repeats automatically. Local taps show the video footer
+for five seconds. On the active core player, tapping or dragging its timeline
+seeks within the current episode. Other playback controls, keyboard/remote seeking,
+menus and player exit remain blocked. `ott l kiosk off` releases the lock remotely. A website cannot block
 Android system navigation; app pinning with a PIN is separate.
 
 ## VPortal alongside television

@@ -663,6 +663,95 @@ export function createKiosk(w: any): any {
             return false;
         }
     }
+    // A local footer gesture may seek only the episode/decoder it started on.
+    function beginSeek(): any {
+        try {
+            var selected = policy;
+            var playback = w.__ottClassicPlayback;
+            var media = w.__ottMedia;
+            var backend = w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
+            var handle = backend && backend.current();
+            if (
+                !strict() ||
+                !selected.media ||
+                !playback ||
+                !media ||
+                !handle ||
+                typeof handle.seek !== "function" ||
+                typeof handle.active !== "function"
+            )
+                return null;
+            var initial = playback.snapshot();
+            var generation = initial.generation;
+            var itemId = initial.target && initial.target.channelId;
+            var duration = handle.snapshot().duration;
+            if (
+                typeof duration !== "number" ||
+                !isFinite(duration) ||
+                duration <= 1
+            )
+                return null;
+            var current = function (): boolean {
+                var state = playback.snapshot();
+                var item = media.current();
+                var phase = handle.snapshot().phase;
+                return (
+                    strict() &&
+                    policy === selected &&
+                    provider() === selected.provider &&
+                    w.__ottClassicPlayback === playback &&
+                    w.__ottMedia === media &&
+                    w.__ottCoreTransport &&
+                    w.stbPlay === w.__ottCoreTransport.play &&
+                    w.__ottCoreBackendPeek() === backend &&
+                    backend.current() === handle &&
+                    handle.active() &&
+                    (phase === "playing" || phase === "paused") &&
+                    media.sourceId() === selected.source &&
+                    item &&
+                    !item.ended &&
+                    state.generation === generation &&
+                    state.target &&
+                    initial.target &&
+                    state.target.kind === "vod" &&
+                    state.target.sourceId === selected.source &&
+                    state.target.channelId === itemId &&
+                    item.ref.sourceId === selected.source &&
+                    item.ref.itemId === state.target.channelId &&
+                    allowedMedia(item.ref) &&
+                    handle.snapshot().duration === duration
+                );
+            };
+            if (!current()) return null;
+            return function (fraction: number): boolean {
+                try {
+                    if (
+                        typeof fraction !== "number" ||
+                        !isFinite(fraction) ||
+                        !current()
+                    )
+                        return false;
+                    var position = Math.min(
+                        duration - 1,
+                        Math.max(0, fraction * duration)
+                    );
+                    handle.seek(position);
+                    // Do not let an intentional seek look like a playback stall.
+                    videoProgress.reset();
+                    frameHealthySince = null;
+                    lastPosition = null;
+                    lastProgress = now();
+                    mediaStarting = true;
+                    selected.media.position = position;
+                    return true;
+                } catch (_) {
+                    return false;
+                }
+            };
+        } catch (_) {
+            return null;
+        }
+    }
     function diagnosticsStopTarget(event: any): boolean {
         var doc = w.document;
         if (!doc || typeof doc.getElementById !== "function") return false;
@@ -722,6 +811,7 @@ export function createKiosk(w: any): any {
         admit: admit,
         allowed: allowed,
         allowedMedia: allowedMedia,
+        beginSeek: beginSeek,
         enabled: enabled,
         init: init,
         locked: locked,

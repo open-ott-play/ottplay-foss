@@ -503,10 +503,15 @@ Use `kiosk off` before changing provider/profile or unlocking parental access,
 then enable kiosk again on the intended channel. Parental restrictions still apply.
 
 Add `--strict` for a child-facing player: `ott tv kiosk on --strict "Новости"`
-locks the channel and permits only a short tap or the Info key to show the
-read-only video footer for five seconds. Swipes, long presses, multiple fingers,
-double-click actions, pause, seeking, menus, player exit and local volume/mute
-controls are blocked. Repeated taps never expand the description. Remote
+locks the channel and permits a short tap or the Info key to show the video
+footer for five seconds. In a media queue, tapping or dragging the footer timeline
+seeks within the current episode. The gesture is cancelled if the episode, source,
+player or policy changes; multiple fingers and vertical swipes cancel it too.
+This exception requires the active core player and a known finite duration, and
+stops one second before the end instead of directly triggering the next episode.
+Outside the timeline, swipes and long presses remain blocked. Double-click actions,
+pause, keyboard/remote seeking, menus, player exit and local volume/mute controls
+are blocked. Repeated taps never expand the description. Remote
 volume/mute, status and recovery remain available; stopping the current diagnostic
 capture remains available locally without disconnecting the remote controller.
 

@@ -636,6 +636,14 @@ body {
     pointer-events: none;
     user-select: none;
 }
+.ott-kiosk-strict #progress_div {
+    pointer-events: auto;
+    touch-action: none;
+}
+.ott-kiosk-strict #progress,
+.ott-kiosk-strict #progress_r {
+    min-height: 24px;
+}
 .ott-kiosk-strict #audio_badge,
 .ott-kiosk-strict #dialogbox,
 .ott-kiosk-strict #listAbout,

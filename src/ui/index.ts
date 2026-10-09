@@ -748,8 +748,8 @@ export function showChannelInfo(timeoutSec: number): void {
     clearTimeout(detailScrollTimer);
     clearTimeout(infoTimeout);
     if (w.__ottKiosk && w.__ottKiosk.strict && w.__ottKiosk.strict()) {
-        // Strict kiosk has one read-only footer, with no expandable description,
-        // seek interaction or buffering-dependent extension of its lifetime.
+        // Strict input owns the limited media seek gesture; other footer controls
+        // and expandable details remain blocked, with a bounded display lifetime.
         $("#descr, #progress_span").hide();
         $infoBar.stop(true, true).show();
         infoTimeout = setTimeout(infoBarHide, 5000);

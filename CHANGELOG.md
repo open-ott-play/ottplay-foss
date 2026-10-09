@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Allow tapping or dragging the video footer timeline to seek within the current
+  episode in strict kiosk mode, while retaining the other input restrictions.
+
 - Plex: up to 500 remote queue items and persistent looping media kiosk across web and native shells.
 - Recover stalled kiosks with stream retries and a bounded player reload that
   preserves the locked selection, queue and position; wait while offline.
