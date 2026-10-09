@@ -511,7 +511,9 @@ This exception requires the active core player and a known finite duration, and
 stops one second before the end instead of directly triggering the next episode.
 Outside the timeline, swipes and long presses remain blocked. Double-click actions,
 pause, keyboard/remote seeking, menus, player exit and local volume/mute controls
-are blocked. Repeated taps never expand the description. Remote
+are blocked. In the Capacitor Android app, physical Volume Up/Down keys control
+Android media output directly, including while the page is locked or unresponsive.
+Repeated taps never expand the description. Remote
 volume/mute, status and recovery remain available; stopping the current diagnostic
 capture remains available locally without disconnecting the remote controller.
 

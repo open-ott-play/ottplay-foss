@@ -2,6 +2,7 @@ package play.ott.foss;
 
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -105,8 +106,21 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            // Hardware volume must work while the WebView is locked, loading or stalled.
+            // Consume key-up too, so the page cannot receive half of this native gesture.
+            AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audio == null) return super.dispatchKeyEvent(event);
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                        code == KeyEvent.KEYCODE_VOLUME_UP
+                                ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER,
+                        AudioManager.FLAG_SHOW_UI);
+            }
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            int code = event.getKeyCode();
             String script = null;
             boolean mediaAction = false;
 
@@ -146,12 +160,6 @@ public class MainActivity extends BridgeActivity {
                     script = "if(window.stbStop)window.stbStop();";
                     mediaAction = true;
                     break;
-                case KeyEvent.KEYCODE_VOLUME_UP:
-                    script = dispatchKey("VOL_UP");
-                    break;
-                case KeyEvent.KEYCODE_VOLUME_DOWN:
-                    script = dispatchKey("VOL_DOWN");
-                    break;
                 case KeyEvent.KEYCODE_MEDIA_NEXT:
                     script = dispatchKey("NEXT");
                     mediaAction = true;
@@ -177,7 +185,7 @@ public class MainActivity extends BridgeActivity {
                 if (getBridge() != null) {
                     WebView webView = getBridge().getWebView();
                     if (webView != null) {
-                        // One media action per press; navigation and volume still repeat.
+                        // One media action per press; navigation still repeats.
                         if (!mediaAction || event.getRepeatCount() == 0) {
                             webView.evaluateJavascript(script, null);
                         }
