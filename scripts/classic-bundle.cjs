@@ -107,6 +107,7 @@ const CLASSIC_MODULES = [
     "build/plugins/strict-kiosk-input.js",
     "build/plugins/kiosk-video-progress.js",
     "build/plugins/kiosk.js",
+    "build/plugins/kiosk-screen.js",
     "build/plugins/control-discovery.js",
     "build/plugins/mobile-native-media.js",
     "build/plugins/remote-lifecycle.js",

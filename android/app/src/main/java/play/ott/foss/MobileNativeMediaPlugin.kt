@@ -1,11 +1,15 @@
 package play.ott.foss
 
 import android.app.PictureInPictureParams
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Context.AUDIO_SERVICE
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -27,17 +31,66 @@ class MobileNativeMediaPlugin : Plugin() {
     private var isFullscreen = false
     @Volatile private var backgroundAudioActive = false
 
+    // WebView visibility is unreliable on older Fire OS. Use the OS power state
+    // and Activity lifecycle; background audio outside kiosk remains opt-in.
+    private var foreground = true
+    private var screenRevision = 0
+    private var screenReceiverRegistered = false
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            publishScreenState()
+        }
+    }
+
+    private fun screenState(): JSObject {
+        val power = bridge.context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return JSObject().apply {
+            put("ok", true)
+            put("awake", foreground && power.isInteractive)
+            put("revision", screenRevision)
+        }
+    }
+
+    private fun publishScreenState() {
+        screenRevision++
+        notifyListeners("screenStateChanged", screenState(), true)
+    }
+
+    @PluginMethod
+    fun getScreenState(call: PluginCall) {
+        activity.runOnUiThread { call.resolve(screenState()) }
+    }
+
     override fun load() {
         super.load()
         bindMediaWebView()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        // These are protected system broadcasts, so no exported flag is required.
+        bridge.context.registerReceiver(screenReceiver, filter)
+        screenReceiverRegistered = true
     }
 
     override fun handleOnResume() {
         super.handleOnResume()
         bindMediaWebView()
+        foreground = true
+        publishScreenState()
+    }
+
+    override fun handleOnPause() {
+        foreground = false
+        publishScreenState()
+        super.handleOnPause()
     }
 
     override fun handleOnDestroy() {
+        if (screenReceiverRegistered) {
+            bridge.context.unregisterReceiver(screenReceiver)
+            screenReceiverRegistered = false
+        }
         if (MediaPlaybackService.clearWebView(bridge.webView)) {
             backgroundAudioActive = false
             bridge.context.stopService(Intent(bridge.context, MediaPlaybackService::class.java))

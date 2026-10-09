@@ -1785,3 +1785,187 @@ console.log(
 console.log(
     "Strict footer drag/tap has one seek, no escaped input, and cancels stale or multi-touch gestures"
 );
+
+function screenRig() {
+    const r = seekRig();
+    const calls = [];
+    let subscriber;
+    r.state.position = 37;
+    r.handle.pause = () => {
+        calls.push("pause");
+        r.sample.phase = "paused";
+        if (subscriber) subscriber({ handle: r.handle, type: "pause" });
+    };
+    r.handle.resume = () => {
+        calls.push("resume");
+        r.sample.phase = "playing";
+    };
+    r.backend.subscribe = (fn) => {
+        subscriber = fn;
+        return () => {
+            subscriber = null;
+        };
+    };
+    return { ...r, calls, publish: () => subscriber({ handle: r.handle }) };
+}
+{
+    const r = screenRig();
+    r.kiosk.setScreenAwake(false);
+    r.kiosk.setScreenAwake(false);
+    assert.deepEqual(
+        r.calls,
+        ["pause"],
+        "sleep is idempotent, including reentrant backend events"
+    );
+    assert.equal(JSON.parse(r.storage.__ottKioskV1).media.position, 37);
+    r.advance(900);
+    assert.equal(
+        r.kiosk.snapshot().retries,
+        0,
+        "sleep never trips the watchdog"
+    );
+    assert.equal(r.kiosk.snapshot().screen_suspended, true);
+    assert.equal(r.kiosk.snapshot().health, "waiting");
+    r.sample.phase = "playing";
+    r.events.play();
+    assert.deepEqual(
+        r.calls,
+        ["pause", "pause"],
+        "late HTML autoplay is paused"
+    );
+    r.sample.phase = "loading";
+    r.publish();
+    assert.equal(
+        r.calls.at(-1),
+        "pause",
+        "late native backend start is paused"
+    );
+    r.kiosk.setScreenAwake(true);
+    r.kiosk.setScreenAwake(true);
+    assert.equal(r.calls.filter((c) => c === "resume").length, 1);
+    assert.equal(r.state.position, 37);
+    assert.deepEqual(
+        r.seeks,
+        [],
+        "resume does not seek or replace the episode"
+    );
+    assert.equal(r.kiosk.snapshot().strict, true);
+    assert.equal(r.kiosk.snapshot().media.total, 2);
+    r.advance(9);
+    assert.equal(
+        r.kiosk.snapshot().retries,
+        0,
+        "wake starts a fresh watchdog grace"
+    );
+}
+for (const change of [
+    (r) => r.request({ mode: "off" }),
+    (r) => {
+        r.w.__ottMedia.sourceId = () => "plex:other";
+    },
+    (r) => {
+        r.backend.current = () => ({ ...r.handle });
+    },
+    (r) => {
+        r.handle.active = () => false;
+    },
+    (r) => {
+        r.sample.phase = "stopped";
+    },
+]) {
+    const r = screenRig();
+    r.kiosk.setScreenAwake(false);
+    change(r);
+    r.kiosk.setScreenAwake(true);
+    assert.equal(
+        r.calls.includes("resume"),
+        false,
+        "never resume a retired session"
+    );
+}
+{
+    const r = screenRig();
+    r.sample.phase = "paused";
+    r.kiosk.setScreenAwake(false);
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(r.calls, [], "sleep does not own a pre-existing pause");
+    r.request({ mode: "off" });
+    r.sample.phase = "playing";
+    r.kiosk.setScreenAwake(false);
+    r.events.play();
+    r.advance(60);
+    assert.deepEqual(r.calls, [], "non-kiosk background audio is unaffected");
+}
+{
+    const r = rig();
+    r.kiosk.setScreenAwake(false);
+    r.request({ mode: "on", query: "1", strict: true });
+    r.advance(900);
+    assert.deepEqual(
+        r.played,
+        [],
+        "boot/remote selection cannot start while asleep"
+    );
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(r.played, ["a"], "deferred kiosk startup runs on wake");
+}
+
+async function testScreenBridge() {
+    const { bindKioskScreen } = load("src/plugins/kiosk-screen.ts", {
+        Promise,
+    });
+    const states = [];
+    let listener, reply;
+    const w = {
+        __ottKiosk: { setScreenAwake: (v) => states.push(v) },
+        Capacitor: {
+            getPlatform: () => "android",
+            Plugins: {
+                MobileNativeMedia: {
+                    addListener: (name, fn) => {
+                        assert.equal(name, "screenStateChanged");
+                        listener = fn;
+                        return Promise.resolve({ remove() {} });
+                    },
+                    getScreenState: () =>
+                        new Promise((resolve) => {
+                            reply = resolve;
+                        }),
+                },
+            },
+        },
+    };
+    bindKioskScreen(w);
+    await Promise.resolve();
+    listener({ awake: false, ok: true, revision: 2 });
+    reply({ awake: true, ok: true, revision: 1 });
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    assert.deepEqual(
+        states,
+        [false, false],
+        "stale initial state cannot undo screen-off"
+    );
+    listener({ awake: true, ok: true, revision: 3 });
+    assert.equal(states.at(-1), true);
+    states.length = 0;
+    w.Capacitor.Plugins.MobileNativeMedia.getScreenState = () =>
+        Promise.reject(Error("old APK"));
+    bindKioskScreen(w);
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    assert.deepEqual(
+        states,
+        [false, true],
+        "old APKs retain existing playback behavior"
+    );
+    states.length = 0;
+    w.Capacitor.getPlatform = () => "ios";
+    bindKioskScreen(w);
+    assert.deepEqual(states, [], "Android power bridge does not change iOS");
+    console.log(
+        "Android kiosk sleep pauses, suppresses recovery, checkpoints and safely resumes the active queue"
+    );
+}
+testScreenBridge().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

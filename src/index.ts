@@ -334,6 +334,7 @@ import {
     ottBottomInfoBandStart,
 } from "./key-handler";
 import { createKiosk } from "./plugins/kiosk";
+import { bindKioskScreen } from "./plugins/kiosk-screen";
 import { installRemoteInspection } from "./plugins/remote-inspect";
 // Provider — only import what actually exists
 import {
@@ -6100,6 +6101,7 @@ window.showPopup = showPopup;
 );
 
 (window as any).__ottKiosk = createKiosk(window);
+bindKioskScreen(window);
 var remoteInspection = installRemoteInspection(window);
 
 // Runtime authority follows the actual connection, even when saved preferences cannot be updated.

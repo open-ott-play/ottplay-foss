@@ -15,6 +15,13 @@ export function createKiosk(w: any): any {
     var lastSaved = 0;
     var lastMediaId = "";
     var mediaStarting = false;
+    var screenAwake = true;
+    var sleepingHandle: any = null;
+    var sleepingPolicy: any = null;
+    var deferredPolicy: any = null;
+    var sleepBackend: any = null;
+    var sleepUnsubscribe: any = null;
+    var applyingScreenPause = false;
     var frameRecovery = false;
     var frameHealthySince: number | null = null;
     var videoProgress = createKioskVideoProgress(w);
@@ -65,6 +72,79 @@ export function createKiosk(w: any): any {
         if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
         return true;
     }
+    function currentSource(): boolean {
+        return (
+            !!policy &&
+            provider() === policy.provider &&
+            (policy.media
+                ? !!w.__ottMedia && w.__ottMedia.sourceId() === policy.source
+                : source() === policy.source)
+        );
+    }
+    function pauseForScreen(): void {
+        if (screenAwake || !locked() || applyingScreenPause) return;
+        applyingScreenPause = true;
+        try {
+            var backend = w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
+            if (backend !== sleepBackend) {
+                if (sleepUnsubscribe) sleepUnsubscribe();
+                sleepBackend = backend;
+                sleepUnsubscribe =
+                    backend && backend.subscribe
+                        ? backend.subscribe(pauseForScreen)
+                        : null;
+            }
+            var handle = backend && backend.current();
+            if (
+                handle &&
+                handle.active() &&
+                ["playing", "loading"].indexOf(handle.snapshot().phase) >= 0
+            ) {
+                sleepingHandle = handle;
+                sleepingPolicy = policy;
+                handle.pause();
+            }
+            health = "waiting";
+        } finally {
+            applyingScreenPause = false;
+        }
+    }
+    function setScreenAwake(awake: boolean): void {
+        if (screenAwake === awake) return;
+        screenAwake = awake;
+        if (!awake) {
+            var currentBackend =
+                w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
+            var currentHandle = currentBackend && currentBackend.current();
+            deferredPolicy =
+                !currentHandle || currentHandle.snapshot().phase === "stopped"
+                    ? policy
+                    : null;
+            // Checkpoint the current episode before pausing, even between polls.
+            lastSaved = -Infinity;
+            tick();
+            return;
+        }
+        var handle = sleepingHandle;
+        var selected = sleepingPolicy;
+        var deferred = deferredPolicy;
+        sleepingHandle = sleepingPolicy = deferredPolicy = null;
+        reset();
+        if (!locked() || !currentSource()) return;
+        var backend = w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
+        if (policy === deferred) {
+            play();
+        } else if (
+            handle &&
+            policy === selected &&
+            backend &&
+            backend.current() === handle &&
+            handle.active() &&
+            handle.snapshot().phase === "paused"
+        ) {
+            handle.resume();
+        }
+    }
     function snapshot(): any {
         return {
             channel:
@@ -86,6 +166,7 @@ export function createKiosk(w: any): any {
             provider: policy ? policy.provider : null,
             retries: retries,
             retry_seconds: 10,
+            screen_suspended: locked() && !screenAwake,
             state: locked() ? "locked" : policy ? "waiting" : "off",
             strict: !!(policy && policy.strict),
             video_progress: videoProgress.snapshot(),
@@ -192,6 +273,11 @@ export function createKiosk(w: any): any {
     }
     function play(): void {
         if (!locked() || w.commandChannelsReady !== true) return;
+        if (!screenAwake) {
+            deferredPolicy = policy;
+            pauseForScreen();
+            return;
+        }
         videoProgress.reset();
         frameHealthySince = null;
         if (policy.media) {
@@ -205,6 +291,7 @@ export function createKiosk(w: any): any {
             if (
                 !w.__ottMedia.restoreKiosk(selected.media, function () {
                     return (
+                        screenAwake &&
                         policy === selected &&
                         w.__ottMedia.sourceId() === selected.source
                     );
@@ -337,6 +424,10 @@ export function createKiosk(w: any): any {
             } catch (_) {
                 health = "error";
             }
+        }
+        if (!screenAwake) {
+            pauseForScreen();
+            return;
         }
         try {
             var frames = videoProgress.sample(
@@ -792,6 +883,9 @@ export function createKiosk(w: any): any {
         stopDiagnostics();
     }
     if (w.document && w.document.addEventListener) {
+        // Catch delayed autoplay/decoder recovery while the screen is still off.
+        w.document.addEventListener("play", pauseForScreen, true);
+        w.document.addEventListener("playing", pauseForScreen, true);
         w.document.addEventListener("keydown", stopDiagnosticsKey, true);
         [
             "click",
@@ -822,6 +916,7 @@ export function createKiosk(w: any): any {
             play();
             return true;
         },
+        setScreenAwake: setScreenAwake,
         snapshot: snapshot,
         stopDiagnostics: stopDiagnostics,
         strict: strict,
