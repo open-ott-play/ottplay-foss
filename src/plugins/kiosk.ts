@@ -1,4 +1,5 @@
 import { caselessKey } from "../utils/caseless";
+import { createKioskVideoProgress } from "./kiosk-video-progress";
 import { createStrictKioskInput } from "./strict-kiosk-input";
 
 /** Device-local policy. Only the authenticated command-server dispatcher mutates it. */
@@ -14,6 +15,9 @@ export function createKiosk(w: any): any {
     var lastSaved = 0;
     var lastMediaId = "";
     var mediaStarting = false;
+    var frameRecovery = false;
+    var frameHealthySince: number | null = null;
+    var videoProgress = createKioskVideoProgress(w);
     var strictInput = createStrictKioskInput(w, strict);
     function now(): number {
         return w.performance && typeof w.performance.now === "function"
@@ -36,6 +40,9 @@ export function createKiosk(w: any): any {
         return locked() && policy.strict === true;
     }
     function reset(): void {
+        videoProgress.reset();
+        frameRecovery = false;
+        frameHealthySince = null;
         recoveryAttempts = 0;
         lastPosition = null;
         lastProgress = now();
@@ -81,6 +88,7 @@ export function createKiosk(w: any): any {
             retry_seconds: 10,
             state: locked() ? "locked" : policy ? "waiting" : "off",
             strict: !!(policy && policy.strict),
+            video_progress: videoProgress.snapshot(),
         };
     }
     function allowed(id: any): boolean {
@@ -184,6 +192,8 @@ export function createKiosk(w: any): any {
     }
     function play(): void {
         if (!locked() || w.commandChannelsReady !== true) return;
+        videoProgress.reset();
+        frameHealthySince = null;
         if (policy.media) {
             var selected = policy;
             if (!w.__ottMedia || w.__ottMedia.sourceId() !== selected.source) {
@@ -275,6 +285,8 @@ export function createKiosk(w: any): any {
                             lastPosition = null;
                         }
                         if (lastMediaId !== selectedRef.itemId) {
+                            frameRecovery = false;
+                            frameHealthySince = null;
                             lastMediaId = selectedRef.itemId;
                             lastPosition = null;
                             lastProgress = time;
@@ -327,6 +339,23 @@ export function createKiosk(w: any): any {
             }
         }
         try {
+            var frames = videoProgress.sample(
+                time,
+                w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot()
+            );
+            if (frames.state === "stalled") frameRecovery = true;
+            if (frameRecovery) {
+                if (
+                    frames.state === "progressing" &&
+                    frames.frame_age_ms <= 2000
+                ) {
+                    if (frameHealthySince === null) frameHealthySince = time;
+                    if (time - frameHealthySince >= 10000) {
+                        frameRecovery = false;
+                        frameHealthySince = null;
+                    }
+                } else frameHealthySince = null;
+            }
             var id = (w.curList || [])[w.primaryIndex];
             var position = w.stbGetPosTime();
             var valid =
@@ -336,6 +365,8 @@ export function createKiosk(w: any): any {
             if (
                 (policy.media ? mediaAdmitted : allowed(id)) &&
                 w.stbIsPlaying() &&
+                frames.state !== "stalled" &&
+                !(frameRecovery && frames.state === "warming") &&
                 valid &&
                 lastPosition !== null &&
                 position > lastPosition
@@ -343,14 +374,22 @@ export function createKiosk(w: any): any {
                 lastProgress = time;
                 health = "playing";
                 mediaStarting = false;
-                recoveryAttempts = 0;
+                if (!frameRecovery && frames.state !== "warming")
+                    recoveryAttempts = 0;
             }
             lastPosition = valid ? position : null;
         } catch (_) {
             lastPosition = null;
             health = "error";
         }
-        if (time - lastProgress < (mediaStarting ? 60000 : 10000)) return;
+        if (
+            time - lastProgress <
+            (mediaStarting ||
+            (frameRecovery && frames && frames.state === "warming")
+                ? 60000
+                : 10000)
+        )
+            return;
         lastProgress = time;
         lastPosition = null;
         health = "retrying";
