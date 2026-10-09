@@ -25,7 +25,7 @@ function finite(value: any, max = DEBUG_MAX): boolean {
         value <= max
     );
 }
-function label(value: any): string | null {
+function versionToken(value: any): string | null {
     var match =
         typeof value === "string" && value.match(/^[A-Za-z0-9_.+\-]{1,64}$/);
     return match && match[0] === value ? value : null;
@@ -51,12 +51,12 @@ export function projectNativeDebug(value: any): any {
         if (typeof sample === "boolean") metrics[key] = sample;
     });
     return {
-        appVersion: label(value.appVersion),
+        appVersion: versionToken(value.appVersion),
         metrics: metrics,
-        osVersion: label(value.osVersion),
+        osVersion: versionToken(value.osVersion),
         platform: value.platform,
         version: 1,
-        webviewVersion: label(value.webviewVersion),
+        webviewVersion: versionToken(value.webviewVersion),
     };
 }
 
