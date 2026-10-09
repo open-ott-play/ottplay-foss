@@ -939,6 +939,99 @@ for (const extra of [0, 1]) {
     );
 }
 
+{
+    const f = fixture();
+    let result;
+    const titles = [
+        "Винни-Пух",
+        "Винни Пух идёт в гости",
+        "Винни Пух и день забот",
+    ];
+    f.client.search("exact:" + JSON.stringify(titles), (value) => {
+        result = value;
+    });
+    for (let i = 0; i < titles.length; i++) {
+        assert.equal(params(f.requests[i]).query, titles[i]);
+        // Search results may overlap, contain sequels and return a different order.
+        f.requests[i].receive(
+            page([
+                stream(3, titles[2]),
+                stream(2, titles[1]),
+                stream(1, titles[0].toUpperCase()),
+                stream(4, "Винни Пух: Кровь и мёд"),
+                series(5, titles[0]),
+            ])
+        );
+    }
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+        Array.from(result.items, (item) => item.request.id),
+        [1, 2, 3]
+    );
+    assert.equal(
+        f.requests.length,
+        3,
+        "Exact movie selection does not expand same-named series"
+    );
+    assert.equal(f.timers(), 0);
+}
+for (const rows of [
+    [stream(1, "Other")],
+    [stream(1, "Film"), stream(2, "Film")],
+]) {
+    const f = fixture();
+    let result;
+    f.client.search('exact:["Film"]', (value) => {
+        result = value;
+    });
+    f.requests[0].receive(page(rows));
+    assert.equal(
+        result.error,
+        "Exact VPortal selection is missing or ambiguous"
+    );
+    assert.equal(
+        result.items.length,
+        0,
+        "Never start a partial or ambiguous queue"
+    );
+}
+for (const query of [
+    "exact:[]",
+    "exact:{}",
+    'exact:[""]',
+    'exact:["Film","FILM"]',
+    "exact:[1]",
+    "exact:" + JSON.stringify(Array.from({ length: 21 }, (_, i) => String(i))),
+]) {
+    const f = fixture();
+    let result;
+    f.client.search(query, (value) => {
+        result = value;
+    });
+    assert.equal(
+        result.error,
+        "Exact VPortal selection requires 1 to 20 distinct titles"
+    );
+    assert.equal(f.requests.length, 0);
+    assert.equal(f.timers(), 0);
+}
+{
+    const f = fixture();
+    let result;
+    const cancel = f.client.search('exact:["First","Second"]', (value) => {
+        result = value;
+    });
+    f.requests[0].receive(page([stream(1, "First")]));
+    cancel();
+    f.requests[1].receive(page([stream(2, "Second")]));
+    assert.equal(
+        result,
+        undefined,
+        "Cancellation during the second title cancels the whole selection"
+    );
+    assert.equal(f.timers(), 0);
+}
+
 console.log(
     "PASS VPortal complete filtered search: ordered series/pages, Unicode, bounds, origins, cancellation and fresh direct-URL resolution"
 );

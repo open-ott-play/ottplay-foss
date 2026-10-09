@@ -504,6 +504,35 @@ export function createVPortalClient(
         var timer: any = null;
         var deadline = Date.now() + 25000;
         var folded = caselessKey(query);
+        // Keep exact queues inside the existing query transport so older
+        // controllers can deliver them without learning a new command shape.
+        var exact: string[] | null = null;
+        var exactKeys: string[] = [];
+        if (query.slice(0, 6) === "exact:") {
+            try {
+                var selection: unknown = JSON.parse(query.slice(6));
+                if (
+                    !Array.isArray(selection) ||
+                    !selection.length ||
+                    selection.length > 20
+                )
+                    throw new Error();
+                exact = selection.map(function (title: unknown): string {
+                    if (typeof title !== "string" || !title.trim())
+                        throw new Error();
+                    var normalized = caselessKey(title.trim());
+                    if (exactKeys.indexOf(normalized) !== -1) throw new Error();
+                    exactKeys.push(normalized);
+                    return title.trim();
+                });
+            } catch (_) {
+                done({
+                    error: "Exact VPortal selection requires 1 to 20 distinct titles",
+                    items: [],
+                });
+                return function () {};
+            }
+        }
         var items: any[] = [];
         var tasks: any[] = [];
         var requests: { [key: string]: boolean } = Object.create(null);
@@ -537,6 +566,24 @@ export function createVPortalClient(
 
         function finish(error?: string): void {
             if (!current()) return;
+            if (!error && exact) {
+                var ordered: any[] = [];
+                for (var i = 0; i < exactKeys.length; i++) {
+                    var matches = items.filter(function (item) {
+                        return (
+                            caselessKey(String(item.title || "")) ===
+                            exactKeys[i]
+                        );
+                    });
+                    if (matches.length !== 1) {
+                        error =
+                            "Exact VPortal selection is missing or ambiguous";
+                        break;
+                    }
+                    ordered.push(matches[0]);
+                }
+                if (!error) items = ordered;
+            }
             var result = error ? { error: error, items: [] } : { items: items };
             cancelSearch();
             done(result);
@@ -638,9 +685,14 @@ export function createVPortalClient(
                         var item = task.item;
                         if (
                             !task.parent &&
-                            caselessKey(String(item.title || "")).indexOf(
-                                folded
-                            ) === -1
+                            (exact
+                                ? item.type !== "stream" ||
+                                  exactKeys.indexOf(
+                                      caselessKey(String(item.title || ""))
+                                  ) === -1
+                                : caselessKey(String(item.title || "")).indexOf(
+                                      folded
+                                  ) === -1)
                         )
                             continue;
                         if (item.type === "stream") {
@@ -818,7 +870,11 @@ export function createVPortalClient(
         timer = w.setTimeout(function () {
             finish("VPortal search timed out before collecting all results");
         }, 25000);
-        tasks.push(collection({ cmd: "search", query: query }, null, []));
+        var queries = exact || [query];
+        for (var i = queries.length - 1; i >= 0; i--)
+            tasks.push(
+                collection({ cmd: "search", query: queries[i] }, null, [])
+            );
         next();
         return cancelSearch;
     }

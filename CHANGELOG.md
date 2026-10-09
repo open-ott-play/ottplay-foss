@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Select an ordered, looping VPortal queue by exact movie titles through OTT,
+  rejecting missing or ambiguous titles instead of playing broader search results.
+
 - Keep Android hardware volume buttons working in strict kiosk mode and while
   the WebView is loading or stalled by controlling media volume natively.
 
