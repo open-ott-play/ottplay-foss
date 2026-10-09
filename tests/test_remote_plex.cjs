@@ -638,4 +638,15 @@ test("Plex kiosk retains 265 ordered requests, loops, and restores without media
     assert.equal(h.queue.snapshot().index, 0);
     assert.equal(h.queue.snapshot().state, "playing");
 });
+test("Plex kiosk captures the actual cursor when IDs repeat", () => {
+    const h = setup();
+    h.c.__ottActiveProviderDriver = { id: "plex" };
+    h.call("play", ["1", "1"]);
+    h.prepare(["1", "1"]);
+    h.resolve("1");
+    assert.equal(h.c.__ottMedia.kioskSelection().index, 0);
+    h.c.__ottMedia.current().sequence = null;
+    assert.equal(h.c.__ottMedia.kioskSelection().queueId, undefined);
+    assert.equal(h.c.__ottMedia.kioskSelection().records.length, 1);
+});
 console.log("PASS Plex queue: " + groups + " behavior groups");

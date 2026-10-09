@@ -2234,7 +2234,11 @@ function classicMediaRuntime(): any {
             var item = items[i];
             if (!item.payload.request || item.ref.sourceId !== source)
                 return null;
-            if (item.ref.itemId === playing.ref.itemId) index = i;
+            if (
+                item.ref.itemId === playing.ref.itemId &&
+                (!sequence || i === sequence.index)
+            )
+                index = i;
             // Persist provider requests/identities, never resolved or expiring media URLs.
             records.push({
                 __ottMediaRef: item.ref,
@@ -2254,7 +2258,7 @@ function classicMediaRuntime(): any {
                 isFinite(state.position) && state.position >= 0
                     ? state.position
                     : 0,
-            queueId: sequence && sequence.queueId,
+            queueId: sequence ? sequence.queueId : undefined,
             records: records,
             source: source,
         };
