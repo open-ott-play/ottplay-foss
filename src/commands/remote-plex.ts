@@ -6,7 +6,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
     var ids: string[] = [];
     var failure = "";
     var capability = {
-        max_items: 100,
+        max_items: 500,
         operations: ["play", "preview", "status", "next", "previous", "stop"],
         version: 1,
     };
@@ -68,7 +68,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
         if (
             !Array.isArray(params.ids) ||
             !params.ids.length ||
-            params.ids.length > 100 ||
+            params.ids.length > 500 ||
             params.ids.some(function (id: any) {
                 return typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id);
             })

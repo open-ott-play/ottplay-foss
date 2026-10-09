@@ -1,5 +1,7 @@
 # Changelog
 
+- Plex: up to 500 remote queue items and persistent looping media kiosk across web and native shells.
+
 ## [1.1.53] - Development line
 
 ### Changes

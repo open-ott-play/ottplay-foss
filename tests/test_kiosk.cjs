@@ -620,12 +620,12 @@ console.log(
     "Kiosk admission, recovery, persistence, remote replacement and input tests passed"
 );
 
-// VPortal has no TV channel list: lock the current request-backed media queue.
-{
+// Both library providers lock their current request-backed media queue.
+for (const provider of ["vportal", "plex"]) {
     const r = rig();
-    const source = "vportal:0@one";
+    const source = provider + ":0@one";
     r.source(source);
-    r.w.__ottActiveProviderDriver = { id: "vportal" };
+    r.w.__ottActiveProviderDriver = { id: provider };
     r.w.cList = [];
     r.w.curList = [];
     const records = [0, 1].map((i) => ({
@@ -744,7 +744,7 @@ console.log(
     assert.equal(r.kiosk.snapshot().media.index, 1);
     const reloaded = rig(r.storage);
     reloaded.source(source);
-    reloaded.w.__ottActiveProviderDriver = { id: "vportal" };
+    reloaded.w.__ottActiveProviderDriver = { id: provider };
     reloaded.w.__ottMedia = r.w.__ottMedia;
     assert.equal(reloaded.kiosk.restoreMedia(), true);
     assert.equal(restored.at(-1).value.index, 1);
@@ -877,7 +877,11 @@ console.log(
         node.dispatchEvent(e);
         assert(e.defaultPrevented, type + " consumes its native default");
     }
-    const point = (x, id = 1) => ({ clientX: x, clientY: 100, identifier: id });
+    const point = (x, id = 1) => ({
+        clientX: x,
+        clientY: 100,
+        identifier: id,
+    });
     const touch = (type, touches, changedTouches = touches) =>
         event(type, { changedTouches, touches });
     touch("touchstart", [point(100)]);

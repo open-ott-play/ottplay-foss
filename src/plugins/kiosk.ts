@@ -94,6 +94,9 @@ export function createKiosk(w: any): any {
             return (
                 !!value &&
                 typeof value.source === "string" &&
+                (value.queueId === undefined ||
+                    (typeof value.queueId === "string" &&
+                        value.queueId.length <= 100)) &&
                 Array.isArray(value.records) &&
                 value.records.length > 0 &&
                 value.records.length <= 1000 &&
@@ -381,10 +384,10 @@ export function createKiosk(w: any): any {
                 done({ data: snapshot(), status: "ok" });
                 return;
             }
-            if (provider() === "vportal") {
+            if (provider() === "vportal" || provider() === "plex") {
                 if (params.query !== undefined) {
                     fail(
-                        "Start the required VPortal playback, then use kiosk on without a channel query."
+                        "Start the required media playback, then use kiosk on without a channel query."
                     );
                     return;
                 }
@@ -402,7 +405,7 @@ export function createKiosk(w: any): any {
                     !validMedia(selection) ||
                     selection.source !== w.__ottMedia.sourceId()
                 ) {
-                    fail("Start VPortal playback before enabling kiosk mode.");
+                    fail("Start media playback before enabling kiosk mode.");
                     return;
                 }
                 if (
@@ -414,7 +417,7 @@ export function createKiosk(w: any): any {
                     })
                 ) {
                     fail(
-                        "Unlock parental access before locking this VPortal queue."
+                        "Unlock parental access before locking this media queue."
                     );
                     return;
                 }
@@ -422,7 +425,7 @@ export function createKiosk(w: any): any {
                     !save({
                         channel: null,
                         media: selection,
-                        provider: "vportal",
+                        provider: provider(),
                         source: selection.source,
                         strict:
                             params.strict !== undefined
@@ -534,7 +537,8 @@ export function createKiosk(w: any): any {
                 (saved.strict === undefined ||
                     typeof saved.strict === "boolean") &&
                 (saved.media
-                    ? saved.provider === "vportal" &&
+                    ? (saved.provider === "vportal" ||
+                          saved.provider === "plex") &&
                       saved.channel === null &&
                       validMedia(saved.media) &&
                       saved.media.source === saved.source
