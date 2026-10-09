@@ -249,6 +249,193 @@ async function select(page, title) {
     }, title);
 }
 
+test("Plex load failure preserves a restored strict kiosk until remote unlock", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const local = new URL(baseURL).origin;
+    const pending = [],
+        replies = [],
+        errors = [];
+    let failLoad = false,
+        failedLoads = 0,
+        sequence = 0;
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", (route) => {
+        const request = route.request(),
+            url = new URL(request.url());
+        if (url.origin !== local) return route.abort();
+        if (url.pathname.startsWith("/fixture-control/")) {
+            if (request.method() === "POST") {
+                if (url.pathname.endsWith("/responses"))
+                    replies.push(request.postDataJSON());
+                return route.fulfill({ json: { status: "ok" } });
+            }
+            const next = pending.shift(),
+                now = Date.now() / 1000;
+            return route.fulfill({
+                json: {
+                    commands: [],
+                    requests: next
+                        ? [
+                              {
+                                  ...next,
+                                  expires_at: now + 40,
+                                  id: String(++sequence).padStart(32, "0"),
+                              },
+                          ]
+                        : [],
+                    server_time: now,
+                },
+            });
+        }
+        const json = (body) =>
+            route.fulfill({ json: { MediaContainer: body } });
+        if (url.pathname === "/library/sections") {
+            if (failLoad) {
+                failedLoads++;
+                return route.fulfill({ body: "Unauthorized", status: 401 });
+            }
+            return json({
+                Directory: [
+                    { key: "7", title: "Kiosk library", type: "movie" },
+                ],
+            });
+        }
+        if (url.pathname === "/library/sections/7/all")
+            return json({ Metadata: [] });
+        if (url.pathname === "/library/sections/7/folder")
+            return json({
+                Metadata: [
+                    { ratingKey: "42", title: "Kiosk film", type: "movie" },
+                ],
+                offset: 0,
+                size: 1,
+                totalSize: 1,
+            });
+        if (url.pathname === "/library/metadata/42")
+            return json({
+                Metadata: [
+                    {
+                        Media: [
+                            {
+                                audioCodec: "aac",
+                                container: "mpegts",
+                                Part: [{ key: "/library/parts/42/file.ts" }],
+                                videoCodec: "h264",
+                            },
+                        ],
+                        ratingKey: "42",
+                        title: "Kiosk film",
+                        type: "movie",
+                    },
+                ],
+            });
+        if (url.pathname.endsWith("/decision"))
+            return json({
+                generalDecisionCode: 1001,
+                Metadata: [{ Media: [{ Part: [{ decision: "transcode" }] }] }],
+            });
+        if (url.pathname.endsWith("/stop") || url.pathname.endsWith("/ping"))
+            return route.fulfill({ body: "" });
+        return route.continue();
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(
+        ({ local }) => {
+            if (!localStorage.getItem("ottplayprov")) {
+                localStorage.setItem("ottplaylang", "_eng");
+                localStorage.setItem("ottplayprov", "plex");
+                localStorage.setItem(
+                    "plexcfg",
+                    JSON.stringify({
+                        address: local,
+                        playback: "compatible",
+                        token: "synthetic-kiosk-token",
+                    })
+                );
+            }
+            const play = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () {
+                this.muted = true;
+                this.loop = true;
+                return play.call(this);
+            };
+        },
+        { local }
+    );
+    await page.goto("/f/pc/");
+    await page.keyboard.press("Shift");
+    await select(page, "Kiosk library");
+    await select(page, "Browse folders");
+    await select(page, "Kiosk film");
+    await page.waitForFunction(
+        () =>
+            window.__ottClassicPlayback.snapshot().phase === "playing" &&
+            window.video.currentTime > 0.2
+    );
+    await page.evaluate(() =>
+        window.__ottCommandServer.configure({
+            address: location.origin + "/fixture-control",
+            enabled: true,
+            token: "SYNTHETIC_COMMAND_TOKEN_0123456789abcdef",
+        })
+    );
+    async function kiosk(params) {
+        const count = replies.length;
+        pending.push({ action: "kiosk", params });
+        await expect.poll(() => replies.length).toBe(count + 1);
+        expect(replies[count].status).toBe("ok");
+        return replies[count].data;
+    }
+    expect(await kiosk({ mode: "on", strict: true })).toMatchObject({
+        media: { title: "Kiosk film", total: 1 },
+        provider: "plex",
+        state: "locked",
+        strict: true,
+    });
+    const saved = await page.evaluate(() => ({
+        credentials: window.stbGetPersistedItem("plexcfg"),
+        policy: window.stbGetPersistedItem("__ottKioskV1"),
+    }));
+    expect(JSON.parse(saved.policy)).toMatchObject({
+        provider: "plex",
+        strict: true,
+    });
+    failLoad = true;
+    await page.reload();
+    await expect.poll(() => failedLoads).toBe(1);
+    expect(await kiosk({ mode: "status" })).toMatchObject({
+        media: { title: "Kiosk film", total: 1 },
+        provider: "plex",
+        state: "locked",
+        strict: true,
+    });
+    await expect(page.locator("html")).toHaveClass(/ott-kiosk-strict/);
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    await expect(page.locator("#list_window")).toBeHidden();
+    expect(await page.evaluate(() => window.commandChannelsReady)).toBe(false);
+    expect(await page.evaluate(() => window.__ottEditProvider())).toBe(false);
+    await expect(page.locator("#list_window")).toBeHidden();
+    expect(
+        await page.evaluate(() => ({
+            credentials: window.stbGetPersistedItem("plexcfg"),
+            policy: window.stbGetPersistedItem("__ottKioskV1"),
+        }))
+    ).toEqual(saved);
+    expect(await kiosk({ mode: "off" })).toMatchObject({
+        state: "off",
+        strict: false,
+    });
+    await expect(page.locator("html")).not.toHaveClass(/ott-kiosk-strict/);
+    expect(await page.evaluate(() => window.__ottEditProvider())).toBe(true);
+    await expect(page.locator("#listCaption")).toHaveText("Plex settings");
+    await expect(page.locator("#list_window")).toBeVisible();
+    await expect(page.locator("#dialogbox")).toBeHidden();
+    expect(errors).toEqual([]);
+});
+
 test("Plex file selection shows an owned wait through collection and resolution, cancels and retries", async ({
     page,
     context,

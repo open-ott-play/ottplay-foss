@@ -153,6 +153,27 @@ updating the application. Strict mode blocks local navigation and playback
 controls while allowing the short read-only information footer. This support
 is shared by browser/hosted, server, Tauri, and Capacitor Android/iOS builds.
 
+If Plex cannot connect while kiosk is locked, the player keeps the saved kiosk
+policy and does not open Plex settings or a modal connection-error dialog.
+Inspect `ott f10 kiosk status` for recovery progress. To repair the connection
+or edit settings, explicitly unlock the player first:
+
+```sh
+ott f10 kiosk off
+ott f10 restart
+ott f10
+ott f10 plex preview 78777 78776 78775
+ott f10 plex play 78777 78776 78775
+ott f10 plex status
+```
+
+Wait for the restarted player to reconnect and finish loading its provider
+before starting playback. If necessary, repair its saved Plex connection while
+unlocked. `preview` checks server access; confirm actual playback before enabling
+`ott f10 kiosk on --strict` again. On older builds that already opened Plex
+settings under a strict lock, `ott f10 kiosk off` restores local navigation;
+restarting alone retains that lock.
+
 The wire contract is `plex_queue` with `op`, exact `runtime`, and `ids` for
 `play`/`preview`. `capabilities.plex_queue` advertises version 1, supported
 operations and `max_items: 500`. The CLI respects older players that still
