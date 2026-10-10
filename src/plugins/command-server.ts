@@ -472,12 +472,27 @@ export function createCommandServer(
                                 )
                             );
                             var executionDeadline = Date.now() + executionMs;
+                            var executionError = function (
+                                message: string,
+                                libraryError: string
+                            ): any {
+                                return item.action === "plex_library"
+                                    ? {
+                                          error: libraryError,
+                                          op: item.params.op,
+                                          runtime: item.params.runtime,
+                                          state: "error",
+                                          version: 1,
+                                      }
+                                    : { error: message };
+                            };
                             var executionTimer = w.setTimeout(function () {
                                 var abortWork = cancelExecution;
                                 finishExecution({
-                                    data: {
-                                        error: "Request timed out in the player.",
-                                    },
+                                    data: executionError(
+                                        "Request timed out in the player.",
+                                        "Plex queue request timed out."
+                                    ),
                                     status: "rejected",
                                 });
                                 if (abortWork) {
@@ -539,9 +554,10 @@ export function createCommandServer(
                                 if (!serialized) {
                                     resultStatus = "rejected";
                                     serialized = JSON.stringify({
-                                        data: {
-                                            error: error,
-                                        },
+                                        data: executionError(
+                                            error,
+                                            "Plex playback could not start."
+                                        ),
                                         id: item.id,
                                         status: "rejected",
                                     });
@@ -606,6 +622,7 @@ export function createCommandServer(
                                 var executionItem = item;
                                 if (
                                     item.action === "plex_queue" ||
+                                    item.action === "plex_library" ||
                                     item.action === "playback"
                                 )
                                     executionItem = Object.assign({}, item, {
@@ -643,9 +660,10 @@ export function createCommandServer(
                                     };
                             } catch (_error) {
                                 finishExecution({
-                                    data: {
-                                        error: "The player could not handle this request.",
-                                    },
+                                    data: executionError(
+                                        "The player could not handle this request.",
+                                        "Plex playback could not start."
+                                    ),
                                     status: "rejected",
                                 });
                             }

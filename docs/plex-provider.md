@@ -80,6 +80,38 @@ ott l plex prev
 ott l plex stop
 ```
 
+To select a complete Plex library without entering individual media IDs:
+
+```sh
+ott l plex libraries
+ott l plex library --preview "Три кота"
+ott l plex shuffle "Три кота"
+ott l plex library --shuffle id:16
+```
+
+These commands use the player's saved Plex connection. `id:16` selects library
+section 16; it is not a media ratingKey. A plain numeric name remains a library
+name. Selection first checks normalized exact titles, then a unique partial
+match. Ambiguous names fail without changing playback; use `plex libraries`
+and an explicit section ID to disambiguate.
+
+Movie libraries collect movies, and TV libraries collect episodes across their
+shows and seasons. The player reads every inventory and media page before
+starting playback, accepts at most 1,000 library entries and 500 videos, and
+rejects duplicate, incomplete or changing results. Music libraries and physical
+filesystem folder traversal are not supported by this command. A failed lookup
+or collection leaves existing playback intact. Preview collects and validates
+metadata without starting a decoder. Shuffle makes one permutation of the
+complete result; subsequent episodes retain that order.
+
+Library commands require the separately advertised `plex_library` v1 capability.
+Existing `plex play ID...` and `plex preview ID...` remain available on older
+players. Library discovery shares the queue's cancellation, source and runtime
+checks: Stop, replacement playback, changed settings or request expiry cannot
+be undone by a late library response. List and preview cannot replace a pending
+play operation. The operation journal records library play only. These commands
+do not enable kiosk, change repeat settings or rewrite the Plex connection.
+
 The player uses its existing saved Plex profile even while a TV provider such as
 M3U is selected. It checks the server and all requested metadata, then resolves
 the first stream before handing playback over. The selected TV provider and

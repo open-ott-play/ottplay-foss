@@ -27,6 +27,7 @@ export function installRemoteInspection(w: any): any {
         "vportal_search",
         "vportal_random",
         "plex_queue",
+        "plex_library",
         "vportal_queue",
         "maintenance",
     ];
@@ -185,6 +186,7 @@ export function installRemoteInspection(w: any): any {
             /^[a-f0-9]{32}$/.test(item.id || "") &&
             actions.indexOf(item.action) >= 0 &&
             item.action !== "vportal_search" &&
+            !(item.action === "plex_library" && params.op !== "play") &&
             !(item.action === "aspect" && params.operation !== "set") &&
             !(item.action === "kiosk" && params.mode === "status") &&
             !(
@@ -205,7 +207,9 @@ export function installRemoteInspection(w: any): any {
             // Filtering avoids a second updated document consuming a request
             // meant for this one. Server-side validation fences legacy replies.
             return (
-                (item.action !== "inspect" && item.action !== "aspect") ||
+                (item.action !== "inspect" &&
+                    item.action !== "aspect" &&
+                    item.action !== "plex_library") ||
                 !!(item.params && item.params.runtime === runtime())
             );
         },

@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Start or preview a complete Plex movie/TV library by name or section ID,
+  optionally shuffled, using the player's saved connection and bounded complete
+  pagination. Ambiguous or incomplete selections leave existing playback intact.
+
 - Discover Android XMLTV channels without retaining every channel's schedule.
   Load only the selected channel's programmes, preserving archive entries and
   descriptions, with bounded record, source-set and in-memory cache sizes.

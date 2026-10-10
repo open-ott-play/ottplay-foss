@@ -824,6 +824,7 @@ export function executeRemoteControl(
             ].filter(lifecycleAvailable),
             playback: playback,
             player: remotePlayerInfo(w),
+            plex_library: plexQueue.libraryCapability,
             plex_queue: plexQueue.capability,
             screenshot: remoteScreenshotSnapshot(w),
             version: 1,

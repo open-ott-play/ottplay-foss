@@ -49,7 +49,7 @@ export function executeRemoteRequest(
     var params = request.params || {};
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
-    if (request.action === "plex_queue")
+    if (request.action === "plex_queue" || request.action === "plex_library")
         return remotePlexQueue(w, remotePlayerInfo(w).runtime).execute(
             request,
             done
