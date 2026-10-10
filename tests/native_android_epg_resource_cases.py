@@ -94,6 +94,85 @@ KOTLIN_RESOURCE_TESTS = r'''
             metaFile.writeText("x".repeat(metadataByteLimit + 1))
             check(readCache("https://stream.invalid/recovery") == null)
             println("PASS Kotlin XMLTV: declared/chunked/expanded limits, gzip errors, stream closure, temporary cleanup, recovery")
+
+            // Real records, not padding: the former all-channel object graph
+            // exhausted the physical Fire's 128 MiB Java heap after discovery.
+            inputByteLimit = 64 * 1024 * 1024
+            val dense = File(dir, "dense.xml")
+            val description = "d".repeat(4096)
+            val now = (System.currentTimeMillis() / 1000).toInt()
+            val format = java.text.SimpleDateFormat("yyyyMMddHHmmss Z").apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+            val start = format.format(java.util.Date(now.toLong() * 1000))
+            val stop = format.format(java.util.Date((now.toLong() + 3600) * 1000))
+            dense.bufferedWriter().use { out ->
+                out.write("<tv><channel id=\"wanted\"><display-name>Wanted</display-name></channel><channel id=\"other\"><display-name>Other</display-name></channel>")
+                repeat(12000) { index ->
+                    out.write("<programme channel=\"other\" start=\"$start\" stop=\"$stop\"><title>Other $index</title><desc>$description</desc></programme>")
+                }
+                out.write("<programme channel=\"wanted\" start=\"$start\" stop=\"$stop\"><title>Kept <![CDATA[ ]]>&amp; complete</title><desc>Full description</desc></programme></tv>")
+            }
+            val denseSource = "https://stream.invalid/dense"
+            okhttp3.Fixture.stream = { dense.inputStream() }
+            okhttp3.Fixture.length = dense.length()
+            request(denseSource, true)
+            check(parsedCache[denseSource]!!.second.programs.isEmpty())
+            val fetched = okhttp3.Fixture.requests
+            fun guide(id: String): PluginCall = PluginCall(denseSource).apply { values["hash"] = id; getEpg(this) }
+            val wanted = guide("wanted")
+            check(wanted.resolved && !wanted.rejected)
+            val rows = (wanted.result.values["epg_data"] as JSArray).values
+            check(rows.size == 1)
+            check((rows[0] as JSObject).values["name"] == "Kept  & complete")
+            check((rows[0] as JSObject).values["descr"] == "Full description")
+            check(okhttp3.Fixture.requests == fetched) // source bytes are reused from disk
+            check(guide("other").rejected) // oversized individual schedules fail before exhausting the heap
+            check(guide("wanted").resolved)
+            clean()
+            println("PASS Kotlin XMLTV: 12000 dense records, metadata-only discovery, scoped full guide, bounded failure and recovery at 64 MiB")
+
+            // Refresh must invalidate a cached channel schedule.
+            okhttp3.Fixture.stream = null
+            okhttp3.Fixture.length = -1
+            okhttp3.Fixture.data = "<tv><channel id=\"wanted\"><display-name>Wanted</display-name></channel><programme channel=\"wanted\" start=\"$start\" stop=\"$stop\"><title>Refreshed</title></programme></tv>".toByteArray()
+            val refresh = PluginCall(denseSource)
+            prefetch(refresh)
+            check(refresh.resolved)
+            val updated = guide("wanted")
+            check(((updated.result.values["epg_data"] as JSArray).values[0] as JSObject).values["name"] == "Refreshed")
+
+            okhttp3.Fixture.data = "<tv><channel id=\"a\"><display-name>${"x".repeat(262145)}</display-name></channel></tv>".toByteArray()
+            request("https://stream.invalid/oversized-field", false)
+            okhttp3.Fixture.data = "<tv><channel id=\"a\"><display-name>Safe</display-name></channel></tv>".toByteArray()
+            repeat(40) { request("https://stream.invalid/cache-$it", true) }
+            check(parsedCache.size <= 16)
+            check(parsedCache.values.sumOf { it.second.retainedBytes.toLong() } <= parsedCacheByteLimit)
+            println("PASS Kotlin XMLTV: refresh invalidation, record limits and bounded multi-source cache")
+
+            val tooMany = PluginCall("").apply {
+                values["xmltv_urls"] = JSArray().apply { repeat(9) { put("https://stream.invalid/source-$it") } }
+            }
+            val beforeLimit = okhttp3.Fixture.requests
+            getChannels(tooMany)
+            check(tooMany.rejected && okhttp3.Fixture.requests == beforeLimit)
+            parsedCacheByteLimit = 128
+            request("https://stream.invalid/metadata-set-limit", false)
+            parsedCacheByteLimit = 16 * 1024 * 1024
+            request("https://stream.invalid/after-set-limit", true)
+
+            okhttp3.Fixture.deferred = true
+            val pending = (0 until 17).map { index ->
+                PluginCall("https://stream.invalid/pending-$index").also { getChannels(it) }
+            }
+            check(pending.last().rejected && pending.dropLast(1).none { it.rejected || it.resolved })
+            while (okhttp3.Fixture.queue.isNotEmpty()) okhttp3.Fixture.releaseOne()
+            check(pending.dropLast(1).all { it.resolved && it.resolveCount == 1 })
+            val joined = (0 until 65).map { PluginCall("https://stream.invalid/joined").also { getChannels(it) } }
+            check(joined.last().rejected)
+            okhttp3.Fixture.releaseOne()
+            check(joined.dropLast(1).all { it.resolved && it.resolveCount == 1 })
+            check(pendingSources.isEmpty())
+            clean()
+            println("PASS Kotlin XMLTV: source-set, pending-load and joined-callback limits recover cleanly")
         } finally { okhttp3.Fixture.reset(); dir.deleteRecursively() }
     }
 '''
