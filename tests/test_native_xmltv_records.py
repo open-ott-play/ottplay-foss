@@ -46,7 +46,7 @@ SWIFT_METHOD = r'''
 KOTLIN_METHOD = r'''
     fun captureRecord(label: String, xml: String) {
         val output: Map<String, Any> = try {
-            val parsed = parseXmltv(xml)
+            val parsed = parseXmltv(xml.byteInputStream(Charsets.UTF_8))
             mapOf("name" to label, "result" to mapOf("channels" to parsed.channels, "names" to parsed.names,
                 "icons" to parsed.icons, "programmes" to parsed.programs.mapValues { (_, entries) ->
                     entries.map { mapOf("start" to it.start, "stop" to it.stop, "title" to it.title, "desc" to it.desc) }
