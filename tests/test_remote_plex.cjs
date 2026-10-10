@@ -18,13 +18,17 @@ function compile(file) {
     acorn.parse(code, { ecmaVersion: 5 });
     return code;
 }
-const module_ = {};
-vm.runInNewContext(compile("src/commands/remote-plex.ts"), {
-    Date,
-    exports: module_,
-});
+const remotePlexCode = compile("src/commands/remote-plex.ts");
 function setup() {
     const c = fixture();
+    let now = 1700000000000;
+    c.Date = class extends Date {
+        static now() {
+            return now;
+        }
+    };
+    const module_ = {};
+    vm.runInNewContext(remotePlexCode, { Date: c.Date, exports: module_ });
     const timers = new Map();
     c.setTimeout = (fn, ms) => {
         const key = {};
@@ -149,6 +153,9 @@ function setup() {
         c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
     }
     return {
+        advance(ms) {
+            now += ms;
+        },
         c,
         call,
         end,
@@ -609,6 +616,51 @@ test("cancel, timeout, changed provider and expired requests cannot start later"
     );
     assert.equal(replies[0].status, "rejected");
     assert.equal(h.requests.length, 0);
+});
+test("the default and shortened deadlines fence responses before timers fire", () => {
+    for (const duration of [35000, 7000]) {
+        const h = setup(),
+            replies = [];
+        h.queue.execute(
+            {
+                action: "plex_library",
+                ...(duration === 7000
+                    ? { expires_at: (h.c.Date.now() + duration) / 1000 }
+                    : {}),
+                params: { op: "list", runtime: "runtime-fixture" },
+            },
+            (result) => replies.push(plain(result))
+        );
+        const deadline = [...h.timers.values()].find(
+            (timer) => timer.ms === duration
+        );
+        assert(
+            deadline,
+            "The earlier request expiry bounds the execution timer"
+        );
+        h.advance(duration - 1);
+        h.reply();
+        assert.equal(
+            h.requests.length,
+            1,
+            "Work continues before the deadline"
+        );
+        assert.equal(replies.length, 0);
+        h.advance(1);
+        h.page([], 0, 0, true);
+        assert.equal(
+            replies.length,
+            1,
+            "The deadline fences work before the timer runs"
+        );
+        assert.equal(replies[0].status, "rejected");
+        assert.equal(replies[0].data.state, "error");
+        deadline.fn();
+        assert.equal(replies.length, 1);
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+        assert.equal(h.queue.retained(), false);
+    }
 });
 test("canonical IDs, bounded titles and exact runtime are enforced", () => {
     for (const ids of [
