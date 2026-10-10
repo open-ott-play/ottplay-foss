@@ -1354,10 +1354,27 @@ for (const [index, minutes] of [0, 30, 60, 120, 180].entries()) {
     assert.equal(inactivity().length, minutes ? 1 : 0);
     if (minutes) assert.equal(inactivity()[0].ms, minutes * 60000);
 }
+const retiredInactivity = inactivity()[0].callback;
+vm.runInContext("setSleepTimeout();", w);
+retiredInactivity();
+assert.equal(
+    calls.filter((call) => call === "standby").length,
+    0,
+    "an escaped old timeout cannot interrupt a refreshed inactivity period"
+);
+const disabledInactivity = inactivity()[0].callback;
+vm.runInContext("settings.sleepTimeout = 0; setSleepTimeout();", w);
+assert.equal(inactivity().length, 0, "disable cancels pending timer");
+disabledInactivity();
+assert.equal(
+    calls.filter((call) => call === "standby").length,
+    0,
+    "an escaped timeout cannot restore disabled inactivity"
+);
+vm.runInContext("settings.sleepTimeout = 1; setSleepTimeout();", w);
 inactivity()[0].callback();
 assert.equal(calls.filter((call) => call === "standby").length, 1);
 vm.runInContext("settings.sleepTimeout = 0; setSleepTimeout();", w);
-assert.equal(inactivity().length, 0, "disable cancels pending timer");
 const limited = fixture("server", true).w;
 limited.settingsManage();
 assert.ok(limited.listArray.some((row) => row.name === "Export settings"));

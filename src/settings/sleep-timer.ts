@@ -9,6 +9,7 @@ import { settings } from "./index";
 
 /** Module-local timer handle (matches former index.ts var). */
 var sleepTimer: any = null;
+var sleepGeneration = 0;
 
 /**
  * Set (or clear) the sleep timer using the selected inactivity duration.
@@ -18,6 +19,7 @@ var sleepTimer: any = null;
  * the timer fires.
  */
 export function setSleepTimeout(): void {
+    const generation = ++sleepGeneration;
     if (sleepTimer) clearTimeout(sleepTimer);
     sleepTimer = null;
     if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
@@ -27,13 +29,15 @@ export function setSleepTimeout(): void {
     if (minutes > 0 && !stbIsStandby()) {
         sleepTimer = setTimeout(
             function () {
-                // A cancelled timeout may already be queued; never wake a sleeping player.
+                // A queued callback must not interrupt a renewed or disabled timeout.
                 if (
+                    generation !== sleepGeneration ||
                     stbIsStandby() ||
                     ((window as any).__ottKiosk &&
                         (window as any).__ottKiosk.enabled())
                 )
                     return;
+                sleepGeneration++;
                 if (typeof window.stbToggleStandby === "function")
                     window.stbToggleStandby();
                 else stbToggleStandby();
