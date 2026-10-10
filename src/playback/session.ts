@@ -59,51 +59,54 @@ function createPlaybackSessionController(
         );
     }
 
-    function cancel(): void {
-        ownership.cancel();
-        if (timer !== null) ports.unschedule(timer);
+    function reset(start?: boolean): any {
+        // Retire callbacks and detach state before cleanup can reenter the host.
+        var ticket = start ? ownership.begin() : ownership.cancel();
+        var previous = timer;
         timer = null;
         pending = null;
+        if (previous !== null) ports.unschedule(previous);
+        return ticket;
+    }
+    function cancel(): void {
+        reset();
+    }
+    function complete(ticket: any): boolean {
+        return ownership.accepts(ticket) && ownership.accepts(reset(true));
     }
 
-    var origin: PlaybackVisit | null = null;
-    var originCurrent: (() => boolean) | undefined;
+    var origin: PlaybackObservation;
     function request(intent: PlaybackIntent): void {
-        var observation = ports.observe();
-        if (!observation.target) {
-            cancel();
-            return;
-        }
         if (intent.intent === "offset" && !isFinite(intent.value as number))
             return;
+        var previous = pending;
+        var ticket = reset(true);
+        if (!ownership.accepts(ticket)) return;
+        var observation = ports.observe();
+        if (!ownership.accepts(ticket) || !observation.target) return;
         if (
-            pending &&
+            previous &&
             intent.intent === "offset" &&
-            pending.intent === "offset" &&
-            sameTarget(origin, observation.target) &&
-            (!originCurrent || originCurrent())
+            previous.intent === "offset" &&
+            sameTarget(origin.target, observation.target) &&
+            (!origin.isCurrent || origin.isCurrent())
         ) {
             intent = {
                 intent: "offset",
-                value: (pending.value || 0) + (intent.value || 0),
+                value: (previous.value || 0) + (intent.value || 0),
             };
         }
-        cancel();
+        if (!ownership.accepts(ticket)) return;
         pending = intent;
-        origin = observation.target;
-        originCurrent = observation.isCurrent;
-        var ticket = ownership.begin();
-        var expected = origin;
-        var isCurrent = originCurrent;
+        origin = observation;
         function flush(): void {
             if (!ownership.accepts(ticket)) return;
             var current = ports.observe();
-            cancel();
-            if (
-                !sameTarget(expected, current.target) ||
-                (isCurrent && !isCurrent())
-            )
-                return;
+            if (!ownership.accepts(ticket)) return;
+            var accepted =
+                sameTarget(observation.target, current.target) &&
+                (!observation.isCurrent || observation.isCurrent());
+            if (!complete(ticket) || !accepted) return;
             var plan = core.playbackSeekPlan(current.target, {
                 archiveAvailable: current.archiveAvailable,
                 archiveEarliest: current.archiveEarliest,
@@ -117,7 +120,10 @@ function createPlaybackSessionController(
         }
         if (intent.intent === "offset") {
             ports.preview(intent);
-            timer = ports.schedule(flush, 500);
+            if (!ownership.accepts(ticket)) return;
+            var scheduled = ports.schedule(flush, 500);
+            if (ownership.accepts(ticket)) timer = scheduled;
+            else ports.unschedule(scheduled);
         } else flush();
     }
 
@@ -127,19 +133,17 @@ function createPlaybackSessionController(
         guard: function (
             callback: (...args: any[]) => void
         ): (...args: any[]) => void {
-            cancel();
-            var observed = ports.observe();
-            var expected = observed.target;
-            var ticket = ownership.begin();
+            var ticket = reset(true);
+            var observed = ownership.accepts(ticket) ? ports.observe() : null;
             return function (this: any): void {
                 if (
+                    !observed ||
                     !ownership.accepts(ticket) ||
-                    !sameTarget(expected, ports.observe().target) ||
+                    !sameTarget(observed.target, ports.observe().target) ||
                     (observed.isCurrent && !observed.isCurrent())
                 )
                     return;
-                cancel();
-                callback.apply(this, arguments);
+                if (complete(ticket)) callback.apply(this, arguments);
             };
         },
         request: request,

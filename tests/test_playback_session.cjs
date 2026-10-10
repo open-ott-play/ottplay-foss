@@ -355,6 +355,131 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
     );
 }
 
+// Injected host effects can replace a seek while its old callback is on the stack.
+function controllerFixture() {
+    const context = vm.createContext({ window: {} });
+    const core = sharedCore(context, { vendorOnly: true });
+    require("./helpers/private-runtime.cjs")(
+        context,
+        "src/playback/session.ts"
+    );
+    const jobs = new Map(),
+        applied = [];
+    let next = 0;
+    const f = { applied, jobs };
+    const target = { channelId: "one", kind: "vod", sourceId: "source" };
+    f.controller = context.window.__ottPlaybackSession.create(core, {
+        apply(plan) {
+            applied.push(plan.position);
+        },
+        observe() {
+            if (f.onObserve) f.onObserve();
+            return {
+                archiveAvailable: false,
+                duration: 1000,
+                now: 1000,
+                position: 100,
+                target,
+            };
+        },
+        preview() {
+            if (f.onPreview) f.onPreview();
+        },
+        schedule(callback) {
+            const id = ++next;
+            jobs.set(id, callback);
+            if (f.onSchedule) f.onSchedule();
+            return id;
+        },
+        unschedule(id) {
+            jobs.delete(id);
+            if (f.onCancel) f.onCancel();
+        },
+    });
+    f.shift = (value) => f.controller.request({ intent: "offset", value });
+    f.flush = () => {
+        for (const callback of [...jobs.values()]) callback();
+    };
+    return f;
+}
+{
+    const f = controllerFixture();
+    f.shift(10);
+    f.shift(Number.NaN);
+    f.flush();
+    assert.deepEqual(
+        f.applied,
+        [110],
+        "invalid offsets preserve a pending seek"
+    );
+}
+for (const hook of ["onObserve", "onCancel"]) {
+    const f = controllerFixture();
+    f.shift(10);
+    f[hook] = () => {
+        f[hook] = null;
+        f.controller.request({ intent: "absolute", value: 300 });
+    };
+    f.flush();
+    assert.deepEqual(f.applied, [300], hook + " replacement must win");
+    assert.equal(f.jobs.size, 0);
+}
+for (const hook of ["onPreview", "onSchedule"]) {
+    const f = controllerFixture();
+    f[hook] = () => {
+        f[hook] = null;
+        f.controller.cancel();
+    };
+    f.shift(10);
+    assert.equal(f.jobs.size, 0, hook + " cancellation must retire its timer");
+    f.flush();
+    assert.deepEqual(f.applied, []);
+}
+{
+    const f = controllerFixture();
+    f.onSchedule = () => {
+        f.onSchedule = null;
+        f.shift(20);
+    };
+    f.shift(10);
+    assert.equal(f.jobs.size, 1, "replacement keeps only its own timer");
+    f.flush();
+    assert.deepEqual(
+        f.applied,
+        [130],
+        "schedule reentry preserves accumulated intent"
+    );
+    assert.equal(f.jobs.size, 0);
+}
+{
+    const f = controllerFixture();
+    f.shift(10);
+    f.onCancel = () => {
+        f.onCancel = null;
+        f.shift(30);
+    };
+    f.shift(20);
+    f.flush();
+    assert.deepEqual(
+        f.applied,
+        [130],
+        "cleanup replacement must survive the outer request"
+    );
+}
+{
+    const f = controllerFixture();
+    let calls = 0;
+    const callback = f.controller.guard(() => {
+        calls++;
+    });
+    f.onObserve = () => {
+        f.onObserve = null;
+        f.controller.cancel();
+    };
+    callback();
+    assert.equal(calls, 0, "guard must recheck ownership after observing");
+}
+
 // Production TS lowering remains valid for old browser grammars.
 for (const file of ["session.ts", "classic-adapter.ts"]) {
     const source = fs.readFileSync(
