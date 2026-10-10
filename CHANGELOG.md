@@ -4,6 +4,12 @@
 
 ### Changes
 
+- Bound Android provider and playlist HTTP responses to 8 MiB, including bodies
+  without Content-Length. Oversized responses now fail the request and close the
+  connection instead of exhausting the app heap during profile loading.
+- Report an unavailable current stream as a rejected restart with a stable
+  reason, rather than claiming that the player does not support stream restart.
+
 - Pause Android kiosk playback when the screen turns off or the app leaves the
   foreground; suspend recovery while asleep and resume the same active episode.
 

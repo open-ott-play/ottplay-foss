@@ -246,6 +246,7 @@ class StalkerPortalPlugin : Plugin() {
         val headersObj = call.getObject("headers")
 
         Thread {
+            var connection: HttpURLConnection? = null
             try {
                 val url = URL(urlStr)
                 require(url.protocol == "http" || url.protocol == "https") { "Only HTTP(S) URLs are supported" }
@@ -254,6 +255,7 @@ class StalkerPortalPlugin : Plugin() {
                     return@Thread
                 }
                 val conn = url.openConnection() as HttpURLConnection
+                connection = conn
                 conn.requestMethod = method
                 val timeout = (call.getInt("timeoutMs") ?: 15000).coerceAtLeast(1)
                 conn.connectTimeout = timeout
@@ -283,7 +285,9 @@ class StalkerPortalPlugin : Plugin() {
 
                 val status = conn.responseCode
                 val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-                val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                // HEAD describes the corresponding GET representation, not a body.
+                val declaredLength = if (method == "HEAD") -1 else conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1
+                val body = ProviderHttpResponse.read(stream, declaredLength)
                 val ct = conn.contentType ?: "application/octet-stream"
 
                 val setCookieArr = JSArray()
@@ -300,11 +304,15 @@ class StalkerPortalPlugin : Plugin() {
                 ret.put("body", body)
                 ret.put("contentType", ct)
                 ret.put("setCookie", setCookieArr)
-                conn.disconnect()
                 call.resolve(ret)
             } catch (e: Exception) {
-                val code = if (e is java.net.SocketTimeoutException) "timeout" else null
+                val code = when (e) {
+                    is ProviderHttpResponse.TooLarge -> "response_too_large"
+                    is java.net.SocketTimeoutException -> "timeout"
+                    else -> null
+                }
                 val message = when (e) {
+                    is ProviderHttpResponse.TooLarge -> "Provider response exceeds the 8 MiB limit; use a smaller or paginated source"
                     is java.net.SocketTimeoutException -> "Provider request timed out"
                     is javax.net.ssl.SSLException -> "Provider TLS connection failed; check its HTTPS certificate"
                     is java.net.UnknownHostException -> "Provider hostname could not be resolved"
@@ -312,6 +320,8 @@ class StalkerPortalPlugin : Plugin() {
                 }
                 // Exceptions can contain full provider URLs with credentials.
                 call.reject(message, code)
+            } finally {
+                connection?.disconnect()
             }
         }.start()
     }
