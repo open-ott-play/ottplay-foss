@@ -42,6 +42,21 @@ the existing same-source fresh/stale cache policy remains in effect. Cache
 metadata is limited to 8 KiB. The JVM regression suite exercises a 24 MiB plain
 and compressed document with a 64 MiB heap.
 
+Android channel discovery retains only channel metadata. Schedule requests
+resolve the first owning source and parse only that channel's programmes;
+archive entries and descriptions are preserved. The existing single disk slot
+is reused where available, so alternating sources may require another download.
+An oversized individual record or channel schedule fails through the ordinary
+source/cache error path rather than returning a partial guide.
+
+Android additionally limits each record to 262,144 UTF-16 code units, estimates
+retained rows conservatively with a 4 MiB per-parse budget, and bounds the parsed
+cache to 16 entries/16 MiB of estimated rows. Parsing is serialized. A source set
+accepts at most eight feeds and 16 MiB of estimated metadata; pending loads and
+joined callbacks are bounded too. These are allocation guards, not a guarantee
+of total process heap usage. Dense-record tests exercise discovery, selected
+schedules, eviction, refresh and failure recovery under a 64 MiB JVM heap.
+
 The Xcode target bundles the core script, source receipt and license directly
 from `vendor`. Its Swift bridge verifies the script hash before execution; data
 is passed through JSValue calls, never interpolated into code. JVM fixtures

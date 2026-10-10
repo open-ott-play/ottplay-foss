@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Discover Android XMLTV channels without retaining every channel's schedule.
+  Load only the selected channel's programmes, preserving archive entries and
+  descriptions, with bounded record, source-set and in-memory cache sizes.
 - Stream Android XMLTV downloads, gzip expansion and parsing through bounded
   files/streams, avoiding full-document byte and UTF-16 copies on older tablets.
   Preserve source-specific cache fallback and reject oversized/truncated input.

@@ -424,7 +424,7 @@ KOTLIN_TESTS = r'''
             val requestsBefore = okhttp3.Fixture.requests
             val epgCall = PluginCall("").apply { values["xmltv_urls"] = sources; values["hash"] = "wanted"; values["ch"] = "Private +4" }
             getEpg(epgCall)
-            check(epgCall.resolved && okhttp3.Fixture.requests == requestsBefore)
+            check(epgCall.resolved && okhttp3.Fixture.requests == requestsBefore + 1) // single disk slot currently belongs to B
             check(rows(epgCall.result)[0].values["name"] == "Morning & News")
             val secondCall = PluginCall(sourceB).apply { values["hash"] = "wanted" }
             getEpg(secondCall)
