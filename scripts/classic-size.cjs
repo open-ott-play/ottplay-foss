@@ -178,7 +178,14 @@ const { gzipSync } = require("node:zlib");
 // (829840 total entry bytes). Retain clean-source and release suffix headroom;
 // CI Node 22 measures 258390 gzip entry bytes before the native variant;
 // allow the measured ~490-byte compressed feature cost plus suffix headroom.
-const BUDGET = Object.freeze({ bytes: 830250, gzipBytes: 258900 });
+// Named Plex libraries retain strict eager admission and lazy bounded collection.
+// After a 265-byte entry reduction, Node 22.23.3 / zlib 1.3.1-e00f703 at the
+// common 1.1.54 version measures base ef31f556 at 829930 / 258405 web and
+// 829888 / 258473 native; candidate 23e3fa5c is 831249 / 258803 web and
+// 831207 / 258869 native. Allocate the measured +1319 raw / +398 gzip cost
+// rounded to +1350 / +400, preserving the existing native/version reserve.
+// The 1.1.54-beta.1 entry is 831270 / 258821 web, 831228 / 258889 native.
+const BUDGET = Object.freeze({ bytes: 831600, gzipBytes: 259300 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -269,7 +276,13 @@ const BUDGET = Object.freeze({ bytes: 830250, gzipBytes: 258900 });
 // Add 250 raw bytes for this bounded selector and release identity variation;
 // retain the compressed and entry limits and count every optional provider.
 // Count the same 1640-byte screen suspension addition once in the full payload.
-const TOTAL_BUDGET = Object.freeze({ bytes: 943000, gzipBytes: 300700 });
+// Count named-library resolution and pagination in all seven provider assets.
+// At the same 1.1.54 version/toolchain, base ef31f556 totals 942519 / 300181
+// web and 942477 / 300249 native; candidate 23e3fa5c totals 946507 / 301500
+// web and 946465 / 301566 native. Allocate +4000 raw / +1350 gzip for the
+// measured +3988 / +1319 feature cost, retaining the prior reserve once.
+// The 1.1.54-beta.1 totals are 946528 / 301518 web, 946486 / 301586 native.
+const TOTAL_BUDGET = Object.freeze({ bytes: 947000, gzipBytes: 302050 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

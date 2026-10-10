@@ -133,14 +133,26 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 641,300 UTF-8 bytes and 195,600
-bytes compressed with gzip level 9. The entry plus all six provider families
-must also fit within 736,500 bytes and 231,000 gzip bytes, summed per file.
+Each final classic entry bundle is limited to 831,600 UTF-8 bytes and 259,300
+bytes compressed with gzip level 9. The entry plus all seven provider families
+must also fit within 947,000 bytes and 302,050 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `player.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
+The authoritative limits and measurement history are in `scripts/classic-size.cjs`.
+
+Named Plex library selection adds 1,319 raw / at most 398 gzip entry bytes and
+3,988 raw / at most 1,319 gzip complete-payload bytes after a 265-byte entry
+reduction. Both revisions were freshly compiled with Node 22.23.3 and
+zlib 1.3.1-e00f703 at the common version 1.1.54, including all seven providers.
+The reviewed allocation adds 1,350 / 400 entry bytes and 4,000 / 1,350 total
+bytes to the previous limits, preserving their reserve once. The 1.1.54-beta.1
+candidate measures 831,270 / 258,821 entry and 946,528 / 301,518 total bytes
+for web, or 831,228 / 258,889 entry and 946,486 / 301,586 total for both
+native shells. Strict request validation, cancellation, pagination and all
+entry/complete-payload checks remain enabled.
 
 Folder shuffle, Repeat and exact Plex startup resume measure 640,894 raw /
 194,762 gzip bytes for web and 640,852 / 194,822 for Tauri and Capacitor on
