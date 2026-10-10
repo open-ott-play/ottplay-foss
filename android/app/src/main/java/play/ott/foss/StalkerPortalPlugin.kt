@@ -285,7 +285,9 @@ class StalkerPortalPlugin : Plugin() {
 
                 val status = conn.responseCode
                 val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-                val body = ProviderHttpResponse.read(stream, conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1)
+                // HEAD describes the corresponding GET representation, not a body.
+                val declaredLength = if (method == "HEAD") -1 else conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1
+                val body = ProviderHttpResponse.read(stream, declaredLength)
                 val ct = conn.contentType ?: "application/octet-stream"
 
                 val setCookieArr = JSArray()

@@ -58,17 +58,21 @@ fun providerResponseBounds() {
     val plugin = StalkerPortalPlugin()
     val playlist = M3UProxyPlugin()
     for (kind in listOf("http", "portal", "playlist")) {
-        for (mode in listOf("declared", "chunked", "error", "small")) {
+        val modes = listOf("declared", "chunked", "error", "small") + if (kind == "playlist") emptyList() else listOf("head")
+        for (mode in modes) {
             val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+            var closedByClient = false
             val worker = Thread {
                 server.soTimeout = 4000
                 server.accept().use { socket ->
                     val input = socket.getInputStream().bufferedReader()
+                    val requestLine = input.readLine()
+                    check(requestLine.startsWith(if (mode == "head") "HEAD " else "GET "))
                     while (input.readLine().orEmpty().isNotEmpty()) { }
                     val output = socket.getOutputStream()
                     val status = if (mode == "error") "500 Error" else "200 OK"
                     val framing = when (mode) {
-                        "declared" -> "Content-Length: 96468992\r\n"
+                        "declared", "head" -> "Content-Length: 96468992\r\n"
                         "chunked" -> "Transfer-Encoding: chunked\r\n"
                         else -> ""
                     }
@@ -76,7 +80,14 @@ fun providerResponseBounds() {
                         output.write("HTTP/1.1 $status\r\n${framing}Connection: close\r\n\r\n".toByteArray())
                         when (mode) {
                             "small" -> output.write(text.toByteArray())
-                            "declared" -> { }
+                            "head" -> { }
+                            "declared" -> {
+                                // Keep the server side open; only the client's
+                                // rejection/cleanup may terminate this socket.
+                                socket.soTimeout = 2000
+                                closedByClient = try { input.read() == -1 }
+                                    catch (_: java.net.SocketException) { true }
+                            }
                             else -> {
                                 val chunk = ByteArray(8192) { 65 }
                                 repeat(limit / chunk.size + 1) {
@@ -90,17 +101,19 @@ fun providerResponseBounds() {
                     } catch (_: java.io.IOException) { /* Oversized response closed early. */ }
                 }
             }.apply { start() }
-            val call = PluginCall(JSObject().put("url", "http://127.0.0.1:${server.localPort}/portal.php?token=private"))
+            val call = PluginCall(JSObject().put("url", "http://127.0.0.1:${server.localPort}/portal.php?token=private")
+                .put("method", if (mode == "head") "HEAD" else "GET"))
             when (kind) {
                 "http" -> plugin.httpRequest(call)
                 "portal" -> plugin.portalRequest(call)
                 else -> playlist.proxyFetch(call)
             }
             wait(call); worker.join(5000); server.close(); check(!worker.isAlive)
-            if (mode == "small") check(call.error == null && call.result.getString("body") == text)
+            if (mode == "small" || mode == "head") check(call.error == null && call.result.getString("body") == if (mode == "head") "" else text)
             else {
                 check(call.code == "response_too_large") { "$kind $mode: ${call.error}" }
                 check(!call.error!!.contains("private") && !call.error!!.contains("127.0.0.1"))
+                if (mode == "declared") check(closedByClient) { "$kind: client did not close oversized response" }
             }
         }
     }
