@@ -139,6 +139,8 @@ assert.equal(result().state, "invoked");
 const readId = "b".repeat(32);
 for (const [action, params] of [
     ["plex_queue", { op: "status" }],
+    ["plex_library", { op: "list", runtime }],
+    ["plex_library", { library_id: "16", op: "preview", runtime }],
     ["vportal_queue", { operation: "status" }],
     ["maintenance", { operation: "health" }],
     ["vportal_search", { query: "fixture" }],
@@ -246,6 +248,27 @@ assert.equal(
     query("operation", { operation_id: pendingId }).data.data.state,
     "expired"
 );
+
+// Library play joins the existing receipt journal; discovery remains read-only.
+api.execute(
+    {
+        action: "plex_library",
+        id: readId,
+        params: { library_id: "16", op: "play", runtime },
+    },
+    () => {},
+    undefined,
+    (_item, done) => done({ data: {}, status: "ok" })
+);
+assert.equal(
+    query("operation", { operation_id: readId }).data.data.action,
+    "plex_library"
+);
+assert.equal(
+    api.accept({ action: "plex_library", params: { runtime: "retired-page" } }),
+    false
+);
+assert.equal(api.accept({ action: "plex_library", params: { runtime } }), true);
 
 // Redelivery refreshes one journal position, rather than leaving a second
 // eviction entry that can delete the newer receipt. Old callbacks keep their

@@ -1,13 +1,62 @@
+/** The library resolver shares the queue owner, including lazy loading. */
+function validLibraryRequest(params: any, runtime: string): boolean {
+    if (
+        !params ||
+        params.runtime !== runtime ||
+        ["list", "preview", "play"].indexOf(params.op) < 0 ||
+        Object.keys(params).some(function (key) {
+            return (
+                ["runtime", "op", "query", "library_id", "shuffle"].indexOf(
+                    key
+                ) < 0
+            );
+        })
+    )
+        return false;
+    if (params.op === "list") return Object.keys(params).length === 2;
+    if (params.shuffle !== undefined && typeof params.shuffle !== "boolean")
+        return false;
+    var query = Object.prototype.hasOwnProperty.call(params, "query");
+    var id = Object.prototype.hasOwnProperty.call(params, "library_id");
+    if (query === id) return false;
+    if (id)
+        return (
+            typeof params.library_id === "string" &&
+            /^[1-9][0-9]{0,19}$/.test(params.library_id) &&
+            !/\s/.test(params.library_id)
+        );
+    if (
+        typeof params.query !== "string" ||
+        !params.query.trim() ||
+        /[\u0000-\u001f\u007f]/.test(params.query)
+    )
+        return false;
+    try {
+        return (
+            encodeURIComponent(params.query).replace(/%[0-9A-F]{2}/g, "x")
+                .length <= 256
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
 /** Keep Plex implementation lazy while capability discovery stays synchronous. */
 export function remotePlexQueue(w: any, runtime: string): any {
     if (w.__ottPlexQueue) return w.__ottPlexQueue;
     var controller: any = null;
     var loading: any = null;
+    var serial = 0;
     var ids: string[] = [];
     var failure = "";
     var capability = {
         max_items: 500,
         operations: ["play", "preview", "status", "next", "previous", "stop"],
+        version: 1,
+    };
+    var libraryCapability = {
+        max_items: 500,
+        operations: ["list", "preview", "play"],
         version: 1,
     };
     function snapshot(): any {
@@ -27,21 +76,40 @@ export function remotePlexQueue(w: any, runtime: string): any {
     }
     function execute(request: any, done: (value: any) => void): any {
         var params = request.params || {};
+        var library = request.action === "plex_library";
+        var readOnly =
+            params.op === "preview" || (library && params.op === "list");
         function reject(error: string): void {
-            done({ data: { error: error }, status: "rejected" });
+            done({
+                data: library
+                    ? {
+                          error: error,
+                          op: params.op,
+                          runtime: runtime,
+                          state: "error",
+                          version: 1,
+                      }
+                    : { error: error },
+                status: "rejected",
+            });
+        }
+        if (library && !validLibraryRequest(params, runtime)) {
+            reject("Plex playback is unavailable on this player.");
+            return;
         }
         if (controller) return controller.execute(request, done);
         if (
-            params.runtime !== runtime ||
-            capability.operations.indexOf(params.op) < 0 ||
-            Object.keys(params).some(function (key) {
-                return (
-                    key !== "op" &&
-                    key !== "runtime" &&
-                    ((params.op !== "play" && params.op !== "preview") ||
-                        key !== "ids")
-                );
-            })
+            !library &&
+            (params.runtime !== runtime ||
+                capability.operations.indexOf(params.op) < 0 ||
+                Object.keys(params).some(function (key) {
+                    return (
+                        key !== "op" &&
+                        key !== "runtime" &&
+                        ((params.op !== "play" && params.op !== "preview") ||
+                            key !== "ids")
+                    );
+                }))
         ) {
             reject("Plex playback is unavailable on this player.");
             return;
@@ -51,33 +119,44 @@ export function remotePlexQueue(w: any, runtime: string): any {
             return;
         }
         if (params.op === "stop") {
+            var stopping = ++serial;
             if (loading) loading();
+            if (stopping !== serial) return;
             ids = [];
             failure = "";
             done({ data: snapshot(), status: "ok" });
             return;
         }
-        if (params.op !== "preview" && w.commandChannelsReady !== true) {
+        if (!readOnly && w.commandChannelsReady !== true) {
             reject("Plex playback is unavailable on this player.");
             return;
         }
-        if (loading) {
-            reject("Plex queue request is already in progress.");
-            return;
-        }
         if (
-            !Array.isArray(params.ids) ||
-            !params.ids.length ||
-            params.ids.length > 500 ||
-            params.ids.some(function (id: any) {
-                return typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id);
-            })
+            !library &&
+            (!Array.isArray(params.ids) ||
+                !params.ids.length ||
+                params.ids.length > 500 ||
+                params.ids.some(function (id: any) {
+                    return (
+                        typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id)
+                    );
+                }))
         ) {
             reject("Plex queue is empty.");
             return;
         }
+        if (loading && (readOnly || params.op !== "play")) {
+            reject("Plex queue request is already in progress.");
+            return;
+        }
+        var intent = ++serial;
+        if (loading) loading();
+        if (intent !== serial) {
+            reject("Plex queue request was cancelled.");
+            return;
+        }
         if (params.op === "play") {
-            ids = params.ids.slice();
+            ids = library ? [] : params.ids.slice();
             failure = "";
         }
         var cancelled = false;
@@ -89,6 +168,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
         var generation = playback && playback.snapshot().generation;
         var timer: any;
         function cancel(): void {
+            if (cancelled) return;
             cancelled = true;
             if (!controller && params.op === "play") {
                 if (!failure) failure = "Plex queue request was cancelled.";
@@ -111,7 +191,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
         loading = cancel;
         timer = w.setTimeout(failed, 35000);
         function ready(): void {
-            if (cancelled) return;
+            if (cancelled || intent !== serial) return;
             if (
                 provider !== w.__ottActiveProviderDriver ||
                 config !== w.stbGetItem("plexcfg") ||
@@ -124,7 +204,12 @@ export function remotePlexQueue(w: any, runtime: string): any {
             }
             w.clearTimeout(timer);
             loading = null;
-            controller = w.__ottPlexQueueFactory.create(w, runtime, failure);
+            controller = w.__ottPlexQueueFactory.create(
+                w,
+                runtime,
+                failure,
+                validLibraryRequest
+            );
             cancelInner = controller.execute(request, done);
         }
         try {
@@ -157,6 +242,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
     var api = {
         capability: capability,
         execute: execute,
+        libraryCapability: libraryCapability,
         retained: function () {
             return controller
                 ? controller.retained()

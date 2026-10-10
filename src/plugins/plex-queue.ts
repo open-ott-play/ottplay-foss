@@ -2,7 +2,8 @@
 function createRemotePlexQueue(
     w: any,
     runtime: string,
-    initialError = ""
+    initialError = "",
+    validateLibrary?: (params: any, runtime: string) => boolean
 ): any {
     var lastError = initialError;
     var queue: any = null;
@@ -20,7 +21,7 @@ function createRemotePlexQueue(
             return "";
         }
     }
-    function title(value: any): string {
+    function title(value: any, maximum = 512): string {
         var input = String(value || "Plex");
         var output = "";
         var bytes = 0;
@@ -42,7 +43,7 @@ function createRemotePlexQueue(
                 text = " ";
                 size = 1;
             }
-            if (bytes + size > 512) break;
+            if (bytes + size > maximum) break;
             output += text;
             bytes += size;
         }
@@ -100,7 +101,9 @@ function createRemotePlexQueue(
         return result;
     }
     function stop(): void {
+        var intent = ++serial;
         if (pending) pending.abort();
+        if (intent !== serial) return;
         var previous = queue;
         queue = null;
         lastError = "";
@@ -129,19 +132,50 @@ function createRemotePlexQueue(
     ): (() => void) | void {
         var params = request.params || {};
         var op = params.op;
+        var libraryRequest = request.action === "plex_library";
+        var readOnly = op === "preview" || (libraryRequest && op === "list");
+        var selectedLibrary: any = null;
+        var listedLibraries: any[] | null = null;
+        function libraryResult(error?: string, nested?: any): any {
+            var result: any = {
+                op: op,
+                runtime: runtime,
+                state: error ? "error" : "ready",
+                version: 1,
+            };
+            if (error) result.error = error;
+            else if (op === "list") result.libraries = listedLibraries;
+            else {
+                result.library = selectedLibrary;
+                result.shuffled = params.shuffle === true;
+                result.queue = nested;
+            }
+            return result;
+        }
         function reject(error: string): void {
-            done({ data: { error: error }, status: "rejected" });
+            done({
+                data: libraryRequest ? libraryResult(error) : { error: error },
+                status: "rejected",
+            });
         }
         if (
-            params.runtime !== runtime ||
-            capability.operations.indexOf(op) < 0 ||
-            Object.keys(params).some(function (key) {
-                return (
-                    key !== "op" &&
-                    key !== "runtime" &&
-                    ((op !== "play" && op !== "preview") || key !== "ids")
-                );
-            })
+            libraryRequest &&
+            (!validateLibrary || !validateLibrary(params, runtime))
+        ) {
+            reject("Plex playback is unavailable on this player.");
+            return;
+        }
+        if (
+            !libraryRequest &&
+            (params.runtime !== runtime ||
+                capability.operations.indexOf(op) < 0 ||
+                Object.keys(params).some(function (key) {
+                    return (
+                        key !== "op" &&
+                        key !== "runtime" &&
+                        ((op !== "play" && op !== "preview") || key !== "ids")
+                    );
+                }))
         ) {
             reject("Plex playback is unavailable on this player.");
             return;
@@ -150,7 +184,7 @@ function createRemotePlexQueue(
             done({ data: state(), status: "ok" });
             return;
         }
-        if (w.__ottKiosk && w.__ottKiosk.enabled() && op !== "preview") {
+        if (w.__ottKiosk && w.__ottKiosk.enabled() && !readOnly) {
             reject("Kiosk mode does not allow a Plex queue.");
             return;
         }
@@ -159,19 +193,26 @@ function createRemotePlexQueue(
             done({ data: state(), status: "ok" });
             return;
         }
-        if (op !== "preview" && w.commandChannelsReady !== true) {
+        if (!readOnly && w.commandChannelsReady !== true) {
             reject("Plex playback is unavailable on this player.");
             return;
         }
         var stepping = op === "next" || op === "previous";
-        var ids = stepping && queue ? queue.ids.slice() : params.ids;
+        var ids = libraryRequest
+            ? []
+            : stepping && queue
+              ? queue.ids.slice()
+              : params.ids;
         if (
-            !Array.isArray(ids) ||
-            !ids.length ||
-            ids.length > 500 ||
-            ids.some(function (id: any) {
-                return typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id);
-            })
+            !libraryRequest &&
+            (!Array.isArray(ids) ||
+                !ids.length ||
+                ids.length > 500 ||
+                ids.some(function (id: any) {
+                    return (
+                        typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id)
+                    );
+                }))
         ) {
             reject("Plex queue is empty.");
             return;
@@ -179,7 +220,7 @@ function createRemotePlexQueue(
         state();
         var index =
             stepping && queue ? queue.index + (op === "next" ? 1 : -1) : 0;
-        if (index < 0 || index >= ids.length) {
+        if (!libraryRequest && (index < 0 || index >= ids.length)) {
             reject(
                 index < 0
                     ? "Plex queue is already at its first item."
@@ -197,16 +238,22 @@ function createRemotePlexQueue(
             reject("Plex playback is unavailable on this player.");
             return;
         }
-        if (pending && op === "preview") {
+        if (pending && readOnly) {
             reject("Plex queue request is already in progress.");
             return;
         }
+        var intent = ++serial;
         if (pending) pending.abort();
-        if (op !== "preview") lastError = "";
+        // Cancelling an older owner may synchronously admit a newer command.
+        if (intent !== serial) {
+            reject("Plex queue request was cancelled.");
+            return;
+        }
+        if (!readOnly) lastError = "";
         var prior = queue;
         var handoff: any = null;
         var owned: any = {
-            id: runtime + ":plex:" + ++serial,
+            id: runtime + ":plex:" + intent,
             ids: ids.slice(),
             index: index,
             records: null,
@@ -226,6 +273,12 @@ function createRemotePlexQueue(
         var authCancel: any = null;
         var timer: any;
         var operation: any;
+        var deadline = Math.min(
+            Date.now() + 35000,
+            typeof request.expires_at === "number"
+                ? request.expires_at * 1000
+                : Infinity
+        );
         function allowed(): boolean {
             return (
                 !owned.records ||
@@ -241,11 +294,12 @@ function createRemotePlexQueue(
         function valid(): boolean {
             return (
                 !completed &&
+                Date.now() < deadline &&
                 pending === operation &&
                 config() === saved &&
                 w.__ottActiveProviderDriver === driver &&
                 w.p_pref === provider &&
-                (op === "preview" ||
+                (readOnly ||
                     (w.commandChannelsReady === true &&
                         !(w.__ottKiosk && w.__ottKiosk.enabled()) &&
                         allowed())) &&
@@ -274,9 +328,17 @@ function createRemotePlexQueue(
                 owned.state = "error";
                 owned.error = error;
             }
-            if (error && !queue && op !== "preview") lastError = error;
+            if (error && !queue && !readOnly && !libraryRequest)
+                lastError = error;
             if (!committed && client) client.dispose();
             if (silent) return;
+            if (libraryRequest) {
+                done({
+                    data: libraryResult(error, preview || state()),
+                    status: error ? "rejected" : "ok",
+                });
+                return;
+            }
             if (error) {
                 if (op === "preview")
                     done({
@@ -301,12 +363,15 @@ function createRemotePlexQueue(
             cancel: function () {
                 finish("Plex queue request was cancelled.", undefined, true);
             },
-            owned: op === "preview" ? null : owned,
+            owned: readOnly || libraryRequest ? null : owned,
         };
         pending = operation;
-        timer = w.setTimeout(function () {
-            finish("Plex queue request timed out.");
-        }, 35000);
+        timer = w.setTimeout(
+            function () {
+                finish("Plex queue request timed out.");
+            },
+            Math.max(1, deadline - Date.now())
+        );
         function current(): boolean {
             if (valid()) return true;
             if (!completed)
@@ -367,14 +432,8 @@ function createRemotePlexQueue(
                     finish("Plex provider module could not be loaded.");
                     return;
                 }
-                client.connect(function (error: any) {
+                function prepare(): void {
                     if (!current()) return;
-                    if (error) {
-                        finish(
-                            "Plex server is unreachable or access was denied."
-                        );
-                        return;
-                    }
                     client.queue(ids, function (records: any[]) {
                         if (!current()) return;
                         if (!records || records.length !== ids.length) {
@@ -474,6 +533,134 @@ function createRemotePlexQueue(
                             }
                         );
                     });
+                }
+                client.connect(function (error: any) {
+                    if (!current()) return;
+                    if (error) {
+                        finish(
+                            "Plex server is unreachable or access was denied."
+                        );
+                        return;
+                    }
+                    if (!libraryRequest) {
+                        prepare();
+                        return;
+                    }
+                    function normalized(value: string): string {
+                        return w
+                            .normalizeSearchText(value)
+                            .replace(/\s+/g, " ")
+                            .trim();
+                    }
+                    client.libraries(
+                        function (result: any) {
+                            if (!current()) return;
+                            if (result.error) {
+                                finish(result.error);
+                                return;
+                            }
+                            var libraries = result.items;
+                            function metadata(row: any): any {
+                                return {
+                                    id: row.id,
+                                    title: title(row.title, 160),
+                                    type: row.type,
+                                };
+                            }
+                            if (op === "list") {
+                                listedLibraries = libraries
+                                    .filter(function (row: any) {
+                                        return (
+                                            row.type === "movie" ||
+                                            row.type === "show"
+                                        );
+                                    })
+                                    .map(metadata);
+                                finish();
+                                return;
+                            }
+                            var matches: any[];
+                            if (params.library_id !== undefined) {
+                                matches = libraries.filter(function (row: any) {
+                                    return row.id === params.library_id;
+                                });
+                            } else {
+                                var query = normalized(params.query);
+                                matches = libraries.filter(function (row: any) {
+                                    return normalized(row.title) === query;
+                                });
+                                if (!matches.length)
+                                    matches = libraries.filter(function (
+                                        row: any
+                                    ) {
+                                        return (
+                                            normalized(row.title).indexOf(
+                                                query
+                                            ) >= 0
+                                        );
+                                    });
+                            }
+                            if (matches.length !== 1) {
+                                finish(
+                                    matches.length
+                                        ? "ambiguous_library"
+                                        : "library_not_found"
+                                );
+                                return;
+                            }
+                            var selected = matches[0];
+                            if (
+                                selected.type !== "movie" &&
+                                selected.type !== "show"
+                            ) {
+                                finish("unsupported_library");
+                                return;
+                            }
+                            selectedLibrary = metadata(selected);
+                            client.collectLibrary(
+                                selected,
+                                function (collection: any) {
+                                    if (!current()) return;
+                                    if (collection.error) {
+                                        finish(collection.error);
+                                        return;
+                                    }
+                                    ids = collection.items.map(function (
+                                        row: any
+                                    ) {
+                                        return row.request.path.slice(
+                                            "/library/metadata/".length
+                                        );
+                                    });
+                                    if (!ids.length) {
+                                        finish("Plex queue is empty.");
+                                        return;
+                                    }
+                                    if (params.shuffle === true) {
+                                        for (
+                                            var at = ids.length - 1;
+                                            at > 0;
+                                            at--
+                                        ) {
+                                            var random = Math.floor(
+                                                Math.random() * (at + 1)
+                                            );
+                                            var previous = ids[at];
+                                            ids[at] = ids[random];
+                                            ids[random] = previous;
+                                        }
+                                    }
+                                    owned.ids = ids.slice();
+                                    if (!readOnly) operation.owned = owned;
+                                    prepare();
+                                },
+                                current,
+                                deadline
+                            );
+                        },
+                        current,
+                        deadline
+                    );
                 });
             }
             if (account)
