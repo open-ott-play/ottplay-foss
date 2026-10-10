@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Stream Android XMLTV downloads, gzip expansion and parsing through bounded
+  files/streams, avoiding full-document byte and UTF-16 copies on older tablets.
+  Preserve source-specific cache fallback and reject oversized/truncated input.
 - Bound Android provider and playlist HTTP responses to 8 MiB, including bodies
   without Content-Length. Oversized responses now fail the request and close the
   connection instead of exhausting the app heap during profile loading.

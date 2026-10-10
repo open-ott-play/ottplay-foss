@@ -22,6 +22,7 @@ from native_epg_policy_cases import methods
 from native_epg_fallback_cases import fallback_methods
 from native_epg_resource_cases import resource_methods, RESOURCE_STUBS
 from native_epg_index_cases import index_methods, instrument_index
+from native_android_epg_resource_cases import KOTLIN_ADAPTERS, KOTLIN_RESOURCE_TESTS
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -285,17 +286,26 @@ object Fixture {
     val errors = mutableMapOf<String, IOException>()
     val requestUrls = mutableListOf<String>()
     var deferred = false
+    var stream: (() -> java.io.InputStream)? = null
+    var length = -1L
+    var closed = 0
     val queue = mutableListOf<() -> Unit>()
     fun releaseOne() { check(queue.isNotEmpty()); queue.removeAt(0)() }
-    fun reset() { data = null; requests = 0; sources.clear(); errors.clear(); requestUrls.clear(); deferred = false; queue.clear() }
+    fun reset() { data = null; requests = 0; sources.clear(); errors.clear(); requestUrls.clear(); deferred = false; queue.clear(); stream = null; length = -1; closed = 0 }
 }
 interface Call { fun enqueue(callback: Callback) }
 interface Callback {
     fun onFailure(call: Call, e: IOException)
     fun onResponse(call: Call, response: Response)
 }
-class Body(private val data: ByteArray) { fun bytes(): ByteArray = data }
-class Response(val body: Body?) { val isSuccessful = true; val code = 200; fun close() {} }
+class Body(private val data: ByteArray?) {
+    private var opened: java.io.InputStream? = null
+    fun bytes(): ByteArray = data!!
+    fun contentLength(): Long = if (Fixture.stream != null) Fixture.length else data!!.size.toLong()
+    fun byteStream(): java.io.InputStream = (Fixture.stream?.invoke() ?: data!!.inputStream()).also { opened = it }
+    fun close() { opened?.close() }
+}
+class Response(val body: Body?) { val isSuccessful = true; val code = 200; fun close() { body?.close(); Fixture.closed++ } }
 class Request(val url: String) {
     class Builder { var value = ""; fun url(url: String) = apply { value = url }; fun build() = Request(value) }
 }
@@ -312,7 +322,7 @@ class OkHttpClient {
             val action = {
                 val data = Fixture.sources[request.url] ?: Fixture.data
                 val error = Fixture.errors[request.url]
-                if (error != null || data == null) callback.onFailure(this, error ?: IOException("offline"))
+                if (error != null || (data == null && Fixture.stream == null)) callback.onFailure(this, error ?: IOException("offline"))
                 else callback.onResponse(this, Response(Body(data)))
             }
             if (Fixture.deferred) Fixture.queue.add(action) else action()
@@ -493,10 +503,13 @@ def main():
 
         if options.platform in ["android", "all"]:
             kotlin = (ROOT / "mobile-xmltv-epg/src/android/play/ott/foss/plugin/MobileXmltvEpgPlugin.kt").read_text()
+            tests = KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[1] + fallback_methods()[1]
+            tests = tests.replace("parseXmltv(", "parseFixture(").replace("gunzip(", "expandedFixture(")
+            tests = tests.replace("readCache(", "readCacheText(").replace("writeCache(", "writeCacheFixture(")
             kotlin = kotlin.replace(
-                "    // MARK: - Cache", KOTLIN_TESTS.replace("GZIP_FIXTURE", GZIP) + methods(GZIP)[1] + fallback_methods()[1] + "\n    // MARK: - Cache"
+                "    // MARK: - Cache", tests + KOTLIN_ADAPTERS + KOTLIN_RESOURCE_TESTS + "\n    // MARK: - Cache"
             )
-            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests(); MobileXmltvEpgPlugin().runFallbackTests() }\n"
+            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests(); MobileXmltvEpgPlugin().runFallbackTests(); MobileXmltvEpgPlugin().runResourceTests() }\n"
             kotlin = kotlin.replace("System.currentTimeMillis()", "com.getcapacitor.FixtureClock.now")
             (tmp / "CacheTest.kt").write_text(kotlin)
             (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
@@ -522,7 +535,7 @@ def main():
                 "cache-test.jar",
                 cwd=tmp,
             )
-            run("java", "-cp", "cache-test.jar" + os.pathsep + str(ROOT / "vendor/ottplay-core.jar"), "play.ott.foss.plugin.CacheTestKt", cwd=tmp)
+            run("java", "-Xmx64m", "-cp", "cache-test.jar" + os.pathsep + str(ROOT / "vendor/ottplay-core.jar"), "play.ott.foss.plugin.CacheTestKt", cwd=tmp)
 
 
 if __name__ == "__main__":

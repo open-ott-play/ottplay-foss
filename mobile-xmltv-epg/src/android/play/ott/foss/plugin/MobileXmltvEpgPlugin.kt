@@ -14,6 +14,8 @@ import okhttp3.Request
 import okhttp3.Response
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.FilterInputStream
 import java.util.concurrent.TimeUnit
 import play.ott.core.NativeGuideSources
 import play.ott.core.NativeSourceFormat
@@ -51,6 +53,10 @@ class MobileXmltvEpgPlugin : Plugin() {
     private val parsedCache = mutableMapOf<String, Pair<Long, Parsed>>()
     private val pendingSources = mutableMapOf<String, MutableList<(Result<Parsed>) -> Unit>>()
 
+    private var inputByteLimit = 64 * 1024 * 1024
+    private var expandedByteLimit = 512 * 1024 * 1024
+    private var metadataByteLimit = 8 * 1024
+
     private fun sourceUrls(call: PluginCall): List<String> {
         val supplied = call.getArray("xmltv_urls")
         return NativeGuideSources.urls(
@@ -71,7 +77,10 @@ class MobileXmltvEpgPlugin : Plugin() {
             }
             pendingSources[source] = mutableListOf(completion)
         }
+        var networkFile: File? = null
         fun finish(result: Result<Parsed>) {
+            networkFile?.delete()
+            networkFile = null
             val callbacks = synchronized(sourceLock) {
                 result.getOrNull()?.let { parsedCache[source] = Pair(System.currentTimeMillis() / 1000, it) }
                 pendingSources.remove(source) ?: emptyList()
@@ -79,7 +88,6 @@ class MobileXmltvEpgPlugin : Plugin() {
             callbacks.forEach { it(result) }
         }
         var parsed: Parsed? = null
-        var networkData: ByteArray? = null
         var failure: Throwable = IOException("invalid or empty XMLTV")
         fun transition(action: NativeSourceLoadAction, succeeded: Boolean = parsed != null) =
             NativeSourceLoad.next(action, succeeded, parsed?.channels?.size ?: 0, NativeSourceFormat.ANDROID)
@@ -87,7 +95,7 @@ class MobileXmltvEpgPlugin : Plugin() {
             when (action) {
                 NativeSourceLoadAction.READ_FRESH_DISK, NativeSourceLoadAction.READ_STALE_DISK -> {
                     parsed = runCatching {
-                        readCache(source, allowStale = action == NativeSourceLoadAction.READ_STALE_DISK)?.let { parseXmltv(it) }
+                        readCache(source, allowStale = action == NativeSourceLoadAction.READ_STALE_DISK)
                     }.getOrNull()
                     dispatch(transition(action))
                 }
@@ -98,6 +106,8 @@ class MobileXmltvEpgPlugin : Plugin() {
                 NativeSourceLoadAction.FETCH -> {
                     parsed = null
                     fun failed(error: Throwable) {
+                        networkFile?.delete()
+                        networkFile = null
                         failure = error
                         dispatch(transition(action, false))
                     }
@@ -107,10 +117,16 @@ class MobileXmltvEpgPlugin : Plugin() {
                             override fun onResponse(httpCall: Call, response: Response) {
                                 try {
                                     if (!response.isSuccessful) throw IOException("XMLTV HTTP ${response.code}")
-                                    val data = response.body?.bytes() ?: throw IOException("empty XMLTV body")
-                                    val xml = gunzip(data) ?: throw IOException("invalid XMLTV encoding")
-                                    parsed = parseXmltv(String(xml, Charsets.UTF_8))
-                                    networkData = data
+                                    val body = response.body ?: throw IOException("empty XMLTV body")
+                                    if (body.contentLength() > inputByteLimit) throw IOException("XMLTV delivered body exceeds size limit")
+                                    val file = File.createTempFile("ott-xmltv-", ".tmp", context.cacheDir)
+                                    networkFile = file
+                                    body.byteStream().use { input ->
+                                        file.outputStream().use { output ->
+                                            LimitedInput(input, inputByteLimit, "delivered body").copyTo(output, 32 * 1024)
+                                        }
+                                    }
+                                    parsed = file.inputStream().use { parseXmltv(it) }
                                     dispatch(transition(action))
                                 } catch (error: Throwable) { failed(error) }
                                 finally { response.close() }
@@ -119,7 +135,7 @@ class MobileXmltvEpgPlugin : Plugin() {
                     } catch (error: Throwable) { failed(error) }
                 }
                 NativeSourceLoadAction.WRITE_DISK -> {
-                    val written = runCatching { writeCache(networkData!!, source) }.isSuccess
+                    val written = runCatching { writeCache(networkFile!!, source) }.isSuccess
                     dispatch(transition(action, written))
                 }
                 NativeSourceLoadAction.USE_FRESH_DISK, NativeSourceLoadAction.USE_NETWORK,
@@ -204,41 +220,63 @@ class MobileXmltvEpgPlugin : Plugin() {
     // MARK: - Cache
 
     @Throws(IOException::class)
-    private fun readCache(sourceUrl: String, allowStale: Boolean = false): String? = synchronized(cacheLock) {
+    private fun readCache(sourceUrl: String, allowStale: Boolean = false): Parsed? = synchronized(cacheLock) {
         if (!metaFile.exists() || !cacheFile.exists()) return@synchronized null
+        if (metaFile.length() > metadataByteLimit || cacheFile.length() > inputByteLimit) return@synchronized null
         val fields = metaFile.readText().split('\n', limit = 2)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
         if (fields.size != 2) return@synchronized null
         val fetched = fields[0].toLongOrNull() ?: return@synchronized null
         if (!NativeGuideSources.diskAndroid(sourceUrl, fields[1], System.currentTimeMillis() / 1000, fetched, allowStale)) return@synchronized null
-        gunzip(cacheFile.readBytes())?.let { String(it, Charsets.UTF_8) }
+        cacheFile.inputStream().use { parseXmltv(it) }
     }
 
     @Throws(IOException::class)
-    private fun writeCache(data: ByteArray, sourceUrl: String) = synchronized(cacheLock) {
+    private fun writeCache(data: File, sourceUrl: String) = synchronized(cacheLock) {
+        if (data.length() > inputByteLimit) throw IOException("XMLTV cache input exceeds size limit")
+        val metadata = "${System.currentTimeMillis() / 1000}\n$sourceUrl"
+        if (metadata.toByteArray(Charsets.UTF_8).size > metadataByteLimit) throw IOException("XMLTV cache metadata exceeds size limit")
         // Invalidate metadata first so an interrupted write cannot label another source's data.
         if (metaFile.exists() && !metaFile.delete()) throw IOException("cannot invalidate cache metadata")
-        cacheFile.writeBytes(data)
-        metaFile.writeText("${System.currentTimeMillis() / 1000}\n$sourceUrl")
+        data.copyTo(cacheFile, overwrite = true)
+        metaFile.writeText(metadata)
     }
 
-    // MARK: - Gzip
-
-    private fun gunzip(data: ByteArray): ByteArray? {
-        if (data.size < 2 || data[0] != 0x1f.toByte() || data[1] != 0x8b.toByte()) {
-            return if (String(data, Charsets.UTF_8).trimStart().startsWith("<")) data else null
+    // Bound both downloaded bytes and gzip expansion without materializing the
+    // document as a byte array and a second, UTF-16 copy on old Android heaps.
+    private class LimitedInput(input: InputStream, private val limit: Int, private val resource: String) : FilterInputStream(input) {
+        private var count = 0
+        private fun consumed(size: Int): Int {
+            if (size > limit - count) throw IOException("XMLTV $resource exceeds size limit")
+            if (size > 0) count += size
+            return size
         }
-        return try {
-            val gis = java.util.zip.GZIPInputStream(data.inputStream())
-            gis.use { it.readBytes() }
-        } catch (_: Throwable) { null }
+        override fun read(): Int {
+            val value = `in`.read()
+            if (value != -1) consumed(1)
+            return value
+        }
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+            consumed(`in`.read(buffer, offset, minOf(length, limit - count + 1)))
     }
 
     // MARK: - XMLTV Parser
 
-    private fun parseXmltv(xml: String): Parsed {
+    private fun parseXmltv(input: InputStream): Parsed {
         val reader = XmlReader()
-        reader.parse(xml)
+        val buffered = input.buffered()
+        buffered.mark(2)
+        val gzip = buffered.read() == 0x1f && buffered.read() == 0x8b
+        buffered.reset()
+        val expanded = if (gzip) java.util.zip.GZIPInputStream(buffered) else buffered
+        LimitedInput(expanded, expandedByteLimit, "expanded document").use { bounded ->
+            // SAX may close its input at the root's end before requesting gzip's
+            // trailer. Keep ownership here and require CRC/truncation validation.
+            val borrowed = object : FilterInputStream(bounded) { override fun close() {} }
+            reader.parse(org.xml.sax.InputSource(borrowed.reader(Charsets.UTF_8)))
+            val buffer = ByteArray(8192)
+            while (bounded.read(buffer) != -1) { /* validate the complete gzip stream */ }
+        }
         return Parsed(reader.channels, reader.programs, reader.icons, reader.names)
     }
 
@@ -253,11 +291,11 @@ class MobileXmltvEpgPlugin : Plugin() {
         val names = mutableMapOf<String, MutableList<String>>()
         private val records = XmltvRecords(XmltvRecordFormat.ARCHIVED_ANDROID)
 
-        fun parse(xml: String) {
+        fun parse(xml: org.xml.sax.InputSource) {
             val factory = javax.xml.parsers.SAXParserFactory.newInstance()
             factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
             factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            factory.newSAXParser().parse(org.xml.sax.InputSource(java.io.StringReader(xml)), this)
+            factory.newSAXParser().parse(xml, this)
         }
 
         override fun startElement(uri: String?, local: String?, name: String, attrs: org.xml.sax.Attributes) {
