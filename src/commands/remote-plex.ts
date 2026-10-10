@@ -1,27 +1,18 @@
 /** The library resolver shares the queue owner, including lazy loading. */
 function validLibraryRequest(params: any, runtime: string): boolean {
+    if (!params || params.runtime !== runtime) return false;
+    var keys = Object.keys(params).sort().join(",");
+    if (params.op === "list") return keys === "op,runtime";
+    if (["preview", "play"].indexOf(params.op) < 0) return false;
+    var id = typeof params.library_id === "string";
+    var expected = id ? "library_id,op,runtime" : "op,query,runtime";
     if (
-        !params ||
-        params.runtime !== runtime ||
-        ["list", "preview", "play"].indexOf(params.op) < 0 ||
-        Object.keys(params).some(function (key) {
-            return (
-                ["runtime", "op", "query", "library_id", "shuffle"].indexOf(
-                    key
-                ) < 0
-            );
-        })
+        (keys !== expected && keys !== expected + ",shuffle") ||
+        (params.shuffle !== undefined && typeof params.shuffle !== "boolean")
     )
         return false;
-    if (params.op === "list") return Object.keys(params).length === 2;
-    if (params.shuffle !== undefined && typeof params.shuffle !== "boolean")
-        return false;
-    var query = Object.prototype.hasOwnProperty.call(params, "query");
-    var id = Object.prototype.hasOwnProperty.call(params, "library_id");
-    if (query === id) return false;
     if (id)
         return (
-            typeof params.library_id === "string" &&
             /^[1-9][0-9]{0,19}$/.test(params.library_id) &&
             !/\s/.test(params.library_id)
         );
@@ -49,6 +40,8 @@ export function remotePlexQueue(w: any, runtime: string): any {
     var serial = 0;
     var ids: string[] = [];
     var failure = "";
+    var unavailable = "Plex playback is unavailable on this player.";
+    var cancelledError = "Plex queue request was cancelled.";
     var capability = {
         max_items: 500,
         operations: ["play", "preview", "status", "next", "previous", "stop"],
@@ -76,15 +69,15 @@ export function remotePlexQueue(w: any, runtime: string): any {
     }
     function execute(request: any, done: (value: any) => void): any {
         var params = request.params || {};
+        var op = params.op;
         var library = request.action === "plex_library";
-        var readOnly =
-            params.op === "preview" || (library && params.op === "list");
+        var readOnly = op === "preview" || (library && op === "list");
         function reject(error: string): void {
             done({
                 data: library
                     ? {
                           error: error,
-                          op: params.op,
+                          op: op,
                           runtime: runtime,
                           state: "error",
                           version: 1,
@@ -94,31 +87,30 @@ export function remotePlexQueue(w: any, runtime: string): any {
             });
         }
         if (library && !validLibraryRequest(params, runtime)) {
-            reject("Plex playback is unavailable on this player.");
+            reject(unavailable);
             return;
         }
         if (controller) return controller.execute(request, done);
         if (
             !library &&
             (params.runtime !== runtime ||
-                capability.operations.indexOf(params.op) < 0 ||
+                capability.operations.indexOf(op) < 0 ||
                 Object.keys(params).some(function (key) {
                     return (
                         key !== "op" &&
                         key !== "runtime" &&
-                        ((params.op !== "play" && params.op !== "preview") ||
-                            key !== "ids")
+                        ((op !== "play" && op !== "preview") || key !== "ids")
                     );
                 }))
         ) {
-            reject("Plex playback is unavailable on this player.");
+            reject(unavailable);
             return;
         }
-        if (params.op === "status") {
+        if (op === "status") {
             done({ data: snapshot(), status: "ok" });
             return;
         }
-        if (params.op === "stop") {
+        if (op === "stop") {
             var stopping = ++serial;
             if (loading) loading();
             if (stopping !== serial) return;
@@ -128,7 +120,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
             return;
         }
         if (!readOnly && w.commandChannelsReady !== true) {
-            reject("Plex playback is unavailable on this player.");
+            reject(unavailable);
             return;
         }
         if (
@@ -145,17 +137,17 @@ export function remotePlexQueue(w: any, runtime: string): any {
             reject("Plex queue is empty.");
             return;
         }
-        if (loading && (readOnly || params.op !== "play")) {
+        if (loading && (readOnly || op !== "play")) {
             reject("Plex queue request is already in progress.");
             return;
         }
         var intent = ++serial;
         if (loading) loading();
         if (intent !== serial) {
-            reject("Plex queue request was cancelled.");
+            reject(cancelledError);
             return;
         }
-        if (params.op === "play") {
+        if (op === "play") {
             ids = library ? [] : params.ids.slice();
             failure = "";
         }
@@ -170,8 +162,8 @@ export function remotePlexQueue(w: any, runtime: string): any {
         function cancel(): void {
             if (cancelled) return;
             cancelled = true;
-            if (!controller && params.op === "play") {
-                if (!failure) failure = "Plex queue request was cancelled.";
+            if (!controller && op === "play") {
+                if (!failure) failure = cancelledError;
                 ids = [];
             }
             if (loading === cancel) loading = null;
@@ -184,7 +176,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
         function failed(): void {
             if (cancelled) return;
             var error = "Plex provider module could not be loaded.";
-            if (params.op === "play") failure = error;
+            if (op === "play") failure = error;
             cancel();
             reject(error);
         }

@@ -879,6 +879,8 @@ test("library strict request schema rejects aliases, extra fields and malformed 
         ["list", {}, { shuffle: false }],
         ["preview", {}],
         ["play", { library_id: "16", query: "x" }],
+        ["play", { library_id: "16", query: undefined }],
+        ["play", { library_id: undefined, query: "x" }],
         ["play", { query: " " }],
         ["play", { query: "x\n" }],
         ["play", { query: "Ж".repeat(129) }],
@@ -1038,6 +1040,43 @@ test("library reads cannot replace pending play and failed discovery preserves p
     h.end();
     h.resolve("2");
     assert.equal(h.queue.snapshot().index, 1);
+});
+test("invalid library selectors preserve an existing lazy queue or library owner", () => {
+    for (const library of [false, true]) {
+        const h = setup(),
+            factory = h.c.__ottPlexQueueFactory;
+        let ready;
+        delete h.c.__ottPlexQueueFactory;
+        h.c.__ottProviderAssets = {
+            classic: {
+                ensure(_family, _host, _cv, _owner, callback) {
+                    assert.equal(ready, undefined);
+                    ready = callback;
+                },
+            },
+        };
+        const pending = library
+            ? h.library("play", { library_id: "16" })
+            : h.call("play", ["9"]);
+        for (const selector of [
+            { library_id: "16", query: undefined },
+            { library_id: undefined, query: "x" },
+            { library_id: "16\n" },
+        ])
+            assert.equal(
+                h.library("play", selector).replies[0].status,
+                "rejected"
+            );
+        h.c.__ottPlexQueueFactory = factory;
+        ready();
+        if (library) {
+            libraryInventory(h);
+            h.page(episodes(h, 9, 1));
+            h.reply(episodes(h, 9, 1));
+        } else h.prepare(["9"]);
+        h.resolve("9");
+        assert.equal(pending.replies[0].status, "ok");
+    }
 });
 test("lazy library resolution cannot override later stop or queue play", () => {
     for (const replacement of ["stop", "play"]) {
