@@ -1,12 +1,28 @@
 # Changelog
 
-## [1.1.53] - Development line
+## [1.1.54] - Development line
 
 ### Changes
 
 - Start or preview a complete Plex movie/TV library by name or section ID,
   optionally shuffled, using the player's saved connection and bounded complete
   pagination. Ambiguous or incomplete selections leave existing playback intact.
+
+### Upgrade
+
+Update the control server and CLI to versions with `plex_library` support, then
+update or reload the player to use the new library commands. The player's saved
+Plex connection is reused; no settings or data migration is required.
+
+### Security
+
+Existing remote-control authorization, parental restrictions, runtime binding
+and request-cancellation checks remain in force. This release introduces no new
+credential format.
+
+## [1.1.53] - Development line
+
+### Changes
 
 - Discover Android XMLTV channels without retaining every channel's schedule.
   Load only the selected channel's programmes, preserving archive entries and
