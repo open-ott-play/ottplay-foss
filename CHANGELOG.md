@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Pause Android kiosk playback when the screen turns off or the app leaves the
+  foreground; suspend recovery while asleep and resume the same active episode.
+
 - Select an ordered, looping VPortal queue by exact movie titles through OTT,
   rejecting missing or ambiguous titles instead of playing broader search results.
 
