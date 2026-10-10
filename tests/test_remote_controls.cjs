@@ -37,6 +37,26 @@ const execute = context.exports.executeRemoteControl;
 const doctorCapabilities = context.exports.remoteDoctorCapabilities;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
+{
+    const play = () => {};
+    const w = { __ottCoreTransport: { play }, stbPlay: play };
+    let result;
+    const restart = () => context.exports.executeRemoteRestart(
+        w, { target: "stream" }, (reply) => { result = plain(reply); }
+    );
+    restart();
+    assert.equal(result.status, "unsupported", "missing implementation remains unsupported");
+    let attempts = 0;
+    w.__ottCoreBackend = () => ({ restart: () => { attempts++; return null; } });
+    restart();
+    assert.equal(result.status, "rejected");
+    assert.equal(result.data.reason, "no_restartable_stream");
+    assert.equal(attempts, 1, "no automatic retry or player reload");
+    w.__ottCoreBackend = () => ({ restart: () => ({ accepted: true, target: "stream", dispatched: true }) });
+    restart();
+    assert.equal(result.status, "ok", "the same runtime can restart once a stream is ready");
+}
+
 function fixture() {
     const effects = [];
     let locked = false,

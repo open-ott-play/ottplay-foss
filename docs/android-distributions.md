@@ -14,6 +14,13 @@ Use the modern APK on newer devices. API 22 dependencies are isolated in
 lower the modern application's SDK or override library manifest checks.
 Android 4.4 / API 19 still requires the separate legacy kiosk.
 
+Provider and playlist text responses sent through the Android WebView bridge
+are limited to 8 MiB. Larger responses fail with `response_too_large` and close
+the connection; they are never truncated into a partial playlist or JSON object.
+Use a smaller playlist or a paginated catalog if a source exceeds this limit.
+Native media streaming and the separate native XMLTV index do not use this text
+response path.
+
 The independent Kotlin/Compose app and Play Store submission are maintained in
 [ottplay-android](https://github.com/open-ott-play/ottplay-android). That app has a
 different identity and does not replace a Capacitor installation in place.

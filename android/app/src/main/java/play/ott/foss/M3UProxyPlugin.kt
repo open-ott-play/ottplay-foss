@@ -5,8 +5,6 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -44,6 +42,7 @@ class M3UProxyPlugin : Plugin() {
         val effectiveReferer = if (referer.isNotEmpty()) referer else origin
 
         Thread {
+            var connection: HttpURLConnection? = null
             try {
                 val address = URL(urlStr)
                 if (BuildConfig.FLAVOR == "play" && address.protocol == "http") {
@@ -51,6 +50,7 @@ class M3UProxyPlugin : Plugin() {
                     return@Thread
                 }
                 val conn = address.openConnection() as HttpURLConnection
+                connection = conn
                 conn.requestMethod = "GET"
                 conn.setRequestProperty("User-Agent", ua)
                 if (effectiveReferer.isNotEmpty()) {
@@ -61,7 +61,7 @@ class M3UProxyPlugin : Plugin() {
 
                 val status = conn.responseCode
                 val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-                val body = stream.bufferedReader().use(BufferedReader::readText)
+                val body = ProviderHttpResponse.read(stream, conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1)
 
                 if (status !in 200..299) {
                     call.reject("Playlist provider returned HTTP $status")
@@ -73,11 +73,14 @@ class M3UProxyPlugin : Plugin() {
                 call.resolve(ret)
             } catch (e: Exception) {
                 val message = when (e) {
+                    is ProviderHttpResponse.TooLarge -> "Playlist response exceeds the 8 MiB limit; use a smaller playlist"
                     is java.net.SocketTimeoutException -> "Playlist request timed out"
                     is javax.net.ssl.SSLException -> "Playlist TLS connection failed; check its HTTPS certificate"
                     else -> "Playlist request failed"
                 }
-                call.reject(message)
+                call.reject(message, if (e is ProviderHttpResponse.TooLarge) "response_too_large" else null)
+            } finally {
+                connection?.disconnect()
             }
         }.start()
     }

@@ -276,6 +276,11 @@ the in-memory VPortal automatic queue is not restored across page reloads.
 An expired response or changed controller connection discards a pending reload.
 Neither command retries a mutation after an uncertain response.
 
+If the backend supports restarting but has no current restartable stream, the
+request returns `rejected` with `reason: "no_restartable_stream"`. This can happen
+during startup or after playback ends; it does not mean the player lacks restart
+support. Wait for a stream to load or explicitly request a full player reload.
+
 These actions require updated CLI, control server and player versions. They
 do not change the existing provider-selection or active-playlist commands.
 

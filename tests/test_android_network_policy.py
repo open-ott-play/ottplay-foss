@@ -25,6 +25,87 @@ import play.ott.foss.*
 import java.net.*
 import java.util.concurrent.*
 fun wait(call: PluginCall) { check(call.done.await(5, TimeUnit.SECONDS)); }
+fun providerResponseBounds() {
+    class GeneratedInput(private val length: Int) : java.io.InputStream() {
+        var count = 0
+        var closed = false
+        override fun read(): Int = if (count == length) -1 else { count++; 65 }
+        override fun read(bytes: ByteArray, offset: Int, size: Int): Int {
+            if (count == length) return -1
+            val taken = minOf(size, length - count)
+            java.util.Arrays.fill(bytes, offset, offset + taken, 65.toByte())
+            count += taken
+            return taken
+        }
+        override fun close() { closed = true }
+    }
+    val limit = ProviderHttpResponse.MAX_BYTES
+    val exact = GeneratedInput(limit)
+    check(ProviderHttpResponse.read(exact, limit.toLong()).length == limit && exact.closed)
+    val unknown = GeneratedInput(limit + 100000)
+    try { ProviderHttpResponse.read(unknown, -1); error("Oversized stream accepted") }
+    catch (_: ProviderHttpResponse.TooLarge) { }
+    check(unknown.closed && unknown.count == limit + 1)
+    val declared = GeneratedInput(1)
+    try { ProviderHttpResponse.read(declared, 92L * 1024 * 1024); error("Oversized declaration accepted") }
+    catch (_: ProviderHttpResponse.TooLarge) { }
+    check(declared.closed && declared.count == 0)
+    val text = "Винни-Пух 🐻"
+    check(ProviderHttpResponse.read(text.toByteArray().inputStream(), -1) == text)
+    check(ProviderHttpResponse.read(null, -1) == "")
+
+    BuildConfig.FLAVOR = "full"
+    val plugin = StalkerPortalPlugin()
+    val playlist = M3UProxyPlugin()
+    for (kind in listOf("http", "portal", "playlist")) {
+        for (mode in listOf("declared", "chunked", "error", "small")) {
+            val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+            val worker = Thread {
+                server.soTimeout = 4000
+                server.accept().use { socket ->
+                    val input = socket.getInputStream().bufferedReader()
+                    while (input.readLine().orEmpty().isNotEmpty()) { }
+                    val output = socket.getOutputStream()
+                    val status = if (mode == "error") "500 Error" else "200 OK"
+                    val framing = when (mode) {
+                        "declared" -> "Content-Length: 96468992\r\n"
+                        "chunked" -> "Transfer-Encoding: chunked\r\n"
+                        else -> ""
+                    }
+                    try {
+                        output.write("HTTP/1.1 $status\r\n${framing}Connection: close\r\n\r\n".toByteArray())
+                        when (mode) {
+                            "small" -> output.write(text.toByteArray())
+                            "declared" -> { }
+                            else -> {
+                                val chunk = ByteArray(8192) { 65 }
+                                repeat(limit / chunk.size + 1) {
+                                    if (mode == "chunked") output.write("2000\r\n".toByteArray())
+                                    output.write(chunk)
+                                    if (mode == "chunked") output.write("\r\n".toByteArray())
+                                }
+                                if (mode == "chunked") output.write("0\r\n\r\n".toByteArray())
+                            }
+                        }
+                    } catch (_: java.io.IOException) { /* Oversized response closed early. */ }
+                }
+            }.apply { start() }
+            val call = PluginCall(JSObject().put("url", "http://127.0.0.1:${server.localPort}/portal.php?token=private"))
+            when (kind) {
+                "http" -> plugin.httpRequest(call)
+                "portal" -> plugin.portalRequest(call)
+                else -> playlist.proxyFetch(call)
+            }
+            wait(call); worker.join(5000); server.close(); check(!worker.isAlive)
+            if (mode == "small") check(call.error == null && call.result.getString("body") == text)
+            else {
+                check(call.code == "response_too_large") { "$kind $mode: ${call.error}" }
+                check(!call.error!!.contains("private") && !call.error!!.contains("127.0.0.1"))
+            }
+        }
+    }
+    println("PASS provider HTTP: 8 MiB boundary, UTF-8, early length rejection, chunked/error body bounds, socket cleanup and recovery")
+}
 fun screenshotTransport() {
     BuildConfig.FLAVOR = "full"
     val plugin = StalkerPortalPlugin()
@@ -162,6 +243,7 @@ fun main() {
     check(failure.error != null && !failure.error!!.contains("token") && !failure.error!!.contains("127.0.0.1"))
     println("PASS actual Android HTTP plugins: SWOP refuses plaintext/credentials/query/normalized paths in both editions; Play rejects HTTP before network; Full native HTTP/M3U retain requests; errors omit provider URLs")
     screenshotTransport()
+    providerResponseBounds()
 }
 '''
 SDK=Path(os.environ.get('ANDROID_SDK_ROOT',os.environ.get('ANDROID_HOME','/opt/homebrew/share/android-commandlinetools')))/'platforms/android-36/android.jar'
@@ -180,6 +262,6 @@ with tempfile.TemporaryDirectory(prefix='ott-http-policy-') as directory:
     (temp/'BuildConfig.kt').write_text('package play.ott.foss\nobject BuildConfig { var FLAVOR = "play" }')
     (temp/'Annotation.kt').write_text('package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)')
     (temp/'Main.kt').write_text(MAIN)
-    sources=[str(ROOT/f'android/app/src/main/java/play/ott/foss/{name}.kt') for name in ['StalkerPortalPlugin','M3UProxyPlugin']]
+    sources=[str(ROOT/f'android/app/src/main/java/play/ott/foss/{name}.kt') for name in ['StalkerPortalPlugin','M3UProxyPlugin','ProviderHttpResponse']]
     subprocess.run([shutil.which('kotlinc') or 'kotlinc','-jvm-target','17','-cp',os.pathsep.join(map(str,[classes,SDK,*HTTP_JARS])),*map(str,temp.glob('*.kt')),*sources,'-include-runtime','-d',str(temp/'test.jar')],check=True)
-    subprocess.run([str(JAVA/'java'),'-cp',os.pathsep.join(map(str,[temp/'test.jar',classes,JSON,*HTTP_JARS])),'fixture.MainKt'],check=True,timeout=30)
+    subprocess.run([str(JAVA/'java'),'-Xmx64m','-cp',os.pathsep.join(map(str,[temp/'test.jar',classes,JSON,*HTTP_JARS])),'fixture.MainKt'],check=True,timeout=30)

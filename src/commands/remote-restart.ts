@@ -72,7 +72,13 @@ export function executeRemoteRestart(
         var backend = w.__ottCoreBackend();
         var result = backend && backend.restart && backend.restart();
         if (!result) {
-            fail("unsupported", "There is no owned, restartable stream.");
+            done({
+                data: {
+                    error: "There is no owned, restartable stream.",
+                    reason: "no_restartable_stream",
+                },
+                status: "rejected",
+            });
             return;
         }
         done({ data: result, status: "ok" });
