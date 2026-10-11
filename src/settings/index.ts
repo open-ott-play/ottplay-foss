@@ -10,7 +10,7 @@ import { languageNames } from "../localization/assets";
  * persisted on change (see `saveSettings`). The `PlayerSettings` interface
  * defines every tunable parameter exposed to the user via the settings UI.
  */
-import { storage } from "../storage/index";
+import { stbGetPersistedItem, storage } from "../storage/index";
 import {
     createSettingsStore,
     type SettingDefinition,
@@ -683,25 +683,14 @@ export const settingsStore = createSettingsStore(settingsSchema, {
     storage: function (entry) {
         var w = window as any;
         var driver = w.__ottActiveProviderDriver;
+        var key = entry.key;
         if (
             entry.scope === "provider" &&
             driver &&
             typeof driver.storageKey === "function"
         ) {
-            var key = driver.storageKey(entry.key);
-            return {
-                read: function () {
-                    return storage.get(key);
-                },
-                remove: function () {
-                    storage.del(key);
-                },
-                write: function (v) {
-                    storage.set(key, v);
-                },
-            };
-        }
-        if (
+            key = driver.storageKey(key);
+        } else if (
             entry.scope === "provider" &&
             typeof w.providerGetItem === "function"
         ) {
@@ -723,44 +712,31 @@ export const settingsStore = createSettingsStore(settingsSchema, {
         }
         return {
             read: function () {
-                return storage.get(entry.key);
+                return storage.get(key);
             },
             remove: function () {
-                storage.del(entry.key);
+                storage.del(key);
             },
             write: function (v) {
-                storage.set(entry.key, v);
+                storage.set(key, v);
             },
         };
     },
 });
 /** Typed and legacy views both forward to the same authoritative store. */
 export const settings = {} as PlayerSettings;
-settingsSchema.forEach(function (entry) {
-    Object.defineProperty(settings, entry.id, {
-        enumerable: true,
-        get: function () {
-            return settingsStore.get(entry.id);
-        },
-        set: function (value) {
-            settingsStore.observe(entry.id, value);
-        },
-    });
-});
-Object.defineProperty(settings, "nextCount", {
-    enumerable: true,
-    get: function () {
-        return Math.max(0, settings.nextCountList - 1);
-    },
-    set: function (value) {
-        settings.nextCountList = Number(value) + 1;
-    },
-});
-export function installSettingsFacade(target: Record<string, any>): void {
+function bindSettingsFacade(
+    target: Record<string, any>,
+    legacy: boolean
+): void {
     settingsSchema.forEach(function (entry) {
-        var key = entry.id === "nextCountList" ? "sNextCountL" : entry.key;
+        var key = legacy
+            ? entry.id === "nextCountList"
+                ? "sNextCountL"
+                : entry.key
+            : entry.id;
         Object.defineProperty(target, key, {
-            configurable: true,
+            configurable: legacy,
             enumerable: true,
             get: function () {
                 return settingsStore.get(entry.id);
@@ -770,16 +746,20 @@ export function installSettingsFacade(target: Record<string, any>): void {
             },
         });
     });
-    Object.defineProperty(target, "sNextCount", {
-        configurable: true,
+    Object.defineProperty(target, legacy ? "sNextCount" : "nextCount", {
+        configurable: legacy,
         enumerable: true,
         get: function () {
-            return settings.nextCount;
+            return Math.max(0, settings.nextCountList - 1);
         },
         set: function (value) {
-            settings.nextCount = value;
+            settings.nextCountList = Number(value) + 1;
         },
     });
+}
+bindSettingsFacade(settings, false);
+export function installSettingsFacade(target: Record<string, any>): void {
+    bindSettingsFacade(target, true);
     target.settings = settings;
 }
 export function loadSettings(): PlayerSettings {
@@ -789,6 +769,27 @@ export function loadSettings(): PlayerSettings {
         entry.defaultValue = (defaults as any)[entry.id];
     });
     settingsStore.reload();
+    // Older LG profiles inherited PC's Right = volume-up default. Upgrade once,
+    // then preserve any assignment explicitly chosen after the upgrade.
+    if (defaults.arFun === 4 && !storage.get("sLgRightInfoMigrated")) {
+        var repairRight = settings.arFun === 13;
+        if (repairRight) {
+            settings.arFun = 4;
+            try {
+                storage.setI("sARfun", 4);
+            } catch (_error) {}
+        }
+        // A memory-only fallback must not mark a failed durable repair complete.
+        var savedRight = storage.get("sARfun");
+        if (
+            (!repairRight || savedRight === "4") &&
+            stbGetPersistedItem("sARfun") === savedRight
+        ) {
+            try {
+                storage.set("sLgRightInfoMigrated", "1");
+            } catch (_error) {}
+        }
+    }
     var w = window as any;
     var nativeEditor =
         !!w.__TAURI__ ||

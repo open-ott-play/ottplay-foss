@@ -877,6 +877,80 @@ test.describe("webOS fullscreen remote navigation", () => {
     });
 
     for (const device of ["lg/webos", "lg/netcast"]) {
+        test(`${device} migrates legacy Right volume to Info once and retains later explicit choices`, async ({
+            page,
+            context,
+            baseURL,
+        }) => {
+            await context.addInitScript(() => {
+                // Seed only the legacy installation; real reloads must retain
+                // the migration result and the user's later saved preference.
+                if (localStorage.getItem("sARfun") === null)
+                    localStorage.setItem("sARfun", "13");
+            });
+            const errors = await bootForWebosRemote(
+                page,
+                context,
+                baseURL,
+                true,
+                device
+            );
+            const mapping = () =>
+                page.evaluate(() => ({
+                    legacy: window.sARfun,
+                    migrated: localStorage.getItem("sLgRightInfoMigrated"),
+                    right: window.settings.arFun,
+                    stored: localStorage.getItem("sARfun"),
+                }));
+            const migrated = {
+                legacy: 4,
+                migrated: "1",
+                right: 4,
+                stored: "4",
+            };
+            expect(await mapping()).toEqual(migrated);
+            await page.evaluate(() => {
+                window.sInfoChange = window.sInfoSlide = 0;
+                window.updateChannelInfo(101);
+                window.infoBarHide();
+            });
+            await expect(page.locator("#programm_name")).toHaveText(
+                "Programme 101"
+            );
+            await expect(page.locator("#info1")).toBeHidden();
+            await page.keyboard.press("ArrowRight");
+            await expect(page.locator("#info1")).toBeVisible();
+            await expect(page.locator("#descr")).toBeHidden();
+            await page.keyboard.press("ArrowRight");
+            await expect(page.locator("#descr")).toBeVisible();
+            await expect(page.locator("#programm_name2")).toHaveText(
+                "Programme 101"
+            );
+            await page.keyboard.press("ArrowRight");
+            await expect(page.locator("#info1")).toBeHidden();
+            expect(
+                await page.evaluate(() => window.__remoteEffects.volume)
+            ).toEqual([]);
+            expect(errors).toEqual([]);
+
+            await page.reload({ waitUntil: "load" });
+            await expect(page.locator("#listCaption")).toHaveText(
+                "First-run setup"
+            );
+            expect(await mapping()).toEqual(migrated);
+            expect(await page.evaluate(() => saveSettings({ arFun: 13 }))).toBe(
+                true
+            );
+            const chosen = { ...migrated, legacy: 13, right: 13, stored: "13" };
+            expect(await mapping()).toEqual(chosen);
+            await page.reload({ waitUntil: "load" });
+            await expect(page.locator("#listCaption")).toHaveText(
+                "First-run setup"
+            );
+            expect(await mapping()).toEqual(chosen);
+            expect(errors).toEqual([]);
+        });
+
         for (const slide of [0, 1]) {
             test(`${device} Right shows the footer then programme details (animation ${slide})`, async ({
                 page,

@@ -183,12 +183,15 @@ settings and a guide that arrives after playback starts. Media descriptions
 containing only an image must still expand.
 webOS defaults Back to action 1 (confirm exit); NetCast and other profiles
 retain Back action 0. Other profiles retain Right action 13 (volume up).
-Saved assignments always take precedence, including old
-volume or no-action assignments; detecting the correct profile does not reset
-these preferences. Other profiles retain Left action 14 (volume down).
-Assignments can be changed in **Settings > Button settings**. If an existing
-LG profile still opens the guide or changes volume on Right, select **Info**
-for that button. The guide remains available from Menu.
+On the first LG startup after the Right-key upgrade, a stored Right action 13
+(volume up) is changed to action 4 (Info). Other assignments are preserved.
+The upgrade is marked complete only after a changed binding is persisted;
+failed writes still use Info for that session and retry on the next startup.
+After the upgrade, explicit assignments, including volume, survive reload.
+Other profiles retain Left action 14 (volume down) and Right action 13.
+Assignments can be changed in **Settings > Button settings**. The guide remains
+available from Menu. Fullscreen Plex Left/Right retain ten-second seeking, and
+visible menus retain their own arrow navigation.
 
 Exercise both Back delivery paths: a numeric 461 key event and actual browser
 history traversal. The adapter retains one same-page history entry, so Back

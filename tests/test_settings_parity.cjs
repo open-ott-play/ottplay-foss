@@ -174,6 +174,7 @@ function fixture(
         showShift() {},
         stbClearAllItems() {},
         stbGetAllItems() {},
+        stbGetPersistedItem: (key) => stored.get(key) ?? null,
         stbGetVolume() {},
         stbIsStandby() {
             return false;
@@ -670,6 +671,70 @@ assert.equal(
 );
 console.log(
     "OK: LG Left defaults to Menu, other platforms retain volume and explicit mappings survive save/reset"
+);
+
+// Upgrade legacy LG volume defaults once; later explicit choices remain valid.
+for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
+    for (const value of [13, 0, 1, 4, 10, 19]) {
+        const { w, typed, stored } = fixture();
+        w.ott_device = device;
+        stored.set("sARfun", String(value));
+        vm.runInContext("loadSettings();", w);
+        const expected = device?.startsWith("lg/") && value === 13 ? 4 : value;
+        assert.equal(typed().arFun, expected, device + ": migrated Right");
+        assert.equal(w.sARfun, expected, "Legacy facade matches UI setting");
+        assert.equal(stored.get("sARfun"), String(expected));
+        assert.equal(
+            stored.has("sLgRightInfoMigrated"),
+            !!device?.startsWith("lg/")
+        );
+        vm.runInContext("loadSettings();", w);
+        assert.equal(typed().arFun, expected, "Upgrade survives reload");
+        vm.runInContext("saveSettings({ arFun: 13 }); loadSettings();", w);
+        assert.equal(
+            typed().arFun,
+            13,
+            "Post-upgrade volume choice is retained"
+        );
+    }
+}
+for (const failure of ["throw", "memory-only"]) {
+    const { w, typed, stored } = fixture();
+    w.ott_device = "lg/webos";
+    stored.set("sARfun", "13");
+    const write = w.storage.setI;
+    const read = w.storage.get;
+    let memory;
+    w.storage.get = (key) => (key === "sARfun" && memory ? memory : read(key));
+    w.storage.setI = (key, value) => {
+        if (key !== "sARfun") return write(key, value);
+        if (failure === "throw") throw new Error("Storage unavailable");
+        memory = String(value);
+    };
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().arFun, 4, failure + ": Info works in this session");
+    assert.equal(stored.get("sARfun"), "13", "Backing value was not changed");
+    assert.equal(
+        stored.has("sLgRightInfoMigrated"),
+        false,
+        "Failed upgrade is retryable"
+    );
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().arFun, 4, "Same-page reload still uses Info");
+    assert.equal(
+        stored.has("sLgRightInfoMigrated"),
+        false,
+        "Same-page memory cache cannot mark the upgrade durable"
+    );
+    w.storage.get = read;
+    w.storage.setI = write;
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().arFun, 4);
+    assert.equal(stored.get("sARfun"), "4");
+    assert.equal(stored.get("sLgRightInfoMigrated"), "1");
+}
+console.log(
+    "OK: legacy LG Right volume migrates to Info once and retries failed persistence"
 );
 
 for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
