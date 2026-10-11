@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Prepare Plex library queues from the complete, validated catalog without a
+  redundant bulk metadata request that could time out and incorrectly report
+  playable videos as unavailable. The first video is still resolved before
+  playback starts.
 - Start or preview a complete Plex movie/TV library by name or section ID,
   optionally shuffled, using the player's saved connection and bounded complete
   pagination. Ambiguous or incomplete selections leave existing playback intact.

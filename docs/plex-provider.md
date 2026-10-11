@@ -87,6 +87,7 @@ ott l plex libraries
 ott l plex library --preview "Три кота"
 ott l plex shuffle "Три кота"
 ott l plex library --shuffle id:16
+ott l plex shuffle "Кукутики"
 ```
 
 These commands use the player's saved Plex connection. `id:16` selects library
@@ -103,6 +104,21 @@ filesystem folder traversal are not supported by this command. A failed lookup
 or collection leaves existing playback intact. Preview collects and validates
 metadata without starting a decoder. Shuffle makes one permutation of the
 complete result; subsequent episodes retain that order.
+
+Library queues validate each video's file metadata while reading the complete
+catalog. They reuse those records instead of asking Plex for the same metadata
+again in one large request. The first video is still resolved separately before
+playback starts. A missing or invalid file entry rejects the whole queue rather
+than silently skipping a video.
+
+On older players, `One or more Plex items are unavailable or not playable` can
+also mean that this redundant metadata request timed out. The message alone
+does not prove that the library or its files are missing. Reload an updated
+player and check the library without starting playback:
+
+```sh
+ott -t 45 l plex library --shuffle --preview "Кукутики"
+```
 
 Library commands require the separately advertised `plex_library` v1 capability.
 Existing `plex play ID...` and `plex preview ID...` remain available on older

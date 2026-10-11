@@ -326,6 +326,11 @@ function createPlexClient(
         });
         return rows;
     }
+    function hasPlayablePart(item: any): boolean {
+        var media = plexRows(item && item.Media)[0];
+        var part = media && plexRows(media.Part)[0];
+        return !!(part && plexPath(part.key));
+    }
     function itemTitle(item: any): string {
         function text(value: any): string {
             return typeof value === "string" || typeof value === "number"
@@ -778,6 +783,17 @@ function createPlexClient(
                         })
                     )
                         throw new Error();
+                    if (
+                        limits &&
+                        rows.some(function (row) {
+                            return !hasPlayablePart(row);
+                        })
+                    ) {
+                        finish(
+                            "One or more Plex items are unavailable or not playable."
+                        );
+                        return;
+                    }
                     page = records(
                         data,
                         path,
@@ -1377,9 +1393,7 @@ function createPlexClient(
                     var playable: { [id: string]: boolean } =
                         Object.create(null);
                     items(data).forEach(function (item: any) {
-                        var media = plexRows(item && item.Media)[0];
-                        var part = media && plexRows(media.Part)[0];
-                        if (part && plexPath(part.key))
+                        if (hasPlayablePart(item))
                             playable[String(item.ratingKey)] = true;
                     });
                     records(data, "", {}, false).forEach(function (row: any) {

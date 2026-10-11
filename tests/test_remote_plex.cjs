@@ -770,6 +770,151 @@ const episodes = (h, from, count) =>
         ...h.item(String(from + i)),
         type: "episode",
     }));
+test("library movie preview and play reuse all 57 catalog records without bulk metadata", () => {
+    for (const op of ["preview", "play"]) {
+        const h = setup();
+        h.c.Math = Object.create(Math);
+        h.c.Math.random = () => 0;
+        const saved = JSON.stringify(h.c.stored);
+        const request = h.library(op, { query: "Кукутики" }, { shuffle: true });
+        libraryInventory(h, [section("20", "Кукутики", "movie")]);
+        assert.equal(new URL(h.requests[0].url).searchParams.get("type"), "1");
+        const movies = Array.from({ length: 57 }, (_, i) =>
+            h.item(String(i + 1))
+        );
+        h.page(movies);
+        assert.equal(
+            h.requests.length,
+            op === "play" ? 1 : 0,
+            "Only playback resolves the first item after complete collection"
+        );
+        const ids =
+            op === "play"
+                ? plain(h.queue.snapshot().ids)
+                : request.replies[0].data.queue.ids;
+        assert.deepEqual(
+            ids,
+            movies
+                .slice(1)
+                .concat(movies[0])
+                .map((row) => row.ratingKey)
+        );
+        assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+        if (op === "play") {
+            assert.equal(
+                new URL(h.requests[0].url).pathname,
+                "/library/metadata/" + ids[0],
+                "Fresh single-item resolution replaces no catalog validation"
+            );
+            h.resolve(ids[0]);
+            assert.equal(request.replies[0].data.queue.title, "Film " + ids[0]);
+            h.end();
+            h.resolve(ids[1]);
+            assert.equal(h.queue.snapshot().title, "Film " + ids[1]);
+        } else {
+            assert.deepEqual(
+                request.replies[0].data.queue.titles,
+                ids.map((id) => "Film " + id)
+            );
+        }
+        assert.deepEqual(request.replies[0].data.queue.ids, ids);
+        assert.equal(request.replies[0].status, "ok");
+        assert.equal(h.c.stored.plexcfg, JSON.parse(saved).plexcfg);
+        if (op === "preview") assert.equal(JSON.stringify(h.c.stored), saved);
+    }
+});
+test("library rejects an unplayable first or final catalog page without skipping items", () => {
+    for (const op of ["preview", "play"])
+        for (const page of ["first", "final"])
+            for (const failure of [
+                "missing-media",
+                "missing-part",
+                "empty-part",
+                "later-media",
+                "later-part",
+                "absolute-key",
+                "traversal-key",
+                "token-key",
+            ]) {
+                const h = setup();
+                const source = h.c.__ottMedia.sourceId();
+                const stored = JSON.stringify(h.c.stored);
+                const request = h.library(op, { library_id: "16" });
+                libraryInventory(h);
+                const bad = episodes(h, 2, 1)[0];
+                if (failure === "missing-media") delete bad.Media;
+                if (failure === "missing-part") delete bad.Media[0].Part;
+                if (failure === "empty-part") bad.Media[0].Part = [];
+                if (failure === "later-media") bad.Media.unshift({ Part: [] });
+                if (failure === "later-part") bad.Media[0].Part.unshift({});
+                const unsafe = {
+                    "absolute-key": "https://other.invalid/file.mp4",
+                    "token-key": "/library/parts/2/file.mp4?X-Plex-Token=other",
+                    "traversal-key": "/library/parts/%2e%2e/file.mp4",
+                }[failure];
+                if (unsafe) bad.Media[0].Part[0].key = unsafe;
+                if (page === "final") {
+                    h.page(episodes(h, 1, 1), 0, 2);
+                    assert.equal(request.replies.length, 0);
+                    h.tickPage();
+                }
+                h.page([bad], page === "final" ? 1 : 0, 2);
+                assert.equal(
+                    request.replies[0].data.error,
+                    "One or more Plex items are unavailable or not playable.",
+                    op + "/" + page + "/" + failure
+                );
+                assert.equal(h.requests.length, 0);
+                assert.equal(
+                    h.c.calls.filter((x) => x[0] === "play").length,
+                    0
+                );
+                assert.equal(h.c.__ottMedia.sourceId(), source);
+                assert.equal(JSON.stringify(h.c.stored), stored);
+            }
+});
+test("library catalog parental admission and fresh first-item resolution preserve the prior queue", () => {
+    for (const failure of ["catalog-part", "parental", "resolve"]) {
+        const h = setup();
+        h.call("play", ["8", "9"]);
+        h.prepare(["8", "9"]);
+        h.resolve("8");
+        const prior = h.c.__ottMedia.current();
+        const request = h.library("play", { library_id: "16" });
+        libraryInventory(h);
+        const rows = episodes(h, 1, 2);
+        if (failure === "catalog-part") rows[1].Media[0].Part = [];
+        if (failure === "parental") rows[1].adult = 1;
+        h.page(rows);
+        if (failure === "resolve") {
+            assert.equal(
+                new URL(h.requests[0].url).pathname,
+                "/library/metadata/1"
+            );
+            h.reply([]);
+        }
+        assert.equal(request.replies[0].status, "rejected", failure);
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.c.__ottMedia.current(), prior);
+        assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 1);
+        assert.deepEqual(plain(h.queue.snapshot().ids), ["8", "9"]);
+        h.end();
+        h.resolve("9");
+        assert.equal(h.queue.snapshot().title, "Film 9");
+    }
+});
+test("library object-form media metadata retains parental restrictions without blocking preview", () => {
+    const h = setup();
+    const request = h.library("preview", { library_id: "16" });
+    libraryInventory(h);
+    const row = episodes(h, 1, 1)[0];
+    row.adult = 1;
+    row.Media = { Part: row.Media[0].Part[0] };
+    h.page([row]);
+    assert.equal(request.replies[0].status, "ok");
+    assert.deepEqual(request.replies[0].data.queue.ids, ["1"]);
+    assert.equal(h.requests.length, 0);
+});
 test("library show collects 265 episodes before one shuffle and the existing queue handoff", () => {
     const h = setup();
     const saved = h.c.stored.plexcfg;
@@ -794,7 +939,11 @@ test("library show collects 265 episodes before one shuffle and the existing que
     h.tickPage();
     assert.equal(h.requests[0].headers["X-Plex-Container-Start"], "200");
     h.page(episodes(h, 201, 65), 200, 265);
-    const ids = new URL(h.requests[0].url).pathname.split("/").pop().split(",");
+    const ids = plain(h.queue.snapshot().ids);
+    assert.equal(
+        new URL(h.requests[0].url).pathname,
+        "/library/metadata/" + ids[0]
+    );
     assert.equal(ids.length, 265);
     assert.equal(new Set(ids).size, 265);
     assert.deepEqual(
@@ -803,7 +952,6 @@ test("library show collects 265 episodes before one shuffle and the existing que
     );
     assert.equal(request.replies.length, 0);
     assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
-    h.reply(episodes(h, 1, 265));
     h.resolve(ids[0]);
     const data = request.replies[0].data;
     assert.equal(request.replies[0].status, "ok");
@@ -837,7 +985,6 @@ test("library inventory paginates before exact match and list emits bounded safe
         "/library/sections/16/all"
     );
     h.page(episodes(h, 1, 1));
-    h.reply(episodes(h, 1, 1));
     assert.equal(request.replies[0].data.queue.state, "ready");
     assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
     const list = h.library("list");
@@ -874,7 +1021,6 @@ test("library labels remain nonblank after sanitization before list or play", ()
         request = h.library("play", { library_id: "16" });
     libraryInventory(h, [section("16", " ".repeat(160) + "A")]);
     h.page(episodes(h, 1, 1));
-    h.reply(episodes(h, 1, 1));
     h.resolve("1");
     assert.equal(request.replies[0].data.library.title, "A");
 });
@@ -887,8 +1033,7 @@ test("library supports the 500-item boundary without partial publication", () =>
     h.page(episodes(h, 201, 200), 200, 500);
     h.tickPage();
     h.page(episodes(h, 401, 100), 400, 500);
-    assert.equal(request.replies.length, 0);
-    h.reply(episodes(h, 1, 500));
+    assert.equal(h.requests.length, 0);
     assert.equal(request.replies[0].data.queue.ids.length, 500);
     assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
 });
@@ -1007,66 +1152,69 @@ test("library inventory refuses duplicates and overflow and unknown totals requi
     assert.equal(request.replies.length, 0);
     h.tickPage();
     h.page([], 1, null);
-    h.reply([h.item("1")]);
     assert.deepEqual(request.replies[0].data.queue.ids, ["1"]);
 });
 test("library pending owner is retired by stop, newer play, context changes and cancellation", () => {
-    for (const change of [
-        "stop",
-        "play",
-        "library",
-        "config",
-        "provider",
-        "generation",
-        "cancel",
-        "deadline",
-    ]) {
-        const h = setup(),
-            old = h.library("play", { library_id: "16" });
-        libraryInventory(h);
-        h.page(episodes(h, 1, 1), 0, 2);
-        h.tickPage();
-        const late = h.requests.shift();
-        let newer;
-        if (change === "stop") h.call("stop");
-        if (change === "play") newer = h.call("play", ["9"]);
-        if (change === "library")
-            newer = h.library("play", { library_id: "16" });
-        if (change === "config") h.c.stored.plexcfg += " ";
-        if (change === "provider")
-            h.c.__ottActiveProviderDriver = { id: "other" };
-        if (change === "generation")
-            h.c.__ottClassicPlayback.command({ type: "stop" });
-        if (change === "cancel") old.cancel();
-        if (change === "deadline")
-            [...h.timers.values()].find((timer) => timer.ms > 30000).fn();
-        late.success({
-            MediaContainer: {
-                Metadata: episodes(h, 2, 1),
-                offset: 1,
-                size: 1,
-                totalSize: 2,
-            },
-        });
-        assert.equal(
-            h.c.calls.filter((x) => x[0] === "play").length,
-            0,
-            change
-        );
-        if (change === "play") {
-            h.prepare(["9"]);
-            h.resolve("9");
-            assert.equal(newer.replies[0].status, "ok");
-        }
-        if (change === "library") {
+    for (const stage of ["collection", "resolve"])
+        for (const change of [
+            "stop",
+            "play",
+            "library",
+            "config",
+            "provider",
+            "generation",
+            "cancel",
+            "deadline",
+            "expired",
+        ]) {
+            const h = setup(),
+                old = h.library("play", { library_id: "16" });
             libraryInventory(h);
-            h.page(episodes(h, 9, 1));
-            h.reply(episodes(h, 9, 1));
-            h.resolve("9");
-            assert.equal(newer.replies[0].status, "ok");
+            if (stage === "collection") {
+                h.page(episodes(h, 1, 1), 0, 2);
+                h.tickPage();
+            } else h.page(episodes(h, 1, 2));
+            const late = h.requests.shift();
+            let newer;
+            if (change === "stop") h.call("stop");
+            if (change === "play") newer = h.call("play", ["9"]);
+            if (change === "library")
+                newer = h.library("play", { library_id: "16" });
+            if (change === "config") h.c.stored.plexcfg += " ";
+            if (change === "provider")
+                h.c.__ottActiveProviderDriver = { id: "other" };
+            if (change === "generation")
+                h.c.__ottClassicPlayback.command({ type: "stop" });
+            if (change === "cancel") old.cancel();
+            if (change === "deadline")
+                [...h.timers.values()].find((timer) => timer.ms > 30000).fn();
+            if (change === "expired") h.advance(35000);
+            late.success({
+                MediaContainer: {
+                    Metadata: episodes(h, stage === "collection" ? 2 : 1, 1),
+                    offset: 1,
+                    size: 1,
+                    totalSize: 2,
+                },
+            });
+            assert.equal(
+                h.c.calls.filter((x) => x[0] === "play").length,
+                0,
+                stage + "/" + change
+            );
+            if (change === "play") {
+                h.prepare(["9"]);
+                h.resolve("9");
+                assert.equal(newer.replies[0].status, "ok");
+            }
+            if (change === "library") {
+                libraryInventory(h);
+                h.page(episodes(h, 9, 1));
+                h.resolve("9");
+                assert.equal(newer.replies[0].status, "ok");
+            }
+            assert(old.replies.length <= 1, stage + "/" + change);
         }
-        assert(old.replies.length <= 1, change);
-    }
 });
 test("library reads cannot replace pending play and failed discovery preserves prior queue", () => {
     const h = setup(),
@@ -1081,7 +1229,6 @@ test("library reads cannot replace pending play and failed discovery preserves p
     );
     libraryInventory(h);
     h.page(episodes(h, 1, 2));
-    h.reply(episodes(h, 1, 2));
     h.resolve("1");
     assert.equal(request.replies[0].status, "ok");
     const old = h.c.__ottMedia.current(),
@@ -1124,7 +1271,6 @@ test("invalid library selectors preserve an existing lazy queue or library owner
         if (library) {
             libraryInventory(h);
             h.page(episodes(h, 9, 1));
-            h.reply(episodes(h, 9, 1));
         } else h.prepare(["9"]);
         h.resolve("9");
         assert.equal(pending.replies[0].status, "ok");

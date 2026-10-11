@@ -432,106 +432,94 @@ function createRemotePlexQueue(
                     finish("Plex provider module could not be loaded.");
                     return;
                 }
-                function prepare(): void {
+                function prepare(records: any[]): void {
                     if (!current()) return;
-                    client.queue(ids, function (records: any[]) {
-                        if (!current()) return;
-                        if (!records || records.length !== ids.length) {
-                            finish(
-                                "One or more Plex items are unavailable or not playable."
-                            );
-                            return;
-                        }
-                        owned.records = records;
-                        if (op !== "preview" && !allowed()) {
-                            finish(
-                                "Unlock parental access before starting the Plex queue."
-                            );
-                            return;
-                        }
-                        if (op === "preview") {
-                            finish(undefined, {
-                                ids: ids.slice(),
-                                order: "listed",
-                                runtime: runtime,
-                                state: "ready",
-                                titles: records.map(function (record) {
-                                    return title(record.title);
-                                }),
-                                version: 1,
-                            });
-                            return;
-                        }
-                        client.resolve(
-                            records[index],
-                            function (resolved: any) {
-                                if (!current()) return;
-                                if (!resolved) {
-                                    finish("Plex playback could not start.");
-                                    return;
-                                }
-                                var source = {
-                                    client: client,
-                                    read: function (key: string) {
-                                        return w.stbGetItem("plex" + key);
-                                    },
-                                    sourceId: sourceId,
-                                    title: "Plex",
-                                    write: function (
-                                        key: string,
-                                        value: string
-                                    ) {
-                                        w.stbSetItem("plex" + key, value);
-                                    },
-                                };
-                                committed = true;
-                                queue = owned;
-                                owned.source = source;
-                                try {
-                                    handoff = w.__ottMedia.beginSource(source);
-                                    if (!current()) return;
-                                    w.__ottMedia.playOrderedQueue(
-                                        records,
-                                        index,
-                                        owned.id,
-                                        resolved,
-                                        valid,
-                                        function () {
-                                            if (!handoff || !handoff.commit()) {
-                                                finish(
-                                                    "Player context changed before Plex playback."
-                                                );
-                                                return;
-                                            }
-                                            handoff = null;
-                                            w.clearTimeout(w.previewTimer);
-                                            w.previewChan = null;
-                                            if (
-                                                typeof w.closeList ===
-                                                "function"
-                                            )
-                                                w.closeList(false);
-                                            if (
-                                                prior &&
-                                                prior.source &&
-                                                prior.source.client !== client
-                                            )
-                                                prior.source.client.dispose();
-                                            finish();
-                                        },
-                                        function () {
-                                            if (queue !== owned) return;
-                                            owned.state = "error";
-                                            owned.error =
-                                                "Plex playback could not start.";
-                                            if (!completed) finish(owned.error);
-                                        }
-                                    );
-                                } catch (_) {
-                                    finish("Plex playback could not start.");
-                                }
-                            }
+                    if (!records || records.length !== ids.length) {
+                        finish(
+                            "One or more Plex items are unavailable or not playable."
                         );
+                        return;
+                    }
+                    owned.records = records;
+                    if (op !== "preview" && !allowed()) {
+                        finish(
+                            "Unlock parental access before starting the Plex queue."
+                        );
+                        return;
+                    }
+                    if (op === "preview") {
+                        finish(undefined, {
+                            ids: ids.slice(),
+                            order: "listed",
+                            runtime: runtime,
+                            state: "ready",
+                            titles: records.map(function (record) {
+                                return title(record.title);
+                            }),
+                            version: 1,
+                        });
+                        return;
+                    }
+                    client.resolve(records[index], function (resolved: any) {
+                        if (!current()) return;
+                        if (!resolved) {
+                            finish("Plex playback could not start.");
+                            return;
+                        }
+                        var source = {
+                            client: client,
+                            read: function (key: string) {
+                                return w.stbGetItem("plex" + key);
+                            },
+                            sourceId: sourceId,
+                            title: "Plex",
+                            write: function (key: string, value: string) {
+                                w.stbSetItem("plex" + key, value);
+                            },
+                        };
+                        committed = true;
+                        queue = owned;
+                        owned.source = source;
+                        try {
+                            handoff = w.__ottMedia.beginSource(source);
+                            if (!current()) return;
+                            w.__ottMedia.playOrderedQueue(
+                                records,
+                                index,
+                                owned.id,
+                                resolved,
+                                valid,
+                                function () {
+                                    if (!handoff || !handoff.commit()) {
+                                        finish(
+                                            "Player context changed before Plex playback."
+                                        );
+                                        return;
+                                    }
+                                    handoff = null;
+                                    w.clearTimeout(w.previewTimer);
+                                    w.previewChan = null;
+                                    if (typeof w.closeList === "function")
+                                        w.closeList(false);
+                                    if (
+                                        prior &&
+                                        prior.source &&
+                                        prior.source.client !== client
+                                    )
+                                        prior.source.client.dispose();
+                                    finish();
+                                },
+                                function () {
+                                    if (queue !== owned) return;
+                                    owned.state = "error";
+                                    owned.error =
+                                        "Plex playback could not start.";
+                                    if (!completed) finish(owned.error);
+                                }
+                            );
+                        } catch (_) {
+                            finish("Plex playback could not start.");
+                        }
                     });
                 }
                 client.connect(function (error: any) {
@@ -543,7 +531,7 @@ function createRemotePlexQueue(
                         return;
                     }
                     if (!libraryRequest) {
-                        prepare();
+                        client.queue(ids, prepare);
                         return;
                     }
                     function normalized(value: string): string {
@@ -625,34 +613,33 @@ function createRemotePlexQueue(
                                         finish(collection.error);
                                         return;
                                     }
-                                    ids = collection.items.map(function (
-                                        row: any
-                                    ) {
-                                        return row.request.path.slice(
-                                            "/library/metadata/".length
-                                        );
-                                    });
-                                    if (!ids.length) {
+                                    var records = collection.items.slice();
+                                    if (!records.length) {
                                         finish("Plex queue is empty.");
                                         return;
                                     }
                                     if (params.shuffle === true) {
                                         for (
-                                            var at = ids.length - 1;
+                                            var at = records.length - 1;
                                             at > 0;
                                             at--
                                         ) {
                                             var random = Math.floor(
                                                 Math.random() * (at + 1)
                                             );
-                                            var previous = ids[at];
-                                            ids[at] = ids[random];
-                                            ids[random] = previous;
+                                            var previous = records[at];
+                                            records[at] = records[random];
+                                            records[random] = previous;
                                         }
                                     }
+                                    ids = records.map(function (row: any) {
+                                        return row.request.path.slice(
+                                            "/library/metadata/".length
+                                        );
+                                    });
                                     owned.ids = ids.slice();
                                     if (!readOnly) operation.owned = owned;
-                                    prepare();
+                                    prepare(records);
                                 },
                                 current,
                                 deadline
