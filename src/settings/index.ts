@@ -10,7 +10,7 @@ import { languageNames } from "../localization/assets";
  * persisted on change (see `saveSettings`). The `PlayerSettings` interface
  * defines every tunable parameter exposed to the user via the settings UI.
  */
-import { stbGetPersistedItem, storage } from "../storage/index";
+import { storage } from "../storage/index";
 import {
     createSettingsStore,
     type SettingDefinition,
@@ -334,7 +334,7 @@ function defineSetting(
               ? function (value) {
                     return String(value - 1);
                 }
-              : undefined,
+              : rules.encode,
         id: id,
         key: key,
         scope: scope,
@@ -443,7 +443,16 @@ export const settingsSchema: SettingDefinition[] = [
     defineSetting("yFun", "sYfun", { range: [0, 64] }),
     defineSetting("bFun", "sBfun", { range: [0, 64] }),
     defineSetting("alFun", "sALfun", { range: [0, 64] }),
-    defineSetting("arFun", "sARfun", { range: [0, 64] }),
+    defineSetting("arFun", "sARfun", {
+        // A signed integer keeps an explicit LG volume choice distinguishable
+        // from the old default in the same atomic, legacy-readable value.
+        encode: function (value) {
+            return value === 13 && defaultSettings().arFun === 4
+                ? "+13"
+                : String(value);
+        },
+        range: [0, 64],
+    }),
     defineSetting("auFun", "sAUfun", { range: [0, 64] }),
     defineSetting("adFun", "sADfun", { range: [0, 64] }),
     defineSetting("rwFun", "sRWfun", { range: [0, 64] }),
@@ -769,26 +778,17 @@ export function loadSettings(): PlayerSettings {
         entry.defaultValue = (defaults as any)[entry.id];
     });
     settingsStore.reload();
-    // Older LG profiles inherited PC's Right = volume-up default. Upgrade once,
-    // then preserve any assignment explicitly chosen after the upgrade.
-    if (defaults.arFun === 4 && !storage.get("sLgRightInfoMigrated")) {
-        var repairRight = settings.arFun === 13;
-        if (repairRight) {
-            settings.arFun = 4;
-            try {
-                storage.setI("sARfun", 4);
-            } catch (_error) {}
-        }
-        // A memory-only fallback must not mark a failed durable repair complete.
-        var savedRight = storage.get("sARfun");
-        if (
-            (!repairRight || savedRight === "4") &&
-            stbGetPersistedItem("sARfun") === savedRight
-        ) {
-            try {
-                storage.set("sLgRightInfoMigrated", "1");
-            } catch (_error) {}
-        }
+    // Older LG profiles inherited PC's Right = volume-up default. Explicit
+    // choices now carry their provenance in the same stored integer.
+    if (
+        defaults.arFun === 4 &&
+        settings.arFun === 13 &&
+        storage.get("sARfun") !== "+13"
+    ) {
+        settings.arFun = 4;
+        try {
+            storage.setI("sARfun", 4);
+        } catch (_error) {}
     }
     var w = window as any;
     var nativeEditor =

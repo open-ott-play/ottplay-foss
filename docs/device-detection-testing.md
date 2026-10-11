@@ -185,9 +185,11 @@ webOS defaults Back to action 1 (confirm exit); NetCast and other profiles
 retain Back action 0. Other profiles retain Right action 13 (volume up).
 On the first LG startup after the Right-key upgrade, a stored Right action 13
 (volume up) is changed to action 4 (Info). Other assignments are preserved.
-The upgrade is marked complete only after a changed binding is persisted;
-failed writes still use Info for that session and retry on the next startup.
-After the upgrade, explicit assignments, including volume, survive reload.
+New explicit volume assignments use the signed integer `+13` in the same
+`sARfun` key; existing integer readers still read action 13. This distinguishes
+a new choice from the old default without a separately persisted marker.
+Failed upgrade writes still use Info for that session and retry on the next
+startup. Explicit assignments survive reload and settings transaction rollback.
 Other profiles retain Left action 14 (volume down) and Right action 13.
 Assignments can be changed in **Settings > Button settings**. The guide remains
 available from Menu. Fullscreen Plex Left/Right retain ten-second seeking, and

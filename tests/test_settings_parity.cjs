@@ -174,7 +174,6 @@ function fixture(
         showShift() {},
         stbClearAllItems() {},
         stbGetAllItems() {},
-        stbGetPersistedItem: (key) => stored.get(key) ?? null,
         stbGetVolume() {},
         stbIsStandby() {
             return false;
@@ -673,6 +672,76 @@ console.log(
     "OK: LG Left defaults to Menu, other platforms retain volume and explicit mappings survive save/reset"
 );
 
+// A second metadata write must not decide whether an explicit choice survives.
+for (const useDraft of [false, true]) {
+    const { w, typed, stored } = fixture();
+    w.ott_device = "lg/webos";
+    stored.set("sARfun", "13");
+    const write = w.storage.set;
+    w.storage.set = (key, value) => {
+        if (key === "sLgRightInfoMigrated") return;
+        write(key, value);
+    };
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().arFun, 4);
+    assert.equal(stored.get("sARfun"), "4");
+    assert.equal(
+        vm.runInContext(
+            useDraft
+                ? "var choice = beginSettingsDraft(); choice.set('arFun', 13); choice.commit();"
+                : "saveSettings({ arFun: 13 });",
+            w
+        ),
+        true
+    );
+    vm.runInContext("loadSettings();", w);
+    assert.equal(
+        typed().arFun,
+        13,
+        "Explicit choice survives missing migration metadata"
+    );
+    assert.equal(stored.get("sARfun"), "+13");
+    assert.equal(
+        w.storage.getI("sARfun"),
+        13,
+        "Legacy integer readers remain compatible"
+    );
+}
+for (const initial of [4, 13]) {
+    const { w, typed, stored } = fixture();
+    w.ott_device = "lg/netcast";
+    vm.runInContext(
+        "loadSettings(); saveSettings({ arFun: " + initial + " });",
+        w
+    );
+    const before = stored.get("sARfun");
+    const write = w.storage.set;
+    w.storage.set = (key, value) => {
+        if (key === "sEfun") throw new Error("Rejected later field");
+        write(key, value);
+    };
+    assert.equal(
+        vm.runInContext(
+            "var choice = beginSettingsDraft(); choice.set('arFun', " +
+                (initial === 4 ? 13 : 4) +
+                "); choice.set('eFun', 2); choice.commit();",
+            w
+        ),
+        false
+    );
+    assert.equal(
+        stored.get("sARfun"),
+        before,
+        "Failed transaction restores exact choice bytes"
+    );
+    vm.runInContext("loadSettings();", w);
+    assert.equal(
+        typed().arFun,
+        initial,
+        "Rollback also preserves the interpretation after reload"
+    );
+}
+
 // Upgrade legacy LG volume defaults once; later explicit choices remain valid.
 for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
     for (const value of [13, 0, 1, 4, 10, 19]) {
@@ -684,10 +753,6 @@ for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
         assert.equal(typed().arFun, expected, device + ": migrated Right");
         assert.equal(w.sARfun, expected, "Legacy facade matches UI setting");
         assert.equal(stored.get("sARfun"), String(expected));
-        assert.equal(
-            stored.has("sLgRightInfoMigrated"),
-            !!device?.startsWith("lg/")
-        );
         vm.runInContext("loadSettings();", w);
         assert.equal(typed().arFun, expected, "Upgrade survives reload");
         vm.runInContext("saveSettings({ arFun: 13 }); loadSettings();", w);
@@ -714,24 +779,13 @@ for (const failure of ["throw", "memory-only"]) {
     vm.runInContext("loadSettings();", w);
     assert.equal(typed().arFun, 4, failure + ": Info works in this session");
     assert.equal(stored.get("sARfun"), "13", "Backing value was not changed");
-    assert.equal(
-        stored.has("sLgRightInfoMigrated"),
-        false,
-        "Failed upgrade is retryable"
-    );
     vm.runInContext("loadSettings();", w);
     assert.equal(typed().arFun, 4, "Same-page reload still uses Info");
-    assert.equal(
-        stored.has("sLgRightInfoMigrated"),
-        false,
-        "Same-page memory cache cannot mark the upgrade durable"
-    );
     w.storage.get = read;
     w.storage.setI = write;
     vm.runInContext("loadSettings();", w);
     assert.equal(typed().arFun, 4);
     assert.equal(stored.get("sARfun"), "4");
-    assert.equal(stored.get("sLgRightInfoMigrated"), "1");
 }
 console.log(
     "OK: legacy LG Right volume migrates to Info once and retries failed persistence"
@@ -772,7 +826,12 @@ for (const device of ["lg/webos", "lg/netcast", "pc", undefined]) {
             assert.equal(stored.get(legacy), invalid, "No preference rewrite");
         }
         for (const value of explicit) {
-            stored.set(legacy, String(value));
+            stored.set(
+                legacy,
+                field === "arFun" && platformDefault && value === 13
+                    ? "+13"
+                    : String(value)
+            );
             vm.runInContext(
                 "loadSettings(); saveSettings(settings); loadSettings();",
                 w

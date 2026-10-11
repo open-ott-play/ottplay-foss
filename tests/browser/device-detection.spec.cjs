@@ -883,6 +883,16 @@ test.describe("webOS fullscreen remote navigation", () => {
             baseURL,
         }) => {
             await context.addInitScript(() => {
+                // Saving the preference must not depend on a second marker write.
+                const setItem = Storage.prototype.setItem;
+                Storage.prototype.setItem = function (key, value) {
+                    if (this === localStorage && key === "sLgRightInfoMigrated")
+                        throw new DOMException(
+                            "Marker unavailable",
+                            "QuotaExceededError"
+                        );
+                    return setItem.call(this, key, value);
+                };
                 // Seed only the legacy installation; real reloads must retain
                 // the migration result and the user's later saved preference.
                 if (localStorage.getItem("sARfun") === null)
@@ -898,13 +908,11 @@ test.describe("webOS fullscreen remote navigation", () => {
             const mapping = () =>
                 page.evaluate(() => ({
                     legacy: window.sARfun,
-                    migrated: localStorage.getItem("sLgRightInfoMigrated"),
                     right: window.settings.arFun,
                     stored: localStorage.getItem("sARfun"),
                 }));
             const migrated = {
                 legacy: 4,
-                migrated: "1",
                 right: 4,
                 stored: "4",
             };
@@ -941,7 +949,12 @@ test.describe("webOS fullscreen remote navigation", () => {
             expect(await page.evaluate(() => saveSettings({ arFun: 13 }))).toBe(
                 true
             );
-            const chosen = { ...migrated, legacy: 13, right: 13, stored: "13" };
+            const chosen = {
+                ...migrated,
+                legacy: 13,
+                right: 13,
+                stored: "+13",
+            };
             expect(await mapping()).toEqual(chosen);
             await page.reload({ waitUntil: "load" });
             await expect(page.locator("#listCaption")).toHaveText(
