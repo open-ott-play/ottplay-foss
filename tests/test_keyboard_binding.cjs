@@ -249,6 +249,51 @@ for (const testCase of cases) {
                 );
                 return delivered.slice(before);
             }
+            for (const [code, key, shifted, legacy, standard, action] of [
+                ["Equal", "=", "+", 61, 187, "CH_UP"],
+                ["Minus", "-", "_", 173, 189, "CH_DOWN"],
+            ]) {
+                for (const fields of [
+                    { code, key, keyCode: legacy },
+                    { key, which: legacy },
+                    { code, key: "Unidentified", keyCode: legacy },
+                    { code, key: shifted, keyCode: legacy, shiftKey: true },
+                    { code, key, keyCode: standard },
+                    { code, key, keyCode: 0 },
+                ])
+                    assert.deepEqual(
+                        send(fields),
+                        [w.keys[action]],
+                        testCase.name + "/" + device + " keyboard " + action
+                    );
+                assert.deepEqual(
+                    send(
+                        { code, key, keyCode: legacy },
+                        w.document.querySelector("input")
+                    ),
+                    [],
+                    "Channel shortcuts preserve punctuation in text inputs"
+                );
+                assert.equal(
+                    w.stbEventToKeyCode({ keyCode: legacy }),
+                    legacy,
+                    "Bare remote code retains its platform meaning"
+                );
+            }
+            assert.equal(
+                w.stbEventToKeyCode({ key: "AudioVolumeMute", keyCode: 173 }),
+                173,
+                "Mute is not channel down"
+            );
+            assert.equal(
+                w.stbEventToKeyCode({
+                    code: "Equal",
+                    key: "=",
+                    keyCode: w.keys.INFO,
+                }),
+                w.keys.INFO,
+                "A declared remote code still wins over a punctuation label"
+            );
             for (let digit = 0; digit <= 9; digit++) {
                 for (const event of [
                     { key: String(digit), keyCode: 0 },

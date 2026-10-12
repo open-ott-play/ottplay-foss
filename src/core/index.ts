@@ -840,6 +840,18 @@ export function stbEventToKeyCode(event: any): number {
     var code = event.code || "";
     var digit = /^[0-9]$/.test(key) ? Number(key) : -1;
     var deviceKeys = (window as any).keys || {};
+    // Firefox uses 61/173 for these keyboard keys. Require keyboard identity:
+    // bare 173 is also a remote-control mute code on some platforms.
+    if (
+        (!keyCode || keyCode === 61 || keyCode === 187) &&
+        (code === "Equal" || key === "=" || key === "+")
+    )
+        keyCode = deviceKeys.CH_UP || 187;
+    else if (
+        (!keyCode || keyCode === 173 || keyCode === 189) &&
+        (code === "Minus" || key === "-" || key === "_")
+    )
+        keyCode = deviceKeys.CH_DOWN || 189;
     // NumLock/Shift can report a navigation legacy code with a numeric DOM key.
     if (digit >= 0 && (/^Numpad[0-9]$/.test(code) || event.location === 3))
         keyCode = deviceKeys["N" + digit] || 48 + digit;
