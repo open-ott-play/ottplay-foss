@@ -193,6 +193,14 @@ function createRemotePlexQueue(
             done({ data: state(), status: "ok" });
             return;
         }
+        if (
+            !readOnly &&
+            typeof w.stbIsStandby === "function" &&
+            w.stbIsStandby()
+        ) {
+            reject("Wake the player before starting Plex playback.");
+            return;
+        }
         if (!readOnly && w.commandChannelsReady !== true) {
             reject("Plex playback is unavailable on this player.");
             return;
@@ -301,6 +309,10 @@ function createRemotePlexQueue(
                 w.p_pref === provider &&
                 (readOnly ||
                     (w.commandChannelsReady === true &&
+                        !(
+                            typeof w.stbIsStandby === "function" &&
+                            w.stbIsStandby()
+                        ) &&
                         !(w.__ottKiosk && w.__ottKiosk.enabled()) &&
                         allowed())) &&
                 (committed || w.__ottMedia.sourceId() === mediaSource) &&

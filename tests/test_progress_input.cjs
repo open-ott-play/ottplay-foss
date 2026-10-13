@@ -296,7 +296,10 @@ function startupFunctions(file, names) {
 }
 const restartCode =
     startupFunctions("src/index.ts", ["startPlayer"]) +
-    startupFunctions("src/core/index.ts", ["stbToggleStandby"]);
+    startupFunctions("src/core/index.ts", [
+        "stbSetStandby",
+        "stbToggleStandby",
+    ]);
 for (const jqueryFile of [
     "js/jquery-1.11.1.min.js",
     "node_modules/jquery/dist/jquery.min.js",

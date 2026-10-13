@@ -1075,14 +1075,21 @@ export function executeRemoteControl(
     }
     var standby = operation === "standby" || operation === "wake";
     var method = remoteLifecycleMethods[operation];
-    var effect = standby ? w.stbToggleStandby : hooks[method];
+    var setStandby =
+        standby && typeof w.stbSetStandby === "function"
+            ? w.stbSetStandby
+            : null;
+    var effect = standby ? setStandby || w.stbToggleStandby : hooks[method];
     var readStandby = w.stbIsStandby;
     afterReply(function () {
         if (remoteSettingsLocked(w) || remoteKiosk(w)) return;
         if (standby) {
-            if (
+            if (w.stbIsStandby !== readStandby) return;
+            if (setStandby) {
+                if (w.stbSetStandby === effect)
+                    effect.call(w, operation === "standby");
+            } else if (
                 w.stbToggleStandby === effect &&
-                w.stbIsStandby === readStandby &&
                 !!readStandby() !== (operation === "standby")
             )
                 effect.call(w);

@@ -50,6 +50,11 @@ function media() {
             time = value;
         },
         listeners,
+        load() {
+            this.loadCalls++;
+            this.selectedResource = src;
+        },
+        loadCalls: 0,
         metadata() {
             this.readyState = 1;
             for (const cb of [...(listeners.loadedmetadata || [])]) cb();
@@ -65,7 +70,7 @@ function media() {
         playCalls: 0,
         readyState: 0,
         removeAttribute(name) {
-            if (name === "src") this.src = "";
+            if (name === "src") src = "";
         },
         removeEventListener(name, cb) {
             listeners[name] = (listeners[name] || []).filter((x) => x !== cb);
@@ -75,6 +80,7 @@ function media() {
         },
         set src(value) {
             src = value;
+            this.selectedResource = value;
             time = 0;
             this.readyState = 0;
         },
@@ -195,6 +201,128 @@ const cases = [];
 function test(name, fn) {
     cases.push([name, fn]);
 }
+test("standby cancels preview and Plex work and releases both media lanes", () => {
+    for (const mode of [0, 1]) {
+        const { w, players } = fixture();
+        const cleared = [];
+        w.clearTimeout = (timer) => cleared.push(timer);
+        w.document.getElementById = () => null;
+        w.playerMode = mode;
+        w.stbPlay("main.m3u8");
+        w.stbPlayPip("pip.m3u8");
+        const main = w.__ottCoreBackend().current();
+        const pip = w.__ottCoreBackend().current("pip");
+        const timer = {};
+        w.previewTimer = timer;
+        w.previewChan = { ch_id: "preview" };
+        w.pipIndex = 3;
+        let restored = 0;
+        w.closeList = (restorePip = true) => {
+            if (restorePip || w.previewChan || w.pipIndex !== null) restored++;
+        };
+        let cancelled = 0;
+        w.__ottPlexQueue = {
+            stop() {
+                assert.equal(w.stbIsStandby(), true);
+                cancelled++;
+            },
+        };
+        w.stbToggleStandby();
+        assert.equal(w.stbIsStandby(), true);
+        assert.equal(cancelled, 1);
+        assert.equal(
+            restored,
+            0,
+            "closing the overlay cannot restart a stream"
+        );
+        assert.ok(cleared.includes(timer), "preview timer is retired");
+        assert.equal(main.active(), false);
+        assert.equal(pip.active(), false);
+        for (const video of [w.video, w.videoPip]) {
+            assert.equal(video.paused, true);
+            assert.equal(video.src, "");
+            assert.equal(video.selectedResource, "");
+            assert.ok(
+                video.loadCalls > 0,
+                "native resource selection is reset"
+            );
+        }
+        for (const player of players) {
+            assert.equal(player.destroyCalls, 1);
+            player.events.manifest();
+        }
+        assert.equal(
+            w.video.paused,
+            true,
+            "late HLS callbacks cannot resume main"
+        );
+        assert.equal(
+            w.videoPip.paused,
+            true,
+            "late HLS callbacks cannot resume PiP"
+        );
+        let starts = 0;
+        w.startPlayer = () => starts++;
+        w.stbToggleStandby();
+        assert.equal(starts, 1);
+        assert.equal(w.stbIsStandby(), false);
+    }
+});
+test("standby teardown continues after an overlay, queue or native cleanup failure", () => {
+    for (const failure of [
+        "overlay",
+        "queue",
+        "main-load",
+        "pip-load",
+        "device",
+    ]) {
+        const { w } = fixture();
+        w.document.getElementById = () => null;
+        w.playerMode = 0;
+        w.stbPlay("main.mp4");
+        w.stbPlayPip("pip.mp4");
+        const fail = () => {
+            throw new Error("Synthetic cleanup failure");
+        };
+        if (failure === "overlay") w.closeList = fail;
+        if (failure === "queue") w.__ottPlexQueue = { stop: fail };
+        if (failure === "main-load") w.video.load = fail;
+        if (failure === "pip-load") w.videoPip.load = fail;
+        if (failure === "device")
+            w.__ottCoreTransport.configure({ standby: fail });
+        assert.doesNotThrow(() => w.stbToggleStandby(), failure);
+        assert.equal(w.stbIsStandby(), true, failure);
+        for (const video of [w.video, w.videoPip]) {
+            assert.equal(video.paused, true, failure);
+            assert.equal(video.src, "", failure);
+        }
+        assert.equal(w.__ottCoreBackend().current(), null, failure);
+        assert.equal(w.__ottCoreBackend().current("pip"), null, failure);
+    }
+});
+test("setting standby again stops explicitly restarted media without waking", () => {
+    const { w } = fixture();
+    w.document.getElementById = () => null;
+    w.playerMode = 0;
+    let starts = 0;
+    w.startPlayer = () => starts++;
+    w.stbSetStandby(true);
+    w.stbPlay("explicit-main.mp4");
+    w.stbPlayPip("explicit-pip.mp4");
+    assert.equal(w.stbIsStandby(), true);
+    assert.equal(w.video.paused, false);
+    assert.equal(w.videoPip.paused, false);
+    w.stbSetStandby(true);
+    assert.equal(starts, 0);
+    assert.equal(w.stbIsStandby(), true);
+    assert.equal(w.__ottCoreBackend().current(), null);
+    assert.equal(w.__ottCoreBackend().current("pip"), null);
+    assert.equal(w.video.selectedResource, "");
+    assert.equal(w.videoPip.selectedResource, "");
+    w.stbSetStandby(false);
+    w.stbSetStandby(false);
+    assert.equal(starts, 1, "repeated wake does not start the player twice");
+});
 test("HLS same-track restoration and unavailable native track APIs", () => {
     const { w, boxes } = fixture();
     w.playerMode = 1;

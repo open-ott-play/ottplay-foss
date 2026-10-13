@@ -328,6 +328,37 @@ for (const operation of ["exit_app", "restart_app", "standby", "wake"]) {
         );
     }
 }
+for (const changed of ["none", "lock", "kiosk", "replace"]) {
+    const f = fixture();
+    f.w.stbSetStandby = (value) => f.effects.push(["set-standby", value]);
+    const pending = f.run("lifecycle", { operation: "standby" });
+    assert.equal(
+        f.effects.length,
+        0,
+        "standby setter waits for acknowledgement"
+    );
+    if (changed === "lock") f.lock(true);
+    if (changed === "kiosk") f.kiosk(true);
+    if (changed === "replace")
+        f.w.stbSetStandby = () => f.effects.push("replacement");
+    pending.effect();
+    assert.deepEqual(
+        f.effects,
+        changed === "none" ? [["set-standby", true]] : []
+    );
+    if (changed === "none") {
+        f.w.stbIsStandby = () => true;
+        f.run("lifecycle", { operation: "standby" }).effect();
+        assert.deepEqual(
+            f.effects,
+            [
+                ["set-standby", true],
+                ["set-standby", true],
+            ],
+            "repeated Stop reasserts teardown even when the standby flag is already set"
+        );
+    }
+}
 {
     const f = fixture();
     f.run("lifecycle", { operation: "standby" }).effect();

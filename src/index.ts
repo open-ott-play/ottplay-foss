@@ -224,6 +224,7 @@ import {
     stbResume,
     stbSetBuffer,
     stbSetPosTime,
+    stbSetStandby,
     stbSetVolume,
     stbSetWindow,
     stbStop,
@@ -5682,6 +5683,7 @@ window.previewChan = previewChan;
 window.playerModeNames = playerModeNames;
 window.setPlayerMode = setPlayerMode;
 window.stbIsStandby = stbIsStandby;
+window.stbSetStandby = stbSetStandby;
 window.bufferSizes = bufferSizes;
 window.colorDialog = colorDialog;
 window.selColorDialog = selColorDialog;

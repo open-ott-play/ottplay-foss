@@ -67,6 +67,14 @@ export function remotePlexQueue(w: any, runtime: string): any {
         if (failure) view.error = failure;
         return view;
     }
+    function stop(): void {
+        var stopping = ++serial;
+        if (loading) loading();
+        if (stopping !== serial) return;
+        ids = [];
+        failure = "";
+        if (controller) controller.stop();
+    }
     function execute(request: any, done: (value: any) => void): any {
         var params = request.params || {};
         var op = params.op;
@@ -111,12 +119,16 @@ export function remotePlexQueue(w: any, runtime: string): any {
             return;
         }
         if (op === "stop") {
-            var stopping = ++serial;
-            if (loading) loading();
-            if (stopping !== serial) return;
-            ids = [];
-            failure = "";
+            stop();
             done({ data: snapshot(), status: "ok" });
+            return;
+        }
+        if (
+            !readOnly &&
+            typeof w.stbIsStandby === "function" &&
+            w.stbIsStandby()
+        ) {
+            reject("Wake the player before starting Plex playback.");
             return;
         }
         if (!readOnly && w.commandChannelsReady !== true) {
@@ -187,6 +199,9 @@ export function remotePlexQueue(w: any, runtime: string): any {
             if (
                 provider !== w.__ottActiveProviderDriver ||
                 config !== w.stbGetItem("plexcfg") ||
+                (!readOnly &&
+                    typeof w.stbIsStandby === "function" &&
+                    w.stbIsStandby()) ||
                 (playback && playback.snapshot().generation !== generation) ||
                 (typeof request.expires_at === "number" &&
                     Date.now() >= request.expires_at * 1000)
@@ -241,6 +256,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
                 : !!loading && !!ids.length;
         },
         snapshot: snapshot,
+        stop: stop,
     };
     w.__ottPlexQueue = api;
     if (w.addEventListener)

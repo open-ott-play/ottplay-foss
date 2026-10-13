@@ -1,6 +1,7 @@
 // Production bundle/dispatcher, real owned playback and real Chromium CSS.
 // Synthetic local media only; no capture permission, device or controller.
 const fs = require("node:fs");
+const http = require("node:http");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
 const { test, expect } = require("@playwright/test");
@@ -12,7 +13,7 @@ test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
 
-async function fixture(page, context, baseURL) {
+async function fixture(page, context, baseURL, media = {}) {
     const origin = new URL(baseURL).origin;
     const errors = [];
     const requests = [];
@@ -27,6 +28,7 @@ async function fixture(page, context, baseURL) {
     );
     await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
+        if (url.origin === media.origin) return route.continue();
         if (url.origin !== origin) return route.abort("blockedbyclient");
         if (url.pathname.endsWith("/build-info.json"))
             return route.fulfill({ json: manifest });
@@ -36,9 +38,8 @@ async function fixture(page, context, baseURL) {
                     '#EXTM3U\n#EXTINF:-1 group-title="Doctor fixture",' +
                     SECRET +
                     "\n" +
-                    origin +
-                    "/doctor-fixture/index.m3u8?token=" +
-                    SECRET +
+                    (media.url ||
+                        origin + "/doctor-fixture/index.m3u8?token=" + SECRET) +
                     "\n",
                 contentType: "text/plain",
             });
@@ -59,21 +60,27 @@ async function fixture(page, context, baseURL) {
         return route.continue();
     });
     await context.routeWebSocket("**/*", (socket) => socket.close());
-    await context.addInitScript((playlist) => {
-        localStorage.setItem("ottplaylang", "_eng");
-        localStorage.setItem("ottplayprov", "m3u");
-        localStorage.setItem("m3usPlayers", "1");
-        localStorage.setItem(
-            "m3um3uArr",
-            JSON.stringify({ active: 0, M3Us: [{ www: playlist }] })
-        );
-        const play = HTMLMediaElement.prototype.play;
-        HTMLMediaElement.prototype.play = function () {
-            this.muted = true;
-            this.loop = true;
-            return play.call(this);
-        };
-    }, origin + "/doctor-fixture/channels.m3u");
+    await context.addInitScript(
+        ({ playlist, playerMode }) => {
+            localStorage.setItem("ottplaylang", "_eng");
+            localStorage.setItem("ottplayprov", "m3u");
+            localStorage.setItem("m3usPlayers", playerMode);
+            localStorage.setItem(
+                "m3um3uArr",
+                JSON.stringify({ active: 0, M3Us: [{ www: playlist }] })
+            );
+            const play = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () {
+                this.muted = true;
+                this.loop = true;
+                return play.call(this);
+            };
+        },
+        {
+            playerMode: media.playerMode || "1",
+            playlist: origin + "/doctor-fixture/channels.m3u",
+        }
+    );
     const response = page.waitForResponse(
         (value) => new URL(value.url()).pathname === "/dist/player.js"
     );
@@ -98,6 +105,207 @@ async function fixture(page, context, baseURL) {
         );
     });
     return { artifact: artifact.toString("utf8"), errors, manifest, requests };
+}
+
+// A real HTTP response stays open while Chromium consumes media. A fulfilled
+// Playwright route cannot demonstrate that stop aborts an in-flight download.
+async function streamingMedia(kind) {
+    const lanes = {
+        main: { active: 0, bytes: 0, requests: 0 },
+        pip: { active: 0, bytes: 0, requests: 0 },
+    };
+    const responses = new Set();
+    const segment = fs.readFileSync(path.join(mediaRoot, "segment00.ts"));
+    const header = Buffer.alloc(44);
+    // Ten minutes of synthetic 48 kHz mono PCM, delivered at playback speed.
+    // This exercises the native HTML media loader without external codecs.
+    const pcmSize = 48000 * 2 * 600;
+    header.write("RIFF", 0);
+    header.writeUInt32LE(36 + pcmSize, 4);
+    header.write("WAVEfmt ", 8);
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
+    header.writeUInt16LE(1, 22);
+    header.writeUInt32LE(48000, 24);
+    header.writeUInt32LE(96000, 28);
+    header.writeUInt16LE(2, 32);
+    header.writeUInt16LE(16, 34);
+    header.write("data", 36);
+    header.writeUInt32LE(pcmSize, 40);
+    const silence = Buffer.alloc(3840);
+    const server = http.createServer((request, response) => {
+        const pathname = new URL(request.url, "http://localhost").pathname;
+        const lane = lanes[pathname.split("/")[1]];
+        if (!lane) return response.writeHead(404).end();
+        lane.requests++;
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Cache-Control", "no-store");
+        if (pathname.endsWith(".m3u8")) {
+            // Reuse the checked-in segment on distinct discontinuity periods.
+            // More than a buffer's worth of data keeps requests in flight.
+            const playlist =
+                "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n" +
+                "#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
+                Array.from(
+                    { length: 80 },
+                    (_, index) =>
+                        (index ? "#EXT-X-DISCONTINUITY\n" : "") +
+                        "#EXTINF:2,\nsegment" +
+                        index +
+                        ".ts\n"
+                ).join("") +
+                "#EXT-X-ENDLIST\n";
+            response.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+            lane.bytes += Buffer.byteLength(playlist);
+            return response.end(playlist);
+        }
+        const native = pathname.endsWith(".wav");
+        response.setHeader("Content-Type", native ? "audio/wav" : "video/mp2t");
+        if (native)
+            response.setHeader("Content-Length", header.length + pcmSize);
+        lane.active++;
+        responses.add(response);
+        function write(bytes) {
+            lane.bytes += bytes.length;
+            response.write(bytes);
+        }
+        if (native) {
+            write(header);
+            write(Buffer.alloc(38400));
+        }
+        let position = 0;
+        const chunkSize = Math.ceil(segment.length / 25);
+        const timer = setInterval(() => {
+            if (native) write(silence);
+            else {
+                write(segment.subarray(position, position + chunkSize));
+                position += chunkSize;
+                if (position >= segment.length) response.end();
+            }
+        }, 40);
+        response.on("close", () => {
+            clearInterval(timer);
+            responses.delete(response);
+            lane.active--;
+        });
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = "http://127.0.0.1:" + server.address().port;
+    const filename = kind === "native" ? "stream.wav" : "index.m3u8";
+    return {
+        async close() {
+            for (const response of responses) response.destroy();
+            server.closeAllConnections();
+            await new Promise((resolve) => server.close(resolve));
+        },
+        lanes,
+        origin,
+        pipUrl: origin + "/pip/" + filename,
+        playerMode: kind === "native" ? "0" : "1",
+        url: origin + "/main/" + filename,
+    };
+}
+
+async function standbyRequest(page) {
+    return page.evaluate(() => {
+        let reply;
+        let effect;
+        window.executeRemoteRequest(
+            { action: "lifecycle", params: { operation: "standby" } },
+            (value) => {
+                reply = value;
+            },
+            (callback) => {
+                effect = callback;
+            }
+        );
+        // The production dispatcher defers lifecycle changes until reply ACK.
+        if (reply?.status === "ok" && effect) effect();
+        return reply;
+    });
+}
+
+for (const kind of ["native", "hls"]) {
+    test(
+        "remote standby ends in-flight " +
+            kind +
+            " traffic on both media lanes",
+        async ({ page, context, baseURL }) => {
+            const media = await streamingMedia(kind);
+            try {
+                const observed = await fixture(page, context, baseURL, media);
+                for (const repeat of [false, true]) {
+                    await page.evaluate(
+                        ({ main, pip, repeat }) => {
+                            // Explicit playback can run while the standby flag is
+                            // still true. Repeating stop must retire this work too.
+                            if (repeat) window.stbPlay(main);
+                            window.stbPlayPip(pip);
+                        },
+                        { main: media.url, pip: media.pipUrl, repeat }
+                    );
+                    await page.waitForFunction(() => {
+                        return ["video", "videopip"].every((id) => {
+                            const video = document.getElementById(id);
+                            return video?.currentTime > 0.1 && !video.paused;
+                        });
+                    });
+                    for (const lane of Object.values(media.lanes)) {
+                        await expect.poll(() => lane.active).toBeGreaterThan(0);
+                        const before = lane.bytes;
+                        await expect
+                            .poll(() => lane.bytes)
+                            .toBeGreaterThan(before);
+                    }
+                    if (repeat)
+                        expect(
+                            await page.evaluate(() => window.stbIsStandby())
+                        ).toBe(true);
+                    expect(await standbyRequest(page)).toMatchObject({
+                        data: { accepted: true, operation: "standby" },
+                        status: "ok",
+                    });
+                    // Allow the browser's already queued writes to settle; the actual
+                    // server must see both transfers close, not just paused video.
+                    await expect
+                        .poll(
+                            () =>
+                                media.lanes.main.active +
+                                media.lanes.pip.active,
+                            { timeout: 2000 }
+                        )
+                        .toBe(0);
+                    const stopped = JSON.parse(JSON.stringify(media.lanes));
+                    await page.waitForTimeout(1200);
+                    expect(media.lanes).toEqual(stopped);
+                    const state = await page.evaluate(() => ({
+                        media: ["video", "videopip"].map((id) => {
+                            const video = document.getElementById(id);
+                            return {
+                                networkState: video.networkState,
+                                paused: video.paused,
+                                readyState: video.readyState,
+                                source: video.getAttribute("src"),
+                            };
+                        }),
+                        standby: window.stbIsStandby(),
+                    }));
+                    expect(state).toEqual({
+                        media: [0, 1].map(() => ({
+                            networkState: 0,
+                            paused: true,
+                            readyState: 0,
+                            source: null,
+                        })),
+                        standby: true,
+                    });
+                }
+                expect(observed.errors).toEqual([]);
+            } finally {
+                await media.close();
+            }
+        }
+    );
 }
 
 async function caps(page) {

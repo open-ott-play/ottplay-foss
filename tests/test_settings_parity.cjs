@@ -1599,6 +1599,7 @@ for (const profile of [
         compile(
             selectedSource("src/core/index.ts", [
                 "stbIsStandby",
+                "stbSetStandby",
                 "stbToggleStandby",
             ])
         ),

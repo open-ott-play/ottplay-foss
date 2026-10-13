@@ -282,6 +282,27 @@ the in-memory VPortal automatic queue is not restored across page reloads.
 An expired response or changed controller connection discards a pending reload.
 Neither command retries a mutation after an uncertain response.
 
+For an unattended player, use the CLI's `stop` / `start` aliases (or the
+equivalent `standby` / `wake` operations):
+
+```sh
+ott d1 restart stream  # Reconnect the current stream
+ott d1 restart        # Reload the player
+ott d1 stop           # Stop streams while keeping remote control connected
+ott d1 start          # Leave standby and run the configured startup flow
+```
+
+Standby releases the main and PiP streams, cancels preview and pending Plex
+playback, and prevents new Plex playback until the player wakes. Explicit
+channel or favorite commands can start media again; another `stop` tears down
+both streams again without waking the player. It is not a
+pause: waking starts the normal provider/profile startup flow and does not
+promise to resume the same VOD position or in-memory queue. Remote-control
+heartbeats and other background metadata requests can continue while streams
+are stopped. Kiosk and settings-lock restrictions still apply; the CLI reports
+an unavailable operation instead of bypassing them. The aliases require an
+updated CLI, and complete stream cleanup requires an updated player.
+
 If the backend supports restarting but has no current restartable stream, the
 request returns `rejected` with `reason: "no_restartable_stream"`. This can happen
 during startup or after playback ends; it does not mean the player lacks restart

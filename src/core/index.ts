@@ -1543,6 +1543,13 @@ function stopCoreEngine(): void {
         hlsInstance.destroy();
         hlsInstance = null;
     }
+    // Removing src alone can leave the selected native resource buffering.
+    // Reset it after detaching engines so Stop also aborts its network fetch.
+    try {
+        if (typeof video!.load === "function") video!.load();
+    } catch (_) {
+        console.warn("[Stop] Could not reset the main media resource.");
+    }
     clearPlayTimeInterval();
 }
 /**
@@ -2031,6 +2038,11 @@ function stopCorePipEngine(): void {
         hlsPipInstance = null;
     }
     videoPip!.removeAttribute("src");
+    try {
+        if (typeof videoPip!.load === "function") videoPip!.load();
+    } catch (_) {
+        console.warn("[Stop] Could not reset the PiP media resource.");
+    }
     $("#videopip").hide();
     $("#pip_buffering").hide();
 }
@@ -2559,20 +2571,47 @@ export function stbIsStandby(): boolean {
 }
 
 /**
- * Toggle standby mode (black screen + stopped playback).
+ * Set standby mode (black screen + stopped playback).
  *
  * When entering standby: stops video, closes all lists, sets background to black,
  * and shows a "STANDBY" message in #launch.
- * When exiting standby: restores background and calls startPlayer.
+ * Repeated standby tears down any explicitly restarted media without waking.
+ * When exiting standby: restores background and calls startPlayer once.
  *
  * Side effects: DOM mutations, video stop, global key handler may be affected.
  */
-export function stbToggleStandby(): void {
-    _standby = !_standby;
-    if (coreDeviceEffects.standby) coreDeviceEffects.standby(_standby);
+export function stbSetStandby(standby: boolean): void {
+    if (!standby && !_standby) return;
+    var w = window as any;
+    function attempt(effect: () => void): void {
+        try {
+            effect();
+        } catch (_) {
+            console.warn("[Standby] A cleanup step failed.");
+        }
+    }
+    _standby = standby;
+    attempt(function () {
+        if (coreDeviceEffects.standby) coreDeviceEffects.standby(_standby);
+    });
     if (_standby) {
-        if (typeof stbStop === "function") stbStop();
-        if (typeof window.closeList === "function") window.closeList();
+        // Closing a browsing overlay must not restore its preview or PiP stream.
+        clearTimeout(w.previewTimer);
+        w.previewChan = null;
+        w.pipIndex = null;
+        attempt(function () {
+            if (typeof w.closeList === "function") w.closeList(false);
+        });
+        attempt(function () {
+            var queue = w.__ottPlexQueue;
+            if (queue && typeof queue.stop === "function") queue.stop();
+        });
+        attempt(function () {
+            if (typeof stbStop === "function") stbStop();
+        });
+        attempt(function () {
+            if (typeof stbStopPip === "function") stbStopPip();
+        });
         document.body.style.backgroundColor = "#000";
         var launchEl = document.getElementById("launch");
         if (launchEl)
@@ -2585,6 +2624,11 @@ export function stbToggleStandby(): void {
         if (typeof window.startPlayer === "function") window.startPlayer();
     }
     if (typeof window.setSleepTimeout === "function") window.setSleepTimeout();
+}
+
+/** Local power keys toggle; remote Stop can reassert teardown without waking. */
+export function stbToggleStandby(): void {
+    stbSetStandby(!_standby);
 }
 
 /** Convenience wrapper for stbToggleStandby. */

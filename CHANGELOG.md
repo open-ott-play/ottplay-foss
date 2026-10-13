@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Stop both main and PiP streams on standby, reset native media resource
+  selection, and cancel preview and pending Plex playback so background
+  callbacks cannot restart those streams. Plex playback remains blocked until
+  wake; the remote-control connection stays available.
 - Save the currently playing channel or film as a remote favorite, with its
   provider/profile binding and durable item reference. Selecting a favorite
   loads the saved profile and resolves the item through its provider; temporary

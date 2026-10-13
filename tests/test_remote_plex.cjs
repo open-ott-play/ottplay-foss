@@ -547,6 +547,85 @@ test("lazy failure and cancellation remain inactive and preview preserves the er
     assert.equal(cancelled.queue.snapshot().active, false);
     assert.equal(cancelled.queue.retained(), false);
 });
+test("standby cancels lazy and loaded Plex preparation without a playback generation change", () => {
+    for (const lazy of [true, false]) {
+        const h = setup();
+        const factory = h.c.__ottPlexQueueFactory;
+        let ready;
+        if (lazy) {
+            delete h.c.__ottPlexQueueFactory;
+            h.c.__ottProviderAssets = {
+                classic: {
+                    ensure(_p, _h, _v, _owner, callback) {
+                        ready = callback;
+                    },
+                },
+            };
+        }
+        h.call("play", ["1"]);
+        const generation = h.c.__ottClassicPlayback.snapshot().generation;
+        h.c.stbIsStandby = () => true;
+        h.queue.stop();
+        assert.equal(
+            h.c.__ottClassicPlayback.snapshot().generation,
+            generation
+        );
+        if (lazy) {
+            h.c.__ottPlexQueueFactory = factory;
+            ready();
+        } else {
+            assert.equal(h.requests[0].aborted, true);
+            h.reply();
+        }
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+        assert.equal(h.queue.snapshot().active, false);
+        assert.equal(h.call("play", ["2"]).replies[0].status, "rejected");
+        assert.equal(
+            h.library("play", { library_id: "16" }).replies[0].status,
+            "rejected"
+        );
+        assert.equal(
+            h.requests.length,
+            0,
+            "standby cannot start new preparation"
+        );
+        assert.equal(h.call("status").replies[0].status, "ok");
+        assert.equal(h.call("stop").replies[0].status, "ok");
+        h.c.stbIsStandby = () => false;
+        h.call("play", ["2"]);
+        h.prepare(["2"]);
+        h.resolve("2");
+        assert.equal(h.queue.snapshot().state, "playing");
+    }
+});
+test("standby guards fence retained lazy and metadata callbacks before explicit cancellation", () => {
+    for (const lazy of [true, false]) {
+        const h = setup();
+        const factory = h.c.__ottPlexQueueFactory;
+        let ready;
+        if (lazy) {
+            delete h.c.__ottPlexQueueFactory;
+            h.c.__ottProviderAssets = {
+                classic: {
+                    ensure(_p, _h, _v, _owner, callback) {
+                        ready = callback;
+                    },
+                },
+            };
+        }
+        const pending = h.call("play", ["1"]);
+        h.c.stbIsStandby = () => true;
+        if (lazy) {
+            h.c.__ottPlexQueueFactory = factory;
+            ready();
+        } else h.reply();
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+        h.queue.stop();
+        assert.equal(pending.replies[0].status, "rejected");
+    }
+});
 test("policy changes during preflight cancel admission, and stopping an old queue cannot stop new TV", () => {
     const h = setup();
     const request = h.call("play", ["1"]);
