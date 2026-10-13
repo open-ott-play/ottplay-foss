@@ -39,12 +39,16 @@ This requires the updated player and CLI. Actual provider access and device
 codec support remain separate from profile/kiosk configuration.
 
 For child-facing playback on a web player, use the same active VPortal profile
-and add the strict kiosk flag:
+and add the strict kiosk flag. The `vp` command works with both an M3U profile's
+VPortal link and the standalone VPortal provider; no different command name is
+required. Select the provider and its configured slot first. If a lock already
+exists, release it before changing the source:
 
 ```sh
+ott l kiosk off
 ott l provider vportal
 ott l profile 2
-ott l vp "три кота"
+ott l vp "tom and jerry"
 ott l kiosk on --strict
 ```
 
@@ -53,6 +57,12 @@ for five seconds. On the active core player, tapping or dragging its timeline
 seeks within the current episode. Other playback controls, keyboard/remote seeking,
 menus and player exit remain blocked. `ott l kiosk off` releases the lock remotely. A website cannot block
 Android system navigation; app pinning with a PIN is separate.
+Legacy wrappers that intercept touch without forwarding timeline gestures
+retain a read-only footer, even with an updated web player. See
+[kiosk mode](remote-command-server.md#kiosk-mode) for input and Android
+limitations. `vp` collects matching titles into a queue, subject to catalog
+limits; the first-match rule of `kiosk on/set CHANNEL` applies only to live TV,
+not VPortal search.
 
 ## VPortal alongside television
 

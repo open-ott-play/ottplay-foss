@@ -560,6 +560,18 @@ On Android, a website (including here.now) cannot disable Home, Recents or brows
 navigation outside its page. Use Android app pinning with a PIN to protect exit
 from the browser, or managed-device Lock Task for a dedicated kiosk.
 
+Legacy wrappers may intercept touch before it reaches the web player. If a
+wrapper only requests the information footer without forwarding timeline
+gestures, the footer remains read-only even with an updated player. Native
+touch interception does not by itself establish Android system-exit protection;
+check the wrapper's documented capabilities separately.
+
+The separately provisioned [native maintenance agent](https://github.com/open-ott-play/ottplay-control-server/blob/main/native/android-agent/README.md)
+has authenticated administrative recovery and queue operations outside the
+ordinary web command lane. Native queue next/previous can move within the lock;
+native queue stop explicitly releases it. Those operations are not local UI
+exceptions for the viewer.
+
 The client samples playback once per second. Ten seconds without playback position
 advancing causes a fresh launch of the retained channel through the normal provider
 resolver; unsuccessful attempts repeat at ten-second intervals. Healthy playback

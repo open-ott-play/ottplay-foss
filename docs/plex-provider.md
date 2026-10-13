@@ -84,8 +84,8 @@ To select a complete Plex library without entering individual media IDs:
 
 ```sh
 ott l plex libraries
-ott l plex library --preview "Три кота"
-ott l plex shuffle "Три кота"
+ott l plex library --preview "Tom and Jerry"
+ott l plex shuffle "Tom and Jerry"
 ott l plex library --shuffle id:16
 ott l plex shuffle "Кукутики"
 ```
