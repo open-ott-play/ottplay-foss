@@ -4,6 +4,7 @@
 
 ### Changes
 
+- Gate release candidates on bounded portal-request and XMLTV fuzz campaigns, retaining source-bound validation evidence.
 - Show an explicit loading wait when full-screen Plex Up/Down needs to load the
   neighboring file or restore its folder queue. Back cancels the pending switch
   and keeps the current file selected; repeated arrows update the selection.

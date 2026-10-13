@@ -19,8 +19,12 @@ import subprocess  # nosec B404
 from datetime import datetime
 from typing import NotRequired, TypedDict, cast
 
-import release_control as rc
-import version_plan
+if __package__:
+    from . import release_control as rc
+    from . import version_plan
+else:
+    import release_control as rc
+    import version_plan
 
 BRANCH = "release-version-state"
 FILE = "release-version-state.json"
@@ -66,25 +70,28 @@ class StateGitHub(rc.GitHub):
                 set(body) <= {"branch", "content", "message", "sha"},
                 "Invalid ledger write",
             )
+        # Developer/CI toolchain selected by the invoking operator via PATH.
+        result = subprocess.run(  # nosec B603, B607
+            [
+                "gh",
+                "api",
+                "--hostname",
+                "github.com",
+                "--include",
+                "--method",
+                method,
+                *(["--input", "-"] if body else []),
+                "--",
+                f"{self.base}/{path}",
+            ],
+            input=rc.json_bytes(body) if body else None,
+            capture_output=True,
+            check=False,
+        )
         return self.response(
-            # Developer/CI toolchain selected by the invoking operator via PATH.
-            subprocess.run(  # nosec B603, B607
-                [
-                    "gh",
-                    "api",
-                    "--hostname",
-                    "github.com",
-                    "--method",
-                    method,
-                    *(["--input", "-"] if body else []),
-                    "--",
-                    f"{self.base}/{path}",
-                ],
-                input=rc.json_bytes(body) if body else None,
-                capture_output=True,
-                check=False,
-            ),
+            result,
             f"{method} {self.base}/{path}",
+            rc.github_http_response(result.stdout),
         )
 
 
