@@ -6,7 +6,7 @@
 
 - Show an explicit loading wait when full-screen Plex Up/Down needs to load the
   neighboring file or restore its folder queue. Back cancels the pending switch
-  and leaves the current video playing; repeated arrows update the selection.
+  and keeps the current file selected; repeated arrows update the selection.
 - Retry transient Plex catalog and file-resolution failures within bounded
   attempts, and reuse Tauri HTTP connections while preserving per-request
   timeouts and separate control-transport security policies.
