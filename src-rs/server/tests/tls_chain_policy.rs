@@ -136,8 +136,15 @@ fn run_server(fixture: &Fixture, accepted: bool) {
     let https = TcpListener::bind("127.0.0.1:0").unwrap();
     let http_port = http.local_addr().unwrap().port();
     let tls_port = https.local_addr().unwrap().port();
-    drop(http);
-    drop(https);
+    // Rejected chains must fail validation before attempting to bind either port.
+    // Keep both reservations for that case: probing released ephemeral ports can
+    // connect to an unrelated listener instead of the child under test.
+    let _reservations = if accepted {
+        drop((http, https));
+        None
+    } else {
+        Some((http, https))
+    };
     let log = fs::File::create(fixture.0.join("server.log")).unwrap();
     let mut server = Server(
         Command::new(env!("CARGO_BIN_EXE_ottplay-server"))
@@ -168,20 +175,30 @@ fn run_server(fixture: &Fixture, accepted: bool) {
         if let Some(status) = server.0.try_wait().unwrap() {
             let message = fs::read_to_string(fixture.0.join("server.log")).unwrap();
             assert!(!accepted, "server rejected strong fixture: {message}");
-            assert!(!status.success());
-            assert!(message.contains("TLS certificate"), "{message}");
             assert!(
-                TcpStream::connect(("127.0.0.1", http_port)).is_err(),
-                "HTTP must not start before chain validation"
+                !status.success(),
+                "server exited successfully for a rejected TLS fixture: {message}"
+            );
+            assert!(
+                message.contains("TLS certificate"),
+                "server must reject the certificate before binding reserved ports: {message}"
             );
             return;
         }
-        if TcpStream::connect(("127.0.0.1", tls_port)).is_ok() {
-            assert!(accepted, "server accepted a weak supplied certificate");
+        if accepted && TcpStream::connect(("127.0.0.1", tls_port)).is_ok() {
             verified_health(&fixture.0, tls_port);
             return;
         }
-        assert!(Instant::now() < deadline, "server startup did not finish");
+        assert!(
+            Instant::now() < deadline,
+            "server did not {} within startup deadline: {}",
+            if accepted {
+                "start verified HTTPS"
+            } else {
+                "reject the TLS fixture before binding reserved ports"
+            },
+            fs::read_to_string(fixture.0.join("server.log")).unwrap()
+        );
         thread::sleep(Duration::from_millis(10));
     }
 }
