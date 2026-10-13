@@ -16,6 +16,11 @@ function emit(file) {
 }
 const plexContext = { exports: {} };
 vm.runInNewContext(emit("src/commands/remote-plex.ts"), plexContext);
+const favoritesContext = { exports: {} };
+vm.runInNewContext(
+    emit("src/commands/remote-favorites-contract.ts"),
+    favoritesContext
+);
 const updateContext = {
     exports: {},
     require: () => ({
@@ -28,6 +33,8 @@ const context = {
     exports: {},
     require(name) {
         if (name === "./remote-app-update") return updateContext.exports;
+        if (name === "./remote-favorites-contract")
+            return favoritesContext.exports;
         assert.equal(name, "./remote-plex");
         return plexContext.exports;
     },

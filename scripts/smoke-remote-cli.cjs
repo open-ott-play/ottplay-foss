@@ -332,7 +332,15 @@ function moduleOf(file, requireFn, window) {
         // This fixture supplies only the display/storage port. Browser tests
         // separately exercise the real core geometry and durable library.
         const aspectPreferences = new Map();
-        function player(device, token, initialVolume, native = false) {
+        const favoriteStores = new Map();
+        const favoriteConfigurations = new Map();
+        function player(
+            device,
+            token,
+            initialVolume,
+            native = false,
+            favoritesMode = false
+        ) {
             let volume = initialVolume,
                 dispatches = 0,
                 dropped = false,
@@ -373,6 +381,18 @@ function moduleOf(file, requireFn, window) {
                 })),
             };
             const clone = (value) => JSON.parse(JSON.stringify(value));
+            if (favoritesMode) {
+                configuration.M3Us[1].www = "https://example.com/two.m3u";
+                if (favoriteConfigurations.has(device))
+                    configuration = clone(favoriteConfigurations.get(device));
+            }
+            let favoriteGeneration = 1;
+            let favoriteTarget = {
+                channelId: "101",
+                kind: "live",
+                sourceId: "m3u:" + configuration.active,
+            };
+            const favoritePlays = [];
             const host = {
                 __ottActiveProviderDriver: {
                     configuration: () => clone(configuration),
@@ -386,6 +406,11 @@ function moduleOf(file, requireFn, window) {
                                 slot.medSourceId = "test-media-source-" + index;
                         });
                         configuration = clone(value);
+                        if (favoritesMode)
+                            favoriteConfigurations.set(
+                                device,
+                                clone(configuration)
+                            );
                         return true;
                     },
                 },
@@ -473,7 +498,14 @@ function moduleOf(file, requireFn, window) {
             host.keyHandler = (event) => keysReceived.push(event.keyCode);
             host.__ottClassicPlayback = {
                 checkpoint: () => {},
-                snapshot: () => ({ target: { kind: playbackKind } }),
+                snapshot: () =>
+                    favoritesMode
+                        ? {
+                              generation: favoriteGeneration,
+                              phase: "playing",
+                              target: clone(favoriteTarget),
+                          }
+                        : { target: { kind: playbackKind } },
             };
             host.__ottParental = { needs: () => false };
             if (native)
@@ -534,7 +566,10 @@ function moduleOf(file, requireFn, window) {
             // An active player has an existing backend. Capability discovery
             // peeks at it without calling the potentially initializing getter.
             host.__ottCoreBackendPeek = () => backend;
-            const kioskStorage = {};
+            const kioskStorage = favoritesMode
+                ? favoriteStores.get(device) || {}
+                : {};
+            if (favoritesMode) favoriteStores.set(device, kioskStorage);
             host.stbGetItem = (key) =>
                 kioskStorage[key] || (key === "ottplayprov" ? "demo" : null);
             host.stbSetItem = (key, value) => {
@@ -546,6 +581,52 @@ function moduleOf(file, requireFn, window) {
             host.__ottSourceIdentity = {
                 current: () => "m3u:" + configuration.active,
             };
+            if (favoritesMode) {
+                host.__ottCommandChannelLoad = {};
+                host.stbGetPersistedItem = host.stbGetItem;
+                host.providerGetItem = (key) =>
+                    kioskStorage["provider:" + key] || null;
+                host.providerGetPersistedItem = host.providerGetItem;
+                let addedChannel;
+                host.addToFavorites = (id) => {
+                    addedChannel = id;
+                };
+                host.saveChannelsCats = () => {
+                    kioskStorage[
+                        "provider:favoritesLibrary:m3u:" + configuration.active
+                    ] = JSON.stringify({
+                        itemId: host.channels[addedChannel].itemId,
+                    });
+                };
+                const catalog = () => {
+                    host.channels = {
+                        101: {
+                            channel_name: "News",
+                            itemId: "news:" + configuration.active,
+                        },
+                        102: {
+                            channel_name: "Cinema",
+                            itemId: "cinema:" + configuration.active,
+                        },
+                    };
+                    host.cats = { one: [101, 102] };
+                    host.catsArray = ["one"];
+                    host.cList = [101, 102];
+                    host.curList = host.cats.one;
+                    host.catIndex = host.primaryIndex = 0;
+                };
+                host.loadPlaylist = () => {
+                    playlistLoads++;
+                    host.__ottCommandChannelLoad = {};
+                    host.commandChannelsReady = false;
+                    catalog();
+                    setTimeout(() => {
+                        host.commandChannelsReady = true;
+                    }, 75);
+                };
+                catalog();
+                moduleOf("src/channels/channel-references.ts", () => {}, host);
+            }
             host.__ottKiosk = moduleOf(
                 "src/plugins/kiosk.ts",
                 (name) =>
@@ -573,6 +654,23 @@ function moduleOf(file, requireFn, window) {
                 host.curList = host.cats[host.catsArray[c]];
                 host.primaryIndex = i;
                 if (admission) channelSteps++;
+                if (favoritesMode) {
+                    assert.equal(
+                        host.commandChannelsReady,
+                        true,
+                        "favorite playback waits for the loaded catalog"
+                    );
+                    favoriteGeneration++;
+                    favoriteTarget = {
+                        channelId: String(id),
+                        kind: "live",
+                        sourceId: "m3u:" + configuration.active,
+                    };
+                    favoritePlays.push({
+                        itemId: host.channels[id].itemId,
+                        profile: configuration.active,
+                    });
+                }
                 return true;
             };
             const dispatch = (command) => {
@@ -587,51 +685,62 @@ function moduleOf(file, requireFn, window) {
             };
             let restartModule;
             const dependencies = (name) =>
-                name === "../provider"
-                    ? {
-                          checkProviderUrl: () => true,
-                          isProviderAllowed: () => true,
-                          providerIds: ["demo", "m3u"],
-                          providerLabels: null,
-                          selectProviderByIndex: () => true,
-                      }
-                    : name === "./remote-profiles"
-                      ? moduleOf(
-                            "src/commands/remote-profiles.ts",
-                            dependencies,
-                            host
-                        )
-                      : name === "../plugins/vportal"
-                        ? moduleOf("src/plugins/vportal.ts", dependencies, host)
-                        : name === "./remote-plex"
+                name === "./remote-favorites" ||
+                name === "./remote-favorites-contract"
+                    ? moduleOf(
+                          "src/commands/" + name.slice(2) + ".ts",
+                          dependencies,
+                          host
+                      )
+                    : name === "../provider"
+                      ? {
+                            checkProviderUrl: () => true,
+                            isProviderAllowed: () => true,
+                            providerIds: ["demo", "m3u"],
+                            providerLabels: null,
+                            selectProviderByIndex: () => true,
+                        }
+                      : name === "./remote-profiles"
+                        ? moduleOf(
+                              "src/commands/remote-profiles.ts",
+                              dependencies,
+                              host
+                          )
+                        : name === "../plugins/vportal"
                           ? moduleOf(
-                                "src/commands/remote-plex.ts",
+                                "src/plugins/vportal.ts",
                                 dependencies,
                                 host
                             )
-                          : name === "./remote-restart" ||
-                              name === "../commands/remote-restart"
-                            ? restartModule ||
-                              (restartModule = moduleOf(
-                                  "src/commands/remote-restart.ts",
+                          : name === "./remote-plex"
+                            ? moduleOf(
+                                  "src/commands/remote-plex.ts",
                                   dependencies,
                                   host
-                              ))
-                            : name === "./remote-app-update"
-                              ? moduleOf(
-                                    "src/commands/remote-app-update.ts",
+                              )
+                            : name === "./remote-restart" ||
+                                name === "../commands/remote-restart"
+                              ? restartModule ||
+                                (restartModule = moduleOf(
+                                    "src/commands/remote-restart.ts",
                                     dependencies,
                                     host
-                                )
-                              : name === "./remote-doctor"
+                                ))
+                              : name === "./remote-app-update"
                                 ? moduleOf(
-                                      "src/plugins/remote-doctor.ts",
+                                      "src/commands/remote-app-update.ts",
                                       dependencies,
                                       host
                                   )
-                                : name === "../utils/caseless"
-                                  ? caseless
-                                  : { handleCommand: dispatch };
+                                : name === "./remote-doctor"
+                                  ? moduleOf(
+                                        "src/plugins/remote-doctor.ts",
+                                        dependencies,
+                                        host
+                                    )
+                                  : name === "../utils/caseless"
+                                    ? caseless
+                                    : { handleCommand: dispatch };
             let execute, inspection;
             function loadRuntime() {
                 restartModule = undefined;
@@ -820,6 +929,7 @@ function moduleOf(file, requireFn, window) {
                 dropped,
                 droppedReload,
                 droppedStepReceipt,
+                favoritePlays: clone(favoritePlays),
                 keysReceived: keysReceived.slice(),
                 kiosk: host.__ottKiosk.snapshot(),
                 nativeExits,
@@ -1650,6 +1760,106 @@ function moduleOf(file, requireFn, window) {
             television().aspectChanges,
             0,
             "fixture restart restores saved mode without a remote write"
+        );
+        // Use the actual favorites module, channel-reference codec, profile
+        // handler, transport and CLI. Only the catalog/storage/display ports
+        // are fixtures; no fake favorites reply can bypass Go/CLI validation.
+        television().stop();
+        television = player("dev_test", "b".repeat(32), 30, false, true);
+        const emptyFavorites = await jsonOn("tv", "fav");
+        assert.deepEqual(emptyFavorites.entries, []);
+        const firstFavorite = await jsonOn("tv", "fav", "add", "First profile");
+        assert.equal(firstFavorite.created, true);
+        assert.equal(firstFavorite.entry.profile_number, 1);
+        assert.equal(firstFavorite.entry.kind, "live");
+        assert.deepEqual(Object.keys(firstFavorite.entry).sort(), [
+            "id",
+            "kind",
+            "name",
+            "profile_name",
+            "profile_number",
+            "provider",
+            "title",
+        ]);
+        const repeatedFavorite = await jsonOn("tv", "favorites", "current");
+        assert.equal(repeatedFavorite.created, false);
+        assert.equal(repeatedFavorite.entry.id, firstFavorite.entry.id);
+        await run("profile", "2");
+        await eventually(
+            television,
+            (state) => state.configuration.active === 1,
+            "second profile must load"
+        );
+        await run("play", "1");
+        const secondFavorite = await jsonOn(
+            "tv",
+            "favourite",
+            "add",
+            "Second profile"
+        );
+        assert.equal(secondFavorite.entry.profile_number, 2);
+        assert.notEqual(secondFavorite.entry.id, firstFavorite.entry.id);
+        const firstPlay = await jsonOn(
+            "tv",
+            "fav",
+            "play",
+            firstFavorite.entry.id
+        );
+        assert.equal(firstPlay.state, "dispatched");
+        assert.equal(firstPlay.dispatched, true);
+        assert.equal(firstPlay.entry.id, firstFavorite.entry.id);
+        assert.equal(television().configuration.active, 0);
+        assert.deepEqual(television().favoritePlays.at(-1), {
+            itemId: "news:0",
+            profile: 0,
+        });
+        const loads = television().playlistLoads;
+        await jsonOn("tv", "fav", "First profile");
+        assert.equal(
+            television().playlistLoads,
+            loads,
+            "same-profile favorite does not reload its catalog"
+        );
+        assert.deepEqual(television().favoritePlays.at(-1), {
+            itemId: "news:0",
+            profile: 0,
+        });
+        const priorFavoriteRuntime = firstPlay.runtime;
+        television().stop();
+        television = player("dev_test", "b".repeat(32), 30, false, true);
+        const restoredFavorites = await jsonOn("tv", "fav");
+        assert.notEqual(restoredFavorites.runtime, priorFavoriteRuntime);
+        assert.deepEqual(
+            restoredFavorites.entries.map((entry) => entry.id),
+            [firstFavorite.entry.id, secondFavorite.entry.id]
+        );
+        await jsonOn("tv", "fav", "play", "Second profile");
+        assert.deepEqual(television().favoritePlays, [
+            { itemId: "news:1", profile: 1 },
+        ]);
+        assert.equal(television().configuration.active, 1);
+        const removedFavorite = await jsonOn(
+            "tv",
+            "fav",
+            "rm",
+            firstFavorite.entry.id
+        );
+        assert.equal(removedFavorite.removed, true);
+        assert.equal(removedFavorite.entry.id, firstFavorite.entry.id);
+        const beforeMissing = television().favoritePlays.length;
+        await assert.rejects(
+            run("fav", "play", firstFavorite.entry.id),
+            (error) => {
+                assert.equal(error.stdout, "");
+                assert.match(error.stderr, /No favorite matches/);
+                return true;
+            }
+        );
+        assert.equal(television().favoritePlays.length, beforeMissing);
+        await jsonOn("tv", "fav", "remove", secondFavorite.entry.id);
+        assert.deepEqual((await jsonOn("tv", "fav")).entries, []);
+        console.log(
+            "PASS favorites via real Go + compiled TS + Python: current capture, aliases, deduplication, same/cross-profile exact selection, loaded-catalog gating, restart persistence, redacted metadata and bound not-found rejection"
         );
         console.log(
             "PASS aspect via real Go + compiled TS + Python: fit/fill aliases, truthful pre-ACK acceptance, exact lost-ACK retries, idempotent setting, readback, device isolation, unsupported/read-only gating, protected/target/runtime fences and restored saved state"

@@ -1303,4 +1303,40 @@ test("lazy library resolution cannot override later stop or queue play", () => {
         }
     }
 });
+test("Plex overlay favorites persist the current stable request and reject stale saved source", () => {
+    const h = setup();
+    h.c.stbGetPersistedItem = h.c.stbGetItem;
+    h.call("play", ["78777"]);
+    h.prepare(["78777"]);
+    h.resolve("78777");
+    const current = h.c.__ottMedia.current();
+    const saved = h.c.__ottMedia.captureFavorite();
+    assert(saved);
+    assert.equal(saved.ref.sourceId, current.ref.sourceId);
+    const text = h.c.stored["plexmediaJournal.v1:" + saved.ref.sourceId];
+    const document = JSON.parse(text);
+    assert.equal(document.favorites.length, 1);
+    assert.equal(
+        document.favorites[0].payload.request.path,
+        "/library/metadata/78777"
+    );
+    assert.equal(document.favorites[0].payload.stream_url, undefined);
+    let failure;
+    h.queue.execute(
+        {
+            action: "plex_queue",
+            favorite_source: "different-account",
+            params: { ids: ["78777"], op: "play", runtime: "runtime-fixture" },
+        },
+        (value) => {
+            failure = value;
+        }
+    );
+    assert.equal(failure.status, "rejected");
+    assert.equal(
+        h.requests.length,
+        0,
+        "foreign bookmark source cannot make metadata or stream requests"
+    );
+});
 console.log("PASS Plex queue: " + groups + " behavior groups");

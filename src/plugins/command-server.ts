@@ -476,15 +476,23 @@ export function createCommandServer(
                                 message: string,
                                 libraryError: string
                             ): any {
-                                return item.action === "plex_library"
+                                return item.action === "favorites"
                                     ? {
-                                          error: libraryError,
+                                          error: "timeout",
                                           op: item.params.op,
                                           runtime: item.params.runtime,
                                           state: "error",
                                           version: 1,
                                       }
-                                    : { error: message };
+                                    : item.action === "plex_library"
+                                      ? {
+                                            error: libraryError,
+                                            op: item.params.op,
+                                            runtime: item.params.runtime,
+                                            state: "error",
+                                            version: 1,
+                                        }
+                                      : { error: message };
                             };
                             var executionTimer = w.setTimeout(function () {
                                 var abortWork = cancelExecution;
@@ -623,6 +631,7 @@ export function createCommandServer(
                                 if (
                                     item.action === "plex_queue" ||
                                     item.action === "plex_library" ||
+                                    item.action === "favorites" ||
                                     item.action === "playback"
                                 )
                                     executionItem = Object.assign({}, item, {

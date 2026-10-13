@@ -207,6 +207,7 @@ function remote(f) {
                 "./index",
                 "./remote-profiles",
                 "./remote-plex",
+                "./remote-favorites",
                 "./remote-restart",
                 "./remote-app-update",
                 "./remote-archive",

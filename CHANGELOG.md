@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Save the currently playing channel or film as a remote favorite, with its
+  provider/profile binding and durable item reference. Selecting a favorite
+  loads the saved profile and resolves the item through its provider; temporary
+  playback URLs are not used as saved launch targets.
 - Prepare Plex library queues from the complete, validated catalog without a
   redundant bulk metadata request that could time out and incorrectly report
   playable videos as unavailable. The first video is still resolved before
@@ -17,6 +21,9 @@
 Update the control server and CLI to versions with `plex_library` support, then
 update or reload the player to use the new library commands. The player's saved
 Plex connection is reused; no settings or data migration is required.
+
+Remote favorites require `favorites` support in the player, control server and
+CLI. Existing profile-local favorites retain their storage format and scope.
 
 ### Security
 

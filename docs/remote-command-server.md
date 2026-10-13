@@ -102,6 +102,12 @@ adapters. See the
 The terminal's alias maps to the device's UUID in the server configuration.
 Each installation needs its own code. No administrator token belongs in a player.
 
+`ott NAME fav add` saves the currently playing channel or film with its provider
+and profile. `ott NAME fav` lists saved entries; `ott NAME fav play NAME_OR_ID`
+loads the saved profile and resolves the item again before dispatching playback.
+See [remote favorites across profiles](remote-favorites.md) for examples,
+persistence and troubleshooting.
+
 With the CLI's central EPG service configured, programme searches request only
 the player's channel metadata and use the service's `/epg/v1/current` endpoint.
 See [remote EPG control](remote-epg-control.md). Without that configuration,

@@ -9,6 +9,7 @@ import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
+import { executeRemoteFavorites } from "./remote-favorites";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 import {
@@ -49,6 +50,13 @@ export function executeRemoteRequest(
     var params = request.params || {};
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
+    if (request.action === "favorites")
+        return executeRemoteFavorites(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
     if (request.action === "plex_queue" || request.action === "plex_library")
         return remotePlexQueue(w, remotePlayerInfo(w).runtime).execute(
             request,

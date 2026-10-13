@@ -4,6 +4,7 @@ import type {
     DoctorCapabilityReason,
 } from "../plugins/remote-doctor";
 import { remoteAppUpdateAvailable } from "./remote-app-update";
+import { remoteFavoritesCapability } from "./remote-favorites-contract";
 import { remotePlexQueue } from "./remote-plex";
 
 function remoteSettingsLocked(w: any): boolean {
@@ -806,6 +807,7 @@ export function executeRemoteControl(
                 : null,
             aspect: remoteAspectCapabilities(w),
             debug: w.__ottRuntimeDebug ? { version: 1 } : undefined,
+            favorites: remoteFavoritesCapability,
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),

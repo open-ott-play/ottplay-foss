@@ -92,32 +92,34 @@ const ctx = {
     Date,
     exports: {},
     require: (name) =>
-        name === "../provider"
-            ? {
-                  checkProviderUrl: () => true,
-                  isProviderAllowed: () => true,
-                  providerIds: ["m3u", "xtream", "", "stalker"],
-                  providerLabels: null,
-                  selectProviderByIndex: (i) => {
-                      switched = i;
-                      return true;
-                  },
-              }
-            : name === "./remote-profiles"
-              ? loadRemoteHelper("remote-profiles")
-              : name === "./remote-app-update"
-                ? loadRemoteHelper("remote-app-update")
-                : name === "../plugins/vportal"
-                  ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
-                  : name === "./remote-archive"
-                    ? loadRemoteHelper("remote-archive")
-                    : name === "./remote-plex"
-                      ? loadRemoteHelper("remote-plex")
-                      : name === "./remote-restart"
-                        ? loadRemoteHelper("remote-restart")
-                        : name === "../utils/caseless"
-                          ? casingContext.exports
-                          : { handleCommand: () => "accepted" },
+        name === "./remote-favorites" || name === "./remote-favorites-contract"
+            ? loadRemoteHelper(name.slice(2))
+            : name === "../provider"
+              ? {
+                    checkProviderUrl: () => true,
+                    isProviderAllowed: () => true,
+                    providerIds: ["m3u", "xtream", "", "stalker"],
+                    providerLabels: null,
+                    selectProviderByIndex: (i) => {
+                        switched = i;
+                        return true;
+                    },
+                }
+              : name === "./remote-profiles"
+                ? loadRemoteHelper("remote-profiles")
+                : name === "./remote-app-update"
+                  ? loadRemoteHelper("remote-app-update")
+                  : name === "../plugins/vportal"
+                    ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
+                    : name === "./remote-archive"
+                      ? loadRemoteHelper("remote-archive")
+                      : name === "./remote-plex"
+                        ? loadRemoteHelper("remote-plex")
+                        : name === "./remote-restart"
+                          ? loadRemoteHelper("remote-restart")
+                          : name === "../utils/caseless"
+                            ? casingContext.exports
+                            : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };

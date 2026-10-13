@@ -396,20 +396,15 @@ function createRemotePlexQueue(
             }
             var account =
                 w.__ottPlexAuth && w.__ottPlexAuth.routing(raw.account);
-            var sourceId = w.__ottSourceIdentity.media({
-                __ottActiveProviderDriver: {
-                    credentials: function () {
-                        return {
-                            password: normalized.token,
-                            plexAccount: account,
-                            server: normalized.address,
-                            username: "",
-                        };
-                    },
-                    id: "plex",
-                },
-                p_pref: "plex",
-            });
+            var sourceId = w.__ottPlex.configuredSource(w, saved);
+            if (
+                !sourceId ||
+                (request.favorite_source &&
+                    request.favorite_source !== sourceId)
+            ) {
+                finish("Player context changed before Plex playback.");
+                return;
+            }
             function connect(address: string): void {
                 if (!current()) return;
                 client = w.__ottPlex.create(
@@ -470,6 +465,12 @@ function createRemotePlexQueue(
                             client: client,
                             read: function (key: string) {
                                 return w.stbGetItem("plex" + key);
+                            },
+                            readPersisted: function (key: string) {
+                                return typeof w.stbGetPersistedItem ===
+                                    "function"
+                                    ? w.stbGetPersistedItem("plex" + key)
+                                    : null;
                             },
                             sourceId: sourceId,
                             title: "Plex",

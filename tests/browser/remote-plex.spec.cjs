@@ -13,16 +13,17 @@ test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
 
-test("remote Plex loads lazily under M3U, previews without playback and ends its exact ordered queue", async ({
+test("remote Plex loads lazily, ends its exact queue and restores a current favorite after reload", async ({
     page,
     context,
     baseURL,
 }) => {
-    test.setTimeout(60000);
+    test.setTimeout(90000);
     const local = new URL(baseURL).origin;
     const errors = [];
     const bundles = [];
     const streams = [];
+    const metadataRequests = [];
     const pending = [];
     const results = new Map();
     let sequence = 0;
@@ -87,6 +88,7 @@ test("remote Plex loads lazily under M3U, previews without playback and ends its
                     ],
                 });
             if (url.pathname.startsWith("/library/metadata/")) {
+                metadataRequests.push(url.pathname);
                 expect(url.searchParams.get("X-Plex-Token")).toBe(TOKEN);
                 // Plex response order is deliberately different from requested order.
                 return json({
@@ -207,7 +209,7 @@ test("remote Plex loads lazily under M3U, previews without playback and ends its
     expect(caps.status).toBe("ok");
     expect(caps.data.plex_queue.operations).toContain("preview");
     expect(bundles).toEqual(["/dist/provider-m3u.js"]);
-    const runtime = caps.data.player.runtime;
+    let runtime = caps.data.player.runtime;
     const ids = ["33", "11", "22"];
     const preview = await rpc("plex_queue", { ids, op: "preview", runtime });
     expect(preview.status).toBe("ok");
@@ -281,6 +283,48 @@ test("remote Plex loads lazily under M3U, previews without playback and ends its
     expect(
         (await rpc("plex_queue", { op: "stop", runtime })).data
     ).toMatchObject({ active: false, state: "idle" });
+    // Keep the short fixture playing while polling add/list across a reload.
+    await page.evaluate(() => {
+        document.querySelector("video").loop = true;
+    });
+    expect(
+        (await rpc("plex_queue", { ids: ["33"], op: "play", runtime })).status
+    ).toBe("ok");
+    const saved = await rpc("favorites", {
+        name: "Saved Plex film",
+        op: "add",
+        runtime,
+    });
+    expect(saved.status).toBe("ok");
+    expect(saved.data.entry).toMatchObject({
+        kind: "vod",
+        profile_number: 1,
+        provider: "m3u",
+        title: "Synthetic film 33",
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    const restartedCaps = await rpc("capabilities");
+    expect(restartedCaps.data.player.runtime).not.toBe(runtime);
+    runtime = restartedCaps.data.player.runtime;
+    const favorites = await rpc("favorites", { op: "list", runtime });
+    expect(favorites.data.entries).toEqual([saved.data.entry]);
+    const requestsBeforeReplay = metadataRequests.length;
+    const streamsBeforeReplay = streams.length;
+    const replay = await rpc("favorites", {
+        id: saved.data.entry.id,
+        op: "play",
+        runtime,
+    });
+    expect(replay.status).toBe("ok");
+    expect(replay.data.dispatched).toBe(true);
+    await expect
+        .poll(() => streams.length)
+        .toBeGreaterThan(streamsBeforeReplay);
+    expect(streams.at(-1)).toBe("/library/metadata/33");
+    expect(metadataRequests.length).toBeGreaterThan(requestsBeforeReplay);
+    expect(metadataRequests.at(-1)).toBe("/library/metadata/33");
+    expect(await settings()).toEqual(before);
     expect(errors).toEqual([]);
     await page.evaluate(() =>
         window.__ottCommandServer.configure({ enabled: false })

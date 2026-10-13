@@ -85,6 +85,8 @@ const CLASSIC_MODULES = [
     "build/commands/index.js",
     "build/commands/remote-profiles.js",
     "build/commands/remote-plex.js",
+    "build/commands/remote-favorites-contract.js",
+    "build/commands/remote-favorites.js",
     "build/commands/remote-app-update.js",
     "build/commands/remote-restart.js",
     "build/commands/remote-screenshot.js",

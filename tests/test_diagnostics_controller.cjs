@@ -44,6 +44,10 @@ const { installDiagnosticsController } = loadSource(
                 "./remote-app-update": {
                     remoteAppUpdateAvailable: () => false,
                 },
+                "./remote-favorites-contract": loadSource(
+                    "src/commands/remote-favorites-contract.ts",
+                    {}
+                ),
                 "./remote-plex": loadSource("src/commands/remote-plex.ts", {}),
             }
         ),

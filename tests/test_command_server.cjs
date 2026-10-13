@@ -1431,6 +1431,27 @@ vm.runInNewContext(plexCode, plexContext);
 const restartContext = {
     exports: {},
     require(name) {
+        if (name === "./remote-favorites-contract") {
+            const exports = {};
+            const code = ts.transpileModule(
+                fs.readFileSync(
+                    path.join(
+                        __dirname,
+                        "../src/commands/remote-favorites-contract.ts"
+                    ),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.CommonJS,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            ).outputText;
+            acorn.parse(code, { ecmaVersion: 5 });
+            vm.runInNewContext(code, { exports });
+            return exports;
+        }
         if (name === "./remote-app-update")
             return { remoteAppUpdateAvailable: () => false };
         assert.equal(name, "./remote-plex");

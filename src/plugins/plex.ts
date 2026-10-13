@@ -1421,7 +1421,33 @@ function createPlexClient(
     };
 }
 
+function plexConfiguredSource(w: any, text: string): string | null {
+    try {
+        var raw = JSON.parse(text);
+        var config = normalizePlexConfig(raw);
+        if (!config) return null;
+        var account = w.__ottPlexAuth && w.__ottPlexAuth.routing(raw.account);
+        return w.__ottSourceIdentity.media({
+            __ottActiveProviderDriver: {
+                credentials: function () {
+                    return {
+                        password: config!.token,
+                        plexAccount: account,
+                        server: config!.address,
+                        username: "",
+                    };
+                },
+                id: "plex",
+            },
+            p_pref: "plex",
+        });
+    } catch (_) {
+        return null;
+    }
+}
+
 (window as any).__ottPlex = {
+    configuredSource: plexConfiguredSource,
     create: createPlexClient,
     normalize: normalizePlexConfig,
 };

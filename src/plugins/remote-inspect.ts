@@ -28,6 +28,7 @@ export function installRemoteInspection(w: any): any {
         "vportal_random",
         "plex_queue",
         "plex_library",
+        "favorites",
         "vportal_queue",
         "maintenance",
     ];
@@ -187,6 +188,7 @@ export function installRemoteInspection(w: any): any {
             actions.indexOf(item.action) >= 0 &&
             item.action !== "vportal_search" &&
             !(item.action === "plex_library" && params.op !== "play") &&
+            !(item.action === "favorites" && params.op !== "play") &&
             !(item.action === "aspect" && params.operation !== "set") &&
             !(item.action === "kiosk" && params.mode === "status") &&
             !(
@@ -209,7 +211,8 @@ export function installRemoteInspection(w: any): any {
             return (
                 (item.action !== "inspect" &&
                     item.action !== "aspect" &&
-                    item.action !== "plex_library") ||
+                    item.action !== "plex_library" &&
+                    item.action !== "favorites") ||
                 !!(item.params && item.params.runtime === runtime())
             );
         },

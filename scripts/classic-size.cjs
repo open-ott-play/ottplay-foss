@@ -185,7 +185,11 @@ const { gzipSync } = require("node:zlib");
 // 831207 / 258869 native. Allocate the measured +1319 raw / +398 gzip cost
 // rounded to +1350 / +400, preserving the existing native/version reserve.
 // The 1.1.54-beta.1 entry is 831270 / 258821 web, 831228 / 258889 native.
-const BUDGET = Object.freeze({ bytes: 831600, gzipBytes: 259300 });
+// Cross-profile remote favorites add a bounded global index, durable source
+// references, guarded profile loading and fresh media resolution. Node 22.23.3
+// measures 845765 raw / 262584 gzip for the web entry. Allocate 14500 raw /
+// 3600 gzip over the prior cap, retaining native and release suffix headroom.
+const BUDGET = Object.freeze({ bytes: 846100, gzipBytes: 262900 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -282,7 +286,10 @@ const BUDGET = Object.freeze({ bytes: 831600, gzipBytes: 259300 });
 // web and 946465 / 301566 native. Allocate +4000 raw / +1350 gzip for the
 // measured +3988 / +1319 feature cost, retaining the prior reserve once.
 // The 1.1.54-beta.1 totals are 946528 / 301518 web, 946486 / 301586 native.
-const TOTAL_BUDGET = Object.freeze({ bytes: 947000, gzipBytes: 302050 });
+// Count the favorites entry change and Plex source-binding helper together:
+// Node 22.23.3 measures 961572 raw / 305427 gzip including all seven providers.
+// Retain bounded native and release suffix room; no optional code is excluded.
+const TOTAL_BUDGET = Object.freeze({ bytes: 962000, gzipBytes: 305700 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
