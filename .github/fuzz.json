@@ -2,13 +2,7 @@
   "schema": 1,
   "language": "rust",
   "setup": [
-    [
-      "cargo",
-      "fetch",
-      "--locked",
-      "--manifest-path",
-      "fuzz/Cargo.toml"
-    ],
+    ["cargo", "fetch", "--locked", "--manifest-path", "fuzz/Cargo.toml"],
     [
       "cargo",
       "+nightly-2026-10-12",
@@ -24,9 +18,7 @@
     {
       "name": "xmltv",
       "engine": "libfuzzer",
-      "command": [
-        "fuzz/target/x86_64-unknown-linux-gnu/release/xmltv"
-      ],
+      "command": ["fuzz/target/x86_64-unknown-linux-gnu/release/xmltv"],
       "seconds": 60,
       "corpus": "fuzz/corpus/xmltv"
     },
