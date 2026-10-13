@@ -53,7 +53,8 @@ function fixture(config = {}, capabilities = {}) {
         keepalive = [],
         messages = [],
         intervals = new Map(),
-        timers = new Map();
+        timers = new Map(),
+        timerDelays = [];
     let next = 0,
         clock = Date.now(),
         active = true;
@@ -67,11 +68,8 @@ function fixture(config = {}, capabilities = {}) {
                         options.complete?.();
                     },
                     aborted: false,
-                    fail(status = 0) {
-                        options.error?.(
-                            { responseText: token, status },
-                            "error"
-                        );
+                    fail(status = 0, kind = "error") {
+                        options.error?.({ responseText: token, status }, kind);
                         options.complete?.();
                     },
                     options,
@@ -121,7 +119,8 @@ function fixture(config = {}, capabilities = {}) {
             intervals.set(++next, { delay, run });
             return next;
         },
-        setTimeout(run) {
+        setTimeout(run, delay) {
+            timerDelays.push(delay);
             timers.set(++next, run);
             return next;
         },
@@ -166,6 +165,7 @@ function fixture(config = {}, capabilities = {}) {
             timers.clear();
             pending.forEach((run) => run());
         },
+        timerDelays,
         timers,
     };
 }
@@ -784,6 +784,152 @@ test("collection cancellation, profile retirement and overlapping requests suppr
     assert.equal(f.host.mediaName, "untouched");
 });
 
+test("collection retries transient reads at the same offset without accepting stale pages", () => {
+    for (const status of [0, 408, 429, 500, 503, 599]) {
+        const f = fixture();
+        const results = [];
+        const row = { ratingKey: "42", title: "Film", type: "movie" };
+        f.client.collect(
+            { path: "/library/sections/1/all", plexSource: source },
+            (value) => results.push(value)
+        );
+        const first = last(f);
+        first.fail(status);
+        first.fail(status);
+        first.reply({
+            MediaContainer: { Metadata: [row], size: 1, totalSize: 1 },
+        });
+        assert.equal(results.length, 0);
+        assert.equal(f.timers.size, 1);
+        f.tick();
+        assert.equal(last(f).options.url, first.options.url);
+        last(f).fail(status);
+        f.tick();
+        assert.deepEqual(f.timerDelays, [500, 1000]);
+        last(f).reply({
+            MediaContainer: { Metadata: [row], size: 1, totalSize: 3 },
+        });
+        f.tick();
+        const second = last(f);
+        assert.equal(second.options.headers["X-Plex-Container-Start"], "1");
+        second.fail(status);
+        f.tick();
+        assert.equal(last(f).options.url, second.options.url);
+        last(f).reply({
+            MediaContainer: {
+                Metadata: [row, { ...row, ratingKey: "43" }],
+                offset: 1,
+                size: 2,
+                totalSize: 3,
+            },
+        });
+        assert.equal(results.length, 1);
+        assert.deepEqual(
+            Array.from(results[0].items, (item) => item.request.path),
+            ["/library/metadata/42", "/library/metadata/43"]
+        );
+        assert.equal(f.requests.length, 5);
+        assert.equal(f.timers.size, 0);
+    }
+});
+
+test("collection retry exhaustion returns no partial queue and semantic failures are terminal", () => {
+    const target = { path: "/library/sections/1/all", plexSource: source };
+    const f = fixture();
+    const results = [];
+    f.client.collect(target, (value) => results.push(value));
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [{ ratingKey: "42", title: "Film", type: "movie" }],
+            size: 1,
+            totalSize: 2,
+        },
+    });
+    f.tick();
+    for (let attempt = 0; attempt < 3; attempt++) {
+        last(f).fail(503);
+        f.tick();
+    }
+    assert.equal(f.requests.length, 4);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].error, "Unable to load playlist");
+    assert.equal(results[0].items.length, 0);
+    for (const status of [400, 401, 403, 404, 422]) {
+        const g = fixture();
+        let result;
+        g.client.collect(target, (value) => (result = value));
+        last(g).fail(status);
+        g.tick();
+        assert.equal(g.requests.length, 1);
+        assert.equal(result.error, "Unable to load playlist");
+    }
+    for (const fail of [
+        (r) => r.reply("<broken"),
+        (r) => r.fail(503, "parsererror"),
+    ]) {
+        const g = fixture();
+        let result;
+        g.client.collect(target, (value) => (result = value));
+        fail(last(g));
+        g.tick();
+        assert.equal(g.requests.length, 1);
+        assert.equal(result.error, "Unable to load playlist");
+    }
+});
+
+test("collection cancellation owns retry timers and preserves the original deadline", () => {
+    const target = { path: "/library/sections/1/all", plexSource: source };
+    for (const method of [
+        "returned",
+        "dispose",
+        "pagehide",
+        "guard",
+        "retire",
+        "supersede",
+    ]) {
+        const f = fixture();
+        let callbacks = 0,
+            allowed = true;
+        const cancel = f.client.collect(
+            target,
+            () => callbacks++,
+            () => allowed
+        );
+        const first = last(f);
+        first.fail(0);
+        const retry = [...f.timers.values()][0];
+        if (method === "returned") cancel();
+        if (method === "dispose") f.client.dispose();
+        if (method === "pagehide") f.events.get("pagehide")();
+        if (method === "guard") allowed = false;
+        if (method === "retire") f.retire();
+        if (method === "supersede") f.client.collect(target, () => {});
+        const count = f.requests.length;
+        retry();
+        first.abort();
+        first.reply({ MediaContainer: { size: 0, totalSize: 0 } });
+        f.tick();
+        assert.equal(f.requests.length, count, method);
+        assert.equal(callbacks, 0, method);
+    }
+    const f = fixture();
+    let result;
+    f.client.collect(target, (value) => (result = value));
+    f.advance(118500);
+    last(f).fail(0);
+    f.advance(500);
+    f.tick();
+    assert.equal(last(f).options.timeout, 1000);
+    f.advance(800);
+    last(f).fail(0);
+    assert.equal(f.timerDelays.at(-1), 200);
+    f.advance(200);
+    f.tick();
+    assert.equal(result.error, "Unable to load playlist");
+    assert.equal(f.requests.length, 2);
+    assert.equal(f.timers.size, 0);
+});
+
 test("collection transport errors and unsupported targets fail safely without partial queues", () => {
     const f = fixture();
     let result;
@@ -791,7 +937,7 @@ test("collection transport errors and unsupported targets fail safely without pa
         { path: "/library/sections/1/all", plexSource: source },
         (value) => (result = value)
     );
-    last(f).fail();
+    last(f).fail(400);
     assert.equal(result.error, "Unable to load playlist");
     assert.equal(result.items.length, 0);
     assert(!JSON.stringify(result).includes(token));
@@ -822,6 +968,10 @@ test("collection time, page and retained data budgets fail closed", () => {
     const paged = fixture();
     let limited;
     paged.client.collect(target, (value) => (limited = value));
+    for (let attempt = 0; attempt < 2; attempt++) {
+        last(paged).fail(503);
+        paged.tick();
+    }
     for (let index = 0; index < 1000; index++) {
         last(paged).reply({
             MediaContainer: {
@@ -837,7 +987,7 @@ test("collection time, page and retained data budgets fail closed", () => {
     }
     assert.equal(limited.error, "Unable to load playlist");
     assert.equal(limited.items.length, 0);
-    assert.equal(paged.requests.length, 1000);
+    assert.equal(paged.requests.length, 1002);
 
     const large = fixture();
     let overflow;
@@ -1019,6 +1169,100 @@ test("stale loads, retired profiles, unsafe keys and XML failures cannot publish
     assert.equal(completed, 1);
 });
 
+test("metadata resolution retries transient reads once per attempt and preserves request ownership", () => {
+    for (const status of [0, 408, 429, 500, 503, 599]) {
+        const f = fixture({ playback: "original" });
+        const results = [];
+        f.client.resolve(film, (value) => results.push(value));
+        const first = last(f);
+        first.fail(status);
+        first.fail(status);
+        first.reply(metadata());
+        assert.equal(results.length, 0);
+        assert.equal(f.timers.size, 1);
+        f.tick();
+        assert.equal(last(f).options.url, first.options.url);
+        last(f).fail(status);
+        f.tick();
+        assert.deepEqual(f.timerDelays, [500, 1000]);
+        const final = last(f);
+        final.reply(metadata());
+        final.fail(status);
+        final.reply(metadata());
+        assert.equal(f.requests.length, 3);
+        assert.equal(results.length, 1);
+        assert.equal(results[0].__ottNativeFile, true);
+        assert.equal(f.messages.length, 0);
+        assert.equal(f.timers.size, 0);
+    }
+    const nested = fixture();
+    nested.client.resolve(film, () =>
+        assert.fail("Cancelled decision cannot resolve")
+    );
+    last(nested).fail(0);
+    nested.tick();
+    last(nested).reply(metadata());
+    const decision = last(nested);
+    nested.client.cancel();
+    assert.equal(decision.aborted, true);
+});
+
+test("metadata retry exhaustion reports one error while authentication and parse errors never retry", () => {
+    const f = fixture();
+    const results = [];
+    f.client.resolve(film, (value) => results.push(value));
+    for (let attempt = 0; attempt < 3; attempt++) {
+        last(f).fail(503);
+        f.tick();
+    }
+    assert.equal(f.requests.length, 3);
+    assert.deepEqual(results, [null]);
+    assert.deepEqual(f.messages, ["Plex connection failed"]);
+    for (const fail of [
+        ...[400, 401, 403, 404, 422].map((status) => (r) => r.fail(status)),
+        (r) => r.fail(503, "parsererror"),
+        (r) => r.reply("<broken"),
+    ]) {
+        const g = fixture();
+        const outcomes = [];
+        g.client.resolve(film, (value) => outcomes.push(value));
+        fail(last(g));
+        g.tick();
+        assert.equal(g.requests.length, 1);
+        assert.deepEqual(outcomes, [null]);
+        assert.deepEqual(g.messages, ["Plex connection failed"]);
+    }
+});
+
+test("metadata retry timers cannot revive cancelled or superseded playback", () => {
+    for (const action of [
+        "cancel",
+        "replace",
+        "retire",
+        "dispose",
+        "pagehide",
+    ]) {
+        const f = fixture({ playback: "original" });
+        let callbacks = 0;
+        f.client.resolve(film, () => callbacks++);
+        const first = last(f);
+        first.fail(0);
+        const retry = [...f.timers.values()][0];
+        if (action === "replace") f.client.resolve(film, () => {});
+        else if (action === "retire") f.retire();
+        else if (action === "pagehide") f.events.get("pagehide")();
+        else f.client[action]();
+        const count = f.requests.length;
+        retry();
+        first.abort();
+        first.reply(metadata());
+        f.tick();
+        assert.equal(f.requests.length, count, action);
+        assert.equal(callbacks, 0, action);
+        assert.equal(f.messages.length, 0, action);
+    }
+});
+
 test("native original admission resolves a fresh authenticated stream and persists only stable metadata", () => {
     const f = fixture({}, { native: () => "probably" });
     let played;
@@ -1098,7 +1342,7 @@ test("resolution failures return null once so cold restore can fall back to its 
             assert.equal(f.requests.length, 0);
         } else {
             const metadataRequest = last(f);
-            if (scenario.fail) metadataRequest.fail();
+            if (scenario.fail) metadataRequest.fail(401);
             else if (scenario.decision || scenario.decisionFail) {
                 metadataRequest.reply(metadata());
                 const decision = last(f);
@@ -1158,7 +1402,7 @@ test("resolution fallback cannot run after cancellation, replacement, retirement
     let callbacks = 0;
     f.host.infoBox = () => f.retire();
     f.client.resolve(film, () => callbacks++);
-    last(f).fail();
+    last(f).fail(401);
     assert.equal(
         callbacks,
         0,
@@ -1177,7 +1421,7 @@ test("resolution failure releases its owned wait before the error and retains ca
         };
         f.host.infoBox = () => events.push("visible error");
         f.client.resolve(film, done);
-        last(f).fail();
+        last(f).fail(401);
         assert.deepEqual(
             events,
             cancel ? ["release wait"] : ["release wait", "visible error", null]

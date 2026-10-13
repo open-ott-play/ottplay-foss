@@ -29,6 +29,13 @@ During full-screen Plex playback, **Left/Right** seek backward/forward by
 to a remote Plex queue while another TV provider is selected. Dedicated volume
 buttons still control volume; open lists and dialogs retain their own navigation.
 
+If switching files needs a folder or metadata request, a loading wait appears
+while the current video continues. **Up/Down** can adjust the pending selection;
+**Back** cancels it without stopping the current video. Temporary connection
+failures are retried up to three attempts. A failed or incomplete folder never
+becomes a partial playback queue. If the server remains unavailable, retry the
+arrow after checking the connection.
+
 The playback buttons appear beside the description. **Repeat** cycles through
 **All**, **One**, and **Off**: repeat the queue, repeat the current video, or finish
 after its last video. Remote shortcuts are **5** (or **Play**) for shuffle and

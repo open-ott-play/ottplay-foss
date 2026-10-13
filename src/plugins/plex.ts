@@ -135,6 +135,7 @@ function createPlexClient(
     var unloading = false;
     var pending: any = null;
     var connectTimer: any = null;
+    var resolveTimer: any = null;
     var cancelCollection: (() => void) | null = null;
     var cancelPage: (() => void) | null = null;
     var pageRevision = 0;
@@ -182,6 +183,17 @@ function createPlexClient(
             pairs.join("&")
         );
     }
+    function retryableRead(xhr: any, status: string): boolean {
+        var code = Number(xhr && xhr.status) || 0;
+        return (
+            status !== "abort" &&
+            status !== "parsererror" &&
+            (!code ||
+                code === 408 ||
+                code === 429 ||
+                (code >= 500 && code < 600))
+        );
+    }
     function request(
         path: string,
         params: any,
@@ -189,6 +201,7 @@ function createPlexClient(
         done: (data: any, error?: string, retryable?: boolean) => void
     ): void {
         var finished = false;
+        var settled = false;
         var owned: any = null;
         var headers: any = { Accept: "application/json" };
         ["X-Plex-Container-Start", "X-Plex-Container-Size"].forEach(
@@ -205,18 +218,19 @@ function createPlexClient(
                 },
                 dataType: "text",
                 error: function (xhr: any, status: string) {
-                    if (current(token) && status !== "abort") {
-                        var code = Number(xhr.status) || 0;
+                    if (settled) return;
+                    settled = true;
+                    if (current(token) && status !== "abort")
                         done(
                             null,
                             "Plex connection failed",
-                            !code || code === 408 || code === 429 || code >= 500
+                            retryableRead(xhr, status)
                         );
-                    }
                 },
                 headers: headers,
                 success: function (data: any) {
-                    if (!current(token)) return;
+                    if (settled || !current(token)) return;
+                    settled = true;
                     var parsed: any;
                     try {
                         parsed = plexContainer(data, w);
@@ -231,9 +245,12 @@ function createPlexClient(
                 url: url(path, params),
             });
             owned = xhr;
-            if (!finished && current(token)) pending = xhr;
+            if (!finished && !settled && current(token)) pending = xhr;
         } catch (_) {
-            if (current(token)) done(null, "Plex connection failed");
+            if (!settled && current(token)) {
+                settled = true;
+                done(null, "Plex connection failed");
+            }
         }
     }
     function control(path: string, active: any, done?: () => void): any {
@@ -281,6 +298,8 @@ function createPlexClient(
         revision++;
         if (connectTimer !== null) w.clearTimeout(connectTimer);
         connectTimer = null;
+        if (resolveTimer !== null) w.clearTimeout(resolveTimer);
+        resolveTimer = null;
         var xhr = pending;
         pending = null;
         if (xhr && typeof xhr.abort === "function") xhr.abort();
@@ -897,30 +916,48 @@ function createPlexClient(
                 }, 0);
             }
         }
-        function next(): void {
+        function next(attempt = 1): void {
             if (!active()) return;
             if (Date.now() >= deadline) {
                 finish(true);
                 return;
             }
-            pages++;
+            if (attempt === 1) pages++;
             var owner: any = { xhr: null };
             pendingPage = owner;
             var params = {
                 "X-Plex-Container-Size": 200,
                 "X-Plex-Container-Start": offset,
             };
-            function complete(data: any, error = false): void {
+            function complete(
+                data: any,
+                error = false,
+                retryable = false
+            ): void {
                 if (!active() || pendingPage !== owner) return;
                 pendingPage = null;
-                if (error) finish(true);
+                if (
+                    error &&
+                    retryable &&
+                    attempt < 3 &&
+                    Date.now() < deadline
+                ) {
+                    // Retry this offset only; failed reads consume time, not pages.
+                    timer = w.setTimeout(
+                        function () {
+                            timer = null;
+                            next(attempt + 1);
+                        },
+                        Math.min(attempt * 500, deadline - Date.now())
+                    );
+                } else if (error) finish(true);
                 else accept(data);
             }
             try {
                 var xhr = jq.ajax({
                     dataType: "text",
-                    error: function () {
-                        complete(null, true);
+                    error: function (xhr: any, status: string) {
+                        complete(null, true, retryableRead(xhr, status));
                     },
                     headers: {
                         Accept: "application/json",
@@ -1120,6 +1157,7 @@ function createPlexClient(
         cancel();
         var token = revision;
         var finished = false;
+        var attempts = 0;
         function finish(playable: any): void {
             if (finished || !current(token)) return;
             finished = true;
@@ -1141,11 +1179,21 @@ function createPlexClient(
             finish(null);
             return;
         }
+        var requestPath = item.request.path;
         release();
         function run(): void {
-            if (!current(token)) return;
-            request(item.request.path, {}, token, function (data, error) {
+            if (finished || !current(token)) return;
+            attempts++;
+            request(requestPath, {}, token, function (data, error, retry) {
                 if (finished || !current(token)) return;
+                if (retry && attempts < 3) {
+                    resolveTimer = w.setTimeout(function () {
+                        if (!current(token)) return;
+                        resolveTimer = null;
+                        run();
+                    }, attempts * 500);
+                    return;
+                }
                 if (error || !data) {
                     finish(null);
                     return;
@@ -1188,7 +1236,7 @@ function createPlexClient(
                     maxVideoBitrate: 12000,
                     mediaIndex: 0,
                     partIndex: 0,
-                    path: item.request.path,
+                    path: requestPath,
                     protocol: "hls",
                     session: active.id,
                     videoQuality: 100,

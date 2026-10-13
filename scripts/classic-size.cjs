@@ -193,7 +193,10 @@ const { gzipSync } = require("node:zlib");
 // failures. Node 22.23.3 measures 846770 / 262859 web, 846728 / 262927 native:
 // +1005 raw / +275 gzip over the prior web entry. Allocate +1000 / +300 while
 // preserving bounded native and release-version headroom.
-const BUDGET = Object.freeze({ bytes: 847100, gzipBytes: 263200 });
+// Cancellable Plex arrow waits add 684 raw / at most 268 gzip bytes on Node
+// 26.8.2 at the same 1.1.54 version. Allocate +750 / +300, retaining the
+// existing native, clean-source identity and release-version reserve.
+const BUDGET = Object.freeze({ bytes: 847850, gzipBytes: 263500 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -296,7 +299,10 @@ const BUDGET = Object.freeze({ bytes: 847100, gzipBytes: 263200 });
 // Count the standby entry changes and optional Plex admission guard together.
 // Node 22.23.3 totals 962749 / 305746 web and 962707 / 305814 native:
 // +1177 raw / +319 gzip over the prior complete web payload. Allocate +1200 / +350.
-const TOTAL_BUDGET = Object.freeze({ bytes: 963200, gzipBytes: 306050 });
+// Include the shared skip wait and optional Plex retry implementation:
+// +1072 raw / at most 390 gzip bytes over fbc80031, measured with all seven
+// providers on Node 26.8.2. Allocate +1150 / +450 to preserve the prior reserve.
+const TOTAL_BUDGET = Object.freeze({ bytes: 964350, gzipBytes: 306500 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

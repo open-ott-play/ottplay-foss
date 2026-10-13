@@ -194,11 +194,17 @@ function classicMediaRuntime(): any {
         manualLoading = null;
         request.owner.close();
     }
-    function showLoading(cancel: () => void, item?: MediaLibraryItem) {
+    function showLoading(
+        cancel: () => void,
+        item?: MediaLibraryItem,
+        navigate?: (direction: number) => void
+    ) {
         var owner = w.__ottClassicScreenPort.setOwnedCallback(
             "dialog",
             function (key: number) {
                 if (key === w.keys.RETURN || key === w.keys.EXIT) cancel();
+                else if (navigate && (key === w.keys.UP || key === w.keys.DOWN))
+                    navigate(key === w.keys.UP ? 1 : -1);
             }
         ).owner;
         var title = w.document.createElement("div");
@@ -214,6 +220,31 @@ function classicMediaRuntime(): any {
             )
             .show();
         return owner;
+    }
+    function finishSkipLoading(request: any) {
+        var owner = request && request.loading;
+        if (!owner) return;
+        request.loading = null;
+        owner.close();
+    }
+    function beginSkipLoading(request: any, item?: MediaLibraryItem) {
+        var screen = w.__ottClassicScreenPort;
+        // Explicit full-screen navigation may show a wait. Background queue
+        // changes and a foreground list, editor or dialog keep their own UI.
+        if (!request.feedback || screen.screens.current() || w.isListVisible)
+            return;
+        var owner = showLoading(
+            function () {
+                if (skipRequest === request) api.cancelAuto();
+            },
+            item,
+            skipPlayback
+        );
+        request.loading = owner;
+        owner.own(function () {
+            if (skipRequest === request && request.loading === owner)
+                api.cancelAuto();
+        });
     }
     function beginManualLoading(item: MediaLibraryItem) {
         if (!item.payload.plexSource && w.p_pref !== "plex") return null;
@@ -799,6 +830,12 @@ function classicMediaRuntime(): any {
         var playback = mediaClassicPlayback;
         var sequence = playback && playback.sequence;
         if (!playback || playback.runtime !== api || !direction) return;
+        var owner = w.__ottClassicScreenPort.screens.current();
+        var feedback =
+            /^plex(?:@|$)/.test(playback.ref.sourceId) &&
+            w.playType < 0 &&
+            !w.isListVisible &&
+            (!owner || (skipRequest && owner === skipRequest.loading));
         var recovering =
             !sequence || !sequence.items.length || sequence.placeholder;
         if (
@@ -847,18 +884,22 @@ function classicMediaRuntime(): any {
         // original siblings when an arrow is pressed, including Repeat One.
         if (recovering) {
             request = {
+                feedback: feedback,
                 offset: direction,
                 playback: playback,
                 recovering: true,
                 valid: valid,
             };
             skipRequest = request;
+            beginSkipLoading(request);
+            if (!valid()) return;
             var saved = describe([playback.payload], {
                 kind: "history",
                 title: "",
             })[0];
             collectFolder(saved, valid, function (folder) {
                 if (!valid()) return;
+                finishSkipLoading(request);
                 skipRequest = null;
                 if (!folder) {
                     if (w.showShift)
@@ -874,15 +915,18 @@ function classicMediaRuntime(): any {
             ((index % sequence.items.length) + sequence.items.length) %
             sequence.items.length;
         if (index === sequence.index) return;
-        request = { index: index, playback: playback };
+        request = { feedback: feedback, index: index, playback: playback };
         skipRequest = request;
         var item = sequence.items[index];
         function finish() {
+            finishSkipLoading(request);
             if (skipRequest === request) skipRequest = null;
         }
         authorize(
             item,
             function () {
+                if (!valid()) return;
+                beginSkipLoading(request, item);
                 if (!valid()) return;
                 resolve(
                     item,
@@ -943,6 +987,10 @@ function classicMediaRuntime(): any {
         admit?: (payload: any) => boolean
     ) {
         var loading = automatic ? null : manualLoading;
+        var skipped =
+            automatic && skipRequest && skipRequest.loading
+                ? skipRequest
+                : null;
         if (!automatic && !loading && !cancelNavigationAuto()) return;
         rememberNavigation(item);
         var request = {};
@@ -958,9 +1006,11 @@ function classicMediaRuntime(): any {
         (automatic ? automaticLibrary : library).resolve(
             function (done: any) {
                 bindScreen();
-                if (loading)
+                if (loading || skipped)
                     done.beforeError = function () {
-                        if (!valid() || manualLoading !== loading) return;
+                        if (!valid()) return;
+                        if (skipped) finishSkipLoading(skipped);
+                        if (!loading || manualLoading !== loading) return;
                         // Retire the wait before Plex replaces it with its error
                         // dialog. Keep the selected file available for retry.
                         finishManualLoading(loading);
@@ -1030,6 +1080,7 @@ function classicMediaRuntime(): any {
             },
             function (payload: any) {
                 if (!valid()) return;
+                if (skipped) finishSkipLoading(skipped);
                 if (admit && payload && !admit(payload)) payload = null;
                 if (automatic) automaticRequest = null;
                 if (!payload) {
@@ -1105,7 +1156,9 @@ function classicMediaRuntime(): any {
             }
             finishStartupLoading();
             completionRequest = null;
+            var skipped = skipRequest;
             skipRequest = null;
+            finishSkipLoading(skipped);
             shuffleRequest = null;
             var collecting = collectionRequest;
             collectionRequest = null;
@@ -1418,6 +1471,8 @@ function classicMediaRuntime(): any {
             }, 0);
         },
         open: function (target: any, title?: string, label?: any) {
+            if (skipRequest && skipRequest.loading && !cancelNavigationAuto())
+                return;
             var view = library.snapshot("none");
             if (target === null && view.frame) {
                 if (
@@ -1976,7 +2031,10 @@ function classicMediaRuntime(): any {
             }
             authorize(item, proceed);
         },
-        show: library.show,
+        show: function () {
+            if (!skipRequest || !skipRequest.loading || cancelNavigationAuto())
+                library.show();
+        },
         shufflePlay: function () {
             var view = library.snapshot("none");
             var frame = view.frame;

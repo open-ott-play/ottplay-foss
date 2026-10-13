@@ -3185,6 +3185,186 @@ test("Rapid media skips supersede pending resolutions and cancelled PIN grants c
     );
 });
 
+function pendingPlexSkipFixture(recovering = false) {
+    const c = recovering ? resumedWithoutFolder() : coldFolderResumeFixture();
+    if (!recovering) c.__ottMedia.restoreLast();
+    c.__ottClassicScreenPort.closeList();
+    c.pendingSkips = [];
+    c.providerMediaClient.resolve = (item, done) => {
+        c.pendingSkips.push({
+            done,
+            finish: () =>
+                done({ ...item, stream_url: item.request.path + ".mp4" }),
+        });
+    };
+    c.skipWait = () => c.elements["#dialogbox"];
+    c.pressWait = (key) =>
+        c.__ottClassicScreenPort.screens.dispatch({ code: key, id: "test" });
+    return c;
+}
+
+test("Explicit Plex skip waits visibly and releases its dialog before decoder startup", () => {
+    const c = pendingPlexSkipFixture();
+    const current = c.__ottMedia.current().ref.itemId;
+    c.__ottMedia.skip(1);
+    assert.match(c.skipWait().innerHTML, /ott-spinner/);
+    assert.match(c.skipWait().innerHTML, /Next film/);
+    assert.equal(c.skipWait().style.display, "");
+    assert.equal(c.__ottMedia.current().ref.itemId, current);
+    const play = c.stbPlay;
+    c.stbPlay = (...args) => {
+        assert.equal(c.skipWait().style.display, "none");
+        play(...args);
+    };
+    c.pendingSkips[0].finish();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    assert.equal(c.__ottClassicScreenPort.screens.current(), null);
+});
+
+test("Explicit Plex skip wait accepts rapid arrows and ignores superseded replies", () => {
+    const c = pendingPlexSkipFixture();
+    c.__ottMedia.skip(1);
+    c.pressWait(c.keys.UP);
+    c.pressWait(c.keys.DOWN);
+    assert.equal(c.pendingSkips.length, 3);
+    c.pendingSkips[0].finish();
+    c.pendingSkips[1].finish();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    assert.equal(c.skipWait().style.display, "");
+    c.pendingSkips[2].finish();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+    assert.equal(c.skipWait().style.display, "none");
+});
+
+test("Explicit Plex skip Back cancels the pending request without leaving the playing video", () => {
+    const c = pendingPlexSkipFixture();
+    const before = plain(c.__ottClassicPlayback.snapshot());
+    let cancelled = 0;
+    c.providerMediaClient.cancelAutomatic = () => cancelled++;
+    c.__ottMedia.skip(1);
+    c.pressWait(c.keys.RETURN);
+    assert.equal(cancelled, 1);
+    assert.equal(c.skipWait().style.display, "none");
+    c.pendingSkips[0].finish();
+    assert.deepEqual(plain(c.__ottClassicPlayback.snapshot()), before);
+    assert.equal(c.isListVisible, false);
+});
+
+test("Explicit Plex skip wait spans folder recovery and closes on collection failure", () => {
+    for (const failure of [false, true]) {
+        const c = pendingPlexSkipFixture(true);
+        if (failure)
+            c.folderRows = c.folderRows.filter(
+                (row) => row.request?.path !== "/library/metadata/42"
+            );
+        c.__ottMedia.skip(1);
+        assert.equal(c.skipWait().style.display, "");
+        c.pressWait(c.keys.UP);
+        assert.equal(c.collections.length, 1);
+        c.completeFolder();
+        if (failure) {
+            assert.equal(c.skipWait().style.display, "none");
+            assert.equal(c.pendingSkips.length, 0);
+            assert(
+                c.calls.some(
+                    (row) =>
+                        row[0] === "shift" &&
+                        row[1] === "Unable to load playlist"
+                )
+            );
+        } else {
+            assert.equal(c.skipWait().style.display, "");
+            assert.equal(c.pendingSkips.length, 1);
+            c.pendingSkips[0].finish();
+            assert.equal(
+                c.__ottMedia.current().payload.request.path,
+                "/library/metadata/41"
+            );
+            assert.equal(c.skipWait().style.display, "none");
+        }
+    }
+});
+
+test("Explicit Plex skip yields to metadata errors and allows retry after dismissal", () => {
+    const c = pendingPlexSkipFixture();
+    c.__ottMedia.skip(1);
+    const pending = c.pendingSkips[0];
+    assert.equal(typeof pending.done.beforeError, "function");
+    pending.done.beforeError();
+    assert.equal(c.skipWait().style.display, "none");
+    const error = c.__ottClassicScreenPort.setOwnedCallback(
+        "dialog",
+        () => {}
+    ).owner;
+    c.$("#dialogbox").html("Plex connection failed").show();
+    pending.done(null);
+    assert.equal(c.skipWait().style.display, "");
+    assert.equal(c.skipWait().innerHTML, "Plex connection failed");
+    error.close();
+    c.__ottMedia.skip(1);
+    c.pendingSkips[1].finish();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/43"
+    );
+});
+
+test("Explicit Plex skip cancellation never hides a replacement screen or admits stale playback", () => {
+    for (const replacement of ["dialog", "list", "stop", "source"]) {
+        const c = pendingPlexSkipFixture();
+        c.__ottMedia.skip(1);
+        if (replacement === "dialog") {
+            c.__ottClassicScreenPort.setOwnedCallback("dialog", () => {});
+            c.$("#dialogbox").html("Other dialog").show();
+        } else if (replacement === "list") c.mediaList(null);
+        else if (replacement === "source") {
+            c.p_pref = "other";
+            c.mediaList(null);
+        } else {
+            c.__ottMedia.cancelAuto();
+            c.__ottClassicPlayback.command({ type: "stop" });
+        }
+        const before = plain(c.__ottClassicPlayback.snapshot());
+        c.pendingSkips[0].finish();
+        assert.deepEqual(
+            plain(c.__ottClassicPlayback.snapshot()),
+            before,
+            replacement
+        );
+        if (replacement === "dialog") {
+            assert.equal(c.skipWait().innerHTML, "Other dialog");
+            assert.equal(c.skipWait().style.display, "");
+        } else assert.equal(c.skipWait().style.display, "none", replacement);
+    }
+});
+
+test("Explicit Plex skip never takes input ownership from an existing screen", () => {
+    for (const kind of ["dialog", "list"]) {
+        const c = pendingPlexSkipFixture();
+        const owner =
+            kind === "list"
+                ? c.__ottClassicScreenPort.commitList()
+                : c.__ottClassicScreenPort.setOwnedCallback("dialog", () => {})
+                      .owner;
+        if (kind === "dialog") c.$("#dialogbox").html("Other dialog").show();
+        c.__ottMedia.skip(1);
+        assert.equal(c.__ottClassicScreenPort.screens.current(), owner);
+        c.pendingSkips[0].finish();
+        assert.equal(c.__ottClassicScreenPort.screens.current(), owner);
+        if (kind === "dialog")
+            assert.equal(c.skipWait().innerHTML, "Other dialog");
+    }
+});
+
 test("Cold Plex startup waits visibly for both folder collection and stream resolution", () => {
     const c = coldFolderResumeFixture();
     c.deferFolder = true;

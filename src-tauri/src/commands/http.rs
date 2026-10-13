@@ -86,8 +86,10 @@ pub async fn proxy_http(
         message: error.to_string(),
         timeout: false,
     })?;
-    let client = client_builder(timeout_ms, secure_control, screenshot_control).build()?;
-    let mut request = client.request(method, url);
+    let client = shared_client(secure_control, screenshot_control).await?;
+    let mut request = client
+        .request(method, url)
+        .timeout(Duration::from_millis(timeout_ms.unwrap_or(30000).max(1)));
     for (name, value) in headers.unwrap_or_default() {
         request = request.header(name, value);
     }
@@ -154,13 +156,34 @@ fn screenshot_url_allowed(url: &reqwest::Url) -> bool {
         && (url.scheme() == "https" || (url.scheme() == "http" && loopback))
 }
 
-fn client_builder(
-    timeout_ms: Option<u64>,
+async fn shared_client(
     secure_control: bool,
     screenshot_control: bool,
-) -> reqwest::ClientBuilder {
+) -> Result<&'static reqwest::Client, HttpError> {
+    // Reuse TLS connections while paging provider libraries. Keep each transport
+    // policy in its own pool, including when both control flags are present.
+    static PROVIDER: tokio::sync::OnceCell<reqwest::Client> = tokio::sync::OnceCell::const_new();
+    static SECURE_CONTROL: tokio::sync::OnceCell<reqwest::Client> =
+        tokio::sync::OnceCell::const_new();
+    static SCREENSHOT: tokio::sync::OnceCell<reqwest::Client> = tokio::sync::OnceCell::const_new();
+    let slot = if secure_control {
+        &SECURE_CONTROL
+    } else if screenshot_control {
+        &SCREENSHOT
+    } else {
+        &PROVIDER
+    };
+    slot.get_or_try_init(|| async { client_builder(secure_control, screenshot_control).build() })
+        .await
+        .map_err(HttpError::from)
+}
+
+fn client_builder(secure_control: bool, screenshot_control: bool) -> reqwest::ClientBuilder {
     let builder = reqwest::Client::builder()
-        .timeout(Duration::from_millis(timeout_ms.unwrap_or(30000).max(1)))
+        .pool_max_idle_per_host(4)
+        .pool_idle_timeout(Duration::from_secs(30))
+        // Provider credentials belong to individual requests, never the client.
+        .cookie_store(false)
         .user_agent("OTT-play-FOSS/1.0");
     if secure_control {
         // Pairing claims carry bearer credentials. Even a same-host redirect
@@ -281,10 +304,11 @@ mod tests {
             assert!(!error.message.contains("secret"));
         }
         // HTTPS-only also applies inside the HTTP client, not just URL parsing.
-        assert!(client_builder(Some(100), true, false)
-            .build()
+        assert!(shared_client(true, false)
+            .await
             .unwrap()
             .get("http://127.0.0.1:1/")
+            .timeout(Duration::from_millis(100))
             .send()
             .await
             .unwrap_err()
@@ -321,12 +345,13 @@ mod tests {
         });
         // Use a plaintext fixture solely to exercise the production redirect
         // policy. The separate test above covers the HTTPS-only enforcement.
-        let client = client_builder(Some(1000), true, false)
+        let client = client_builder(true, false)
             .https_only(false)
             .build()
             .unwrap();
         let response = client
             .get(format!("http://{address}/api/pairings?id=receipt"))
+            .timeout(Duration::from_millis(1000))
             .bearer_auth("claim-secret")
             .send()
             .await
@@ -426,6 +451,139 @@ mod tests {
         let mut bytes = vec![0; length];
         reader.read_exact(&mut bytes).unwrap();
         (headers, bytes)
+    }
+
+    #[tokio::test]
+    async fn provider_reuses_connections_without_retaining_headers_or_cookies() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/library/sections", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            // Both pages must use the same accepted connection.
+            let (mut stream, _) = listener.accept().unwrap();
+            let first = read_test_request(&mut stream);
+            stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nSet-Cookie: session=private\r\n\r\n{}").unwrap();
+            let second = read_test_request(&mut stream);
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                .unwrap();
+            (first.0.to_ascii_lowercase(), second.0.to_ascii_lowercase())
+        });
+        let first = proxy_http(
+            url.clone(),
+            "GET".into(),
+            None,
+            Some(HashMap::from([
+                ("Authorization".into(), "Bearer private".into()),
+                ("X-Plex-Token".into(), "provider-secret".into()),
+                ("Cookie".into(), "explicit=value".into()),
+            ])),
+            Some(2000),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(first.status, 200);
+        let second = proxy_http(url, "GET".into(), None, None, Some(2000), None, None)
+            .await
+            .unwrap();
+        assert_eq!(second.status, 200);
+        let (first, second) = server.join().unwrap();
+        assert!(first.contains("authorization: bearer private\r\n"));
+        assert!(first.contains("x-plex-token: provider-secret\r\n"));
+        assert!(first.contains("cookie: explicit=value\r\n"));
+        assert!(!second.contains("authorization:"));
+        assert!(!second.contains("x-plex-token:"));
+        assert!(!second.contains("cookie:"));
+    }
+
+    #[tokio::test]
+    async fn reused_connection_honors_each_request_timeout_including_response_body() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/library/page", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            for delay_ms in [0, 400, 250] {
+                read_test_request(&mut stream);
+                stream
+                    .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n")
+                    .unwrap();
+                std::thread::sleep(Duration::from_millis(delay_ms));
+                // The final request intentionally times out before its body.
+                let _ = stream.write_all(b"{}");
+            }
+        });
+        for timeout_ms in [200, 2000] {
+            let response = proxy_http(
+                url.clone(),
+                "GET".into(),
+                None,
+                None,
+                Some(timeout_ms),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+            assert_eq!(response.body, "{}");
+        }
+        let error = proxy_http(url, "GET".into(), None, None, Some(75), None, None)
+            .await
+            .unwrap_err();
+        assert!(error.timeout);
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn screenshot_and_provider_requests_use_separate_connection_pools() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/endpoint", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut provider, _) = listener.accept().unwrap();
+            read_test_request(&mut provider);
+            provider
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+                .unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let deadline = std::time::Instant::now() + Duration::from_secs(2);
+            let mut screenshot = loop {
+                match listener.accept() {
+                    Ok((stream, _)) => break stream,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        assert!(
+                            std::time::Instant::now() < deadline,
+                            "screenshot reused the provider connection"
+                        );
+                        std::thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(error) => panic!("accept screenshot connection: {error}"),
+                }
+            };
+            read_test_request(&mut screenshot);
+            screenshot
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                .unwrap();
+            // Returning to provider traffic must retain its original connection.
+            read_test_request(&mut provider);
+            provider
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                .unwrap();
+        });
+        for screenshot in [false, true, false] {
+            let response = proxy_http(
+                url.clone(),
+                "GET".into(),
+                None,
+                None,
+                Some(2000),
+                None,
+                Some(screenshot),
+            )
+            .await
+            .unwrap();
+            assert_eq!(response.status, 200);
+        }
+        server.join().unwrap();
     }
 
     #[tokio::test]

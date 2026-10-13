@@ -4,6 +4,12 @@
 
 ### Changes
 
+- Show an explicit loading wait when full-screen Plex Up/Down needs to load the
+  neighboring file or restore its folder queue. Back cancels the pending switch
+  and leaves the current video playing; repeated arrows update the selection.
+- Retry transient Plex catalog and file-resolution failures within bounded
+  attempts, and reuse Tauri HTTP connections while preserving per-request
+  timeouts and separate control-transport security policies.
 - Stop both main and PiP streams on standby, reset native media resource
   selection, and cancel preview and pending Plex playback so background
   callbacks cannot restart those streams. Plex playback remains blocked until
