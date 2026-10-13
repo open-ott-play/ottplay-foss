@@ -243,6 +243,11 @@ jobs:
         run: python3 tests/test_container_workspace.py
       - name: Test core and server including shared XMLTV differential contracts
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Replay fixed fuzz regression corpus (no fuzz campaign)
+        run: |
+          cargo fmt --manifest-path fuzz/Cargo.toml -- --check
+          cargo clippy --locked --manifest-path fuzz/Cargo.toml --lib -- -D warnings
+          cargo test --locked --manifest-path fuzz/Cargo.toml --lib
       - name: Enforce release server EPG performance budgets
         run: |
           cargo build --locked --release -p ottplay-server

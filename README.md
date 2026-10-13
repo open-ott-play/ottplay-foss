@@ -1,5 +1,11 @@
 # OTT-play FOSS
 
+[![Fuzzing: RC only](https://img.shields.io/badge/Fuzzing-RC%20only-blue)](FUZZING.md)
+
+Public release candidates run bounded, isolated fuzz campaigns for native/server
+XMLTV parsing and portal request validation. See [fuzzing scope, reproduction,
+and release evidence](FUZZING.md).
+
 Self-contained IPTV/OTT player with a local Rust HTTP server. Runs on Smart TVs (LG WebOS, Samsung Tizen, Panasonic, Sony, etc.), set-top boxes (Infomir MAG, Dune HD, Enigma2, Android TV), and desktop browsers.
 
 Start with the [architecture and contributor guide](docs/architecture.md) for

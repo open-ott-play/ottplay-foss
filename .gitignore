@@ -74,3 +74,9 @@ release-assets/
 
 # Isolated Capacitor 6 / Android 5.1 native outputs.
 **/build-api22/
+
+# Local fuzz build and diagnostics; source corpus is public and synthetic.
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/coverage/
+!fuzz/Cargo.lock
