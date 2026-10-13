@@ -49,6 +49,7 @@ function fixture() {
     Hls.prototype.recoverMediaError = function () {
         this.recovered = true;
     };
+    Hls.prototype.startLoad = function () {};
     const w = {
         _: (s) => s,
         $: () => ({ hide() {}, html() {} }),

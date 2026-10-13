@@ -357,6 +357,7 @@ function installHls(w: any) {
         }
         attachMedia() {}
         recoverMediaError() {}
+        startLoad() {}
         on(event: string, callback: (...args: any[]) => void) {
             this.events[event] = callback;
         }

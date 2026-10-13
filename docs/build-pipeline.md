@@ -133,9 +133,9 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 848,000 UTF-8 bytes and 263,500
+Each final classic entry bundle is limited to 848,400 UTF-8 bytes and 263,600
 bytes compressed with gzip level 9. The entry plus all seven provider families
-must also fit within 964,500 bytes and 306,500 gzip bytes, summed per file.
+must also fit within 964,900 bytes and 306,550 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
@@ -144,11 +144,11 @@ application download. Raise a budget only with a reviewed feature/size tradeoff.
 The authoritative limits and measurement history are in `scripts/classic-size.cjs`.
 
 The cancellable Plex arrow wait, buffered HLS resume and bounded read retries add
-870 raw / at most 293 gzip entry bytes and 1,258 raw / at most 415 gzip
+1,282 raw / at most 366 gzip entry bytes and 1,670 raw / at most 488 gzip
 complete-payload bytes over `fbc80031`. Both revisions were built at version
 1.1.54 on Node 26.8.2,
-including all seven providers and native staging. The allocation adds 900 / 300
-entry bytes and 1,300 / 450 complete-payload bytes, preserving the prior reserve
+including all seven providers and native staging. The allocation adds 1,300 / 400
+entry bytes and 1,700 / 500 complete-payload bytes, preserving the prior reserve
 for clean-source identity, native transforms and release suffixes.
 
 Named Plex library selection adds 1,319 raw / at most 398 gzip entry bytes and

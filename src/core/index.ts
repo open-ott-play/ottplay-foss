@@ -292,7 +292,10 @@ function seekCoreMedia(position: number, session: number): void {
     cancelCoreSeek();
     if (hlsInstance) {
         hlsInstance.config.startPosition = position;
-        hlsInstance.startLoad(position);
+        if (!hlsInstance.hasEnoughToStart) {
+            hlsInstance.startLoad(position);
+            return;
+        }
     }
     var media = video;
     function apply(): boolean {
@@ -319,6 +322,7 @@ function seekCoreMedia(position: number, session: number): void {
         };
         _corePendingSeek = clear;
         media.addEventListener("loadedmetadata", onMetadata);
+        if (hlsInstance) hlsInstance.startLoad(position);
     }
 }
 
@@ -1196,7 +1200,8 @@ function startCorePlayback(
                         if (typeof hlsInstance.removeLevel === "function") {
                             hlsInstance.removeLevel(failed);
                             hlsInstance.startLoad(
-                                _corePendingSeek
+                                _corePendingSeek ||
+                                    !hlsInstance.hasEnoughToStart
                                     ? hlsInstance.config.startPosition
                                     : -1
                             );
@@ -1219,14 +1224,16 @@ function startCorePlayback(
                             "[HLS] trying recoverMediaError" +
                                 (data.details ? " (" + data.details + ")" : "")
                         );
-                        var pendingPosition = _corePendingSeek
-                            ? hlsInstance.config.startPosition
-                            : null;
+                        cancelCoreSeek();
                         hlsInstance.recoverMediaError();
-                        // HLS recovery samples currentTime, which may still be
-                        // stale when the decoder rejected a pre-metadata seek.
-                        if (pendingPosition !== null)
-                            hlsInstance.startLoad(pendingPosition);
+                        if (
+                            session === _playSession &&
+                            hlsInstance === playbackHls &&
+                            hlsInstance.config.startPosition >= 0
+                        )
+                            hlsInstance.startLoad(
+                                hlsInstance.config.startPosition
+                            );
                     } else {
                         // Chrome/Edge MSE cannot play HLS natively. Setting
                         // video.src to an .m3u8 only yields SRC_NOT_SUPPORTED
@@ -1344,7 +1351,7 @@ function startCorePlayback(
                     } else {
                         console.log("[HLS] trying startLoad");
                         hlsInstance.startLoad(
-                            _corePendingSeek
+                            _corePendingSeek || !hlsInstance.hasEnoughToStart
                                 ? hlsInstance.config.startPosition
                                 : -1
                         );
