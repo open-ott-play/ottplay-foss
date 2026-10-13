@@ -1719,41 +1719,134 @@ for (const { engine, strict } of [
                 const target =
                     "request:" +
                     JSON.stringify({ path: "/library/metadata/" + id });
-                await page.waitForFunction(
-                    (target) => {
-                        const media = window.video;
-                        if (media?.error)
-                            throw new Error(
-                                "Decoder error " +
-                                    media.error.code +
-                                    ": " +
-                                    media.error.message
+                try {
+                    await page.waitForFunction(
+                        (target) => {
+                            const media = window.video;
+                            if (media?.error)
+                                throw new Error(
+                                    "Decoder error " +
+                                        media.error.code +
+                                        ": " +
+                                        media.error.message
+                                );
+                            return (
+                                window.__ottMedia?.current()?.ref.itemId ===
+                                    target &&
+                                media?.videoWidth === 640 &&
+                                media?.videoHeight === 360 &&
+                                media?.readyState >= 2 &&
+                                media.currentTime > 0.1
                             );
-                        return (
-                            window.__ottMedia?.current()?.ref.itemId ===
-                                target &&
-                            media?.videoWidth === 640 &&
-                            media?.videoHeight === 360 &&
-                            media?.readyState >= 2 &&
-                            media.currentTime > 0.1
+                        },
+                        target,
+                        { timeout: 15000 }
+                    );
+                    expect(
+                        await page.evaluate(() => ({
+                            aspect: !!window.captureAspectTarget?.(),
+                            target: window.__ottMedia?.current()?.ref.itemId,
+                        }))
+                    ).toEqual({
+                        aspect: true,
+                        target,
+                    });
+                    await page.evaluate(() => {
+                        window.stbPause();
+                        window.stbToFullScreen();
+                    });
+                } catch (error) {
+                    try {
+                        const state = await page.evaluate(() => {
+                            const media = window.video;
+                            const ranges = (value) =>
+                                Array.from({ length: value.length }, (_, i) => [
+                                    value.start(i),
+                                    value.end(i),
+                                ]);
+                            const checkpoint =
+                                window.stbGetPersistedItem("__ottKioskV1");
+                            const hls = window.hlsInstance;
+                            const playback =
+                                window.__ottClassicPlayback?.snapshot();
+                            return {
+                                currentRef:
+                                    window.__ottMedia?.current()?.ref || null,
+                                hls: hls
+                                    ? {
+                                          attachedToVideo: hls.media === media,
+                                          autoLevelEnabled:
+                                              hls.autoLevelEnabled,
+                                          currentLevel: hls.currentLevel,
+                                          loadLevel: hls.loadLevel,
+                                          nextLoadLevel: hls.nextLoadLevel,
+                                      }
+                                    : null,
+                                kioskCheckpoint: checkpoint,
+                                media: media
+                                    ? {
+                                          buffered: ranges(media.buffered),
+                                          currentSrc: media.currentSrc.split(
+                                              /[?#]/,
+                                              1
+                                          )[0],
+                                          currentTime: media.currentTime,
+                                          duration: Number.isFinite(
+                                              media.duration
+                                          )
+                                              ? media.duration
+                                              : String(media.duration),
+                                          ended: media.ended,
+                                          error: media.error
+                                              ? {
+                                                    code: media.error.code,
+                                                    message:
+                                                        media.error.message,
+                                                }
+                                              : null,
+                                          networkState: media.networkState,
+                                          paused: media.paused,
+                                          readyState: media.readyState,
+                                          seekable: ranges(media.seekable),
+                                          seeking: media.seeking,
+                                          videoHeight: media.videoHeight,
+                                          videoWidth: media.videoWidth,
+                                      }
+                                    : null,
+                                playback: playback
+                                    ? {
+                                          duration: playback.duration,
+                                          generation: playback.generation,
+                                          phase: playback.phase,
+                                          position: playback.position,
+                                          target: playback.target
+                                              ? {
+                                                    channelId:
+                                                        playback.target
+                                                            .channelId,
+                                                    kind: playback.target.kind,
+                                                    sourceId:
+                                                        playback.target
+                                                            .sourceId,
+                                                }
+                                              : null,
+                                      }
+                                    : null,
+                            };
+                        });
+                        await test.info().attach("aspect-readiness-failure", {
+                            body: JSON.stringify({ target, ...state }, null, 2),
+                            contentType: "application/json",
+                        });
+                    } catch (diagnosticError) {
+                        // Diagnostics must never replace the original failure.
+                        console.error(
+                            "Unable to capture aspect readiness state:",
+                            diagnosticError
                         );
-                    },
-                    target,
-                    { timeout: 15000 }
-                );
-                expect(
-                    await page.evaluate(() => ({
-                        aspect: !!window.captureAspectTarget?.(),
-                        target: window.__ottMedia?.current()?.ref.itemId,
-                    }))
-                ).toEqual({
-                    aspect: true,
-                    target,
-                });
-                await page.evaluate(() => {
-                    window.stbPause();
-                    window.stbToFullScreen();
-                });
+                    }
+                    throw error;
+                }
             }
             async function aspect() {
                 return page.evaluate(() => {

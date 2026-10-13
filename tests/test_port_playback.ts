@@ -349,7 +349,7 @@ function installHls(w: any) {
         url = "";
         levels: any[] = [];
         destroyed = false;
-        constructor() {
+        constructor(public config: Record<string, any>) {
             players.push(this);
         }
         loadSource(url: string) {
@@ -434,7 +434,8 @@ for (const action of ["switch", "stop"]) {
     assert.equal(f.w.video.playCalls, 0);
     players[0].events.manifest();
     assert.equal(f.w.video.playCalls, 1);
-    assert.equal(f.w.video.currentTime, 35);
+    assert.equal(players[0].config.startPosition, 35);
+    assert.equal(f.w.video.currentTime, 0, "HLS controls its buffered seek");
 }
 
 {
@@ -520,9 +521,9 @@ for (const route of ["manifest", "native recovery"]) {
     if (route === "manifest") {
         players[0].events.manifest();
         assert.equal(
-            f.w.video.currentTime,
+            players[0].config.startPosition,
             35,
-            "void play() must not interrupt the seek"
+            "void play() must preserve the HLS buffered-start seek"
         );
     } else {
         const fatal = {

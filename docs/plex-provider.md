@@ -48,8 +48,9 @@ changing the filter or choosing another item cancels a pending queue launch.
 
 On reopening the player, Plex continues the last unfinished video at its saved
 position, including seconds within the first minute. It resolves the Plex item
-again instead of retaining an expiring stream URL. **Enter/OK** reopens the saved
-folder with the playing file selected; **Back** returns through its saved
+again instead of retaining an expiring stream URL. Compatible HLS waits for its
+initial media buffer before applying the saved position. **Enter/OK** reopens
+the saved folder with the playing file selected; **Back** returns through its saved
 breadcrumbs. The folder queue is rebuilt from the current server catalog and
 continues from that file, respecting the saved repeat setting. Older checkpoints
 restore the saved folder directly even when they do not contain its full

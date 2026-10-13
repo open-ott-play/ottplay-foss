@@ -1169,7 +1169,8 @@ test("HEVC audio-only probes once, retains URL and VOD position, and never caps 
     assert.equal(actual.config.capLevelToPlayerSize, false);
     actual.emit("manifest");
     ready(f.w.video, true);
-    assert.equal(f.w.video.currentTime, 52);
+    assert.equal(actual.config.startPosition, 52);
+    assert.equal(f.w.video.currentTime, 0, "HLS controls its buffered seek");
     assert.equal(f.w.video.videoHeight, 1080);
     hevc(first);
     f.advance(10000);
@@ -1396,7 +1397,8 @@ test("pause during a HEVC probe survives HLS attachment and late manifest", () =
     f.advance(0);
     f.players[1].emit("manifest");
     ready(f.w.video, true);
-    assert.equal(f.w.video.currentTime, 35);
+    assert.equal(f.players[1].config.startPosition, 35);
+    assert.equal(f.w.video.currentTime, 0, "HLS controls its buffered seek");
     assert.equal(f.w.video.playCalls, 1);
     assert.equal(f.w.video.paused, true);
     f.w.stbContinue();

@@ -45,6 +45,7 @@ function media() {
             return time;
         },
         set currentTime(value) {
+            this.seekWrites.push(value);
             if (this.blockEarlySeek && this.readyState === 0)
                 throw new Error("InvalidStateError");
             time = value;
@@ -75,6 +76,7 @@ function media() {
         removeEventListener(name, cb) {
             listeners[name] = (listeners[name] || []).filter((x) => x !== cb);
         },
+        seekWrites: [],
         get src() {
             return src;
         },
@@ -93,7 +95,9 @@ function fixture() {
         errors = [],
         boxes = [],
         hidden = [];
-    function Hls() {
+    function Hls(config) {
+        this.config = config;
+        this.hasEnoughToStart = false;
         this.events = {};
         this.levels = [];
         this.audioTracks = [{ name: "A" }];
@@ -725,8 +729,9 @@ test("native and HLS recovery preserve seek on engines rejecting pre-metadata cu
     w.stbPlay("archive.m3u8", 54);
     players[0].events.manifest();
     w.video.metadata();
-    assert.equal(w.video.currentTime, 54);
+    assert.equal(players[0].config.startPosition, 54);
     w.video.currentTime = 73;
+    players[0].hasEnoughToStart = true;
     w.stbPause();
     const fatal = { details: "bufferAppendError", fatal: true, type: "media" };
     players[0].events.error(null, fatal);
@@ -741,6 +746,151 @@ test("native and HLS recovery preserve seek on engines rejecting pre-metadata cu
     for (const cb of stale) cb();
     w.video.metadata();
     assert.equal(w.video.currentTime, 12);
+});
+test("HLS resumes through its buffered-start position without early DOM seeks", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    const position = 0.114871958;
+    w.stbPlay("resume.m3u8", position);
+    assert.equal(players[0].config.startPosition, position);
+    assert.deepEqual(w.video.seekWrites, []);
+    players[0].events.manifest();
+    w.video.metadata();
+    assert.equal(w.video.playCalls, 1);
+    assert.deepEqual(
+        w.video.seekWrites,
+        [],
+        "manifest and metadata leave the initial seek to the HLS engine"
+    );
+    assert.equal(w._corePendingSeek, null);
+    w.stbPlay("replacement.m3u8", 0.25);
+    players[0].events.manifest();
+    assert.equal(
+        w.video.playCalls,
+        1,
+        "retired manifest cannot resume playback"
+    );
+    players[1].events.manifest();
+    w.video.metadata();
+    assert.equal(players[1].config.startPosition, 0.25);
+    assert.equal(w.video.playCalls, 2);
+    assert.deepEqual(w.video.seekWrites, []);
+    w.stbStop();
+});
+test("HLS retains its default start policy unless a finite positive resume exists", () => {
+    for (const position of [undefined, 0, -1, NaN, Infinity]) {
+        const { w, players } = fixture();
+        w.playerMode = 1;
+        w.stbPlay("live.m3u8", position);
+        assert.equal(players[0].config.startPosition, undefined);
+        players[0].events.manifest();
+        w.video.metadata();
+        assert.deepEqual(w.video.seekWrites, []);
+        w.stbStop();
+    }
+});
+test("HLS failure before its first frame preserves requested native fallback resume", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    w.video.blockEarlySeek = true;
+    w.stbPlay("resume.m3u8", 54);
+    players[0].events.manifest();
+    assert.equal(w.video.currentTime, 0);
+    const fatal = { details: "bufferAppendError", fatal: true, type: "media" };
+    players[0].events.error(null, fatal);
+    players[0].events.error(null, fatal);
+    w.video.metadata();
+    assert.equal(w.video.currentTime, 54);
+    w.stbStop();
+});
+test("HLS recovery preserves an explicit seek to zero through native fallback", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    w.video.blockEarlySeek = true;
+    w.stbPlay("resume.m3u8", 35);
+    const hls = players[0];
+    hls.events.manifest();
+    w.video.metadata();
+    w.video.currentTime = 35;
+    hls.hasEnoughToStart = true;
+    w.stbSetPosTime(0);
+    w.video.seekWrites.length = 0;
+    hls.recoverMediaError = function () {
+        assert.equal(
+            this.config.startPosition,
+            0,
+            "HLS reattachment must not restore the original resume position"
+        );
+        this.media.src = "blob:recovered";
+        this.hasEnoughToStart = false;
+    };
+    const fatal = { details: "bufferAppendError", fatal: true, type: "media" };
+    hls.events.error(null, fatal);
+    assert.equal(w.video.readyState, 0);
+    hls.events.error(null, fatal);
+    assert.equal(w.video.src, "resume.m3u8");
+    w.video.metadata();
+    assert.equal(w.video.currentTime, 0);
+    assert.deepEqual(w.video.seekWrites, []);
+    w.stbStop();
+});
+test("pending explicit seeks survive HLS errors before metadata without reviving old positions", () => {
+    for (const phase of ["startup", "before-recovery", "during-recovery"]) {
+        for (const position of [0, 12]) {
+            const { w, players } = fixture();
+            w.playerMode = 1;
+            w.video.blockEarlySeek = true;
+            w.stbPlay("resume.m3u8", 35);
+            const hls = players[0];
+            hls.events.manifest();
+            const fatal = {
+                details: "bufferAppendError",
+                fatal: true,
+                type: "media",
+            };
+            if (phase !== "startup") {
+                w.video.metadata();
+                w.video.currentTime = 50;
+                hls.hasEnoughToStart = true;
+            }
+            hls.recoverMediaError = function () {
+                this.media.readyState = 0;
+                this.hasEnoughToStart = false;
+            };
+            if (phase === "during-recovery") hls.events.error(null, fatal);
+            w.video.readyState = 0;
+            w.stbSetPosTime(position);
+            assert.equal(hls.config.startPosition, position, phase);
+            assert.ok(w._corePendingSeek, "the rejected DOM seek is pending");
+            assert.equal(w.video.currentTime, phase === "startup" ? 0 : 50);
+            if (phase !== "during-recovery") hls.events.error(null, fatal);
+            assert.equal(hls.config.startPosition, position, phase);
+            hls.events.error(null, fatal);
+            assert.equal(w.video.src, "resume.m3u8");
+            w.video.metadata();
+            assert.equal(w.video.currentTime, position, phase);
+            assert.equal(w._corePendingSeek, null);
+            w.stbStop();
+        }
+    }
+});
+test("stale and invalid seek requests preserve the active pending seek", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    w.video.blockEarlySeek = true;
+    w.stbPlay("resume.m3u8", 35);
+    w.stbSetPosTime(12);
+    const pending = w._corePendingSeek;
+    assert.ok(pending);
+    w.seekCoreMedia(77, w._playSession - 1);
+    for (const position of [-1, NaN, Infinity])
+        w.seekCoreMedia(position, w._playSession);
+    assert.equal(w._corePendingSeek, pending);
+    assert.equal(players[0].config.startPosition, 12);
+    w.video.metadata();
+    assert.equal(w.video.currentTime, 12);
+    assert.equal(w._corePendingSeek, null);
+    w.stbStop();
 });
 test("iOS source login cannot replace a newer channel or revive stopped playback", async () => {
     const { w } = fixture();

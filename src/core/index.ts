@@ -282,8 +282,15 @@ function cancelCoreSeek(): void {
 
 /** Some STB engines reject currentTime until loadedmetadata has arrived. */
 function seekCoreMedia(position: number, session: number): void {
+    if (
+        !video ||
+        session !== _playSession ||
+        !isFinite(position) ||
+        position < 0
+    )
+        return;
     cancelCoreSeek();
-    if (!video || !isFinite(position) || position < 0) return;
+    if (hlsInstance) hlsInstance.config.startPosition = position;
     var media = video;
     function apply(): boolean {
         if (session !== _playSession || video !== media) return true;
@@ -1127,6 +1134,10 @@ function startCorePlayback(
             overrideNative: false,
             startLevel: -1,
         };
+        // HLS owns the initial seek after its first fragment is buffered.
+        // Seeking at manifest/metadata time can stall WebKit's MSE decoder.
+        if (position && isFinite(position) && position > 0)
+            hlsConfig.startPosition = position;
         if (_isArchive) {
             hlsConfig.fragLoadingMaxRetry = 1;
             hlsConfig.levelLoadingMaxRetry = 1;
@@ -1151,8 +1162,6 @@ function startCorePlayback(
         ) {
             window.__ottDebug.attachHls(hlsInstance);
         }
-        // ponytail: seek to position at MANIFEST_PARSED — currentTime === 0 guaranteed
-        var _startPos = position || 0;
         var recovery = new window.OttPlayCore.PlaybackRecovery(2);
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
@@ -1161,6 +1170,10 @@ function startCorePlayback(
             if (data.fatal) {
                 console.error("[HLS] fatal error:", data.type, data.details);
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                    // Recovery reattaches media and may reset currentTime.
+                    // Preserve pending user seeks before sampling the decoder.
+                    if (hlsInstance.hasEnoughToStart && !_corePendingSeek)
+                        hlsInstance.config.startPosition = video!.currentTime;
                     var lvls = hlsInstance.levels || [];
                     var failed =
                         data.frag && typeof data.frag.level === "number"
@@ -1223,7 +1236,7 @@ function startCorePlayback(
                             det.indexOf("bufferAppendError") !== -1;
                         // destroy() clears currentTime. Preserve the requested/resumed
                         // VOD position before moving from MSE to native HLS.
-                        var nativePosition = video!.currentTime || _startPos;
+                        var nativePosition = hlsInstance.config.startPosition;
                         hlsInstance.destroy();
                         hlsInstance = null;
                         // Auto already tried native. Never loop back to the
@@ -1331,10 +1344,6 @@ function startCorePlayback(
             liveRestartPolicy().finish();
             if ((window as any).forcePlay !== false) {
                 playCoreMedia(video!);
-            }
-            if (_startPos > 0) {
-                seekCoreMedia(_startPos, session);
-                _startPos = 0;
             }
         });
         hlsInstance.on(

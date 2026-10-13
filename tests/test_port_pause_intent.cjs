@@ -23,7 +23,8 @@ function fixture() {
     const players = [];
     const timers = new Map();
     let nextTimer = 0;
-    function Hls() {
+    function Hls(config) {
+        this.config = config;
         this.events = {};
         this.levels = [];
         players.push(this);
@@ -101,10 +102,11 @@ function fixture() {
     );
     assert.equal(w.video.playCalls, 0);
     assert.equal(
-        w.video.currentTime,
+        players[0].config.startPosition,
         35,
         "pause must not discard the requested archive seek"
     );
+    assert.equal(w.video.currentTime, 0, "HLS controls its buffered seek");
     w.stbContinue();
     assert.equal(w.video.paused, false, "explicit resume must still work");
     players[0].events.error(null, {
