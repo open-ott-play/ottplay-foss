@@ -290,7 +290,10 @@ function seekCoreMedia(position: number, session: number): void {
     )
         return;
     cancelCoreSeek();
-    if (hlsInstance) hlsInstance.config.startPosition = position;
+    if (hlsInstance) {
+        hlsInstance.config.startPosition = position;
+        hlsInstance.startLoad(position);
+    }
     var media = video;
     function apply(): boolean {
         if (session !== _playSession || video !== media) return true;
@@ -1192,7 +1195,11 @@ function startCorePlayback(
                         hlsInstance.autoLevelCapping = cap;
                         if (typeof hlsInstance.removeLevel === "function") {
                             hlsInstance.removeLevel(failed);
-                            hlsInstance.startLoad();
+                            hlsInstance.startLoad(
+                                _corePendingSeek
+                                    ? hlsInstance.config.startPosition
+                                    : -1
+                            );
                             return;
                         }
                         hlsInstance.currentLevel = cap;
@@ -1212,7 +1219,14 @@ function startCorePlayback(
                             "[HLS] trying recoverMediaError" +
                                 (data.details ? " (" + data.details + ")" : "")
                         );
+                        var pendingPosition = _corePendingSeek
+                            ? hlsInstance.config.startPosition
+                            : null;
                         hlsInstance.recoverMediaError();
+                        // HLS recovery samples currentTime, which may still be
+                        // stale when the decoder rejected a pre-metadata seek.
+                        if (pendingPosition !== null)
+                            hlsInstance.startLoad(pendingPosition);
                     } else {
                         // Chrome/Edge MSE cannot play HLS natively. Setting
                         // video.src to an .m3u8 only yields SRC_NOT_SUPPORTED
@@ -1329,7 +1343,11 @@ function startCorePlayback(
                         hlsInstance = null;
                     } else {
                         console.log("[HLS] trying startLoad");
-                        hlsInstance.startLoad();
+                        hlsInstance.startLoad(
+                            _corePendingSeek
+                                ? hlsInstance.config.startPosition
+                                : -1
+                        );
                     }
                 } else {
                     console.log("[HLS] unrecoverable, destroying");

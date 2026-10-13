@@ -12,6 +12,8 @@
   timeouts and separate control-transport security policies.
 - Avoid a WebKit stall when resuming HLS after a reload by applying the saved
   position through the stream engine after its initial media buffer is ready.
+- Preserve pending HLS seeks through loading retries and decoder recovery,
+  including seeks to the beginning of a stream.
 - Stop both main and PiP streams on standby, reset native media resource
   selection, and cancel preview and pending Plex playback so background
   callbacks cannot restart those streams. Plex playback remains blocked until

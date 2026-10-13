@@ -95,7 +95,7 @@ function fixture() {
         errors = [],
         boxes = [],
         hidden = [];
-    function Hls(config) {
+    function Hls(config = {}) {
         this.config = config;
         this.hasEnoughToStart = false;
         this.events = {};
@@ -104,6 +104,9 @@ function fixture() {
         this.subtitleTracks = [];
         this.audioTrack = 0;
         this.destroyCalls = 0;
+        this.startPosition = -1;
+        this.startLoadCalls = [];
+        this.recoveryCalls = 0;
         players.push(this);
     }
     Hls.Events = {
@@ -122,16 +125,31 @@ function fixture() {
     };
     Hls.prototype.attachMedia = function (m) {
         this.media = m;
+        this.startLoad(this.config.startPosition ?? -1);
     };
     Hls.prototype.destroy = function () {
         this.destroyCalls++;
         if (this.media) this.media.src = "";
     };
-    Hls.prototype.recoverMediaError = function () {};
+    Hls.prototype.recoverMediaError = function () {
+        this.recoveryCalls++;
+        const time = this.media.currentTime;
+        this.media.src = "blob:recovered";
+        this.hasEnoughToStart = false;
+        this.startPosition = -1;
+        this.attachMedia(this.media);
+        // hls.js restarts at the sampled decoder time after reattachment.
+        if (time) this.startLoad(time);
+    };
     Hls.prototype.removeLevel = function (i) {
         this.removed = i;
     };
-    Hls.prototype.startLoad = function () {};
+    Hls.prototype.startLoad = function (position = -1) {
+        this.startLoadCalls.push(position);
+        // A default restart can reuse the controller's previous load position.
+        if (position !== -1 || this.startPosition <= 0)
+            this.startPosition = position;
+    };
     function Shaka(m) {
         this.media = m;
         this.attached = deferred();
@@ -815,17 +833,10 @@ test("HLS recovery preserves an explicit seek to zero through native fallback", 
     hls.hasEnoughToStart = true;
     w.stbSetPosTime(0);
     w.video.seekWrites.length = 0;
-    hls.recoverMediaError = function () {
-        assert.equal(
-            this.config.startPosition,
-            0,
-            "HLS reattachment must not restore the original resume position"
-        );
-        this.media.src = "blob:recovered";
-        this.hasEnoughToStart = false;
-    };
     const fatal = { details: "bufferAppendError", fatal: true, type: "media" };
     hls.events.error(null, fatal);
+    assert.equal(hls.recoveryCalls, 1);
+    assert.equal(hls.startPosition, 0);
     assert.equal(w.video.readyState, 0);
     hls.events.error(null, fatal);
     assert.equal(w.video.src, "resume.m3u8");
@@ -853,18 +864,20 @@ test("pending explicit seeks survive HLS errors before metadata without reviving
                 w.video.currentTime = 50;
                 hls.hasEnoughToStart = true;
             }
-            hls.recoverMediaError = function () {
-                this.media.readyState = 0;
-                this.hasEnoughToStart = false;
-            };
             if (phase === "during-recovery") hls.events.error(null, fatal);
             w.video.readyState = 0;
             w.stbSetPosTime(position);
             assert.equal(hls.config.startPosition, position, phase);
+            assert.equal(hls.startPosition, position, phase);
             assert.ok(w._corePendingSeek, "the rejected DOM seek is pending");
-            assert.equal(w.video.currentTime, phase === "startup" ? 0 : 50);
+            assert.equal(
+                w.video.currentTime,
+                phase === "before-recovery" ? 50 : 0
+            );
             if (phase !== "during-recovery") hls.events.error(null, fatal);
             assert.equal(hls.config.startPosition, position, phase);
+            assert.equal(hls.startPosition, position, phase);
+            assert.equal(hls.startLoadCalls.at(-1), position, phase);
             hls.events.error(null, fatal);
             assert.equal(w.video.src, "resume.m3u8");
             w.video.metadata();
@@ -891,6 +904,37 @@ test("stale and invalid seek requests preserve the active pending seek", () => {
     assert.equal(w.video.currentTime, 12);
     assert.equal(w._corePendingSeek, null);
     w.stbStop();
+});
+test("HLS load retries use the pending seek instead of a stale controller position", () => {
+    for (const route of ["network", "drop-level"]) {
+        for (const position of [0, 12]) {
+            const { w, players } = fixture();
+            w.playerMode = 1;
+            w.video.blockEarlySeek = true;
+            w.stbPlay("resume.m3u8", 35);
+            const hls = players[0];
+            w.stbSetPosTime(position);
+            assert.equal(hls.startPosition, position, route);
+            // Model a controller sampling the old decoder time before retry.
+            hls.startPosition = 50;
+            if (route === "drop-level") hls.levels = [{}, {}];
+            hls.events.error(null, {
+                details:
+                    route === "network" ? "fragLoadError" : "bufferAppendError",
+                fatal: true,
+                level: 1,
+                type: route === "network" ? "network" : "media",
+            });
+            assert.equal(hls.startPosition, position, route);
+            assert.equal(hls.startLoadCalls.at(-1), position, route);
+            assert.equal(hls.recoveryCalls, 0);
+            assert.ok(w._corePendingSeek);
+            w.video.metadata();
+            assert.equal(w.video.currentTime, position, route);
+            assert.equal(w._corePendingSeek, null);
+            w.stbStop();
+        }
+    }
 });
 test("iOS source login cannot replace a newer channel or revive stopped playback", async () => {
     const { w } = fixture();
