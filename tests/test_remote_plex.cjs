@@ -1195,7 +1195,21 @@ test("library collection rejects overflow, duplicate IDs, wrong offsets, types a
             if (failure === "offset") h.page(episodes(h, 2, 1), 0, 2);
             if (failure === "total") h.page(episodes(h, 2, 1), 1, 3);
             if (failure === "truncated") h.page([], 1, 2);
-            if (failure === "network") h.requests.shift().error({}, "error");
+            if (failure === "network") {
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    h.requests.shift().error({}, "error");
+                    if (attempt < 2) {
+                        assert.equal(request.replies.length, 0);
+                        const retry = [...h.timers].find(
+                            ([, timer]) => timer.ms === (attempt + 1) * 500
+                        );
+                        assert(retry, "Expected a bounded collection retry");
+                        h.timers.delete(retry[0]);
+                        retry[1].fn();
+                    }
+                }
+                assert.equal(h.requests.length, 0);
+            }
         }
         assert.equal(
             request.replies[0].data.error,

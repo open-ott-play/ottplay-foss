@@ -633,8 +633,15 @@ test("Plex file selection shows an owned wait through collection and resolution,
     await page.keyboard.press("Enter");
     await expect.poll(() => collections.length).toBe(3);
     await folder(collections[2]);
-    await expect.poll(() => metadata.length).toBe(2);
-    await metadata[1].fulfill({ body: "Unavailable", headers, status: 503 });
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await expect.poll(() => metadata.length).toBe(attempt + 2);
+        await expect(dialog.locator(".ott-spinner")).toBeVisible();
+        await metadata[attempt + 1].fulfill({
+            body: "Unavailable",
+            headers,
+            status: 503,
+        });
+    }
     await expect(dialog).toContainText(
         await page.evaluate(() => window._("Plex connection failed"))
     );
@@ -644,8 +651,8 @@ test("Plex file selection shows an owned wait through collection and resolution,
     await page.keyboard.press("Enter");
     await expect.poll(() => collections.length).toBe(4);
     await folder(collections[3]);
-    await expect.poll(() => metadata.length).toBe(3);
-    await metadata[2].fulfill({
+    await expect.poll(() => metadata.length).toBe(5);
+    await metadata[4].fulfill({
         headers,
         json: {
             MediaContainer: {
