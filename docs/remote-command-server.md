@@ -556,6 +556,12 @@ controller can change or disable the policy, using `kiosk off` to release it.
 The strict flag persists across reloads. The CLI requires an explicit strict
 receipt and will not report success if an older player ignores this flag.
 
+On the Capacitor Android app, screen-off or background state pauses the locked
+playback and suspends recovery; `screen_suspended` reports that state. Returning
+to the foreground resumes the same still-active playback, or starts a selection
+deferred while asleep. Changing only strictness while asleep preserves this
+resume behavior without waking the player.
+
 On Android, a website (including here.now) cannot disable Home, Recents or browser
 navigation outside its page. Use Android app pinning with a PIN to protect exit
 from the browser, or managed-device Lock Task for a dedicated kiosk.

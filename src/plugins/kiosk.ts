@@ -552,10 +552,15 @@ export function createKiosk(w: any): any {
                     params.strict !== undefined &&
                     params.strict !== !!policy.strict
                 ) {
+                    var previous = policy;
                     if (!save({ ...policy, strict: params.strict })) {
                         fail("Could not save kiosk policy.");
                         return;
                     }
+                    // Input policy changed, but the paused/deferred playback did
+                    // not. Preserve its wake-up ownership across the new object.
+                    if (sleepingPolicy === previous) sleepingPolicy = policy;
+                    if (deferredPolicy === previous) deferredPolicy = policy;
                     if (locked()) closeControls();
                 }
                 done({ data: snapshot(), status: "ok" });

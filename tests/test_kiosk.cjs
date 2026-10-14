@@ -1858,6 +1858,25 @@ function screenRig() {
         "wake starts a fresh watchdog grace"
     );
 }
+for (const strict of [false, true]) {
+    const r = screenRig();
+    r.request({ mode: "on", strict: !strict });
+    r.kiosk.setScreenAwake(false);
+    assert.equal(r.request({ mode: "on", strict }).status, "ok");
+    assert.equal(r.kiosk.snapshot().strict, strict);
+    assert.deepEqual(
+        r.calls,
+        ["pause"],
+        "policy update must not wake playback"
+    );
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(
+        r.calls,
+        ["pause", "resume"],
+        "changing input strictness keeps ownership of the same sleeping episode"
+    );
+    assert.equal(r.state.position, 37);
+}
 for (const change of [
     (r) => r.request({ mode: "off" }),
     (r) => {
@@ -1908,6 +1927,50 @@ for (const change of [
     );
     r.kiosk.setScreenAwake(true);
     assert.deepEqual(r.played, ["a"], "deferred kiosk startup runs on wake");
+}
+{
+    const r = rig();
+    r.kiosk.setScreenAwake(false);
+    r.request({ mode: "on", query: "1" });
+    r.request({ mode: "on", strict: true });
+    assert.deepEqual(
+        r.played,
+        [],
+        "strict update cannot start a sleeping player"
+    );
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(
+        r.played,
+        ["a"],
+        "strict update preserves an unstarted channel deferred until wake"
+    );
+}
+{
+    const r = rig();
+    const calls = [];
+    let phase = "playing";
+    const handle = {
+        active: () => true,
+        pause: () => {
+            calls.push("pause");
+            phase = "paused";
+        },
+        resume: () => calls.push("resume"),
+        snapshot: () => ({ phase }),
+    };
+    const backend = { current: () => handle };
+    r.w.__ottCoreBackendPeek = () => backend;
+    r.request({ mode: "on", query: "1" });
+    r.kiosk.setScreenAwake(false);
+    r.request({ mode: "set", query: "2" });
+    r.request({ mode: "on", strict: true });
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(
+        r.played,
+        ["a", "b"],
+        "wake starts the replacement channel"
+    );
+    assert.deepEqual(calls, ["pause"], "a replaced channel never resumes");
 }
 
 async function testScreenBridge() {

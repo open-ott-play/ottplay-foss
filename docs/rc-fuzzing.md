@@ -80,6 +80,9 @@ Each target needs a unique lowercase kebab-case name, `engine` (`go`, `atheris`
 or `libfuzzer`), argument-array `command`, and `seconds` (1–120). Optional `cwd`
 is relative to the repository. Optional `corpus` names a committed seed directory;
 the runner copies it before mutation. Go uses its native `testdata/fuzz` corpus.
+Preserve committed seed bytes, including intentional truncation and missing
+newlines. Whitespace and end-of-file hooks exclude `fuzz/corpus/`; changing a
+seed is an explicit corpus change, not a formatting repair.
 The total mutation budget is at most 600 seconds across at most 12 targets.
 `go-version-file` is optional, Go-only and names an existing regular file within
 the repository; directories and symlinks are rejected. For a
