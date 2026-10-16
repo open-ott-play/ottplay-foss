@@ -566,8 +566,9 @@ available.
 
 Returning to the foreground reconnects live TV/cameras at the live edge and
 resumes films or archives from their saved position. A selection deferred while
-asleep starts only after waking. Media that was already paused before screen-off
-stays paused. Changing only strictness while asleep preserves this behavior
+asleep starts only after waking. Waking does not directly resume media that was
+already paused; the normal kiosk recovery timer still applies. Changing only
+strictness while asleep preserves this behavior
 without waking the player. Ordinary pause outside this screen-suspension path
 retains its usual buffering behavior.
 
