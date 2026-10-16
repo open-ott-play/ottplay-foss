@@ -145,10 +145,15 @@ def iteration(index, root, runtime, identities):
                 for name in [record['executable'], *record['libraries']]:
                     if name not in identities:
                         path = Path(name)
-                        identities[name] = {'size': path.stat().st_size, 'sha256': sha(path)}
+                        with path.open('rb') as mapped:
+                            native_elf = mapped.read(4) == b'\x7fELF'
+                        identities[name] = {'size': path.stat().st_size, 'sha256': sha(path),
+                                            'native_elf': native_elf}
             playback = sorted({p for r in processes.values() for p in r['libraries']
                                if Path(p).name == 'libgstplayback.so'})
             assert playback, 'Actual loaded playback library was not observed'
+            assert all(identities[p]['native_elf'] for p in playback)
+            assert all(identities[r['executable']]['native_elf'] for r in processes.values())
             receipt['loaded_playback'] = playback
             receipt['native_signals'] = re.findall(r'signal=(SIG(?:SEGV|ABRT|TRAP|BUS|ILL|FPE))', logfile.read_text())
             if receipt['native_signals']:
@@ -158,6 +163,21 @@ def iteration(index, root, runtime, identities):
         save(folder.parent / 'processes.json', processes)
         save(folder.parent / 'iteration.json', receipt)
     return receipt
+
+
+def compare_mapped_files(identities):
+    changes = []
+    native_count = sum(record['native_elf'] for record in identities.values())
+    for name, before in identities.items():
+        try:
+            after = sha(name)
+        except FileNotFoundError:
+            after = None
+        if after != before['sha256']:
+            changes.append({'path': name, 'native_elf': before['native_elf'],
+                            'before_sha256': before['sha256'], 'after_sha256': after})
+    return {'native_elf_count': native_count, 'mapped_file_changes': changes,
+            'native_elf_unchanged': native_count > 0 and not any(c['native_elf'] for c in changes)}
 
 
 def main():
@@ -192,10 +212,10 @@ def main():
             print(f'{generation}: iteration={index} passed={receipt["passed"]}', flush=True)
     finally:
         summary['packages_unchanged'] = packages() == before
-        summary['libraries_unchanged'] = all(sha(p) == d['sha256'] for p, d in summary['library_identities'].items())
+        summary.update(compare_mapped_files(summary['library_identities']))
         summary['passed'] = (len(summary['iterations']) == ITERATIONS
                              and all(r['passed'] for r in summary['iterations'])
-                             and summary['packages_unchanged'] and summary['libraries_unchanged'])
+                             and summary['packages_unchanged'] and summary['native_elf_unchanged'])
         save(root / 'runtime-summary.json', summary)
     return 0 if summary['passed'] else 1
 
