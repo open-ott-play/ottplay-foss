@@ -1,17 +1,24 @@
 const path = require("node:path");
+const fs = require("node:fs");
 const { defineConfig } = require("./tests/helpers/browser-test.cjs");
+const {
+    scenarioPattern,
+    selectProfile,
+} = require("./scripts/browser-compatibility-profile.cjs");
 const base = require("./playwright.config.cjs");
 const output = process.env.CI_BROWSER_DIAGNOSTICS;
+const runtime = JSON.parse(fs.readFileSync(path.join(output, "runtime.json")));
+const profile = selectProfile(runtime);
 module.exports = defineConfig({
     ...base,
-    grep: /Plex shows a localized animated loader|Plex aspect persists.*(?:hls\.js|video\.js)$/,
+    grep: scenarioPattern(profile.scenarios),
     outputDir: path.join(output, "test-results"),
     projects: [
         {
-            name: process.env.CI_BROWSER_TARGET_ID,
+            name: runtime.target,
             use: {
-                browserName: process.env.CI_BROWSER_ENGINE,
-                channel: process.env.CI_BROWSER_CHANNEL || undefined,
+                browserName: runtime.engine,
+                channel: runtime.channel || undefined,
             },
         },
     ],

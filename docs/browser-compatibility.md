@@ -2,11 +2,11 @@
 
 The existing device, media, legacy ES5/worker, native UI and Apple native-HLS
 checks remain required. The shared TypeScript workflow additionally runs the
-same five Plex scenarios against the exact packaged Mode A archive: two
+Plex scenarios against the exact packaged Mode A archive: two
 localized loading/reload flows, HLS.js and Video.js aspect persistence across
 media changes/reload, and strict-kiosk natural episode completion with HLS.js.
-These scenarios use real decoding and real DOM/input; only Plex data and the
-media source are synthetic local fixtures.
+The media scenarios use real decoding; all scenarios use real DOM/input. Only
+Plex data and the media source are synthetic local fixtures.
 
 Pull requests require current Chromium, Firefox and WebKit on Linux, Chromium
 on Windows, and WebKit on macOS. Nightly and beta builds require these five targets. RC qualification requires
@@ -16,6 +16,26 @@ installed stable Chrome/Edge on all three systems and beta Chrome/Edge on Linux.
 The tested product versions are recorded at runtime. Playwright Firefox is its
 patched build, not an assertion about native Firefox ESR; WebKit is not Safari.
 This matrix does not replace qualification on physical TVs or native shells.
+
+The full inventory has **35 platform targets: 32 HLS-capable targets and three
+Windows WebKit UI-only targets**. The latter still require both localized
+loading/reload flows; their WebKit build has neither MediaSource nor native HLS.
+This is a declared limitation, not passed playback coverage. The exact three
+target IDs are reviewed in `scripts/browser-compatibility-profile.cjs`.
+A capability probe must confirm that limitation before their UI tests run. If
+MSE (including ManagedMediaSource) or native HLS becomes available, the gate
+fails until the profile is upgraded.
+Every other target requires both H.264 and AAC MSE support and all five unchanged
+scenarios; losing a capability fails instead of selecting a smaller suite.
+
+Consequently, a complete RC requires **166 successful scenario executions**
+(32 × 5 + 3 × 2), with 35 target receipts. The PR/nightly/beta subset remains five
+targets and 25 scenario executions. Each receipt records its exact scenario set,
+capability probe and either passed HLS coverage or the explicit unsupported
+reason. These are configured requirements, not a claim that a particular RC has
+already completed them. The limitation is confirmed by the
+[WebKit Windows build configuration](https://github.com/WebKit/WebKit/blob/56453fdfe0b0ca6258c23e6453b34f70b885d13f/Source/cmake/OptionsWin.cmake#L75)
+used by Playwright 1.64 and by the pinned runtime probe.
 
 Both paths download the producing job's exact current-run artifact ID. Archive
 checksums, source commit, packaged bundle/provider hashes, file types and paths
