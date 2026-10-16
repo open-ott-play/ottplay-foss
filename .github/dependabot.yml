@@ -12,7 +12,7 @@ updates:
       # These releases introduce unpatched braces (GHSA-vfj7-8cjw-p6xm).
       # Keep later releases eligible for dependency review.
       - dependency-name: ultracite
-        versions: [">=7.10.3 <=7.12.4"]
+        versions: [">=7.10.3 <=8.0.0"]
       - dependency-name: typescript
         versions: [">=6"]
       # The shipped, unmodified UMD must retain ES5 for legacy TVs.
