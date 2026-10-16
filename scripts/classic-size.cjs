@@ -196,7 +196,8 @@ const { gzipSync } = require("node:zlib");
 // Cancellable Plex arrow waits and buffered HLS resume add 1282 raw / at most
 // 366 gzip bytes on Node 26.8.2 at version 1.1.54. Allocate +1300 / +400, retaining
 // the existing native, clean-source identity and release-version reserve.
-const BUDGET = Object.freeze({ bytes: 848400, gzipBytes: 263600 });
+// A shared 1px poster suppresses the native Android play placeholder (+~120 raw bytes).
+const BUDGET = Object.freeze({ bytes: 848528, gzipBytes: 263600 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -302,7 +303,7 @@ const BUDGET = Object.freeze({ bytes: 848400, gzipBytes: 263600 });
 // Include the shared skip wait, buffered HLS resume and optional Plex retries:
 // +1670 raw / at most 488 gzip bytes over fbc80031, measured with all seven
 // providers on Node 26.8.2. Allocate +1700 / +500 to preserve the prior reserve.
-const TOTAL_BUDGET = Object.freeze({ bytes: 964900, gzipBytes: 306550 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 965028, gzipBytes: 306550 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

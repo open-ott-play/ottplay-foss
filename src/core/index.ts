@@ -2307,6 +2307,11 @@ export function stbInit(): void {
             );
         }
         video = document.getElementById("video") as HTMLVideoElement;
+        // Suppress Android WebView's default play icon, including the PiP surface.
+        $("video").attr(
+            "poster",
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAkQBADs="
+        );
         try {
             // Intrinsic size arrives async; re-center contain letterbox once known.
             video!.addEventListener("loadedmetadata", function () {

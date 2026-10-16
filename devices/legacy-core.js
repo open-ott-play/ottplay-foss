@@ -532,6 +532,11 @@ function stbInit() {
             );
         }
         video = document.getElementById("video");
+        // Suppress Android WebView's default play icon, including the PiP surface.
+        $("video").attr(
+            "poster",
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAkQBADs="
+        );
         video.addEventListener("waiting", function () {
             $("#buffering").show();
             $("#video_res").html("<br/>connect...");
