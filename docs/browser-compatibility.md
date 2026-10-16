@@ -35,6 +35,10 @@ MSE (including ManagedMediaSource) or native HLS becomes available, the gate
 fails until the profile is upgraded.
 Every other target requires both H.264 and AAC MSE support and all five unchanged
 scenarios; losing a capability fails instead of selecting a smaller suite.
+The capability probe loads the candidate’s HLS library and checks the backend
+selected by its pinned instance default: MediaSource, then ManagedMediaSource,
+then WebKitMediaSource. The receipt names that backend and HLS version; a
+changed default or version requires explicit review of the probe contract.
 
 Consequently, a complete RC requires **166 successful scenario executions**
 (32 × 5 + 3 × 2), with 35 target receipts. The PR/nightly/beta subset remains five

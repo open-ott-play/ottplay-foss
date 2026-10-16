@@ -124,3 +124,96 @@ test("loss of required MSE or either codec cannot downgrade a full media profile
         mediaSource: false,
     });
 });
+
+// Compare every available-API combination against the actual pinned HLS helper.
+// A dependency or player preference change must explicitly update this contract.
+test("capability probe follows the candidate HLS instance backend, including fallback order", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const vm = require("node:vm");
+    const ts = require("typescript");
+    const Hls = require("hls.js");
+    const {
+        readBrowserMediaCapabilities,
+    } = require("../scripts/browser-media-capabilities.cjs");
+    assert.equal(Hls.version, "1.7.3");
+    assert.equal(Hls.DefaultConfig.preferManagedMediaSource, false);
+    const player = fs.readFileSync(
+        path.join(__dirname, "../src/core/index.ts"),
+        "utf8"
+    );
+    assert.equal(
+        player.includes("preferManagedMediaSource"),
+        false,
+        "Review probe selection when the player overrides the HLS default"
+    );
+    const actual = ts.transpileModule(
+        fs.readFileSync(
+            path.join(
+                path.dirname(require.resolve("hls.js/package.json")),
+                "src/utils/mediasource-helper.ts"
+            ),
+            "utf8"
+        ),
+        { compilerOptions: { module: ts.ModuleKind.CommonJS } }
+    ).outputText;
+    for (let mask = 0; mask < 8; mask++) {
+        const calls = [];
+        const scope = { Hls };
+        for (const [index, name] of [
+            "MediaSource",
+            "ManagedMediaSource",
+            "WebKitMediaSource",
+        ].entries()) {
+            if (mask & (1 << index)) {
+                scope[name] = class {
+                    static isTypeSupported(type) {
+                        calls.push([name, type]);
+                        return true;
+                    }
+                };
+            }
+        }
+        const context = { exports: {}, self: scope };
+        vm.runInNewContext(actual, context);
+        const selected = context.exports.getMediaSource(
+            Hls.DefaultConfig.preferManagedMediaSource
+        );
+        const expected =
+            ["MediaSource", "ManagedMediaSource", "WebKitMediaSource"].find(
+                (name) => scope[name] && scope[name] === selected
+            ) || "none";
+        const result = vm.runInNewContext(
+            "(" + readBrowserMediaCapabilities.toString() + ")()",
+            {
+                document: { createElement: () => ({ canPlayType: () => "" }) },
+                window: scope,
+            }
+        );
+        assert.equal(result.mseBackend, expected);
+        assert.equal(result.h264Mse, !!selected);
+        assert.equal(result.aacMse, !!selected);
+        assert.deepEqual(
+            calls.map(([name]) => name),
+            selected ? [expected, expected] : []
+        );
+    }
+    for (const preference of [undefined, true]) {
+        assert.throws(
+            () =>
+                vm.runInNewContext(
+                    "(" + readBrowserMediaCapabilities.toString() + ")()",
+                    {
+                        window: {
+                            Hls: {
+                                DefaultConfig: {
+                                    preferManagedMediaSource: preference,
+                                },
+                            },
+                        },
+                    }
+                ),
+            /backend preference changed/
+        );
+    }
+});
