@@ -36,3 +36,6 @@ const test = playwright.test.extend({
     ],
 });
 module.exports = { ...playwright, test };
+
+// Temporary diagnostic branch only: observe without changing test assertions.
+module.exports.test = test.extend(require(path.resolve('.github/diagnostics/browser-media-events.cjs')).fixtures);

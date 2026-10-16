@@ -1,4 +1,4 @@
-# Temporary A/B diagnostic only. Never merge this workflow replacement.
+# Temporary streaming diagnostic only. Never merge this workflow replacement.
 name: Native Shells
 'on':
   workflow_dispatch: {}
@@ -12,49 +12,21 @@ defaults:
   run:
     shell: bash
 jobs:
-  webkit-ab:
-    name: ${{ matrix.fixture }} / ${{ matrix.target }}
+  webkit-stream:
+    name: Streaming diagnostics / ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-        - fixture: baseline
-          fixture_sha: 1ecbc0e715b7481beba0caa859c14ea9ab304cc6
-          os: ubuntu-latest
-          playwright: 1.63.0
-          browser: '26.6'
-          target: ubuntu-latest-webkit-1-63-0
-          toolchain: playwright-1-63-0
-        - fixture: baseline
-          fixture_sha: 1ecbc0e715b7481beba0caa859c14ea9ab304cc6
-          os: ubuntu-latest
-          playwright: 1.64.0
-          browser: '27.2'
-          target: ubuntu-latest-webkit-1-64-0
-          toolchain: playwright-1-64-0
-        - fixture: baseline
-          fixture_sha: 1ecbc0e715b7481beba0caa859c14ea9ab304cc6
+        - fixture: normalized
+          fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
           os: macos-15
-          playwright: 1.63.0
-          browser: '26.6'
-          target: macos-15-webkit-1-63-0
-          toolchain: playwright-1-63-0
-        - fixture: normalized
-          fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
-          os: ubuntu-latest
-          playwright: 1.63.0
-          browser: '26.6'
-          target: ubuntu-latest-webkit-1-63-0
-          toolchain: playwright-1-63-0
-        - fixture: normalized
-          fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
-          os: ubuntu-latest
-          playwright: 1.64.0
-          browser: '27.2'
-          target: ubuntu-latest-webkit-1-64-0
-          toolchain: playwright-1-64-0
+          playwright: 1.62.1
+          browser: '26.5'
+          target: macos-15-webkit-1-62-1
+          toolchain: playwright-1-62-1
         - fixture: normalized
           fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
           os: macos-15
@@ -78,7 +50,7 @@ jobs:
         egress-policy: audit
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
-        ref: ${{ matrix.fixture_sha }}
+        ref: ${{ github.sha }}
         persist-credentials: false
         fetch-depth: 0
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -89,10 +61,20 @@ jobs:
         python-version: '3.12'
     - name: Bind source and unchanged original assertions
       run: |
-        test "$(git rev-parse HEAD)" = "$FIXTURE_SHA"
-        for file in tests/browser/plex-provider.spec.cjs tests/helpers/browser-test.cjs scripts/browser-acceptance.cjs scripts/browser-compatibility-profile.cjs playwright.compatibility.config.cjs scripts/prepare_browser_candidate.py package-lock.json playwright.config.cjs .github/browser-compatibility.json "tools/browser-compatibility/$TOOLCHAIN/package.json" "tools/browser-compatibility/$TOOLCHAIN/package-lock.json"; do
-          test "$(git rev-parse "$SOURCE_SHA:$file")" = "$(git rev-parse "HEAD:$file")"
+        test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        for file in tests/browser/plex-provider.spec.cjs scripts/browser-acceptance.cjs scripts/browser-compatibility-profile.cjs playwright.compatibility.config.cjs scripts/prepare_browser_candidate.py package-lock.json package.json playwright.config.cjs .github/browser-compatibility.json "tools/browser-compatibility/$TOOLCHAIN/package.json" "tools/browser-compatibility/$TOOLCHAIN/package-lock.json" tests/helpers/device-browser-server.cjs tests/helpers/hls-aspect-fixture.cjs; do
+          test "$(git rev-parse "$FIXTURE_SHA:$file")" = "$(git rev-parse "HEAD:$file")"
         done
+        python - <<'CHECK'
+        import os,subprocess
+        from pathlib import Path
+        sha=os.environ['FIXTURE_SHA']
+        changed=subprocess.check_output(['git','diff','--name-only',sha,'HEAD'],text=True).splitlines()
+        assert set(changed)=={'.github/workflows/native-parity.yml','.github/diagnostics/browser-media-events.cjs','tests/helpers/browser-test.cjs'}
+        original=subprocess.check_output(['git','show',sha+':tests/helpers/browser-test.cjs'])
+        suffix=b"\n// Temporary diagnostic branch only: observe without changing test assertions.\nmodule.exports.test = test.extend(require(path.resolve('.github/diagnostics/browser-media-events.cjs')).fixtures);\n"
+        assert Path('tests/helpers/browser-test.cjs').read_bytes()==original+suffix
+        CHECK
     - name: Download exact failed RC artifact for diagnosis only
       env:
         GH_TOKEN: ${{ github.token }}
@@ -157,7 +139,7 @@ jobs:
          try {
           assert.equal(browser.version(),process.env.BROWSER_VERSION);
           fs.writeFileSync(path.join(process.env.CI_BROWSER_DIAGNOSTICS,'runtime.json'),JSON.stringify({
-           schema:1,diagnosticOnly:true,fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,
+           schema:1,diagnosticOnly:true,instrumentationSha256:require('node:crypto').createHash('sha256').update(fs.readFileSync('.github/diagnostics/browser-media-events.cjs')).digest('hex'),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,
            target:process.env.CI_BROWSER_TARGET_ID,engine:'webkit',channel:'',playwrightVersion:version,
            browserVersion:browser.version(),platform:process.platform,sourceSha:process.env.SOURCE_SHA,
            workflowSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,runAttempt:process.env.GITHUB_RUN_ATTEMPT,
@@ -167,6 +149,8 @@ jobs:
         })().catch(e=>{console.error(e);process.exitCode=1});
         NODE
         if command -v dpkg-query >/dev/null; then dpkg-query -W '*gstreamer*' > .compatibility/gstreamer-versions.txt; fi
+        mkdir -p .compatibility/instrumentation
+        cp .github/diagnostics/browser-media-events.cjs tests/helpers/browser-test.cjs .compatibility/instrumentation/
     - name: Run all five unchanged assertions once
       env:
         DEBUG: pw:browser
@@ -178,8 +162,7 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
-        name: foss-hls-ab-${{ matrix.fixture }}-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt
-          }}
+        name: foss-hls-stream-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: .compatibility/
         include-hidden-files: true
         if-no-files-found: error
