@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "purpose": "Diagnostic stock-versus-three-fixes comparison; not a release runtime",
+  "source": "Ubuntu gst-plugins-base1.0 1.24.2-1ubuntu0.5",
+  "archive_base": "https://archive.ubuntu.com/ubuntu/pool/main/g/gst-plugins-base1.0/",
+  "files": {
+    "gst-plugins-base1.0_1.24.2.orig.tar.xz": "282f1cc8065c9b62eb6a0a20fb9e8328f8e5296df2458b7236daa729c41ae769",
+    "gst-plugins-base1.0_1.24.2-1ubuntu0.5.debian.tar.xz": "b7aad40ae5062e85f1afca0630b0e419ef2f203d3edd7994f50132811f575253",
+    "gst-plugins-base1.0_1.24.2-1ubuntu0.5.dsc": "73a25ece6c488d230e976ced527a7d04d8252b073f1aa17375f4986bbbb64cac"
+  },
+  "upstream": [
+    {"commit": "3b6f6073e4e863a3ce87ab4cf2161ca0dba57c0e", "author": "Théo Maillart", "change": "Remove output-event probe before freeing input stream"},
+    {"commit": "bb05e78349fb5cd5aa44fc3ab4ea145db232fddd", "author": "Théo Maillart", "change": "Protect internal reset with SELECTION_LOCK; release before independently locking reset_input"},
+    {"commit": "1d86761712178a19766091779a0da14f5ff5449d", "author": "Théo Maillart", "change": "Do not remove a null input stream"}
+  ],
+  "upstream_mr": "https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/7605",
+  "adaptation": "The stable 1.24 branch uses refactored combined source. Equivalent hunks are applied to Ubuntu's earlier split gstdecodebin3.c/gstdecodebin3-parse.c. No unrelated refactoring.",
+  "license": "LGPL-2.0-or-later; COPYING retained; complete original/debian source archives, patch and build driver distributed with diagnostic libraries",
+  "authentication": "Official HTTPS archive plus preverified SHA256/dsc file entries; no claim of local OpenPGP signature verification"
+}

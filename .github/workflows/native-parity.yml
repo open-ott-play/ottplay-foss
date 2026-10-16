@@ -1,4 +1,4 @@
-# Temporary repeated Linux native-crash diagnosis only. Never merge this workflow replacement.
+# Temporary stock-versus-fixed playback diagnosis only. Never merge this workflow replacement.
 name: Native Shells
 'on':
   workflow_dispatch: {}
@@ -12,24 +12,52 @@ defaults:
   run:
     shell: bash
 jobs:
-  linux-audio:
-    name: Original five scenarios x4 / audio ${{ matrix.audio }}
+  build-playback:
+    name: Build both playback libraries with identical toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.12'
+    - name: Install isolated build tools (this job does not run browser tests)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential meson ninja-build pkg-config libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev patchelf
+    - name: Compile stock and patched playback only, retaining corresponding source
+      run: python scripts/foss-build-playback.py .compatibility/playback
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      id: upload
+      with:
+        name: foss-playback-pair-${{ github.run_id }}-${{ github.run_attempt }}
+        path: .compatibility/playback/
+        include-hidden-files: true
+        if-no-files-found: error
+        retention-days: 14
+  linux-playback:
+    needs: build-playback
+    name: Original five scenarios x4 / playback ${{ matrix.playback }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
         include:
-        - audio: original
+        - playback: stock
           os: ubuntu-24.04
-        - audio: absent
-          os: ubuntu-24.04
-        - audio: null-sink
+        - playback: fixed
           os: ubuntu-24.04
     env:
       FIXTURE: final-headers-linux
       FIXTURE_SHA: 89221396d441e533f0af0bea3745401846de472a
-      AUDIO_MODE: ${{ matrix.audio }}
+      PLAYBACK_VARIANT: ${{ matrix.playback }}
       TOOLCHAIN: playwright-1-64-0
       PLAYWRIGHT_VERSION: 1.64.0
       BROWSER_VERSION: '27.2'
@@ -63,7 +91,7 @@ jobs:
         python - <<'CHECK'
         import os,subprocess
         changed=subprocess.check_output(['git','diff','--name-only',os.environ['FIXTURE_SHA'],'HEAD'],text=True).splitlines()
-        assert changed==['.github/workflows/native-parity.yml','scripts/foss-audio-diagnostic.py','scripts/foss-repeated-diagnostic.py']
+        assert changed==['.github/workflows/native-parity.yml','diagnostics/gstreamer/COPYING','diagnostics/gstreamer/decodebin3-mr7605.patch','diagnostics/gstreamer/provenance.json','scripts/foss-build-playback.py','scripts/foss-playback-diagnostic.py']
         CHECK
     - name: Download exact failed PR artifact for diagnosis only
       env:
@@ -129,7 +157,7 @@ jobs:
          try {
           assert.equal(browser.version(),process.env.BROWSER_VERSION);
           fs.writeFileSync(path.join(process.env.CI_BROWSER_DIAGNOSTICS,'runtime.json'),JSON.stringify({
-           schema:1,diagnosticOnly:true,scope:'linux-repeated-native-diagnosis',audioMode:process.env.AUDIO_MODE,actualArch:process.arch,osRelease:require('node:os').release(),osVersion:require('node:os').version(),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,
+           schema:1,diagnosticOnly:true,scope:'linux-playback-upstream-fix-diagnosis',playbackVariant:process.env.PLAYBACK_VARIANT,actualArch:process.arch,osRelease:require('node:os').release(),osVersion:require('node:os').version(),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,
            target:process.env.CI_BROWSER_TARGET_ID,engine:'webkit',channel:'',playwrightVersion:version,
            browserVersion:browser.version(),platform:process.platform,sourceSha:process.env.SOURCE_SHA,
            workflowSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,runAttempt:process.env.GITHUB_RUN_ATTEMPT,
@@ -139,25 +167,78 @@ jobs:
         })().catch(e=>{console.error(e);process.exitCode=1});
         NODE
         if command -v dpkg-query >/dev/null; then dpkg-query -W '*gstreamer*' > .compatibility/gstreamer-versions.txt; fi
-    - name: Record original runner packages before optional audio installation
+    - name: Record original runner packages before diagnostic tool installation
       run: |
-        dpkg-query -W -f='${binary:Package}\t${Version}\t${db:Status-Status}\n' > .compatibility/packages-before-audio.txt
+        dpkg-query -W -f='${binary:Package}\t${Version}\t${db:Status-Status}\n' > .compatibility/packages-before-tools.txt
         python - <<'CHECK'
         import json,os,platform
         from pathlib import Path
         Path('.compatibility/runner-image.json').write_text(json.dumps({k:os.environ.get(k) for k in ['ImageOS','ImageVersion','RUNNER_OS','RUNNER_ARCH']} | {'uname':list(platform.uname())},indent=2)+'\n')
         CHECK
-    - name: Install audio packages only for the two explicit controls
-      if: ${{ matrix.audio != 'original' }}
-      run: sudo apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils
+    - name: Install inspect tool without changing existing runtime packages
+      run: |
+        sudo apt-get install -y --no-install-recommends --no-upgrade gstreamer1.0-tools
+        python - <<'CHECK'
+        from pathlib import Path
+        import subprocess,json
+        def parse(text):
+         return {r[0]:r[1] for line in text.splitlines() if len(r:=line.split('\t'))==3 and r[2]=='installed'}
+        before=parse(Path('.compatibility/packages-before-tools.txt').read_text())
+        after=parse(subprocess.check_output(['dpkg-query','-W','-f=${binary:Package}\t${Version}\t${db:Status-Status}\n'],text=True))
+        changes={k:[v,after.get(k)] for k,v in before.items() if after.get(k)!=v}
+        Path('.compatibility/tool-package-audit.json').write_text(json.dumps({'existing_changes':changes,'added':{k:v for k,v in after.items() if k not in before}},indent=2))
+        assert not changes
+        CHECK
+    - name: Admit this run's exact two-library artifact and corresponding source
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PLAYBACK_ARTIFACT_ID: ${{ needs.build-playback.outputs.artifact-id }}
+        PLAYBACK_ARTIFACT_DIGEST: ${{ needs.build-playback.outputs.artifact-digest }}
+      run: |
+        gh api "repos/open-ott-play/ottplay-foss/actions/artifacts/$PLAYBACK_ARTIFACT_ID" > .compatibility/playback-artifact.json
+        gh api "repos/open-ott-play/ottplay-foss/actions/artifacts/$PLAYBACK_ARTIFACT_ID/zip" > .compatibility/playback-artifact.zip
+        python - <<'CHECK'
+        from pathlib import Path,PurePosixPath
+        import hashlib,json,os,zipfile
+        root=Path('.compatibility/playback');root.mkdir()
+        meta=json.loads(Path('.compatibility/playback-artifact.json').read_text())
+        raw=Path('.compatibility/playback-artifact.zip')
+        assert raw.stat().st_size<=30*1024*1024
+        digest=hashlib.sha256(raw.read_bytes()).hexdigest()
+        assert digest==os.environ['PLAYBACK_ARTIFACT_DIGEST'] and meta['digest']=='sha256:'+digest
+        assert str(meta['id'])==os.environ['PLAYBACK_ARTIFACT_ID'] and not meta['expired']
+        assert str(meta['workflow_run']['id'])==os.environ['GITHUB_RUN_ID'] and meta['workflow_run']['head_sha']==os.environ['GITHUB_SHA']
+        assert meta['name']=='foss-playback-pair-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']
+        with zipfile.ZipFile(raw) as z:
+         items=z.infolist();assert len(items)<100 and sum(i.file_size for i in items)<50*1024*1024
+         seen=set()
+         for i in items:
+          p=PurePosixPath(i.filename)
+          assert not p.is_absolute() and '..' not in p.parts and '\\' not in i.filename and p.as_posix().rstrip('/')==i.filename.rstrip('/')
+          assert p.as_posix() not in seen;seen.add(p.as_posix())
+          assert (i.external_attr>>16)&0o170000 in (0,0o100000,0o040000)
+          target=root.joinpath(*p.parts)
+          if i.is_dir(): target.mkdir(parents=True,exist_ok=True)
+          else:
+           assert i.file_size<=16*1024*1024
+           target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read(i))
+        build=json.loads((root/'build.json').read_text())
+        assert build['workflowSha']==os.environ['GITHUB_SHA'] and str(build['runId'])==os.environ['GITHUB_RUN_ID'] and str(build['runAttempt'])==os.environ['GITHUB_RUN_ATTEMPT']
+        assert build['driver_sha256']==hashlib.sha256(Path('scripts/foss-build-playback.py').read_bytes()).hexdigest()
+        assert build['patch_sha256']==hashlib.sha256(Path('diagnostics/gstreamer/decodebin3-mr7605.patch').read_bytes()).hexdigest()
+        for variant in ['stock','fixed']:
+         assert hashlib.sha256((root/variant/'libgstplayback.so').read_bytes()).hexdigest()==build['plugins'][variant]['sha256']
+        for name,digest in build['corresponding_source_inventory'].items():
+         assert hashlib.sha256((root/'corresponding-source'/name).read_bytes()).hexdigest()==digest
+        CHECK
     - name: Run four independent sets of the five original assertions and bounded postmortems
       env:
         DEBUG: pw:browser
         GST_DEBUG: '3'
-      run: python scripts/foss-repeated-diagnostic.py "$AUDIO_MODE"
+      run: python scripts/foss-playback-diagnostic.py "$PLAYBACK_VARIANT"
     - name: Restore the original ephemeral kernel core pattern even after failure
       if: ${{ always() }}
-      run: python scripts/foss-repeated-diagnostic.py --restore-only
+      run: python scripts/foss-playback-diagnostic.py --restore-only
     - name: Verify product and scenario sources remained unchanged
       if: ${{ always() }}
       run: git diff --exit-code
@@ -165,7 +246,7 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
-        name: foss-linux-repeated-${{ matrix.audio }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: foss-linux-playback-${{ matrix.playback }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: .compatibility/
         include-hidden-files: true
         if-no-files-found: error

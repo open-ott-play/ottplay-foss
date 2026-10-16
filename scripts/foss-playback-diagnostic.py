@@ -1,4 +1,4 @@
-"""Temporary, bounded native-crash diagnosis; no product or test changes."""
+"""Temporary stock-versus-fixed playback diagnosis; original test bodies remain unchanged."""
 import argparse
 import hashlib
 import json
@@ -15,6 +15,9 @@ import time
 
 CORE_BYTES = 512 * 1024 * 1024
 CORE_COUNT = 2
+# ELF cores can contain large sparse holes; RLIMIT_CORE bounds written data, not st_size.
+MAX_CORE_LOGICAL = 16 * 1024 * 1024 * 1024
+MAX_CORE_ALLOCATED = CORE_BYTES + 1024 * 1024
 ITERATIONS = 4
 OWNER = Path('.compatibility/core-owner.json')
 PATTERN = Path('/proc/sys/kernel/core_pattern')
@@ -44,6 +47,24 @@ def package_snapshot():
 def relevant(packages):
     return {key: value for key, value in packages.items()
             if re.search(r'gstreamer|pulse|pipewire|alsa|libasound|jack|openal|libc6|libstdc|libgcc|libwebkit|libavcodec|libavformat', key)}
+
+
+def native_library_identities():
+    # Capture exact runtime metadata before tests; no binary or core upload required.
+    paths = ['/usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstplayback.so',
+             '/usr/lib/x86_64-linux-gnu/libgstreamer-1.0.so.0']
+    records = []
+    for name in paths:
+        path = Path(name).resolve(strict=True)
+        outputs = {}
+        for option in ['--notes', '--section-headers']:
+            result = subprocess.run(['readelf', '--wide', option, str(path)],
+                                    check=True, text=True, capture_output=True, timeout=15)
+            assert len(result.stdout) <= 128 * 1024
+            outputs[option] = result.stdout
+        records.append({'path': str(path), 'size': path.stat().st_size, 'sha256': sha(path),
+                        'readelf': outputs})
+    return records
 
 
 def restore_pattern():
@@ -77,24 +98,47 @@ def child_limits():
     resource.setrlimit(resource.RLIMIT_CORE, (CORE_BYTES, CORE_BYTES))
 
 
+def live_group_members(group):
+    """The child was created with start_new_session=True, so its PID owns this group."""
+    members = []
+    for entry in Path('/proc').iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            text = (entry / 'stat').read_text()
+            fields = text[text.rfind(')') + 2:].split()
+            if int(fields[2]) == group and fields[0] != 'Z':
+                assert entry.stat().st_uid == os.getuid()
+                members.append(int(entry.name))
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+    return members
+
+
 def stop_owned(child):
-    if child is None or child.poll() is not None:
+    if child is None:
         return
-    try:
-        os.killpg(child.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    try:
-        child.wait(timeout=20)
-    except subprocess.TimeoutExpired:
-        os.killpg(child.pid, signal.SIGKILL)
-        child.wait(timeout=5)
+    # The leader may have exited while descendants still own its process group.
+    # Signal only this invocation's group, never a name or a foreign PID.
+    for sig, seconds in [(signal.SIGTERM, 20), (signal.SIGKILL, 5)]:
+        if live_group_members(child.pid):
+            try:
+                os.killpg(child.pid, sig)
+            except ProcessLookupError:
+                pass
+        deadline = time.monotonic() + seconds
+        while live_group_members(child.pid) and time.monotonic() < deadline:
+            time.sleep(0.1)
+        if not live_group_members(child.pid):
+            break
+    assert not live_group_members(child.pid), 'Owned process group survived bounded cleanup'
+    child.wait(timeout=5)
 
 
 def observe_processes(processes):
     # Only public executable/library paths, never argv, environment, memory or credentials.
     for entry in Path('/proc').iterdir():
-        if not entry.name.isdigit() or entry.name in processes:
+        if not entry.name.isdigit():
             continue
         try:
             executable = (entry / 'exe').resolve(strict=True)
@@ -106,26 +150,39 @@ def observe_processes(processes):
                 fields = line.split(None, 5)
                 if len(fields) == 6 and fields[5].startswith('/') and not fields[5].endswith(' (deleted)'):
                     libraries.add(fields[5])
-            processes[entry.name] = {'executable': str(executable), 'libraries': sorted(libraries)}
+            previous = processes.get(entry.name, {})
+            playback = {p for p in libraries if Path(p).name == 'libgstplayback.so'}
+            playback.update(previous.get('playback_paths', []))
+            processes[entry.name] = {'executable': str(executable), 'libraries': sorted(libraries),
+                                     'playback_paths': sorted(playback),
+                                     'observed_monotonic': time.monotonic()}
         except (FileNotFoundError, PermissionError, ProcessLookupError):
             continue
 
 
-def observe_cores(directory, kept, discarded, iteration):
+def observe_cores(directory, kept, discarded, iteration, processes=None):
     for item in sorted(directory.iterdir()):
         assert item.is_file() and not item.is_symlink() and item.stat().st_uid == os.getuid()
         assert re.fullmatch(r'core\.[0-9]+\.[0-9]+\.[^/]+', item.name)
-        if item.name in kept:
-            assert item.stat().st_size <= CORE_BYTES, 'RLIMIT_CORE exceeded'
-            continue
-        if len(kept) < CORE_COUNT:
-            kept[item.name] = {'iteration': iteration, 'pid': item.name.split('.')[1]}
-        else:
+        stat = item.stat()
+        allocated = stat.st_blocks * 512
+        reason = None
+        if stat.st_size > MAX_CORE_LOGICAL or allocated > MAX_CORE_ALLOCATED:
+            reason = 'logical-or-allocated-byte-quota'
+        elif item.name not in kept and len(kept) >= CORE_COUNT:
+            reason = 'retained-core-count-quota'
+        if reason:
             discarded['count'] += 1
             if len(discarded['examples']) < 20:
-                discarded['examples'].append({'name': item.name, 'size_at_removal': item.stat().st_size})
-            # Our private directory, bounded retained cores. No foreign paths or raw core uploads.
+                discarded['examples'].append({'name': item.name, 'logical_size_at_removal': stat.st_size,
+                                               'allocated_bytes_at_removal': allocated, 'reason': reason})
+            kept.pop(item.name, None)
+            # Capture quota must not abort or poison independent browser iterations.
             item.unlink()
+            continue
+        record = kept.setdefault(item.name, {'iteration': iteration, 'pid': item.name.split('.')[1]})
+        if processes and record['pid'] in processes:
+            record['captured_process'] = processes[record['pid']]
 
 
 def parse_result(folder, runtime, code):
@@ -153,8 +210,50 @@ def parse_result(folder, runtime, code):
         passed = (result['testsPassed'] == 5 and result['testsFailed'] == 0
                   and set(result['scenarios']) == {c['title'] for c in cases}
                   and all(result[key] == runtime[key] for key in
-                          ('sourceSha', 'workflowSha', 'runId', 'runAttempt', 'iteration', 'audioMode')))
+                          ('sourceSha', 'workflowSha', 'runId', 'runAttempt', 'iteration', 'playbackVariant')))
     return {'passed': passed, 'exit_code': code, 'cases': cases, 'stats': report.get('stats')}
+
+
+
+def selected_plugin(variant):
+    folder = Path('.compatibility/playback').resolve()
+    record = json.loads((folder / 'build.json').read_text())
+    assert record['diagnosticOnly'] is True
+    assert record['workflowSha'] == os.environ['GITHUB_SHA']
+    assert str(record['runId']) == os.environ['GITHUB_RUN_ID']
+    assert str(record['runAttempt']) == os.environ['GITHUB_RUN_ATTEMPT']
+    assert record['driver_sha256'] == sha('scripts/foss-build-playback.py')
+    assert record['patch_sha256'] == sha('diagnostics/gstreamer/decodebin3-mr7605.patch')
+    plugin = folder / variant / 'libgstplayback.so'
+    assert plugin.is_file() and not plugin.is_symlink()
+    expected = record['plugins'][variant]
+    assert plugin.stat().st_size == expected['size'] and sha(plugin) == expected['sha256']
+    assert '(RPATH)' not in expected['dynamic'] and '(RUNPATH)' not in expected['dynamic']
+    return plugin, expected
+
+
+def mapped_plugin_binding(processes, previous, start, plugin, expected):
+    web = []
+    for pid, process in processes.items():
+        if pid in previous or process['observed_monotonic'] < start:
+            continue
+        if Path(process['executable']).name != 'WPEWebProcess':
+            continue
+        paths = process.get('playback_paths', [])
+        if paths:
+            assert paths == [str(plugin)], f'Wrong/mixed playback mapped in WPE pid {pid}: {paths}'
+            gst_libraries = []
+            for name in process['libraries']:
+                file = Path(name)
+                if file.name.startswith('libgst') and file.is_file():
+                    assert file == plugin or str(file.resolve()).startswith('/usr/lib/'), name
+                    gst_libraries.append({'path': name, 'sha256': sha(file), 'size': file.stat().st_size})
+            web.append({'pid': pid, 'executable': process['executable'], 'gstreamer_libraries': gst_libraries,
+                        'playback_paths': paths, 'observed_monotonic': process['observed_monotonic']})
+    assert web, 'No actual WPEWebProcess mapping proof; diagnosis inconclusive'
+    assert sha(plugin) == expected['sha256'], 'Selected library changed during browser run'
+    return {'actual_wpe_mapping_verified': True, 'plugin': str(plugin),
+            'sha256': expected['sha256'], 'size': expected['size'], 'processes': web}
 
 
 def run_iteration(index, mode, output, original, cores, kept, discarded, processes):
@@ -168,36 +267,55 @@ def run_iteration(index, mode, output, original, cores, kept, discarded, process
     for key in SECRET_KEYS:
         env.pop(key, None)
     command = ['node', 'scripts/browser-acceptance.cjs']
-    if mode != 'original':
-        command = [sys.executable, 'scripts/foss-audio-diagnostic.py', mode, '--', *command]
-    else:
-        assert {key: env.get(key) for key in AUDIO_KEYS} == {key: os.environ.get(key) for key in AUDIO_KEYS}
+    assert {key: env.get(key) for key in AUDIO_KEYS} == {key: os.environ.get(key) for key in AUDIO_KEYS}
     child = None
-    receipt = {'iteration': index, 'audioMode': mode, 'passed': False, 'command': command}
+    plugin = expected = None
+    previous = set(processes)
+    iteration_start = time.monotonic()
+    receipt = {'iteration': index, 'playbackVariant': mode, 'passed': False, 'command': command}
     try:
+        plugin, expected = selected_plugin(mode)
+        registry = folder.parent / 'gst-registry.bin'
+        assert not registry.exists()
+        env.update(GST_PLUGIN_PATH=str(plugin.parent), GST_PLUGIN_PATH_1_0=str(plugin.parent),
+                   GST_REGISTRY=str(registry.resolve()), GST_REGISTRY_1_0=str(registry.resolve()))
+        inspection = subprocess.run(['gst-inspect-1.0', 'playback'], env=env, text=True,
+                                    capture_output=True, timeout=30)
+        (folder.parent / 'gst-inspect.txt').write_text(inspection.stdout + inspection.stderr)
+        inspection.check_returncode()
+        filenames = re.findall(r'^  Filename\s+(.+)$', inspection.stdout, re.M)
+        assert filenames == [str(plugin)], filenames
+        assert sha(plugin) == expected['sha256']
+        previous = set(processes)
+        iteration_start = time.monotonic()
         with (folder.parent / 'run.log').open('w') as log:
             child = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT,
                                      start_new_session=True, preexec_fn=child_limits)
             deadline = time.monotonic() + 10 * 60
             while child.poll() is None:
                 observe_processes(processes)
-                observe_cores(cores, kept, discarded, index)
+                observe_cores(cores, kept, discarded, index, processes)
                 assert time.monotonic() < deadline, 'Outer diagnostic deadline exceeded'
                 time.sleep(0.5)
             receipt.update(parse_result(folder, runtime, child.returncode))
-            if mode != 'original':
-                audio = json.loads((folder.parent / 'audio/receipt.json').read_text())
-                receipt['audio_receipt_sha256'] = sha(folder.parent / 'audio/receipt.json')
-                receipt['passed'] = receipt['passed'] and audio['status'] == 'passed'
+
     except Exception as error:
         receipt['error'] = f'{type(error).__name__}: {error}'
     finally:
         try:
             stop_owned(child)
-            observe_cores(cores, kept, discarded, index)
+            observe_cores(cores, kept, discarded, index, processes)
         except Exception as error:
             receipt['passed'] = False
             receipt['cleanup_error'] = f'{type(error).__name__}: {error}'
+        try:
+            assert plugin is not None and expected is not None, 'Plugin admission did not complete'
+            binding = mapped_plugin_binding(processes, previous, iteration_start, plugin, expected)
+            receipt['loaded_plugin'] = binding
+            save(folder.parent / 'loaded-plugin.json', binding)
+        except Exception as error:
+            receipt['passed'] = False
+            receipt['binding_error'] = f'{type(error).__name__}: {error}'
         save(folder.parent / 'iteration.json', receipt)
     return receipt
 
@@ -223,10 +341,13 @@ def analyze_cores(directory, kept, processes, output):
     assert not changes, 'Postmortem tools changed existing runtime packages'
     for name, metadata in kept.items():
         core = directory / name
-        entry = dict(metadata, name=name, size=core.stat().st_size, sha256=sha(core),
-                     may_be_truncated=core.stat().st_size >= CORE_BYTES)
+        stat = core.stat()
+        assert stat.st_size <= MAX_CORE_LOGICAL and stat.st_blocks * 512 <= MAX_CORE_ALLOCATED
+        entry = dict({key: value for key, value in metadata.items() if key != 'captured_process'},
+                     name=name, logical_size=stat.st_size, allocated_bytes=stat.st_blocks * 512,
+                     sha256=sha(core), may_be_truncated=stat.st_blocks * 512 >= CORE_BYTES)
         entries.append(entry)
-        process = processes.get(metadata['pid'])
+        process = metadata.get('captured_process') or processes.get(metadata['pid'])
         if not process:
             entry['status'] = 'process identity unavailable; core hash retained, no stack claim'
             continue
@@ -257,7 +378,7 @@ def analyze_cores(directory, kept, processes, output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', nargs='?', choices=['original', 'absent', 'null-sink'])
+    parser.add_argument('mode', nargs='?', choices=['stock', 'fixed'])
     parser.add_argument('--restore-only', action='store_true')
     args = parser.parse_args()
     if args.restore_only:
@@ -266,14 +387,17 @@ def main():
     assert args.mode and sys.platform == 'linux' and os.getuid() != 0
     output = Path('.compatibility').resolve()
     original = json.loads((output / 'results/runtime.json').read_text())
-    assert original['audioMode'] == args.mode
+    assert original['playbackVariant'] == args.mode
+    save(output / 'native-library-identities.json', native_library_identities())
     packages = package_snapshot()
     save(output / 'runtime-packages.json', {'all': packages, 'relevant': relevant(packages),
          'ImageOS': os.environ.get('ImageOS'), 'ImageVersion': os.environ.get('ImageVersion'),
          'audio_environment': {key: os.environ.get(key) for key in AUDIO_KEYS}})
     summary = {'diagnosticOnly': True, 'mode': args.mode, 'iterations_requested': ITERATIONS,
-               'driver_sha256': sha(__file__), 'audio_driver_sha256': sha('scripts/foss-audio-diagnostic.py'),
-               'core_limit_per_file': CORE_BYTES, 'maximum_retained_cores': CORE_COUNT,
+               'driver_sha256': sha(__file__), 'builder_sha256': sha('scripts/foss-build-playback.py'),
+               'build_record_sha256': sha('.compatibility/playback/build.json'),
+               'core_written_limit_per_file': CORE_BYTES, 'maximum_retained_cores': CORE_COUNT,
+               'core_maximum_logical_bytes': MAX_CORE_LOGICAL, 'core_maximum_allocated_bytes': MAX_CORE_ALLOCATED,
                'raw_cores_uploaded': False, 'passed': False, 'iterations': []}
     kept, discarded, processes = {}, {'count': 0, 'examples': []}, {}
     try:
@@ -296,7 +420,9 @@ def main():
                 summary['native_error'] = f'{type(error).__name__}: {error}'
             summary['discarded_cores'] = discarded
     finally:
-        summary['passed'] = (len(summary['iterations']) == ITERATIONS
+        summary['native_crashes_observed'] = len(kept) + discarded['count']
+        summary['passed'] = (summary['native_crashes_observed'] == 0
+                             and len(summary['iterations']) == ITERATIONS
                              and all(item['passed'] for item in summary['iterations'])
                              and summary.get('core_pattern_restored') is True
                              and 'native_error' not in summary)
