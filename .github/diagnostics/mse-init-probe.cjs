@@ -54,7 +54,7 @@ async function probe(playwright, output, fixture, tracks, mode, variant = 'norma
         const inputs = tracks.map(track => {
             const bytes = mode === 'init' ? fixture[track + '-init.mp4']
                 : Buffer.concat([fixture[track + '-init.mp4'], fixture[track + '-segment.m4s']]);
-            return { track, mime: track === 'video' ? 'video/mp4;codecs="avc1.42C01E"' : 'audio/mp4;codecs="mp4a.40.2"',
+            return { track, mime: track === 'video' ? (fixture.videoMime || 'video/mp4;codecs="avc1.42C01E"') : 'audio/mp4;codecs="mp4a.40.2"',
                 base64: bytes.toString('base64'), bytes: bytes.length, sha256: hash(bytes) };
         });
         record.inputs = inputs.map(({ base64, ...metadata }) => metadata);
@@ -125,12 +125,22 @@ async function main() {
     for (const [name, digest] of Object.entries(expected)) assert.equal(hash(fixture[name]), digest, name);
     const playwright = require(process.env.CI_PLAYWRIGHT_MODULE);
     const records = [];
-    for (const tracks of [['video'], ['audio'], ['video', 'audio']])
-        for (const mode of ['init', 'combined']) records.push(await probe(playwright, output, fixture, tracks, mode));
-    for (const variant of ['avcc-reserved', 'visual-predefined', 'both-reserved'])
-        records.push(await probe(playwright, output, fixture, ['video', 'audio'], 'init', variant));
+    const referenceBytes = fs.readFileSync(path.join(__dirname, 'mse-references.json'));
+    const referenceBundleSha256 = hash(referenceBytes);
+    assert.equal(referenceBundleSha256, '7eaec145b720e2f246acb7aaf09ac8aa186ab94edae0ac447a86e964f5a71d02');
+    const references = JSON.parse(referenceBytes).references;
+    assert.deepEqual(references.map(value => value.name), ['ffmpeg', 'aligned', 'core']);
+    records.push(await probe(playwright, output, fixture, ['video'], 'init'));
+    for (const reference of references) {
+        const init = Buffer.from(reference.init.base64, 'base64');
+        const fragment = Buffer.from(reference.fragment.base64, 'base64');
+        assert.equal(init.length, reference.init.size); assert.equal(hash(init), reference.init.sha256);
+        assert.equal(fragment.length, reference.fragment.size); assert.equal(hash(fragment), reference.fragment.sha256);
+        const input = { ...fixture, 'video-init.mp4': init, 'video-segment.m4s': fragment, videoMime: reference.mime };
+        for (const mode of ['init', 'combined']) records.push(await probe(playwright, output, input, ['video'], mode, reference.name));
+    }
     const result = { diagnosticOnly: true, assertion: 'observe native append completion; not application acceptance',
-        driverSha256: hash(fs.readFileSync(__filename)), fixture: expected,
+        driverSha256: hash(fs.readFileSync(__filename)), referenceBundleSha256, fixture: expected,
         sourceSha: process.env.SOURCE_SHA, fixtureSourceSha: process.env.FIXTURE_SHA,
         workflowSha: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
         target: process.env.CI_BROWSER_TARGET_ID, playwrightVersion: require(path.join(process.env.CI_PLAYWRIGHT_MODULE, 'package.json')).version,

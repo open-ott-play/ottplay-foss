@@ -1,4 +1,4 @@
-# Temporary direct-MSE diagnostic only. Never merge this workflow replacement.
+# Temporary direct-MSE reference diagnostic only. Never merge this workflow replacement.
 name: Native Shells
 'on':
   workflow_dispatch: {}
@@ -13,20 +13,13 @@ defaults:
     shell: bash
 jobs:
   mse-init:
-    name: Direct MSE init diagnostics / ${{ matrix.target }}
+    name: Direct MSE reference / ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-        - fixture: normalized
-          fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
-          os: macos-15
-          playwright: 1.62.1
-          browser: '26.5'
-          target: macos-15-webkit-1-62-1
-          toolchain: playwright-1-62-1
         - fixture: normalized
           fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
           os: macos-15
@@ -60,7 +53,7 @@ jobs:
       with:
         python-version: '3.12'
     - name: Bind source and unchanged original assertions
-      run: "test \"$(git rev-parse HEAD)\" = \"$GITHUB_SHA\"\nfor file in tests/browser/plex-provider.spec.cjs scripts/browser-acceptance.cjs scripts/browser-compatibility-profile.cjs playwright.compatibility.config.cjs scripts/prepare_browser_candidate.py package-lock.json package.json playwright.config.cjs .github/browser-compatibility.json \"tools/browser-compatibility/$TOOLCHAIN/package.json\" \"tools/browser-compatibility/$TOOLCHAIN/package-lock.json\" tests/helpers/device-browser-server.cjs tests/helpers/hls-aspect-fixture.cjs tests/helpers/browser-test.cjs; do\n  test \"$(git rev-parse \"$FIXTURE_SHA:$file\")\" = \"$(git rev-parse \"HEAD:$file\")\"\ndone\npython - <<'CHECK'\nimport os,subprocess\nchanged=subprocess.check_output(['git','diff','--name-only',os.environ['FIXTURE_SHA'],'HEAD'],text=True).splitlines()\nassert set(changed)=={'.github/workflows/native-parity.yml','.github/diagnostics/mse-init-probe.cjs'}\nCHECK\n"
+      run: "test \"$(git rev-parse HEAD)\" = \"$GITHUB_SHA\"\nfor file in tests/browser/plex-provider.spec.cjs scripts/browser-acceptance.cjs scripts/browser-compatibility-profile.cjs playwright.compatibility.config.cjs scripts/prepare_browser_candidate.py package-lock.json package.json playwright.config.cjs .github/browser-compatibility.json \"tools/browser-compatibility/$TOOLCHAIN/package.json\" \"tools/browser-compatibility/$TOOLCHAIN/package-lock.json\" tests/helpers/device-browser-server.cjs tests/helpers/hls-aspect-fixture.cjs tests/helpers/browser-test.cjs; do\n  test \"$(git rev-parse \"$FIXTURE_SHA:$file\")\" = \"$(git rev-parse \"HEAD:$file\")\"\ndone\npython - <<'CHECK'\nimport os,subprocess\nchanged=subprocess.check_output(['git','diff','--name-only',os.environ['FIXTURE_SHA'],'HEAD'],text=True).splitlines()\nassert set(changed)=={'.github/workflows/native-parity.yml','.github/diagnostics/mse-init-probe.cjs','.github/diagnostics/mse-references.json'}\nCHECK\n"
     - name: Download exact failed RC artifact for diagnosis only
       env:
         GH_TOKEN: ${{ github.token }}
@@ -79,8 +72,8 @@ jobs:
     - name: Verify actual immutable packaged runtime without rebuilding
       run: GITHUB_SHA="$SOURCE_SHA" python scripts/prepare_browser_candidate.py browser-candidate browser-candidate-web --release
     - name: Bind actual browser and diagnostic identity
-      run: "node <<'NODE'\nconst fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');\n(async()=>{\n const modulePath=process.env.CI_PLAYWRIGHT_MODULE;\n const version=require(path.join(modulePath,'package.json')).version;\n assert.equal(version,process.env.PLAYWRIGHT_VERSION);\n assert.equal(require(path.join(modulePath,'../playwright-core/package.json')).version,version);\n assert.equal(process.platform,process.env.CI_BROWSER_TARGET_ID.startsWith('macos-')?'darwin':'linux');\n const browser=await require(modulePath).webkit.launch({headless:true});\n try {\n  assert.equal(browser.version(),process.env.BROWSER_VERSION);\n  fs.writeFileSync(path.join(process.env.CI_BROWSER_DIAGNOSTICS,'runtime.json'),JSON.stringify({\n   schema:1,diagnosticOnly:true,scope:'direct-mse-init',instrumentationSha256:require('node:crypto').createHash('sha256').update(fs.readFileSync('.github/diagnostics/mse-init-probe.cjs')).digest('hex'),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,\n\
-        \   target:process.env.CI_BROWSER_TARGET_ID,engine:'webkit',channel:'',playwrightVersion:version,\n   browserVersion:browser.version(),platform:process.platform,sourceSha:process.env.SOURCE_SHA,\n   workflowSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,runAttempt:process.env.GITHUB_RUN_ATTEMPT,\n   releaseChannel:'',candidateArtifactId:'12028984213',candidateRunId:'38859121986',\n  },null,2));\n } finally {await browser.close();}\n})().catch(e=>{console.error(e);process.exitCode=1});\nNODE\nif command -v dpkg-query >/dev/null; then dpkg-query -W '*gstreamer*' > .compatibility/gstreamer-versions.txt; fi\nmkdir -p .compatibility/instrumentation\ncp .github/diagnostics/mse-init-probe.cjs .compatibility/instrumentation/\n"
+      run: "node <<'NODE'\nconst fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');\n(async()=>{\n const modulePath=process.env.CI_PLAYWRIGHT_MODULE;\n const version=require(path.join(modulePath,'package.json')).version;\n assert.equal(version,process.env.PLAYWRIGHT_VERSION);\n assert.equal(require(path.join(modulePath,'../playwright-core/package.json')).version,version);\n assert.equal(process.platform,process.env.CI_BROWSER_TARGET_ID.startsWith('macos-')?'darwin':'linux');\n const browser=await require(modulePath).webkit.launch({headless:true});\n try {\n  assert.equal(browser.version(),process.env.BROWSER_VERSION);\n  fs.writeFileSync(path.join(process.env.CI_BROWSER_DIAGNOSTICS,'runtime.json'),JSON.stringify({\n   schema:1,diagnosticOnly:true,scope:'direct-mse-reference',instrumentationSha256:require('node:crypto').createHash('sha256').update(fs.readFileSync('.github/diagnostics/mse-init-probe.cjs')).digest('hex'),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,\n\
+        \   target:process.env.CI_BROWSER_TARGET_ID,engine:'webkit',channel:'',playwrightVersion:version,\n   browserVersion:browser.version(),platform:process.platform,sourceSha:process.env.SOURCE_SHA,\n   workflowSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,runAttempt:process.env.GITHUB_RUN_ATTEMPT,\n   releaseChannel:'',candidateArtifactId:'12028984213',candidateRunId:'38859121986',\n  },null,2));\n } finally {await browser.close();}\n})().catch(e=>{console.error(e);process.exitCode=1});\nNODE\nif command -v dpkg-query >/dev/null; then dpkg-query -W '*gstreamer*' > .compatibility/gstreamer-versions.txt; fi\nmkdir -p .compatibility/instrumentation\ncp .github/diagnostics/mse-init-probe.cjs .github/diagnostics/mse-references.json .compatibility/instrumentation/\n"
     - name: Observe exact init and combined appends; no application verdict
       env:
         DEBUG: pw:browser
@@ -94,7 +87,7 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
-        name: foss-mse-init-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: foss-mse-reference-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: .compatibility/
         include-hidden-files: true
         if-no-files-found: error
