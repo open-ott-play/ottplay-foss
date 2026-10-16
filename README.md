@@ -195,8 +195,8 @@ for codec checks and the distinction between browser and native acceptance.
 **AppImage:**
 
 ```bash
-chmod +x OttPlay.FOSS_*_x86_64.AppImage
-./OttPlay.FOSS_*_x86_64.AppImage
+chmod +x OttPlay.FOSS_*_amd64.AppImage
+./OttPlay.FOSS_*_amd64.AppImage
 ```
 
 **Debian/Ubuntu (.deb):**
@@ -205,10 +205,10 @@ chmod +x OttPlay.FOSS_*_x86_64.AppImage
 sudo apt install ./OttPlay.FOSS_*.deb
 ```
 
-**Fedora / compatible RPM distributions:**
+**Fedora (.rpm):**
 
 ```bash
-sudo dnf install ./OttPlay.FOSS_*.rpm
+sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS_*.rpm
 ```
 
 ---
