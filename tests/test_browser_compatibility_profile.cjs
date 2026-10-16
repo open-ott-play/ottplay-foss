@@ -7,20 +7,20 @@ const {
     verifyCapabilities,
 } = require("../scripts/browser-compatibility-profile.cjs");
 const mse = {
-    mediaSource: true,
-    webkitMediaSource: false,
-    managedMediaSource: false,
-    h264Mse: true,
     aacMse: true,
+    h264Mse: true,
+    managedMediaSource: false,
+    mediaSource: true,
     nativeHls: "",
+    webkitMediaSource: false,
 };
 const unavailable = {
-    mediaSource: false,
-    webkitMediaSource: false,
-    managedMediaSource: false,
-    h264Mse: false,
     aacMse: false,
+    h264Mse: false,
+    managedMediaSource: false,
+    mediaSource: false,
     nativeHls: "",
+    webkitMediaSource: false,
 };
 test("scenario matching treats regex punctuation literally", () => {
     const pattern = scenarioPattern(["hls.js", "a(b)c", "[x]+?", "a\\b"]);
@@ -33,16 +33,16 @@ test("scenario matching treats regex punctuation literally", () => {
 });
 function runtime(row) {
     return {
-        target: row.id,
-        engine: row.engine,
-        channel: row.channel || "",
-        playwrightVersion: row.playwright,
         browserVersion: row.browser_version,
+        channel: row.channel || "",
+        engine: row.engine,
         platform: row.os.startsWith("windows-")
             ? "win32"
             : row.os.startsWith("macos-")
               ? "darwin"
               : "linux",
+        playwrightVersion: row.playwright,
+        target: row.id,
     };
 }
 function profileFor(row) {
@@ -120,7 +120,7 @@ test("loss of required MSE or either codec cannot downgrade a full media profile
     });
     verifyCapabilities(profile, {
         ...mse,
-        mediaSource: false,
         managedMediaSource: true,
+        mediaSource: false,
     });
 });

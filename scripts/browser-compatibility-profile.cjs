@@ -60,8 +60,8 @@ function selectProfile(runtime, platform = process.platform) {
         "Windows WebKit generation needs explicit capability review"
     );
     return {
-        name: uiOnly ? "windows-webkit-ui" : "ui-and-hls",
         media: uiOnly ? "not-applicable" : "required",
+        name: uiOnly ? "windows-webkit-ui" : "ui-and-hls",
         reason: uiOnly
             ? "Windows WebKit has no MediaSource API or native HLS"
             : null,

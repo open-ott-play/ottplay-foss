@@ -17,8 +17,8 @@ const profile = selectProfile(runtime);
 async function main() {
     const playwright = require(process.env.CI_PLAYWRIGHT_MODULE);
     const browser = await playwright[runtime.engine].launch({
-        headless: true,
         channel: runtime.channel || undefined,
+        headless: true,
     });
     let capabilities;
     try {
@@ -35,18 +35,18 @@ async function main() {
                 window.MediaSource ||
                 window.WebKitMediaSource;
             return {
-                mediaSource: typeof window.MediaSource === "function",
-                webkitMediaSource:
-                    typeof window.WebKitMediaSource === "function",
-                managedMediaSource:
-                    typeof window.ManagedMediaSource === "function",
+                aacMse: !!mse?.isTypeSupported('audio/mp4; codecs="mp4a.40.2"'),
                 h264Mse: !!mse?.isTypeSupported(
                     'video/mp4; codecs="avc1.42c01e"'
                 ),
-                aacMse: !!mse?.isTypeSupported('audio/mp4; codecs="mp4a.40.2"'),
+                managedMediaSource:
+                    typeof window.ManagedMediaSource === "function",
+                mediaSource: typeof window.MediaSource === "function",
                 nativeHls: document
                     .createElement("video")
                     .canPlayType("application/vnd.apple.mpegurl"),
+                webkitMediaSource:
+                    typeof window.WebKitMediaSource === "function",
             };
         });
     } finally {
@@ -57,8 +57,8 @@ async function main() {
         JSON.stringify(
             {
                 ...runtime,
-                profile,
                 capabilities,
+                profile,
             },
             null,
             2
@@ -120,12 +120,12 @@ async function main() {
             {
                 ...runtime,
                 candidate,
+                capabilities,
                 coverage: {
                     ...profile,
                     media:
                         profile.media === "required" ? "passed" : profile.media,
                 },
-                capabilities,
                 scenarios,
                 testsFailed: 0,
                 testsPassed: scenarios.length,
