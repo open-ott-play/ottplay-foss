@@ -9,7 +9,8 @@ These scenarios use real decoding and real DOM/input; only Plex data and the
 media source are synthetic local fixtures.
 
 Pull requests require current Chromium, Firefox and WebKit on Linux, Chromium
-on Windows, and WebKit on macOS. Release builds require all 35 declared targets:
+on Windows, and WebKit on macOS. Nightly and beta builds require these five targets. RC qualification requires
+all 35 declared targets:
 three exact Playwright/browser generations on Linux, Windows and macOS plus
 installed stable Chrome/Edge on all three systems and beta Chrome/Edge on Linux.
 The tested product versions are recorded at runtime. Playwright Firefox is its
@@ -20,6 +21,9 @@ Both paths download the producing job's exact current-run artifact ID. Archive
 checksums, source commit, packaged bundle/provider hashes, file types and paths
 are checked before serving a fresh extracted directory. Release checks also
 verify the frozen build receipt. Browser jobs do not rebuild the tested code.
+They install production dependencies only. The test server still requires the
+complete provider inventory from the source; the compiler loads only when an
+actual bundle is assembled, not when its inventory constants are read.
 Failed, skipped, stale or missing scenario evidence fails the shared gate; traces,
 actual runtime identity and candidate digest are retained for each target.
 
@@ -28,3 +32,9 @@ The seven generated inventory/lock files come from
 packages and historical browser packages have separate lockfiles. GitHub-hosted
 runners remain the default; the shared workflow retains the prepared Linux
 reserve selection, while Windows/macOS targets require their native OS.
+
+The shared release verdict verifies every selected target and its source SHA,
+run, attempt, channel and exact candidate artifact ID. RC cannot use the five-
+target beta evidence. Stable promotion consumes the accepted RC bytes. Re-run
+the whole qualification workflow after failure; older attempt receipts cannot
+complete a new qualification.

@@ -266,6 +266,42 @@ try {
         );
         fs.copyFileSync(path.join(browserAssets, file), staged);
     }
+    // The browser server must retain the independent source inventory even if
+    // a malformed package omits both a provider file and its metadata entry.
+    const candidate = path.join(root, "incomplete-browser-candidate");
+    fs.mkdirSync(path.join(candidate, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(candidate, "index.html"), "<html></html>");
+    fs.writeFileSync(path.join(candidate, "dist/player.js"), "");
+    const missing = providerBundles[0].file;
+    const incompleteProviders = {};
+    for (const { file, kind } of providerBundles.slice(1)) {
+        fs.writeFileSync(path.join(candidate, "dist", file), "");
+        incompleteProviders[kind] = { file: "dist/" + file };
+    }
+    fs.writeFileSync(
+        path.join(candidate, "build-info.json"),
+        JSON.stringify({ providerBundles: incompleteProviders })
+    );
+    assert.throws(
+        () =>
+            execFileSync(
+                process.execPath,
+                [path.join(__dirname, "helpers/device-browser-server.cjs")],
+                {
+                    env: {
+                        ...process.env,
+                        CI_BROWSER_WEB_ROOT: candidate,
+                        OTTP_DEVICE_TEST_PORT: "0",
+                    },
+                    stdio: "pipe",
+                    timeout: 5000,
+                }
+            ),
+        (error) =>
+            error.status === 1 &&
+            error.stderr.toString().includes("Missing dist/" + missing),
+        "Browser acceptance must reject an omitted source provider despite matching metadata"
+    );
     console.log(
         "PASS actual Mode A archive metadata and browser installation assets: checked-out tag, main/provider hashes and bytes, unique provider entries, required asset rejection, route identity, icon/helper/CSS bytes, no misleading event-SHA fallback"
     );

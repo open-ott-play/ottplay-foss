@@ -19,6 +19,29 @@ SHA = 'a' * 40
 
 
 class CandidateTests(unittest.TestCase):
+    def test_rejects_limits_before_scanning_the_remaining_archive(self):
+        class GuardedArchive:
+            def __init__(self, count, size):
+                self.count, self.size, self.visited = count, size, 0
+
+            def __iter__(self):
+                for index in range(self.count):
+                    self.visited += 1
+                    item = tarfile.TarInfo(f'entry-{index}')
+                    item.size = self.size
+                    yield item
+                raise AssertionError('Scanned past the first over-limit member')
+
+            def getmembers(self):
+                return list(self)
+
+        for count, size in [(10_001, 0), (2, CANDIDATE.MAX_UNPACKED_BYTES), (1, -1)]:
+            with self.subTest(count=count, size=size):
+                archive = GuardedArchive(count, size)
+                with self.assertRaisesRegex(ValueError, 'invalid unpacked size'):
+                    CANDIDATE.archive_files(archive)
+                self.assertEqual(archive.visited, count)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -125,7 +148,9 @@ class CandidateTests(unittest.TestCase):
             self.assertFalse(job['with']['run-node-ci'])
             self.assertEqual(job['with']['browser-test-command'], 'node scripts/browser-acceptance.cjs')
             self.assertNotIn('npm run build', job['with']['browser-prepare-command'])
-            self.assertEqual(job['with'].get('browser-extended', False), job_id == 'browser-release')
+            expected_extended = "${{ inputs.channel == 'rc' || inputs.channel == 'stable' }}" if job_id == 'browser-release' else False
+            self.assertEqual(job['with'].get('browser-extended', False), expected_extended)
+            self.assertEqual(job['with'].get('browser-release-channel', ''), '${{ inputs.channel }}' if job_id == 'browser-release' else '')
             self.assertEqual('--release' in job['with']['browser-prepare-command'], job_id == 'browser-release')
             if job_id == 'browser-release':
                 self.assertEqual(job['with']['browser-evidence-prefix'], 'browser-release')

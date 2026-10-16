@@ -23,6 +23,29 @@ def member_path(name):
     return path.as_posix()
 
 
+def archive_files(bundle):
+    files, seen = {}, set()
+    count, size = 0, 0
+    for item in bundle:
+        count += 1
+        size += item.size
+        if count > 10_000 or item.size < 0 or size > MAX_UNPACKED_BYTES:
+            raise ValueError('Candidate has an invalid unpacked size')
+        name = member_path(item.name)
+        if not (item.isfile() or item.isdir()):
+            raise ValueError('Candidate contains a link or special file')
+        if name == '.' and item.isdir():
+            continue
+        if name.casefold() in seen:
+            raise ValueError('Candidate contains duplicate paths')
+        seen.add(name.casefold())
+        if item.isfile():
+            files[name] = item
+    if count == 0:
+        raise ValueError('Candidate has an invalid unpacked size')
+    return files
+
+
 def prepare(artifacts, destination, diagnostics, source_sha, release=False):
     artifacts, destination, diagnostics = map(Path, (artifacts, destination, diagnostics))
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha):
@@ -48,21 +71,7 @@ def prepare(artifacts, destination, diagnostics, source_sha, release=False):
         if len(entries) != 1 or entries[0].get('sha256') != digest or entries[0].get('size') != archive.stat().st_size:
             raise ValueError('Candidate archive differs from its build receipt')
     with tarfile.open(archive, 'r:gz') as bundle:
-        members = bundle.getmembers()
-        if not members or len(members) > 10_000 or sum(item.size for item in members) > MAX_UNPACKED_BYTES:
-            raise ValueError('Candidate has an invalid unpacked size')
-        files, seen = {}, set()
-        for item in members:
-            name = member_path(item.name)
-            if not (item.isfile() or item.isdir()):
-                raise ValueError('Candidate contains a link or special file')
-            if name == '.' and item.isdir():
-                continue
-            if name.casefold() in seen:
-                raise ValueError('Candidate contains duplicate paths')
-            seen.add(name.casefold())
-            if item.isfile():
-                files[name] = item
+        files = archive_files(bundle)
         if not {'index.html', 'dist/player.js', 'build-info.json'}.issubset(files):
             raise ValueError('Candidate is not a complete Mode A player')
         if files['build-info.json'].size > 2_000_000:

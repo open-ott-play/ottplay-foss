@@ -254,7 +254,8 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
 });
 const fs = require("node:fs");
 const path = require("node:path");
-const ts = require("typescript");
+let ts;
+let helperPrinter;
 
 let helperSignatures;
 function emittedHelperSignatures() {
@@ -287,7 +288,6 @@ function emittedHelperSignatures() {
     return helperSignatures;
 }
 
-const helperPrinter = ts.createPrinter({ removeComments: true });
 function helperSignature(statement) {
     return helperPrinter.printNode(
         ts.EmitHint.Unspecified,
@@ -481,6 +481,11 @@ function classicLegacyNames(root, sources) {
 // These modules deliberately share a classic-script global ABI. Resolve actual
 // import symbols instead of dropping import lines and leaving aliases undefined.
 function assembleClassic(root, modules, assemblyOptions = {}) {
+    if (!ts) {
+        const compiler = require("typescript");
+        helperPrinter = compiler.createPrinter({ removeComments: true });
+        ts = compiler;
+    }
     const files = modules.map((file) => path.resolve(root, file));
     const included = new Set(files);
     for (const file of files) {

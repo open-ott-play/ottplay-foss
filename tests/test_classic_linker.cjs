@@ -14,6 +14,37 @@ const {
     CLASSIC_PLAYER_NAME_POLICY,
 } = require("../scripts/classic-function-names.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-linker-"));
+function testInventoryWithoutCompiler() {
+    const isolated = { exports: {} };
+    vm.runInNewContext(
+        fs.readFileSync(
+            path.join(__dirname, "../scripts/classic-bundle.cjs"),
+            "utf8"
+        ),
+        {
+            module: isolated,
+            require(name) {
+                assert.notEqual(
+                    name,
+                    "typescript",
+                    "Inventory must not load the compiler"
+                );
+                return require(name);
+            },
+        }
+    );
+    assert.deepEqual(
+        Object.keys(isolated.exports.CLASSIC_PROVIDER_BUNDLES),
+        Object.keys(
+            require("../scripts/classic-bundle.cjs").CLASSIC_PROVIDER_BUNDLES
+        )
+    );
+    assert.throws(
+        () => isolated.exports.assembleClassic(root, []),
+        /Inventory must not load the compiler/,
+        "Actual assembly must still load the compiler"
+    );
+}
 function write(name, source) {
     const file = path.join(root, name);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -923,6 +954,7 @@ async function testSharedBootstrapBridge() {
 
 async function main() {
     try {
+        testInventoryWithoutCompiler();
         write(
             "dep.js",
             "export var video = null; export function setVideo(v) { video = v; }"

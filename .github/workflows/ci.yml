@@ -275,7 +275,7 @@ jobs:
 
   browser-compatibility:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@d1bab20ac35bf75398a6a89ff59db113a2c82301
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@5b72b09e8a6bf17b482124891f17fd9662182bf6
     permissions:
       contents: read
       actions: read
@@ -287,7 +287,7 @@ jobs:
       browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
       browser-artifact-path: browser-candidate
       browser-prepare-command: |
-        npm ci --ignore-scripts
+        npm ci --omit=dev --ignore-scripts
         PYTHON=python3
         if ! "$PYTHON" -c 'import sys; assert sys.version_info >= (3, 8)' 2>/dev/null; then PYTHON=python; fi
         "$PYTHON" scripts/prepare_browser_candidate.py browser-candidate browser-candidate-web
