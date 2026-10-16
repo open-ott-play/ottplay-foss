@@ -227,6 +227,55 @@ const cases = [];
 function test(name, fn) {
     cases.push([name, fn]);
 }
+for (const mode of [0, 1, 2]) {
+    test(
+        "screen suspension destroys the active transport: engine " + mode,
+        async () => {
+            const { w, players, shakas } = fixture();
+            w.playerMode = mode;
+            w.__ottNativeRuntime = true;
+            w.stbPlay("camera.m3u8");
+            if (mode === 1) players[0].events.manifest();
+            if (mode === 2) {
+                shakas[0].attached.resolve();
+                await tick();
+                shakas[0].loaded.resolve();
+                await tick();
+            }
+            const handle = w.__ottCoreBackend().current();
+            const before = w.video.loadCalls;
+            handle.suspend();
+            assert.equal(w.video.paused, true);
+            assert.equal(w.video.src, "");
+            assert.equal(
+                w.video.selectedResource,
+                "",
+                "native resource is unloaded"
+            );
+            assert.equal(w.video.loadCalls, before + 1);
+            assert.equal(handle.snapshot().phase, "paused");
+            if (mode === 1) assert.equal(players[0].destroyCalls, 1);
+            if (mode === 2) assert.equal(shakas[0].destroyCalls, 1);
+            const plays = w.video.playCalls;
+            if (mode === 1) players[0].events.manifest();
+            assert.equal(
+                w.video.playCalls,
+                plays,
+                "late startup cannot revive the transport"
+            );
+            handle.suspend();
+            assert.equal(
+                w.video.loadCalls,
+                before + 1,
+                "repeated sleep does not unload twice"
+            );
+            if (mode === 2) {
+                shakas[0].destroyed.resolve();
+                await tick();
+            }
+        }
+    );
+}
 test("standby cancels preview and Plex work and releases both media lanes", () => {
     for (const mode of [0, 1]) {
         const { w, players } = fixture();

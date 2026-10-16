@@ -82,6 +82,8 @@ function createMediaBackend(ports: MediaBackendPorts) {
               }
             : null;
         var engine: MediaEngineLease | null = null;
+        var suspended = false;
+        var attachment = 0;
         var cancelResolve = function () {};
         var alive = true;
         var timer: any = null;
@@ -135,7 +137,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 ports.emit(context, type, position, duration);
         }
         function observe(type?: string) {
-            if (!current() || phase === "stopped") return;
+            if (!current() || suspended || phase === "stopped") return;
             if (!engine) {
                 pendingEvents.push(type || "sample");
                 return;
@@ -257,6 +259,73 @@ function createMediaBackend(ports: MediaBackendPorts) {
             updateTimer();
             publish(handle, "seek");
         }
+        function attachEngine() {
+            if (!handle.active() || suspended) return;
+            var token = ++attachment;
+            var resolved = false;
+            function valid() {
+                return handle.active() && !suspended && token === attachment;
+            }
+            function attach(url: string | null) {
+                if (resolved || !valid()) return;
+                resolved = true;
+                if (!url) {
+                    command("stop");
+                    publish(handle, "error");
+                    handle.dispose();
+                    return;
+                }
+                var opened: MediaEngineLease;
+                try {
+                    opened = ports.open(
+                        {
+                            context: request.context,
+                            lane: request.lane,
+                            paused: request.paused,
+                            position: request.position,
+                            url: url,
+                        },
+                        function (type: string) {
+                            if (valid()) observe(type);
+                        }
+                    );
+                } catch (error) {
+                    if (current()) command("stop");
+                    handle.dispose();
+                    throw error;
+                }
+                if (!valid()) {
+                    opened.dispose();
+                    return;
+                }
+                engine = opened;
+                if (retainPause) {
+                    if (engine.supportsPausedStart === true)
+                        retainPause = false;
+                    phase = "paused";
+                    command("pause");
+                    if (!handle.active()) return;
+                    engine.pause();
+                    if (!current()) return;
+                }
+                publish(handle, "open");
+                if (!current()) return;
+                pendingEvents.forEach(observe);
+                pendingEvents = [];
+                if (current()) updateTimer();
+            }
+            try {
+                if (ports.resolve) {
+                    var cancel = ports.resolve(request.url, attach);
+                    if (valid()) cancelResolve = cancel;
+                    else cancel();
+                } else attach(request.url);
+            } catch (error) {
+                if (current()) command("stop");
+                handle.dispose();
+                throw error;
+            }
+        }
         var handle: any = {
             active: function () {
                 return (
@@ -267,6 +336,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             dispose: function (replaced?: boolean) {
                 if (!alive) return;
                 alive = false;
+                attachment++;
                 cancelResolve();
                 if (lanes[lane] === handle) {
                     delete lanes[lane];
@@ -347,7 +417,24 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     : null;
             },
             resume: function () {
-                if (!handle.active() || !engine) return;
+                if (!handle.active()) return;
+                if (suspended) {
+                    suspended = false;
+                    retainPause = false;
+                    phase = "loading";
+                    awaitingRecovery = false;
+                    // Live manifests/sessions expire while asleep. Resolve a new
+                    // transport from the original URL; VOD keeps its media cursor.
+                    request.position =
+                        context && context.kind === "live"
+                            ? 0
+                            : Math.max(0, position - (offset || 0));
+                    request.paused = false;
+                    command("loading");
+                    if (current() && !suspended) attachEngine();
+                    return;
+                }
+                if (!engine) return;
                 retainPause = false;
                 engine.resume();
                 if (!current()) return;
@@ -387,6 +474,27 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     position: position,
                 };
             },
+            suspend: function () {
+                if (!handle.active() || suspended || phase === "stopped")
+                    return;
+                observe();
+                if (!handle.active()) return;
+                suspended = true;
+                attachment++;
+                cancelResolve();
+                cancelResolve = function () {};
+                pendingEvents = [];
+                // Keep the logical lease and cursor, but release every transport,
+                // decoder and deferred startup owned by its engine.
+                var retired = engine;
+                engine = null;
+                phase = "paused";
+                updateTimer();
+                if (retired) retired.dispose();
+                if (!current()) return;
+                command("pause");
+                publish(handle, "suspend");
+            },
             tracks: function (kind: string) {
                 return handle.active() && engine && engine.tracks
                     ? engine.tracks(kind)
@@ -399,63 +507,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
         if (!current()) return handle;
         command("loading");
         if (!current()) return handle;
-        var resolved = false;
-        function attach(url: string | null) {
-            if (resolved || !handle.active()) return;
-            resolved = true;
-            if (!url) {
-                command("stop");
-                publish(handle, "error");
-                handle.dispose();
-                return;
-            }
-            var opened: MediaEngineLease;
-            try {
-                opened = ports.open(
-                    {
-                        context: request.context,
-                        lane: request.lane,
-                        paused: request.paused,
-                        position: request.position,
-                        url: url,
-                    },
-                    observe
-                );
-            } catch (error) {
-                if (current()) command("stop");
-                handle.dispose();
-                throw error;
-            }
-            if (!current()) {
-                opened.dispose();
-                return;
-            }
-            engine = opened;
-            if (retainPause) {
-                if (engine.supportsPausedStart === true) retainPause = false;
-                phase = "paused";
-                command("pause");
-                if (!handle.active()) return;
-                engine.pause();
-                if (!current()) return;
-            }
-            publish(handle, "open");
-            if (!current()) return;
-            pendingEvents.forEach(observe);
-            pendingEvents = [];
-            if (current()) updateTimer();
-        }
-        try {
-            if (ports.resolve) {
-                var cancel = ports.resolve(request.url, attach);
-                if (current()) cancelResolve = cancel;
-                else cancel();
-            } else attach(request.url);
-        } catch (error) {
-            if (current()) command("stop");
-            handle.dispose();
-            throw error;
-        }
+        attachEngine();
         return handle;
     }
     return {

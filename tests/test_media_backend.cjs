@@ -1019,6 +1019,114 @@ test("restart waits for asynchronous pause confirmation before releasing restora
     assert.equal(f.backend.current().snapshot().phase, "playing");
 });
 
+for (const kind of ["live", "vod", "archive"])
+    test("screen suspension releases transport and reopens " + kind, () => {
+        const f = fixture();
+        f.domain({
+            generation: 1,
+            kind,
+            position: kind === "archive" ? 1000 : 0,
+        });
+        const h = f.backend.open({ position: 10, url: "stream" });
+        f.playing(0, 37);
+        const saved = h.snapshot().position;
+        h.suspend();
+        h.suspend();
+        assert.equal(f.leases[0].disposed, 1);
+        assert.equal(f.backend.current(), h);
+        assert.equal(h.snapshot().phase, "paused");
+        assert.equal(h.snapshot().position, saved);
+        assert.equal(
+            f.timers.some((timer) => timer.active),
+            false
+        );
+        f.leases[0].event("playing");
+        assert.equal(
+            h.snapshot().phase,
+            "paused",
+            "retired decoder events are ignored"
+        );
+        h.resume();
+        assert.equal(f.leases.length, 2);
+        assert.equal(f.leases[1].request.position, kind === "live" ? 0 : 37);
+        assert.equal(f.leases[1].request.paused, false);
+        f.playing(1, kind === "live" ? 0 : 37);
+        assert.equal(h.snapshot().phase, "playing");
+        assert.equal(h.snapshot().position, kind === "live" ? 0 : saved);
+    });
+test("screen suspension cancels resolution and ignores late results", () => {
+    const f = fixture();
+    const callbacks = [];
+    let cancelled = 0;
+    f.ports.resolve = (url, done) => {
+        callbacks.push(done);
+        return () => cancelled++;
+    };
+    const h = f.backend.open({ url: "expiring" });
+    h.suspend();
+    assert.equal(cancelled, 1);
+    callbacks[0]("old");
+    assert.equal(f.leases.length, 0);
+    h.resume();
+    assert.equal(callbacks.length, 2, "wake resolves a fresh session");
+    callbacks[0]("old-again");
+    callbacks[1]("new");
+    assert.equal(f.leases.length, 1);
+    assert.equal(f.leases[0].request.url, "new");
+    h.suspend();
+    h.dispose();
+    h.resume();
+    assert.equal(
+        callbacks.length,
+        2,
+        "a disposed sleeping lease cannot reopen"
+    );
+});
+test("ordinary pause keeps its transport while screen suspension releases it", () => {
+    const f = fixture();
+    const h = f.backend.open({ url: "stream" });
+    f.playing(0, 37);
+    h.pause();
+    assert.equal(f.leases[0].disposed, 0);
+    h.suspend();
+    assert.equal(f.leases[0].disposed, 1);
+    assert.equal(h.snapshot().phase, "paused");
+    assert.equal(
+        f.leases.length,
+        1,
+        "no automatic reload of an already paused item"
+    );
+    h.resume();
+    assert.equal(
+        f.leases.length,
+        2,
+        "explicit Play can resume the released item"
+    );
+});
+
+test("a sleeping subscriber prevents replacement source resolution", () => {
+    const f = fixture();
+    const prior = f.backend.open({ url: "first" });
+    const resolutions = [];
+    f.ports.resolve = (url, done) => {
+        resolutions.push(url);
+        done(url);
+        return () => {};
+    };
+    f.backend.subscribe(() => {
+        const current = f.backend.current();
+        if (current && current !== prior) current.suspend();
+    });
+    const replacement = f.backend.open({ url: "asleep" });
+    assert.equal(replacement.snapshot().phase, "paused");
+    assert.deepEqual(
+        resolutions,
+        [],
+        "sleep must block source preparation too"
+    );
+    assert.equal(f.leases.length, 1);
+});
+
 console.log(
     "PASS media backend: " + passed + " ES5 lease/observer/device scenarios"
 );
