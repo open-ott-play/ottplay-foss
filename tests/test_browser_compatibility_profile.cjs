@@ -50,7 +50,7 @@ function profileFor(row) {
     return selectProfile(
         value,
         value.platform,
-        row.os === "macos-15-intel" ? "x64" : "arm64"
+        ["macos-15-intel", "ubuntu-26.04"].includes(row.os) ? "x64" : "arm64"
     );
 }
 test("all 35 exact targets retain mandatory UI with 32 HLS targets and three explicit limitations", () => {
@@ -235,6 +235,27 @@ test("historical macOS WebKit targets require Intel without reducing playback co
         assert.equal(profile.scenarios.length, 5);
         for (const arch of ["arm64", "ia32", ""]) {
             assert.throws(() => selectProfile(value, "darwin", arch));
+        }
+    }
+});
+
+test("all Linux WebKit generations retain complete playback on reviewed Ubuntu 26.04", () => {
+    const targets = inventory.filter(
+        (row) => row.os.startsWith("ubuntu-") && row.engine === "webkit"
+    );
+    assert.deepEqual(targets.map((row) => row.id).sort(), [
+        "ubuntu-26-04-webkit-1-62-1",
+        "ubuntu-26-04-webkit-1-63-0",
+        "ubuntu-26-04-webkit-1-64-0",
+    ]);
+    for (const row of targets) {
+        assert.equal(row.os, "ubuntu-26.04");
+        const value = runtime(row);
+        const profile = selectProfile(value, "linux", "x64");
+        assert.equal(profile.media, "required");
+        assert.equal(profile.scenarios.length, 5);
+        for (const arch of ["arm64", "ia32", ""]) {
+            assert.throws(() => selectProfile(value, "linux", arch));
         }
     }
 });

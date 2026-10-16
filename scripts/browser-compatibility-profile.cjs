@@ -64,6 +64,13 @@ function selectProfile(
             "Actual Intel runner architecture mismatch"
         );
     }
+    if (target.os === "ubuntu-26.04") {
+        assert.equal(
+            architecture,
+            "x64",
+            "Actual Ubuntu WebKit runner architecture mismatch"
+        );
+    }
     const uiOnly = UI_ONLY_TARGETS.has(target.id);
     assert.equal(
         uiOnly,

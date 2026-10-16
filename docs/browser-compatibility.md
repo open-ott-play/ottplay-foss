@@ -35,6 +35,16 @@ runner choice is not a claim about every physical macOS device or native Safari.
 Inventory regeneration must retain these reviewed runner overrides; the profile
 contract rejects their removal.
 
+All three Linux WebKit generations use the explicit `ubuntu-26.04` x64 runner.
+The reviewed official-runtime comparison reproduced the strict-kiosk transition
+failure on Ubuntu 24.04 while the same candidate and five unchanged scenarios
+passed four consecutive times on Ubuntu 26.04. This selects a coherent supported
+runtime, without replacing individual multimedia libraries or relaxing playback
+assertions. The other Linux browser targets retain their existing runners.
+See [Linux WebKit runtime qualification](linux-webkit-runtime.md) for the exact
+source, artifact, comparison results and limits. The complete RC matrix and
+separate packaged native acceptance remain required.
+
 The tested product versions are recorded at runtime. Playwright Firefox is its
 patched build, not an assertion about native Firefox ESR; WebKit is not Safari.
 This matrix does not replace qualification on physical TVs or native shells.
