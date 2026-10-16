@@ -1986,7 +1986,7 @@ for (const change of [
     assert.deepEqual(calls, ["pause"], "a replaced channel never resumes");
 }
 
-{
+for (const kind of ["live", "archive"]) {
     const r = rig();
     const calls = [];
     let phase = "playing";
@@ -2000,18 +2000,21 @@ for (const change of [
         },
     };
     r.w.__ottCoreBackendPeek = () => ({ current: () => handle });
+    r.w.__ottClassicPlayback = {
+        snapshot: () => ({ target: { kind }, position: 123 }),
+    };
     r.request({ mode: "on", query: "1" });
     r.kiosk.setScreenAwake(false);
     r.kiosk.setScreenAwake(true);
     assert.deepEqual(
         r.played,
-        ["a", "a"],
-        "wake resolves the live channel via its provider again"
+        kind === "live" ? ["a", "a"] : ["a"],
+        "only live playback resolves the channel again; archive stays at its saved cursor"
     );
     assert.deepEqual(
         calls,
-        ["suspend"],
-        "wake must not reuse an expiring live URL"
+        kind === "live" ? ["suspend"] : ["suspend", "resume"],
+        "archive resumes its saved lease instead of being replaced with the live channel"
     );
 }
 

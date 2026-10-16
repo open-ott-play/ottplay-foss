@@ -151,7 +151,15 @@ export function createKiosk(w: any): any {
         ) {
             // Providers may issue expiring URLs before the backend resolver.
             // Resolve a live channel through its provider again after sleep.
-            if (policy.channel) play();
+            var state =
+                w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
+            if (
+                policy.channel &&
+                state &&
+                state.target &&
+                state.target.kind === "live"
+            )
+                play();
             else handle.resume();
         }
     }
