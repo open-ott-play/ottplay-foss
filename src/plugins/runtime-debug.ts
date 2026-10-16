@@ -285,7 +285,7 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
     function bool(out: any, key: string, value: any): void {
         if (typeof value === "boolean") out[key] = value;
     }
-    function media(): any[] {
+    function media(version: number): any[] {
         var result: any[] = [];
         ["main", "pip"].forEach(function (lane, index) {
             var node = element(index ? "videopip" : "video");
@@ -375,17 +375,18 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
             } catch (_) {
                 /* Keep only fields already observed. */
             }
-            result.push({
-                engine: engine,
+            var observation: any = {
                 generation: generation,
                 handleId: handleId,
                 lane: lane,
                 metrics: metrics,
-            });
+            };
+            if (version === 2) observation.engine = engine;
+            result.push(observation);
         });
         return result;
     }
-    function sample(): any {
+    function sample(version: number): any {
         var metrics: any = {};
         Object.keys(counters).forEach(function (key) {
             put(metrics, key, counters[key]);
@@ -449,18 +450,20 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                 };
             }),
             eventsDropped: dropped,
-            media: media(),
+            media: media(version),
             metrics: metrics,
             native: { data: null, state: "unsupported" },
             platform: platform(),
             runtime: deps.runtime(),
-            version: 1,
+            version: version,
         };
     }
-    function snapshot(): Promise<any> {
+    function snapshot(version = 1): Promise<any> {
+        if (version !== 1 && version !== 2)
+            return Promise.reject(new Error("invalid_request"));
         if (!sync() || suspended)
             return Promise.reject(new Error("unavailable"));
-        var result = sample();
+        var result = sample(version);
         var owner = epoch;
         var runtime = result.runtime;
         function resolved(): Promise<any> {

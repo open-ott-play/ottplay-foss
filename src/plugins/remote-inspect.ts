@@ -112,11 +112,13 @@ export function installRemoteInspection(w: any): any {
         done: (result: any) => void
     ): void | (() => void) {
         var params = item.params || {};
+        var version =
+            params.section === "debug" && params.version === 2 ? 2 : 1;
         function finish(status: string, value: any): void {
             var result: any = {
                 runtime: runtime(),
                 section: params.section,
-                version: 1,
+                version: version,
             };
             result[status === "ok" ? "data" : "error"] = value;
             done({ data: result, status: status });
@@ -126,7 +128,7 @@ export function installRemoteInspection(w: any): any {
             return;
         }
         if (
-            params.version !== 1 ||
+            params.version !== version ||
             ["doctor", "snapshot", "operation", "debug"].indexOf(
                 params.section
             ) < 0 ||
@@ -149,7 +151,7 @@ export function installRemoteInspection(w: any): any {
             }
             var cancelled = false;
             try {
-                collector.snapshot().then(
+                collector.snapshot(version).then(
                     function (value: any) {
                         if (cancelled) return;
                         if (

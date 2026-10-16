@@ -165,7 +165,8 @@ async function test(name, run) {
             f.w.__ottCoreBackendPeek = () => ({
                 current: () => ({ diagnosticEngine: () => engine, id: 9 }),
             });
-            const data = plain(await f.api.snapshot());
+            const data = plain(await f.api.snapshot(2));
+            assert.equal(data.version, 2);
             assert.equal(
                 data.media[0].engine,
                 ["hls.js", "shaka", "html5"].includes(engine) ? engine : null
@@ -173,7 +174,12 @@ async function test(name, run) {
             assert(!JSON.stringify(data).includes(secret));
         }
         f.w.__ottCoreBackendPeek = () => ({ current: () => null });
-        assert.equal((await f.api.snapshot()).media[0].engine, null);
+        assert.equal((await f.api.snapshot(2)).media[0].engine, null);
+        const legacy = plain(await f.api.snapshot());
+        assert.equal(legacy.version, 1);
+        assert(!Object.hasOwn(legacy.media[0], "engine"));
+        for (const version of [0, 3, "2", null, true])
+            await assert.rejects(f.api.snapshot(version), /invalid_request/);
         f.close();
     });
     await test("read-only media counters retain identity and omit unavailable numeric values", async () => {
@@ -181,7 +187,6 @@ async function test(name, run) {
         f.enable();
         const data = plain(await f.api.snapshot());
         assert.deepEqual(data.media[0], {
-            engine: null,
             generation: 7,
             handleId: 9,
             lane: "main",

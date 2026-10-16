@@ -807,6 +807,7 @@ export function executeRemoteControl(
                 : null,
             aspect: remoteAspectCapabilities(w),
             debug: w.__ottRuntimeDebug ? { version: 1 } : undefined,
+            debug_versions: w.__ottRuntimeDebug ? [1, 2] : undefined,
             favorites: remoteFavoritesCapability,
             input: Object.keys(remoteKeys).filter(function (key) {
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
