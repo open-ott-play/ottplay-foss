@@ -28,6 +28,11 @@ AppImage also retains the build system's C library compatibility requirements.
 
 ## Build and release checks
 
+Native Linux packages use the fixed Ubuntu 24.04 build baseline on both x86_64
+and ARM64. The separate Linux WebKit browser checks use Ubuntu 26.04. Moving a
+browser check to a newer runtime must not silently raise the native packages'
+glibc requirement through a moving `ubuntu-latest` build label.
+
 `scripts/ci-tauri-linux-deps.sh` explicitly installs the media plugin sets.
 `scripts/check-linux-media-codecs.sh` verifies plugin discovery and decodes both
 the H.264 video and AAC audio streams from the checked-in MPEG-TS fixture to EOS,
