@@ -57,7 +57,7 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 - **Shared interface**: OTT Server, Tauri and Capacitor use the same channel-list theme and visibility settings. Interface settings control highlight and selection colors; Channel list settings control channel names, picons, current programmes, progress and archive markers.
 - **Providers**: M3U playlists, Xtream Codes API, Stalker middleware
 - **Push commands**: Remote control via webhook — change channel, provider, playlist, show popups
-- **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (allowlisted Device UUID; ♥™ on VKB)
+- **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (installation-authorized sessions; ♥™ on VKB)
 - **Per-device routing**: UUID-based addressing for multi-device setups
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
 - **Debug**: Opt-in playback HUD / ring log via `?debug=1`
