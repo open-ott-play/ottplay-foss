@@ -293,6 +293,7 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
             var metrics: any = {};
             var generation: number | null = null;
             var handleId: number | null = null;
+            var engine: string | null = null;
             try {
                 var playback =
                     w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
@@ -312,6 +313,16 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                     Math.floor(handle.id) === handle.id
                 )
                     handleId = handle.id;
+                var attached =
+                    handle &&
+                    handle.diagnosticEngine &&
+                    handle.diagnosticEngine();
+                if (
+                    attached === "hls.js" ||
+                    attached === "shaka" ||
+                    attached === "html5"
+                )
+                    engine = attached;
             } catch (_) {
                 /* A missing owner does not prevent element observations. */
             }
@@ -365,6 +376,7 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                 /* Keep only fields already observed. */
             }
             result.push({
+                engine: engine,
                 generation: generation,
                 handleId: handleId,
                 lane: lane,

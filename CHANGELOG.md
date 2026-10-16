@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Report the actual attached playback engine in runtime diagnostics, including
+  HLS-to-native fallback; stopped or unavailable engines remain explicitly null.
+
 - Preserve the exact source revision in release frontend diagnostics. Verify
   committed media assets before CI builds and reject release builds whose
   source identity cannot be validated against the frozen version plan.

@@ -150,11 +150,38 @@ async function test(name, run) {
         );
         f.close();
     });
+    await test("engine identity accepts only the attached owner's bounded enum", async () => {
+        const f = fixture();
+        f.enable();
+        for (const engine of [
+            "hls.js",
+            "shaka",
+            "html5",
+            null,
+            secret,
+            "auto",
+            {},
+        ]) {
+            f.w.__ottCoreBackendPeek = () => ({
+                current: () => ({ diagnosticEngine: () => engine, id: 9 }),
+            });
+            const data = plain(await f.api.snapshot());
+            assert.equal(
+                data.media[0].engine,
+                ["hls.js", "shaka", "html5"].includes(engine) ? engine : null
+            );
+            assert(!JSON.stringify(data).includes(secret));
+        }
+        f.w.__ottCoreBackendPeek = () => ({ current: () => null });
+        assert.equal((await f.api.snapshot()).media[0].engine, null);
+        f.close();
+    });
     await test("read-only media counters retain identity and omit unavailable numeric values", async () => {
         const f = fixture();
         f.enable();
         const data = plain(await f.api.snapshot());
         assert.deepEqual(data.media[0], {
+            engine: null,
             generation: 7,
             handleId: 9,
             lane: "main",

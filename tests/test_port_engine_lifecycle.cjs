@@ -150,6 +150,9 @@ function fixture() {
         this.media = media;
         return this.attached.promise;
     };
+    Shaka.prototype.getMediaElement = function () {
+        return this.media;
+    };
     Shaka.prototype.load = function (url, position) {
         this.url = url;
         this.position = position;
@@ -1320,6 +1323,96 @@ test("HLS level zero is never confused with current higher level", () => {
     });
     assert.equal(players[0].removed, undefined);
 });
+test("engine diagnostics identify attached ownership, not a mode preference", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    w.stbPlay("first.m3u8");
+    const first = w.__ottCoreBackend().current();
+    assert.equal(first.diagnosticEngine(), "hls.js");
+    players[0].media = null;
+    assert.equal(first.diagnosticEngine(), null, "detached HLS is unavailable");
+    players[0].media = w.video;
+    const fatal = { fatal: true, type: "media" };
+    players[0].events.error(null, fatal);
+    players[0].events.error(null, fatal);
+    assert.equal(w.playerMode, 1, "saved HLS preference is unchanged");
+    assert.equal(
+        first.diagnosticEngine(),
+        "html5",
+        "actual fallback is visible"
+    );
+    w.stbPlay("replacement.m3u8");
+    assert.equal(first.diagnosticEngine(), null);
+    const replacement = w.__ottCoreBackend().current();
+    assert.equal(replacement.diagnosticEngine(), "hls.js");
+    replacement.suspend();
+    assert.equal(replacement.diagnosticEngine(), null);
+    replacement.resume();
+    assert.equal(replacement.diagnosticEngine(), "hls.js");
+    w.stbStop();
+    assert.equal(replacement.diagnosticEngine(), null);
+    w.Hls.isSupported = () => false;
+    w.stbPlay("native.m3u8");
+    assert.equal(w.__ottCoreBackend().current().diagnosticEngine(), "html5");
+    w.stbStop();
+});
+test("unattached and failed engines never borrow a prior native identity", async () => {
+    const { w, players, shakas } = fixture();
+    w.stbPlay("first.mp4");
+    let ready;
+    w.__ottCoreTransport.configure({
+        prepareSource(_url, callback) {
+            ready = callback;
+            return () => {};
+        },
+    });
+    w.stbPlay("pending.m3u8");
+    const pending = w.__ottCoreBackend().current();
+    assert.equal(pending.diagnosticEngine(), null);
+    w.stbStop();
+    ready("stale.mp4");
+    assert.equal(pending.diagnosticEngine(), null);
+    w.__ottCoreTransport.configure({ prepareSource: null });
+    w.playerMode = 1;
+    w.stbPlay("fatal.m3u8");
+    players[0].events.error(null, { fatal: true, type: "other" });
+    assert.equal(w.__ottCoreBackend().current().diagnosticEngine(), null);
+    w.playerMode = 2;
+    w.__ottNativeRuntime = true;
+    w.shaka.Player.prototype.attach = function (media) {
+        return this.attached.promise.then(() => {
+            this.media = media;
+        });
+    };
+    w.stbPlay("pending.mpd");
+    const shaka = w.__ottCoreBackend().current();
+    assert.equal(
+        shaka.diagnosticEngine(),
+        null,
+        "construction is not attachment"
+    );
+    shakas[0].attached.resolve();
+    await tick();
+    assert.equal(shaka.diagnosticEngine(), "shaka");
+    w.stbStop();
+    assert.equal(shaka.diagnosticEngine(), null);
+});
+test("PiP diagnostics use their own attached engine and clear on stop", () => {
+    const { w } = fixture();
+    w.playerMode = 1;
+    w.stbPlay("main.m3u8");
+    w.playerMode = 0;
+    w.stbPlayPip("pip.mp4");
+    const main = w.__ottCoreBackend().current();
+    const pip = w.__ottCoreBackend().current("pip");
+    assert.equal(main.diagnosticEngine(), "hls.js");
+    assert.equal(pip.diagnosticEngine(), "html5");
+    w.stbStopPip();
+    assert.equal(pip.diagnosticEngine(), null);
+    assert.equal(main.diagnosticEngine(), "hls.js");
+    w.stbStop();
+});
+
 (async () => {
     let failures = 0;
     for (const [name, fn] of cases) {

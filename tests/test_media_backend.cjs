@@ -42,6 +42,7 @@ function fixture() {
             };
             leases.push(lease);
             return {
+                diagnosticEngine: () => lease.engine || null,
                 dispose() {
                     lease.disposed++;
                     if (lease.onDispose) lease.onDispose();
@@ -1125,6 +1126,40 @@ test("a sleeping subscriber prevents replacement source resolution", () => {
         "sleep must block source preparation too"
     );
     assert.equal(f.leases.length, 1);
+});
+
+test("engine diagnostics follow ownership, suspension and natural stop without sampling", () => {
+    const f = fixture();
+    const first = f.backend.open({ url: "first" });
+    f.leases[0].engine = "hls.js";
+    const commandCount = f.commands.length;
+    assert.equal(first.diagnosticEngine(), "hls.js");
+    assert.equal(
+        f.commands.length,
+        commandCount,
+        "observation emits no commands"
+    );
+    first.suspend();
+    assert.equal(first.diagnosticEngine(), null);
+    first.resume();
+    f.leases[1].engine = "html5";
+    assert.equal(first.diagnosticEngine(), "html5");
+    const next = f.backend.open({ url: "next" });
+    f.leases[2].engine = "shaka";
+    assert.equal(first.diagnosticEngine(), null);
+    assert.equal(next.diagnosticEngine(), "shaka");
+    f.playing(2);
+    f.leases[2].event("ended");
+    assert.equal(next.diagnosticEngine(), null);
+    const retired = f.backend.open({ url: "retired" });
+    f.leases[3].engine = "hls.js";
+    f.domain({ generation: 2, kind: "vod", position: 0 });
+    assert.equal(
+        retired.diagnosticEngine(),
+        null,
+        "retired source has no authority"
+    );
+    f.backend.dispose();
 });
 
 console.log(

@@ -48,6 +48,14 @@ main playback generation. Native overlays without an HTML video observation are
 not represented as zero frames. Neither clock advancement nor frame counters
 prove that the display changed or that audio was audible.
 
+Each lane also reports `engine`: `hls.js`, `shaka`, `html5`, or `null`.
+This is the engine currently attached by that lane's owned playback lease, not
+its saved player preference. In-place HLS-to-native fallback changes the value
+without changing the preference. Preparation, stop, suspension, retired leases
+and device engines without this diagnostic capability report `null`. No source
+URL is read or exported. Attachment does not prove successful decoding; correlate
+it with the same generation/handle's media counters and actual captured frames.
+
 ## Native applications
 
 The on-demand `RuntimeDiagnostics.snapshot()` Capacitor plugin and Tauri's

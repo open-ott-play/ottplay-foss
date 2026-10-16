@@ -20,7 +20,10 @@ interface MediaBackendSample {
     position: number;
     ready: number;
 }
+type MediaDiagnosticEngine = "hls.js" | "shaka" | "html5" | null;
 interface MediaEngineLease {
+    // Read-only identity of the attached engine, never a saved preference.
+    diagnosticEngine?(): MediaDiagnosticEngine;
     dispose(replaced?: boolean): void;
     pause(): void;
     resume(): void;
@@ -332,6 +335,15 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     current() &&
                     (lane !== "main" || !context || domainCurrent())
                 );
+            },
+            diagnosticEngine: function (): MediaDiagnosticEngine {
+                return handle.active() &&
+                    !suspended &&
+                    phase !== "stopped" &&
+                    engine &&
+                    engine.diagnosticEngine
+                    ? engine.diagnosticEngine()
+                    : null;
             },
             dispose: function (replaced?: boolean) {
                 if (!alive) return;
