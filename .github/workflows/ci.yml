@@ -125,6 +125,9 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
+      - name: Verify committed media runtime
+        run: npm run check:media
+
       - name: Build container frontend from declared inputs
         timeout-minutes: 10
         run: docker build --target build --progress=plain .

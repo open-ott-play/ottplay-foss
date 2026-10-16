@@ -84,9 +84,18 @@ minification; it is not a hash of the downloadable asset. A clean Git checkout o
 an exact frozen release version overlay retains its source revision. The overlay
 must match the current commit, its committed policy and every declared version
 input, with no staged or unrelated changes; a release receipt alone is not proof.
-Other dirty worktrees and source archives without Git metadata report a partial
-source identity. Compare
-downloadable bytes against the release manifest separately when checking delivery.
+Builds with a frozen release plan or `RELEASE_CHANNEL` fail if that source identity
+cannot be verified. CI checks the committed media runtime before building: after
+updating dependencies, run `npm ci --ignore-scripts`, `npm run build:media` and
+`npm run check:media`, then commit the generated assets and bootstrap references
+alongside the lockfile. A release build must not silently rebuild stale tracked
+assets and publish a partial identity.
+
+Ordinary dirty development worktrees and source archives without Git metadata
+report a partial source identity. The Docker frontend is built from a source
+archive; its OCI revision labels and release receipts supply the separate source
+binding. Compare downloadable bytes against the release manifest when checking
+delivery.
 
 ## Transport and operation receipts
 

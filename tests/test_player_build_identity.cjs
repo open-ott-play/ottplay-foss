@@ -64,12 +64,21 @@ function testReleaseOverlay() {
             );
         commit();
         const head = git("rev-parse", "HEAD");
-        const { createPlayerBuildIdentity } = require(
+        const { createPlayerBuildIdentity, embedPlayerBuildIdentity } = require(
             path.join(root, "scripts/player-build-identity.cjs")
         );
         const identity = () =>
             createPlayerBuildIdentity("compiled fixture", root).sourceRevision;
+        const releaseIdentity = () =>
+            createPlayerBuildIdentity("compiled fixture", root, {
+                requireReleaseSource: true,
+            }).sourceRevision;
         assert.equal(identity(), head);
+        assert.throws(
+            releaseIdentity,
+            /Release player source identity could not be verified/,
+            "A release build needs a frozen plan even in a clean checkout"
+        );
         git("update-index", "--assume-unchanged", "source.txt");
         fs.appendFileSync(
             path.join(root, "source.txt"),
@@ -126,6 +135,14 @@ raise SystemExit(version_plan.main(["sync", "--root", sys.argv[1], "--plan", ".r
             head,
             "An exact release overlay preserves source identity"
         );
+        assert.equal(releaseIdentity(), head);
+        assert.equal(
+            embedPlayerBuildIdentity("source=__OTTP_SOURCE_REVISION__", root, {
+                requireReleaseSource: true,
+            }),
+            "source=" + head,
+            "The emitted release frontend contains the verified source revision"
+        );
         assert.deepEqual(
             fs.readFileSync(path.join(root, ".git/index")),
             index,
@@ -140,6 +157,7 @@ raise SystemExit(version_plan.main(["sync", "--root", sys.argv[1], "--plan", ".r
         );
 
         writePlan({ ...plan, source_sha: "f".repeat(40) });
+        assert.throws(releaseIdentity, /Release player source identity/);
         assert.equal(
             identity(),
             "",
@@ -153,6 +171,11 @@ raise SystemExit(version_plan.main(["sync", "--root", sys.argv[1], "--plan", ".r
         );
         writePlan(plan);
         fs.appendFileSync(path.join(root, "source.txt"), "unexpected edit\n");
+        assert.throws(
+            releaseIdentity,
+            /Release player source identity/,
+            "A release cannot silently lose provenance after a generated source edit"
+        );
         assert.equal(
             identity(),
             "",
