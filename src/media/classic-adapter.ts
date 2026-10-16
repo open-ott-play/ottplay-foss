@@ -864,7 +864,7 @@ function classicMediaRuntime(): any {
         var revision = automaticGeneration + 1;
         var request: any;
         api.cancelAuto();
-        function valid() {
+        function valid(afterEnd = false) {
             var state = w.__ottClassicPlayback.snapshot();
             return (
                 current() &&
@@ -872,7 +872,7 @@ function classicMediaRuntime(): any {
                 mediaClassicPlayback === playback &&
                 (!request || skipRequest === request) &&
                 automaticGeneration === revision &&
-                state.generation === generation &&
+                state.generation === generation + (afterEnd ? 1 : 0) &&
                 state.target &&
                 state.target.kind === "vod" &&
                 state.target.sourceId === source &&
@@ -915,7 +915,12 @@ function classicMediaRuntime(): any {
             ((index % sequence.items.length) + sequence.items.length) %
             sequence.items.length;
         if (index === sequence.index) return;
-        request = { feedback: feedback, index: index, playback: playback };
+        request = {
+            feedback: feedback,
+            index: index,
+            playback: playback,
+            valid: valid,
+        };
         skipRequest = request;
         var item = sequence.items[index];
         function finish() {
@@ -1006,10 +1011,11 @@ function classicMediaRuntime(): any {
         (automatic ? automaticLibrary : library).resolve(
             function (done: any) {
                 bindScreen();
-                if (loading || skipped)
+                if (loading || skipped || startup)
                     done.beforeError = function () {
                         if (!valid()) return;
                         if (skipped) finishSkipLoading(skipped);
+                        if (startup) finishStartupLoading();
                         if (!loading || manualLoading !== loading) return;
                         // Retire the wait before Plex replaces it with its error
                         // dialog. Keep the selected file available for retry.
@@ -1345,12 +1351,35 @@ function classicMediaRuntime(): any {
             }
             if (!playback || playback.ended || !valid()) return;
             playback.ended = true;
+            // Natural completion retires the old decoder generation, but must
+            // not replace an explicit pending arrow with its automatic sibling.
+            var skipped = skipRequest;
+            var skip =
+                skipped && skipped.playback === playback && skipped.valid(true)
+                    ? skipped.recovering
+                        ? skipped.offset
+                        : skipped.index - sequence.index
+                    : null;
+            var skipAdmitted = skip !== null ? library.capture() : null;
+            var skipRevision = automaticGeneration + 1;
             // A completed standalone item also loses its resume checkpoint.
             // It must not cancel a new shuffle being collected in parallel.
-            if (sequence) api.cancelAuto();
+            if (sequence || skip !== null) api.cancelAuto();
             revision = automaticGeneration;
             var admitted = library.capture();
             api.checkpoint(playback.ref, 0, true);
+            if (skip !== null) {
+                // Restart ownership against the completed generation so late
+                // responses from its old folder/metadata request stay stale.
+                if (
+                    skipAdmitted!() &&
+                    automaticGeneration === skipRevision &&
+                    admitted() &&
+                    valid()
+                )
+                    skipPlayback(skip);
+                return;
+            }
             if (!sequence || !admitted() || !valid()) return;
             var mode = sequence.repeat || "all";
             if (
@@ -1913,7 +1942,7 @@ function classicMediaRuntime(): any {
                 });
                 startupLoading = loading;
                 loading.own(function () {
-                    if (startupLoading === loading) startupLoading = null;
+                    if (startupLoading === loading) api.cancelAuto();
                 });
                 try {
                     collectFolder(item, valid, function (folder) {

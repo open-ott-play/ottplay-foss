@@ -6,6 +6,10 @@ For a manual connection, enter the Plex server address (for example `http://192.
 
 Plex is a library provider: it opens library sections, search, folders and media. It does not flatten the collection into TV channels. Switching to Plex preserves other providers' saved connections, playlists and favorites.
 
+The [illustrated playback lifecycle](#loading-navigation-and-shutdown) explains
+loading, cancellation and file changes. The [review process and results](#reliability-review-process-and-results)
+record the regression checks behind these guarantees.
+
 **Browse folders** opens the server's filesystem hierarchy. Items without a title
 use alternate Plex metadata or a filename, with **Untitled** as a final fallback.
 The heading keeps the selected folder's name instead of Plex's generic `Folder`
@@ -240,13 +244,95 @@ advertise a smaller maximum. The shared examples and bounds are in
 
 For access away from home, the selected Plex server must have a reachable remote connection. Plex may impose account or subscription requirements for remote personal-media playback; see [Plex remote playback requirements](https://support.plex.tv/articles/requirements-for-remote-playback-of-personal-media/).
 
-Developer checks:
+## Loading, navigation and shutdown
+
+![Plex playback lifecycle: an owned loading screen, explicit file selection across natural completion, and early session cleanup](images/plex-playback-lifecycle.svg)
+
+A loading screen belongs to the request that opened it. During startup, the
+player collects the saved folder and resolves a fresh stream before playing.
+Replacing that screen cancels both stages; a late result cannot start a video
+behind a newer dialog. Cancellation preserves the saved playback position.
+
+During a full-screen file change, repeated **Up/Down** presses update the pending
+destination. If the old video ends meanwhile, the player carries that exact
+destination into the new playback generation. Responses from the previous
+request are ignored. Navigation performed during cancellation also wins over
+the old request. **Left/Right** remain seek controls for the current video.
+
+Catalog browsing continues after a full 200-row page even when Plex omits
+`totalSize`. A short or empty page finishes that traversal, with cursor and
+catalog bounds still enforced. Preparing a playback queue continues to require
+the complete validated collection.
+
+Account connection probes accept both JSON and XML from Plex Media Server.
+They verify the server identity before sending its token. The cloud account
+API keeps its JSON contract. The provider and account modules exchange the
+parser through their published API so the same behavior survives bundle
+isolation and minification.
+
+On page exit, the Plex client releases its session during the capture phase of
+`pagehide`, before queue and player cleanup. This lets the final stop use a
+keepalive request. Repeated cleanup does not send a second stop; disposing the
+client removes the same capture listener.
+
+## Reliability review process and results
+
+The October 2026 review used separate provider, player and release audits.
+Each accepted fix started with a reproduced failure, then received a regression
+test and independent review. Browser runs exercised the shipped bundle as well
+as the source-level checks. This caught an isolated-module parser error and the
+WebKit shutdown ordering issue before release.
+
+![Local Plex verification results: Chromium and WebKit acceptance, trusted touch input, domain regression groups and build checks](images/plex-validation-results.svg)
+
+This is a local verification snapshot for code commit
+[`bc81e98e`](https://github.com/open-ott-play/ottplay-foss/commit/bc81e98ebdabd113fdbe6ec7c18ad85316fc4a6e),
+reviewed in [PR #780](https://github.com/open-ott-play/ottplay-foss/pull/780):
+
+- Chromium passed 13 Plex browser scenarios. The native-HLS case applies to
+  WebKit and is excluded from the Chromium count.
+- WebKit passed all 14 Plex browser scenarios, including native HLS, remote
+  queue completion, and saved-favorite replay after reload.
+- The loading-screen touch scenario passed separately in Chromium, Firefox
+  and WebKit using trusted browser input.
+- Plex client checks passed 41 scenarios; authentication passed 20 scenarios
+  using real jQuery 1.11.1 and 4.0 transports and isolated provider modules.
+  Remote queues passed 39 behavior groups; the media library passed 134 groups.
+- Unified tests, TypeScript, lint, production build, emitted-bundle checks,
+  ES5 grammar and size checks passed. The complete web player measured
+  964,842 bytes against the unchanged 964,900-byte limit.
+
+Scenario and group counts describe the named suites; they are not a percentage
+of code coverage or a count of unique assertions. Browser evidence does not
+replace physical TV/decoder acceptance. These results record local validation;
+publication also requires the repository's CI and release gates.
+
+The delivery sequence is: reproduce and review the fix, validate the built
+player, merge the approved PR, then publish the verified platform packages.
+Beta uses the compact validation path. RC adds the full qualification and
+fuzzing requirements described in the [release workflow](release-workflow.md).
+The release manifest binds the published files to their source and checksums.
+
+To repeat the focused checks:
 
 ```sh
+node tests/test_plex_client.cjs
+node tests/test_plex_auth.cjs
+node tests/test_media_library.cjs
 node tests/test_plex_provider.cjs
 node tests/test_remote_plex.cjs
-npx playwright test tests/browser/remote-plex.spec.cjs
-npx tsc --noEmit
+npm run typecheck
+npm run lint
+npm run test:unified
+npm run build
+npm run check:bundle
+npm run check:size
+npx playwright test tests/browser/plex-provider.spec.cjs tests/browser/remote-plex.spec.cjs --browser=chromium --workers=2
+npx playwright test tests/browser/plex-provider.spec.cjs tests/browser/remote-plex.spec.cjs --browser=webkit --workers=2
+npx playwright test tests/browser/plex-provider.spec.cjs --browser=all --grep 'Plex file selection' --workers=2
 ```
 
-The provider tests cover local profile isolation, masked token editing, authenticated readiness, cancellation of stale connection callbacks, account sign-in, server choice and cancellation after switching providers. Transport and account-service protocol tests live alongside their respective Plex plugin tests.
+The provider tests also cover local profile isolation, masked token editing,
+authenticated readiness, stale connection callbacks, server choice and
+cancellation after switching providers. Install the Playwright browsers required
+by the selected commands before running browser acceptance.

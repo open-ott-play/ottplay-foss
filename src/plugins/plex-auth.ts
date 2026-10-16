@@ -142,7 +142,7 @@ function plexAuthRequest(
     failed: (status: number) => void
 ): void {
     if (operation !== plexAuthOperation) return;
-    options.dataType = "json";
+    options.dataType = options.dataType || "json";
     options.timeout = options.timeout || 15000;
     options.headers = options.headers || {};
     options.headers.Accept = "application/json";
@@ -419,6 +419,7 @@ function connectPlexAccountServer(
     preferredUrl?: string
 ): () => void {
     var operation = beginPlexAuth();
+    var parseContainer = (window as any).__ottPlex.parseContainer;
     var routing = plexAccountRouting(server);
     var candidates = (routing ? routing.connections : [])
         .slice(0, 24)
@@ -464,22 +465,30 @@ function connectPlexAccountServer(
             pending--;
             next();
         }
+        // PMS can return XML despite Accept: JSON; use the shared bounded parser.
         // A stale LAN address must prove its server identity before receiving a token.
         plexAuthRequest(
             operation,
-            { timeout: 4000, url: connection.url + "/identity" },
+            {
+                dataType: "text",
+                timeout: 4000,
+                url: connection.url + "/identity",
+            },
             function (identity) {
-                if (
-                    !identity ||
-                    !identity.MediaContainer ||
-                    identity.MediaContainer.machineIdentifier !== server.id
-                ) {
+                try {
+                    identity = parseContainer(identity, window);
+                } catch (_) {
+                    miss(0);
+                    return;
+                }
+                if (identity.machineIdentifier !== server.id) {
                     miss(0);
                     return;
                 }
                 plexAuthRequest(
                     operation,
                     {
+                        dataType: "text",
                         headers: {
                             "X-Plex-Client-Identifier": plexAuthClientId(),
                             "X-Plex-Container-Size": "1",
@@ -490,7 +499,12 @@ function connectPlexAccountServer(
                         url: connection.url + "/library/sections",
                     },
                     function (result) {
-                        if (!result || !result.MediaContainer) return miss(0);
+                        try {
+                            parseContainer(result, window);
+                        } catch (_) {
+                            miss(0);
+                            return;
+                        }
                         cancelPlexAuth();
                         callbacks.onConnected({
                             serverId: server.id,

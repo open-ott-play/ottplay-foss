@@ -4,21 +4,27 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const { webcrypto } = require("node:crypto");
-
-const source = ts
-    .transpileModule(
-        fs.readFileSync(
-            path.join(__dirname, "../src/plugins/plex-auth.ts"),
-            "utf8"
-        ),
+const { JSDOM } = require("jsdom");
+const modules = ["plex.ts", "plex-auth.ts"].map((file) => {
+    const source = ts.transpileModule(
+        fs.readFileSync(path.join(__dirname, "../src/plugins", file), "utf8"),
         {
             compilerOptions: {
                 module: ts.ModuleKind.ES2015,
                 target: ts.ScriptTarget.ES5,
             },
         }
-    )
-    .outputText.replace(/^export .*$/gm, "");
+    ).outputText;
+    // The classic linker isolates each module. Cross-module calls must use
+    // their published API, even before emitted-bundle browser acceptance.
+    return "(function () {\n" + source + "\n})();";
+});
+
+function loadModules(w, run) {
+    modules.forEach(run);
+    assert.equal(w.plexContainer, undefined);
+    assert.equal(typeof w.__ottPlex.parseContainer, "function");
+}
 
 function fixture() {
     let now = 100000;
@@ -64,6 +70,7 @@ function fixture() {
                 return now;
             }
         },
+        DOMParser: new JSDOM().window.DOMParser,
         localStorage: {
             getItem: (key) => storage[key] || null,
             setItem: (key, value) => {
@@ -78,7 +85,7 @@ function fixture() {
         URL,
     };
     w.window = w;
-    vm.runInNewContext(source, w);
+    loadModules(w, (source) => vm.runInNewContext(source, w));
     const callbacks = {
         onConnected: (result) => output.connected.push(result),
         onError: (message) => output.errors.push(message),
@@ -107,6 +114,57 @@ function fixture() {
         output,
         storage,
         timers,
+    };
+}
+
+function jqueryFixture(file) {
+    const dom = new JSDOM("", {
+        runScripts: "outside-only",
+        url: "https://player.test/",
+    });
+    const w = dom.window;
+    const calls = [];
+    const output = { connected: [], errors: [], pins: [], servers: [] };
+    w.eval(fs.readFileSync(path.join(__dirname, "..", file), "utf8"));
+    w.$.ajaxTransport("+*", (options) => {
+        const call = { aborted: false, options };
+        return {
+            abort() {
+                call.aborted = true;
+            },
+            send(headers, complete) {
+                call.headers = headers;
+                call.resolve = (value, contentType = "application/json") =>
+                    complete(
+                        200,
+                        "OK",
+                        {
+                            text:
+                                typeof value === "string"
+                                    ? value
+                                    : JSON.stringify(value),
+                        },
+                        "Content-Type: " + contentType + "\r\n"
+                    );
+                calls.push(call);
+            },
+        };
+    });
+    loadModules(w, (source) => w.eval(source));
+    return {
+        api: w.__ottPlexAuth,
+        callbacks: {
+            onConnected: (result) => output.connected.push(result),
+            onError: (message) => output.errors.push(message),
+            onPin: (pin) => output.pins.push(pin),
+            onServers: (servers) => output.servers.push(servers),
+        },
+        calls,
+        close: () => {
+            w.__ottPlexAuth.cancel();
+            w.close();
+        },
+        output,
     };
 }
 
@@ -148,6 +206,7 @@ test("official PIN grant discovers server-specific credentials without persistin
     const create = f.calls[0].options;
     assert.equal(create.url, "https://plex.tv/api/v2/pins");
     assert.equal(create.type, "POST");
+    assert.equal(create.dataType, "json");
     assert.equal(create.plexAuthRequest, true);
     assert.equal(create.data.strong, "true");
     create.headers && assert.equal(create.headers["X-Plex-Token"], undefined);
@@ -157,6 +216,7 @@ test("official PIN grant discovers server-specific credentials without persistin
     assert.equal(f.output.pins[0].expiresAt, 160000);
     f.advance(1000);
     assert.equal(f.calls[1].options.url, "https://plex.tv/api/v2/pins/7");
+    assert.equal(f.calls[1].options.dataType, "json");
     assert.equal(
         f.calls[1].options.data["X-Plex-Client-Identifier"],
         create.data["X-Plex-Client-Identifier"]
@@ -167,6 +227,7 @@ test("official PIN grant discovers server-specific credentials without persistin
         "https://clients.plex.tv/api/v2/resources"
     );
     assert.equal(f.calls[2].options.headers["X-Plex-Token"], "account-secret");
+    assert.equal(f.calls[2].options.dataType, "json");
     f.calls[2].resolve(resources);
     assert.equal(f.output.servers[0][0].token, "server-specific-secret");
     assert.equal(f.output.servers[0][0].connections.length, 5);
@@ -314,3 +375,154 @@ test("persisted routing strips credentials and rediscovers remote when the saved
     assert.equal(f.output.errors.length, 0);
     assert.equal(f.timers.size, 0);
 });
+
+for (const jquery of [
+    "js/jquery-1.11.1.min.js",
+    "node_modules/jquery/dist/jquery.min.js",
+]) {
+    for (const xml of [false, true]) {
+        test(
+            "real jQuery accepts PMS " + (xml ? "XML" : "JSON") + ": " + jquery,
+            () => {
+                const f = jqueryFixture(jquery);
+                try {
+                    const server = serverFromResources(f);
+                    const url = server.connections[0].url;
+                    f.api.connect(server, f.callbacks, url);
+                    assert.equal(f.calls[1].headers["X-Plex-Token"], undefined);
+                    f.calls[1].resolve(
+                        xml
+                            ? '<MediaContainer machineIdentifier="server-one"/>'
+                            : {
+                                  MediaContainer: {
+                                      machineIdentifier: server.id,
+                                  },
+                              },
+                        xml ? "application/xml" : "application/json"
+                    );
+                    assert.equal(f.calls.length, 3);
+                    assert.equal(
+                        f.calls[2].options.url,
+                        url + "/library/sections"
+                    );
+                    assert.equal(
+                        f.calls[2].headers["X-Plex-Token"],
+                        server.token
+                    );
+                    f.calls[2].resolve(
+                        xml
+                            ? '<MediaContainer size="1"><Directory key="7" title="Films"/></MediaContainer>'
+                            : { MediaContainer: { Directory: [{ key: "7" }] } },
+                        xml ? "application/xml" : "application/json"
+                    );
+                    assert.equal(f.output.connected.length, 1);
+                    assert.equal(f.output.connected[0].url, url);
+                    assert.equal(f.output.connected[0].serverId, server.id);
+                    assert.equal(f.output.errors.length, 0);
+                    assert.equal(f.calls[1].options.dataType, "text");
+                    assert.equal(f.calls[2].options.dataType, "text");
+                } finally {
+                    f.close();
+                }
+            }
+        );
+    }
+
+    test(
+        "real jQuery rejects unsafe or mismatched PMS XML before sending a token: " +
+            jquery,
+        () => {
+            for (const identity of [
+                '<MediaContainer machineIdentifier="different-server"/>',
+                '<WrongRoot machineIdentifier="server-one"/>',
+                '<MediaContainer machineIdentifier="server-one">',
+                '<!DOCTYPE MediaContainer><MediaContainer machineIdentifier="server-one"/>',
+            ]) {
+                const f = jqueryFixture(jquery);
+                try {
+                    const server = serverFromResources(f);
+                    f.api.connect(
+                        server,
+                        f.callbacks,
+                        server.connections[0].url
+                    );
+                    f.calls[1].resolve(identity, "application/xml");
+                    assert.equal(f.calls.length, 2);
+                    assert.equal(f.calls[1].headers["X-Plex-Token"], undefined);
+                    assert.equal(f.output.connected.length, 0);
+                    assert.equal(f.output.errors.length, 1);
+                    assert.equal(
+                        f.output.errors[0].includes(server.token),
+                        false
+                    );
+                } finally {
+                    f.close();
+                }
+            }
+        }
+    );
+
+    test(
+        "real jQuery rejects invalid PMS sections after a verified XML identity: " +
+            jquery,
+        () => {
+            const f = jqueryFixture(jquery);
+            try {
+                const server = serverFromResources(f);
+                f.api.connect(server, f.callbacks, server.connections[0].url);
+                f.calls[1].resolve(
+                    '<MediaContainer machineIdentifier="server-one"/>',
+                    "application/xml"
+                );
+                f.calls[2].resolve(
+                    "<Error>private server response</Error>",
+                    "application/xml"
+                );
+                assert.equal(f.output.connected.length, 0);
+                assert.equal(f.output.errors.length, 1);
+                assert.equal(f.output.errors[0].includes("private"), false);
+            } finally {
+                f.close();
+            }
+        }
+    );
+
+    test(
+        "real jQuery cancellation ignores a late XML identity: " + jquery,
+        () => {
+            const f = jqueryFixture(jquery);
+            try {
+                const server = serverFromResources(f);
+                const cancel = f.api.connect(
+                    server,
+                    f.callbacks,
+                    server.connections[0].url
+                );
+                cancel();
+                assert.equal(f.calls[1].aborted, true);
+                f.calls[1].resolve(
+                    '<MediaContainer machineIdentifier="server-one"/>',
+                    "application/xml"
+                );
+                assert.equal(f.calls.length, 2);
+                assert.equal(f.output.connected.length, 0);
+                assert.equal(f.output.errors.length, 0);
+            } finally {
+                f.close();
+            }
+        }
+    );
+
+    test("real jQuery keeps the Plex cloud API JSON-only: " + jquery, () => {
+        const f = jqueryFixture(jquery);
+        try {
+            f.api.getServers("account-secret", f.callbacks);
+            assert.equal(f.calls[0].options.dataType, "json");
+            f.calls[0].resolve("<MediaContainer/>", "application/xml");
+            assert.equal(f.output.servers.length, 0);
+            assert.equal(f.output.errors.length, 1);
+        } finally {
+            f.close();
+        }
+    });
+}

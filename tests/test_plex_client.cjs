@@ -82,8 +82,13 @@ function fixture(config = {}, capabilities = {}) {
                 return request;
             },
         },
-        addEventListener(event, listener) {
+        addEventListener(event, listener, capture) {
             events.set(event, listener);
+            capabilities.eventTarget?.addEventListener(
+                event,
+                listener,
+                capture
+            );
         },
         clearInterval(id) {
             intervals.delete(id);
@@ -112,8 +117,13 @@ function fixture(config = {}, capabilities = {}) {
         MediaSource: { isTypeSupported: capabilities.mse || (() => false) },
         mediaName: "untouched",
         mediaRecords: ["untouched"],
-        removeEventListener(event, listener) {
+        removeEventListener(event, listener, capture) {
             if (events.get(event) === listener) events.delete(event);
+            capabilities.eventTarget?.removeEventListener(
+                event,
+                listener,
+                capture
+            );
         },
         setInterval(run, delay) {
             intervals.set(++next, { delay, run });
@@ -1547,6 +1557,47 @@ test("pagehide releases only its owned session with a credential-free keepalive 
     f.client.dispose();
     assert.equal(f.events.has("pagehide"), false);
 });
+test("pagehide releases Plex before an earlier queue stop listener and removes the same capture listener", () => {
+    const dom = new JSDOM();
+    const target = dom.window;
+    let f;
+    target.addEventListener("pagehide", () => f.client.stop());
+    let handler;
+    let calls = 0;
+    const eventTarget = {
+        addEventListener(event, listener, capture) {
+            handler = () => {
+                calls++;
+                listener();
+            };
+            target.addEventListener(event, handler, capture);
+        },
+        removeEventListener(event, _listener, capture) {
+            target.removeEventListener(event, handler, capture);
+        },
+    };
+    f = fixture({}, { eventTarget });
+    f.client.resolve(film, () => {});
+    last(f).reply(metadata());
+    last(f).reply({ MediaContainer: { transcodeDecisionCode: 1001 } });
+    const before = f.requests.length;
+    target.dispatchEvent(new target.Event("pagehide"));
+    assert.equal(f.keepalive.length, 1);
+    assert.equal(f.requests.length, before, "No unload stop XHR is issued");
+    assert.equal(f.intervals.size, 0);
+    target.dispatchEvent(new target.Event("pagehide"));
+    assert.equal(
+        f.keepalive.length,
+        1,
+        "The released session cannot stop twice"
+    );
+    assert.equal(calls, 2);
+    f.client.dispose();
+    target.dispatchEvent(new target.Event("pagehide"));
+    assert.equal(calls, 2, "Dispose removes the capture listener");
+    dom.window.close();
+});
+
 test("cursor rows are explicit and selected folder titles override generic server labels", () => {
     const f = fixture();
     f.client.load(
@@ -1611,6 +1662,101 @@ test("cursor rows are explicit and selected folder titles override generic serve
             totalSize: 1,
         },
     });
+});
+
+test("unknown catalog totals retain quiet pagination through full pages and stop at short or empty pages", () => {
+    for (const total of [200, 403]) {
+        const f = fixture();
+        const route = {
+            path: "/library/metadata/10/children",
+            plexSource: source,
+            title: "Episodes",
+        };
+        function reply(offset) {
+            last(f).reply({
+                MediaContainer: {
+                    Metadata: Array.from(
+                        { length: Math.min(200, total - offset) },
+                        (_, i) => ({
+                            ratingKey: String(offset + i + 1),
+                            title: "Episode " + (offset + i + 1),
+                            type: "episode",
+                        })
+                    ),
+                    offset,
+                },
+            });
+        }
+        f.client.load(route, () => {});
+        reply(0);
+        let rows = f.host.mediaRecords;
+        const initial = JSON.stringify(rows);
+        const ids = [];
+        for (let step = 0; step < 4; step++) {
+            ids.push(
+                ...rows
+                    .filter((row) => row.request)
+                    .map((row) => row.request.path)
+            );
+            const cursor = rows.find((row) => row.__ottMediaNext);
+            if (!cursor) break;
+            assert.equal(cursor.playlist_url.offset, ids.length);
+            f.client.page(cursor.playlist_url, (result) => {
+                assert.equal(result.error, undefined);
+                rows = result.items;
+            });
+            reply(cursor.playlist_url.offset);
+        }
+        assert.equal(ids.length, total);
+        assert.equal(new Set(ids).size, total);
+        assert.equal(
+            rows.some((row) => row.__ottMediaNext),
+            false
+        );
+        assert.equal(f.requests.length, Math.floor(total / 200) + 1);
+        assert.equal(JSON.stringify(f.host.mediaRecords), initial);
+    }
+});
+
+test("unknown-total cursors preserve offset and size guards and cannot grow beyond the catalog bound", () => {
+    const route = {
+        offset: 200,
+        path: "/library/metadata/10/children",
+        plexSource: source,
+    };
+    const rows = Array.from({ length: 200 }, (_, i) => ({
+        ratingKey: String(i + 1),
+        title: "Episode " + i,
+        type: "episode",
+    }));
+    for (const response of [
+        { Metadata: rows, offset: 0 },
+        { Metadata: rows.concat(rows[0]), offset: 200 },
+    ]) {
+        const f = fixture();
+        let result;
+        f.client.page(route, (value) => (result = value));
+        last(f).reply({ MediaContainer: response });
+        assert(result.error);
+        assert.equal(result.items.length, 0);
+    }
+    for (const response of [
+        { Metadata: rows, offset: 200, size: 0 },
+        { Metadata: rows, offset: 200, size: 201 },
+        { Metadata: rows, offset: 99800 },
+    ]) {
+        const f = fixture();
+        let result;
+        f.client.page(
+            { ...route, offset: response.offset },
+            (value) => (result = value)
+        );
+        last(f).reply({ MediaContainer: response });
+        assert.equal(
+            result.items.some((row) => row.__ottMediaNext),
+            false
+        );
+    }
 });
 
 test("quiet pages do not mutate navigation or cancel resolve and full collection", () => {

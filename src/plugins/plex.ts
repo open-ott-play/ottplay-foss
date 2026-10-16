@@ -450,11 +450,20 @@ function createPlexClient(
             Number(container.offset) ||
             Number(params["X-Plex-Container-Start"]) ||
             0;
-        var count = Number(container.size) || items(container).length;
+        var count =
+            container.size === undefined
+                ? items(container).length
+                : Number(container.size);
         if (
             navigation &&
             count > 0 &&
-            Number(container.totalSize) > offset + count
+            (Number(container.totalSize) > offset + count ||
+                // Some PMS responses omit totals. A full page may have more
+                // rows; a short or empty page ends this bounded cursor walk.
+                (container.totalSize === undefined &&
+                    count === 200 &&
+                    items(container).length === count &&
+                    offset + count < 100000))
         )
             result.push({
                 __ottMediaLabel: { key: "Next", value: translate("Next") },
@@ -1331,8 +1340,9 @@ function createPlexClient(
         release();
         unloading = false;
     }
+    // Release before queue/player pagehide handlers attempt a regular stop.
     if (typeof w.addEventListener === "function")
-        w.addEventListener("pagehide", pagehide);
+        w.addEventListener("pagehide", pagehide, true);
     return {
         canCollect: function (value: any): boolean {
             return !!collectionPath(value);
@@ -1400,7 +1410,7 @@ function createPlexClient(
         },
         dispose: function () {
             if (typeof w.removeEventListener === "function")
-                w.removeEventListener("pagehide", pagehide);
+                w.removeEventListener("pagehide", pagehide, true);
             disposed = true;
             if (cancelPage) cancelPage();
             if (cancelCollection) cancelCollection();
@@ -1498,4 +1508,5 @@ function plexConfiguredSource(w: any, text: string): string | null {
     configuredSource: plexConfiguredSource,
     create: createPlexClient,
     normalize: normalizePlexConfig,
+    parseContainer: plexContainer,
 };

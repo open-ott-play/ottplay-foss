@@ -4,6 +4,16 @@
 
 ### Changes
 
+- Keep loading Plex catalogs after a full page when the server omits the total
+  item count, instead of stopping at the first 200 entries.
+- Accept JSON and XML during Plex server connection checks while verifying the
+  server identity before sending its token.
+- Cancel saved Plex playback restoration when its loading screen is replaced,
+  so delayed replies cannot start a video behind a newer dialog.
+- Preserve the requested next or previous Plex file when the old video ends
+  during a pending full-screen switch.
+- Release Plex playback sessions with a keepalive request before page-exit
+  teardown, avoiding duplicate stop requests and WebKit reload failures.
 - Preserve Android kiosk resume after changing strictness remotely while the
   screen is off, including a channel selected while asleep.
 - Strengthen release-candidate fuzz evidence with required seed corpora, bounded

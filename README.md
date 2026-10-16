@@ -1101,6 +1101,12 @@ demonstration recordings. The helper keeps all generated media outside Git.
 
 Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
 
+![Plex loading, file navigation and shutdown lifecycle](docs/images/plex-playback-lifecycle.svg)
+
+The [illustrated reliability review](docs/plex-provider.md#reliability-review-process-and-results)
+explains the loading and cancellation rules, the fixes for complete catalogs and
+file switching, and the measured Chromium/WebKit validation results.
+
 An optional OTT server integration also exposes an existing Plex server's catalog and compatible playback through a separate NAS library entry and M3U export. See [server-side library configuration and client access](docs/synology-library.md).
 
 ## Related repositories

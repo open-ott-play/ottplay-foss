@@ -2691,6 +2691,7 @@ function coldResumeFixture(position = 123.4) {
             },
             resolve(payload, done) {
                 c.resolutions.push(plain(payload));
+                c.beforeResumeError = done.beforeError;
                 c.finishResume = (result = {}) =>
                     done(
                         result === null
@@ -3021,7 +3022,7 @@ test("Pending folder recovery combines arrow presses without restarting the requ
     );
 });
 
-test("A stopped or ended fallback file can retry an invalidated folder recovery", () => {
+test("Stopped fallback recovery retries while natural completion preserves every explicit arrow", () => {
     for (const ended of [false, true]) {
         for (const finishBeforeRetry of [false, true]) {
             const c = resumedWithoutFolder();
@@ -3049,7 +3050,7 @@ test("A stopped or ended fallback file can retry an invalidated folder recovery"
             c.completeFolder();
             assert.equal(
                 c.__ottMedia.current().payload.request.path,
-                "/library/metadata/43"
+                ended ? "/library/metadata/41" : "/library/metadata/43"
             );
             assert.equal(c.resolutions.length, 2);
         }
@@ -3259,6 +3260,81 @@ test("Explicit Plex skip Back cancels the pending request without leaving the pl
     assert.equal(c.isListVisible, false);
 });
 
+test("Natural completion preserves a pending explicit Plex skip and rejects its old responses", () => {
+    for (const recovering of [false, true]) {
+        const c = pendingPlexSkipFixture(recovering);
+        c.__ottMedia.skip(1);
+        c.pressWait(c.keys.UP);
+        const staleFolder = c.completeFolder;
+        const staleResolves = c.pendingSkips.slice();
+        const oldPlayback = c.__ottMedia.current();
+        c.__ottClassicPlayback.command({
+            duration: 600,
+            position: 600,
+            type: "position",
+        });
+        c.__ottClassicPlayback.command({ type: "stop" });
+        const generation = c.__ottClassicPlayback.snapshot().generation;
+        c.__ottMedia.ended(generation);
+        c.__ottMedia.ended(generation);
+        assert.equal(
+            c.skipWait().style.display,
+            "",
+            "The explicit wait continues"
+        );
+        if (recovering) {
+            assert.equal(c.collections.length, 2);
+            staleFolder(true);
+            assert.equal(c.pendingSkips.length, 0);
+            c.completeFolder();
+        } else {
+            assert.equal(c.pendingSkips.length, 3);
+            staleResolves.forEach((request) => request.finish());
+        }
+        assert.equal(c.__ottMedia.current(), oldPlayback);
+        c.pendingSkips.at(-1).finish();
+        assert.equal(
+            c.__ottMedia.current().payload.request.path,
+            "/library/metadata/41",
+            "Both arrows remain effective after the old decoder ends"
+        );
+        assert.equal(c.skipWait().style.display, "none");
+    }
+});
+
+test("Navigation during EOS cancellation defeats the old explicit Plex skip", () => {
+    const c = pendingPlexSkipFixture();
+    c.__ottMedia.skip(1);
+    c.providerMediaClient.cancelAutomatic = () => c.mediaList("library");
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(
+        c.pendingSkips.length,
+        1,
+        "Navigation must not restart the skip"
+    );
+    c.pendingSkips[0].finish();
+    assert.equal(
+        c.__ottMedia.current().payload.request.path,
+        "/library/metadata/42"
+    );
+    assert.equal(c.skipWait().style.display, "none");
+    assert.equal(c.__ottMedia.snapshot().frame.route.target, "library");
+});
+
+test("Opposite arrows during fallback recovery leave no wait at natural completion", () => {
+    const c = pendingPlexSkipFixture(true);
+    c.__ottMedia.skip(1);
+    c.pressWait(c.keys.DOWN);
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    c.completeFolder(true);
+    assert.equal(c.pendingSkips.length, 0);
+    assert.equal(c.collections.length, 1);
+    assert.equal(c.skipWait().style.display, "none");
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+});
+
 test("Explicit Plex skip wait spans folder recovery and closes on collection failure", () => {
     for (const failure of [false, true]) {
         const c = pendingPlexSkipFixture(true);
@@ -3397,6 +3473,7 @@ test("Cold Plex startup cancels on Back and preserves a replacement error dialog
             c.finishResume();
             assert.equal(dialog.style.display, "none");
         } else {
+            c.beforeResumeError();
             c.__ottClassicScreenPort.setOwnedCallback("dialog", () => {});
             c.$("#dialogbox").html("Connection error").show();
             c.finishResume(null);
@@ -3405,6 +3482,35 @@ test("Cold Plex startup cancels on Back and preserves a replacement error dialog
         }
         assert.equal(fallback, 1);
         assert(!c.calls.some((row) => row[0] === "play"));
+    }
+});
+
+test("Replacing the cold Plex wait cancels folder and metadata work without taking the new dialog", () => {
+    for (const phase of ["folder", "resolve"]) {
+        const c = coldFolderResumeFixture();
+        c.deferFolder = phase === "folder";
+        let finish;
+        let cancelled = 0;
+        c.providerMediaClient.cancelAutomatic = () => cancelled++;
+        c.providerMediaClient.resolve = (payload, done) => {
+            finish = () => done({ ...payload, stream_url: "late.mp4" });
+        };
+        let fallback = 0;
+        c.__ottMedia.restoreLast(() => fallback++);
+        const replacement = c.__ottClassicScreenPort.setOwnedCallback(
+            "dialog",
+            () => {}
+        ).owner;
+        c.$("#dialogbox").html("New dialog").show();
+        if (phase === "folder") c.completeFolder(true);
+        else finish();
+        assert.equal(c.__ottClassicScreenPort.screens.current(), replacement);
+        assert.equal(c.elements["#dialogbox"].style.display, "");
+        assert.equal(c.elements["#dialogbox"].innerHTML, "New dialog");
+        assert.equal(c.calls.filter((row) => row[0] === "play").length, 0);
+        assert.equal(c.documentState().history[0].position, 123.4);
+        assert.equal(fallback, 0, "The new screen owns further navigation");
+        assert.equal(phase === "folder" ? c.collectionCancels : cancelled, 1);
     }
 });
 
