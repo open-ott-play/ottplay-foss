@@ -129,8 +129,6 @@ async function main() {
     const records = [];
     for (const options of [
         { constructor: 'MediaSource', headless: true, name: 'legacy-headless' },
-        { constructor: 'ManagedMediaSource', headless: true, name: 'managed-headless' },
-        { constructor: 'MediaSource', headless: false, name: 'legacy-headful' },
     ]) {
         for (const mode of ['init', 'combined']) records.push(await probe(playwright, output, fixture, ['video'], mode, options.name, options));
     }

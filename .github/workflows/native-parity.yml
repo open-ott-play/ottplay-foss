@@ -1,4 +1,4 @@
-# Temporary direct-MSE backend diagnostic only. Never merge this workflow replacement.
+# Temporary direct-MSE platform diagnostic only. Never merge this workflow replacement.
 name: Native Shells
 'on':
   workflow_dispatch: {}
@@ -13,7 +13,7 @@ defaults:
     shell: bash
 jobs:
   mse-init:
-    name: Direct MSE backend / ${{ matrix.target }}
+    name: Direct MSE platform / ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -22,12 +22,22 @@ jobs:
         include:
         - fixture: normalized
           fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
-          os: macos-15
+          os: macos-15-intel
+          arch: x64
           playwright: 1.63.0
           browser: '26.6'
-          target: macos-15-webkit-1-63-0
+          target: macos-15-intel-webkit-1-63-0
           toolchain: playwright-1-63-0
+        - fixture: normalized
+          fixture_sha: 4dd92888d29da4db04f5ebc8ed9faf42f73a1b33
+          os: macos-15
+          arch: arm64
+          playwright: 1.64.0
+          browser: '27.2'
+          target: macos-15-webkit-1-64-0
+          toolchain: playwright-1-64-0
     env:
+      EXPECTED_ARCH: ${{ matrix.arch }}
       FIXTURE: ${{ matrix.fixture }}
       FIXTURE_SHA: ${{ matrix.fixture_sha }}
       TOOLCHAIN: ${{ matrix.toolchain }}
@@ -72,7 +82,7 @@ jobs:
     - name: Verify actual immutable packaged runtime without rebuilding
       run: GITHUB_SHA="$SOURCE_SHA" python scripts/prepare_browser_candidate.py browser-candidate browser-candidate-web --release
     - name: Bind actual browser and diagnostic identity
-      run: "node <<'NODE'\nconst fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');\n(async()=>{\n const modulePath=process.env.CI_PLAYWRIGHT_MODULE;\n const version=require(path.join(modulePath,'package.json')).version;\n assert.equal(version,process.env.PLAYWRIGHT_VERSION);\n assert.equal(require(path.join(modulePath,'../playwright-core/package.json')).version,version);\n assert.equal(process.platform,process.env.CI_BROWSER_TARGET_ID.startsWith('macos-')?'darwin':'linux');\n const browser=await require(modulePath).webkit.launch({headless:true});\n try {\n  assert.equal(browser.version(),process.env.BROWSER_VERSION);\n  fs.writeFileSync(path.join(process.env.CI_BROWSER_DIAGNOSTICS,'runtime.json'),JSON.stringify({\n   schema:1,diagnosticOnly:true,scope:'direct-mse-backend',instrumentationSha256:require('node:crypto').createHash('sha256').update(fs.readFileSync('.github/diagnostics/mse-init-probe.cjs')).digest('hex'),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,\n\
+      run: "node <<'NODE'\nconst fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');\n(async()=>{\n const modulePath=process.env.CI_PLAYWRIGHT_MODULE;\n const version=require(path.join(modulePath,'package.json')).version;\n assert.equal(process.arch,process.env.EXPECTED_ARCH); assert.equal(version,process.env.PLAYWRIGHT_VERSION);\n assert.equal(require(path.join(modulePath,'../playwright-core/package.json')).version,version);\n assert.equal(process.platform,process.env.CI_BROWSER_TARGET_ID.startsWith('macos-')?'darwin':'linux');\n const browser=await require(modulePath).webkit.launch({headless:true});\n try {\n  assert.equal(browser.version(),process.env.BROWSER_VERSION);\n  fs.writeFileSync(path.join(process.env.CI_BROWSER_DIAGNOSTICS,'runtime.json'),JSON.stringify({\n   schema:1,diagnosticOnly:true,scope:'direct-mse-platform',instrumentationSha256:require('node:crypto').createHash('sha256').update(fs.readFileSync('.github/diagnostics/mse-init-probe.cjs')).digest('hex'),fixture:process.env.FIXTURE,fixtureSourceSha:process.env.FIXTURE_SHA,\n\
         \   target:process.env.CI_BROWSER_TARGET_ID,engine:'webkit',channel:'',playwrightVersion:version,\n   browserVersion:browser.version(),platform:process.platform,arch:process.arch,osRelease:require('node:os').release(),osVersion:require('node:os').version(),browserBuilds:JSON.parse(fs.readFileSync(path.join(modulePath,'../playwright-core/browsers.json'),'utf8')),sourceSha:process.env.SOURCE_SHA,\n   workflowSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,runAttempt:process.env.GITHUB_RUN_ATTEMPT,\n   releaseChannel:'',candidateArtifactId:'12028984213',candidateRunId:'38859121986',\n  },null,2));\n } finally {await browser.close();}\n})().catch(e=>{console.error(e);process.exitCode=1});\nNODE\nif command -v dpkg-query >/dev/null; then dpkg-query -W '*gstreamer*' > .compatibility/gstreamer-versions.txt; fi\nmkdir -p .compatibility/instrumentation\ncp .github/diagnostics/mse-init-probe.cjs .compatibility/instrumentation/\n"
     - name: Observe exact init and combined appends; no application verdict
       env:
@@ -87,7 +97,7 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
-        name: foss-mse-backend-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: foss-mse-platform-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: .compatibility/
         include-hidden-files: true
         if-no-files-found: error
