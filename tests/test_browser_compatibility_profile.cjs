@@ -259,3 +259,22 @@ test("all Linux WebKit generations retain complete playback on reviewed Ubuntu 2
         }
     }
 });
+
+test("frontend WebKit host guard rejects another distro, version or architecture", () => {
+    const { verifyHost } = require("../scripts/check-linux-webkit-host.cjs");
+    const release = 'ID=ubuntu\nVERSION_ID="26.04"\n';
+    assert.deepEqual(verifyHost("linux", "x64", release), {
+        architecture: "x64",
+        os: "ubuntu",
+        version: "26.04",
+    });
+    for (const [platform, architecture, source] of [
+        ["darwin", "x64", release],
+        ["linux", "arm64", release],
+        ["linux", "x64", release.replace("ubuntu", "debian")],
+        ["linux", "x64", release.replace("26.04", "24.04")],
+        ["linux", "x64", ""],
+    ]) {
+        assert.throws(() => verifyHost(platform, architecture, source));
+    }
+});

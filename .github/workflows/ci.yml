@@ -103,7 +103,7 @@ jobs:
     name: Build
     outputs:
       browser-artifact-id: ${{ steps.browser-artifact.outputs.artifact-id }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: typecheck
 
     steps:
@@ -118,6 +118,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      # This frontend job also runs Linux WebKit MSE playback checks.
+      - name: Verify Linux WebKit host
+        run: node scripts/check-linux-webkit-host.cjs
 
       - run: npm ci --ignore-scripts
 

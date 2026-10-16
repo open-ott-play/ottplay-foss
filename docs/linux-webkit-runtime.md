@@ -7,6 +7,12 @@ and macOS retain their existing targets. All 35 RC targets remain present:
 WebKit targets require their two UI scenarios. The RC still needs 166 successful
 scenario executions. No failed playback scenario becomes optional.
 
+The frontend `Build` job also uses Ubuntu 26.04 because it runs the standalone
+Linux WebKit MSE aspect-persistence regression before packaging Mode A. A host
+guard verifies Linux, x64 and `/etc/os-release` before installing dependencies.
+This changes the JavaScript test host; the Tauri native package build hosts and
+their binary compatibility baseline remain unchanged.
+
 ## Evidence for the runtime choice
 
 The comparison used the original five Plex scenarios, including strict-kiosk
