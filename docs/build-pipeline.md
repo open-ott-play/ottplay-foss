@@ -120,6 +120,14 @@ An automatic tree-shaker over all legacy globals would discard supported hooks.
 
 ## Build validation and size budgets
 
+Release source identity has a measured compression cost. On Node 22.23.3, 68
+different 40-hex revision values add at most 40 gzip bytes to the same payload.
+The native entry grows from 263,566 bytes with an empty revision to at most
+263,606; its seven providers still contribute 43,074 bytes. The entry and total
+gzip budgets each include a 64-byte allowance for the required metadata and
+compression variation, reaching 263,664 and 306,714 bytes respectively. Raw
+limits and the complete staged-asset inventory remain unchanged.
+
 Normal builds audit the complete media runtime before reuse. The audit checks
 input fingerprints, all asset hashes, licenses, bootstrap URLs, ES5 grammar and
 the worker prelude. Missing or stale assets trigger regeneration and another
