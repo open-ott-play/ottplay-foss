@@ -29,6 +29,12 @@ jobs:
           ref: d8188b24d615db6e8132f28da69d82b315c6ba36
           path: .control-integration
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: open-ott-play/ottplay-control-server
+          ref: 5b9b737d906581a2ea1c84f85ba3d6cb9c771b7c
+          path: .control-current
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -53,6 +59,26 @@ jobs:
           node scripts/smoke-diagnostics.cjs
           node scripts/smoke-remote-cli.cjs
           node scripts/smoke-workbench.cjs
+      - name: Build the engine-aware control server
+        working-directory: .control-current
+        run: go build -o "$RUNNER_TEMP/ottplay-control-server-current" ./cmd/ottplay-control-server
+      - name: Keep the legacy CLI compatible with the current server
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
+          OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
+        run: node scripts/smoke-workbench.cjs
+      - name: Reject engine inspection on the legacy server without downgrading
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+          OTT_DEBUG_ENGINE_V2: unsupported-controller
+        run: node scripts/smoke-workbench.cjs
+      - name: Exercise explicit engine inspection and default legacy payloads
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+          OTT_DEBUG_ENGINE_V2: '1'
+        run: node scripts/smoke-workbench.cjs
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
