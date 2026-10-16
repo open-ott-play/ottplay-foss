@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../helpers/browser-test.cjs");
 
 const plex = "https://plex.fixture";
 const token = "fixture-plex-secret";

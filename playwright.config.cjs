@@ -1,4 +1,4 @@
-const { defineConfig } = require("@playwright/test");
+const { defineConfig } = require("./tests/helpers/browser-test.cjs");
 
 const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 4179);
 

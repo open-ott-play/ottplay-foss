@@ -80,3 +80,8 @@ release-assets/
 /fuzz/artifacts/
 /fuzz/coverage/
 !fuzz/Cargo.lock
+
+# Isolated browser evidence and exact candidate staging
+.compatibility/
+browser-candidate/
+browser-candidate-web/

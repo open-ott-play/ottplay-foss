@@ -50,6 +50,8 @@ defaults:
 jobs:
   build:
     name: Build player bundle
+    outputs:
+      browser-artifact-id: ${{ steps.browser-artifact.outputs.artifact-id }}
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -109,6 +111,7 @@ jobs:
         RELEASE_ASSET_PATTERN_3: ottplay-foss-modea.sha256
       run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0" --pattern "$RELEASE_ASSET_PATTERN_1" --pattern "$RELEASE_ASSET_PATTERN_2" --pattern "$RELEASE_ASSET_PATTERN_3"
     - name: Store release assets
+      id: browser-artifact
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: release-assets-web
@@ -528,3 +531,24 @@ jobs:
         path: release-assets/container/*
         if-no-files-found: error
         retention-days: 14
+
+  browser-release:
+    needs: build
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@d1bab20ac35bf75398a6a89ff59db113a2c82301
+    permissions:
+      contents: read
+      actions: read
+    with:
+      node-version: '22'
+      run-node-ci: false
+      browser-matrix-file: .github/browser-compatibility.json
+      browser-test-command: node scripts/browser-acceptance.cjs
+      browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
+      browser-artifact-path: browser-candidate
+      browser-extended: true
+      browser-evidence-prefix: browser-release
+      browser-prepare-command: |
+        npm ci --ignore-scripts
+        PYTHON=python3
+        if ! "$PYTHON" -c 'import sys; assert sys.version_info >= (3, 8)' 2>/dev/null; then PYTHON=python; fi
+        "$PYTHON" scripts/prepare_browser_candidate.py browser-candidate browser-candidate-web --release

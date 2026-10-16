@@ -14,7 +14,15 @@ const playerScripts = new Set([
     ),
 ]);
 
-const dist = path.resolve(__dirname, "../../dist");
+const packaged = !!process.env.CI_BROWSER_WEB_ROOT;
+const dist = packaged
+    ? path.resolve(process.env.CI_BROWSER_WEB_ROOT)
+    : path.resolve(__dirname, "../../dist");
+function playerPath(filename) {
+    return packaged && playerScripts.has(filename)
+        ? "dist/" + filename
+        : filename;
+}
 const port = Number(process.env.OTTP_DEVICE_TEST_PORT || 4179);
 const diagnostics = process.env.OTTP_DEVICE_TEST_DIAGNOSTICS === "1";
 let aspectFixture;
@@ -61,7 +69,7 @@ const diagnosticScript = diagnostics
       )
     : "";
 for (const filename of ["index.html", ...playerScripts]) {
-    if (!fs.existsSync(path.join(dist, filename))) {
+    if (!fs.existsSync(path.join(dist, playerPath(filename)))) {
         throw new Error(
             "Missing dist/" + filename + "; run npm run build first."
         );
@@ -192,7 +200,7 @@ http.createServer((request, response) => {
         pathname.startsWith("/dist/") &&
         playerScripts.has(pathname.slice(6))
     ) {
-        relative = pathname.slice(6);
+        relative = playerPath(pathname.slice(6));
     } else if (
         /^\/(?:fonts|js|devices|providers|styles|images|locales)\//.test(
             pathname
