@@ -2001,7 +2001,7 @@ for (const kind of ["live", "archive"]) {
     };
     r.w.__ottCoreBackendPeek = () => ({ current: () => handle });
     r.w.__ottClassicPlayback = {
-        snapshot: () => ({ target: { kind }, position: 123 }),
+        snapshot: () => ({ position: 123, target: { kind } }),
     };
     r.request({ mode: "on", query: "1" });
     r.kiosk.setScreenAwake(false);
