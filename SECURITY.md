@@ -26,3 +26,9 @@ about the existence or response times of past reports.
 See [security design](docs/security-design.md) for project-specific trust boundaries.
 See the [Rust dependency review](docs/rust-dependency-security.md) for resolved
 advisories, remaining maintenance warnings and preserved upstream lockfiles.
+
+Confirmed critical vulnerabilities are addressed immediately after validation.
+Other confirmed medium-or-higher project vulnerabilities should be remediated
+within 60 days of a public report, including an update, mitigation or removal of
+the affected supported feature. Record unresolved cases and affected versions;
+a policy target does not prove that every dependency already meets it.

@@ -30,13 +30,25 @@ analyzed.
 
 Complete language-by-language cryptography and dynamic memory-safety review, assess tracked vendor binaries with provenance, and verify release notes/security history before asserting full Passing.
 
-The project maintainer must confirm secure-design/common-error knowledge for
-this project and supply the history of bug, enhancement and vulnerability
-reports across all channels. Confirm actual private-reporting availability and
-review/branch settings. Verify releases have meaningful change/security notes;
-measure test coverage and map static/dynamic analysis to every project-owned
-language. Review each cryptographic criterion individually. Do not transfer
-another repository's attestations, badge identifier or test results here.
+On 2026-10-16 the maintainer explicitly confirmed knowledge of secure-design
+principles and common implementation/network vulnerabilities, and confirmed
+that no bug, enhancement or vulnerability reports arrived outside GitHub during
+the preceding 12 months. The same date's GitHub inventory found no non-PR issues,
+private vulnerability reporting enabled, 13 open Scorecard findings and zero
+open Dependabot alerts. The latter is not a complete dependency audit or a
+claim that all 13 findings are resolved.
+
+[Governance](../GOVERNANCE.md), [conduct](../CODE_OF_CONDUCT.md) and the
+[roadmap](../ROADMAP.md) identify responsibility and reporting channels. There
+is no designated backup or tested recovery mechanism within a week; continuity
+and bus-factor criteria remain unmet.
+
+The reviewed browser qualification PR 782 still has a failing Linux WebKit
+scenario, while its other platform checks and review have passed. Neither that
+partial result nor a successful RC fuzz campaign establishes complete release
+acceptance. Existing platform/release fixes remain separate from this evidence
+update. Full outbound/native/platform cryptography, third-party provider scope,
+source coverage and dependency closure remain to be demonstrated.
 
 Record each completed analysis with its source SHA, commands/tool versions,
 result and material limitations. Add the repository's actual badge only after
