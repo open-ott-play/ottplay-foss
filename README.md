@@ -1,5 +1,7 @@
 # OTT-play FOSS
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15593/badge)](https://www.bestpractices.dev/projects/15593)
+
 [![Fuzzing: RC only](https://img.shields.io/badge/Fuzzing-RC%20only-blue)](FUZZING.md)
 
 Public release candidates run bounded, isolated fuzz campaigns for native/server
@@ -55,12 +57,12 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 - **Shared interface**: OTT Server, Tauri and Capacitor use the same channel-list theme and visibility settings. Interface settings control highlight and selection colors; Channel list settings control channel names, picons, current programmes, progress and archive markers.
 - **Providers**: M3U playlists, Xtream Codes API, Stalker middleware
 - **Push commands**: Remote control via webhook — change channel, provider, playlist, show popups
-- **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (allowlisted Device UUID; ♥™ on VKB)
+- **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (installation-authorized sessions; ♥™ on VKB)
 - **Per-device routing**: UUID-based addressing for multi-device setups
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
 - **Debug**: Opt-in playback HUD / ring log via `?debug=1`
 - **24 device types**: Per-device remote control key mappings
-- **28 interface languages**: Matching translation catalogs and [CLDR-checked keyboard alphabets](docs/localization.md)
+- **88 interface languages**: Matching translation catalogs and [CLDR-checked keyboard alphabets](docs/localization.md)
 
 ## Debug HUD
 
@@ -87,8 +89,10 @@ When debug is enabled:
 ## Capacitor iOS and Android
 
 This repository packages the shared TypeScript frontend with Capacitor for iOS and
-Android 7+. Both use system fonts and the npm-locked native runtime. The Full APK
-is signed and included in beta, RC and stable releases, alongside the iOS IPA.
+Android 7+. Both use system fonts and the npm-locked native runtime. A separate
+API 22 compatibility APK supports Android 5.1/6 with WebView 60 or newer. Both
+Android APKs are signed and included in qualified beta, RC and stable releases,
+alongside the unsigned iOS IPA.
 The independent Kotlin app remains in
 [ottplay-android](https://github.com/open-ott-play/ottplay-android).
 
@@ -129,15 +133,16 @@ Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Various distributions |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
-| **Android** | Separate [native application](https://github.com/open-ott-play/ottplay-android) | Public repository; separate release workflow |
+| **Android (shared frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Signed Capacitor packages; choose the supported Android version |
+| **Android (native Kotlin)** | Separate [native application](https://github.com/open-ott-play/ottplay-android) | Public repository; separate application and release workflow |
 
 Supported installers are attached to qualified GitHub releases: [https://github.com/open-ott-play/ottplay-foss/releases/latest](https://github.com/open-ott-play/ottplay-foss/releases/latest)
 
 > **Note:** macOS app bundles use ad-hoc signing when Apple signing credentials
 > are absent; this does not provide Developer ID or notarization. Windows/Linux
 > installers and iOS release packages may be unsigned. iOS requires signing before
-> installation on a physical device. The current workflow does not build Android
-> packages; older releases may include retired Capacitor APKs.
+> installation on a physical device. Android Capacitor APKs are signed with the
+> established update certificate; device installation may require user permission.
 
 ---
 
@@ -381,11 +386,15 @@ window does not supply the missing signing identity or provisioning profile.
 
 ### Android application
 
-Build and installation instructions belong to the separate
-[ottplay-android repository](https://github.com/open-ott-play/ottplay-android), which
-is public and has its own release workflow. Historical APKs in older
-`ottplay-foss` releases are retired Capacitor builds, not the new native application.
-No old release assets are deleted or replaced by this extraction.
+For the shared frontend, use the signed Capacitor APK from this project and
+follow [Android distribution and updates](docs/android-distributions.md). The
+Full APK targets Android 7+; the API 22 compatibility APK targets Android 5.1/6
+with WebView 60+. Preserve the established application ID and signing identity
+when updating.
+
+The separate [native Kotlin application](https://github.com/open-ott-play/ottplay-android)
+has its own build instructions, application identity and release workflow. It is
+not the Capacitor package in this repository. Historical assets remain intact.
 
 ---
 
@@ -1038,7 +1047,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 │   ├── legacy-core.js     # Retained compatibility test oracle (not packaged)
 │   └── {device}/device.js # Device adapters and key mappings
 ├── styles/player.css      # Responsive player interface and themes
-├── locales/{language}.js  # 28 complete language packs, named in English
+├── locales/{language}.js  # 88 complete language packs, named in English
 ├── images/player-logo.png # Player startup logo
 ├── providers/             # Provider descriptions, logos and retained test oracles
 ├── js/                    # CDN libraries (HLS.js, Shaka, jQuery)
