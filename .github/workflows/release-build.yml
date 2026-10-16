@@ -129,7 +129,7 @@ jobs:
           target: aarch64-apple-darwin
         - platform: macos-latest
           target: x86_64-apple-darwin
-        - platform: ubuntu-latest
+        - platform: ubuntu-24.04
           target: ''
         - platform: ubuntu-24.04-arm
           target: aarch64-unknown-linux-gnu
@@ -175,7 +175,7 @@ jobs:
         workspaces: .
         shared-key: tauri-${{ matrix.platform }}-${{ matrix.target || 'host' }}
     - name: Install Linux deps
-      if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'ubuntu-24.04-arm'
+      if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
       run: bash scripts/ci-tauri-linux-deps.sh
     - name: Install JS dependencies
       run: npm ci --ignore-scripts

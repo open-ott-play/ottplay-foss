@@ -187,24 +187,28 @@ installation, use [local macOS delivery](docs/macos-local-delivery.md).
 
 ### Linux
 
-**AppImage (recommended):**
+Linux playback needs GStreamer HLS, H.264 and AAC plugins in addition to
+WebKitGTK. The packages declare these media dependencies; AppImage builds bundle
+the media framework. See [Linux media packaging](docs/linux-media-packaging.md)
+for codec checks and the distinction between browser and native acceptance.
+
+**AppImage:**
 
 ```bash
-chmod +x OttPlay.FOSS_*_x86_64.AppImage
-./OttPlay.FOSS_*_x86_64.AppImage
+chmod +x OttPlay.FOSS_*_amd64.AppImage
+./OttPlay.FOSS_*_amd64.AppImage
 ```
 
 **Debian/Ubuntu (.deb):**
 
 ```bash
-sudo dpkg -i ottplay-foss_*.deb
-sudo apt-get install -f
+sudo apt install ./OttPlay.FOSS_*.deb
 ```
 
-**RHEL/Fedora (.rpm):**
+**Fedora (.rpm):**
 
 ```bash
-sudo rpm -i ottplay-foss_*.rpm
+sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS_*.rpm
 ```
 
 ---

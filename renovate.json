@@ -1,7 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["local>victron-venus/venus-os-ci-toolkit:renovate-ci"],
-  "enabledManagers": ["github-actions", "custom.regex", "npm", "cargo"],
+  "enabledManagers": [
+    "github-actions",
+    "custom.regex",
+    "custom.jsonata",
+    "npm",
+    "cargo"
+  ],
   "packageRules": [
     {
       "description": "Dependabot retains general npm ownership; Cargo updates require a reviewed native migration.",

@@ -4,6 +4,12 @@
 
 ### Changes
 
+- Declare the Linux HLS, H.264 and AAC package dependencies, bundle the
+  AppImage media framework, and require decoded audio/video buffers and clean
+  end-of-stream in the Linux build's codec preflight.
+- Keep native Linux builds on the fixed Ubuntu 24.04 baseline for x86_64 and
+  ARM64. Run Linux WebKit browser checks on Ubuntu 26.04 x64 and historical
+  macOS WebKit checks on Intel, retaining the complete RC browser scenarios.
 - Keep loading Plex catalogs after a full page when the server omits the total
   item count, instead of stopping at the first 200 entries.
 - Accept JSON and XML during Plex server connection checks while verifying the
@@ -21,6 +27,13 @@
 
 ### Upgrade
 
+- Install DEB packages with `sudo apt install ./OttPlay.FOSS_*.deb` so media
+  dependencies are resolved. On Fedora, use
+  `sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS_*.rpm`;
+  the real `openh264` library is required, not the non-decoding `noopenh264`
+  placeholder. Select only the intended architecture's package and see
+  [Linux media packaging](docs/linux-media-packaging.md) for requirements and
+  the separate browser/native playback checks.
 - Update using the package for the same platform as your existing installation.
   This patch preserves saved profiles and settings and introduces no data or
   credential migration.
