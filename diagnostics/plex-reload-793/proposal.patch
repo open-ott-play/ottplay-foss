@@ -1,0 +1,155 @@
+--- a/tests/browser/plex-provider.spec.cjs
++++ b/tests/browser/plex-provider.spec.cjs
+@@ -1649,6 +1649,10 @@
+                 "Native HLS requires WebKit"
+             );
+             test.setTimeout(60000);
++            if (process.env.OTTP_PLEX_RELOAD_DIAGNOSTICS === "1") {
++                const { installPlexReloadDiagnostic } = require("../helpers/plex-reload-diagnostic.cjs");
++                await installPlexReloadDiagnostic(context, test.info());
++            }
+             const local = new URL(baseURL).origin;
+             const errors = [];
+             const films = [
+--- /dev/null
++++ b/tests/helpers/plex-reload-diagnostic.cjs
+@@ -0,0 +1,139 @@
++const fs = require("node:fs");
++const path = require("node:path");
++
++// Opt-in evidence collection only. No polling, recovery, or media-state writes.
++const prefix = "[plex-reload-diagnostic] ";
++async function installPlexReloadDiagnostic(context, testInfo) {
++    if (process.env.OTTP_PLEX_RELOAD_DIAGNOSTICS !== "1") return;
++    const output = testInfo.outputPath("plex-reload-events.jsonl");
++    const latest = testInfo.outputPath("plex-reload-latest.json");
++    fs.mkdirSync(path.dirname(output), { recursive: true });
++    let count = 0;
++    let bytes = 0;
++    let lastCompleteState = null;
++    let truncated = false;
++    const pages = new WeakSet();
++    const persist = (record) => {
++        const line = JSON.stringify({ receivedAt: Date.now(), ...record }) + "\n";
++        // Keep the first transition into a hang; never grow without a bound.
++        if (truncated) return;
++        if (count >= 1024 || bytes + Buffer.byteLength(line) > 512 * 1024) {
++            truncated = true;
++            fs.writeFileSync(latest, JSON.stringify({
++                record: { kind: "node-limit", records: count, bytes }, lastCompleteState,
++            }, null, 2));
++            return;
++        }
++        count += 1;
++        bytes += Buffer.byteLength(line);
++        fs.appendFileSync(output, line);
++        if (record.kind === "event-state") lastCompleteState = record;
++        fs.writeFileSync(latest, JSON.stringify({ record, lastCompleteState }, null, 2));
++    };
++    const attach = (page) => {
++        if (pages.has(page)) return;
++        pages.add(page);
++        page.on("console", (message) => {
++            const text = message.text();
++            if (!text.startsWith(prefix) || text.length > 8192) return;
++            let record;
++            try { record = JSON.parse(text.slice(prefix.length)); } catch { return; }
++            persist(record);
++        });
++        page.on("crash", () => persist({ kind: "page-crash" }));
++        page.on("close", () => persist({ kind: "page-close" }));
++    };
++    context.on("page", attach);
++    context.pages().forEach(attach);
++    persist({ kind: "installed", limit: { records: 1024, bytes: 512 * 1024 } });
++    await context.addInitScript(browserDiagnostic, { prefix, limit: 256 });
++}
++
++// This function is serialized by Playwright. Keep it free of module bindings.
++function browserDiagnostic({ prefix, limit }) {
++    const output = console.debug.bind(console);
++    const origin = performance.timeOrigin;
++    const mediaIds = new WeakMap();
++    const lastStates = new WeakMap();
++    let nextId = 1;
++    let count = 0;
++    const id = (media) => {
++        if (!mediaIds.has(media)) mediaIds.set(media, nextId++);
++        return mediaIds.get(media);
++    };
++    const emit = (kind, details = {}) => {
++        try {
++            if (count > limit) return;
++            if (count === limit) {
++                count += 1;
++                output(prefix + JSON.stringify({ origin, kind: "document-limit", limit }));
++                return;
++            }
++            count += 1;
++            output(prefix + JSON.stringify({ origin, at: performance.now(), kind, ...details }));
++        } catch { /* Diagnostics must not change the media operation's result. */ }
++    };
++    const prototype = HTMLMediaElement.prototype;
++    const descriptor = Object.getOwnPropertyDescriptor(prototype, "currentTime");
++    if (descriptor?.set && descriptor.configurable) {
++        Object.defineProperty(prototype, "currentTime", {
++            ...descriptor,
++            set(value) {
++                let media;
++                // Do not coerce value or read native getters before delegation.
++                try {
++                    media = id(this);
++                    emit("currentTime-before", {
++                        media,
++                        value: typeof value === "number" ? value : undefined,
++                        valueType: typeof value,
++                        previousState: lastStates.get(this) || null,
++                        stack: new Error().stack?.split("\n").slice(1, 9).join("\n").slice(0, 1800),
++                    });
++                } catch { /* Delegate even if diagnostic collection fails. */ }
++                try {
++                    const result = descriptor.set.call(this, value);
++                    emit("currentTime-after", { media });
++                    return result;
++                } catch (error) {
++                    emit("currentTime-throw", { media });
++                    throw error;
++                }
++            },
++        });
++        emit("currentTime-hook-installed");
++    } else {
++        emit("currentTime-hook-unavailable");
++    }
++    for (const type of [
++        "loadstart", "loadedmetadata", "loadeddata", "canplay", "playing",
++        "waiting", "pause", "seeking", "seeked", "emptied", "error", "ended",
++        "durationchange",
++    ]) {
++        document.addEventListener(type, (event) => {
++            const media = event.target;
++            if (!(media instanceof HTMLMediaElement)) return;
++            // If a getter itself blocks, event-enter survives in the Node log.
++            emit("event-enter", { type, media: id(media), previousState: lastStates.get(media) || null });
++            try {
++                const state = {
++                    currentTime: media.currentTime,
++                    duration: media.duration,
++                    readyState: media.readyState,
++                    networkState: media.networkState,
++                    paused: media.paused,
++                    seeking: media.seeking,
++                    ended: media.ended,
++                    videoWidth: media.videoWidth,
++                    videoHeight: media.videoHeight,
++                    errorCode: media.error?.code || null,
++                };
++                lastStates.set(media, state);
++                emit("event-state", { type, media: id(media), state });
++            } catch { emit("event-read-failed", { type, media: id(media) }); }
++        }, true);
++    }
++    addEventListener("pageshow", () => emit("pageshow"));
++    addEventListener("pagehide", () => emit("pagehide"));
++}
++module.exports = { installPlexReloadDiagnostic, browserDiagnostic };

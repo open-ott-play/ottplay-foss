@@ -1,0 +1,11 @@
+{
+  "source": "/Users/vmedvedev/victron/analysis/fuzz-implementation-20261014/python/foss-source-provenance-20261016/tests/browser/plex-provider.spec.cjs",
+  "sourceSha256": "e78f7848e690d39375ff9969b9fb18b609f05d19ef4dab3eb17e02e5c631729e",
+  "sourceModified": false,
+  "proposalSha256": "bdb6fc0de2bddca0c02823a3a11d6d7774859bec1e09e220fdc65d25214919c6",
+  "helperSha256": "27a0d8704a41ff960e5c448caed7604ef34c9afd99c207874add45e73f4e5f44",
+  "patchSha256": "3d963fb5c67647edbcdb954ec625b6e9d9660d41282bad25f55a0d7fbab5d98c",
+  "localValidation": "5 tests passed; proposal test node --check and diagnostic command bash -n passed",
+  "externalChanges": false,
+  "GandSunchanged": true
+}

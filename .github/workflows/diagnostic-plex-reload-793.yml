@@ -1,0 +1,93 @@
+name: Isolated PR793 WebKit reload diagnostic
+on:
+  push:
+    branches: [diagnostic/plex-reload-793-20261016]
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source
+        shell: bash
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        with:
+          egress-policy: audit
+      - name: Checkout diagnostic only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: diagnostic
+          persist-credentials: false
+      - name: Checkout exact PR793 product source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 7ac602c081d2cfac87e5808b7ea21673dc363938
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Verify source and pinned environment
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 7ac602c081d2cfac87e5808b7ea21673dc363938
+          git diff --exit-code
+          echo 'e78f7848e690d39375ff9969b9fb18b609f05d19ef4dab3eb17e02e5c631729e  tests/browser/plex-provider.spec.cjs' | sha256sum -c -
+          node scripts/check-linux-webkit-host.cjs
+          npm ci --ignore-scripts
+          node -e 'if(require("@playwright/test/package.json").version !== "1.64.0") process.exit(1)'
+      - name: Build unmodified product
+        run: npm run build
+      - name: Install exact browsers as in failing job
+        run: npx playwright install --with-deps chromium webkit
+      - name: Record source and runtime provenance
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence/raw"
+          {
+            git rev-parse HEAD 'HEAD^{tree}'
+            git status --short
+            sha256sum package-lock.json tests/browser/plex-provider.spec.cjs dist/player.js
+            node --version
+            cat /etc/os-release
+            dpkg-query -W 'libgstreamer*' 'gstreamer1.0-*' 2>/dev/null || true
+            node -e 'const fs=require("fs"),p=require("path"),r=p.dirname(require.resolve("playwright-core/package.json")); console.log(JSON.stringify({version:require("@playwright/test/package.json").version,webkit:require("playwright").webkit.executablePath(),browsers:JSON.parse(fs.readFileSync(p.join(r,"browsers.json"),"utf8"))},null,2))'
+          } > "$GITHUB_WORKSPACE/evidence/raw/provenance.txt"
+          script="$GITHUB_WORKSPACE/diagnostic/diagnostics/plex-reload-793"
+          cp "$script/run.sh" "$script/original-command.sh" "$script/proposal.patch" "$script/source-proof.json" "$GITHUB_WORKSPACE/evidence/raw/"
+          sha256sum "$script/run.sh" "$script/original-command.sh" "$script/proposal.patch" > "$GITHUB_WORKSPACE/evidence/raw/diagnostic.sha256"
+          diff -u "$script/original-command.sh" "$script/run.sh" > "$GITHUB_WORKSPACE/evidence/raw/command-adaptation.patch" || test "$?" -eq 1
+          git apply --check "$GITHUB_WORKSPACE/diagnostic/diagnostics/plex-reload-793/proposal.patch"
+          git apply "$GITHUB_WORKSPACE/diagnostic/diagnostics/plex-reload-793/proposal.patch"
+          git diff -- tests/browser/plex-provider.spec.cjs > "$GITHUB_WORKSPACE/evidence/raw/applied-test.patch"
+          sha256sum tests/helpers/plex-reload-diagnostic.cjs > "$GITHUB_WORKSPACE/evidence/raw/helper.sha256"
+      - name: Run one opt-in diagnostic, no retries
+        run: |
+          set -euo pipefail
+          script="$GITHUB_WORKSPACE/diagnostic/diagnostics/plex-reload-793"
+          python3 "$script/evidence.py" watch "$GITHUB_WORKSPACE/evidence/raw/loaded-libraries.jsonl" &
+          monitor_pid=$!
+          trap 'kill "$monitor_pid" 2>/dev/null || true; wait "$monitor_pid" 2>/dev/null || true' EXIT
+          set +e
+          bash "$script/run.sh" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/raw/test-output.log"
+          result=${PIPESTATUS[0]}
+          printf '%s\n' "$result" > "$GITHUB_WORKSPACE/evidence/raw/test-exit-code.txt"
+          exit "$result"
+      - name: Bound evidence without changing the test execution
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: python3 diagnostic/diagnostics/plex-reload-793/evidence.py collect evidence source/build/device-browser-results
+      - name: Upload result whether the instrumented test passes or fails
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pr793-webkit-reload-diagnostic-${{ github.run_id }}
+          path: evidence/upload/
+          if-no-files-found: error
+          retention-days: 7
