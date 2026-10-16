@@ -24,6 +24,17 @@ on Windows, and WebKit on macOS. Nightly and beta builds require these five targ
 all 35 declared targets:
 three exact Playwright/browser generations on Linux, Windows and macOS plus
 installed stable Chrome/Edge on all three systems and beta Chrome/Edge on Linux.
+The two historical macOS WebKit targets (Playwright 1.62.1 and 1.63.0) use
+`macos-15-intel`; their receipts record the actual process architecture and
+reject an ARM runner. Direct-MSE diagnosis found that the same H.264 initialization
+and media bytes completed on Intel with 1.63 and on ARM with 1.64, while older
+WebKit on the macOS 15 ARM VM stalled before `updateend`. Changing containers,
+using ManagedMediaSource, or opening a browser window did not resolve that stall.
+These two targets still require all five original playback/UI scenarios. This
+runner choice is not a claim about every physical macOS device or native Safari.
+Inventory regeneration must retain these reviewed runner overrides; the profile
+contract rejects their removal.
+
 The tested product versions are recorded at runtime. Playwright Firefox is its
 patched build, not an assertion about native Firefox ESR; WebKit is not Safari.
 This matrix does not replace qualification on physical TVs or native shells.

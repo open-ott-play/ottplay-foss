@@ -47,7 +47,11 @@ function runtime(row) {
 }
 function profileFor(row) {
     const value = runtime(row);
-    return selectProfile(value, value.platform);
+    return selectProfile(
+        value,
+        value.platform,
+        row.os === "macos-15-intel" ? "x64" : "arm64"
+    );
 }
 test("all 35 exact targets retain mandatory UI with 32 HLS targets and three explicit limitations", () => {
     let uiOnly = 0,
@@ -215,5 +219,22 @@ test("capability probe follows the candidate HLS instance backend, including fal
                 ),
             /backend preference changed/
         );
+    }
+});
+
+test("historical macOS WebKit targets require Intel without reducing playback coverage", () => {
+    const targets = inventory.filter((row) => row.os === "macos-15-intel");
+    assert.deepEqual(targets.map((row) => row.id).sort(), [
+        "macos-15-intel-webkit-1-62-1",
+        "macos-15-intel-webkit-1-63-0",
+    ]);
+    for (const row of targets) {
+        const value = runtime(row);
+        const profile = selectProfile(value, "darwin", "x64");
+        assert.equal(profile.media, "required");
+        assert.equal(profile.scenarios.length, 5);
+        for (const arch of ["arm64", "ia32", ""]) {
+            assert.throws(() => selectProfile(value, "darwin", arch));
+        }
     }
 });

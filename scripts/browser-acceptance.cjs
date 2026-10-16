@@ -48,6 +48,7 @@ async function main() {
         JSON.stringify(
             {
                 ...runtime,
+                architecture: process.arch,
                 capabilities,
                 profile,
             },
@@ -110,6 +111,7 @@ async function main() {
         JSON.stringify(
             {
                 ...runtime,
+                architecture: process.arch,
                 candidate,
                 capabilities,
                 coverage: {
