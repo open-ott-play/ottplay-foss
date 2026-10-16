@@ -204,7 +204,9 @@ const { gzipSync } = require("node:zlib");
 // identity controls on Node 22.23.3. Native output reaches 263606 gzip bytes.
 // Allocate 64 compressed bytes for this metadata and its compression variation;
 // keep the raw cap and every staged entry check unchanged.
-const BUDGET = Object.freeze({ bytes: 849400, gzipBytes: 263664 });
+// Attached-engine diagnostics add 868 raw / at most 233 gzip bytes on Node
+// 22.23.3 across beta.10 and final-base web/native output; reserve 900 / 256.
+const BUDGET = Object.freeze({ bytes: 850300, gzipBytes: 263920 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -314,7 +316,8 @@ const BUDGET = Object.freeze({ bytes: 849400, gzipBytes: 263664 });
 // CI Node 22 measures 306569 gzip bytes; retain 81 bytes for release identity.
 // Count the same 64-byte source-metadata allowance once in the full payload.
 // All seven providers remain included and contribute 43074 gzip bytes.
-const TOTAL_BUDGET = Object.freeze({ bytes: 965900, gzipBytes: 306714 });
+// Count the same 900 / 256 engine-diagnostic allowance once; providers do not change.
+const TOTAL_BUDGET = Object.freeze({ bytes: 966800, gzipBytes: 306970 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

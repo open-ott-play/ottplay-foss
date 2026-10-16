@@ -125,8 +125,8 @@ different 40-hex revision values add at most 40 gzip bytes to the same payload.
 The native entry grows from 263,566 bytes with an empty revision to at most
 263,606; its seven providers still contribute 43,074 bytes. The entry and total
 gzip budgets each include a 64-byte allowance for the required metadata and
-compression variation, reaching 263,664 and 306,714 bytes respectively. Raw
-limits and the complete staged-asset inventory remain unchanged.
+compression variation. This metadata allowance leaves raw limits and the
+complete staged-asset inventory unchanged.
 
 Normal builds audit the complete media runtime before reuse. The audit checks
 input fingerprints, all asset hashes, licenses, bootstrap URLs, ES5 grammar and
@@ -141,15 +141,23 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 848,400 UTF-8 bytes and 263,600
+Each final classic entry bundle is limited to 850,300 UTF-8 bytes and 263,920
 bytes compressed with gzip level 9. The entry plus all seven provider families
-must also fit within 964,900 bytes and 306,550 gzip bytes, summed per file.
+must also fit within 966,800 bytes and 306,970 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover `player.js`, not external media libraries or the complete
 application download. Raise a budget only with a reviewed feature/size tradeoff.
 The authoritative limits and measurement history are in `scripts/classic-size.cjs`.
+
+Attached-engine diagnostics add 868 raw bytes and at most 233 gzip bytes on
+Node 22.23.3, comparing the same beta.10 and final-base versions before and after
+the feature. All seven provider bundles remain byte-identical. A 900-byte raw
+and 256-byte gzip allowance covers this feature once in the entry and complete
+payload, preserving the existing reserve. The comparison uses the production
+linker, optimizer and native icon transformation; complete frozen release builds
+still enforce every final artifact limit.
 
 The cancellable Plex arrow wait, buffered HLS resume and bounded read retries add
 1,282 raw / at most 366 gzip entry bytes and 1,670 raw / at most 488 gzip
