@@ -8,11 +8,43 @@ media changes/reload, and strict-kiosk natural episode completion with HLS.js.
 The media scenarios use real decoding; all scenarios use real DOM/input. Only
 Plex data and the media source are synthetic local fixtures.
 
+The aspect fixture transmuxes the checked-in H.264/AAC transport stream into
+separate fMP4 renditions. Its initialization headers use an `iso6` brand and
+zero movie/track durations, as required by [RFC 8216 section 3.3](https://www.rfc-editor.org/rfc/rfc8216#section-3.3).
+The AVC sample entry also uses the required reserved bits in its SPS count and
+the signed `-1` constant in its trailing `pre_defined` field. These correct
+container syntax emitted by the pinned fixture muxer. A fixture contract checks
+these headers and rejects malformed boxes while proving that codec parameter
+sets, track IDs, timescales and media fragment
+bytes are unchanged. This validates the synthetic input; it does not by itself
+prove browser playback or replace the complete RC matrix.
+
 Pull requests require current Chromium, Firefox and WebKit on Linux, Chromium
 on Windows, and WebKit on macOS. Nightly and beta builds require these five targets. RC qualification requires
 all 35 declared targets:
 three exact Playwright/browser generations on Linux, Windows and macOS plus
 installed stable Chrome/Edge on all three systems and beta Chrome/Edge on Linux.
+The two historical macOS WebKit targets (Playwright 1.62.1 and 1.63.0) use
+`macos-15-intel`; their receipts record the actual process architecture and
+reject an ARM runner. Direct-MSE diagnosis found that the same H.264 initialization
+and media bytes completed on Intel with 1.63 and on ARM with 1.64, while older
+WebKit on the macOS 15 ARM VM stalled before `updateend`. Changing containers,
+using ManagedMediaSource, or opening a browser window did not resolve that stall.
+These two targets still require all five original playback/UI scenarios. This
+runner choice is not a claim about every physical macOS device or native Safari.
+Inventory regeneration must retain these reviewed runner overrides; the profile
+contract rejects their removal.
+
+All three Linux WebKit generations use the explicit `ubuntu-26.04` x64 runner.
+The reviewed official-runtime comparison reproduced the strict-kiosk transition
+failure on Ubuntu 24.04 while the same candidate and five unchanged scenarios
+passed four consecutive times on Ubuntu 26.04. This selects a coherent supported
+runtime, without replacing individual multimedia libraries or relaxing playback
+assertions. The other Linux browser targets retain their existing runners.
+See [Linux WebKit runtime qualification](linux-webkit-runtime.md) for the exact
+source, artifact, comparison results and limits. The complete RC matrix and
+separate packaged native acceptance remain required.
+
 The tested product versions are recorded at runtime. Playwright Firefox is its
 patched build, not an assertion about native Firefox ESR; WebKit is not Safari.
 This matrix does not replace qualification on physical TVs or native shells.
@@ -27,6 +59,10 @@ MSE (including ManagedMediaSource) or native HLS becomes available, the gate
 fails until the profile is upgraded.
 Every other target requires both H.264 and AAC MSE support and all five unchanged
 scenarios; losing a capability fails instead of selecting a smaller suite.
+The capability probe loads the candidate’s HLS library and checks the backend
+selected by its pinned instance default: MediaSource, then ManagedMediaSource,
+then WebKitMediaSource. The receipt names that backend and HLS version; a
+changed default or version requires explicit review of the probe contract.
 
 Consequently, a complete RC requires **166 successful scenario executions**
 (32 × 5 + 3 × 2), with 35 target receipts. The PR/nightly/beta subset remains five

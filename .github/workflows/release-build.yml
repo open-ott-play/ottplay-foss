@@ -534,7 +534,7 @@ jobs:
 
   browser-release:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@bad9ff35f3961ac7d1473aaec937133d6d212899
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@f13161c1112d14f50519dd2f2d00e18386207223
     permissions:
       contents: read
       actions: read

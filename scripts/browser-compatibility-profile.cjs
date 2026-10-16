@@ -17,7 +17,11 @@ const MEDIA_SCENARIOS = [
     "Plex aspect persists through media changes and strict kiosk natural episode end and reload: hls.js",
 ];
 
-function selectProfile(runtime, platform = process.platform) {
+function selectProfile(
+    runtime,
+    platform = process.platform,
+    architecture = process.arch
+) {
     const target = inventory.find((row) => row.id === runtime.target);
     assert.ok(target, "Unknown browser inventory target");
     assert.equal(runtime.engine, target.engine, "Browser engine mismatch");
@@ -53,6 +57,20 @@ function selectProfile(runtime, platform = process.platform) {
         platform,
         "Recorded operating system mismatch"
     );
+    if (target.os === "macos-15-intel") {
+        assert.equal(
+            architecture,
+            "x64",
+            "Actual Intel runner architecture mismatch"
+        );
+    }
+    if (target.os === "ubuntu-26.04") {
+        assert.equal(
+            architecture,
+            "x64",
+            "Actual Ubuntu WebKit runner architecture mismatch"
+        );
+    }
     const uiOnly = UI_ONLY_TARGETS.has(target.id);
     assert.equal(
         uiOnly,

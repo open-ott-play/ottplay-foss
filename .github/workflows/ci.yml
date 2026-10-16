@@ -103,7 +103,7 @@ jobs:
     name: Build
     outputs:
       browser-artifact-id: ${{ steps.browser-artifact.outputs.artifact-id }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: typecheck
 
     steps:
@@ -118,6 +118,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      # This frontend job also runs Linux WebKit MSE playback checks.
+      - name: Verify Linux WebKit host
+        run: node scripts/check-linux-webkit-host.cjs
 
       - run: npm ci --ignore-scripts
 
@@ -275,7 +279,7 @@ jobs:
 
   browser-compatibility:
     needs: build
-    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@bad9ff35f3961ac7d1473aaec937133d6d212899
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/typescript-ci.yml@f13161c1112d14f50519dd2f2d00e18386207223
     permissions:
       contents: read
       actions: read
