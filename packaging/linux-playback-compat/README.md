@@ -40,6 +40,13 @@ of the plugin's source paths.
 package inventory, ABI checks and source archive digest. These build checks
 are not native playback acceptance.
 
+Every full CI run builds and qualifies this exact recipe on the hosted
+Ubuntu 24.04 AMD64 and ARM64 runners before the pull request can merge.
+The existing documentation-only change scope skips the full CI workflow;
+ordinary source changes and release validation require both native builds.
+Their `ci-linux-playback-compat-*` artifacts preserve the receipts and logs
+separately from the release package evidence. Neither build is a fuzz run.
+
 Outputs are `private/gstreamer-1.0/libgstplayback.so`, deterministic
 `runtime-manifest.json`, a full `appimage-plugins/` directory with exactly
 the playback plugin replaced, and `corresponding-source.tar.xz`. The source
