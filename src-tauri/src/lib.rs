@@ -1,5 +1,7 @@
 mod commands;
 mod instance;
+#[cfg(target_os = "linux")]
+mod linux_media_compat;
 mod preferred_languages;
 
 use commands::media_session::MediaSessionState;
@@ -23,6 +25,8 @@ const DEFAULT_WEB_URL: &str = "http://127.0.0.1:8443/";
 const DEFAULT_WEB_URL: &str = "";
 
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    linux_media_compat::configure_early();
     let epg_urls = commands::tauri_commands::init_xmltv_urls();
     let command_queues = commands::queue::new_shared();
     // No listener starts at launch; settings explicitly configure optional HTTP.

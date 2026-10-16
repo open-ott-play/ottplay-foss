@@ -4,6 +4,10 @@
 
 ### Changes
 
+- Include the upstream GStreamer stream-startup flush fix in an app-private
+  Linux playback plugin, preserving Ubuntu's security patches. DEB activation
+  is restricted to reviewed Ubuntu 24.04 plugin bytes; AppImages bundle the
+  rebuilt plugin and corresponding source without changing system libraries.
 - Report the actual attached playback engine in runtime diagnostics, including
   HLS-to-native fallback; stopped or unavailable engines remain explicitly null.
   Explicit debug version 2 requests add this evidence while version 1 remains

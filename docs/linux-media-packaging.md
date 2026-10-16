@@ -26,6 +26,57 @@ Use a supported distribution and its maintained packages. Do not copy isolated
 GStreamer libraries from another distribution into a system installation. An
 AppImage also retains the build system's C library compatibility requirements.
 
+## Private compatibility fix for Ubuntu 24.04
+
+Ubuntu's `gst-plugins-base1.0` version `1.24.2-1ubuntu0.5` lacks the upstream
+stream-synchronizer fix for an early flush during stream startup. That race can
+leave HLS playback seeking indefinitely even after audio and video data arrive.
+The Linux build preserves all 15 distribution patches and adds the narrow
+[upstream correction](https://github.com/GStreamer/gstreamer/commit/03febb5048d0612157fad0ddadeaaeed924aadf0)
+to an app-private `libgstplayback.so`. It does not install over system libraries.
+The source, original patch, adapted patch and LGPL notices travel with the DEB
+and AppImage under `/usr/share/doc/ottplay-foss/linux-playback-compat/` (inside
+the mounted AppImage for that format). See the
+[rebuild recipe and pinned inputs](../packaging/linux-playback-compat/README.md).
+
+For a DEB installation, the native launcher selects this plugin before starting
+Tauri only when the OS is Ubuntu 24.04, the architecture and official installed
+playback-plugin digest match the reviewed inputs, and the private files match
+the manifest digest compiled into the executable. Package paths must be owned
+by root and protected against group or other writes; symlinks are rejected.
+The GStreamer registry uses a separate private user cache keyed by the plugin
+digest, so a previously cached system plugin cannot hide the replacement.
+
+Custom GStreamer paths, explicit loader paths, user-installed GStreamer plugins,
+unknown or newer host plugins, and untrusted package/cache paths skip the
+replacement with a diagnostic on stderr. Those systems continue to use their
+configured runtime; skipping is not a claim that an old custom runtime contains
+the fix. Keep distribution security updates enabled. A changed Ubuntu package
+must receive a fresh source and compatibility review before it is added to the
+allowlist. The normal RPM path uses its maintained distribution runtime.
+
+AppImages use the standard Tauri GStreamer launcher with a complete staged
+plugin set containing the rebuilt playback plugin. They do not activate the
+DEB host override. The package verifier checks the extracted plugin's code and
+static data against the build output, validates its ABI and hardening, records
+the final hash, and permits only the expected AppImage-relative search path.
+The final package digest, embedded corresponding source and private manifest
+are checked independently from the original build receipt. The platform's
+published `release-inputs-desktop-*.json` retains these results in its
+`linux_playback_compat` section, including the runtime manifest, source build
+receipt and final DEB/AppImage identities. The release manifest hashes that
+entire receipt, so the proof remains available with the release after temporary
+CI artifacts expire. This section records build verification, not playback
+acceptance.
+
+The recipe runs with Debian hardening flags and verifies RELRO, immediate
+binding, exported ABI, shared-library dependencies and glibc requirements. It
+rejects unexpected source archives, distribution patch changes, unknown host
+plugin bytes and host-package changes during the build. These are build checks;
+actual candidate playback, startup, seeking and EOF still require the separate
+native acceptance below on every qualified package/runtime. A source-level
+regression or patched diagnostic fixture alone does not qualify a release.
+
 ## Build and release checks
 
 Native Linux packages use the fixed Ubuntu 24.04 build baseline on both x86_64

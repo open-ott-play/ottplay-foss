@@ -177,6 +177,14 @@ jobs:
     - name: Install Linux deps
       if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
       run: bash scripts/ci-tauri-linux-deps.sh
+    - name: Build private Noble playback compatibility plugin
+      if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
+      timeout-minutes: 25
+      run: |
+        sudo apt-get install -y build-essential dpkg-dev meson ninja-build pkg-config patch binutils \
+          libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+        python3 scripts/build-linux-playback-compat.py --output build/linux-playback-compat
+        python3 scripts/package-linux-playback-compat.py prepare
     - name: Install JS dependencies
       run: npm ci --ignore-scripts
     - name: Build frontend
@@ -227,7 +235,7 @@ jobs:
         '
     - name: Build desktop package
       shell: bash
-      run: "EXTRA_CONFIG=()\nif [ \"${TAURI_SIGNING:-}\" = \"true\" ]; then\n  EXTRA_CONFIG+=(--config '{\"bundle\":{\"createUpdaterArtifacts\":true}}')\nfi\n\n# Apple notarize: only pass APPLE_* env when all secrets present.\n# Otherwise sign the macOS bundle ad-hoc before Tauri packages its archives.\nif [ \"${{ steps.signs.outputs.apple_notarize }}\" = \"true\" ]; then\n  export APPLE_CERTIFICATE=\"$SIGN_APPLE_CERTIFICATE\"\n  export APPLE_CERTIFICATE_PASSWORD=\"$SIGN_APPLE_CERTIFICATE_PASSWORD\"\n  export APPLE_SIGNING_IDENTITY=\"$SIGN_APPLE_SIGNING_IDENTITY\"\n  export APPLE_ID=\"$SIGN_APPLE_ID\"\n  export APPLE_PASSWORD=\"$SIGN_APPLE_APP_SPECIFIC_PASSWORD\"\n  export APPLE_TEAM_ID=\"$SIGN_APPLE_TEAM_ID\"\nelse\n  export CSC_IDENTITY_AUTO_DISCOVERY=false\n  if [ \"${RUNNER_OS:-}\" = \"macOS\" ] \\\n    && [ -z \"${APPLE_SIGNING_IDENTITY:-}\" ] \\\n    && [ -z \"${APPLE_CERTIFICATE:-}\" ]; then\n    EXTRA_CONFIG+=(--config '{\"bundle\":{\"macOS\":{\"signingIdentity\":\"-\"}}}')\n  fi\nfi\n\nif [ -n \"${TAURI_TARGET:-}\" ]; then\n  npx tauri build --ci --target \"$TAURI_TARGET\" \"${EXTRA_CONFIG[@]}\"\nelse\n  npx tauri build --ci \"${EXTRA_CONFIG[@]}\"\nfi\n"
+      run: "EXTRA_CONFIG=()\nif [ \"${RUNNER_OS:-}\" = \"Linux\" ]; then\n  : \"${OTTPLAY_GST_COMPAT_CONFIG:?Missing private playback package config}\"\n  EXTRA_CONFIG+=(--config \"$OTTPLAY_GST_COMPAT_CONFIG\")\nfi\nif [ \"${TAURI_SIGNING:-}\" = \"true\" ]; then\n  EXTRA_CONFIG+=(--config '{\"bundle\":{\"createUpdaterArtifacts\":true}}')\nfi\n\n# Apple notarize: only pass APPLE_* env when all secrets present.\n# Otherwise sign the macOS bundle ad-hoc before Tauri packages its archives.\nif [ \"${{ steps.signs.outputs.apple_notarize }}\" = \"true\" ]; then\n  export APPLE_CERTIFICATE=\"$SIGN_APPLE_CERTIFICATE\"\n  export APPLE_CERTIFICATE_PASSWORD=\"$SIGN_APPLE_CERTIFICATE_PASSWORD\"\n  export APPLE_SIGNING_IDENTITY=\"$SIGN_APPLE_SIGNING_IDENTITY\"\n  export APPLE_ID=\"$SIGN_APPLE_ID\"\n  export APPLE_PASSWORD=\"$SIGN_APPLE_APP_SPECIFIC_PASSWORD\"\n  export APPLE_TEAM_ID=\"$SIGN_APPLE_TEAM_ID\"\nelse\n  export CSC_IDENTITY_AUTO_DISCOVERY=false\n  if [ \"${RUNNER_OS:-}\" = \"macOS\" ] \\\n    && [ -z \"${APPLE_SIGNING_IDENTITY:-}\" ] \\\n    && [ -z \"${APPLE_CERTIFICATE:-}\" ]; then\n    EXTRA_CONFIG+=(--config '{\"bundle\":{\"macOS\":{\"signingIdentity\":\"-\"}}}')\n  fi\nfi\n\nif [ -n \"${TAURI_TARGET:-}\" ]; then\n  npx tauri build --ci --target \"$TAURI_TARGET\" \"${EXTRA_CONFIG[@]}\"\nelse\n  npx tauri build --ci \"${EXTRA_CONFIG[@]}\"\nfi\n"
       working-directory: src-tauri
       env:
         CI: true
@@ -250,12 +258,33 @@ jobs:
       run: bash scripts/ci-tauri-collect-artifacts.sh
       env:
         TAURI_TARGET: ${{ matrix.target }}
+    - name: Verify private playback files in final Linux packages
+      if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
+      timeout-minutes: 10
+      run: python3 scripts/package-linux-playback-compat.py verify
+    - name: Preserve private playback build and package evidence
+      if: always() && (matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm')
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: linux-playback-compat-${{ matrix.platform }}
+        path: |
+          build/linux-playback-compat/*.json
+          build/linux-playback-compat/*.log
+          build/linux-playback-compat/*.txt
+          build/linux-playback-compat/*.tsv
+        if-no-files-found: warn
+        retention-days: 14
     - name: Verify and stage versioned release assets
       shell: bash
       env:
         RELEASE_ASSET_TARGET: desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}
         RELEASE_ASSET_PATTERN_0: tauri-artifacts/*
       run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0"
+    - name: Bind private playback evidence to the immutable release receipt
+      if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
+      env:
+        RELEASE_ASSET_TARGET: desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}
+      run: python3 scripts/package-linux-playback-compat.py attach-receipt --receipt "release-assets/$RELEASE_ASSET_TARGET/release-inputs-$RELEASE_ASSET_TARGET.json"
     - name: Store release assets
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:

@@ -25,3 +25,10 @@
 # Fuzz seeds are exact protocol bytes, including deliberate CRLF.
 /fuzz/corpus/** -text whitespace=-blank-at-eol
 /fuzz/Cargo.lock text eol=lf
+
+# These pinned upstream license, source and patch bytes are part of the rebuild
+# receipt. Preserve their original whitespace, including unified-diff context.
+/packaging/linux-playback-compat/** -text
+/packaging/linux-playback-compat/*.patch whitespace=-blank-at-eol
+/packaging/linux-playback-compat/COPYING whitespace=-blank-at-eol,-blank-at-eof
+/packaging/linux-playback-compat/debian-copyright whitespace=-blank-at-eof
