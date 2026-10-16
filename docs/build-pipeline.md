@@ -141,9 +141,9 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 850,300 UTF-8 bytes and 263,920
+Each final classic entry bundle is limited to 850,300 UTF-8 bytes and 264,048
 bytes compressed with gzip level 9. The entry plus all seven provider families
-must also fit within 966,800 bytes and 306,970 gzip bytes, summed per file.
+must also fit within 966,800 bytes and 307,098 gzip bytes, summed per file.
 Both limits apply independently to server, Tauri and Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
@@ -158,6 +158,12 @@ and 256-byte gzip allowance covers this feature once in the entry and complete
 payload, preserving the existing reserve. The comparison uses the production
 linker, optimizer and native icon transformation; complete frozen release builds
 still enforce every final artifact limit.
+
+Explicit debug-v2 negotiation preserves legacy version 1 payloads. On the same
+Node 22.23.3 beta.10 and final-base inputs, it adds 235 raw bytes and at most
+108 gzip bytes to each entry; all seven providers remain byte-identical. The
+existing raw limits fit. An additional 128 gzip bytes in both the entry and
+complete-payload limits covers this protocol cost and bounded version variation.
 
 The cancellable Plex arrow wait, buffered HLS resume and bounded read retries add
 1,282 raw / at most 366 gzip entry bytes and 1,670 raw / at most 488 gzip
