@@ -11,8 +11,11 @@ Plex data and the media source are synthetic local fixtures.
 The aspect fixture transmuxes the checked-in H.264/AAC transport stream into
 separate fMP4 renditions. Its initialization headers use an `iso6` brand and
 zero movie/track durations, as required by [RFC 8216 section 3.3](https://www.rfc-editor.org/rfc/rfc8216#section-3.3).
-A fixture contract checks these headers and rejects malformed boxes while
-proving that codec configuration, track IDs, timescales and media fragment
+The AVC sample entry also uses the required reserved bits in its SPS count and
+the signed `-1` constant in its trailing `pre_defined` field. These correct
+container syntax emitted by the pinned fixture muxer. A fixture contract checks
+these headers and rejects malformed boxes while proving that codec parameter
+sets, track IDs, timescales and media fragment
 bytes are unchanged. This validates the synthetic input; it does not by itself
 prove browser playback or replace the complete RC matrix.
 

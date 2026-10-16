@@ -29,7 +29,7 @@ function timingOffset(bytes, type, delta) {
 for (const type of ["audio", "video"]) {
     test(
         type +
-            " HLS init meets RFC 8216 without changing codec or sample bytes",
+            " HLS init meets header syntax without changing codec parameters or sample bytes",
         () => {
             const before = Buffer.from(original[type].initSegment);
             const after = fixture[type + "-init.mp4"];
@@ -40,6 +40,18 @@ for (const type of ["audio", "video"]) {
             expected.write("iso6", 8, 4, "ascii");
             expected.writeUInt32BE(0, timingOffset(before, "mvhd", 24));
             expected.writeUInt32BE(0, timingOffset(before, "tkhd", 28));
+            if (type === "video") {
+                const sample = before.indexOf(
+                    Buffer.from("avc1"),
+                    before.indexOf(Buffer.from("moov"))
+                );
+                const config = before.indexOf(Buffer.from("avcC"));
+                // Independent positions in the known generated sample entry.
+                assert.equal(sample, 417);
+                assert.equal(config, 503);
+                expected.writeUInt16BE(0xffff, sample + 80);
+                expected[config + 9] |= 0xe0;
+            }
             assert.deepEqual(after, expected);
             assert.deepEqual(
                 fixture[type + "-segment.m4s"],
@@ -82,4 +94,12 @@ test("fixture normalization rejects malformed or unsupported boxes", () => {
     const unsupported = Buffer.from(valid);
     unsupported[timingOffset(valid, "mvhd", 8)] = 1;
     assert.throws(() => normalizeHlsInit(unsupported));
+});
+test("AVC validator rejects incorrect reserved fields independently", () => {
+    const valid = fixture["video-init.mp4"];
+    for (const offset of [497, 498, 512]) {
+        const invalid = Buffer.from(valid);
+        invalid[offset] = 0;
+        assert.throws(() => validateHlsInit(invalid));
+    }
 });
