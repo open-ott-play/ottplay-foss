@@ -192,7 +192,17 @@ function fixture() {
     );
     f.players[0].metadata = true;
     f.players[0].emit("loadedmetadata");
+    assert.equal(
+        lease.sample().position,
+        0,
+        "Metadata must not seek before the first MSE buffers can play"
+    );
+    f.players[0].readyLevel = 3;
+    f.players[0].emit("canplay");
     assert.equal(lease.sample().position, 8);
+    f.players[0].position = 9;
+    f.players[0].emit("canplay");
+    assert.equal(lease.sample().position, 9, "Apply startup resume only once");
     lease.resume();
     assert.equal(f.players[0].plays, 1);
     lease.seek(12);
@@ -221,6 +231,55 @@ function fixture() {
         f.players[0].audioTracks()[1].enabled,
         true,
         "Delayed settings restoration cannot act on the next source"
+    );
+    next.dispose();
+}
+{
+    const f = fixture();
+    const first = f.open("https://fixture.test/old.m3u8", "main", 8);
+    const player = f.players[0];
+    player.readyLevel = 4;
+    first.seek(12);
+    assert.equal(
+        player.currentTime(),
+        0,
+        "Do not seek before source attachment"
+    );
+    f.ready[0]();
+    player.readyLevel = 1;
+    player.emit("loadedmetadata");
+    first.seek(15);
+    player.readyLevel = 2;
+    player.emit("canplay");
+    assert.equal(
+        player.currentTime(),
+        0,
+        "Keep seek intent while decoding starts"
+    );
+    player.readyLevel = 3;
+    player.emit("canplay");
+    assert.equal(player.currentTime(), 15, "The latest pending user seek wins");
+    player.readyLevel = 2;
+    first.seek(18);
+    assert.equal(
+        player.currentTime(),
+        18,
+        "A user can seek out of a later buffering stall after initial readiness"
+    );
+    first.dispose();
+    const blocked = f.open("https://fixture.test/blocked.m3u8", "main", 22);
+    f.ready[1]();
+    player.readyLevel = 1;
+    player.emit("loadedmetadata");
+    blocked.dispose();
+    const next = f.open("https://fixture.test/new.m3u8", "main", 4);
+    f.ready[2]();
+    player.readyLevel = 3;
+    player.emit("canplay");
+    assert.equal(
+        player.currentTime(),
+        4,
+        "Cancelled seeks cannot affect the next source"
     );
     next.dispose();
 }
@@ -291,6 +350,7 @@ function fixture() {
         120,
         "Live startup must keep the selected live edge"
     );
+    f.players[0].readyLevel = 3;
     lease.seek(0);
     assert.equal(
         lease.sample().position,

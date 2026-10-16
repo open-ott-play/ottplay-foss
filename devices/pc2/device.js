@@ -96,6 +96,7 @@ var keys = {
         var wantsPlay = request.paused !== true;
         if (!wantsPlay) media.autoplay = false;
         var sourceAttached = false;
+        var seekReady = false;
         var pendingSeek =
             request.position > 0 ? Number(request.position) : null;
         var listeners = [];
@@ -116,8 +117,17 @@ var keys = {
             } catch (_) {}
         }
         function applySeek() {
-            if (!alive || pendingSeek === null || player.readyState() < 1)
+            // Metadata precedes the first decoded/buffered frames. Seeking
+            // there can abort WebKit/GStreamer's initial MSE append on resume.
+            // Keep the latest request until this source can actually play.
+            if (
+                !alive ||
+                !sourceAttached ||
+                (!seekReady && player.readyState() < 3)
+            )
                 return;
+            seekReady = true;
+            if (pendingSeek === null) return;
             try {
                 player.currentTime(pendingSeek);
                 pendingSeek = null;

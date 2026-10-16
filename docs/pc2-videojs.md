@@ -77,6 +77,10 @@ ready suppresses autoplay, including a resume followed by pause before source
 attachment. The adapter never calls `Player.play` before the source is attached,
 so Video.js cannot queue an unowned play callback. Only a supplied positive start offset triggers an
 initial seek, so live streams retain VHS's normal live-edge selection.
+Resume and user seeks wait until the current source reaches `canplay`
+(`HAVE_FUTURE_DATA`); metadata alone is too early for WebKit's initial MSE
+buffer append. A newer seek replaces pending intent, and disposing a request
+also disposes its readiness listeners.
 
 The pinned adapter uses HTML5 Tech `setSource` synchronously, with Video.js's
 source cache updated first. The generic `Player.src` middleware queue is not
