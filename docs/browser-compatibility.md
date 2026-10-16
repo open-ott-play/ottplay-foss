@@ -8,6 +8,14 @@ media changes/reload, and strict-kiosk natural episode completion with HLS.js.
 The media scenarios use real decoding; all scenarios use real DOM/input. Only
 Plex data and the media source are synthetic local fixtures.
 
+The aspect fixture transmuxes the checked-in H.264/AAC transport stream into
+separate fMP4 renditions. Its initialization headers use an `iso6` brand and
+zero movie/track durations, as required by [RFC 8216 section 3.3](https://www.rfc-editor.org/rfc/rfc8216#section-3.3).
+A fixture contract checks these headers and rejects malformed boxes while
+proving that codec configuration, track IDs, timescales and media fragment
+bytes are unchanged. This validates the synthetic input; it does not by itself
+prove browser playback or replace the complete RC matrix.
+
 Pull requests require current Chromium, Firefox and WebKit on Linux, Chromium
 on Windows, and WebKit on macOS. Nightly and beta builds require these five targets. RC qualification requires
 all 35 declared targets:
