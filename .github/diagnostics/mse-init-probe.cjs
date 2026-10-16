@@ -13,23 +13,16 @@ const expected = {
 };
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function probe(playwright, output, fixture, tracks, mode, variant = 'normalized') {
+async function probe(playwright, output, fixture, tracks, mode, variant, options) {
     const name = tracks.join('-') + '-' + mode + '-' + variant;
     fixture = { ...fixture, 'video-init.mp4': Buffer.from(fixture['video-init.mp4']) };
-    const videoInit = fixture['video-init.mp4'];
-    if (variant === 'avcc-reserved' || variant === 'both-reserved') {
-        assert.equal(videoInit[512], 0x01); videoInit[512] = 0xe1;
-    }
-    if (variant === 'visual-predefined' || variant === 'both-reserved') {
-        assert.equal(videoInit.readUInt16BE(497), 0x1111); videoInit.writeUInt16BE(0xffff, 497);
-    }
     const events = [];
     let signal;
     const done = new Promise(resolve => { signal = resolve; });
-    const server = await playwright.webkit.launchServer({ headless: true });
+    const server = await playwright.webkit.launchServer({ headless: options.headless });
     const browserProcess = server.process();
     const exit = new Promise(resolve => browserProcess.once('exit', (code, signal) => resolve({ code, signal })));
-    const record = { name, mode, variant, tracks, constructor: 'MediaSource', pid: browserProcess.pid, events };
+    const record = { name, mode, variant, tracks, constructor: options.constructor, headless: options.headless, attachment: options.constructor === 'ManagedMediaSource' ? 'source-child-disable-remote-playback' : 'video-src', pid: browserProcess.pid, events };
     const append = event => {
         assert(events.length < 200, 'Unexpected diagnostic event volume');
         events.push(event);
@@ -58,10 +51,12 @@ async function probe(playwright, output, fixture, tracks, mode, variant = 'norma
                 base64: bytes.toString('base64'), bytes: bytes.length, sha256: hash(bytes) };
         });
         record.inputs = inputs.map(({ base64, ...metadata }) => metadata);
-        const started = page.evaluate(inputs => {
+        const started = page.evaluate(({ inputs, options }) => {
             const emit = (kind, extra = {}) => console.debug('MSE_INIT_DIAGNOSTIC ' + JSON.stringify({ time: performance.now(), kind, ...extra }));
             try {
-                if (typeof window.MediaSource !== 'function') throw new Error('Expected explicit MediaSource constructor');
+                if (!['MediaSource', 'ManagedMediaSource'].includes(options.constructor)) throw new Error('Unexpected constructor name');
+                const Constructor = window[options.constructor];
+                if (typeof Constructor !== 'function') throw new Error('Expected explicit ' + options.constructor + ' constructor');
                 const video = document.querySelector('video');
                 video.muted = true;
                 for (const event of ['loadedmetadata', 'loadeddata', 'playing', 'waiting', 'error'])
@@ -69,14 +64,21 @@ async function probe(playwright, output, fixture, tracks, mode, variant = 'norma
                         emit('media-' + event);
                         if (event === 'error') emit('probe-error', { message: 'Native media element error' });
                     });
-                const source = new window.MediaSource();
-                video.src = URL.createObjectURL(source);
+                const source = new Constructor();
+                if (Object.getPrototypeOf(source) !== Constructor.prototype) throw new Error('Unexpected source prototype');
+                emit('selected-constructor', { name: options.constructor, constructorName: source.constructor.name, exactPrototype: true });
+                if (options.constructor === 'ManagedMediaSource') {
+                    video.disableRemotePlayback = true;
+                    const child = document.createElement('source');
+                    child.src = URL.createObjectURL(source); child.type = 'video/mp4';
+                    video.appendChild(child); video.load();
+                } else video.src = URL.createObjectURL(source);
                 source.addEventListener('sourceopen', () => {
                     try {
                         emit('sourceopen'); source.duration = 2;
                         const completed = new Set();
                         const buffers = inputs.map(input => {
-                            if (!MediaSource.isTypeSupported(input.mime)) throw new Error('Unsupported ' + input.mime);
+                            if (!Constructor.isTypeSupported(input.mime)) throw new Error('Unsupported ' + input.mime);
                             const buffer = source.addSourceBuffer(input.mime);
                             emit('created', { track: input.track, mime: input.mime });
                             for (const event of ['updatestart', 'update', 'updateend', 'error', 'abort'])
@@ -101,7 +103,7 @@ async function probe(playwright, output, fixture, tracks, mode, variant = 'norma
                 }, { once: true });
                 video.play().catch(error => emit('play-rejected', { name: error.name }));
             } catch (error) { emit('probe-error', { name: error.name, message: error.message }); }
-        }, inputs).catch(error => { append({ kind: 'evaluate-error', message: String(error.message) }); signal({ kind: 'evaluate-error' }); });
+        }, { inputs, options }).catch(error => { append({ kind: 'evaluate-error', message: String(error.message) }); signal({ kind: 'evaluate-error' }); });
         // Use a host timer: a stuck media subprocess must not block diagnostics.
         const result = await Promise.race([done, delay(12000).then(() => ({ kind: 'timeout' }))]);
         record.outcome = result.kind;
@@ -125,22 +127,15 @@ async function main() {
     for (const [name, digest] of Object.entries(expected)) assert.equal(hash(fixture[name]), digest, name);
     const playwright = require(process.env.CI_PLAYWRIGHT_MODULE);
     const records = [];
-    const referenceBytes = fs.readFileSync(path.join(__dirname, 'mse-references.json'));
-    const referenceBundleSha256 = hash(referenceBytes);
-    assert.equal(referenceBundleSha256, '7eaec145b720e2f246acb7aaf09ac8aa186ab94edae0ac447a86e964f5a71d02');
-    const references = JSON.parse(referenceBytes).references;
-    assert.deepEqual(references.map(value => value.name), ['ffmpeg', 'aligned', 'core']);
-    records.push(await probe(playwright, output, fixture, ['video'], 'init'));
-    for (const reference of references) {
-        const init = Buffer.from(reference.init.base64, 'base64');
-        const fragment = Buffer.from(reference.fragment.base64, 'base64');
-        assert.equal(init.length, reference.init.size); assert.equal(hash(init), reference.init.sha256);
-        assert.equal(fragment.length, reference.fragment.size); assert.equal(hash(fragment), reference.fragment.sha256);
-        const input = { ...fixture, 'video-init.mp4': init, 'video-segment.m4s': fragment, videoMime: reference.mime };
-        for (const mode of ['init', 'combined']) records.push(await probe(playwright, output, input, ['video'], mode, reference.name));
+    for (const options of [
+        { constructor: 'MediaSource', headless: true, name: 'legacy-headless' },
+        { constructor: 'ManagedMediaSource', headless: true, name: 'managed-headless' },
+        { constructor: 'MediaSource', headless: false, name: 'legacy-headful' },
+    ]) {
+        for (const mode of ['init', 'combined']) records.push(await probe(playwright, output, fixture, ['video'], mode, options.name, options));
     }
     const result = { diagnosticOnly: true, assertion: 'observe native append completion; not application acceptance',
-        driverSha256: hash(fs.readFileSync(__filename)), referenceBundleSha256, fixture: expected,
+        driverSha256: hash(fs.readFileSync(__filename)), fixture: expected,
         sourceSha: process.env.SOURCE_SHA, fixtureSourceSha: process.env.FIXTURE_SHA,
         workflowSha: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
         target: process.env.CI_BROWSER_TARGET_ID, playwrightVersion: require(path.join(process.env.CI_PLAYWRIGHT_MODULE, 'package.json')).version,
