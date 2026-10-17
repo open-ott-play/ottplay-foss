@@ -1,8 +1,8 @@
 # Demo recordings with video-use
 
-The local editing integration uses
-[browser-use/video-use](https://github.com/browser-use/video-use/tree/9575612f066aa517354790a645fd90f9f95a743b),
-installed as the Codex `video-use` skill.
+The optional local editing integration uses the pinned helpers from
+[browser-use/video-use](https://github.com/browser-use/video-use/tree/9575612f066aa517354790a645fd90f9f95a743b).
+Install the tool separately as described below before running the wrapper.
 The player runtime and published player bundle do not include this editing tool.
 
 ## Record and render the real interface
@@ -56,11 +56,12 @@ keys into tracked project files. The wrapper never initiates transcription.
 
 ## Reproduce the installation
 
-The current machine has the skill and Python runtime in
-`~/.codex/skills/video-use`. On another machine, clone the upstream repo into a
-dedicated directory, check out commit
+The wrapper reads `VIDEO_USE_HOME`, defaulting to `~/.codex/skills/video-use`;
+it does not install the tool. Clone the upstream repository into a dedicated
+directory, check out commit
 `9575612f066aa517354790a645fd90f9f95a743b`, install its Python dependencies with
 `uv sync --python 3.12`, and install FFmpeg. Write that commit ID to
 `UPSTREAM_REVISION` inside the checkout and set `VIDEO_USE_HOME` to its path.
-Register its `SKILL.md` with the agent; keep `helpers/` beside it. Do not silently
-update the pinned revision; review helper changes first.
+Keep `helpers/` in that checkout. Registering `SKILL.md` with an agent is optional
+and is not required by `scripts/demo_video.py`. Do not silently update the pinned
+revision; review helper changes first.

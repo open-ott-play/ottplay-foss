@@ -1,6 +1,7 @@
 # Local build scripts (Mac)
 
-Same idea as `inverter-desktop`’s `build-*-local.sh`, adapted for OttPlay FOSS (**Tauri** desktop + **Capacitor** iOS).
+These scripts build and install OttPlay FOSS locally on macOS: **Tauri** for
+desktop and **Capacitor** for iOS.
 
 | Script | What it does |
 | --- | --- |
