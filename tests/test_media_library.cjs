@@ -4,10 +4,13 @@ const { sourceFunctions } = require("./test_port_vod.cjs");
 const vm = require("node:vm");
 const plain = (value) => JSON.parse(JSON.stringify(value));
 let groups = 0;
+const cases = [];
 function test(name, run) {
-    run();
-    groups++;
-    console.log("PASS " + name);
+    cases.push(async () => {
+        await run();
+        groups++;
+        console.log("PASS " + name);
+    });
 }
 
 test("Scalar navigation reads and highlights never copy a catalog", () => {
@@ -2151,18 +2154,31 @@ test("External overlays retire pending shuffle work without closing or repaintin
         }
 });
 
-test("Actual PIN cancellation, denial and replacement clear shuffle while only a current grant may play", () => {
+test("Actual PIN cancellation, denial and replacement clear shuffle while only a current grant may play", async () => {
     for (const outcome of ["cancelled", "denied", "replaced", "accepted"]) {
         const c = folderQueueFixture();
         const port = c.__ottClassicScreenPort;
         c.showPage = () => port.commitList();
         c.closeList = () => port.closeList();
-        c.parentPIN = "2468";
         for (let digit = 0; digit < 10; digit++)
             c.keys["N" + digit] = 48 + digit;
         const jquery = c.$;
         c.$ = (selector) => Object.assign(jquery(selector), { length: 1 });
         require("./helpers/access-runtime.cjs")(c);
+        const deferred = [];
+        const setTimeout = c.setTimeout;
+        c.setTimeout = (callback, delay) => {
+            if (delay === 0) return deferred.push(callback);
+            return setTimeout(callback, delay);
+        };
+        const flushDeferred = () => {
+            while (deferred.length) deferred.shift()();
+        };
+        const settlePin = require("./helpers/protected-pin-fixture.cjs")(
+            c,
+            "2468",
+            flushDeferred
+        );
         vm.runInContext(
             sourceFunctions("src/channels/index.ts", ["enterPinAndSetAccess"]),
             c
@@ -2182,6 +2198,13 @@ test("Actual PIN cancellation, denial and replacement clear shuffle while only a
             for (const digit of outcome === "accepted" ? "2468" : "0000")
                 old(c.keys["N" + digit]);
         assert.equal(
+            c.calls.filter((row) => row[0] === "play").length,
+            0,
+            "no playback before actual async verification"
+        );
+        flushDeferred();
+        await settlePin();
+        assert.equal(
             c.__ottMedia.snapshot().shuffle,
             outcome === "accepted" ? "on" : "off",
             outcome
@@ -2193,6 +2216,8 @@ test("Actual PIN cancellation, denial and replacement clear shuffle while only a
         );
         if (replacement) assert.equal(replacement.owner.foreground(), true);
         for (const digit of "2468") old(c.keys["N" + digit]);
+        flushDeferred();
+        await settlePin();
         assert.equal(
             c.calls.filter((row) => row[0] === "play").length,
             outcome === "accepted" ? 1 : 0,
@@ -4265,5 +4290,11 @@ test("A page reply preserves foreground overlays and retries after they close", 
     }
 });
 
-console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
-require("./test_media_filter_ownership.cjs");
+(async () => {
+    for (const run of cases) await run();
+    console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);
+    require("./test_media_filter_ownership.cjs");
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
