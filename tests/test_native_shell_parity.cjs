@@ -1051,6 +1051,7 @@ const coreControls = functions("src/core/index.ts", [
     "cancelCoreAutoPlayback",
     "cancelCoreSourcePreparation",
     "cancelCoreStreamAttempt",
+    "countCoreAttempt",
     "createCoreStreamAttempt",
     "cancelCoreNativeHls",
     "destroyCoreShaka",
@@ -1087,6 +1088,12 @@ for (const platform of Object.keys(nativeSources)) {
         clearPlayTimeInterval() {},
         clearTimeout(id) {
             timers.delete(id);
+        },
+        coreAttemptCounters: {
+            engineStarts: 1,
+            fatalErrors: 0,
+            nativeFallbacks: 0,
+            streamRetries: 0,
         },
         coreAvTest: null,
         coreDeviceEffects: {},
@@ -1170,6 +1177,7 @@ for (const platform of Object.keys(nativeSources)) {
     assert.equal(timers.size, 0, platform + " Stop cancels retry");
     staleRetry();
     assert.equal(restarted, 0, platform + " retired retry cannot restart");
+    assert.equal(w.coreAttemptCounters.streamRetries, 0);
     assert.equal(w.coreStreamAttempt, null);
     assert.equal(destroyed, 1, platform + " Stop tears down HLS");
     assert.equal(cancelled, 1, platform + " Stop cancels pending preparation");

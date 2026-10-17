@@ -21,13 +21,17 @@ const core = ts.createSourceFile(
     ts.ScriptTarget.Latest,
     true
 );
-const recovery = core.statements
-    .find(
-        (node) =>
-            ts.isFunctionDeclaration(node) &&
-            node.name.text === "createCoreStreamAttempt"
-    )
-    .getText(core);
+const recovery = ["countCoreAttempt", "createCoreStreamAttempt"]
+    .map((name) => {
+        const node = core.statements.find(
+            (candidate) =>
+                ts.isFunctionDeclaration(candidate) &&
+                candidate.name.text === name
+        );
+        assert.ok(node, "missing core dependency: " + name);
+        return node.getText(core);
+    })
+    .join("\n");
 function fixture() {
     const storage = new Map(),
         menus = [],
@@ -48,6 +52,12 @@ function fixture() {
         _playSession: 1,
         $: () => ({ hide() {} }),
         clearTimeout: (id) => timers.delete(id),
+        coreAttemptCounters: {
+            engineStarts: 1,
+            fatalErrors: 0,
+            nativeFallbacks: 0,
+            streamRetries: 0,
+        },
         forcePlay: true,
         providerGetItem: (key) => storage.get(key),
         providerSetItem: (key, value) => storage.set(key, value),
@@ -264,6 +274,7 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
         "https://d.invalid/live",
     ]);
     assert.equal(f.policy.snapshot().attempts, 5);
+    assert.equal(f.w.coreAttemptCounters.streamRetries, 5);
     assert.equal(f.policy.snapshot().state, "failed");
     assert.equal(f.messages.pop(), "Stream could not be played");
     assert.equal(
@@ -316,6 +327,7 @@ for (const status of [401, 403]) {
     assert.equal(f.timers.size, 0);
     stale();
     run.resume();
+    assert.equal(f.w.coreAttemptCounters.streamRetries, 0);
     assert.equal(f.timers.size, 0);
     assert.equal(f.messages.pop(), "Source sign-in required");
 }
@@ -341,6 +353,7 @@ for (const cancel of ["dispose", "source", "session"]) {
     if (cancel === "source") f.invalidate();
     if (cancel === "session") f.w._playSession++;
     stale();
+    assert.equal(f.w.coreAttemptCounters.streamRetries, 0, cancel);
 }
 {
     const f = fixture(),
@@ -358,6 +371,7 @@ for (const cancel of ["dispose", "source", "session"]) {
     assert.equal(run.resume(), true);
     f.tick();
     assert.deepEqual(attempts, ["primary"]);
+    assert.equal(f.w.coreAttemptCounters.streamRetries, 1);
 }
 {
     const f = fixture(),
