@@ -23,7 +23,11 @@ function compile(file) {
         }
     ).outputText;
 }
-function fixture(initial = "2468") {
+function fixture(
+    initial = "2468",
+    protectOnLoad = false,
+    initialMode = "normal"
+) {
     const dom = new JSDOM(
         '<div id="dialogbox"></div><div id="list_window"></div>',
         { runScripts: "outside-only", url: "https://example.invalid" }
@@ -32,7 +36,10 @@ function fixture(initial = "2468") {
         pending = [],
         writes = [];
     let raw = initial,
-        mode = "normal";
+        mode = initialMode,
+        readHook = null,
+        contextHook = null,
+        portVersion = 0;
     Object.defineProperty(w, "crypto", {
         value: {
             getRandomValues: crypto.webcrypto.getRandomValues.bind(
@@ -91,29 +98,38 @@ function fixture(initial = "2468") {
                 invalidValue: "!locked-invalid-pin",
                 key: "parentPIN",
                 prepare: w.__ottPinSecurity.prepare,
+                protectOnLoad,
                 protectRollback: w.__ottPinSecurity.protectRollback,
                 scope: "application",
                 validate: w.__ottPinSecurity.valid,
             },
         ],
         {
-            context: () => w.p_pref,
+            context: () => {
+                if (contextHook) contextHook();
+                return w.p_pref;
+            },
             effect() {},
-            storage: () => ({
-                read: () => {
-                    if (mode === "read-error") throw Error("read");
-                    return raw;
-                },
-                remove: () => {
-                    raw = null;
-                },
-                write: (value) => {
-                    writes.push(value);
-                    if (mode === "throw") throw Error("write");
-                    if (mode !== "silent") raw = value;
-                    if (mode === "throw-after") throw Error("after write");
-                },
-            }),
+            storage: () => {
+                const capturedPort = portVersion;
+                return {
+                    current: () => capturedPort === portVersion,
+                    read: () => {
+                        if (readHook) readHook();
+                        if (mode === "read-error") throw Error("read");
+                        return raw;
+                    },
+                    remove: () => {
+                        raw = null;
+                    },
+                    write: (value) => {
+                        writes.push(value);
+                        if (mode === "throw") throw Error("write");
+                        if (mode !== "silent") raw = value;
+                        if (mode === "throw-after") throw Error("after write");
+                    },
+                };
+            },
         }
     );
     w.settingsStore = store;
@@ -131,12 +147,18 @@ function fixture(initial = "2468") {
                     () => {}
                 );
         },
+        contextHook: (callback) => {
+            contextHook = callback;
+        },
         dom,
         mode: (v) => {
             mode = v;
         },
         pending,
         raw: () => raw,
+        readHook: (callback) => {
+            readHook = callback;
+        },
         async ready() {
             for (let i = 0; pending.length === 0 && i < 200; i++)
                 await new Promise((r) => setTimeout(r, 5));
@@ -147,64 +169,31 @@ function fixture(initial = "2468") {
             pending.shift()();
             await new Promise((r) => setTimeout(r, 20));
         },
+        replacePort: () => {
+            portVersion++;
+        },
+        setRaw: (value) => {
+            raw = value;
+        },
         store,
         w,
         writes,
     };
 }
-test("legacy unlock preserves immediate access then migrates exact stored bytes", async () => {
+test("unmigrated legacy runtime values cannot grant access", async () => {
     const f = fixture();
     try {
         let calls = 0;
         f.w.__ottParental.request(() => calls++);
         f.answer();
-        assert.equal(calls, 1);
-        assert.equal(f.w.parentAccess, true);
-        await f.release();
-        assert.match(f.raw(), /^pbkdf2-sha256\$600000\$/);
-        assert.equal(f.w.parentPIN, f.raw());
-        assert.equal(f.w.parentAccess, true);
-        assert.equal(f.writes.length, 1);
-        assert.equal(calls, 1);
+        await new Promise((r) => setTimeout(r, 20));
+        assert.equal(calls, 0);
+        assert.equal(f.w.parentAccess, false);
+        assert.deepEqual(f.writes, []);
     } finally {
         f.dom.window.close();
     }
 });
-for (const change of [
-    "revoke",
-    "source",
-    "pin",
-    "policy",
-    "new-challenge",
-    "pagehide",
-])
-    test("pending legacy migration cannot cross " + change, async () => {
-        const f = fixture();
-        try {
-            let calls = 0;
-            f.w.__ottParental.request(() => calls++);
-            f.answer();
-            await f.ready();
-            if (change === "revoke") f.w.__ottParental.revoke();
-            if (change === "source") f.w.p_pref = "two";
-            if (change === "pin") f.w.parentPIN = "9876";
-            if (change === "policy") f.w.sPSchannels = 0;
-            if (change === "new-challenge")
-                f.w.__ottParental.request(() => calls++);
-            if (change === "pagehide")
-                f.w.dispatchEvent(new f.w.Event("pagehide"));
-            // If cancellation happened before native import completed no derivation starts.
-            await new Promise((r) => setTimeout(r, 100));
-            if (f.pending.length) await f.release();
-            assert.equal(f.raw(), "2468");
-            assert.equal(f.writes.length, 0);
-            assert.equal(calls, 1);
-            if (change !== "new-challenge")
-                assert.equal(f.w.parentAccess, false);
-        } finally {
-            f.dom.window.close();
-        }
-    });
 for (const change of [
     "revoke",
     "source",
@@ -240,26 +229,186 @@ for (const change of [
             }
         }
     );
-for (const mode of ["silent", "throw"])
+for (const mode of ["silent", "throw", "throw-after", "read-error"])
+    test("startup migration failure remains locked: " + mode, async () => {
+        const f = fixture("2468", true, mode);
+        try {
+            let calls = 0;
+            assert.equal(f.w.parentPIN, "!locked-invalid-pin");
+            f.w.__ottParental.request(() => calls++);
+            f.answer();
+            await new Promise((r) => setTimeout(r, 20));
+            assert.equal(calls, 0);
+            assert.equal(f.w.parentAccess, false);
+            assert(!f.writes.includes("2468"));
+        } finally {
+            f.dom.window.close();
+        }
+    });
+test("startup protects existing PIN before publishing it or allowing verification", async () => {
+    const f = fixture("2468", true);
+    try {
+        assert.match(f.raw(), /^pbkdf2-sha256\$600000\$/);
+        assert.equal(f.w.parentPIN, f.raw());
+        assert.equal(f.writes.length, 1);
+        assert.equal(f.w.parentAccess, false);
+        let calls = 0;
+        f.w.__ottParental.request(() => calls++);
+        f.answer();
+        assert.equal(calls, 0);
+        await f.release();
+        assert.equal(calls, 1);
+        assert.equal(f.w.parentAccess, true);
+    } finally {
+        f.dom.window.close();
+    }
+});
+test("only true absence receives a protected first-install default", () => {
+    const f = fixture(null, true);
+    try {
+        const [, , salt, digest] = f.raw().split("$");
+        assert.equal(
+            digest,
+            crypto
+                .pbkdf2Sync(
+                    "1234",
+                    Buffer.from(salt, "hex"),
+                    600000,
+                    32,
+                    "sha256"
+                )
+                .toString("hex")
+        );
+        assert.equal(f.w.parentPIN, f.raw());
+        assert(!f.writes.includes("1234"));
+    } finally {
+        f.dom.window.close();
+    }
+});
+for (const original of [hashed, "*"])
     test(
-        "failed migration write never publishes a hash or creates a new grant: " +
-            mode,
-        async () => {
-            const f = fixture();
+        "protected/disabled reload does not perform another KDF: " +
+            original.slice(0, 12),
+        () => {
+            const f = fixture(original, true);
             try {
-                let calls = 0;
-                f.mode(mode);
-                f.w.__ottParental.request(() => calls++);
-                f.answer();
-                await f.release();
-                assert.equal(f.raw(), "2468");
-                assert.equal(f.w.parentPIN, "2468");
-                assert.equal(calls, 1);
+                f.w.crypto.getRandomValues = () => {
+                    throw Error("must not generate another salt");
+                };
+                f.store.reload();
+                assert.equal(f.raw(), original);
+                assert.equal(f.w.parentPIN, original);
+                assert.deepEqual(f.writes, []);
             } finally {
                 f.dom.window.close();
             }
         }
     );
+for (const failure of ["rng", "read", "source", "port", "nested"])
+    test(
+        "reloading legacy storage revokes prior grant and rejects changed ownership: " +
+            failure,
+        () => {
+            const f = fixture(hashed, true);
+            try {
+                f.w.parentAccess = true;
+                assert.equal(f.w.parentAccess, true);
+                f.setRaw("2468");
+                if (failure === "rng")
+                    f.w.crypto.getRandomValues = () => {
+                        throw Error("rng");
+                    };
+                if (failure === "read") f.mode("read-error");
+                if (["source", "port", "nested"].includes(failure))
+                    f.readHook(() => {
+                        f.readHook(null);
+                        assert.equal(
+                            f.w.parentAccess,
+                            false,
+                            "lock must precede storage callbacks"
+                        );
+                        if (failure === "source") f.w.p_pref = "two";
+                        if (failure === "port") f.replacePort();
+                        if (failure === "nested") {
+                            f.mode("read-error");
+                            f.store.reload();
+                        }
+                    });
+                f.store.reload();
+                assert.equal(f.w.parentAccess, false);
+                assert.equal(f.w.parentPIN, "!locked-invalid-pin");
+                assert.deepEqual(f.writes, []);
+            } finally {
+                f.dom.window.close();
+            }
+        }
+    );
+test("initial context failure revokes an existing grant before callback", () => {
+    const f = fixture(hashed, true);
+    try {
+        f.w.parentAccess = true;
+        f.contextHook(() => {
+            assert.equal(f.w.parentAccess, false);
+            throw Error("context unavailable");
+        });
+        f.store.reload();
+        assert.equal(f.w.parentPIN, "!locked-invalid-pin");
+        assert.equal(f.w.parentAccess, false);
+        assert.deepEqual(f.writes, []);
+    } finally {
+        f.dom.window.close();
+    }
+});
+test("nested failure inside final context callback cannot republish the old credential", () => {
+    const f = fixture(hashed, true);
+    try {
+        let calls = 0;
+        f.contextHook(() => calls++);
+        f.store.reload();
+        const finalCall = calls;
+        calls = 0;
+        f.w.parentAccess = true;
+        f.contextHook(() => {
+            if (++calls !== finalCall) return;
+            f.contextHook(null);
+            f.mode("read-error");
+            f.store.reload();
+        });
+        f.store.reload();
+        assert.equal(calls, finalCall);
+        assert.equal(f.w.parentPIN, "!locked-invalid-pin");
+        assert.equal(f.w.parentAccess, false);
+        assert.deepEqual(f.writes, []);
+    } finally {
+        f.dom.window.close();
+    }
+});
+for (const mutation of ["bytes", "version", "read-error"])
+    test("final protected read rejects changed " + mutation, () => {
+        const f = fixture(hashed, true);
+        try {
+            let reads = 0;
+            f.readHook(() => reads++);
+            f.store.reload();
+            const finalRead = reads;
+            reads = 0;
+            f.w.parentAccess = true;
+            f.readHook(() => {
+                if (++reads !== finalRead) return;
+                f.readHook(null);
+                if (mutation === "bytes") f.setRaw("2468");
+                if (mutation === "version") f.w.parentPIN = "9876";
+                if (mutation === "read-error") f.mode("read-error");
+            });
+            f.store.reload();
+            assert.equal(reads, finalRead);
+            assert.equal(f.w.parentAccess, false);
+            assert(!f.w.__ottPinSecurity.record(f.w.parentPIN));
+            assert.deepEqual(f.writes, []);
+        } finally {
+            f.dom.window.close();
+        }
+    });
 test("failed PIN transaction rolls back to a protected equivalent of the old PIN", () => {
     const f = fixture();
     try {

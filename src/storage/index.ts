@@ -277,10 +277,12 @@ function createLocalStorageAdapter(): StorageAdapter {
     // Keep readable settings when a privacy restriction or quota makes the
     // native adapter unusable. Cookie writes also have an in-memory fallback.
     const failover = function (): void {
-        pinReadUncertain = true;
         const previous = nativeStorage;
         nativeStorage = null;
-        if (!previous || incomplete) return;
+        if (!previous || incomplete) {
+            pinReadUncertain = true;
+            return;
+        }
         try {
             for (let i = 0; i < previous.length; i++) {
                 const key = previous.key(i);
@@ -290,7 +292,11 @@ function createLocalStorageAdapter(): StorageAdapter {
                         fallback.set(key, value);
                 }
             }
-        } catch (_error) {}
+            // A complete readable snapshot establishes absence as well as values.
+            pinReadUncertain = false;
+        } catch (_error) {
+            pinReadUncertain = true;
+        }
     };
     const get = function (key: string): string | null {
         if (isStorageMetadataKey(key)) return null;

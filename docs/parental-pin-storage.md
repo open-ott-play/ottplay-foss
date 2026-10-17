@@ -17,14 +17,24 @@ runs at a time. Neither implementation uses `Math.random`, clock values or the
 SJCL pseudorandom generator for salts. New PIN creation fails if the platform
 has no working `crypto.getRandomValues` or `msCrypto.getRandomValues`.
 
-Existing readable four-digit values remain a read-only compatibility format.
-After a successful legacy unlock the player attempts a background upgrade using
-the settings store's source-bound write and read-back checks. This upgrade can
-preserve an existing authorization; it cannot grant new access after cancellation,
-source/PIN/policy changes, a new challenge, page hiding or a failed write. A failed
-upgrade can leave the old plaintext value on disk until a later successful unlock
-or settings save. This limitation must not be represented as completed migration.
+At settings load, the current player revokes prior parental grants and converts
+an existing readable four-digit PIN to the protected format before publishing a
+usable credential. It also protects the historical `1234` first-install default,
+but only when storage actually reports absence. The write must be read back
+exactly with the same source, storage functions and settings revision. Failed
+randomness, reads, writes or reentrant/source-changing callbacks leave the current
+player locked; a failed migration can leave legacy bytes on disk but cannot
+permit current-player access. A later successful load can retry. Already
+protected records and the explicit disabled marker `*` do not run another KDF.
+Malformed or unreadable storage never becomes the first-install default.
 
+This one-time load uses the unchanged synchronous SJCL PBKDF2 implementation.
+The existing startup screen is displayed before the asynchronous application
+bundle loads, but input/animation may pause during derivation. Five local Node
+26/Apple-silicon conversions took 946–966 ms; 1,000 already-protected values took
+about 0.3 ms in total. Older TVs may take substantially longer and have not been
+performance-qualified. This change does not rewrite inactive historical
+installations or permit downgrading upgraded storage.
 Settings saves and old JSON/XML/local-backup imports convert plaintext values
 before writing. A transaction that changes a legacy PIN also prepares a protected
 rollback value before its first write, so later failure cannot write plaintext
@@ -32,9 +42,8 @@ back to storage. Exports convert legacy PINs and preserve existing versioned
 records exactly. The existing synchronous backup APIs use the same full work
 factor synchronously for a legacy value: conversion pauses the interface until
 derivation completes and can take substantially longer on an older TV. Preparing
-legacy rollback bytes currently has the same synchronous cost, including during
-a background upgrade. Cancel
-before confirmation to avoid changing settings. Invalid records and
+legacy rollback bytes currently has the same synchronous cost, including before
+a settings transaction. Cancel before confirmation to avoid changing settings. Invalid records and
 unreadable PIN storage lock protection instead of silently selecting `1234`.
 Recovery requires restoring a valid private backup or explicitly resetting the
 installation; the player does not guess or recover a damaged PIN.

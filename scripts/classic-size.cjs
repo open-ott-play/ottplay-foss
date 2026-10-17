@@ -214,7 +214,10 @@ const { gzipSync } = require("node:zlib");
 // on Node 26.8.2: web 862631/267163, native 862589/267222. Allocate 12600/4250
 // once, preserving existing Node22 and release-identity reserves. No payload
 // or compatibility checks are removed; the seven provider assets are unchanged.
-const BUDGET = Object.freeze({ bytes: 862900, gzipBytes: 268298 });
+// Verified startup protection replaces post-unlock legacy migration. Its guarded
+// load/publication adds 468 raw bytes on Node 26.8.2 (863099 versus 862631). Allocate
+// 500 raw bytes, retaining the existing gzip and release-version headroom.
+const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268298 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -326,7 +329,7 @@ const BUDGET = Object.freeze({ bytes: 862900, gzipBytes: 268298 });
 // All seven providers remain included and contribute 43074 gzip bytes.
 // Count the same 900 / 256 engine-diagnostic allowance once; providers do not change.
 // Count the same 12600/4250 PIN migration allowance once in the total.
-const TOTAL_BUDGET = Object.freeze({ bytes: 979400, gzipBytes: 311348 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 979900, gzipBytes: 311348 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

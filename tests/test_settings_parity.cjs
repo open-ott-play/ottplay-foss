@@ -41,6 +41,18 @@ function compile(source) {
             .replace(/^export /gm, "")
     );
 }
+function assertOnlyInitialPin(stored) {
+    assert.deepEqual(
+        [...stored],
+        [
+            [
+                "parentPIN",
+                require("./helpers/protected-pin-fixture.cjs").record("1234"),
+            ],
+        ]
+    );
+}
+
 const menus = [
     "stbOptions",
     "settingsInterface",
@@ -58,7 +70,13 @@ function fixture(
     distribution = "full",
     device
 ) {
-    const stored = new Map();
+    // This suite exercises menu parity, not first-install PIN migration.
+    const stored = new Map([
+        [
+            "parentPIN",
+            require("./helpers/protected-pin-fixture.cjs").record("1234"),
+        ],
+    ]);
     const storage = {
         del: (key) => stored.delete(key),
         get: (key) => stored.get(key) ?? null,
@@ -516,12 +534,14 @@ for (const [menu, caption] of [
             saveRow();
             assert.equal(
                 stored.size,
-                0,
-                menu + ": cancelled draft stays closed"
+                1,
+                menu +
+                    ": cancelled draft preserves only the existing protected PIN"
             );
+            assertOnlyInitialPin(stored);
         } else {
             saveRow();
-            assert.ok(stored.size > 0, menu + ": save row commits its draft");
+            assert.ok(stored.size > 1, menu + ": save row commits its draft");
         }
         assert.equal(editor.active(), false, menu + ": draft is closed");
         assert.deepEqual(
@@ -1156,7 +1176,17 @@ for (const distribution of ["full", "play"]) {
         "function",
         "clear still requires confirmation"
     );
-    assert.equal(stored.size, 1, "opening confirmation cannot clear settings");
+    assert.deepEqual(
+        [...stored],
+        [
+            [
+                "parentPIN",
+                require("./helpers/protected-pin-fixture.cjs").record("1234"),
+            ],
+            ["saved-provider-setting", "preserved"],
+        ],
+        "opening confirmation preserves both the PIN and ordinary settings"
+    );
     confirmClear();
     assert.deepEqual(calls.slice(-2), ["clear", "restart"]);
     assert.equal(stored.size, 0);
@@ -1195,7 +1225,12 @@ for (const profile of [
                 }
             }
             w.listKeyHandlerFn(w.keys.RETURN);
-            assert.equal(stored.size, 0, `${menu}: cancel does not persist`);
+            assert.equal(
+                stored.size,
+                1,
+                `${menu}: cancel preserves only the existing protected PIN`
+            );
+            assertOnlyInitialPin(stored);
         }
     }
     const saveCases = [
@@ -1571,11 +1606,13 @@ console.log(
     w.enterPinCode = (_message, callback) => pins.push(callback);
     save(w);
     assert.equal(pins.length, 1);
-    assert.equal(f.stored.size, 0);
+    assert.equal(f.stored.size, 1);
+    assertOnlyInitialPin(f.stored);
     w.listKeyHandlerFn(w.keys.RETURN);
     pins[0]("9876");
     assert.equal(pins.length, 1, "cancel revokes the nested PIN continuation");
-    assert.equal(f.stored.size, 0);
+    assert.equal(f.stored.size, 1);
+    assertOnlyInitialPin(f.stored);
     assert.equal(w.parentPIN, "*");
 }
 console.log(

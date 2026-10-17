@@ -8,11 +8,13 @@ export interface SettingDefinition {
     invalidValue?: any;
     key: string;
     prepare?(value: any): any;
+    protectOnLoad?: boolean;
     protectRollback?(value: string | null): string | null;
     scope: "application" | "provider";
     validate(value: any): boolean;
 }
 export interface SettingStorage {
+    current?(): boolean;
     read(): string | null;
     remove(): void;
     write(value: string): void;
@@ -147,15 +149,47 @@ export function createSettingsStore(
         return true;
     }
     function reload(scope?: "application" | "provider"): void {
-        context = ports.context();
         var generation = ++revision;
-        var source = context;
+        var source: string;
+        var protectedVersions: Record<string, number> = Object.create(null);
+        // Revoke existing grants before any storage/crypto callback can run.
+        // Failed or reentrant loads must not retain the prior usable credential.
+        schema.forEach(function (entry) {
+            if (!entry.protectOnLoad || (scope && entry.scope !== scope))
+                return;
+            publish(entry.id, copy(entry.invalidValue));
+            protectedVersions[entry.id] = versions[entry.id] || 0;
+        });
+        try {
+            source = ports.context();
+        } catch (_contextError) {
+            return;
+        }
+        if (generation !== revision) return;
+        context = source;
+        function current(): boolean {
+            var currentSource: string;
+            try {
+                currentSource = ports.context();
+            } catch (_contextError) {
+                return false;
+            }
+            return (
+                generation === revision &&
+                source === currentSource &&
+                Object.keys(protectedVersions).every(function (id) {
+                    return (versions[id] || 0) === protectedVersions[id];
+                })
+            );
+        }
         var loaded: Record<string, any> = {};
+        var protectedReads: Record<string, () => boolean> = Object.create(null);
         schema.forEach(function (entry) {
             if (scope && entry.scope !== scope) return;
             var value = copy(entry.defaultValue);
             try {
-                var raw = ports.storage(entry).read();
+                var storage = ports.storage(entry);
+                var raw = storage.read();
                 if (raw !== null) {
                     var parsed = entry.decode
                         ? entry.decode(raw)
@@ -173,6 +207,51 @@ export function createSettingsStore(
                     )
                         value = copy(entry.invalidValue);
                 }
+                if (entry.protectOnLoad) {
+                    var entryCurrent = function (): boolean {
+                        var currentStorage =
+                            !storage.current || storage.current();
+                        return currentStorage && current();
+                    };
+                    if (!entry.prepare || !entry.validate(value))
+                        throw new Error("Invalid protected setting");
+                    value = entry.prepare(value);
+                    var encoded = entry.encode
+                        ? entry.encode(value)
+                        : String(value);
+                    if (encoded !== raw)
+                        commitSettingsWrites(
+                            [
+                                {
+                                    after: encoded,
+                                    before: raw,
+                                    rollback: encoded,
+                                    storage,
+                                },
+                            ],
+                            entryCurrent,
+                            entryCurrent
+                        );
+                    else if (
+                        !entryCurrent() ||
+                        storage.read() !== encoded ||
+                        !entryCurrent()
+                    )
+                        throw new Error(
+                            "Protected setting changed while loading"
+                        );
+                    protectedReads[entry.id] = function () {
+                        try {
+                            return (
+                                entryCurrent() &&
+                                storage.read() === encoded &&
+                                entryCurrent()
+                            );
+                        } catch (_readError) {
+                            return false;
+                        }
+                    };
+                }
             } catch (_error) {
                 if (Object.prototype.hasOwnProperty.call(entry, "invalidValue"))
                     value = copy(entry.invalidValue);
@@ -180,7 +259,11 @@ export function createSettingsStore(
             }
             loaded[entry.id] = copy(value);
         });
-        if (generation !== revision || source !== ports.context()) return;
+        Object.keys(protectedReads).forEach(function (id) {
+            if (!protectedReads[id]())
+                loaded[id] = copy(definitions[id].invalidValue);
+        });
+        if (!current()) return;
         Object.keys(loaded).forEach(function (id) {
             publish(id, loaded[id]);
         });

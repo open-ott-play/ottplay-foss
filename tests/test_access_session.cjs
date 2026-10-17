@@ -7,10 +7,13 @@ const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
 const root = path.resolve(__dirname, "..");
 let passed = 0;
+const cases = [];
 function check(name, run) {
-    run();
-    passed++;
-    console.log("OK: " + name);
+    cases.push(async () => {
+        await run();
+        passed++;
+        console.log("OK: " + name);
+    });
 }
 function compile(text) {
     const code = ts
@@ -89,6 +92,7 @@ function fixture() {
     const w = dom.window,
         jobs = new Map(),
         notices = [],
+        progress = [],
         events = [];
     let next = 0,
         now = 0;
@@ -123,7 +127,9 @@ function fixture() {
         },
         showPage() {},
         showShift(text) {
-            notices.push(text);
+            (text === "Loading. Please wait..." ? progress : notices).push(
+                text
+            );
         },
         sPSchannels: 1,
         sPSoptions: 1,
@@ -145,9 +151,21 @@ function fixture() {
     );
     w._doKey = (code) =>
         w.__ottClassicScreenPort.dispatch(code, null, () => {});
+    const settlePin = require("./helpers/protected-pin-fixture.cjs")(
+        w,
+        "2468",
+        () => {
+            for (const [id, job] of [...jobs]) {
+                if (job.delay !== 0) continue;
+                jobs.delete(id);
+                job.fn();
+            }
+        }
+    );
     return {
-        answer(value = "2468") {
+        async answer(value = "2468") {
             for (const digit of value) w._doKey(w.keys["N" + digit]);
+            await settlePin();
         },
         dom,
         events,
@@ -163,6 +181,7 @@ function fixture() {
         now(value) {
             now = value;
         },
+        progress,
         request() {
             w.enterPinAndSetAccess(() => events.push("accepted"));
             return w.dialogBoxKeyHandler;
@@ -171,10 +190,10 @@ function fixture() {
     };
 }
 function ui(name, run) {
-    check(name, () => {
+    check(name, async () => {
         const f = fixture();
         try {
-            run(f);
+            await run(f);
         } finally {
             f.dom.window.close();
         }
@@ -241,11 +260,12 @@ check(
 );
 ui(
     "real public PIN entry authorizes once and repeated escaped input is inert",
-    (f) => {
+    async (f) => {
         const old = f.request();
-        f.answer();
+        await f.answer();
         old(f.w.keys.N2);
         assert.deepEqual(f.events, ["accepted"]);
+        assert.deepEqual(f.progress, ["Loading. Please wait..."]);
         assert.equal(f.w.parentAccess, true);
         assert.equal(f.w.dialogBoxKeyHandler, null);
         assert.equal(f.jobs.size, 1);
@@ -253,9 +273,9 @@ ui(
 );
 ui(
     "wrong PIN and cancel do not grant or replay; disabled PIN bypasses policies",
-    (f) => {
+    async (f) => {
         f.request();
-        f.answer("0000");
+        await f.answer("0000");
         assert.equal(f.w.parentAccess, false);
         assert.equal(f.notices.length, 1);
         f.request();
@@ -268,25 +288,28 @@ ui(
     }
 );
 for (const outcome of ["accepted", "cancelled", "denied"])
-    ui("optional PIN rejection settles only " + outcome + " once", (f) => {
-        f.w.enterPinAndSetAccess(
-            () => f.events.push("accepted"),
-            () => f.events.push("rejected")
-        );
-        const stale = f.w.dialogBoxKeyHandler;
-        if (outcome === "cancelled") f.w._doKey(f.w.keys.RETURN);
-        else f.answer(outcome === "accepted" ? "2468" : "0000");
-        for (const digit of "2468") stale(f.w.keys["N" + digit]);
-        f.flushDeferred();
-        assert.deepEqual(f.events, [
-            outcome === "accepted" ? outcome : "rejected",
-        ]);
-        assert.equal(f.w.parentAccess, outcome === "accepted");
-        assert.equal(f.notices.length, outcome === "denied" ? 1 : 0);
-    });
+    ui(
+        "optional PIN rejection settles only " + outcome + " once",
+        async (f) => {
+            f.w.enterPinAndSetAccess(
+                () => f.events.push("accepted"),
+                () => f.events.push("rejected")
+            );
+            const stale = f.w.dialogBoxKeyHandler;
+            if (outcome === "cancelled") f.w._doKey(f.w.keys.RETURN);
+            else await f.answer(outcome === "accepted" ? "2468" : "0000");
+            for (const digit of "2468") stale(f.w.keys["N" + digit]);
+            f.flushDeferred();
+            assert.deepEqual(f.events, [
+                outcome === "accepted" ? outcome : "rejected",
+            ]);
+            assert.equal(f.w.parentAccess, outcome === "accepted");
+            assert.equal(f.notices.length, outcome === "denied" ? 1 : 0);
+        }
+    );
 ui(
     "a replaced PIN rejects only after the replacement owns the foreground",
-    (f) => {
+    async (f) => {
         const port = f.w.__ottClassicScreenPort;
         let replacement;
         f.w.enterPinAndSetAccess(
@@ -317,18 +340,18 @@ ui(
 for (const change of ["source", "pin", "policy", "storage"])
     ui(
         "optional rejection cannot grant a stale " + change + " challenge",
-        (f) => {
+        async (f) => {
             f.w.enterPinAndSetAccess(
                 () => f.events.push("accepted"),
                 () => f.events.push("rejected")
             );
             const old = f.w.dialogBoxKeyHandler;
-            f.answer("24");
+            await f.answer("24");
             if (change === "source") f.w.p_pref = "source-b";
             if (change === "pin") f.w.parentPIN = "9999";
             if (change === "policy") f.w.sPSoptions = 0;
             if (change === "storage") f.w.providerGetItem = () => null;
-            f.answer("68");
+            await f.answer("68");
             f.flushDeferred();
             old(f.w.keys.N8);
             assert.deepEqual(f.events, ["rejected"]);
@@ -337,7 +360,7 @@ for (const change of ["source", "pin", "policy", "storage"])
     );
 ui(
     "replacement during PIN completion rejects the old grant and preserves the new challenge",
-    (f) => {
+    async (f) => {
         const port = f.w.__ottClassicScreenPort;
         f.w.enterPinAndSetAccess(
             () => f.events.push("old accepted"),
@@ -346,11 +369,11 @@ ui(
         port.screens.current().own(() => {
             f.w.enterPinAndSetAccess(() => f.events.push("new accepted"));
         });
-        f.answer();
+        await f.answer();
         f.flushDeferred();
         assert.deepEqual(f.events, ["old rejected"]);
         assert.equal(f.w.parentAccess, false);
-        f.answer();
+        await f.answer();
         assert.deepEqual(f.events, ["old rejected", "new accepted"]);
         assert.equal(f.w.parentAccess, true);
     }
@@ -358,14 +381,14 @@ ui(
 for (const change of ["source", "pin", "policy", "storage"])
     ui(
         change + " change during PIN rejects old completion and authorization",
-        (f) => {
+        async (f) => {
             f.request();
-            f.answer("24");
+            await f.answer("24");
             if (change === "source") f.w.p_pref = "source-b";
             if (change === "pin") f.w.parentPIN = "9999";
             if (change === "policy") f.w.sPSoptions = 0;
             if (change === "storage") f.w.providerGetItem = () => null;
-            f.answer("68");
+            await f.answer("68");
             assert.equal(f.w.parentAccess, false);
             assert.deepEqual(f.events, []);
             assert.equal(f.w.dialogBoxKeyHandler, null);
@@ -381,7 +404,7 @@ for (const field of [
         "actual SettingsStore " +
             field +
             " ABA retires its challenge and grant",
-        (f) => {
+        async (f) => {
             f.w.eval(
                 compile(
                     fs.readFileSync(
@@ -421,12 +444,12 @@ for (const field of [
             f.request();
             store.observe(field, field === "parentPin" ? "9999" : 0);
             store.observe(field, defaults[field]);
-            f.answer();
+            await f.answer();
             assert.equal(f.w.parentAccess, false);
             assert.deepEqual(f.events, []);
             f.request();
             store.observe("fontSize", 3);
-            f.answer();
+            await f.answer();
             assert.equal(
                 f.w.parentAccess,
                 true,
@@ -437,7 +460,7 @@ for (const field of [
     );
 ui(
     "canonical SettingsStore policy controls gates and revokes changed grants",
-    (f) => {
+    async (f) => {
         f.w.settings = {
             psChannels: 1,
             psOptions: 1,
@@ -452,7 +475,7 @@ ui(
 );
 ui(
     "PIN config and source changes revoke an existing grant without waiting for timeout",
-    (f) => {
+    async (f) => {
         f.w.setParentAccess(true, () => {});
         assert.equal(f.w.parentAccess, true);
         f.w.parentPIN = "9999";
@@ -464,7 +487,7 @@ ui(
 );
 ui(
     "replacing the parent settings list revokes its PIN owner and saved handler",
-    (f) => {
+    async (f) => {
         const port = f.w.__ottClassicScreenPort;
         f.w.listArray = [1];
         f.w.listDataArray = f.w.listArray;
@@ -480,7 +503,7 @@ ui(
 );
 ui(
     "replacing PIN screen with another dialog cannot consume or close its handler",
-    (f) => {
+    async (f) => {
         const old = f.request();
         const next = f.w.__ottClassicScreenPort.setOwnedCallback("dialog", () =>
             f.events.push("other")
@@ -491,7 +514,7 @@ ui(
         assert.deepEqual(f.events, ["other"]);
     }
 );
-ui("escaped digit buttons cannot send input to the new screen", (f) => {
+ui("escaped digit buttons cannot send input to the new screen", async (f) => {
     f.request();
     const button = f.w.document.querySelector("#k2 .btn");
     const old = button.onclick;
@@ -503,18 +526,21 @@ ui("escaped digit buttons cannot send input to the new screen", (f) => {
     button.click();
     assert.deepEqual(f.events, []);
 });
-ui("dialog disposal reentry cannot grant in a replacement source", (f) => {
-    f.request();
-    f.w.__ottClassicScreenPort.owner("dialog").own(() => {
-        f.w.p_pref = "source-b";
-    });
-    f.answer();
-    assert.equal(f.w.parentAccess, false);
-    assert.deepEqual(f.events, []);
-});
+ui(
+    "dialog disposal reentry cannot grant in a replacement source",
+    async (f) => {
+        f.request();
+        f.w.__ottClassicScreenPort.owner("dialog").own(() => {
+            f.w.p_pref = "source-b";
+        });
+        await f.answer();
+        assert.equal(f.w.parentAccess, false);
+        assert.deepEqual(f.events, []);
+    }
+);
 ui(
     "selected lock command keeps its captured channel when list focus changes",
-    (f) => {
+    async (f) => {
         const w = f.w;
         w.__ottChannels = {
             change(...args) {
@@ -526,25 +552,25 @@ ui(
         w.eval(functions("src/index.ts", ["window.parentChannel"]));
         w.parentChannel();
         w.selIndex = 1;
-        f.answer();
+        await f.answer();
         assert.deepEqual(f.events, [["lock", 11, false]]);
     }
 );
 ui(
     "channel access cannot replay a removed/replaced row with the same numeric ID",
-    (f) => {
+    async (f) => {
         assert.equal(
             f.w.ifParentalAccessChId(11, () => f.events.push("play")),
             true
         );
         f.w.channels[11] = { itemId: "other" };
-        f.answer();
+        await f.answer();
         assert.deepEqual(f.events, []);
     }
 );
 ui(
     "live command after PIN relocates its original channel after category reordering",
-    (f) => {
+    async (f) => {
         const w = f.w;
         Object.assign(w, {
             cats: { A: [11, 22], B: [22] },
@@ -556,13 +582,13 @@ ui(
         w._playChannel(0, 0);
         w.catsArray = ["B", "A"];
         w.cats.A = [22, 11];
-        f.answer();
+        await f.answer();
         assert.deepEqual(f.events, [[1, 1]]);
     }
 );
 ui(
     "preview's delayed decoder callback is invalidated by a source change",
-    (f) => {
+    async (f) => {
         const w = f.w;
         Object.assign(w, {
             getChannelUrl: (id) => String(id),
@@ -581,7 +607,7 @@ ui(
 );
 ui(
     "provider selection executes once, then its new source has no inherited grant",
-    (f) => {
+    async (f) => {
         const w = f.w,
             stored = { ottplayprov: "a" };
         Object.assign(w, {
@@ -598,14 +624,20 @@ ui(
         });
         w.eval(functions("src/provider/index.ts", ["selectProviderByIndex"]));
         assert.equal(w.selectProviderByIndex(1), false);
-        f.answer();
+        await f.answer();
         assert.equal(stored.ottplayprov, "b");
         assert.deepEqual(f.events, ["loaded"]);
         assert.equal(w.parentAccess, false);
     }
 );
-console.log(
-    "OK: " +
-        passed +
-        " owned access/PIN scenarios; compiled private domain is ES5"
-);
+(async () => {
+    for (const run of cases) await run();
+    console.log(
+        "OK: " +
+            passed +
+            " owned access/PIN scenarios; compiled private domain is ES5"
+    );
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

@@ -331,6 +331,7 @@ function defineSetting(
                   prepare: function (value: string) {
                       return (window as any).__ottPinSecurity.prepare(value);
                   },
+                  protectOnLoad: true,
                   protectRollback: function (value: string | null) {
                       return (window as any).__ottPinSecurity.protectRollback(
                           value
@@ -729,6 +730,29 @@ export const settingsStore = createSettingsStore(settingsSchema, {
                 },
                 write: function (v) {
                     write(entry.key, v);
+                },
+            };
+        }
+        if (entry.protectOnLoad) {
+            var readProtected = storage.get,
+                writeProtected = storage.set,
+                removeProtected = storage.del;
+            return {
+                current: function () {
+                    return (
+                        storage.get === readProtected &&
+                        storage.set === writeProtected &&
+                        storage.del === removeProtected
+                    );
+                },
+                read: function () {
+                    return readProtected.call(storage, key);
+                },
+                remove: function () {
+                    removeProtected.call(storage, key);
+                },
+                write: function (v) {
+                    writeProtected.call(storage, key, v);
                 },
             };
         }

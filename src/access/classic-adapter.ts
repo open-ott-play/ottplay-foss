@@ -246,76 +246,13 @@ function createClassicAccess(host: any) {
                     });
                     if (!settled) reject();
                 }
-                if (security.legacy(secret)) {
-                    if (value !== secret) {
-                        finish(false);
-                        return;
-                    }
-                    // Reading an existing legacy PIN preserves established access;
-                    // migration itself must never create a new authorization.
-                    finish(true);
-                    if (
-                        generation !== operation ||
-                        scope() !== expected ||
-                        host.parentPIN !== secret
-                    )
-                        return;
-                    var store = host.settingsStore;
-                    if (!store || typeof store.begin !== "function") return;
-                    var migrationScope = scope();
-                    var draft = store.begin(true);
-                    var source = host.__ottSourceIdentity.current(host);
-                    var policyBefore = JSON.stringify([
-                        policy("channels"),
-                        policy("settings"),
-                        policy("providers"),
-                    ]);
-                    function sameOwner(): boolean {
-                        return (
-                            generation === operation &&
-                            host.settingsStore === store &&
-                            host.__ottSourceIdentity.current(host) === source &&
-                            host.providerGetItem === migrationScope.get &&
-                            host.providerSetItem === migrationScope.set &&
-                            JSON.stringify([
-                                policy("channels"),
-                                policy("settings"),
-                                policy("providers"),
-                            ]) === policyBefore
-                        );
-                    }
-                    function migrating(): boolean {
-                        return (
-                            sameOwner() &&
-                            scope() === migrationScope &&
-                            session.allowed() &&
-                            draft.active()
-                        );
-                    }
-                    security.create(
-                        value,
-                        migrating,
-                        function (encoded: string | null) {
-                            if (
-                                !encoded ||
-                                !migrating() ||
-                                !draft.set("parentPin", encoded) ||
-                                !draft.commit([], migrating)
-                            ) {
-                                draft.cancel();
-                                return;
-                            }
-                            if (!sameOwner() || host.parentPIN !== encoded)
-                                return;
-                            // Preserve only the still-current successful legacy grant.
-                            session.grant(true);
-                        }
-                    );
-                } else {
-                    if (typeof host.showShift === "function")
-                        host.showShift(host._("Loading. Please wait..."));
-                    security.verify(value, secret, current, finish);
+                if (!security.record(secret)) {
+                    finish(false);
+                    return;
                 }
+                if (typeof host.showShift === "function")
+                    host.showShift(host._("Loading. Please wait..."));
+                security.verify(value, secret, current, finish);
             },
             onRejected ? reject : undefined
         );

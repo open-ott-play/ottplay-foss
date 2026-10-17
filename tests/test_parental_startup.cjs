@@ -220,7 +220,9 @@ function fixture({
         },
         settings: { prevCount: 1, psChannels: enabled },
         sFavorites: 0,
-        showShift: (text) => notices.push(text),
+        showShift: (text) => {
+            if (text !== "Loading. Please wait...") notices.push(text);
+        },
         sInfoSwitch: false,
         sStopPlay: true,
         stbPlay: (url) => played.push(url),
@@ -256,8 +258,6 @@ function fixture({
             );
         }
     }
-    // Grant only after the fixture has installed its complete source/configuration.
-    w.parentAccess = authorized;
     w.playChannel = w._playChannel;
     w._doKey = w.dispatchKey;
     const start = () => {
@@ -278,9 +278,23 @@ function fixture({
             "buffering overlay cleaned up"
         );
     };
-    const enter = (pin) => {
+    const settlePin = require("./helpers/protected-pin-fixture.cjs")(
+        w,
+        "2468",
+        () => {
+            for (const timer of timers) {
+                if (timer.delay !== 0 || timer.cancelled) continue;
+                timer.cancelled = true;
+                timer.callback();
+            }
+        }
+    );
+    // Grant only after the fixture has installed its protected credential.
+    w.parentAccess = authorized;
+    const enter = async (pin) => {
         for (const digit of pin)
             w.document.querySelector(`#k${digit} .btn`).click();
+        await settlePin();
     };
     return {
         archives,
@@ -313,450 +327,472 @@ function fixture({
     };
 }
 
-for (const answer of ["correct", "wrong", "cancel"]) {
-    const f = fixture();
-    try {
-        f.start();
-        assert.equal(
-            f.prompts(),
-            1,
-            `${answer}: protected startup opens one PIN prompt`
-        );
-        assert.deepEqual(
-            f.played,
-            [],
-            `${answer}: no playback before authorization`
-        );
-        assert.deepEqual(
-            f.stopped,
-            [],
-            `${answer}: blocked restore does not begin channel transition`
-        );
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            true,
-            `${answer}: PIN remains visible after complete startup cleanup`
-        );
-        if (answer === "correct") {
-            f.enter("24");
-            assert.deepEqual(f.played, [], "partial PIN cannot start playback");
-            f.enter("68");
+(async () => {
+    for (const answer of ["correct", "wrong", "cancel"]) {
+        const f = fixture();
+        try {
+            f.start();
+            assert.equal(
+                f.prompts(),
+                1,
+                `${answer}: protected startup opens one PIN prompt`
+            );
+            assert.deepEqual(
+                f.played,
+                [],
+                `${answer}: no playback before authorization`
+            );
+            assert.deepEqual(
+                f.stopped,
+                [],
+                `${answer}: blocked restore does not begin channel transition`
+            );
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                true,
+                `${answer}: PIN remains visible after complete startup cleanup`
+            );
+            if (answer === "correct") {
+                await f.enter("24");
+                assert.deepEqual(
+                    f.played,
+                    [],
+                    "partial PIN cannot start playback"
+                );
+                await f.enter("68");
+                assert.deepEqual(
+                    f.played,
+                    ["https://example.invalid/channel/202"],
+                    "correct PIN resumes the selected protected channel once"
+                );
+                assert.equal(f.w.primaryIndex, 1);
+                assert.equal(f.w.catIndex, 1);
+                assert.equal(f.w.parentAccess, true);
+                assert.equal(
+                    f.prompts(),
+                    1,
+                    "resume does not ask again after authorization"
+                );
+            } else if (answer === "wrong") {
+                await f.enter("1357");
+                assert.deepEqual(f.played, [], "wrong PIN never plays");
+                assert.equal(f.w.parentAccess, false);
+                assert.equal(f.notices.length, 1, "wrong PIN explained");
+            } else {
+                f.w._doKey(f.w.keys.RETURN);
+                assert.deepEqual(f.played, [], "cancel never plays");
+                assert.equal(f.w.parentAccess, false);
+            }
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                false,
+                `${answer}: completed or cancelled prompt closes`
+            );
+            assert.deepEqual(
+                f.errors,
+                [],
+                `${answer}: no caught runtime errors`
+            );
+        } finally {
+            f.close();
+        }
+    }
+    for (const options of [
+        { protectedChannel: false },
+        { enabled: false },
+        { authorized: true },
+    ]) {
+        const f = fixture(options);
+        try {
+            f.start();
+            assert.equal(f.prompts(), 0, "unblocked startup does not prompt");
             assert.deepEqual(
                 f.played,
                 ["https://example.invalid/channel/202"],
-                "correct PIN resumes the selected protected channel once"
+                "normal startup preserves selected live channel"
             );
-            assert.equal(f.w.primaryIndex, 1);
-            assert.equal(f.w.catIndex, 1);
-            assert.equal(f.w.parentAccess, true);
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                false,
+                "old loading dialog is removed"
+            );
+        } finally {
+            f.close();
+        }
+    }
+    for (const answer of ["correct", "wrong", "cancel"]) {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            assert.equal(
+                f.prompts(),
+                0,
+                `${answer}: archive choice is offered before requesting access`
+            );
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                true,
+                `${answer}: archive choice remains visible`
+            );
+            assert.deepEqual(
+                f.archives,
+                [],
+                `${answer}: no archive before confirmation`
+            );
+            f.w._doKey(f.w.keys.ENTER);
             assert.equal(
                 f.prompts(),
                 1,
-                "resume does not ask again after authorization"
+                `${answer}: protected archive asks for PIN after Yes`
             );
-        } else if (answer === "wrong") {
-            f.enter("1357");
-            assert.deepEqual(f.played, [], "wrong PIN never plays");
-            assert.equal(f.w.parentAccess, false);
-            assert.equal(f.notices.length, 1, "wrong PIN explained");
-        } else {
-            f.w._doKey(f.w.keys.RETURN);
-            assert.deepEqual(f.played, [], "cancel never plays");
-            assert.equal(f.w.parentAccess, false);
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                true,
+                `${answer}: archive PIN remains visible`
+            );
+            assert.deepEqual(
+                f.archives,
+                [],
+                `${answer}: Yes does not bypass parental protection`
+            );
+            assert.deepEqual(
+                f.played,
+                [],
+                `${answer}: no premature live fallback`
+            );
+            if (answer === "correct") {
+                await f.enter("2468");
+                assert.deepEqual(
+                    f.archives,
+                    [1700000000],
+                    "correct PIN resumes the intended protected archive once"
+                );
+                assert.equal(
+                    f.w.curList[f.w.primaryIndex],
+                    202,
+                    "archive resumes on the bookmarked channel"
+                );
+                assert.equal(
+                    f.prompts(),
+                    1,
+                    "archive resume does not duplicate PIN dialog"
+                );
+                f.runSeek();
+                assert.deepEqual(
+                    f.seeks,
+                    [25],
+                    "authorized archive restores the saved position"
+                );
+            } else if (answer === "wrong") {
+                await f.enter("1357");
+                assert.deepEqual(
+                    f.archives,
+                    [],
+                    "wrong PIN never starts protected archive"
+                );
+                assert.equal(f.notices.length, 1);
+            } else {
+                f.w._doKey(f.w.keys.RETURN);
+                assert.deepEqual(
+                    f.archives,
+                    [],
+                    "cancel never starts protected archive"
+                );
+            }
+            assert.deepEqual(
+                f.played,
+                [],
+                `${answer}: protected archive path never starts live unexpectedly`
+            );
+            assert.deepEqual(
+                f.errors,
+                [],
+                `${answer}: archive path has no caught runtime errors`
+            );
+        } finally {
+            f.close();
         }
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            false,
-            `${answer}: completed or cancelled prompt closes`
-        );
-        assert.deepEqual(f.errors, [], `${answer}: no caught runtime errors`);
-    } finally {
-        f.close();
     }
-}
-for (const options of [
-    { protectedChannel: false },
-    { enabled: false },
-    { authorized: true },
-]) {
-    const f = fixture(options);
-    try {
-        f.start();
-        assert.equal(f.prompts(), 0, "unblocked startup does not prompt");
-        assert.deepEqual(
-            f.played,
-            ["https://example.invalid/channel/202"],
-            "normal startup preserves selected live channel"
-        );
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            false,
-            "old loading dialog is removed"
-        );
-    } finally {
-        f.close();
+    for (const change of ["provider", "playlist", "channel"]) {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            f.w._doKey(f.w.keys.ENTER);
+            assert.equal(
+                f.prompts(),
+                1,
+                `${change}: PIN is pending before context changes`
+            );
+            if (change === "provider") f.w.p_pref = "other-test-provider";
+            else if (change === "playlist")
+                f.w.cats[f.w.catsArray[1]] = [101, 303];
+            else
+                f.w.channels[202] = {
+                    category: { name: "Replacement channel" },
+                };
+            await f.enter("2468");
+            assert.deepEqual(
+                f.archives,
+                [],
+                `${change}: old PIN callback cannot resume a changed playback context`
+            );
+            assert.deepEqual(
+                f.played,
+                [],
+                `${change}: stale callback cannot silently start live instead`
+            );
+        } finally {
+            f.close();
+        }
     }
-}
-for (const answer of ["correct", "wrong", "cancel"]) {
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        assert.equal(
-            f.prompts(),
-            0,
-            `${answer}: archive choice is offered before requesting access`
-        );
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            true,
-            `${answer}: archive choice remains visible`
-        );
-        assert.deepEqual(
-            f.archives,
-            [],
-            `${answer}: no archive before confirmation`
-        );
-        f.w._doKey(f.w.keys.ENTER);
-        assert.equal(
-            f.prompts(),
-            1,
-            `${answer}: protected archive asks for PIN after Yes`
-        );
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            true,
-            `${answer}: archive PIN remains visible`
-        );
-        assert.deepEqual(
-            f.archives,
-            [],
-            `${answer}: Yes does not bypass parental protection`
-        );
-        assert.deepEqual(f.played, [], `${answer}: no premature live fallback`);
-        if (answer === "correct") {
-            f.enter("2468");
+    {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            f.w.p_pref = "other-test-provider";
+            f.w._doKey(f.w.keys.ENTER);
+            assert.equal(
+                f.prompts(),
+                0,
+                "stale archive confirmation must not open a PIN for another provider"
+            );
+            assert.deepEqual(f.archives, []);
+            assert.deepEqual(f.played, []);
+        } finally {
+            f.close();
+        }
+    }
+    {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            f.w._doKey(f.w.keys.ENTER);
+            f.w.cats[f.w.catsArray[1]].reverse();
+            await f.enter("2468");
             assert.deepEqual(
                 f.archives,
                 [1700000000],
-                "correct PIN resumes the intended protected archive once"
+                "same-list reorder still resumes the authorized bookmark"
             );
             assert.equal(
-                f.w.curList[f.w.primaryIndex],
-                202,
-                "archive resumes on the bookmarked channel"
+                f.w.primaryIndex,
+                0,
+                "resume resolves the moved channel by ID"
             );
+            assert.equal(f.w.curList[f.w.primaryIndex], 202);
+            f.runSeek();
+            assert.deepEqual(f.seeks, [25]);
+        } finally {
+            f.close();
+        }
+    }
+    {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            f.w._doKey(f.w.keys.ENTER);
+            await f.enter("2468");
+            assert.deepEqual(f.archives, [1700000000]);
+            f.w.primaryIndex = 0;
+            f.runSeek();
+            assert.deepEqual(
+                f.seeks,
+                [],
+                "delayed archive seek must not alter a newly selected channel"
+            );
+        } finally {
+            f.close();
+        }
+    }
+    {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            f.w._doKey(f.w.keys.RETURN);
             assert.equal(
                 f.prompts(),
                 1,
-                "archive resume does not duplicate PIN dialog"
+                "declining archive still requires PIN for protected live channel"
+            );
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                true,
+                "live fallback PIN is visible"
+            );
+            assert.deepEqual(
+                f.played,
+                [],
+                "archive No cannot bypass live protection"
+            );
+            assert.deepEqual(f.archives, []);
+            await f.enter("2468");
+            assert.deepEqual(
+                f.played,
+                ["https://example.invalid/channel/202"],
+                "authorized fallback resumes the bookmarked live channel"
+            );
+            assert.deepEqual(f.archives, []);
+        } finally {
+            f.close();
+        }
+    }
+    {
+        const f = fixture({ archive: true, protectedChannel: false });
+        try {
+            f.start();
+            assert.equal(
+                f.w.$("#dialogbox").is(":visible"),
+                true,
+                "archive resume confirmation survives startup cleanup"
+            );
+            assert.match(
+                f.w.document.getElementById("dialogbox").textContent,
+                /Resume from archive/
+            );
+            assert.deepEqual(
+                f.played,
+                [],
+                "archive confirmation blocks live fallback until choice"
+            );
+            assert.deepEqual(
+                f.archives,
+                [],
+                "archive does not start before confirmation"
+            );
+            f.w._doKey(f.w.keys.ENTER);
+            assert.deepEqual(
+                f.archives,
+                [1700000000],
+                "archive confirmation retains its callback"
             );
             f.runSeek();
             assert.deepEqual(
                 f.seeks,
                 [25],
-                "authorized archive restores the saved position"
+                "normal unprotected archive retains the saved position"
             );
-        } else if (answer === "wrong") {
-            f.enter("1357");
-            assert.deepEqual(
-                f.archives,
-                [],
-                "wrong PIN never starts protected archive"
-            );
-            assert.equal(f.notices.length, 1);
-        } else {
-            f.w._doKey(f.w.keys.RETURN);
-            assert.deepEqual(
-                f.archives,
-                [],
-                "cancel never starts protected archive"
-            );
+            assert.deepEqual(f.played, []);
+        } finally {
+            f.close();
         }
-        assert.deepEqual(
-            f.played,
-            [],
-            `${answer}: protected archive path never starts live unexpectedly`
-        );
-        assert.deepEqual(
-            f.errors,
-            [],
-            `${answer}: archive path has no caught runtime errors`
-        );
-    } finally {
-        f.close();
     }
-}
-for (const change of ["provider", "playlist", "channel"]) {
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        f.w._doKey(f.w.keys.ENTER);
-        assert.equal(
-            f.prompts(),
-            1,
-            `${change}: PIN is pending before context changes`
-        );
-        if (change === "provider") f.w.p_pref = "other-test-provider";
-        else if (change === "playlist") f.w.cats[f.w.catsArray[1]] = [101, 303];
-        else f.w.channels[202] = { category: { name: "Replacement channel" } };
-        f.enter("2468");
-        assert.deepEqual(
-            f.archives,
-            [],
-            `${change}: old PIN callback cannot resume a changed playback context`
-        );
-        assert.deepEqual(
-            f.played,
-            [],
-            `${change}: stale callback cannot silently start live instead`
-        );
-    } finally {
-        f.close();
-    }
-}
-{
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        f.w.p_pref = "other-test-provider";
-        f.w._doKey(f.w.keys.ENTER);
-        assert.equal(
-            f.prompts(),
-            0,
-            "stale archive confirmation must not open a PIN for another provider"
-        );
-        assert.deepEqual(f.archives, []);
-        assert.deepEqual(f.played, []);
-    } finally {
-        f.close();
-    }
-}
-{
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        f.w._doKey(f.w.keys.ENTER);
-        f.w.cats[f.w.catsArray[1]].reverse();
-        f.enter("2468");
-        assert.deepEqual(
-            f.archives,
-            [1700000000],
-            "same-list reorder still resumes the authorized bookmark"
-        );
-        assert.equal(
-            f.w.primaryIndex,
-            0,
-            "resume resolves the moved channel by ID"
-        );
-        assert.equal(f.w.curList[f.w.primaryIndex], 202);
-        f.runSeek();
-        assert.deepEqual(f.seeks, [25]);
-    } finally {
-        f.close();
-    }
-}
-{
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        f.w._doKey(f.w.keys.ENTER);
-        f.enter("2468");
-        assert.deepEqual(f.archives, [1700000000]);
-        f.w.primaryIndex = 0;
-        f.runSeek();
-        assert.deepEqual(
-            f.seeks,
-            [],
-            "delayed archive seek must not alter a newly selected channel"
-        );
-    } finally {
-        f.close();
-    }
-}
-{
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        f.w._doKey(f.w.keys.RETURN);
-        assert.equal(
-            f.prompts(),
-            1,
-            "declining archive still requires PIN for protected live channel"
-        );
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            true,
-            "live fallback PIN is visible"
-        );
-        assert.deepEqual(
-            f.played,
-            [],
-            "archive No cannot bypass live protection"
-        );
-        assert.deepEqual(f.archives, []);
-        f.enter("2468");
-        assert.deepEqual(
-            f.played,
-            ["https://example.invalid/channel/202"],
-            "authorized fallback resumes the bookmarked live channel"
-        );
-        assert.deepEqual(f.archives, []);
-    } finally {
-        f.close();
-    }
-}
-{
-    const f = fixture({ archive: true, protectedChannel: false });
-    try {
-        f.start();
-        assert.equal(
-            f.w.$("#dialogbox").is(":visible"),
-            true,
-            "archive resume confirmation survives startup cleanup"
-        );
-        assert.match(
-            f.w.document.getElementById("dialogbox").textContent,
-            /Resume from archive/
-        );
-        assert.deepEqual(
-            f.played,
-            [],
-            "archive confirmation blocks live fallback until choice"
-        );
-        assert.deepEqual(
-            f.archives,
-            [],
-            "archive does not start before confirmation"
-        );
-        f.w._doKey(f.w.keys.ENTER);
-        assert.deepEqual(
-            f.archives,
-            [1700000000],
-            "archive confirmation retains its callback"
-        );
-        f.runSeek();
-        assert.deepEqual(
-            f.seeks,
-            [25],
-            "normal unprotected archive retains the saved position"
-        );
-        assert.deepEqual(f.played, []);
-    } finally {
-        f.close();
-    }
-}
-for (const protectedChannel of [false, true]) {
-    const f = fixture({ archive: true, protectedChannel });
-    try {
-        f.start();
-        assert.deepEqual(
-            f.archives,
-            [],
-            "Archive waits while the question is open"
-        );
-        f.runResume();
-        if (protectedChannel) {
+    for (const protectedChannel of [false, true]) {
+        const f = fixture({ archive: true, protectedChannel });
+        try {
+            f.start();
             assert.deepEqual(
                 f.archives,
                 [],
-                "Timeout must still require the PIN"
+                "Archive waits while the question is open"
             );
-            assert.equal(f.prompts(), 1);
-            f.enter("2468");
+            f.runResume();
+            if (protectedChannel) {
+                assert.deepEqual(
+                    f.archives,
+                    [],
+                    "Timeout must still require the PIN"
+                );
+                assert.equal(f.prompts(), 1);
+                await f.enter("2468");
+            }
+            assert.deepEqual(f.archives, [1700000000]);
+            f.runSeek();
+            assert.deepEqual(
+                f.seeks,
+                [25],
+                "Timeout restores the saved archive position"
+            );
+            assert.deepEqual(f.played, []);
+            assert.equal(f.w.$("#dialogbox").is(":visible"), false);
+        } finally {
+            f.close();
         }
-        assert.deepEqual(f.archives, [1700000000]);
-        f.runSeek();
-        assert.deepEqual(
-            f.seeks,
-            [25],
-            "Timeout restores the saved archive position"
-        );
-        assert.deepEqual(f.played, []);
-        assert.equal(f.w.$("#dialogbox").is(":visible"), false);
-    } finally {
-        f.close();
     }
-}
-// An explicit playback choice owns the screen even while the old prompt is open.
-for (const answer of ["timeout", "yes", "no"]) {
-    const f = fixture({ archive: true, protectedChannel: false });
-    try {
-        f.start();
-        f.w.__ottClassicPlayback.command({
-            channelId: "78777",
-            item: { stream_url: "https://example.invalid/plex-film.mp4" },
-            sourceId: "plex-synthetic",
-            type: "vod",
-        });
-        if (answer === "timeout") f.runResume();
-        else f.w._doKey(answer === "yes" ? f.w.keys.ENTER : f.w.keys.RETURN);
-        assert.deepEqual(
-            f.archives,
-            [],
-            `${answer}: stale archive cannot replace Plex`
-        );
-        assert.deepEqual(
-            f.played,
-            [],
-            `${answer}: stale fallback cannot replace Plex`
-        );
-        assert.equal(
-            f.w.__ottClassicPlayback.snapshot().target.channelId,
-            "78777"
-        );
-        assert.equal(f.w.$("#dialogbox").is(":visible"), false);
-    } finally {
-        f.close();
+    // An explicit playback choice owns the screen even while the old prompt is open.
+    for (const answer of ["timeout", "yes", "no"]) {
+        const f = fixture({ archive: true, protectedChannel: false });
+        try {
+            f.start();
+            f.w.__ottClassicPlayback.command({
+                channelId: "78777",
+                item: { stream_url: "https://example.invalid/plex-film.mp4" },
+                sourceId: "plex-synthetic",
+                type: "vod",
+            });
+            if (answer === "timeout") f.runResume();
+            else
+                f.w._doKey(answer === "yes" ? f.w.keys.ENTER : f.w.keys.RETURN);
+            assert.deepEqual(
+                f.archives,
+                [],
+                `${answer}: stale archive cannot replace Plex`
+            );
+            assert.deepEqual(
+                f.played,
+                [],
+                `${answer}: stale fallback cannot replace Plex`
+            );
+            assert.equal(
+                f.w.__ottClassicPlayback.snapshot().target.channelId,
+                "78777"
+            );
+            assert.equal(f.w.$("#dialogbox").is(":visible"), false);
+        } finally {
+            f.close();
+        }
     }
-}
-{
-    const f = fixture({ archive: true, protectedChannel: false });
-    try {
-        f.start();
-        f.w.playChannel(1, 0);
-        f.runResume();
-        assert.deepEqual(f.archives, []);
-        assert.deepEqual(f.played, ["https://example.invalid/channel/101"]);
-    } finally {
-        f.close();
+    {
+        const f = fixture({ archive: true, protectedChannel: false });
+        try {
+            f.start();
+            f.w.playChannel(1, 0);
+            f.runResume();
+            assert.deepEqual(f.archives, []);
+            assert.deepEqual(f.played, ["https://example.invalid/channel/101"]);
+        } finally {
+            f.close();
+        }
     }
-}
-{
-    const f = fixture({ archive: true });
-    try {
-        f.start();
-        f.w._doKey(f.w.keys.ENTER);
-        f.w.__ottClassicPlayback.command({ channelId: 101, type: "live" });
-        f.enter("2468");
-        assert.deepEqual(
-            f.archives,
-            [],
-            "A pending PIN cannot resurrect the old restore"
-        );
-        assert.deepEqual(f.played, []);
-    } finally {
-        f.close();
+    {
+        const f = fixture({ archive: true });
+        try {
+            f.start();
+            f.w._doKey(f.w.keys.ENTER);
+            f.w.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+            await f.enter("2468");
+            assert.deepEqual(
+                f.archives,
+                [],
+                "A pending PIN cannot resurrect the old restore"
+            );
+            assert.deepEqual(f.played, []);
+        } finally {
+            f.close();
+        }
     }
-}
 
-// Stopping the same archive revokes its pending restoration without changing IDs.
-{
-    const f = fixture({ archive: true, protectedChannel: false });
-    try {
-        f.start();
-        f.w._doKey(f.w.keys.ENTER);
-        assert.deepEqual(f.archives, [1700000000]);
-        f.w.__ottClassicPlayback.cancel();
-        f.runSeek();
-        assert.deepEqual(
-            f.seeks,
-            [],
-            "stopped archive must not restore a delayed position"
-        );
-    } finally {
-        f.close();
+    // Stopping the same archive revokes its pending restoration without changing IDs.
+    {
+        const f = fixture({ archive: true, protectedChannel: false });
+        try {
+            f.start();
+            f.w._doKey(f.w.keys.ENTER);
+            assert.deepEqual(f.archives, [1700000000]);
+            f.w.__ottClassicPlayback.cancel();
+            f.runSeek();
+            assert.deepEqual(
+                f.seeks,
+                [],
+                "stopped archive must not restore a delayed position"
+            );
+        } finally {
+            f.close();
+        }
     }
-}
-console.log(
-    `PASS parental startup (${bundle ? "classic bundle" : "source"}): visible one-shot PIN, guarded live/archive resume, cancel/wrong PIN, normal startup, and archive confirmation`
-);
+    console.log(
+        `PASS parental startup (${bundle ? "classic bundle" : "source"}): visible one-shot PIN, guarded live/archive resume, cancel/wrong PIN, normal startup, and archive confirmation`
+    );
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

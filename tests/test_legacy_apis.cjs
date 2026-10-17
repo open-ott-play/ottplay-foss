@@ -75,16 +75,20 @@ function storageFixture(
             else cookies[key] = pair.slice(equals + 1);
         },
     });
+    let keyReads = 0;
     const local = {
         clear() {
             if (mode === "clear") throw new Error("SecurityError");
             for (const key of Object.keys(saved)) delete saved[key];
         },
         getItem(key) {
-            if (mode === "read") throw new Error("SecurityError");
+            if (mode === "read" || (persisted && persisted.failReadKey === key))
+                throw new Error("SecurityError");
             return Object.hasOwn(saved, key) ? saved[key] : null;
         },
         key(index) {
+            if (mode === "dump" && ++keyReads === 1)
+                throw new Error("Transient enumeration failure");
             return Object.keys(saved)[index];
         },
         get length() {
@@ -111,6 +115,34 @@ function storageFixture(
     if (mode === "missing") c.localStorage = undefined;
     vm.runInContext(storageCode, c);
     return contextOnly ? c : c.storage;
+}
+for (const mode of ["write", "remove", "dump"]) {
+    const storage = storageFixture(mode, false, {
+        cookies: {},
+        saved: { original: "kept" },
+    });
+    if (mode === "write") storage.set("ordinary", "new");
+    else if (mode === "remove") storage.del("ordinary");
+    else storage.dump();
+    assert.equal(storage.get("original"), "kept");
+    assert.equal(
+        storage.get("parentPIN"),
+        null,
+        mode + ": complete failover proves PIN absence"
+    );
+}
+{
+    const storage = storageFixture("write", false, {
+        cookies: {},
+        failReadKey: "original",
+        saved: { original: "unreadable" },
+    });
+    storage.set("ordinary", "new");
+    assert.equal(
+        storage.get("parentPIN"),
+        "!locked-invalid-pin",
+        "incomplete failover must not invent PIN absence"
+    );
 }
 for (const mode of ["read"]) {
     const storage = storageFixture(mode, false, {
