@@ -1,9 +1,12 @@
 # OpenSSF Passing evidence
 
 This is a source-backed work record for the [OpenSSF Best Practices Passing
-criteria](https://www.bestpractices.dev/en/criteria/0). It does not assert that a
-badge has been awarded. The partial [machine-readable assessment](../.bestpractices.json)
-leaves unverified criteria unknown.
+criteria](https://www.bestpractices.dev/en/criteria/0). The
+[public assessment for this repository](https://www.bestpractices.dev/en/projects/15593)
+is the current record; its dynamic badge is linked from the README. The partial
+[machine-readable assessment](../.bestpractices.json) is an earlier local snapshot,
+not a substitute for the current published answers. Unverified requirements must
+remain explicitly unverified.
 
 ## Available evidence
 
@@ -14,6 +17,7 @@ leaves unverified criteria unknown.
 - Private reporting process and response policy: [SECURITY](../SECURITY.md).
 - Trust boundaries, source references and negative-test evidence: [security design](security-design.md).
 - Build/test automation: [workflow](../.github/workflows/ci.yml) and [actual run results](https://github.com/open-ott-play/ottplay-foss/actions).
+- Compiler fixes and retained tool diagnostics: [build warning review](build-warnings.md).
 - Project license: [MIT](../LICENSE); third-party terms still apply.
 
 ## Initial scanner inventory — 2026-10-08
@@ -58,5 +62,5 @@ outbound/native/platform cryptography, third-party provider scope, source
 coverage and dependency closure remain separate open assessments.
 
 Record each completed analysis with its source SHA, commands/tool versions,
-result and material limitations. Add the repository's actual badge only after
-its own public assessment is saved and verified.
+result and material limitations. Verify the public answers and this repository's
+own README badge after each published assessment update.

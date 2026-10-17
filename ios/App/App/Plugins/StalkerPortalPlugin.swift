@@ -84,7 +84,8 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
         guard call.options["requestId"] == nil || Self.validRequestID(requestID) else {
             call.reject("Invalid HTTP request identifier"); return
         }
-        DispatchQueue.main.async {
+        // Keep the plugin alive until ownership is registered; completion stays weak.
+        DispatchQueue.main.async { [self] in
             guard self.requests.count < 8 else {
                 call.reject("Too many native HTTP requests", "busy"); return
             }
@@ -117,7 +118,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
         let method = (call.getString("method") ?? "GET").uppercased()
         let bodyString = call.getString("body") ?? ""
         let contentType = call.getString("contentType") ?? "application/json"
-        let headers = call.getObject("headers") as? [String: Any]
+        let headers = call.getObject("headers")
 
         var request = URLRequest(url: url)
         request.httpMethod = method

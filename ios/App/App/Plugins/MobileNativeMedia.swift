@@ -100,7 +100,6 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         // `outputVolume` on iOS is read-only without private APIs.
         // Use MPVolumeView as the only public set path; hide it in a zero-size container.
         let picker = MPVolumeView(frame: CGRect(x: -100, y: -100, width: 0, height: 0))
-        picker.showsRouteButton = false
         picker.showsVolumeSlider = true
 
         guard let slider = picker.subviews.compactMap({ $0 as? UISlider }).first else {
@@ -220,7 +219,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             _ = self.configurePlaybackSession()
 
             let container: UIView? =
-                (bridge.webView as? UIView) ??
+                bridge.webView ??
                 bridge.viewController?.view
 
             guard let targetView = container else {
@@ -641,7 +640,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     private func evalVideoJS(_ script: String) {
         DispatchQueue.main.async { [weak self] in
             guard let bridge = self?.bridge else { return }
-            if let webView = bridge.webView as? WKWebView {
+            if let webView = bridge.webView {
                 webView.evaluateJavaScript(script, completionHandler: nil)
             }
         }
