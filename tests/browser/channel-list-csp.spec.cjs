@@ -1009,7 +1009,8 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 await page.evaluate(() => {
                     window.sPreview = 0;
                     window.settings.psChannels = window.sPSchannels = 1;
-                    window.parentPIN = "1234";
+                    // Exercise the real protected-record verifier, not a legacy plaintext fixture.
+                    window.parentPIN = window.__ottPinSecurity.prepare("1234");
                     window.parentalArray = ["one"];
                     window.__ottParental.revoke();
                 });

@@ -412,7 +412,7 @@ test("remote channel steps close a different browsing category and discard its p
             window.settings.psChannels = 1;
             window.settings.psOptions = 0;
             window.settings.requirePinForProviderSelection = 0;
-            window.parentPIN = "1234";
+            window.parentPIN = window.__ottPinSecurity.prepare("1234");
             window.__ottParental.revoke();
             const locked = window.__ottChannels.change("lock", 104, true);
             _channelsList(window.catsArray.indexOf("Browsing category"), 0);
