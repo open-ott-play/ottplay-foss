@@ -282,9 +282,12 @@ alongside them. Version and output hashes are recorded in `js/media-runtime.json
 
 ## Parental PIN password derivation
 
-The unchanged SHA-256, HMAC, PBKDF2, codec and bit-array modules of
+The selected SHA-256, HMAC, PBKDF2, codec and bit-array modules of
 [SJCL 1.0.9](https://github.com/bitwiseshiftleft/sjcl) are used under
 [BSD-2-Clause](js/licenses/SJCL-1.0.9.txt). The selected source inventory and
-package integrity are in `js/vendor/sjcl-pin-source.json`. The fallback PIN
+package integrity are in `js/vendor/sjcl-pin-source.json`. An exact reversible
+`sjcl-pin-word-arrays.patch.json` replaces only internal array copying to avoid
+V8 species-probe deoptimization; cryptographic rounds and work factors remain
+upstream. The fallback PIN
 deriver schedules the standard single-block PBKDF2 loop across timers using
 these HMAC primitives; it does not use SJCL randomness or encryption modes.

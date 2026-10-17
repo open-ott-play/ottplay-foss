@@ -12,5 +12,10 @@
     "core/hmac.js": "f12858d7f9db5c72225d17fdc9a3e7c8f22b2e8ddbdf246fbea3d3660a5a50ce",
     "core/pbkdf2.js": "22ce7542834782f47ea38cbb822d0323c38b296f57c3661a14d879f6ecc51d7e"
   },
-  "bundle_sha256": "b169b8b56384fd678199ffd321ca90467dccc10cd5ba0a268ecd60674205fa74"
+  "bundle_sha256": "e75b340cb505abbdee68dda5ab48a0c2429c83739b1eb9c8a44cb8c24ef0c8b3",
+  "upstream_bundle_sha256": "b169b8b56384fd678199ffd321ca90467dccc10cd5ba0a268ecd60674205fa74",
+  "local_patch": {
+    "path": "sjcl-pin-word-arrays.patch.json",
+    "sha256": "ff4ae332e9cbcbc1edeb7eaa1bf534fcd6b80e58acfb724ad05c308cda0244ee"
+  }
 }

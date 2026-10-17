@@ -1,4 +1,4 @@
-/* SJCL 1.0.9 selected modules, unchanged. BSD-2-Clause; see js/licenses/SJCL-1.0.9.txt. */
+/* SJCL 1.0.9 selected modules with word-array copy patch; see sjcl-pin-word-arrays.patch.json. BSD-2-Clause; see js/licenses/SJCL-1.0.9.txt. */
 (function () {
 /** @fileOverview Javascript cryptography implementation.
  *
@@ -18,6 +18,33 @@
  * The Stanford Javascript Crypto Library, top-level namespace.
  * @namespace
  */
+// Internal numeric word arrays only: no species/subclass dispatch. Keep words
+// verbatim (including SJCL partial-word metadata), holes, and copy ownership.
+// core-js probes can deoptimize native slice/concat/splice on V8 with TV UAs.
+function pinCopyWords(words, end) {
+  var result = [], i;
+  end = end === undefined ? words.length : end;
+  for (i = 0; i < end; i++) if (i in words) result[i] = words[i];
+  result.length = end;
+  return result;
+}
+function pinConcatWords(first, second) {
+  var result = pinCopyWords(first), offset = first.length, i;
+  for (i = 0; i < second.length; i++) if (i in second) result[offset + i] = second[i];
+  result.length = offset + second.length;
+  return result;
+}
+function pinShiftWords(words, count) {
+  count = Math.min(count, words.length);
+  var result = pinCopyWords(words, count), i;
+  for (i = count; i < words.length; i++) {
+    if (i in words) words[i - count] = words[i];
+    else delete words[i - count];
+  }
+  words.length -= count;
+  return result;
+}
+
 var sjcl = {
   /**
    * Symmetric ciphers.
@@ -178,14 +205,14 @@ sjcl.bitArray = {
    */
   concat: function (a1, a2) {
     if (a1.length === 0 || a2.length === 0) {
-      return a1.concat(a2);
+      return pinConcatWords(a1, a2);
     }
     
     var last = a1[a1.length-1], shift = sjcl.bitArray.getPartial(last);
     if (shift === 32) {
-      return a1.concat(a2);
+      return pinConcatWords(a1, a2);
     } else {
-      return sjcl.bitArray._shiftRight(a2, shift, last|0, a1.slice(0,a1.length-1));
+      return sjcl.bitArray._shiftRight(a2, shift, last|0, pinCopyWords(a1, a1.length-1));
     }
   },
 
@@ -209,7 +236,7 @@ sjcl.bitArray = {
    */
   clamp: function (a, len) {
     if (a.length * 32 < len) { return a; }
-    a = a.slice(0, Math.ceil(len / 32));
+    a = len >= 0 ? pinCopyWords(a, Math.ceil(len / 32)) : a.slice(0, Math.ceil(len / 32));
     var l = a.length;
     len = len & 31;
     if (l > 0 && len) {
@@ -272,7 +299,7 @@ sjcl.bitArray = {
       carry = 0;
     }
     if (shift === 0) {
-      return out.concat(a);
+      return pinConcatWords(out, a);
     }
     
     for (i=0; i<a.length; i++) {
@@ -406,8 +433,8 @@ sjcl.codec.hex = {
 sjcl.hash.sha256 = function (hash) {
   if (!this._key[0]) { this._precompute(); }
   if (hash) {
-    this._h = hash._h.slice(0);
-    this._buffer = hash._buffer.slice(0);
+    this._h = pinCopyWords(hash._h);
+    this._buffer = pinCopyWords(hash._buffer);
     this._length = hash._length;
   } else {
     this.reset();
@@ -436,7 +463,7 @@ sjcl.hash.sha256.prototype = {
    * @return this
    */
   reset:function () {
-    this._h = this._init.slice(0);
+    this._h = pinCopyWords(this._init);
     this._buffer = [];
     this._length = 0;
     return this;
@@ -465,10 +492,10 @@ sjcl.hash.sha256.prototype = {
       	    this._block(c.subarray(16 * j, 16 * (j+1)));
       	    j += 1;
     	}
-    	b.splice(0, 16 * j);
+        pinShiftWords(b, 16 * j);
     } else {
 	for (i = 512+ol - ((512+ol) & 511); i <= nl; i+= 512) {
-      	    this._block(b.splice(0,16));
+          this._block(pinShiftWords(b, 16));
       	}
     }
     return this;
@@ -494,7 +521,7 @@ sjcl.hash.sha256.prototype = {
     b.push(this._length | 0);
 
     while (b.length) {
-      this._block(b.splice(0,16));
+      this._block(pinShiftWords(b, 16));
     }
 
     this.reset();
@@ -728,7 +755,7 @@ sjcl.misc.pbkdf2 = function (password, salt, count, length, Prff) {
       }
     }
     
-    out = out.concat(u);
+    out = pinConcatWords(out, u);
   }
 
   if (length) { out = b.clamp(out, length); }

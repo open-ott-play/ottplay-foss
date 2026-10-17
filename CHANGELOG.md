@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Avoid V8 array-species deoptimization during legacy-UA PIN startup without reducing PBKDF2 work; retain exact upstream provenance and differential cryptographic tests.
+
 ### Security
 
 - Store new/changed parental PINs using salted PBKDF2-HMAC-SHA256 (600,000 iterations).

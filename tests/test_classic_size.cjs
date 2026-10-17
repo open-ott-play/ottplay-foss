@@ -7,6 +7,7 @@ const ts = require("typescript");
 const {
     ARTIFACTS,
     BUDGET,
+    PROVIDER_BUDGET,
     TOTAL_BUDGET,
     inspectBundleSets,
     inspectBundles,
@@ -56,9 +57,22 @@ try {
     assert.throws(() => inspectBundleSets(root), /Unexpected provider bundle/);
     fs.unlinkSync(extra);
     const oversizedSet = path.join(root, "dist/provider-m3u.js");
-    fs.writeFileSync(oversizedSet, "x".repeat(BUDGET.bytes - 1));
+    // Entry-only growth must not silently relax the existing provider limit.
+    const providerBudget = { bytes: 863400, gzipBytes: 268490 };
+    assert.deepEqual(PROVIDER_BUDGET, providerBudget);
+    const entryOnlyGrowth = "x".repeat(providerBudget.bytes + 1);
+    assert.doesNotThrow(() => measureBundle(entryOnlyGrowth, "entry"));
+    fs.writeFileSync(oversizedSet, entryOnlyGrowth);
+    assert.throws(
+        () => inspectBundleSets(root),
+        /provider-m3u\.js: bytes .* exceeds budget 863400/
+    );
+    fs.writeFileSync(oversizedSet, "x".repeat(providerBudget.bytes - 1));
     const additional = path.join(root, "dist/provider-edem.js");
-    fs.writeFileSync(additional, "y".repeat(TOTAL_BUDGET.bytes - BUDGET.bytes));
+    fs.writeFileSync(
+        additional,
+        "y".repeat(TOTAL_BUDGET.bytes - providerBudget.bytes)
+    );
     assert.throws(
         () => inspectBundleSets(root),
         /complete player bytes .* exceeds budget/
@@ -163,11 +177,11 @@ try {
         /ENOENT/
     );
     fs.writeFileSync(required, source);
-    fs.writeFileSync(required, "x".repeat(BUDGET.bytes - 1));
+    fs.writeFileSync(required, "x".repeat(providerBudget.bytes - 1));
     const otherRequired = path.join(root, "play/dist/provider-m3u.js");
     fs.writeFileSync(
         otherRequired,
-        "y".repeat(TOTAL_BUDGET.bytes - BUDGET.bytes)
+        "y".repeat(TOTAL_BUDGET.bytes - providerBudget.bytes)
     );
     assert.throws(
         () => inspectBundleSets(root, playArtifacts, playKinds),

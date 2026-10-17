@@ -221,7 +221,13 @@ const { gzipSync } = require("node:zlib");
 // web/native, versus 268113 / 268182 before startup protection. Allocate
 // 192 gzip bytes for the measured maximum +168, retaining the prior source
 // identity and release-version headroom. Node 26 uses a different zlib build.
-const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
+// The scoped SJCL word-copy fix avoids V8 species-probe startup stalls.
+// Node 22.23.3: prior 848f web 863151/268323 -> fixed 863425/268420.
+// Reserve +256 raw/+128 gzip once; all five measured outputs fit while
+// preserving native transforms and release-identity room.
+const BUDGET = Object.freeze({ bytes: 863656, gzipBytes: 268618 });
+// The SJCL repair changes only the entry; retain the previous per-provider caps.
+const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -334,7 +340,9 @@ const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count the same 900 / 256 engine-diagnostic allowance once; providers do not change.
 // Count the same 12600/4250 PIN migration allowance once in the total, plus
 // the measured startup protection cost of 500 raw / 192 gzip bytes.
-const TOTAL_BUDGET = Object.freeze({ bytes: 979900, gzipBytes: 311540 });
+// Count the same +256 raw/+128 gzip word-copy repair once; all seven
+// provider outputs and every artifact remain in the complete-payload checks.
+const TOTAL_BUDGET = Object.freeze({ bytes: 980156, gzipBytes: 311668 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
@@ -392,7 +400,11 @@ function inspectBundleSets(root, artifacts = ARTIFACTS, providerKinds) {
         }
         const providers = expected.map((name) => {
             const file = path.join(directory, name);
-            return measureBundle(fs.readFileSync(path.join(root, file)), file);
+            return measureBundle(
+                fs.readFileSync(path.join(root, file)),
+                file,
+                PROVIDER_BUDGET
+            );
         });
         const total = [entry, ...providers].reduce(
             (sum, item) => ({
@@ -466,6 +478,7 @@ module.exports = {
     inspectBundleSets,
     inspectBundles,
     measureBundle,
+    PROVIDER_BUDGET,
     TOTAL_BUDGET,
     writeBundleReport,
 };

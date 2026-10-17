@@ -13,6 +13,12 @@ const {
 } = require("../scripts/native-dev.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-native-dev-"));
 const assets = path.join(root, "src-tauri/frontend");
+const pinInputs = [
+    "js/vendor/sjcl-pin.js",
+    "js/vendor/sjcl-pin-source.json",
+    "js/vendor/sjcl-pin-word-arrays.patch.json",
+    "js/licenses/SJCL-1.0.9.txt",
+];
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function write(file, data) {
     const target = path.join(root, file);
@@ -71,6 +77,7 @@ async function main() {
             "vendor/ottplay-core.js",
             "vendor/ottplay-core.manifest.json",
             "licenses/native/rquickjs-LICENSE.txt",
+            ...pinInputs,
         ])
             assert.equal(
                 isNativeDevInput(root, path.join(root, file)),
@@ -91,6 +98,8 @@ async function main() {
             "providers/example/private.key",
             "../external.js",
             "js/ottplay-core.js",
+            "js/runtime-polyfills.js",
+            "js/vendor/sjcl-pin.generated.js",
             "vendor/glib-0.18.5/test.js",
         ])
             assert.equal(
@@ -177,7 +186,8 @@ async function main() {
             "debounce, serialized rebuilds, failure recovery and shutdown cancellation"
         );
         const watcher = new EventEmitter();
-        watcher.add = () => {};
+        const watched = new Set();
+        watcher.add = (files) => files.forEach((file) => watched.add(file));
         let middleware;
         let builds = 0;
         let resolveBuild;
@@ -206,6 +216,9 @@ async function main() {
             },
             debounceMs: 5,
         });
+        for (const file of pinInputs)
+            assert(watched.has(path.join(root, file)), file);
+        assert(!watched.has(path.join(root, "js")));
         function request(url, method = "GET") {
             const res = {
                 end(value) {
@@ -300,6 +313,29 @@ async function main() {
         await delay(1);
         assert.deepEqual(messages, [{ path: "*", type: "full-reload" }]);
         assert.equal(request("/").statusCode, 200);
+        for (const file of pinInputs) {
+            const before = builds;
+            watcher.emit("all", "change", path.join(root, file));
+            assert.equal(request("/").statusCode, 503, file);
+            await delay(20);
+            assert.equal(builds, before + 1, file);
+            resolveBuild();
+            await delay(1);
+            assert.equal(request("/").statusCode, 200, file);
+            assert.equal(messages.length, builds, file);
+        }
+        const beforeGenerated = builds;
+        for (const file of [
+            "js/ottplay-core.js",
+            "js/runtime-polyfills.js",
+            "js/vendor/sjcl-pin.generated.js",
+        ])
+            watcher.emit("all", "change", path.join(root, file));
+        await delay(20);
+        assert.equal(builds, beforeGenerated);
+        pass(
+            "PIN source, provenance and license changes rebuild; generated JS stays ignored"
+        );
         server.httpServer.emit("close");
         assert.equal(watcher.listenerCount("all"), 0);
         server.ws.send({ path: "restored", type: "full-reload" });
