@@ -91,6 +91,7 @@ function fixture(initial = "2468") {
                 invalidValue: "!locked-invalid-pin",
                 key: "parentPIN",
                 prepare: w.__ottPinSecurity.prepare,
+                protectRollback: w.__ottPinSecurity.protectRollback,
                 scope: "application",
                 validate: w.__ottPinSecurity.valid,
             },
@@ -110,6 +111,7 @@ function fixture(initial = "2468") {
                     writes.push(value);
                     if (mode === "throw") throw Error("write");
                     if (mode !== "silent") raw = value;
+                    if (mode === "throw-after") throw Error("after write");
                 },
             }),
         }
@@ -258,6 +260,52 @@ for (const mode of ["silent", "throw"])
             }
         }
     );
+test("failed PIN transaction rolls back to a protected equivalent of the old PIN", () => {
+    const f = fixture();
+    try {
+        const draft = f.store.begin();
+        assert.equal(draft.set("parentPin", "9876"), true);
+        f.mode("throw-after");
+        assert.equal(draft.commit(), false);
+        assert.equal(f.writes.length, 2);
+        assert(f.writes.every((value) => value.startsWith("pbkdf2-sha256$")));
+        const [, , salt, digest] = f.raw().split("$");
+        assert.equal(
+            digest,
+            crypto
+                .pbkdf2Sync(
+                    "2468",
+                    Buffer.from(salt, "hex"),
+                    600000,
+                    32,
+                    "sha256"
+                )
+                .toString("hex")
+        );
+        assert.equal(
+            f.w.parentPIN,
+            "2468",
+            "failed transaction publishes no new PIN"
+        );
+    } finally {
+        f.dom.window.close();
+    }
+});
+test("failure to protect rollback bytes aborts before any setting write", () => {
+    const f = fixture();
+    try {
+        const draft = f.store.begin();
+        assert.equal(draft.set("parentPin", "9876"), true);
+        f.w.crypto.getRandomValues = () => {
+            throw Error("random unavailable");
+        };
+        assert.equal(draft.commit(), false);
+        assert.deepEqual(f.writes, []);
+        assert.equal(f.raw(), "2468");
+    } finally {
+        f.dom.window.close();
+    }
+});
 test("corrupt and unreadable stored PIN fail closed instead of selecting default1234", () => {
     for (const value of [
         "",

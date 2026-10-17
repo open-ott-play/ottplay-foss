@@ -331,6 +331,11 @@ function defineSetting(
                   prepare: function (value: string) {
                       return (window as any).__ottPinSecurity.prepare(value);
                   },
+                  protectRollback: function (value: string | null) {
+                      return (window as any).__ottPinSecurity.protectRollback(
+                          value
+                      );
+                  },
               }
             : {}),
         effects: effects,

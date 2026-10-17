@@ -8,6 +8,7 @@ export interface SettingDefinition {
     invalidValue?: any;
     key: string;
     prepare?(value: any): any;
+    protectRollback?(value: string | null): string | null;
     scope: "application" | "provider";
     validate(value: any): boolean;
 }
@@ -24,6 +25,7 @@ export interface SettingsPorts {
 export interface SettingsWrite {
     after: string | null;
     before: string | null;
+    rollback?: string | null;
     storage: SettingStorage;
 }
 
@@ -44,6 +46,9 @@ export function commitSettingsWrites(
         return {
             after: write.after,
             before: write.before,
+            rollback: Object.prototype.hasOwnProperty.call(write, "rollback")
+                ? write.rollback
+                : write.before,
             storage: write.storage,
         };
     });
@@ -87,8 +92,8 @@ export function commitSettingsWrites(
                 var actual = write.storage.read();
                 if (!rollbackAllowed()) break;
                 if (actual !== write.after) continue;
-                if (write.before === null) write.storage.remove();
-                else write.storage.write(write.before);
+                if (write.rollback === null) write.storage.remove();
+                else write.storage.write(write.rollback!);
             } catch (_rollback) {
                 /* Preserve the original failure; a caller must not publish state. */
             }
@@ -247,11 +252,18 @@ export function createSettingsStore(
                     changes.forEach(function (id) {
                         var entry = definitions[id],
                             storage = ports.storage(entry);
+                        var before = storage.read();
+                        // Preserve the old value without re-persisting a legacy
+                        // plaintext credential if a later write fails.
+                        var rollback = entry.protectRollback
+                            ? entry.protectRollback(before)
+                            : before;
                         writes.push({
                             after: entry.encode
                                 ? entry.encode(pending[id])
                                 : String(pending[id]),
-                            before: storage.read(),
+                            before: before,
+                            rollback: rollback,
                             storage: storage,
                         });
                     });

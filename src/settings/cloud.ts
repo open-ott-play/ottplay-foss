@@ -239,6 +239,10 @@ var cloudSettingsTransfer = (function () {
                             ? imported[key]
                             : null,
                         before: previous,
+                        rollback:
+                            key === "parentPIN" && previous !== null
+                                ? w.__ottPinSecurity.protectRollback(previous)
+                                : previous,
                         storage: {
                             read: function () {
                                 return read.call(w, key);

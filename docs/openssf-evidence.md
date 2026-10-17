@@ -43,12 +43,19 @@ claim that all 13 findings are resolved.
 is no designated backup or tested recovery mechanism within a week; continuity
 and bus-factor criteria remain unmet.
 
-The reviewed browser qualification PR 782 still has a failing Linux WebKit
-scenario, while its other platform checks and review have passed. Neither that
-partial result nor a successful RC fuzz campaign establishes complete release
-acceptance. Existing platform/release fixes remain separate from this evidence
-update. Full outbound/native/platform cryptography, third-party provider scope,
-source coverage and dependency closure remain to be demonstrated.
+The earlier Linux WebKit qualification failure was resolved for
+[v1.1.55](https://github.com/open-ott-play/ottplay-foss/releases/tag/v1.1.55).
+The [verified RC run](https://github.com/open-ott-play/ottplay-foss/actions/runs/38992291032)
+used source `a9eab3594b1be4bb713aa4da2610fa43029f008b`: 35 browser targets
+completed 166 scenarios, and 10 ARM64 Linux playback cases passed on Ubuntu
+24.04/26.04 DEB/AppImage and Fedora 44 RPM with independent visual review.
+The [stable run](https://github.com/open-ott-play/ottplay-foss/actions/runs/38998136329)
+promoted the same 32 verified RC assets without rebuilding them.
+
+These receipts qualify that release and those environments; they do not assert
+physical-device, Windows/macOS native, or later PIN-migration acceptance. Full
+outbound/native/platform cryptography, third-party provider scope, source
+coverage and dependency closure remain separate open assessments.
 
 Record each completed analysis with its source SHA, commands/tool versions,
 result and material limitations. Add the repository's actual badge only after

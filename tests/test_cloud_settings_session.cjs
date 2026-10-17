@@ -542,4 +542,43 @@ check(
         assert.equal(f.restarts(), 1);
     }
 );
+check("cloud rollback restores the old PIN without writing plaintext", (f) => {
+    f.stored.clear();
+    f.stored.set("parentPIN", "2468");
+    f.stored.set("ordinary", "before");
+    const written = [];
+    f.hook((key, value) => {
+        if (key === "parentPIN") written.push(value);
+    });
+    f.reject("ordinary");
+    f.deliver(f.payload({ ordinary: "after", parentPIN: "9876" }));
+    assert.equal(f.restarts(), 0);
+    assert.equal(written.length, 2);
+    assert(written.every((value) => value.startsWith("pbkdf2-sha256$")));
+    const [, , salt, digest] = f.stored.get("parentPIN").split("$");
+    assert.equal(
+        digest,
+        require("node:crypto")
+            .pbkdf2Sync("2468", Buffer.from(salt, "hex"), 600000, 32, "sha256")
+            .toString("hex")
+    );
+});
+check(
+    "valid backup can replace a damaged PIN; failed restore retains its lock",
+    (f) => {
+        const protectedPin =
+            "pbkdf2-sha256$600000$" + "a".repeat(32) + "$" + "b".repeat(64);
+        f.stored.clear();
+        f.stored.set("parentPIN", "!damaged-pin");
+        f.stored.set("ordinary", "before");
+        f.reject("ordinary");
+        f.deliver(f.payload({ ordinary: "after", parentPIN: protectedPin }));
+        assert.equal(f.stored.get("parentPIN"), "!damaged-pin");
+        assert.equal(f.restarts(), 0);
+        f.reject(null);
+        f.deliver(f.payload({ ordinary: "after", parentPIN: protectedPin }));
+        assert.equal(f.stored.get("parentPIN"), protectedPin);
+        assert.equal(f.restarts(), 1);
+    }
+);
 console.log("Cloud settings session: " + passed + " scenarios passed");

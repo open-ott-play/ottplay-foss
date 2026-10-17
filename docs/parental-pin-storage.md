@@ -26,10 +26,14 @@ upgrade can leave the old plaintext value on disk until a later successful unloc
 or settings save. This limitation must not be represented as completed migration.
 
 Settings saves and old JSON/XML/local-backup imports convert plaintext values
-before writing. Exports also convert legacy PINs and preserve existing versioned
+before writing. A transaction that changes a legacy PIN also prepares a protected
+rollback value before its first write, so later failure cannot write plaintext
+back to storage. Exports convert legacy PINs and preserve existing versioned
 records exactly. The existing synchronous backup APIs use the same full work
 factor synchronously for a legacy value: conversion pauses the interface until
-derivation completes and can take substantially longer on an older TV. Cancel
+derivation completes and can take substantially longer on an older TV. Preparing
+legacy rollback bytes currently has the same synchronous cost, including during
+a background upgrade. Cancel
 before confirmation to avoid changing settings. Invalid records and
 unreadable PIN storage lock protection instead of silently selecting `1234`.
 Recovery requires restoring a valid private backup or explicitly resetting the

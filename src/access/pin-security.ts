@@ -196,6 +196,9 @@ function createPinSecurity(host: any) {
         create: create,
         legacy: legacy,
         prepare: prepare,
+        protectRollback: function (value: string | null): string | null {
+            return legacy(value) ? prepare(value!) : value;
+        },
         protectSnapshot: protectSnapshot,
         record: record,
         valid: function (value: any): boolean {

@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
+const { webcrypto } = require("node:crypto");
 const { assertQrSvg } = require("./helpers/qr-svg.cjs");
 const { assertLzWire } = require("./test_lzstring.cjs");
 const assertMenuRuntime = require("./helpers/menu-runtime.cjs");
@@ -407,6 +408,9 @@ function fixture(profile) {
         close() {},
         confirm: () => false,
         console: { debug() {}, error() {}, info() {}, log() {}, warn() {} },
+        // Exercise the real ES5 crypto path with a platform CSPRNG; absence
+        // and failure are covered by the dedicated PIN rejection tests.
+        crypto: { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) },
         deviceUUID: "smoke-device",
         document,
         focus() {},
