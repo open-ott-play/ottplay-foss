@@ -216,9 +216,12 @@ const { gzipSync } = require("node:zlib");
 // or compatibility checks are removed; the seven provider assets are unchanged.
 // Verified startup protection replaces post-unlock legacy migration. Its guarded
 // load/publication and complete-copy failover add 480 raw bytes on Node 26.8.2
-// (863111 versus 862631). Allocate
-// 500 raw bytes, retaining the existing gzip and release-version headroom.
-const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268298 });
+// (863111 versus 862631). Allocate 500 raw bytes. Recompressing the same
+// source with CI Node 22.23.3 (zlib 1.3.1) measures 268281 / 268346 gzip
+// web/native, versus 268113 / 268182 before startup protection. Allocate
+// 192 gzip bytes for the measured maximum +168, retaining the prior source
+// identity and release-version headroom. Node 26 uses a different zlib build.
+const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -329,8 +332,9 @@ const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268298 });
 // Count the same 64-byte source-metadata allowance once in the full payload.
 // All seven providers remain included and contribute 43074 gzip bytes.
 // Count the same 900 / 256 engine-diagnostic allowance once; providers do not change.
-// Count the same 12600/4250 PIN migration allowance once in the total.
-const TOTAL_BUDGET = Object.freeze({ bytes: 979900, gzipBytes: 311348 });
+// Count the same 12600/4250 PIN migration allowance once in the total, plus
+// the measured startup protection cost of 500 raw / 192 gzip bytes.
+const TOTAL_BUDGET = Object.freeze({ bytes: 979900, gzipBytes: 311540 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
