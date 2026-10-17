@@ -430,6 +430,17 @@ function fixture(code) {
     host.primaryIndex = 2;
     host.curList = host.cats[host.catsArray[0]];
     showChannels();
+    const settlePin = require("./helpers/protected-pin-fixture.cjs")(
+        host,
+        "2468",
+        () => {
+            for (const [id, timer] of [...timers]) {
+                if (timer.delay !== 0) continue;
+                timers.delete(id);
+                timer.fn();
+            }
+        }
+    );
     events.length = 0;
     return {
         allTimers,
@@ -462,9 +473,10 @@ function fixture(code) {
             host.searchChannel();
             return host.setEdit;
         },
-        pin(value = "2468") {
+        async pin(value = "2468") {
+            // The fourth digit submits automatically; a later Enter is a new UI action.
             for (const digit of value) this.key("N" + digit);
-            this.key("ENTER");
+            await settlePin();
         },
         port,
         replaceSource(account = "account-b", repaint = true) {
@@ -508,14 +520,17 @@ const profiles =
         : [["source", sourceRuntime()]];
 let passed = 0;
 const failures = [];
+const cases = [];
 for (const [profile, code] of profiles) {
     function check(name, run) {
-        try {
-            run(fixture(code));
-            passed++;
-        } catch (error) {
-            failures.push(profile + ": " + name + "\n" + error.stack);
-        }
+        cases.push(async () => {
+            try {
+                await run(fixture(code));
+                passed++;
+            } catch (error) {
+                failures.push(profile + ": " + name + "\n" + error.stack);
+            }
+        });
     }
     for (const [locale, title, query] of [
         ["_eng", "Café", "Cafe\u0301"],
@@ -526,7 +541,7 @@ for (const [profile, code] of profiles) {
     ]) {
         check(
             "actual search preserves Unicode equivalence for " + locale,
-            (f) => {
+            async (f) => {
                 f.host.__ottInterfaceLanguage = locale;
                 f.host.channels[11].channel_name = title;
                 f.search(query);
@@ -546,7 +561,7 @@ for (const [profile, code] of profiles) {
                     shortcut +
                     " Search survives navigation and " +
                     outcome,
-                (f) => {
+                async (f) => {
                     f.host.showActionsDialog();
                     const dialog = f.port.owner("dialog");
                     assert(dialog.foreground());
@@ -594,7 +609,7 @@ for (const [profile, code] of profiles) {
     for (const finish of ["ENTER", "RETURN"]) {
         check(
             "Actions category picker remains usable through " + finish,
-            (f) => {
+            async (f) => {
                 f.host.showActionsDialog();
                 const dialog = f.port.owner("dialog");
                 f.key("ENTER");
@@ -617,26 +632,29 @@ for (const [profile, code] of profiles) {
             }
         );
     }
-    check("Search retires only the current replacement Actions dialog", (f) => {
-        f.host.showActionsDialog();
-        const previous = f.port.owner("dialog");
-        f.host.showActionsDialog();
-        const current = f.port.owner("dialog");
-        assert.notEqual(current, previous);
-        assert.equal(previous.active(), false);
-        f.key("YELLOW");
-        assert.equal(current.active(), false);
-        const editor = f.port.owner("editor");
-        assert(editor.foreground());
-        f.key("DOWN");
-        assert(editor.foreground());
-        f.port.finishEditor(false, () => {});
-        assert(f.port.listOwner().foreground());
-        assert.equal(f.take("write").length, 0);
-    });
+    check(
+        "Search retires only the current replacement Actions dialog",
+        async (f) => {
+            f.host.showActionsDialog();
+            const previous = f.port.owner("dialog");
+            f.host.showActionsDialog();
+            const current = f.port.owner("dialog");
+            assert.notEqual(current, previous);
+            assert.equal(previous.active(), false);
+            f.key("YELLOW");
+            assert.equal(current.active(), false);
+            const editor = f.port.owner("editor");
+            assert(editor.foreground());
+            f.key("DOWN");
+            assert(editor.foreground());
+            f.port.finishEditor(false, () => {});
+            assert(f.port.listOwner().foreground());
+            assert.equal(f.take("write").length, 0);
+        }
+    );
     check(
         "search publishes native input once and uses real list owner",
-        (f) => {
+        async (f) => {
             const save = f.open();
             f.submit("Sport", "News One");
             save();
@@ -647,7 +665,7 @@ for (const [profile, code] of profiles) {
             assert(f.port.listOwner().foreground());
         }
     );
-    check("cancelled editor callback cannot write or publish", (f) => {
+    check("cancelled editor callback cannot write or publish", async (f) => {
         const save = f.open();
         f.host.editvar = "News";
         f.port.finishEditor(false, () => {});
@@ -656,13 +674,16 @@ for (const [profile, code] of profiles) {
         assert.equal(f.take("write").length, 0);
         assert.equal(f.take("render").length, 0);
     });
-    check("empty submission has no persistence or search effects", (f) => {
-        f.open();
-        f.submit("");
-        f.flush();
-        assert.equal(f.take("write").length, 0);
-        assert.equal(f.take("render").length, 0);
-    });
+    check(
+        "empty submission has no persistence or search effects",
+        async (f) => {
+            f.open();
+            f.submit("");
+            f.flush();
+            assert.equal(f.take("write").length, 0);
+            assert.equal(f.take("render").length, 0);
+        }
+    );
     for (const event of [
         "source",
         "source ABA",
@@ -670,7 +691,7 @@ for (const [profile, code] of profiles) {
         "new editor",
         "catalog replacement",
     ]) {
-        check(event + " retires old editor submission", (f) => {
+        check(event + " retires old editor submission", async (f) => {
             const save = f.open();
             f.host.editvar = "News One";
             if (event === "source" || event === "source ABA") f.replaceSource();
@@ -692,7 +713,7 @@ for (const [profile, code] of profiles) {
             assert.equal(f.take("render").length, before);
         });
     }
-    check("newest search stays current after obsolete callbacks", (f) => {
+    check("newest search stays current after obsolete callbacks", async (f) => {
         const first = f.open();
         f.host.editvar = "News Two";
         f.open();
@@ -702,15 +723,18 @@ for (const [profile, code] of profiles) {
         assert.deepEqual(Array.from(f.host.listArray), [11]);
         assert.equal(f.take("write").length, 1);
     });
-    check("cancelling repeated search leaves previous results usable", (f) => {
-        f.search();
-        f.key("YELLOW");
-        f.port.finishEditor(false, () => {});
-        f.key("ENTER");
-        f.flush();
-        assert.deepEqual(f.take("play"), [["play", 11]]);
-    });
-    check("member reorder during delay plays stable item", (f) => {
+    check(
+        "cancelling repeated search leaves previous results usable",
+        async (f) => {
+            f.search();
+            f.key("YELLOW");
+            f.port.finishEditor(false, () => {});
+            f.key("ENTER");
+            f.flush();
+            assert.deepEqual(f.take("play"), [["play", 11]]);
+        }
+    );
+    check("member reorder during delay plays stable item", async (f) => {
         f.search();
         f.key("ENTER");
         assert(
@@ -724,14 +748,17 @@ for (const [profile, code] of profiles) {
         f.flush();
         assert.deepEqual(f.take("play"), [["play", 11]]);
     });
-    check("group reorder and rename during delay preserve target", (f) => {
-        f.search();
-        f.key("ENTER");
-        assert(f.change("move", "provider:news", 1));
-        assert(f.change("rename", "provider:news", "Changed"));
-        f.flush();
-        assert.deepEqual(f.take("play"), [["play", 11]]);
-    });
+    check(
+        "group reorder and rename during delay preserve target",
+        async (f) => {
+            f.search();
+            f.key("ENTER");
+            assert(f.change("move", "provider:news", 1));
+            assert(f.change("rename", "provider:news", "Changed"));
+            f.flush();
+            assert.deepEqual(f.take("play"), [["play", 11]]);
+        }
+    );
     for (const event of [
         "source",
         "source ABA",
@@ -743,7 +770,7 @@ for (const [profile, code] of profiles) {
     ]) {
         check(
             event + " cancels delayed playback even if queued timer fires",
-            (f) => {
+            async (f) => {
                 f.search();
                 f.key("ENTER");
                 const timer = f.allTimers.find((item) => item.delay === 10);
@@ -771,7 +798,7 @@ for (const [profile, code] of profiles) {
             }
         );
     }
-    check("removed visible item never selects the neighbour", (f) => {
+    check("removed visible item never selects the neighbour", async (f) => {
         f.search();
         f.change("member", {
             action: "remove",
@@ -784,7 +811,7 @@ for (const [profile, code] of profiles) {
     });
     check(
         "same numeric ID with different canonical item is not accepted",
-        (f) => {
+        async (f) => {
             f.search();
             f.host.channels[11] = {
                 ...f.host.channels[11],
@@ -797,7 +824,7 @@ for (const [profile, code] of profiles) {
     );
     check(
         "preview2 previews once, then confirms same item after reorder",
-        (f) => {
+        async (f) => {
             f.host.sPreview = 2;
             f.search();
             f.key("ENTER");
@@ -817,7 +844,7 @@ for (const [profile, code] of profiles) {
     );
     check(
         "PIN acceptance re-resolves channel after member and group reorder",
-        (f) => {
+        async (f) => {
             f.change("lock", 11, true);
             f.search();
             f.key("ENTER");
@@ -830,12 +857,47 @@ for (const [profile, code] of profiles) {
                 groupId: "provider:news",
             });
             f.change("move", "provider:news", 1);
-            f.pin();
+            await f.pin();
             f.flush();
             assert.deepEqual(f.take("play"), [["play", 11]]);
         }
     );
-    check("cancelled PIN never plays", (f) => {
+    check(
+        "extra OK during verification starts a new request without granting the old one",
+        async (f) => {
+            f.change("lock", 11, true);
+            f.search();
+            f.key("ENTER");
+            const first = f.pin();
+            assert.deepEqual(
+                f.take("play"),
+                [],
+                "fourth digit cannot grant before async verification"
+            );
+            f.key("ENTER");
+            await first;
+            f.flush();
+            assert.equal(f.host.parentAccess, false);
+            assert.deepEqual(
+                f.take("play"),
+                [],
+                "replacement request cannot inherit pending verification"
+            );
+            assert(
+                f.port.owner("dialog"),
+                "new protected action has its own visible PIN prompt"
+            );
+            await new Promise((resolve) => setImmediate(resolve));
+            await f.pin();
+            f.flush();
+            assert.deepEqual(
+                f.take("play"),
+                [["play", 11]],
+                "replacement prompt authorizes its own request once"
+            );
+        }
+    );
+    check("cancelled PIN never plays", async (f) => {
         f.change("lock", 11, true);
         f.search();
         f.key("ENTER");
@@ -843,17 +905,17 @@ for (const [profile, code] of profiles) {
         f.flush();
         assert.deepEqual(f.take("play-request"), []);
     });
-    check("changed PIN invalidates pending acceptance", (f) => {
+    check("changed PIN invalidates pending acceptance", async (f) => {
         f.change("lock", 11, true);
         f.search();
         f.key("ENTER");
         f.host.parentPIN = "1357";
-        f.pin("2468");
+        await f.pin("2468");
         f.flush();
         assert.deepEqual(f.take("play-request"), []);
     });
     for (const event of ["source ABA", "catalog", "item", "close"]) {
-        check(event + " retires an outstanding PIN result", (f) => {
+        check(event + " retires an outstanding PIN result", async (f) => {
             f.change("lock", 11, true);
             f.search();
             f.key("ENTER");
@@ -880,17 +942,17 @@ for (const [profile, code] of profiles) {
             assert.deepEqual(f.take("play-request"), []);
         });
     }
-    check("lock added during playback delay is enforced", (f) => {
+    check("lock added during playback delay is enforced", async (f) => {
         f.search();
         f.key("ENTER");
         f.change("lock", 11, true);
         f.flush();
         assert.deepEqual(f.take("play"), []);
         assert(f.port.owner("dialog"));
-        f.pin();
+        await f.pin();
         assert.deepEqual(f.take("play"), [["play", 11]]);
     });
-    check("preview confirmation rechecks changed parental lock", (f) => {
+    check("preview confirmation rechecks changed parental lock", async (f) => {
         f.host.sPreview = 2;
         f.search();
         f.key("ENTER");
@@ -903,7 +965,7 @@ for (const [profile, code] of profiles) {
     for (const boundary of ["read", "write"]) {
         check(
             "storage " + boundary + " reentry cannot overwrite replacement",
-            (f) => {
+            async (f) => {
                 if (boundary === "read") f.hooks.read = () => f.replaceSource();
                 f.open();
                 if (boundary === "write")
@@ -925,7 +987,7 @@ for (const [profile, code] of profiles) {
     }
     check(
         "input getter reentry cannot persist old query into new source",
-        (f) => {
+        async (f) => {
             f.open();
             Object.defineProperty(f.element("editvar"), "value", {
                 configurable: true,
@@ -939,7 +1001,7 @@ for (const [profile, code] of profiles) {
             assert.deepEqual(f.take("write"), []);
         }
     );
-    check("close cleanup replacement prevents delayed play", (f) => {
+    check("close cleanup replacement prevents delayed play", async (f) => {
         f.search();
         f.port.listOwner().own(() => f.showChannels("provider:sport"));
         f.key("ENTER");
@@ -950,7 +1012,7 @@ for (const [profile, code] of profiles) {
             "provider:sport"
         );
     });
-    check("preview effect replacement retains new screen", (f) => {
+    check("preview effect replacement retains new screen", async (f) => {
         f.host.sPreview = 2;
         f.search();
         f.hooks.preview = () => f.replaceSource();
@@ -959,19 +1021,22 @@ for (const [profile, code] of profiles) {
         assert(f.port.listOwner().foreground());
         assert.deepEqual(f.take("current"), []);
     });
-    check("selection effect replacement stops old information updates", (f) => {
-        f.host.sPreview = 1;
-        f.search();
-        f.hooks.current = () => f.replaceSource();
-        f.key("ENTER");
-        f.flush();
-        assert.deepEqual(f.take("update"), []);
-        assert.deepEqual(f.take("info"), []);
-        assert(f.port.listOwner().foreground());
-    });
+    check(
+        "selection effect replacement stops old information updates",
+        async (f) => {
+            f.host.sPreview = 1;
+            f.search();
+            f.hooks.current = () => f.replaceSource();
+            f.key("ENTER");
+            f.flush();
+            assert.deepEqual(f.take("update"), []);
+            assert.deepEqual(f.take("info"), []);
+            assert(f.port.listOwner().foreground());
+        }
+    );
     check(
         "return follows captured group and previous channel after reorder",
-        (f) => {
+        async (f) => {
             f.host.listChannel = 1;
             f.search();
             f.change("member", {
@@ -985,14 +1050,19 @@ for (const [profile, code] of profiles) {
             assert.deepEqual(f.take("back"), [["back", "provider:news", 0]]);
         }
     );
-    check("information and favorite key actions keep selected result", (f) => {
-        f.host.sFavorites = 1;
-        f.search();
-        f.key("INFO");
-        f.key("GREEN");
-        assert.deepEqual(f.take("programme"), [["programme", "Programme one"]]);
-        assert.deepEqual(f.take("favorite"), [["favorite", 11]]);
-    });
+    check(
+        "information and favorite key actions keep selected result",
+        async (f) => {
+            f.host.sFavorites = 1;
+            f.search();
+            f.key("INFO");
+            f.key("GREEN");
+            assert.deepEqual(f.take("programme"), [
+                ["programme", "Programme one"],
+            ]);
+            assert.deepEqual(f.take("favorite"), [["favorite", 11]]);
+        }
+    );
     for (const boundary of ["saveListPanelState", "renderButtonHint"]) {
         for (const replacement of ["source", "screen"]) {
             check(
@@ -1000,7 +1070,7 @@ for (const [profile, code] of profiles) {
                     boundary +
                     " respects replacement " +
                     replacement,
-                (f) => {
+                async (f) => {
                     f.search();
                     const original = f.host[boundary];
                     const snapshot = () =>
@@ -1033,7 +1103,7 @@ for (const [profile, code] of profiles) {
             "cancelled repeated search then picker " +
                 key +
                 " preserves selected result",
-            (f) => {
+            async (f) => {
                 f.search("News");
                 f.host.selIndex = 1;
                 f.key("YELLOW");
@@ -1051,7 +1121,7 @@ for (const [profile, code] of profiles) {
         );
         check(
             "real category picker " + key + " restores usable search results",
-            (f) => {
+            async (f) => {
                 f.search();
                 f.key("GREEN");
                 assert(
@@ -1068,39 +1138,47 @@ for (const [profile, code] of profiles) {
             }
         );
         for (const event of ["account", "account ABA", "screen", "close"]) {
-            check("retired picker " + key + " is inert after " + event, (f) => {
-                f.search();
-                f.key("GREEN");
-                f.host.selIndex = f.host.listArray.indexOf("Sport");
-                const handler = f.host.listKeyHandlerFn;
-                assert.equal(typeof handler, "function");
-                if (event === "account" || event === "account ABA")
-                    f.replaceSource();
-                if (event === "account ABA") f.replaceSource("account-a");
-                if (event === "screen") f.showChannels("provider:sport");
-                if (event === "close") f.host.closeList();
-                const before = JSON.stringify({
-                    categories: f.host.cats,
-                    events: f.events,
-                    rows: f.host.listArray,
-                });
-                handler(f.host.keys[key]);
-                f.flush();
-                assert.equal(
-                    JSON.stringify({
+            check(
+                "retired picker " + key + " is inert after " + event,
+                async (f) => {
+                    f.search();
+                    f.key("GREEN");
+                    f.host.selIndex = f.host.listArray.indexOf("Sport");
+                    const handler = f.host.listKeyHandlerFn;
+                    assert.equal(typeof handler, "function");
+                    if (event === "account" || event === "account ABA")
+                        f.replaceSource();
+                    if (event === "account ABA") f.replaceSource("account-a");
+                    if (event === "screen") f.showChannels("provider:sport");
+                    if (event === "close") f.host.closeList();
+                    const before = JSON.stringify({
                         categories: f.host.cats,
                         events: f.events,
                         rows: f.host.listArray,
-                    }),
-                    before
-                );
-            });
+                    });
+                    handler(f.host.keys[key]);
+                    f.flush();
+                    assert.equal(
+                        JSON.stringify({
+                            categories: f.host.cats,
+                            events: f.events,
+                            rows: f.host.listArray,
+                        }),
+                        before
+                    );
+                }
+            );
         }
     }
-    console.log("Channel search profile checked: " + profile);
 }
-for (const failure of failures) console.error("FAIL " + failure);
-console.log(
-    "Channel search: " + passed + " passed; " + failures.length + " failed"
-);
-if (failures.length) process.exitCode = 1;
+(async () => {
+    for (const run of cases) await run();
+    for (const failure of failures) console.error("FAIL " + failure);
+    console.log(
+        "Channel search: " + passed + " passed; " + failures.length + " failed"
+    );
+    if (failures.length) process.exitCode = 1;
+})().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

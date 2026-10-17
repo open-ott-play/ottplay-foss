@@ -63,7 +63,10 @@ function fixture() {
         { runScripts: "outside-only" }
     );
     const w = dom.window;
-    const data = new Map();
+    const initialPin = require("./helpers/protected-pin-fixture.cjs").record(
+        "1234"
+    );
+    const data = new Map([["parentPIN", initialPin]]);
     const effects = [];
     const shifts = [];
     let reject = null;
@@ -148,6 +151,7 @@ function fixture() {
         close: () => dom.window.close(),
         data,
         effects,
+        initialPin,
         press(code, extra) {
             w.keyHandler(
                 Object.assign(
@@ -296,7 +300,7 @@ test("Latin, Turkish and paged Vietnamese input stay with the settings owner", (
     assert.equal(f.w.editvar, "aİ" + f.w._keyboardCharacter(pageCharacter));
     assert.equal(f.w.document.getElementById("ee").getAttribute("dir"), "auto");
     assert.equal(editor.active(), true);
-    assert.equal(f.data.size, 0);
+    assert.deepEqual([...f.data], [["parentPIN", f.initialPin]]);
     assert.equal(f.w.__ottScreens.current().kind, "editor");
 });
 test("replacement, History Back and a stale save leave the new draft intact", (f) => {
@@ -343,7 +347,7 @@ test("replacement, History Back and a stale save leave the new draft intact", (f
     assert.equal(oldEditor.active(), false);
     assert.equal(replacement.active(), true);
     assert.equal(replacementSaves, 0);
-    assert.equal(f.data.size, 0);
+    assert.deepEqual([...f.data], [["parentPIN", f.initialPin]]);
     assert.equal(f.effects.length, 0);
     const beforeReturns = returns.length;
     f.w.dispatchEvent(new f.w.PopStateEvent("popstate", { state: null }));

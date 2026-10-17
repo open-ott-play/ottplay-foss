@@ -215,7 +215,8 @@ const { gzipSync } = require("node:zlib");
 // once, preserving existing Node22 and release-identity reserves. No payload
 // or compatibility checks are removed; the seven provider assets are unchanged.
 // Verified startup protection replaces post-unlock legacy migration. Its guarded
-// load/publication adds 468 raw bytes on Node 26.8.2 (863099 versus 862631). Allocate
+// load/publication and complete-copy failover add 480 raw bytes on Node 26.8.2
+// (863111 versus 862631). Allocate
 // 500 raw bytes, retaining the existing gzip and release-version headroom.
 const BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268298 });
 // Count every optional family as well, so moving code out of the entry bundle
