@@ -237,21 +237,40 @@ fun main() {
     server.soTimeout=150
     try { server.accept(); error("Play attempted plaintext network before rejection") } catch (_: SocketTimeoutException) {}
     BuildConfig.FLAVOR = "full"
+    var forwardedHeaders: Map<String, String>? = null
     val worker = Thread {
-        repeat(2) {
+        repeat(2) { requestIndex ->
             server.soTimeout=4000
             server.accept().use { socket ->
                 val input=socket.getInputStream().bufferedReader()
-                while (input.readLine().orEmpty().isNotEmpty()) {}
+                input.readLine() // request line
+                val captured = linkedMapOf<String, String>()
+                while (true) {
+                    val line = input.readLine().orEmpty()
+                    if (line.isEmpty()) break
+                    val colon = line.indexOf(':')
+                    if (colon > 0) captured[line.substring(0, colon).lowercase(java.util.Locale.ROOT)] = line.substring(colon + 1).trim()
+                }
+                if (requestIndex == 0) forwardedHeaders = captured
                 socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{}".toByteArray())
             }
         }
     }.apply { start() }
-    val fullHttp = PluginCall(JSObject().put("url",endpoint)); generic.httpRequest(fullHttp); wait(fullHttp)
+    val headerValues = JSObject().put("X-String", "fixture").put("X-Empty", "")
+        .put("X-Number", 7).put("X-Boolean", true).put("X-Json-Null", org.json.JSONObject.NULL)
+        .put("X-Object", JSObject().put("nested", "value"))
+        .put("X-Removed", "old").put("X-Removed", null)
+    val fullHttp = PluginCall(JSObject().put("url",endpoint).put("headers", headerValues)); generic.httpRequest(fullHttp); wait(fullHttp)
     check(fullHttp.error == null && fullHttp.result.getInt("status")==200)
     val fullM3u = PluginCall(JSObject().put("url",endpoint)); playlist.proxyFetch(fullM3u); wait(fullM3u)
     check(fullM3u.error == null && fullM3u.result.getString("body")=="{}")
     worker.join(5000); server.close(); check(!worker.isAlive)
+    val forwarded = checkNotNull(forwardedHeaders)
+    check(forwarded["x-string"] == "fixture" && forwarded["x-empty"] == "")
+    check(forwarded["x-number"] == "7" && forwarded["x-boolean"] == "true")
+    check(forwarded["x-json-null"] == "null" && forwarded["x-object"] == "{\"nested\":\"value\"}")
+    check("x-removed" !in forwarded && "x-absent" !in forwarded)
+    println("PASS actual HTTP header coercion: strings, empty, number, boolean, JSON null/object, removed and absent keys")
     val failure = PluginCall(JSObject().put("url",endpoint)); generic.httpRequest(failure); wait(failure)
     check(failure.error != null && !failure.error!!.contains("token") && !failure.error!!.contains("127.0.0.1"))
     println("PASS actual Android HTTP plugins: SWOP refuses plaintext/credentials/query/normalized paths in both editions; Play rejects HTTP before network; Full native HTTP/M3U retain requests; errors omit provider URLs")

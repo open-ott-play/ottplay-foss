@@ -83,6 +83,7 @@ function checkDependencies({ manifest, npmLock, cargoLock, workspace }) {
         ["wry", "0.55.1"],
         ["tao", "0.35.3"],
         ["glib", "0.18.5"],
+        ["block", "0.1.6"],
     ]) {
         const resolved = lockedCrate(cargoLock, name);
         assert.equal(

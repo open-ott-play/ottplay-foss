@@ -158,6 +158,8 @@ jobs:
           node scripts/native-runtime.cjs audit
           "$RUNNER_TEMP/ottplay-ios/Build/Products/Debug-iphonesimulator/App.app/public"
           --platform capacitor --source ios/App/App/public
+      - name: Verify legacy Blocks FFI backport with the native runtime
+        run: node scripts/check-block-backport.cjs --runtime
       - name: Test compiled Tauri HTTP bridge
         run: cargo test --locked -p ottplay-tauri
       - name: Exercise screenshot permissions through real native IPC

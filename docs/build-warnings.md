@@ -24,6 +24,21 @@ in [native-parity.yml](../.github/workflows/native-parity.yml) to validate these
 paths. These checks do not substitute for playback or volume acceptance on a
 physical iOS device.
 
+## Legacy Blocks FFI repair
+
+The macOS dependency `block` 0.1.6 declared an external class symbol using an
+uninhabited empty enum. This is a soundness diagnostic, not a harmless SDK
+notice. The workspace now uses the upstream inhabited opaque `repr(C)` type
+fix while preserving the crate version, public API, pointer layout and native
+symbol. Source hashes and the exact patch are retained under `vendor/`.
+
+`node scripts/check-block-backport.cjs --runtime` first confirms that the
+original source fails the `uninhabited_static` diagnostic. It then compiles the
+patched source and exercises actual Clang/Apple Blocks invocation, native
+copy/release, captured values and exactly-once destruction. The existing macOS
+CI job requires this regression in addition to the complete Tauri tests.
+See [backport provenance](../vendor/README.md).
+
 ## Tool and environment diagnostics
 
 The following messages were observed in the
@@ -54,3 +69,26 @@ diagnostic. Missing artifact warnings must be checked against the job outcome;
 an interrupted test step does not establish that a successful test run omitted
 its required report. This record does not assert that every platform warning or
 every OpenSSF criterion is resolved.
+
+## Android and analysis diagnostics
+
+The Stalker HTTP bridge no longer passes Java `null` as the non-null fallback
+argument to `optString`. It reads the optional value and preserves the same
+string conversion. Real loopback HTTP regression cases cover strings, empty
+values, numbers, booleans, JSON null/objects and missing or removed keys.
+Response-body validation uses `checkNotNull`, retaining the nullable OkHttp 4
+API 22 contract without redundant-Elvis diagnostics under OkHttp 5. The same
+five real JVM test groups pass with both dependency profiles.
+
+The later [qualification run](https://github.com/open-ott-play/ottplay-foss/actions/runs/39002303603)
+also exposed D8 8.13.6 Kotlin-metadata rewrite errors with Kotlin 2.4.20.
+The build completing does not establish metadata compatibility. The pinned
+Android toolchain must be qualified against the
+[official Kotlin/D8/R8 compatibility requirements](https://developer.android.com/build/kotlin-support)
+before this diagnostic can be considered resolved.
+
+Rust CodeQL reports unavailable dependency manifests and extraction gaps in
+the `native_hls.rs` and `lib.rs` macro expansions. Successful analysis of other
+code does not establish coverage of those omitted paths. These coverage gaps
+and the Android metadata diagnostic remain open; they are not suppressed by
+the native Blocks repair or by a passing JavaScript test suite.

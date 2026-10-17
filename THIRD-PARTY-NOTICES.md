@@ -65,6 +65,12 @@ This is not a complete native dependency inventory. Preserve the notices of
 resolved transitive dependencies when updating packages. An MIT notice for
 Capacitor core does not replace the App plugin's different copyright statement.
 
+The macOS media-control backend uses **block 0.1.6** under MIT, with the narrow
+upstream opaque-type soundness fix documented in [the vendored source inventory](vendor/README.md).
+Its [complete copyright and permission notice](vendor/block-0.1.6-LICENSE.txt)
+is preserved in the source and copied to `licenses/native/block-0.1.6-LICENSE.txt`
+in Tauri packages. The original license remains in force for the backport.
+
 ## Linux GStreamer playback compatibility plugin
 
 Linux DEB and AppImage builds include an app-private modified

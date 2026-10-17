@@ -68,7 +68,8 @@ class StalkerPortalPlugin : Plugin() {
                     .post(bytes.toRequestBody("application/json".toMediaType())).build()
                 swopClient.newCall(request).execute().use { response ->
                     require(response.code !in 300..399)
-                    val responseBody = response.body ?: error("missing response")
+                    // API 22 uses OkHttp 4 (nullable body); current devices use OkHttp 5.
+                    val responseBody = checkNotNull(response.body) { "missing response" }
                     require(responseBody.contentLength() <= 65536)
                     val output = ByteArrayOutputStream()
                     responseBody.byteStream().use { stream ->
@@ -207,7 +208,7 @@ class StalkerPortalPlugin : Plugin() {
                     try {
                         response.use {
                             require(response.code !in 300..399)
-                            val responseBody = response.body ?: throw IOException("Empty HTTP response")
+                            val responseBody = checkNotNull(response.body) { "Empty HTTP response" }
                             require(responseBody.contentLength() <= limit)
                             val output = ByteArrayOutputStream()
                             responseBody.byteStream().use { stream ->
@@ -268,7 +269,7 @@ class StalkerPortalPlugin : Plugin() {
                     while (keys.hasNext()) {
                         val key = keys.next()
                         if (isForbiddenHeader(key)) continue
-                        val value = headersObj.optString(key, null) ?: continue
+                        val value = headersObj.opt(key)?.toString() ?: continue
                         if (key.equals("content-type", ignoreCase = true)) {
                             contentTypeFromHeaders = true
                         }

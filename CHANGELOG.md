@@ -16,6 +16,10 @@
   can remain after storage failure, but the current player stays locked until
   migration succeeds; no device performance claim is made.
 
+- Backport the upstream inhabited opaque class type for `block` 0.1.6, fixing
+  the macOS dependency's uninhabited foreign-static declaration without a
+  breaking Blocks API migration. Native copy/call/drop regressions are required.
+
 ## [1.1.55] - Development line
 
 ### Changes

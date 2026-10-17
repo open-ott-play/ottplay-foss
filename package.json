@@ -24,7 +24,7 @@
     "check:glib-backport": "node scripts/check-glib-backport.cjs",
     "check:media": "node scripts/media-runtime.cjs check",
     "check:size": "node scripts/classic-size.cjs",
-    "check:tauri-dependencies": "node scripts/check-tauri-dependencies.cjs && node scripts/check-macos-drag-backport.cjs && node scripts/check-glib-backport.cjs",
+    "check:tauri-dependencies": "node scripts/check-tauri-dependencies.cjs && node scripts/check-macos-drag-backport.cjs && node scripts/check-glib-backport.cjs && node scripts/check-block-backport.cjs",
     "check:test-inventory": "node scripts/check-test-inventory.cjs",
     "dev": "vite",
     "dev:native": "npm run build && vite --mode native",

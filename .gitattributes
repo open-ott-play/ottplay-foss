@@ -17,6 +17,10 @@
 /vendor/tao-0.35.3/** -text
 /vendor/wry-0.55.1.provenance.json -text
 /vendor/tao-0.35.3.provenance.json -text
+/vendor/block-0.1.6/** -text
+/vendor/block-0.1.6.provenance.json -text
+/vendor/block-0.1.6-LICENSE.txt -text
+/vendor/block-0.1.6-opaque-class.patch -text whitespace=-blank-at-eol
 # Unified diff context deliberately contains single-space empty lines.
 /vendor/*-macos-drag-pasteboard.patch -text whitespace=-blank-at-eol
 # Preserve this upstream document verbatim, including its trailing space.

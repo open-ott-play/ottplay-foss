@@ -40,10 +40,26 @@ module.exports = function protectedPinFixture(host, pin, flush, native = true) {
     };
     return async function settle() {
         const started = Date.now();
+        // The real 600,000-iteration fallback runs inside a contextified VM.
+        // Its 600 chunks take about 13.5s on local Node 22 and exceeded 30s on
+        // a shared Linux runner. This is a bounded functional check, not a
+        // device-latency requirement; keep native WebCrypto's existing bound.
+        const deadline = native ? 30000 : 120000;
+        let rounds = 0;
         while (pending && !pending.settled && pending.current()) {
             flush();
-            if (Date.now() - started > 30000)
-                throw Error("Real PIN verification timed out");
+            rounds++;
+            const elapsed = Date.now() - started;
+            if (elapsed > deadline)
+                throw Error(
+                    "Real PIN verification timed out after " +
+                        elapsed +
+                        "ms (" +
+                        (native ? "WebCrypto" : "ES5 fallback") +
+                        "; flush rounds=" +
+                        rounds +
+                        ")"
+                );
             await new Promise((resolve) => setImmediate(resolve));
         }
     };

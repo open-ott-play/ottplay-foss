@@ -608,6 +608,22 @@ async function main() {
             await smoke(folder, platform);
         }
         const tauri = path.join(temp, "tauri");
+        const blockNotice = path.join(
+            tauri,
+            "licenses/native/block-0.1.6-LICENSE.txt"
+        );
+        const blockNoticeBytes = fs.readFileSync(blockNotice);
+        fs.rmSync(blockNotice);
+        assert.throws(() => auditNativeRuntime(tauri), /block-0\.1\.6-LICENSE/);
+        fs.writeFileSync(blockNotice, "incomplete notice");
+        assert.throws(
+            () => auditNativeRuntime(tauri),
+            /copyright and permission/
+        );
+        fs.writeFileSync(blockNotice, blockNoticeBytes);
+        pass(
+            "Tauri staging preserves the complete Blocks runtime license notice"
+        );
         const core = path.join(tauri, "js/ottplay-core.js");
         const coreBytes = fs.readFileSync(core);
         fs.rmSync(core);

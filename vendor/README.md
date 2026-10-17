@@ -111,3 +111,33 @@ pinned distribution; build staging verifies and packages it after polyfills.
 Canonical source: [ottplay-core/shared-core](https://github.com/open-ott-play/ottplay-core/tree/main/shared-core).
 Rebuild these artifacts from the canonical source repository. The pinned
 consumer artifacts are self-contained and carry source and artifact hashes.
+
+## Legacy Apple Blocks FFI backport
+
+The macOS dependency graph still uses [block 0.1.6](https://crates.io/crates/block/0.1.6).
+The workspace selects the complete published four-file crate plus the sole
+source change recorded in `block-0.1.6-opaque-class.patch`. The original archive
+hash matches the prior Cargo.lock registry checksum; per-file original and
+patched hashes are in `block-0.1.6.provenance.json`. The [MIT permission and
+Steven Sheldon copyright notice](block-0.1.6-LICENSE.txt) is retained separately
+from the original four-file crate, with its immutable source and hash in that
+manifest.
+
+The patch transfers the inhabited opaque class representation from
+[upstream b6438c7](https://github.com/madsmtm/objc2/commit/b6438c733a7a9bfe75e60b62126d1933137f42e4),
+retaining the private `Class` name. Only pointers to that class are used. The
+crate's public API, version and native `_NSConcreteStackBlock` symbol stay the
+same. This removes a real `uninhabited_static` soundness diagnostic; no known
+runtime crash or assigned vulnerability identifier is claimed.
+
+```sh
+node scripts/check-block-backport.cjs
+# macOS with Rust and Xcode command-line tools:
+node scripts/check-block-backport.cjs --runtime
+```
+
+The runtime check links the actual Apple Blocks runtime and a Clang `-fblocks`
+caller. It verifies captured values, 128 copy/release cycles and exactly-once
+capture destruction, while the original source must fail the relevant compiler
+lint. Remove the override only after a compatible maintained dependency path
+includes the equivalent fix and the native regression still passes.
