@@ -24,6 +24,13 @@ interface MediaBackendSample {
 }
 type MediaDiagnosticEngine = "hls.js" | "shaka" | "html5" | null;
 interface MediaEngineLease {
+    // Counters belong to this engine attachment, not the saved player mode.
+    diagnosticAttempt?(): {
+        engineStarts: number;
+        fatalErrors: number;
+        nativeFallbacks: number;
+        streamRetries: number;
+    } | null;
     // Read-only identity of the attached engine, never a saved preference.
     diagnosticEngine?(): MediaDiagnosticEngine;
     dispose(replaced?: boolean): void;
@@ -55,6 +62,8 @@ interface MediaBackendPorts {
 function createMediaBackend(ports: MediaBackendPorts) {
     var sequence = 0;
     var lanes: { [lane: string]: any } = {};
+    // One bounded tombstone per video lane survives synchronous EOF disposal.
+    var lastAttempts: { [lane: string]: any } = {};
     var subscribers: Array<(event: any) => void> = [];
     var seeks: {
         [lane: string]: {
@@ -150,6 +159,39 @@ function createMediaBackend(ports: MediaBackendPorts) {
             if (!previewEvent && lane === "main" && context && domainCurrent())
                 ports.emit(context, type, position, duration);
         }
+        function retainAttempt(reason: string): void {
+            if (
+                !current() ||
+                (lane !== "main" && lane !== "pip") ||
+                !engine ||
+                !engine.diagnosticAttempt
+            )
+                return;
+            try {
+                var value = engine.diagnosticAttempt();
+                if (!value) return;
+                var previous = lastAttempts[lane];
+                if (
+                    previous &&
+                    previous.handleId === handle.id &&
+                    previous.attachment === attachment &&
+                    previous.reason === "ended"
+                )
+                    return;
+                lastAttempts[lane] = {
+                    attachment: attachment,
+                    engineStarts: value.engineStarts,
+                    fatalErrors: value.fatalErrors,
+                    generation: context ? context.generation : null,
+                    handleId: handle.id,
+                    nativeFallbacks: value.nativeFallbacks,
+                    reason: reason,
+                    streamRetries: value.streamRetries,
+                };
+            } catch (_) {
+                // Observation failure must never prevent transport teardown.
+            }
+        }
         function observe(type?: string) {
             if (!current() || suspended || phase === "stopped") return;
             if (!engine) {
@@ -213,6 +255,8 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 command("pause");
             } else if (type === "ended") {
                 if (!handle.active()) return;
+                // emit may synchronously stop and dispose the underlying engine.
+                retainAttempt("ended");
                 phase = "stopped";
                 command("ended");
             }
@@ -354,6 +398,25 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     (lane !== "main" || !context || domainCurrent())
                 );
             },
+            diagnosticAttempt: function () {
+                if (
+                    !handle.active() ||
+                    suspended ||
+                    phase === "stopped" ||
+                    !engine ||
+                    !engine.diagnosticAttempt
+                )
+                    return null;
+                var value = engine.diagnosticAttempt();
+                if (!value) return null;
+                return {
+                    attachment: attachment,
+                    engineStarts: value.engineStarts,
+                    fatalErrors: value.fatalErrors,
+                    nativeFallbacks: value.nativeFallbacks,
+                    streamRetries: value.streamRetries,
+                };
+            },
             diagnosticEngine: function (): MediaDiagnosticEngine {
                 return handle.active() &&
                     !suspended &&
@@ -365,6 +428,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             },
             dispose: function (replaced?: boolean) {
                 if (!alive) return;
+                retainAttempt("disposed");
                 alive = false;
                 attachment++;
                 cancelResolve();
@@ -533,6 +597,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     return;
                 observe();
                 if (!handle.active()) return;
+                retainAttempt("suspended");
                 suspended = true;
                 attachment++;
                 cancelResolve();
@@ -574,6 +639,10 @@ function createMediaBackend(ports: MediaBackendPorts) {
             Object.keys(retired).forEach(function (lane) {
                 retired[lane].dispose();
             });
+        },
+        lastAttempt: function (lane?: string) {
+            var value = lastAttempts[lane || "main"];
+            return value ? Object.assign({}, value) : null;
         },
         open: open,
         preview: function (url: string, closed?: (reason: string) => void) {

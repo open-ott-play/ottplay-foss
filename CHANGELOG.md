@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.1.56] - Development line
+
 ### Changes
 
 - Bound playback recovery and backup attempts across engine replacement, preserve
@@ -16,6 +18,21 @@
   access and is fetched only when explicitly started.
 
 - Avoid V8 array-species deoptimization during legacy-UA PIN startup without reducing PBKDF2 work; retain exact upstream provenance and differential cryptographic tests.
+- Preserve playback startup, retry and fallback counters through natural EOF for
+  explicit version 3 diagnostics. Existing version 1/2 diagnostics and controller
+  capability responses keep their exact schemas.
+
+### Upgrade
+
+- Close other player tabs before upgrading and keep settings backups private.
+  PIN records migrate when settings load; do not reopen migrated settings in an
+  older player, which may replace an unsupported record with its old default PIN.
+- Use a compatible updated controller for same-source live/archive handoff.
+  Existing controller commands remain compatible; the new diagnostic counters
+  require an explicit version 3 client and are not requested by older controllers.
+- The hosted picture-and-sound diagnostic is optional and uses the network only
+  when started. Playback checks on synthetic fixtures do not qualify every
+  physical TV, decoder, live provider or DRM service.
 
 ### Security
 

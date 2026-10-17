@@ -114,7 +114,10 @@ export function installRemoteInspection(w: any): any {
     ): void | (() => void) {
         var params = item.params || {};
         var version =
-            params.section === "debug" && params.version === 2 ? 2 : 1;
+            params.section === "debug" &&
+            (params.version === 2 || params.version === 3)
+                ? params.version
+                : 1;
         function finish(status: string, value: any): void {
             var result: any = {
                 runtime: runtime(),

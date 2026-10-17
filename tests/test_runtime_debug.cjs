@@ -178,8 +178,101 @@ async function test(name, run) {
         const legacy = plain(await f.api.snapshot());
         assert.equal(legacy.version, 1);
         assert(!Object.hasOwn(legacy.media[0], "engine"));
-        for (const version of [0, 3, "2", null, true])
+        for (const version of [0, 4, "2", "3", null, true])
             await assert.rejects(f.api.snapshot(version), /invalid_request/);
+        f.close();
+    });
+    await test("attempt counters are bounded, complete, copied and absent from debug v1/v2", async () => {
+        const f = fixture();
+        f.enable();
+        const counters = {
+            attachment: 1,
+            engineStarts: 3,
+            fatalErrors: 2,
+            nativeFallbacks: 1,
+            streamRetries: 1,
+        };
+        let value = { ...counters, url: secret };
+        let reads = 0;
+        f.w.__ottCoreBackendPeek = () => ({
+            current: () => ({
+                diagnosticAttempt() {
+                    reads++;
+                    return value;
+                },
+                diagnosticEngine: () => "hls.js",
+                id: 9,
+            }),
+        });
+        const before = reads;
+        for (const version of [1, 2]) {
+            const legacy = plain(await f.api.snapshot(version));
+            assert.equal(
+                reads,
+                before,
+                "legacy versions never call the new producer"
+            );
+            assert.deepEqual(
+                Object.keys(legacy.media[0]).sort(),
+                (version === 1
+                    ? ["generation", "handleId", "lane", "metrics"]
+                    : ["engine", "generation", "handleId", "lane", "metrics"]
+                ).sort()
+            );
+        }
+        const modern = plain(await f.api.snapshot(3));
+        assert.deepEqual(modern.media[0].attempt, counters);
+        assert(!JSON.stringify(modern).includes(secret));
+        for (const bad of [
+            -1,
+            0.5,
+            Infinity,
+            NaN,
+            9007199254740992,
+            "1",
+            null,
+        ]) {
+            value = { ...counters, streamRetries: bad };
+            assert.equal((await f.api.snapshot(3)).media[0].attempt, null);
+        }
+        value = { ...counters };
+        delete value.nativeFallbacks;
+        assert.equal((await f.api.snapshot(3)).media[0].attempt, null);
+        value = null;
+        assert.equal((await f.api.snapshot(3)).media[0].attempt, null);
+        f.close();
+    });
+    await test("retired attempt projection survives missing handle and sanitizes history", async () => {
+        const f = fixture();
+        f.enable();
+        const final = {
+            attachment: 1,
+            engineStarts: 3,
+            fatalErrors: 2,
+            generation: 7,
+            handleId: 9,
+            nativeFallbacks: 1,
+            reason: "ended",
+            streamRetries: 1,
+        };
+        let value = { ...final, url: secret };
+        f.w.__ottCoreBackendPeek = () => ({
+            current: () => null,
+            lastAttempt: () => value,
+        });
+        const data = plain(await f.api.snapshot(3));
+        assert.equal(data.media[0].attempt, null);
+        assert.deepEqual(data.media[0].lastAttempt, final);
+        assert(!JSON.stringify(data).includes(secret));
+        for (const patch of [
+            { reason: secret },
+            { handleId: -1 },
+            { generation: "7" },
+            { streamRetries: Infinity },
+        ]) {
+            value = { ...final, ...patch };
+            assert.equal((await f.api.snapshot(3)).media[0].lastAttempt, null);
+        }
         f.close();
     });
     await test("read-only media counters retain identity and omit unavailable numeric values", async () => {

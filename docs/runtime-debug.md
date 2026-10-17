@@ -57,6 +57,29 @@ and device engines without this diagnostic capability report `null`. No source
 URL is read or exported. Attachment does not prove successful decoding; correlate
 it with the same generation/handle's media counters and actual captured frames.
 
+Explicitly requested version 3 preserves the version 2 engine identity and adds
+nullable `attempt` and `lastAttempt` observations per lane.
+`attempt` contains `attachment`, `engineStarts`, `streamRetries`,
+`nativeFallbacks`, and `fatalErrors`. These are nonnegative bounded integers.
+`engineStarts` counts core engine startup attempts, including Auto restarts and
+HLS-to-native fallback. `streamRetries` counts executed outer stream retries;
+`nativeFallbacks` counts HLS-to-native fallbacks. `fatalErrors` counts fatal HLS
+callbacks specifically; it is not a universal browser or native error count.
+Counters persist across internal retries. A new engine attachment resets them,
+so compare `attachment` as well as generation and handle ID between samples.
+An unavailable or unsupported producer reports `null`, never fabricated zeros.
+
+`lastAttempt` preserves one most recently retired attachment per lane, with the
+same counters plus `handleId`, `generation` (nullable), and `reason` (`ended`,
+`disposed`, or `suspended`). Natural EOF captures this record before synchronous
+playback disposal can erase the engine; later disposal preserves its `ended`
+reason. The next retirement replaces it. Acceptance of a complete playback must
+match this final record to the observed handle, generation and attachment and
+check its counters, including when no live handle remains. A mismatched or
+missing record cannot prove that playback finished without retry or fallback.
+Neither observation exports source URLs, arbitrary strings or credentials.
+Versions 1 and 2 neither read these producers nor add these fields.
+
 ## Native applications
 
 The on-demand `RuntimeDiagnostics.snapshot()` Capacitor plugin and Tauri's
@@ -119,13 +142,18 @@ not enable log capture or expose arbitrary files/processes.
 A separate `debug: {version: 1}` capability leaves the original `inspect` section
 list unchanged, so older CLI versions continue using their original commands.
 The new read uses `inspect`, section `debug`, bound to the exact page runtime.
-Ordinary `debug` requests retain the exact version 1 schema, without an `engine`
-field. Use `ott PLAYER debug --engine` with an updated controller and CLI to
+Ordinary `debug` requests retain the exact version 1 schema, without `engine`, `attempt` or `lastAttempt`
+fields. Use `ott PLAYER debug --engine` with an updated controller and CLI to
 request version 2 explicitly. The player advertises `debug_versions: [1, 2]`
 separately; both the response envelope and snapshot use the requested version.
 Version 2 adds the required nullable engine enum to each media lane. An older
 controller reports unsupported, and the CLI does not downgrade that request or
-treat missing engine evidence as success. Ordinary report bundles retain version 1.
+treat missing engine evidence as success. Version 3 is an explicit opt-in for
+clients that understand attempt history; version 2 retains its exact schema for
+existing controllers. The legacy `debug_versions` list intentionally stays
+`[1, 2]`: current controllers validate that exact value. Native acceptance can
+request version 3 directly through the existing `inspect` debug section; older
+controllers do not proxy it. Ordinary report bundles retain version 1.
 Old controllers/players report unsupported; restarting old binaries cannot add
 the feature. A native `unsupported`, `unavailable`, `timeout` or `invalid` result
 must not be interpreted as a measured zero or as permission to repeat repairs.

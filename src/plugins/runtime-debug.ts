@@ -25,6 +25,27 @@ function finite(value: any, max = DEBUG_MAX): boolean {
         value <= max
     );
 }
+function playbackAttempt(value: any): any {
+    var keys = [
+        "attachment",
+        "engineStarts",
+        "fatalErrors",
+        "nativeFallbacks",
+        "streamRetries",
+    ];
+    if (
+        !value ||
+        !keys.every(function (key) {
+            return finite(value[key]) && Math.floor(value[key]) === value[key];
+        })
+    )
+        return null;
+    var result: any = {};
+    keys.forEach(function (key) {
+        result[key] = value[key];
+    });
+    return result;
+}
 function versionToken(value: any): string | null {
     var match =
         typeof value === "string" && value.match(/^[A-Za-z0-9_.+\-]{1,64}$/);
@@ -294,6 +315,8 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
             var generation: number | null = null;
             var handleId: number | null = null;
             var engine: string | null = null;
+            var attempt: any = null;
+            var lastAttempt: any = null;
             try {
                 var playback =
                     w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
@@ -323,6 +346,30 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                     attached === "html5"
                 )
                     engine = attached;
+                if (version === 3 && handle && handle.diagnosticAttempt) {
+                    attempt = playbackAttempt(handle.diagnosticAttempt());
+                }
+                if (version === 3 && backend && backend.lastAttempt) {
+                    var retired = backend.lastAttempt(lane);
+                    var counters = playbackAttempt(retired);
+                    if (
+                        counters &&
+                        finite(retired.handleId) &&
+                        Math.floor(retired.handleId) === retired.handleId &&
+                        (retired.generation === null ||
+                            (finite(retired.generation) &&
+                                Math.floor(retired.generation) ===
+                                    retired.generation)) &&
+                        ["ended", "disposed", "suspended"].indexOf(
+                            retired.reason
+                        ) >= 0
+                    ) {
+                        lastAttempt = counters;
+                        lastAttempt.handleId = retired.handleId;
+                        lastAttempt.generation = retired.generation;
+                        lastAttempt.reason = retired.reason;
+                    }
+                }
             } catch (_) {
                 /* A missing owner does not prevent element observations. */
             }
@@ -381,7 +428,11 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                 lane: lane,
                 metrics: metrics,
             };
-            if (version === 2) observation.engine = engine;
+            if (version >= 2) observation.engine = engine;
+            if (version === 3) {
+                observation.attempt = attempt;
+                observation.lastAttempt = lastAttempt;
+            }
             result.push(observation);
         });
         return result;
@@ -459,7 +510,7 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
         };
     }
     function snapshot(version = 1): Promise<any> {
-        if (version !== 1 && version !== 2)
+        if (version !== 1 && version !== 2 && version !== 3)
             return Promise.reject(new Error("invalid_request"));
         if (!sync() || suspended)
             return Promise.reject(new Error("unavailable"));

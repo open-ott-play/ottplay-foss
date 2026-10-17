@@ -42,6 +42,7 @@ function fixture() {
             };
             leases.push(lease);
             return {
+                diagnosticAttempt: () => lease.attempt || null,
                 diagnosticEngine: () => lease.engine || null,
                 dispose() {
                     lease.disposed++;
@@ -1332,6 +1333,53 @@ test("engine diagnostics follow ownership, suspension and natural stop without s
         "retired source has no authority"
     );
     f.backend.dispose();
+});
+
+test("EOF retains one final attempt before synchronous engine disposal", () => {
+    const f = fixture();
+    const first = f.backend.open({ url: "first" });
+    f.leases[0].attempt = {
+        engineStarts: 3,
+        fatalErrors: 2,
+        nativeFallbacks: 1,
+        streamRetries: 1,
+    };
+    const attachment = first.diagnosticAttempt().attachment;
+    f.playing();
+    const emit = f.ports.emit;
+    f.ports.emit = (...args) => {
+        emit(...args);
+        if (args[1] === "ended") f.backend.dispose();
+    };
+    f.leases[0].event("ended");
+    assert.equal(f.backend.current(), null);
+    assert.equal(first.diagnosticAttempt(), null);
+    const final = f.backend.lastAttempt();
+    assert.equal(final.handleId, first.id);
+    assert.equal(final.generation, 1);
+    assert.equal(final.attachment, attachment);
+    assert.equal(final.reason, "ended");
+    assert.equal(final.engineStarts, 3);
+    assert.equal(final.nativeFallbacks, 1);
+    assert.equal(final.streamRetries, 1);
+    final.streamRetries = 0;
+    assert.equal(f.backend.lastAttempt().streamRetries, 1);
+    const second = f.backend.open({ url: "second" });
+    f.leases[1].attempt = {
+        ...f.leases[0].attempt,
+        engineStarts: 1,
+        streamRetries: 0,
+    };
+    f.playing(1);
+    f.leases[1].event("ended");
+    assert.equal(f.backend.lastAttempt().handleId, second.id);
+    f.leases[0].event("ended");
+    assert.equal(
+        f.backend.lastAttempt().handleId,
+        second.id,
+        "stale EOF cannot overwrite new history"
+    );
+    assert.equal(f.backend.lastAttempt("pip"), null);
 });
 
 console.log(

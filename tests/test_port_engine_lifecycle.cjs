@@ -1783,6 +1783,114 @@ test("engine diagnostics identify attached ownership, not a mode preference", ()
     assert.equal(w.__ottCoreBackend().current().diagnosticEngine(), "html5");
     w.stbStop();
 });
+test("attempt diagnostics retain fallback and retry history on the same handle", () => {
+    const { w, players } = fixture();
+    const timers = new Map();
+    let serial = 0;
+    w.setTimeout = (callback) => {
+        timers.set(++serial, callback);
+        return serial;
+    };
+    w.clearTimeout = (id) => timers.delete(id);
+    w.playerMode = 1;
+    w.stbPlay("https://source.invalid/live.m3u8");
+    const handle = w.__ottCoreBackend().current();
+    const initial = JSON.parse(JSON.stringify(handle.diagnosticAttempt()));
+    assert.equal(initial.engineStarts, 1);
+    assert.equal(initial.streamRetries, 0);
+    assert.equal(initial.nativeFallbacks, 0);
+    assert.equal(initial.fatalErrors, 0);
+    const fatal = { fatal: true, type: "media" };
+    players[0].events.error(null, fatal);
+    players[0].events.error(null, fatal);
+    assert.equal(handle.diagnosticEngine(), "html5");
+    w.video.error = { code: 2 };
+    for (const callback of w.video.listeners.error) callback();
+    for (let i = 0; i < 2; i++) {
+        assert.equal(timers.size, 1);
+        const [id, callback] = timers.entries().next().value;
+        timers.delete(id);
+        callback();
+    }
+    assert.equal(w.__ottCoreBackend().current(), handle);
+    assert.equal(handle.diagnosticEngine(), "hls.js");
+    const after = JSON.parse(JSON.stringify(handle.diagnosticAttempt()));
+    assert.deepEqual(after, {
+        attachment: initial.attachment,
+        engineStarts: 3,
+        fatalErrors: 2,
+        nativeFallbacks: 1,
+        streamRetries: 1,
+    });
+    after.engineStarts = 0;
+    assert.equal(
+        handle.diagnosticAttempt().engineStarts,
+        3,
+        "snapshot is a copy"
+    );
+    handle.suspend();
+    assert.equal(handle.diagnosticAttempt(), null);
+    handle.resume();
+    const resumed = handle.diagnosticAttempt();
+    assert(
+        resumed.attachment > initial.attachment,
+        "same handle reattachment is visible"
+    );
+    assert.equal(resumed.engineStarts, 1);
+    players[0].events.error(null, fatal);
+    assert.equal(
+        handle.diagnosticAttempt().fatalErrors,
+        0,
+        "stale callback cannot affect replacement"
+    );
+    w.stbPlay("https://source.invalid/next.m3u8");
+    assert.equal(handle.diagnosticAttempt(), null);
+    assert.equal(
+        w.__ottCoreBackend().current().diagnosticAttempt().engineStarts,
+        1
+    );
+    w.stbStop();
+});
+test("fallback and return between samples remain visible after EOF", () => {
+    const { w, players } = fixture();
+    const timers = new Map();
+    let serial = 0;
+    w.setTimeout = (callback) => {
+        timers.set(++serial, callback);
+        return serial;
+    };
+    w.clearTimeout = (id) => timers.delete(id);
+    w.playerMode = 1;
+    w.stbPlay("https://source.invalid/live.m3u8");
+    const backend = w.__ottCoreBackend(),
+        handle = backend.current();
+    const initial = handle.diagnosticAttempt();
+    // No diagnostic read is made between the first frame and final EOF.
+    for (let i = 0; i < 2; i++)
+        players[0].events.error(null, { fatal: true, type: "media" });
+    w.video.error = { code: 2 };
+    for (const callback of w.video.listeners.error) callback();
+    for (let i = 0; i < 2; i++) {
+        const [id, callback] = timers.entries().next().value;
+        timers.delete(id);
+        callback();
+    }
+    w.video.error = null;
+    w.video.readyState = 4;
+    w.video.paused = false;
+    for (const callback of w.video.listeners.playing) callback();
+    for (const callback of w.video.listeners.ended) callback();
+    const final = backend.lastAttempt();
+    assert.equal(final.handleId, handle.id);
+    assert.equal(final.attachment, initial.attachment);
+    assert.equal(final.reason, "ended");
+    assert.equal(final.engineStarts, 3);
+    assert.equal(final.streamRetries, 1);
+    assert.equal(final.nativeFallbacks, 1);
+    assert.equal(final.fatalErrors, 2);
+    w.stbStop();
+    assert.equal(backend.lastAttempt().reason, "ended");
+});
 test("unattached and failed engines never borrow a prior native identity", async () => {
     const { w, players, shakas } = fixture();
     w.stbPlay("first.mp4");

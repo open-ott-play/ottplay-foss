@@ -982,6 +982,23 @@ interface CoreStreamAttempt {
     resume(): boolean;
 }
 var coreStreamAttempt: CoreStreamAttempt | null = null;
+// Retained for the whole engine lease: an internal retry must not erase history.
+var coreAttemptCounters = {
+    engineStarts: 0,
+    fatalErrors: 0,
+    nativeFallbacks: 0,
+    streamRetries: 0,
+};
+function countCoreAttempt(
+    session: number,
+    key: keyof typeof coreAttemptCounters
+): void {
+    if (session === _playSession)
+        coreAttemptCounters[key] = Math.min(
+            9007199254740991,
+            coreAttemptCounters[key] + 1
+        );
+}
 function cancelCoreStreamAttempt(): void {
     if (coreStreamAttempt) coreStreamAttempt.dispose();
     coreStreamAttempt = null;
@@ -1036,6 +1053,7 @@ function createCoreStreamAttempt(
                     return;
                 pending = false;
                 attempts++;
+                countCoreAttempt(session, "streamRetries");
                 report("retrying");
                 restart(endpoints[endpoint], resumePosition);
             },
@@ -1145,6 +1163,12 @@ function startCoreEngine(
     if (video)
         video.loop = !transient && (window as any).ottplayDemoActive === true;
     _playSession++;
+    coreAttemptCounters = {
+        engineStarts: 0,
+        fatalErrors: 0,
+        nativeFallbacks: 0,
+        streamRetries: 0,
+    };
     _coreAutoHlsUsed = false;
     cancelCoreSourcePreparation();
     cancelCoreAutoPlayback();
@@ -1314,6 +1338,7 @@ function startCorePlayback(
     nativeFile = false,
     forceMse = false
 ): void {
+    countCoreAttempt(session, "engineStarts");
     cancelCoreNativeHls();
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
@@ -1411,6 +1436,7 @@ function startCorePlayback(
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
             if (session !== _playSession || hlsInstance !== playbackHls) return;
             if (data.fatal) {
+                countCoreAttempt(session, "fatalErrors");
                 console.error("[HLS] fatal error:", data.type, data.details);
                 var httpStatus = data.response && Number(data.response.code);
                 if (httpStatus === 401 || httpStatus === 403) {
@@ -1519,6 +1545,8 @@ function startCorePlayback(
                                 "[HLS] MEDIA_ERROR twice, fallback native HTML5"
                             );
                             _corePlaybackMode = 0;
+                            countCoreAttempt(session, "nativeFallbacks");
+                            countCoreAttempt(session, "engineStarts");
                             if (streamPolicy)
                                 streamPolicy.begin("html5", false);
                             video!.src = url;
@@ -3213,6 +3241,16 @@ function openCoreEngineLease(
         });
     }
     var lease: MediaEngineLease = {
+        diagnosticAttempt: function () {
+            return active() && !pip
+                ? {
+                      engineStarts: coreAttemptCounters.engineStarts,
+                      fatalErrors: coreAttemptCounters.fatalErrors,
+                      nativeFallbacks: coreAttemptCounters.nativeFallbacks,
+                      streamRetries: coreAttemptCounters.streamRetries,
+                  }
+                : null;
+        },
         diagnosticEngine: function () {
             if (!active() || !media) return null;
             var hls = pip ? hlsPipInstance : hlsInstance;
