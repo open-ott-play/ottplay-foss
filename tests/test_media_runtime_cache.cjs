@@ -324,7 +324,7 @@ version_plan.sync_versions(root, policy, plan)
             "PASS media cache: changed source bytes still reject the committed runtime"
         );
     } finally {
-        fs.rmSync(temporary, { recursive: true, force: true });
+        fs.rmSync(temporary, { force: true, recursive: true });
     }
 }
 
