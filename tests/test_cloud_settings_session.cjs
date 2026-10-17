@@ -531,4 +531,15 @@ check("successful restore notice uses the selected dictionary", (f) => {
     );
     assert.equal(f.restarts(), 1);
 });
+check(
+    "cloud restore without PIN retains the current protected credential",
+    (f) => {
+        const pin =
+            "pbkdf2-sha256$600000$" + "a".repeat(32) + "$" + "b".repeat(64);
+        f.stored.set("parentPIN", pin);
+        f.deliver();
+        assert.equal(f.stored.get("parentPIN"), pin);
+        assert.equal(f.restarts(), 1);
+    }
+);
 console.log("Cloud settings session: " + passed + " scenarios passed");

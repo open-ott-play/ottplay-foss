@@ -5,7 +5,9 @@ export interface SettingDefinition {
     effects: string[];
     encode?(value: any): string;
     id: string;
+    invalidValue?: any;
     key: string;
+    prepare?(value: any): any;
     scope: "application" | "provider";
     validate(value: any): boolean;
 }
@@ -158,9 +160,18 @@ export function createSettingsStore(
                               : NaN
                           : raw;
                     if (entry.validate(parsed)) value = parsed;
+                    else if (
+                        Object.prototype.hasOwnProperty.call(
+                            entry,
+                            "invalidValue"
+                        )
+                    )
+                        value = copy(entry.invalidValue);
                 }
             } catch (_error) {
-                /* Unreadable storage cannot inject an invalid preference. */
+                if (Object.prototype.hasOwnProperty.call(entry, "invalidValue"))
+                    value = copy(entry.invalidValue);
+                /* Security settings fail closed instead of restoring a default credential. */
             }
             loaded[entry.id] = copy(value);
         });
@@ -293,6 +304,13 @@ export function createSettingsStore(
                 var entry = definitions[id];
                 if (!active() || !entry || !entry.validate(value)) {
                     message = "Invalid setting: " + id;
+                    code = "invalid_setting";
+                    return false;
+                }
+                try {
+                    if (entry.prepare) value = entry.prepare(value);
+                } catch (_error) {
+                    message = "Could not protect setting: " + id;
                     code = "invalid_setting";
                     return false;
                 }

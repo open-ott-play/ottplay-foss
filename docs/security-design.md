@@ -71,3 +71,8 @@ Complete language-by-language cryptography and dynamic memory-safety review, ass
 
 Report new issues through [SECURITY.md](../SECURITY.md). An OpenSSF assessment
 records evidence and applicability; it is not a guarantee that a system is safe.
+
+## Parental PIN persistence
+
+See [versioned PIN storage and migration](parental-pin-storage.md) for the actual
+KDF, legacy transition, backup compatibility and downgrade limitations.

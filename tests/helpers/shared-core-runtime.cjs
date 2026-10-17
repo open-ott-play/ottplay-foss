@@ -36,6 +36,7 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
     if (options.vendorOnly) return core;
     const privateRuntime = require("./private-runtime.cjs");
     if (!context.window) context.window = context;
+    require("./pin-runtime.cjs")(context);
     for (const file of [
         "src/settings/library-backup.ts",
         "src/provider/source-identity.ts",

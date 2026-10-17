@@ -118,9 +118,12 @@ function readStorageCookies(): Record<string, string> {
             } catch (_malformedCookie) {
                 // A corrupt marker is incomplete, not an absent override list.
                 if (isStorageMetadataKey(key)) result[key] = "";
+                if (key === "parentPIN") result[key] = "!locked-invalid-pin";
             }
         }
-    } catch (_cookieAccess) {}
+    } catch (_cookieAccess) {
+        result.parentPIN = "!locked-invalid-pin";
+    }
     return result;
 }
 
@@ -169,10 +172,12 @@ function readStorageFallback(cookies: Record<string, string>): string[] | null {
 
 function createLocalStorageAdapter(): StorageAdapter {
     let nativeStorage: Storage | null = null;
+    let pinReadUncertain = false;
     try {
         nativeStorage = window.localStorage;
         if (nativeStorage) nativeStorage.getItem("");
     } catch (_error) {
+        pinReadUncertain = true;
         nativeStorage = null;
     }
     let cookieWrites = true;
@@ -272,6 +277,7 @@ function createLocalStorageAdapter(): StorageAdapter {
     // Keep readable settings when a privacy restriction or quota makes the
     // native adapter unusable. Cookie writes also have an in-memory fallback.
     const failover = function (): void {
+        pinReadUncertain = true;
         const previous = nativeStorage;
         nativeStorage = null;
         if (!previous || incomplete) return;
@@ -288,7 +294,12 @@ function createLocalStorageAdapter(): StorageAdapter {
     };
     const get = function (key: string): string | null {
         if (isStorageMetadataKey(key)) return null;
-        if (overrides[key] || incomplete) return fallback.get(key);
+        if (overrides[key] || incomplete) {
+            const value = fallback.get(key);
+            return key === "parentPIN" && value === null && incomplete
+                ? "!locked-invalid-pin"
+                : value;
+        }
         if (nativeStorage) {
             try {
                 return nativeStorage.getItem(key);
@@ -296,7 +307,10 @@ function createLocalStorageAdapter(): StorageAdapter {
                 failover();
             }
         }
-        return fallback.get(key);
+        const value = fallback.get(key);
+        return key === "parentPIN" && value === null && pinReadUncertain
+            ? "!locked-invalid-pin"
+            : value;
     };
     const set = function (key: string, value: string): void {
         if (isStorageMetadataKey(key)) return;
@@ -347,6 +361,7 @@ function createLocalStorageAdapter(): StorageAdapter {
                     delete overrides[key];
                 });
                 incomplete = false;
+                pinReadUncertain = false;
                 persistOverrides();
                 return;
             } catch (_error) {
@@ -769,6 +784,10 @@ export function portableSettingsSnapshot(
         if (key === "__ottKioskV1" || isStorageMetadataKey(key))
             delete result[key];
     });
+    if (Object.prototype.hasOwnProperty.call(result, "parentPIN"))
+        result.parentPIN = (window as any).__ottPinSecurity.prepare(
+            result.parentPIN
+        );
     return result;
 }
 
@@ -779,6 +798,11 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
     var imported = portableSettingsSnapshot(items);
     var w = window as any;
     var current = w.stbGetAllItems();
+    if (
+        !Object.prototype.hasOwnProperty.call(imported, "parentPIN") &&
+        Object.prototype.hasOwnProperty.call(current, "parentPIN")
+    )
+        imported.parentPIN = w.__ottPinSecurity.prepare(current.parentPIN);
     var retained = w.OttPlayCore.classicInstallationState(current, true);
     var address = retained.commandServerAddress;
     var token = retained.commandServerToken;
@@ -795,7 +819,18 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
     w.stbSetItem("commandServerEnabled", "0");
     if (w.__ottClassicPlayback) w.__ottClassicPlayback.suspendPersistence();
     if (w.__ottClassicGuide) w.__ottClassicGuide.invalidate(false);
-    w.stbClearAllItems();
+    if (Object.prototype.hasOwnProperty.call(imported, "parentPIN")) {
+        // Do not clear the credential between writes: interrupted restores must
+        // retain a valid protected PIN, never turn an absent key into 1234.
+        if (typeof w.stbDelItem !== "function")
+            throw new Error("Safe settings restore unavailable");
+        w.stbSetItem("parentPIN", imported.parentPIN);
+        if (w.stbGetAllItems().parentPIN !== imported.parentPIN)
+            throw new Error("Parental PIN storage rejected restore");
+        Object.keys(current).forEach(function (name) {
+            if (name !== "parentPIN") w.stbDelItem(name);
+        });
+    } else w.stbClearAllItems();
     for (var key in imported) {
         if (Object.prototype.hasOwnProperty.call(imported, key))
             w.stbSetItem(key, imported[key]);

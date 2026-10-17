@@ -38,6 +38,8 @@
 /js/video.min.js -text
 /js/media-runtime.json -text
 /js/licenses/** -text
+# The selected upstream SJCL sources are verified by their exact bundle digest.
+/js/vendor/sjcl-pin.js -text
 /LICENSE -text
 /licenses/android/Apache-2.0.txt -text
 

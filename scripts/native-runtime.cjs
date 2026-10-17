@@ -158,6 +158,7 @@ function stageNativeRuntime(directory, platform) {
     }
     for (const [source, destination] of [
         ["LICENSE", "licenses/project-MIT.txt"],
+        ["js/licenses/SJCL-1.0.9.txt", "licenses/SJCL-1.0.9.txt"],
         ["docs/privacy-policy.md", "privacy-policy.txt"],
         ["THIRD-PARTY-NOTICES.md", "third-party-notices.txt"],
     ])

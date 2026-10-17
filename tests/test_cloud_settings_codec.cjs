@@ -11,6 +11,7 @@ w.window = w;
 require("./helpers/shared-core-runtime.cjs")(w, { vendorOnly: true });
 vm.runInContext(storagePolicySource(), w);
 require("./helpers/private-runtime.cjs")(w, "src/settings/cloud-codec.ts");
+require("./helpers/pin-runtime.cjs")(w);
 const codec = w.__ottCloudSettingsCodec;
 const normalized = (value) => JSON.parse(JSON.stringify(value));
 const legacy = (entries) =>
@@ -281,6 +282,30 @@ group(
             "new Set",
         ])
             assert(!compiled.includes(unsupported), unsupported);
+    }
+);
+group(
+    "PIN export and legacy XML import never produce new plaintext storage",
+    () => {
+        const exported = codec.write({ ordinary: "kept", parentPIN: "2468" });
+        const stored = codec.read(exported);
+        assert.match(
+            stored.parentPIN,
+            /^pbkdf2-sha256\$600000\$[a-f0-9]{32}\$[a-f0-9]{64}$/
+        );
+        assert.equal(stored.ordinary, "kept");
+        assert.equal(
+            codec.read(codec.write(stored)).parentPIN,
+            stored.parentPIN
+        );
+        const imported = codec.read(legacy(entry("parentPIN", "2468")));
+        assert.match(imported.parentPIN, /^pbkdf2-sha256\$600000\$/);
+        assert.notEqual(
+            imported.parentPIN,
+            stored.parentPIN,
+            "legacy imports get fresh independent salts"
+        );
+        assert.throws(() => codec.read(legacy(entry("parentPIN", "damaged"))));
     }
 );
 console.log("Cloud settings codec: " + groups + " groups PASS");

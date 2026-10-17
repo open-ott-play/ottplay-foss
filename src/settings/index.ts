@@ -325,6 +325,14 @@ function defineSetting(
                 }
               : undefined,
         defaultValue: fallback,
+        ...(rules.pin
+            ? {
+                  invalidValue: "!locked-invalid-pin",
+                  prepare: function (value: string) {
+                      return (window as any).__ottPinSecurity.prepare(value);
+                  },
+              }
+            : {}),
         effects: effects,
         encode: rules.list
             ? function (value) {
@@ -359,7 +367,7 @@ function defineSetting(
             if (rules.pin)
                 return (
                     typeof value === "string" &&
-                    (value === "*" || /^\d{4}$/.test(value))
+                    (window as any).__ottPinSecurity.valid(value)
                 );
             if (rules.color) {
                 if (
@@ -909,7 +917,10 @@ export function exportSettings(): string {
     return JSON.stringify(
         {
             settings: writeLegacySettingsFields(
-                w.OttPlayCore.classicPortableSnapshot(settings, false)
+                w.__ottPinSecurity.protectSnapshot(
+                    w.OttPlayCore.classicPortableSnapshot(settings, false),
+                    "parentPin"
+                )
             ),
             timestamp: Date.now(),
             tv: tv,

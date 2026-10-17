@@ -135,6 +135,7 @@ function fixture() {
             "dispatchKey",
         ])
     );
+    require("./helpers/pin-runtime.cjs")(w);
     w.eval(compatibilitySource + settingsSource());
     w.editKey = w.editKey1;
     w.loadSettings();

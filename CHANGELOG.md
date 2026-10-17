@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Store new/changed parental PINs using salted PBKDF2-HMAC-SHA256 (600,000 iterations).
+  Upgrade readable legacy PINs after successful authentication or settings save;
+  convert old backup PINs before import/export, preserving existing hash records.
+- Keep corrupted or unreadable PIN storage locked instead of restoring the historical
+  default. Cancel obsolete derivations across source, policy and screen changes.
+- Close all old player tabs before updating and do not downgrade against migrated
+  settings: old versions do not understand the new record and may restore `1234`.
+  See [PIN migration and limitations](docs/parental-pin-storage.md). Existing plaintext
+  can remain until its migration succeeds; no device performance claim is made.
+
 ## [1.1.55] - Development line
 
 ### Changes

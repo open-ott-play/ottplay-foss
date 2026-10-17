@@ -8,6 +8,7 @@ const { localizationRuntime } = require("./helpers/localization-runtime.cjs");
 const root = path.resolve(__dirname, "..");
 const modules = {
     "access/classic-adapter": "__ottParental",
+    "access/pin-security": "__ottPinSecurity",
     "access/session": "__ottAccessSession",
     "channels/classic-library": "__ottChannels",
     "channels/classic-search": "__ottChannelSearch",

@@ -14,6 +14,8 @@ const CLASSIC_MODULES = [
     "build/settings/cloud.js",
     "build/settings/library-backup.js",
     "build/settings/store.js",
+    "js/vendor/sjcl-pin.js",
+    "build/access/pin-security.js",
     "build/settings/index.js",
     "build/settings/editor.js",
     "build/settings/transfer-ui.js",
@@ -148,6 +150,7 @@ const CLASSIC_MAIN_MODULES = CLASSIC_MODULES.filter(
 // and execute immediately at their original position in CLASSIC_MODULES.
 const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/access/classic-adapter.js": Object.freeze(["window.__ottParental"]),
+    "build/access/pin-security.js": Object.freeze(["window.__ottPinSecurity"]),
     "build/access/session.js": Object.freeze(["window.__ottAccessSession"]),
     "build/channels/channel-references.js": Object.freeze([
         "window.__ottChannelReferences",

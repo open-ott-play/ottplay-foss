@@ -237,6 +237,7 @@ function fixture() {
         set: (key, value) => (stored[key] = String(value)),
         setI: (key, value) => (stored[key] = String(value)),
     };
+    require("./helpers/pin-runtime.cjs")(context);
     vm.runInContext(settingsSource(), context);
     Object.assign(c, initialPreferences);
     c.OttPlayCore = require("./helpers/shared-core-runtime.cjs")(context);

@@ -273,3 +273,12 @@ Both use Apache 2.0; their installed license texts are preserved in
 The UMD retains upstream bundled-component notices, including vtt.js and
 parse-headers; the shared [Apache 2.0 text](js/licenses/Apache-2.0.txt) is packaged
 alongside them. Version and output hashes are recorded in `js/media-runtime.json`.
+
+## Parental PIN password derivation
+
+The unchanged SHA-256, HMAC, PBKDF2, codec and bit-array modules of
+[SJCL 1.0.9](https://github.com/bitwiseshiftleft/sjcl) are used under
+[BSD-2-Clause](js/licenses/SJCL-1.0.9.txt). The selected source inventory and
+package integrity are in `js/vendor/sjcl-pin-source.json`. The fallback PIN
+deriver schedules the standard single-block PBKDF2 loop across timers using
+these HMAC primitives; it does not use SJCL randomness or encryption modes.

@@ -112,6 +112,58 @@ function storageFixture(
     vm.runInContext(storageCode, c);
     return contextOnly ? c : c.storage;
 }
+for (const mode of ["read"]) {
+    const storage = storageFixture(mode, false, {
+        cookies: {},
+        saved: { parentPIN: "9876" },
+    });
+    assert.equal(
+        storage.get("parentPIN"),
+        "!locked-invalid-pin",
+        mode + ": unreadable native PIN must not become default1234"
+    );
+}
+assert.equal(
+    storageFixture("native", false, {
+        cookies: { parentPIN: "%ZZ" },
+        saved: {},
+    }).get("parentPIN"),
+    null
+);
+assert.equal(
+    storageFixture("missing", false, {
+        cookies: { parentPIN: "%ZZ" },
+        saved: {},
+    }).get("parentPIN"),
+    "!locked-invalid-pin"
+);
+assert.equal(
+    storageFixture("missing", true).get("parentPIN"),
+    "!locked-invalid-pin"
+);
+assert.equal(
+    storageFixture("missing", false, {
+        cookies: { parentPIN: "9876" },
+        saved: {},
+    }).get("parentPIN"),
+    "9876",
+    "readable legacy cookies remain usable"
+);
+{
+    const { JSDOM } = require("jsdom");
+    const dom = new JSDOM("", {
+        runScripts: "outside-only",
+        url: "https://example.invalid",
+    });
+    Object.defineProperty(dom.window, "localStorage", {
+        get() {
+            throw new Error("denied");
+        },
+    });
+    dom.window.eval(storageCode);
+    assert.equal(dom.window.storage.get("parentPIN"), "!locked-invalid-pin");
+    dom.window.close();
+}
 function persistedOverrides(state) {
     const runtime = storageFixture("native", false, state, true);
     const keys = runtime.readStorageFallback(runtime.readStorageCookies());

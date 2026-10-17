@@ -6,6 +6,7 @@ const ts = require("typescript");
 module.exports = function accessRuntime(context) {
     const host = context.window || context;
     if (host.__ottParental) return;
+    require("./pin-runtime.cjs")(context);
     for (const file of [
         "provider/source-identity",
         "access/session",

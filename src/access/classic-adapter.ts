@@ -5,6 +5,11 @@
  */
 function createClassicAccess(host: any) {
     var context: any = null;
+    var generation = 0;
+    function revoke(): void {
+        generation++;
+        session.revoke();
+    }
     function policy(kind: string): any {
         if (kind === "control") return true;
         var field =
@@ -70,14 +75,17 @@ function createClassicAccess(host: any) {
             host.showShift(host._("Wrong parental code !!!"));
     }
     function setAccess(granted: boolean, callback: () => void): void {
-        if (session.grant(granted)) callback();
-        else if (!granted) notify();
+        if (!granted) {
+            revoke();
+            notify();
+        } else if (session.grant(true)) callback();
     }
     function pin(
         prompt: string,
         callback: (value: string) => void,
         onRejected?: () => void
     ): void {
+        generation++;
         var port = host.__ottClassicScreenPort;
         var element = host.$("#dialogbox");
         if (!element.length) {
@@ -199,6 +207,7 @@ function createClassicAccess(host: any) {
         var expected = scope();
         var secret = String(host.parentPIN);
         var settled = false;
+        var security = host.__ottPinSecurity;
         function reject(): void {
             if (settled) return;
             settled = true;
@@ -208,15 +217,105 @@ function createClassicAccess(host: any) {
             host._("Enter parental code"),
             function (value) {
                 if (settled) return;
-                if (!value || scope() !== expected) {
+                if (!value || scope() !== expected || !security) {
                     reject();
                     return;
                 }
-                setAccess(value === secret, function () {
-                    settled = true;
-                    callback();
-                });
-                if (!settled) reject();
+                var operation = generation;
+                var ticket = session.begin();
+                function current(): boolean {
+                    return (
+                        !settled &&
+                        generation === operation &&
+                        ticket.active() &&
+                        scope() === expected
+                    );
+                }
+                function finish(matched: boolean): void {
+                    if (!current()) {
+                        reject();
+                        return;
+                    }
+                    if (!ticket.complete()) {
+                        reject();
+                        return;
+                    }
+                    setAccess(matched, function () {
+                        settled = true;
+                        callback();
+                    });
+                    if (!settled) reject();
+                }
+                if (security.legacy(secret)) {
+                    if (value !== secret) {
+                        finish(false);
+                        return;
+                    }
+                    // Reading an existing legacy PIN preserves established access;
+                    // migration itself must never create a new authorization.
+                    finish(true);
+                    if (
+                        generation !== operation ||
+                        scope() !== expected ||
+                        host.parentPIN !== secret
+                    )
+                        return;
+                    var store = host.settingsStore;
+                    if (!store || typeof store.begin !== "function") return;
+                    var migrationScope = scope();
+                    var draft = store.begin(true);
+                    var source = host.__ottSourceIdentity.current(host);
+                    var policyBefore = JSON.stringify([
+                        policy("channels"),
+                        policy("settings"),
+                        policy("providers"),
+                    ]);
+                    function sameOwner(): boolean {
+                        return (
+                            generation === operation &&
+                            host.settingsStore === store &&
+                            host.__ottSourceIdentity.current(host) === source &&
+                            host.providerGetItem === migrationScope.get &&
+                            host.providerSetItem === migrationScope.set &&
+                            JSON.stringify([
+                                policy("channels"),
+                                policy("settings"),
+                                policy("providers"),
+                            ]) === policyBefore
+                        );
+                    }
+                    function migrating(): boolean {
+                        return (
+                            sameOwner() &&
+                            scope() === migrationScope &&
+                            session.allowed() &&
+                            draft.active()
+                        );
+                    }
+                    security.create(
+                        value,
+                        migrating,
+                        function (encoded: string | null) {
+                            if (
+                                !encoded ||
+                                !migrating() ||
+                                !draft.set("parentPin", encoded) ||
+                                !draft.commit([], migrating)
+                            ) {
+                                draft.cancel();
+                                return;
+                            }
+                            if (!sameOwner() || host.parentPIN !== encoded)
+                                return;
+                            // Preserve only the still-current successful legacy grant.
+                            session.grant(true);
+                        }
+                    );
+                } else {
+                    if (typeof host.showShift === "function")
+                        host.showShift(host._("Loading. Please wait..."));
+                    security.verify(value, secret, current, finish);
+                }
             },
             onRejected ? reject : undefined
         );
@@ -235,17 +334,38 @@ function createClassicAccess(host: any) {
                 callback();
         };
     }
+    if (typeof host.addEventListener === "function") {
+        host.addEventListener("pagehide", revoke);
+        host.addEventListener("visibilitychange", function () {
+            if (host.document && host.document.hidden) revoke();
+        });
+    }
     var initial = host.parentAccess === true;
     Object.defineProperty(host, "parentAccess", {
         configurable: true,
         get: session.allowed,
         set: function (value: boolean) {
-            session.grant(value === true);
+            if (value === true) session.grant(true);
+            else revoke();
         },
     });
     if (initial) session.grant(true);
     return {
         allowed: session.allowed,
+        checkpoint: function (): () => boolean {
+            var operation = generation;
+            var source = host.__ottSourceIdentity.current(host);
+            var read = host.providerGetItem,
+                write = host.providerSetItem;
+            return function () {
+                return (
+                    generation === operation &&
+                    host.__ottSourceIdentity.current(host) === source &&
+                    host.providerGetItem === read &&
+                    host.providerSetItem === write
+                );
+            };
+        },
         guard: guard,
         needs: needs,
         pin: pin,
@@ -256,7 +376,7 @@ function createClassicAccess(host: any) {
             host.enterPinAndSetAccess(callback);
             return true;
         },
-        revoke: session.revoke,
+        revoke: revoke,
         setAccess: setAccess,
     };
 }

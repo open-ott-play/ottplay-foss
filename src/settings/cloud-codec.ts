@@ -49,7 +49,11 @@ function cloudCodecPortable(
 ): Record<string, string> {
     var result: Record<string, string> = Object.create(null);
     Object.keys(items).forEach(function (key) {
-        if (portable(key)) result[key] = items[key];
+        if (portable(key))
+            result[key] =
+                key === "parentPIN"
+                    ? (window as any).__ottPinSecurity.prepare(items[key])
+                    : items[key];
     });
     return result;
 }

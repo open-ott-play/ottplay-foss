@@ -139,6 +139,7 @@ function fixture(initial = []) {
         storage,
         ui_state: {},
     });
+    require("./helpers/pin-runtime.cjs")(w);
     w.eval(settingsSource());
     w.eval(
         functions("src/utils/helpers.ts", [

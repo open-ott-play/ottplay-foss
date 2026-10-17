@@ -1392,14 +1392,40 @@ for (const profile of [
     );
     assert.equal(exported.settings.noColorKeys, 1);
     assert.equal(exported.settings.psOptions, 1);
-    assert.equal(exported.settings.parentPin, "9876");
+    assert.match(exported.settings.parentPin, /^pbkdf2-sha256\$600000\$/);
+    const pinParts = exported.settings.parentPin.split("$");
+    assert.equal(
+        pinParts[3],
+        require("node:crypto")
+            .pbkdf2Sync(
+                "9876",
+                Buffer.from(pinParts[2], "hex"),
+                600000,
+                32,
+                "sha256"
+            )
+            .toString("hex")
+    );
     assert.equal(
         exported.settings.localCmdUrl,
         "https://example.invalid/local"
     );
     vm.runInContext("saveSettings(settings); loadSettings();", w);
     assert.equal(typed().rFun, 4);
-    assert.equal(typed().parentPin, "9876");
+    assert.match(typed().parentPin, /^pbkdf2-sha256\$600000\$/);
+    const savedPinParts = typed().parentPin.split("$");
+    assert.equal(
+        savedPinParts[3],
+        require("node:crypto")
+            .pbkdf2Sync(
+                "9876",
+                Buffer.from(savedPinParts[2], "hex"),
+                600000,
+                32,
+                "sha256"
+            )
+            .toString("hex")
+    );
     assert.equal(
         typed().localHttpEnabled,
         1,
