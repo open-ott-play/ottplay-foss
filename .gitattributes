@@ -26,6 +26,21 @@
 /fuzz/corpus/** -text whitespace=-blank-at-eol
 /fuzz/Cargo.lock text eol=lf
 
+# Media runtime identity hashes these source bytes; Windows checkout conversion
+# must not create a different runtime and invalidate the frozen release overlay.
+/scripts/media-runtime.cjs text eol=lf
+/src/polyfills/runtime.ts text eol=lf
+
+# Preserve generated/upstream media and license bytes checked by the auditor.
+/js/runtime-polyfills.js -text
+/js/hls.min.js -text
+/js/hls.worker.js -text
+/js/video.min.js -text
+/js/media-runtime.json -text
+/js/licenses/** -text
+/LICENSE -text
+/licenses/android/Apache-2.0.txt -text
+
 # These pinned upstream license, source and patch bytes are part of the rebuild
 # receipt. Preserve their original whitespace, including unified-diff context.
 /packaging/linux-playback-compat/** -text

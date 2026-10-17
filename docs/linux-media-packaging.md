@@ -13,7 +13,7 @@ advancing playback position is not a successful playback test.
 - **RPM:** declares the Fedora package names verified against Fedora 44 metadata,
   including libav for AAC and both the GStreamer OpenH264 plugin and the real
   `openh264` library for H.264. On Fedora, use
-  `sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS_*.rpm`.
+  `sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS-*.rpm`.
   The plugin alone can resolve to Fedora's `noopenh264` placeholder, which cannot
   decode video. The configured distribution repositories must provide the real
   codec; this project does not automatically enable repositories or claim

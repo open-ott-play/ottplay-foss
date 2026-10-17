@@ -4,6 +4,9 @@
 
 ### Changes
 
+- Preserve byte-pinned media inputs, generated assets and license texts on
+  Windows checkouts, avoiding an unnecessary runtime rebuild while retaining
+  strict release source verification.
 - Include the upstream GStreamer stream-startup flush fix in an app-private
   Linux playback plugin, preserving Ubuntu's security patches. DEB activation
   is restricted to reviewed Ubuntu 24.04 plugin bytes; AppImages bundle the
@@ -41,7 +44,7 @@
 
 - Install DEB packages with `sudo apt install ./OttPlay.FOSS_*.deb` so media
   dependencies are resolved. On Fedora, use
-  `sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS_*.rpm`;
+  `sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS-*.rpm`;
   the real `openh264` library is required, not the non-decoding `noopenh264`
   placeholder. Select only the intended architecture's package and see
   [Linux media packaging](docs/linux-media-packaging.md) for requirements and

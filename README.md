@@ -208,7 +208,7 @@ sudo apt install ./OttPlay.FOSS_*.deb
 **Fedora (.rpm):**
 
 ```bash
-sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS_*.rpm
+sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS-*.rpm
 ```
 
 ---
