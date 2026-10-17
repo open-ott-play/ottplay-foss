@@ -1528,8 +1528,6 @@ export function createNasLibrary(host: any): any {
                     });
                     if (!next.client) return;
                     source = next;
-                    if (typeof host.__ottNasLibraryChanged === "function")
-                        host.__ottNasLibraryChanged();
                 },
                 timeout: 5000,
                 type: "GET",

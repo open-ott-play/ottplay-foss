@@ -599,12 +599,6 @@ export function optionsList(fn?: () => void): void {
         }
     }
     var viewOptions = optionsArr.slice();
-    var nas = (window as any).__ottNasLibrary;
-    if (nas && nas.available())
-        viewOptions.unshift({
-            action: (window as any).popNasMedia,
-            name: nas.title(),
-        });
     listDataArray = [];
     viewOptions.forEach(function (opt: any) {
         listDataArray.push(_(opt.name || ""));
@@ -661,11 +655,6 @@ export function optionsList(fn?: () => void): void {
                 return true;
         }
         return false;
-    };
-    var optionsHandler = listKeyHandlerFn;
-    (window as any).__ottNasLibraryChanged = function () {
-        if (listKeyHandlerFn === optionsHandler)
-            optionsList(viewOptions[selIndex] && viewOptions[selIndex].action);
     };
     listCaptionElement.innerHTML = _("Settings");
     listFooter!.innerHTML = renderButtonHint(keys.RETURN, strRETURN, "Close");

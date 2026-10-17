@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
 
-test("NAS discovery opens an independent library and plays its default HLS stream", async ({
+test("NAS stays out of Settings but opens from the popup and plays its default HLS stream", async ({
     page,
     context,
     baseURL,
@@ -90,8 +90,25 @@ test("NAS discovery opens an independent library and plays its default HLS strea
             window.providerSetItem,
         ];
         window.sFavorites = 1;
-        window.popNasMedia();
+        window.optionsList();
     });
+    await expect(page.locator("#listCaption")).toHaveText("Settings");
+    await expect(page.locator("#listIn")).not.toContainText("Synology");
+    expect(await page.evaluate(() => window.listArray)).not.toContain(
+        "Synology"
+    );
+    await page.evaluate(() => window.listKeyHandlerFn(window.keys.RETURN));
+    await expect(page.locator("#listCaption")).toHaveText("Menu");
+    expect(
+        await page.evaluate(() =>
+            window.listArray
+                .filter((row) => row.id === "media.nas")
+                .map((row) => ({ id: row.id, name: row.name }))
+        )
+    ).toEqual([{ id: "media.nas", name: "Synology" }]);
+    await page.evaluate(() =>
+        window.__ottMenuRegistry.open(window).invoke("media.nas")
+    );
     await expect(page.locator("body")).toContainText("NAS video");
     await page.evaluate(() => {
         const view = window.__ottMedia.snapshot();

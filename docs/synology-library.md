@@ -5,7 +5,9 @@ files on Synology. OTT-play's server reads Plex over the LAN and serves the
 catalog and video through its own HTTP or HTTPS listener. A browser never needs
 the Plex token, a mounted SMB share, or a second media server.
 
-When configured, **Synology** appears as a separate library in the player.
+When configured, **Synology** appears as a separate library in the player's
+main popup menu, not in **Settings**. This navigation is shared by the player
+builds; the library is a media source, not a player setting.
 Browse libraries, shows, seasons, albums and tracks, or search the catalog.
 The existing television playlist and provider library remain available. NAS
 history and favorites have their own identity and storage. Video starts using

@@ -349,17 +349,29 @@ test("standalone NAS is available in popup with no provider; labels are escaped"
     assert.equal(f.c.__ottMenuRegistry.open(f.c).rows.length, 0);
 });
 
-test("discovery refreshes the no-provider settings page without mutating its options", () => {
+test("NAS discovery preserves settings navigation and stays in the main menu", () => {
     const f = create();
     const c = f.c;
-    const chooseProvider = () => {};
+    const selected = [];
+    const chooseProvider = () => selected.push("provider");
+    const chooseLanguage = () => selected.push("language");
+    let returnedTo;
     Object.assign(c, {
         findOptionIndex: () => -1,
         isPlayDistribution: () => false,
         listCaptionElement: {},
         listDetail: {},
         listFooter: {},
-        optionsArr: [{ action: chooseProvider, name: "Provider" }],
+        optionsArr: [
+            { action: chooseProvider, name: "Provider" },
+            { action: chooseLanguage, name: "Language" },
+        ],
+        popupActions: [],
+        popupArray: [],
+        popupDetail: [],
+        popupList: (action) => {
+            returnedTo = action;
+        },
         prependMenuButtonHint: () => {},
         providerSelectionUnlockCount: 0,
         showProviderSelection: chooseProvider,
@@ -372,23 +384,30 @@ test("discovery refreshes the no-provider settings page without mutating its opt
         sourceFunctions("src/provider/index.ts", ["optionsList"]),
         c
     );
-    c.optionsList();
-    assert.equal(c.listArray.length, 1);
+    c.optionsList(chooseLanguage);
+    const settingsHandler = c.listKeyHandlerFn;
     f.discover();
-    assert.equal(c.listArray[0], "Synology");
-    assert.equal(c.listArray.length, 2);
+    assert.deepEqual(Array.from(c.listArray), ["Provider", "Language"]);
     assert.equal(
         c.optionsArr.length,
-        1,
-        "installation entry is only in the detached rendered menu"
+        2,
+        "discovery must not add media sources to settings"
     );
-    assert.equal(
-        c.selIndex,
-        1,
-        "discovery preserves focus on the user's existing option"
-    );
+    assert.equal(c.selIndex, 1, "discovery preserves the selected setting");
+    assert.equal(c.listKeyHandlerFn, settingsHandler);
+    c.listKeyHandlerFn(c.keys.ENTER);
+    c.optionsList(chooseLanguage);
+    assert.deepEqual(Array.from(c.listArray), ["Provider", "Language"]);
+    assert.equal(c.selIndex, 1);
     c.selIndex = 0;
     c.listKeyHandlerFn(c.keys.ENTER);
+    assert.deepEqual(selected, ["language", "provider"]);
+    c.listKeyHandlerFn(c.keys.RETURN);
+    assert.equal(returnedTo, c.optionsList);
+    const menu = c.__ottMenuRegistry.open(c);
+    assert.equal(menu.rows.length, 1);
+    assert.equal(menu.rows[0].id, "media.nas");
+    menu.invoke("media.nas");
     assert.equal(f.requests.at(-1).options.url, "/nas/api");
 });
 
