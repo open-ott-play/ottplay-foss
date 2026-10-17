@@ -47,7 +47,11 @@ function runtime(row) {
 }
 function profileFor(row) {
     const value = runtime(row);
-    return selectProfile(value, value.platform);
+    return selectProfile(
+        value,
+        value.platform,
+        ["macos-15-intel", "ubuntu-26.04"].includes(row.os) ? "x64" : "arm64"
+    );
 }
 test("all 35 exact targets retain mandatory UI with 32 HLS targets and three explicit limitations", () => {
     let uiOnly = 0,
@@ -123,4 +127,154 @@ test("loss of required MSE or either codec cannot downgrade a full media profile
         managedMediaSource: true,
         mediaSource: false,
     });
+});
+
+// Compare every available-API combination against the actual pinned HLS helper.
+// A dependency or player preference change must explicitly update this contract.
+test("capability probe follows the candidate HLS instance backend, including fallback order", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const vm = require("node:vm");
+    const ts = require("typescript");
+    const Hls = require("hls.js");
+    const {
+        readBrowserMediaCapabilities,
+    } = require("../scripts/browser-media-capabilities.cjs");
+    assert.equal(Hls.version, "1.7.3");
+    assert.equal(Hls.DefaultConfig.preferManagedMediaSource, false);
+    const player = fs.readFileSync(
+        path.join(__dirname, "../src/core/index.ts"),
+        "utf8"
+    );
+    assert.equal(
+        player.includes("preferManagedMediaSource"),
+        false,
+        "Review probe selection when the player overrides the HLS default"
+    );
+    const actual = ts.transpileModule(
+        fs.readFileSync(
+            path.join(
+                path.dirname(require.resolve("hls.js/package.json")),
+                "src/utils/mediasource-helper.ts"
+            ),
+            "utf8"
+        ),
+        { compilerOptions: { module: ts.ModuleKind.CommonJS } }
+    ).outputText;
+    for (let mask = 0; mask < 8; mask++) {
+        const calls = [];
+        const scope = { Hls };
+        for (const [index, name] of [
+            "MediaSource",
+            "ManagedMediaSource",
+            "WebKitMediaSource",
+        ].entries()) {
+            if (mask & (1 << index)) {
+                scope[name] = class {
+                    static isTypeSupported(type) {
+                        calls.push([name, type]);
+                        return true;
+                    }
+                };
+            }
+        }
+        const context = { exports: {}, self: scope };
+        vm.runInNewContext(actual, context);
+        const selected = context.exports.getMediaSource(
+            Hls.DefaultConfig.preferManagedMediaSource
+        );
+        const expected =
+            ["MediaSource", "ManagedMediaSource", "WebKitMediaSource"].find(
+                (name) => scope[name] && scope[name] === selected
+            ) || "none";
+        const result = vm.runInNewContext(
+            "(" + readBrowserMediaCapabilities.toString() + ")()",
+            {
+                document: { createElement: () => ({ canPlayType: () => "" }) },
+                window: scope,
+            }
+        );
+        assert.equal(result.mseBackend, expected);
+        assert.equal(result.h264Mse, !!selected);
+        assert.equal(result.aacMse, !!selected);
+        assert.deepEqual(
+            calls.map(([name]) => name),
+            selected ? [expected, expected] : []
+        );
+    }
+    for (const preference of [undefined, true]) {
+        assert.throws(
+            () =>
+                vm.runInNewContext(
+                    "(" + readBrowserMediaCapabilities.toString() + ")()",
+                    {
+                        window: {
+                            Hls: {
+                                DefaultConfig: {
+                                    preferManagedMediaSource: preference,
+                                },
+                            },
+                        },
+                    }
+                ),
+            /backend preference changed/
+        );
+    }
+});
+
+test("historical macOS WebKit targets require Intel without reducing playback coverage", () => {
+    const targets = inventory.filter((row) => row.os === "macos-15-intel");
+    assert.deepEqual(targets.map((row) => row.id).sort(), [
+        "macos-15-intel-webkit-1-62-1",
+        "macos-15-intel-webkit-1-63-0",
+    ]);
+    for (const row of targets) {
+        const value = runtime(row);
+        const profile = selectProfile(value, "darwin", "x64");
+        assert.equal(profile.media, "required");
+        assert.equal(profile.scenarios.length, 5);
+        for (const arch of ["arm64", "ia32", ""]) {
+            assert.throws(() => selectProfile(value, "darwin", arch));
+        }
+    }
+});
+
+test("all Linux WebKit generations retain complete playback on reviewed Ubuntu 26.04", () => {
+    const targets = inventory.filter(
+        (row) => row.os.startsWith("ubuntu-") && row.engine === "webkit"
+    );
+    assert.deepEqual(targets.map((row) => row.id).sort(), [
+        "ubuntu-26-04-webkit-1-62-1",
+        "ubuntu-26-04-webkit-1-63-0",
+        "ubuntu-26-04-webkit-1-64-0",
+    ]);
+    for (const row of targets) {
+        assert.equal(row.os, "ubuntu-26.04");
+        const value = runtime(row);
+        const profile = selectProfile(value, "linux", "x64");
+        assert.equal(profile.media, "required");
+        assert.equal(profile.scenarios.length, 5);
+        for (const arch of ["arm64", "ia32", ""]) {
+            assert.throws(() => selectProfile(value, "linux", arch));
+        }
+    }
+});
+
+test("frontend WebKit host guard rejects another distro, version or architecture", () => {
+    const { verifyHost } = require("../scripts/check-linux-webkit-host.cjs");
+    const release = 'ID=ubuntu\nVERSION_ID="26.04"\n';
+    assert.deepEqual(verifyHost("linux", "x64", release), {
+        architecture: "x64",
+        os: "ubuntu",
+        version: "26.04",
+    });
+    for (const [platform, architecture, source] of [
+        ["darwin", "x64", release],
+        ["linux", "arm64", release],
+        ["linux", "x64", release.replace("ubuntu", "debian")],
+        ["linux", "x64", release.replace("26.04", "24.04")],
+        ["linux", "x64", ""],
+    ]) {
+        assert.throws(() => verifyHost(platform, architecture, source));
+    }
 });

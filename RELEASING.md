@@ -136,7 +136,7 @@ does not substitute for acceptance of the selected RC.
 - Classic emitted bundle smoke and ES5 checks are required, in addition to TypeScript checks.
 - Physical TV/STB firmware, decoders, live IPTV streams and DRM are separate acceptance checks.
 - OCI container archives are promoted without rebuild; deployment remains explicit.
-- Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels; package and Cargo metadata retain the full candidate identity.
+- Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels. Under promote-bytes, RC and stable package/Cargo version fields use the final base version from the version plan; the full candidate tag, source and run identity remain in manifests and receipts.
 - Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.
 - Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation.
 - The separate Capacitor 6 API 22 APK supports Android 5.1/6 devices with WebView 60+. It shares the Full application ID, profile origin and signing certificate; modern devices keep Capacitor 8. Both APKs are built for beta/RC and promoted unchanged to stable.

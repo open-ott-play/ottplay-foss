@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -160,7 +161,175 @@ function fixtureBuild() {
         );
 }
 
+async function verifyCheckoutBytes() {
+    const temporary = fs.mkdtempSync(
+        path.join(os.tmpdir(), "ottplay-media-checkout-")
+    );
+    let checkout = path.join(temporary, "seed");
+    fs.mkdirSync(checkout);
+    const git = (...args) =>
+        execFileSync("git", args, {
+            cwd: checkout,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+    try {
+        const policy = JSON.parse(
+            fs.readFileSync(path.join(project, ".release-policy.json"))
+        );
+        const files = [
+            ...new Set([
+                ".gitattributes",
+                ".release-policy.json",
+                "scripts/version_plan.py",
+                "scripts/release_control.py",
+                "scripts/verify-player-build-source.py",
+                "scripts/player-build-identity.cjs",
+                "scripts/media-runtime.cjs",
+                "src/polyfills/runtime.ts",
+                "package-lock.json",
+                "LICENSE",
+                "licenses/android/Apache-2.0.txt",
+                "index.html",
+                "src-tauri/pip/pip.html",
+                ...[
+                    "runtime-polyfills.js",
+                    "hls.min.js",
+                    "hls.worker.js",
+                    "video.min.js",
+                    "media-runtime.json",
+                ].map((name) => "js/" + name),
+                ...fs
+                    .readdirSync(path.join(project, "js/licenses"))
+                    .map((name) => "js/licenses/" + name),
+                ...policy.versioning.files.map((item) => item.path),
+            ]),
+        ];
+        for (const name of files) {
+            const destination = path.join(checkout, name);
+            fs.mkdirSync(path.dirname(destination), { recursive: true });
+            fs.copyFileSync(path.join(project, name), destination);
+        }
+        fs.writeFileSync(
+            path.join(checkout, "newline-control.txt"),
+            "Unpinned checkout control\n"
+        );
+        fs.writeFileSync(
+            path.join(checkout, ".gitignore"),
+            "/node_modules\n.release-plan.json\n.release-inputs.json\n"
+        );
+        git("init", "--quiet");
+        git("config", "core.autocrlf", "false");
+        git("add", "--all");
+        const hooks = path.join(checkout, ".git/empty-hooks");
+        fs.mkdirSync(hooks);
+        git(
+            "-c",
+            "core.hooksPath=" + hooks,
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "user.name=Media checkout test",
+            "-c",
+            "user.email=media-checkout@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "Test pinned media checkout"
+        );
+        // A fresh clone exercises Git's real checkout conversion on every OS.
+        const destination = path.join(temporary, "checkout");
+        git(
+            "clone",
+            "--quiet",
+            "--no-hardlinks",
+            "--config",
+            "core.autocrlf=true",
+            checkout,
+            destination
+        );
+        checkout = destination;
+        assert.equal(
+            fs.readFileSync(path.join(checkout, "newline-control.txt"), "utf8"),
+            "Unpinned checkout control\r\n"
+        );
+        fs.symlinkSync(
+            path.join(project, "node_modules"),
+            path.join(checkout, "node_modules"),
+            "junction"
+        );
+        const runtime = require(
+            path.join(checkout, "scripts/media-runtime.cjs")
+        );
+        const expected = JSON.parse(
+            fs.readFileSync(path.join(project, "js/media-runtime.json"))
+        );
+        assert.deepEqual(runtime.auditMediaRuntime(checkout), expected);
+        assert.equal((await ensureMediaRuntime(checkout)).rebuilt, false);
+        assert.equal(git("status", "--porcelain"), "");
+        console.log(
+            "PASS media cache: autocrlf checkout preserves audited bytes without rebuilding"
+        );
+
+        const head = git("rev-parse", "HEAD").trim();
+        execFileSync(
+            "python3",
+            [
+                "-I",
+                "-B",
+                "-c",
+                `import json, pathlib, sys
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]) / "scripts"))
+import version_plan
+root = pathlib.Path(sys.argv[1])
+policy = json.loads((root / ".release-policy.json").read_bytes())
+plan = version_plan.create_plan(version_plan.read_base_version(root, policy), "beta", 11, sys.argv[2], policy, build_number=19001)
+(root / ".release-plan.json").write_text(json.dumps(plan))
+version_plan.sync_versions(root, policy, plan)
+`,
+                checkout,
+                head,
+            ],
+            { stdio: ["ignore", "pipe", "pipe"] }
+        );
+        const overlayStatus = git("status", "--porcelain");
+        assert.notEqual(overlayStatus, "");
+        assert.equal((await ensureMediaRuntime(checkout)).rebuilt, false);
+        const { createPlayerBuildIdentity } = require(
+            path.join(checkout, "scripts/player-build-identity.cjs")
+        );
+        assert.equal(
+            createPlayerBuildIdentity("compiled checkout", checkout, {
+                requireReleaseSource: true,
+            }).sourceRevision,
+            head
+        );
+        assert.equal(git("status", "--porcelain"), overlayStatus);
+        console.log(
+            "PASS media cache: frozen release overlay retains strict source identity after autocrlf checkout"
+        );
+
+        // A real byte change must still fail; do not normalize it in the audit.
+        fs.writeFileSync(
+            path.join(checkout, ".git/info/attributes"),
+            "scripts/media-runtime.cjs text eol=crlf\n"
+        );
+        fs.unlinkSync(path.join(checkout, "scripts/media-runtime.cjs"));
+        git("checkout-index", "--force", "--", "scripts/media-runtime.cjs");
+        assert.throws(
+            () => runtime.auditMediaRuntime(checkout),
+            /Stale media URL version/
+        );
+        console.log(
+            "PASS media cache: changed source bytes still reject the committed runtime"
+        );
+    } finally {
+        fs.rmSync(temporary, { force: true, recursive: true });
+    }
+}
+
 async function main() {
+    await verifyCheckoutBytes();
     createFixture();
     fixtureBuild();
     const { auditMediaRuntime } = require(

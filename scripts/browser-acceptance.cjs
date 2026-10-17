@@ -7,6 +7,9 @@ const {
     selectProfile,
     verifyCapabilities,
 } = require("./browser-compatibility-profile.cjs");
+const {
+    readBrowserMediaCapabilities,
+} = require("./browser-media-capabilities.cjs");
 const output = path.resolve(process.env.CI_BROWSER_DIAGNOSTICS);
 const runtime = JSON.parse(fs.readFileSync(path.join(output, "runtime.json")));
 const candidate = JSON.parse(
@@ -28,27 +31,15 @@ async function main() {
             "Browser runtime changed"
         );
         const page = await browser.newPage();
-        capabilities = await page.evaluate(() => {
-            // Match the installed hls.js getMediaSource() capability preference.
-            const mse =
-                window.ManagedMediaSource ||
-                window.MediaSource ||
-                window.WebKitMediaSource;
-            return {
-                aacMse: !!mse?.isTypeSupported('audio/mp4; codecs="mp4a.40.2"'),
-                h264Mse: !!mse?.isTypeSupported(
-                    'video/mp4; codecs="avc1.42c01e"'
-                ),
-                managedMediaSource:
-                    typeof window.ManagedMediaSource === "function",
-                mediaSource: typeof window.MediaSource === "function",
-                nativeHls: document
-                    .createElement("video")
-                    .canPlayType("application/vnd.apple.mpegurl"),
-                webkitMediaSource:
-                    typeof window.WebKitMediaSource === "function",
-            };
+        await page.addScriptTag({
+            path: path.resolve("browser-candidate-web/js/hls.min.js"),
         });
+        capabilities = await page.evaluate(readBrowserMediaCapabilities);
+        assert.equal(
+            capabilities.hlsVersion,
+            require("../package.json").dependencies["hls.js"],
+            "Candidate HLS version differs from the pinned backend contract"
+        );
     } finally {
         await browser.close();
     }
@@ -57,6 +48,7 @@ async function main() {
         JSON.stringify(
             {
                 ...runtime,
+                architecture: process.arch,
                 capabilities,
                 profile,
             },
@@ -119,6 +111,7 @@ async function main() {
         JSON.stringify(
             {
                 ...runtime,
+                architecture: process.arch,
                 candidate,
                 capabilities,
                 coverage: {

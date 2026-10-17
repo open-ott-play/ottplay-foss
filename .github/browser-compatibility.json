@@ -18,8 +18,8 @@
     "tier": "required"
   },
   {
-    "id": "ubuntu-latest-webkit-1-64-0",
-    "os": "ubuntu-latest",
+    "id": "ubuntu-26-04-webkit-1-64-0",
+    "os": "ubuntu-26.04",
     "engine": "webkit",
     "playwright": "1.64.0",
     "browser_version": "27.2",
@@ -179,8 +179,8 @@
     "tier": "extended"
   },
   {
-    "id": "ubuntu-latest-webkit-1-63-0",
-    "os": "ubuntu-latest",
+    "id": "ubuntu-26-04-webkit-1-63-0",
+    "os": "ubuntu-26.04",
     "engine": "webkit",
     "playwright": "1.63.0",
     "browser_version": "26.6",
@@ -233,8 +233,8 @@
     "tier": "extended"
   },
   {
-    "id": "macos-15-webkit-1-63-0",
-    "os": "macos-15",
+    "id": "macos-15-intel-webkit-1-63-0",
+    "os": "macos-15-intel",
     "engine": "webkit",
     "playwright": "1.63.0",
     "browser_version": "26.6",
@@ -260,8 +260,8 @@
     "tier": "extended"
   },
   {
-    "id": "ubuntu-latest-webkit-1-62-1",
-    "os": "ubuntu-latest",
+    "id": "ubuntu-26-04-webkit-1-62-1",
+    "os": "ubuntu-26.04",
     "engine": "webkit",
     "playwright": "1.62.1",
     "browser_version": "26.5",
@@ -314,8 +314,8 @@
     "tier": "extended"
   },
   {
-    "id": "macos-15-webkit-1-62-1",
-    "os": "macos-15",
+    "id": "macos-15-intel-webkit-1-62-1",
+    "os": "macos-15-intel",
     "engine": "webkit",
     "playwright": "1.62.1",
     "browser_version": "26.5",

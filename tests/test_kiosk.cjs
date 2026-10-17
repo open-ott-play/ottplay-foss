@@ -1796,6 +1796,14 @@ function screenRig() {
         r.sample.phase = "paused";
         if (subscriber) subscriber({ handle: r.handle, type: "pause" });
     };
+    let suspended = false;
+    r.handle.suspend = () => {
+        if (suspended && r.sample.phase === "paused") return;
+        suspended = true;
+        calls.push("suspend");
+        r.sample.phase = "paused";
+        if (subscriber) subscriber({ handle: r.handle, type: "suspend" });
+    };
     r.handle.resume = () => {
         calls.push("resume");
         r.sample.phase = "playing";
@@ -1814,7 +1822,7 @@ function screenRig() {
     r.kiosk.setScreenAwake(false);
     assert.deepEqual(
         r.calls,
-        ["pause"],
+        ["suspend"],
         "sleep is idempotent, including reentrant backend events"
     );
     assert.equal(JSON.parse(r.storage.__ottKioskV1).media.position, 37);
@@ -1830,15 +1838,15 @@ function screenRig() {
     r.events.play();
     assert.deepEqual(
         r.calls,
-        ["pause", "pause"],
-        "late HTML autoplay is paused"
+        ["suspend", "suspend"],
+        "late HTML autoplay is suspended"
     );
     r.sample.phase = "loading";
     r.publish();
     assert.equal(
         r.calls.at(-1),
-        "pause",
-        "late native backend start is paused"
+        "suspend",
+        "late native backend start is suspended"
     );
     r.kiosk.setScreenAwake(true);
     r.kiosk.setScreenAwake(true);
@@ -1866,13 +1874,13 @@ for (const strict of [false, true]) {
     assert.equal(r.kiosk.snapshot().strict, strict);
     assert.deepEqual(
         r.calls,
-        ["pause"],
+        ["suspend"],
         "policy update must not wake playback"
     );
     r.kiosk.setScreenAwake(true);
     assert.deepEqual(
         r.calls,
-        ["pause", "resume"],
+        ["suspend", "resume"],
         "changing input strictness keeps ownership of the same sleeping episode"
     );
     assert.equal(r.state.position, 37);
@@ -1907,7 +1915,12 @@ for (const change of [
     r.sample.phase = "paused";
     r.kiosk.setScreenAwake(false);
     r.kiosk.setScreenAwake(true);
-    assert.deepEqual(r.calls, [], "sleep does not own a pre-existing pause");
+    assert.deepEqual(
+        r.calls,
+        ["suspend"],
+        "sleep releases a pre-existing paused transport without resuming it"
+    );
+    r.calls.length = 0;
     r.request({ mode: "off" });
     r.sample.phase = "playing";
     r.kiosk.setScreenAwake(false);
@@ -1971,6 +1984,38 @@ for (const change of [
         "wake starts the replacement channel"
     );
     assert.deepEqual(calls, ["pause"], "a replaced channel never resumes");
+}
+
+for (const kind of ["live", "archive"]) {
+    const r = rig();
+    const calls = [];
+    let phase = "playing";
+    const handle = {
+        active: () => true,
+        resume: () => calls.push("resume"),
+        snapshot: () => ({ phase }),
+        suspend: () => {
+            calls.push("suspend");
+            phase = "paused";
+        },
+    };
+    r.w.__ottCoreBackendPeek = () => ({ current: () => handle });
+    r.w.__ottClassicPlayback = {
+        snapshot: () => ({ position: 123, target: { kind } }),
+    };
+    r.request({ mode: "on", query: "1" });
+    r.kiosk.setScreenAwake(false);
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(
+        r.played,
+        kind === "live" ? ["a", "a"] : ["a"],
+        "only live playback resolves the channel again; archive stays at its saved cursor"
+    );
+    assert.deepEqual(
+        calls,
+        kind === "live" ? ["suspend"] : ["suspend", "resume"],
+        "archive resumes its saved lease instead of being replaced with the live channel"
+    );
 }
 
 async function testScreenBridge() {

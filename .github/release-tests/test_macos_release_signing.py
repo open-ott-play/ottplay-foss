@@ -14,11 +14,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 COLLECT = ROOT / "scripts/ci-tauri-collect-artifacts.sh"
 TARGET = "aarch64-apple-darwin"
+LINUX_CONFIG = {"bundle": {"linux": {"deb": {"depends": ["fixture-linux-dependency"]}}}}
 
 
 def clean_env():
     return {key: value for key, value in os.environ.items()
-            if not key.startswith(("APPLE_", "SIGN_APPLE_", "TAURI_", "CSC_"))}
+            if not key.startswith(("APPLE_", "SIGN_APPLE_", "TAURI_", "CSC_", "OTTPLAY_GST_"))}
 
 
 def executable(path, code):
@@ -27,7 +28,7 @@ def executable(path, code):
 
 
 class SigningSelection(unittest.TestCase):
-    def invoke(self, runner_os, notarize, **extra):
+    def invoke(self, runner_os, notarize, private_config=True, **extra):
         workflow = yaml.safe_load((ROOT / ".github/workflows/release-build.yml").read_text())
         step = next(item for item in workflow["jobs"]["tauri"]["steps"] if item.get("name") == "Build desktop package")
         script = step["run"].replace("${{ steps.signs.outputs.apple_notarize }}", notarize)
@@ -40,11 +41,16 @@ class SigningSelection(unittest.TestCase):
             env = clean_env() | {"PATH": str(directory) + os.pathsep + os.environ["PATH"],
                                 "RUNNER_OS": runner_os, "TAURI_TARGET": TARGET,
                                 "FIXTURE_OUTPUT": str(output), **extra}
+            config_path = directory / "private playback.json"
+            if runner_os == "Linux" and private_config:
+                config_path.write_text(json.dumps(LINUX_CONFIG))
+                env["OTTPLAY_GST_COMPAT_CONFIG"] = str(config_path)
             result = subprocess.run(["bash", "-eu", "-o", "pipefail", "-c", script],
                                     cwd=directory, env=env, capture_output=True, text=True, check=True)
             self.assertNotIn("fixture-private", result.stdout + result.stderr)
             invocation = json.loads(output.read_text())
-        configs = [json.loads(invocation["argv"][i + 1]) for i, arg in enumerate(invocation["argv"]) if arg == "--config"]
+            config_args = [invocation["argv"][i + 1] for i, arg in enumerate(invocation["argv"]) if arg == "--config"]
+            configs = [json.loads(config_path.read_text() if arg == str(config_path) else arg) for arg in config_args]
         self.assertEqual(invocation["argv"][:3], ["tauri", "build", "--ci"])
         return invocation, configs
 
@@ -69,6 +75,15 @@ class SigningSelection(unittest.TestCase):
             with self.subTest(runner=runner, extra=list(extra)):
                 _, configs = self.invoke(runner, "false", **extra)
                 self.assertFalse(any("macOS" in config.get("bundle", {}) for config in configs))
+
+    def test_linux_private_config_is_preserved_with_updater_signing(self):
+        _, configs = self.invoke("Linux", "false", TAURI_SIGNING="true")
+        self.assertEqual(configs, [LINUX_CONFIG, {"bundle": {"createUpdaterArtifacts": True}}])
+
+    def test_linux_build_rejects_missing_private_config(self):
+        with self.assertRaises(subprocess.CalledProcessError) as raised:
+            self.invoke("Linux", "false", private_config=False)
+        self.assertIn("Missing private playback package config", raised.exception.stderr)
 
 
 class CollectionGuards(unittest.TestCase):

@@ -196,7 +196,20 @@ const { gzipSync } = require("node:zlib");
 // Cancellable Plex arrow waits and buffered HLS resume add 1282 raw / at most
 // 366 gzip bytes on Node 26.8.2 at version 1.1.54. Allocate +1300 / +400, retaining
 // the existing native, clean-source identity and release-version reserve.
-const BUDGET = Object.freeze({ bytes: 848400, gzipBytes: 263600 });
+// Transport suspension retains the logical lease while cancelling its engine
+// and resolver, then safely reattaches on wake. Node 26.8.2 measures 848868 raw /
+// 262607 gzip web bytes. Reserve +1000 raw for this lifecycle path and its
+// stale-callback guards; retain the existing compressed budget.
+// The required 40-hex source revision adds up to 40 gzip bytes across 68
+// identity controls on Node 22.23.3. Native output reaches 263606 gzip bytes.
+// Allocate 64 compressed bytes for this metadata and its compression variation;
+// keep the raw cap and every staged entry check unchanged.
+// Attached-engine diagnostics add 868 raw / at most 233 gzip bytes on Node
+// 22.23.3 across beta.10 and final-base web/native output; reserve 900 / 256.
+// Explicit debug-v2 negotiation preserves legacy payloads. Node 22.23.3 measures
+// +235 raw / at most 108 gzip bytes; existing raw limits fit. Allocate 128 gzip
+// bytes per entry and complete payload while keeping all provider assets counted.
+const BUDGET = Object.freeze({ bytes: 850300, gzipBytes: 264048 });
 // Count every optional family as well, so moving code out of the entry bundle
 // cannot disguise growth of the complete player payload.
 // Classic MAG support adds ~5 KB to the optional Stalker family and a small
@@ -302,7 +315,12 @@ const BUDGET = Object.freeze({ bytes: 848400, gzipBytes: 263600 });
 // Include the shared skip wait, buffered HLS resume and optional Plex retries:
 // +1670 raw / at most 488 gzip bytes over fbc80031, measured with all seven
 // providers on Node 26.8.2. Allocate +1700 / +500 to preserve the prior reserve.
-const TOTAL_BUDGET = Object.freeze({ bytes: 964900, gzipBytes: 306550 });
+// Count the same transport-suspension code once in the complete payload.
+// CI Node 22 measures 306569 gzip bytes; retain 81 bytes for release identity.
+// Count the same 64-byte source-metadata allowance once in the full payload.
+// All seven providers remain included and contribute 43074 gzip bytes.
+// Count the same 900 / 256 engine-diagnostic allowance once; providers do not change.
+const TOTAL_BUDGET = Object.freeze({ bytes: 966800, gzipBytes: 307098 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

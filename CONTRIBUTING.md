@@ -51,3 +51,8 @@ uv pip compile requirements-test.in --generate-hashes --universal --python-versi
 ```
 
 Run `npm run test:python` in the resulting Python environment.
+
+## Project decisions and conduct
+
+See [governance](GOVERNANCE.md), the [maintenance roadmap](ROADMAP.md) and
+[Code of Conduct](CODE_OF_CONDUCT.md), including confidential reporting.

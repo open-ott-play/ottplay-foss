@@ -556,11 +556,27 @@ controller can change or disable the policy, using `kiosk off` to release it.
 The strict flag persists across reloads. The CLI requires an explicit strict
 receipt and will not report success if an older player ignores this flag.
 
-On the Capacitor Android app, screen-off or background state pauses the locked
-playback and suspends recovery; `screen_suspended` reports that state. Returning
-to the foreground resumes the same still-active playback, or starts a selection
-deferred while asleep. Changing only strictness while asleep preserves this
-resume behavior without waking the player.
+On the Capacitor Android app, screen-off or background state suspends locked
+playback, releases its media transport and suspends recovery;
+`screen_suspended` reports that state. This closes the player's HLS, DASH or
+native media connection instead of leaving a paused player downloading into its
+buffer. An in-flight request may finish during teardown. It does not stop a
+shared camera relay or other viewers, and the remote control connection stays
+available.
+
+Returning to the foreground reconnects live TV/cameras at the live edge and
+resumes films or archives from their saved position. A selection deferred while
+asleep starts only after waking. Waking does not directly resume media that was
+already paused; the normal kiosk recovery timer still applies. Changing only
+strictness while asleep preserves this behavior
+without waking the player. Ordinary pause outside this screen-suspension path
+retains its usual buffering behavior.
+
+This transport teardown requires an APK containing the screen-suspension fix;
+`v1.1.55-beta.5` only pauses playback and can continue downloading while locked.
+After installing an updated APK, validate with `screen_suspended: true` and
+server-side byte/request counters over at least 30 seconds. A paused video or a
+successful remote command alone does not prove that media traffic stopped.
 
 On Android, a website (including here.now) cannot disable Home, Recents or browser
 navigation outside its page. Use Android app pinning with a PIN to protect exit

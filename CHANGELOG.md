@@ -4,6 +4,27 @@
 
 ### Changes
 
+- Preserve byte-pinned media inputs, generated assets and license texts on
+  Windows checkouts, avoiding an unnecessary runtime rebuild while retaining
+  strict release source verification.
+- Include the upstream GStreamer stream-startup flush fix in an app-private
+  Linux playback plugin, preserving Ubuntu's security patches. DEB activation
+  is restricted to reviewed Ubuntu 24.04 plugin bytes; AppImages bundle the
+  rebuilt plugin and corresponding source without changing system libraries.
+- Report the actual attached playback engine in runtime diagnostics, including
+  HLS-to-native fallback; stopped or unavailable engines remain explicitly null.
+  Explicit debug version 2 requests add this evidence while version 1 remains
+  compatible with existing controllers and CLIs.
+
+- Preserve the exact source revision in release frontend diagnostics. Verify
+  committed media assets before CI builds and reject release builds whose
+  source identity cannot be validated against the frozen version plan.
+- Declare the Linux HLS, H.264 and AAC package dependencies, bundle the
+  AppImage media framework, and require decoded audio/video buffers and clean
+  end-of-stream in the Linux build's codec preflight.
+- Keep native Linux builds on the fixed Ubuntu 24.04 baseline for x86_64 and
+  ARM64. Run Linux WebKit browser checks on Ubuntu 26.04 x64 and historical
+  macOS WebKit checks on Intel, retaining the complete RC browser scenarios.
 - Keep loading Plex catalogs after a full page when the server omits the total
   item count, instead of stopping at the first 200 entries.
 - Accept JSON and XML during Plex server connection checks while verifying the
@@ -21,6 +42,13 @@
 
 ### Upgrade
 
+- Install DEB packages with `sudo apt install ./OttPlay.FOSS_*.deb` so media
+  dependencies are resolved. On Fedora, use
+  `sudo dnf --enablerepo=fedora-cisco-openh264 install ./OttPlay.FOSS-*.rpm`;
+  the real `openh264` library is required, not the non-decoding `noopenh264`
+  placeholder. Select only the intended architecture's package and see
+  [Linux media packaging](docs/linux-media-packaging.md) for requirements and
+  the separate browser/native playback checks.
 - Update using the package for the same platform as your existing installation.
   This patch preserves saved profiles and settings and introduces no data or
   credential migration.

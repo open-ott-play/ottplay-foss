@@ -98,11 +98,18 @@ export function createKiosk(w: any): any {
             if (
                 handle &&
                 handle.active() &&
-                ["playing", "loading"].indexOf(handle.snapshot().phase) >= 0
+                ["playing", "loading", "paused"].indexOf(
+                    handle.snapshot().phase
+                ) >= 0
             ) {
-                sleepingHandle = handle;
-                sleepingPolicy = policy;
-                handle.pause();
+                if (handle.snapshot().phase !== "paused") {
+                    sleepingHandle = handle;
+                    sleepingPolicy = policy;
+                }
+                // Pausing the video element alone leaves HLS and native fetches
+                // running. Suspend releases the transport without losing its cursor.
+                if (typeof handle.suspend === "function") handle.suspend();
+                else if (handle.snapshot().phase !== "paused") handle.pause();
             }
             health = "waiting";
         } finally {
@@ -142,7 +149,18 @@ export function createKiosk(w: any): any {
             handle.active() &&
             handle.snapshot().phase === "paused"
         ) {
-            handle.resume();
+            // Providers may issue expiring URLs before the backend resolver.
+            // Resolve a live channel through its provider again after sleep.
+            var state =
+                w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
+            if (
+                policy.channel &&
+                state &&
+                state.target &&
+                state.target.kind === "live"
+            )
+                play();
+            else handle.resume();
         }
     }
     function snapshot(): any {

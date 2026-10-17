@@ -48,6 +48,15 @@ main playback generation. Native overlays without an HTML video observation are
 not represented as zero frames. Neither clock advancement nor frame counters
 prove that the display changed or that audio was audible.
 
+In explicitly requested version 2, each lane also reports `engine`:
+`hls.js`, `shaka`, `html5`, or `null`.
+This is the engine currently attached by that lane's owned playback lease, not
+its saved player preference. In-place HLS-to-native fallback changes the value
+without changing the preference. Preparation, stop, suspension, retired leases
+and device engines without this diagnostic capability report `null`. No source
+URL is read or exported. Attachment does not prove successful decoding; correlate
+it with the same generation/handle's media counters and actual captured frames.
+
 ## Native applications
 
 The on-demand `RuntimeDiagnostics.snapshot()` Capacitor plugin and Tauri's
@@ -110,6 +119,13 @@ not enable log capture or expose arbitrary files/processes.
 A separate `debug: {version: 1}` capability leaves the original `inspect` section
 list unchanged, so older CLI versions continue using their original commands.
 The new read uses `inspect`, section `debug`, bound to the exact page runtime.
+Ordinary `debug` requests retain the exact version 1 schema, without an `engine`
+field. Use `ott PLAYER debug --engine` with an updated controller and CLI to
+request version 2 explicitly. The player advertises `debug_versions: [1, 2]`
+separately; both the response envelope and snapshot use the requested version.
+Version 2 adds the required nullable engine enum to each media lane. An older
+controller reports unsupported, and the CLI does not downgrade that request or
+treat missing engine evidence as success. Ordinary report bundles retain version 1.
 Old controllers/players report unsupported; restarting old binaries cannot add
 the feature. A native `unsupported`, `unavailable`, `timeout` or `invalid` result
 must not be interpreted as a measured zero or as permission to repeat repairs.

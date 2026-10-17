@@ -176,6 +176,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
                 ? null
                 : {
                       active: () => true,
+                      diagnosticEngine: () => "hls.js",
                       get id() {
                           return state.handle;
                       },
@@ -400,6 +401,21 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     assert.equal(debug.observations[0].data.native.state, "unsupported");
     assert.equal(debug.observations[0].data.media[0].generation, 3);
     assert.equal(debug.observations[0].data.events[0].code, "started");
+    assert.equal(debug.observations[0].data.version, 1);
+    assert(!Object.hasOwn(debug.observations[0].data.media[0], "engine"));
+    if (process.env.OTT_DEBUG_ENGINE_V2 === "1") {
+        const extended = await run(["debug", "--engine"]);
+        assert.equal(extended.observations[0].data.version, 2);
+        assert.equal(extended.observations[0].data.media[0].engine, "hls.js");
+        assert.equal(extended.observations[0].data.media[0].generation, 3);
+    } else if (process.env.OTT_DEBUG_ENGINE_V2 === "unsupported-controller") {
+        const unavailable = await run(["debug", "--engine"], 3);
+        assert.equal(
+            unavailable.observations[0].reason,
+            "unsupported_controller"
+        );
+        assert(!Object.hasOwn(unavailable.observations[0], "data"));
+    }
     assert.equal(state.mutations, 0, "Debug request changed playback");
     state.hidden = state.overlay = true;
     const hidden = await run([

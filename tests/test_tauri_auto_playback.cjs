@@ -307,6 +307,8 @@ function advanceFrames(f, seconds, total = 25, dropped = 24) {
 
 test("Tauri Auto switches sustained native frame loss directly to HLS once", () => {
     const f = frameFixture();
+    const handle = f.w.__ottCoreBackend().current();
+    assert.equal(handle.diagnosticEngine(), "html5");
     advanceFrames(f, 12);
     assert.equal(
         f.players.length,
@@ -316,6 +318,7 @@ test("Tauri Auto switches sustained native frame loss directly to HLS once", () 
     advanceFrames(f, 1);
     assert.equal(f.players.length, 1);
     const hls = f.players[0];
+    assert.equal(handle.diagnosticEngine(), "hls.js");
     assert.equal(hls.media, f.w.video);
     assert.equal(hls.url, "frame-drops.m3u8");
     assert.equal(

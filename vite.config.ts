@@ -388,7 +388,14 @@ export default defineConfig(({ mode }) => ({
                 const version = pkg.version || "local";
                 bundle = embedPlayerBuildIdentity(
                     bundle.replace(/__OTTP_VERSION__/g, version),
-                    __dirname
+                    __dirname,
+                    {
+                        requireReleaseSource:
+                            Boolean(process.env.RELEASE_CHANNEL) ||
+                            existsSync(
+                                resolve(__dirname, ".release-plan.json")
+                            ),
+                    }
                 );
 
                 const outPath = join(outDir, "player.js");

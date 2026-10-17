@@ -28,37 +28,15 @@ const diagnostics = process.env.OTTP_DEVICE_TEST_DIAGNOSTICS === "1";
 let aspectFixture;
 function aspectMedia() {
     if (!aspectFixture) {
-        // Separate fMP4 renditions exercise real HLS audio/video decoding without
-        // depending on GStreamer's multiplexed SourceBuffer path. Shaka consumes
-        // fMP4 directly; reuse the TS bytes without FFmpeg or new binary fixtures.
-        aspectFixture = {};
-        const transmuxer = new (require("mux.js").mp4.Transmuxer)({
-            remux: false,
-        });
-        transmuxer.on("data", (segment) => {
-            const type = segment.type;
-            aspectFixture[type + ".m3u8"] =
-                '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="' +
-                type +
-                '-init.mp4"\n#EXTINF:2,\n' +
-                type +
-                "-segment.m4s\n#EXT-X-ENDLIST\n";
-            aspectFixture[type + "-init.mp4"] = Buffer.from(
-                segment.initSegment
-            );
-            aspectFixture[type + "-segment.m4s"] = Buffer.from(segment.data);
-        });
-        transmuxer.push(
-            new Uint8Array(
+        aspectFixture =
+            require("./hls-aspect-fixture.cjs").createHlsAspectFixture(
                 fs.readFileSync(
                     path.join(
                         __dirname,
                         "../fixtures/media-runtime/segment00.ts"
                     )
                 )
-            )
-        );
-        transmuxer.flush();
+            );
     }
     return aspectFixture;
 }

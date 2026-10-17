@@ -6,7 +6,7 @@ const path = require("node:path");
 // The identifier belongs to these compiled bytes, not a later manifest fetch.
 // Ordinary dirty checkouts retain a content identity without a source claim.
 // A frozen release overlay is accepted only after independent byte validation.
-function createPlayerBuildIdentity(source, root) {
+function createPlayerBuildIdentity(source, root, options = {}) {
     const buildId =
         "bundle-" + createHash("sha256").update(source).digest("hex");
     let sourceHead = "";
@@ -39,7 +39,8 @@ function createPlayerBuildIdentity(source, root) {
             "--porcelain",
             "--untracked-files=normal",
         ]);
-        if (visible && !dirty) sourceRevision = sourceHead;
+        if (visible && !dirty && !options.requireReleaseSource)
+            sourceRevision = sourceHead;
         else if (
             visible &&
             sourceHead &&
@@ -65,6 +66,11 @@ function createPlayerBuildIdentity(source, root) {
     } catch (_) {
         /* Source archives have no Git metadata. */
     }
+    if (options.requireReleaseSource && !sourceRevision)
+        throw new Error(
+            "Release player source identity could not be verified. " +
+                "Commit generated media assets and apply the exact frozen release plan."
+        );
     return { buildId, sourceHead, sourceRevision };
 }
 
@@ -74,10 +80,10 @@ function applyPlayerBuildIdentity(source, identity) {
         .replace(/__OTTP_BUILD_ID__/g, identity.buildId);
 }
 
-function embedPlayerBuildIdentity(source, root) {
+function embedPlayerBuildIdentity(source, root, options) {
     return applyPlayerBuildIdentity(
         source,
-        createPlayerBuildIdentity(source, root)
+        createPlayerBuildIdentity(source, root, options)
     );
 }
 

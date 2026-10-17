@@ -13,7 +13,13 @@ const updaterNames = ["@tauri-apps/plugin-updater", "tauri-plugin-updater"];
 
 // Opting into two managers must retain the shared CI managers and avoid granting
 // either updater bot ownership of the rest of the native dependency graph.
-for (const manager of ["github-actions", "custom.regex", "npm", "cargo"]) {
+for (const manager of [
+    "github-actions",
+    "custom.regex",
+    "custom.jsonata",
+    "npm",
+    "cargo",
+]) {
     assert(
         policy.enabledManagers.includes(manager),
         `Missing ${manager} manager`
