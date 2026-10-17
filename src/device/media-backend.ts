@@ -159,16 +159,24 @@ function createMediaBackend(ports: MediaBackendPorts) {
             if (!previewEvent && lane === "main" && context && domainCurrent())
                 ports.emit(context, type, position, duration);
         }
+        function readAttempt() {
+            var value =
+                engine &&
+                engine.diagnosticAttempt &&
+                engine.diagnosticAttempt();
+            if (!value) return null;
+            return {
+                attachment: attachment,
+                engineStarts: value.engineStarts,
+                fatalErrors: value.fatalErrors,
+                nativeFallbacks: value.nativeFallbacks,
+                streamRetries: value.streamRetries,
+            };
+        }
         function retainAttempt(reason: string): void {
-            if (
-                !current() ||
-                (lane !== "main" && lane !== "pip") ||
-                !engine ||
-                !engine.diagnosticAttempt
-            )
-                return;
+            if (!current() || (lane !== "main" && lane !== "pip")) return;
             try {
-                var value = engine.diagnosticAttempt();
+                var value = readAttempt();
                 if (!value) return;
                 var previous = lastAttempts[lane];
                 if (
@@ -178,16 +186,11 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     previous.reason === "ended"
                 )
                     return;
-                lastAttempts[lane] = {
-                    attachment: attachment,
-                    engineStarts: value.engineStarts,
-                    fatalErrors: value.fatalErrors,
+                lastAttempts[lane] = Object.assign(value, {
                     generation: context ? context.generation : null,
                     handleId: handle.id,
-                    nativeFallbacks: value.nativeFallbacks,
                     reason: reason,
-                    streamRetries: value.streamRetries,
-                };
+                });
             } catch (_) {
                 // Observation failure must never prevent transport teardown.
             }
@@ -399,23 +402,9 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 );
             },
             diagnosticAttempt: function () {
-                if (
-                    !handle.active() ||
-                    suspended ||
-                    phase === "stopped" ||
-                    !engine ||
-                    !engine.diagnosticAttempt
-                )
-                    return null;
-                var value = engine.diagnosticAttempt();
-                if (!value) return null;
-                return {
-                    attachment: attachment,
-                    engineStarts: value.engineStarts,
-                    fatalErrors: value.fatalErrors,
-                    nativeFallbacks: value.nativeFallbacks,
-                    streamRetries: value.streamRetries,
-                };
+                return handle.active() && !suspended && phase !== "stopped"
+                    ? readAttempt()
+                    : null;
             },
             diagnosticEngine: function (): MediaDiagnosticEngine {
                 return handle.active() &&

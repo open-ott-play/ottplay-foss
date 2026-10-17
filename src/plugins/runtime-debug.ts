@@ -25,26 +25,30 @@ function finite(value: any, max = DEBUG_MAX): boolean {
         value <= max
     );
 }
-function playbackAttempt(value: any): any {
-    var keys = [
-        "attachment",
-        "engineStarts",
-        "fatalErrors",
-        "nativeFallbacks",
-        "streamRetries",
-    ];
-    if (
-        !value ||
-        !keys.every(function (key) {
-            return finite(value[key]) && Math.floor(value[key]) === value[key];
-        })
-    )
-        return null;
+function debugInteger(value: any): boolean {
+    return finite(value) && Math.floor(value) === value;
+}
+function playbackAttempt(value: any, retired = false): any {
+    if (!value) return null;
     var result: any = {};
-    keys.forEach(function (key) {
-        result[key] = value[key];
-    });
-    return result;
+    var valid =
+        "attachment engineStarts fatalErrors nativeFallbacks streamRetries"
+            .split(" ")
+            .every(function (key) {
+                result[key] = value[key];
+                return debugInteger(value[key]);
+            });
+    if (retired) {
+        result.handleId = value.handleId;
+        result.generation = value.generation;
+        result.reason = value.reason;
+        valid =
+            valid &&
+            debugInteger(value.handleId) &&
+            (value.generation === null || debugInteger(value.generation)) &&
+            ["ended", "disposed", "suspended"].indexOf(value.reason) >= 0;
+    }
+    return valid ? result : null;
 }
 function versionToken(value: any): string | null {
     var match =
@@ -349,27 +353,11 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                 if (version === 3 && handle && handle.diagnosticAttempt) {
                     attempt = playbackAttempt(handle.diagnosticAttempt());
                 }
-                if (version === 3 && backend && backend.lastAttempt) {
-                    var retired = backend.lastAttempt(lane);
-                    var counters = playbackAttempt(retired);
-                    if (
-                        counters &&
-                        finite(retired.handleId) &&
-                        Math.floor(retired.handleId) === retired.handleId &&
-                        (retired.generation === null ||
-                            (finite(retired.generation) &&
-                                Math.floor(retired.generation) ===
-                                    retired.generation)) &&
-                        ["ended", "disposed", "suspended"].indexOf(
-                            retired.reason
-                        ) >= 0
-                    ) {
-                        lastAttempt = counters;
-                        lastAttempt.handleId = retired.handleId;
-                        lastAttempt.generation = retired.generation;
-                        lastAttempt.reason = retired.reason;
-                    }
-                }
+                if (version === 3 && backend && backend.lastAttempt)
+                    lastAttempt = playbackAttempt(
+                        backend.lastAttempt(lane),
+                        true
+                    );
             } catch (_) {
                 /* A missing owner does not prevent element observations. */
             }

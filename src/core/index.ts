@@ -983,11 +983,11 @@ interface CoreStreamAttempt {
 }
 var coreStreamAttempt: CoreStreamAttempt | null = null;
 // Retained for the whole engine lease: an internal retry must not erase history.
-var coreAttemptCounters = {
-    engineStarts: 0,
-    fatalErrors: 0,
-    nativeFallbacks: 0,
-    streamRetries: 0,
+var coreAttemptCounters: {
+    engineStarts: number;
+    fatalErrors: number;
+    nativeFallbacks: number;
+    streamRetries: number;
 };
 function countCoreAttempt(
     session: number,
@@ -3243,12 +3243,7 @@ function openCoreEngineLease(
     var lease: MediaEngineLease = {
         diagnosticAttempt: function () {
             return active() && !pip
-                ? {
-                      engineStarts: coreAttemptCounters.engineStarts,
-                      fatalErrors: coreAttemptCounters.fatalErrors,
-                      nativeFallbacks: coreAttemptCounters.nativeFallbacks,
-                      streamRetries: coreAttemptCounters.streamRetries,
-                  }
+                ? Object.assign({}, coreAttemptCounters)
                 : null;
         },
         diagnosticEngine: function () {
