@@ -1,5 +1,11 @@
 # OTT-play FOSS
 
+[![OTT-play FOSS channel browser in a perspective view](docs/images/hero.png)](docs/images/studio-2026-default.png)
+
+*Existing Studio 2026 interface screenshot with synthetic channel and programme fixtures.
+Open the image for the original, flat view; this is not a capture of a live subscription.
+[Image source and regeneration](docs/images/README.md).*
+
 [Русское руководство](README.ru.md) · [Quick starts in 88 languages](docs/readme/README.md) · [Documentation wiki](docs/wiki/Home.md)
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15593/badge)](https://www.bestpractices.dev/projects/15593)
