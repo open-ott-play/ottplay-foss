@@ -658,7 +658,34 @@ export function installOfflineProfiles(w: any, media: any): any {
             );
     }
     function scanCatalog(): Promise<any> {
-        return media.snapshot ? media.snapshot() : media.list();
+        var pending = media.snapshot ? media.snapshot() : media.list();
+        return new Promise(function (resolve, reject) {
+            var timer =
+                typeof w.setTimeout === "function"
+                    ? w.setTimeout(function () {
+                          timer = null;
+                          reject(
+                              profileFailure(
+                                  "Local scan is still running; retry after it finishes"
+                              )
+                          );
+                      }, 10000)
+                    : null;
+            function clear(): void {
+                if (timer !== null) w.clearTimeout(timer);
+                timer = null;
+            }
+            pending.then(
+                function (catalog: any) {
+                    clear();
+                    resolve(catalog);
+                },
+                function (error: any) {
+                    clear();
+                    reject(error);
+                }
+            );
+        });
     }
     function completeCatalog(catalog: any): void {
         if (

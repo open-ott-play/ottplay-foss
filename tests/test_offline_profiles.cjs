@@ -609,14 +609,14 @@ test("save shares a playback scan and persists only its complete source set", as
     assert.equal(f.calls(), 1);
     assert.equal(reply, undefined);
     assert.equal(f.data.size, 0);
-    f.advance(59000);
+    f.advance(4000);
     f.progress({ ...f.catalog(), scanning: true });
-    f.advance(59000);
+    f.advance(4000);
     await Promise.resolve();
     assert.equal(
         reply,
         undefined,
-        "ongoing progress refreshes the shared scan deadline"
+        "the shared scan may complete within the profile wait deadline"
     );
     f.catalog().sources.push({ id: "SECOND", kind: "folder", name: "Second" });
     f.finish({ ...f.catalog(), scanning: false });
@@ -689,7 +689,70 @@ test("superseded full catalog cannot save a stale profile even without a cancell
     f.finishAt(1, f.catalog());
     assert.equal((await current).items.length, 1);
     const retry = f.call("profile_save", { number: 1 });
-    await new Promise((resolve) => setImmediate(resolve));
-    f.finishAt(2, f.catalog());
     assert.equal((await retry).status, "ok");
+    assert.equal(f.calls(), 2, "a complete current snapshot does not rescan");
 });
+
+for (const operation of ["save", "bind"]) {
+    test(`${operation} times out without cancelling the scan or writing after late completion`, async () => {
+        const f = sharedScanFixture();
+        if (operation === "bind") {
+            const profile = await saved(fixture());
+            await f.call("profile_import", { number: 1, profile });
+            await f.call("profile", { number: 1 });
+        }
+        const before = Array.from(f.data.entries());
+        let scanDone = false;
+        const scanning = f.media
+            .list(() => true)
+            .then(() => {
+                scanDone = true;
+            });
+        await new Promise((resolve) => setImmediate(resolve));
+        const waiting =
+            operation === "save"
+                ? f.call("profile_save", { number: 1 })
+                : f.api.bindCurrent();
+        const rejected =
+            operation === "bind"
+                ? assert.rejects(waiting, /scan is still running/)
+                : null;
+        await new Promise((resolve) => setImmediate(resolve));
+        f.advance(5000);
+        f.progress({ ...f.catalog(), scanning: true });
+        f.advance(5000);
+        if (rejected) await rejected;
+        else {
+            const result = await waiting;
+            assert.equal(result.status, "rejected");
+            assert.match(result.data.error, /scan is still running/);
+        }
+        assert.equal(scanDone, false);
+        assert.deepEqual(Array.from(f.data.entries()), before);
+        assert.equal(
+            (await f.call("profiles")).status,
+            "ok",
+            "timed-out operation releases busy"
+        );
+        f.advance(30000);
+        f.progress({ ...f.catalog(), scanning: true });
+        f.advance(30000);
+        f.finish({ ...f.catalog(), scanning: false });
+        await scanning;
+        assert.deepEqual(
+            Array.from(f.data.entries()),
+            before,
+            "late completion has no profile effects"
+        );
+        if (operation === "save")
+            assert.equal(
+                (await f.call("profile_save", { number: 1 })).status,
+                "ok"
+            );
+        else {
+            await f.api.bindCurrent();
+            assert.equal(f.api.selection(), "local-PRIVATE-ITEM");
+        }
+        assert.equal(f.calls(), 1, "retry uses the completed current snapshot");
+    });
+}

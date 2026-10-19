@@ -7,8 +7,9 @@
   descriptions only; browser handles and native grants/bookmarks stay local.
   Foreign imports require an explicit local binding, and generic settings/cloud
   restores preserve rather than replace the installation's private bindings.
-  Saving and binding wait for complete progressive scans without cancelling
-  playback; stale results cannot replace another profile's source selection.
+  Saving and binding wait up to ten seconds for a complete progressive scan
+  without cancelling playback; timed-out requests never save later, and stale
+  results cannot replace another profile's source selection.
 - Synchronize the standalone fuzz lockfile with the existing Local videos core
   dependencies so baseline regression-corpus checks work with `--locked`.
 

@@ -254,7 +254,8 @@ const { gzipSync } = require("node:zlib");
 // Progressive scanning, preferred resume and append-only catalogs reserve 3584/1536.
 // Shared scan snapshots, profile guards per batch and bounded idle recovery:
 // reserve 1024 raw bytes, no gzip increase. Final per-slot ownership guards and
-// the upstream scan counter measure 934945 raw / 289057 gzip (native 289115);
+// the counter and bounded profile waiter measure 935255 raw / 289146 gzip
+// (native 289204);
 // reserve another 1024 raw bytes, keeping gzip and optional-provider caps fixed.
 // This already includes upstream 2e025742 counter headroom; do not add it twice.
 const BUDGET = Object.freeze({ bytes: 935335, gzipBytes: 289918 });

@@ -91,8 +91,9 @@ export function installLocalMedia(w: any): any {
             : isTauri()
               ? "tauri"
               : "browser:" + remoteEndpoint();
-        // Profile snapshots wait for an existing scan instead of cancelling
-        // playback's progressive catalog and leaving its visible list truncated.
+        // Profile snapshots share the current scan or its complete result.
+        // A retry after a bounded profile timeout must not restart a long scan.
+        // Source changes and normal refreshes advance catalogRevision.
         if (
             reuseCurrent &&
             pendingList &&
@@ -164,7 +165,9 @@ export function installLocalMedia(w: any): any {
         function clear(): void {
             if (pendingList === result) pendingList = null;
         }
-        result.then(clear, clear);
+        result.then(function (value: any) {
+            if (value.scanning || value.cancelled) clear();
+        }, clear);
         return result;
     }
     function importFiles(folder = false): Promise<any> {

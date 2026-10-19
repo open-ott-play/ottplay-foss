@@ -37,8 +37,12 @@ Large folders load progressively. Playback waits for the profile's selected file
 later batches extend the channel list without restarting it. Save and local
 binding wait for the complete scan and share an existing scan rather than
 cancelling playback enumeration. Cancelled or incomplete scans never create a
-profile or grant access. A scan with no progress for one minute fails so it can
-be retried after reconnecting the source.
+profile or grant access. Each save/bind waits at most ten seconds; if the scan is
+still running, it reports an error without cancelling playback or saving later.
+Retry after scanning finishes; the complete current catalogue is reused. Refresh
+Local videos after external folder changes before saving their new contents.
+A scan with no progress for one minute fails so it can be retried after
+reconnecting the source.
 
 `ott d1 stop` stops playback while retaining remote control. `ott d1 start`
 runs the player's configured startup flow. Profile operations do not grant
