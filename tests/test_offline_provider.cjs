@@ -729,3 +729,48 @@ test("missing legacy index allows the first playable batch", async () => {
     finish(catalog);
     await Promise.resolve();
 });
+
+test("startup scan counter updates one bounded node without exposing source paths", async () => {
+    const f = integrationFixture("offline", { offlineprimaryIndex: "1" });
+    let progress, finish;
+    const nodes = [];
+    const panel = {
+        appendChild: (node) => nodes.push(node),
+        querySelector: (selector) =>
+            selector === ".ott-spinner" ? {} : nodes[0],
+    };
+    f.host.document.getElementById = (id) =>
+        id === "dialogbox" ? panel : null;
+    f.host.document.createElement = () => ({
+        attrs: {},
+        setAttribute(name, value) {
+            this.attrs[name] = value;
+        },
+    });
+    f.host.__ottLocalMedia = {
+        list: (callback) => {
+            progress = callback;
+            return new Promise((resolve) => {
+                finish = resolve;
+            });
+        },
+    };
+    f.host.loadProv();
+    const first = {
+        id: "private/path",
+        name: "Private name.mp4",
+        url: "blob:first",
+    };
+    progress({ items: [], scanned: 64 });
+    progress({ items: [first], scanned: 128 });
+    assert.equal(nodes.length, 1);
+    assert.equal(nodes[0].textContent, "Local videos: 1 / 128");
+    assert.deepEqual(nodes[0].attrs, {
+        "data-local-items": "1",
+        "data-local-scanned": "128",
+        "data-local-waiting": "legacy-index",
+    });
+    assert(!JSON.stringify(nodes[0]).includes("private/path"));
+    finish({ items: [first], scanned: 128 });
+    await Promise.resolve();
+});

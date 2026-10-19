@@ -253,8 +253,10 @@ const { gzipSync } = require("node:zlib");
 // Nonblocking local startup and recovery add 454 raw bytes (512 reserved).
 // Progressive scanning, preferred resume and append-only catalogs reserve 3584/1536.
 // Shared scan snapshots, profile guards per batch and bounded idle recovery:
-// merged entry measures 933948/288757; reserve 1024 raw bytes, no gzip increase.
-const BUDGET = Object.freeze({ bytes: 934311, gzipBytes: 289918 });
+// reserve 1024 raw bytes, no gzip increase. Final per-slot ownership guards and
+// the upstream scan counter measure 934945 raw / 289057 gzip (native 289115);
+// reserve another 1024 raw bytes, keeping gzip and optional-provider caps fixed.
+const BUDGET = Object.freeze({ bytes: 935335, gzipBytes: 289918 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -380,8 +382,8 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // bundles are unchanged and remain inside the complete-payload measurement.
 // Count the same profile, spinner, desktop input and progressive scan allowances once.
 // Every optional provider remains included in the complete-payload measurement.
-// Include the same 1024-byte progressive-profile allowance once.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1055211, gzipBytes: 334818 });
+// Include the same 2048-byte progressive-profile/counter allowance once.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1056235, gzipBytes: 334818 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

@@ -378,6 +378,51 @@ function createOfflineDriver(
                         url: item.url,
                     };
                 });
+                if (
+                    !started &&
+                    typeof document !== "undefined" &&
+                    document.createElement
+                ) {
+                    var panel = document.getElementById("dialogbox");
+                    if (panel && panel.querySelector(".ott-spinner")) {
+                        var progress = panel.querySelector(
+                            "[data-local-scanned]"
+                        );
+                        if (!progress) {
+                            progress = document.createElement("div");
+                            panel.appendChild(progress);
+                        }
+                        var scanned = Math.max(
+                            0,
+                            Math.floor(Number(value.scanned) || 0)
+                        );
+                        var waiting = waitForFinal
+                            ? "invalid-index"
+                            : wanted && !catalog.channels[wanted]
+                              ? "saved-id"
+                              : catalog.ids.length <= legacyIndex &&
+                                  legacyIndex > 0
+                                ? "legacy-index"
+                                : !catalog.ids.length
+                                  ? "no-items"
+                                  : "ready";
+                        progress.setAttribute(
+                            "data-local-scanned",
+                            String(scanned)
+                        );
+                        progress.setAttribute(
+                            "data-local-items",
+                            String(catalog.ids.length)
+                        );
+                        progress.setAttribute("data-local-waiting", waiting);
+                        progress.textContent =
+                            ports.translate("Local videos") +
+                            ": " +
+                            catalog.ids.length +
+                            " / " +
+                            scanned;
+                    }
+                }
                 if (final) clearLoadTimer();
                 if (
                     !started &&

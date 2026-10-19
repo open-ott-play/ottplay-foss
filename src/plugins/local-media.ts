@@ -149,7 +149,7 @@ export function installLocalMedia(w: any): any {
                         reject(new Error("Invalid local media catalog"));
                         return;
                     }
-                    if (request === catalogRevision) last = value;
+                    last = value;
                     resolve(value);
                 },
                 function (error: any) {
