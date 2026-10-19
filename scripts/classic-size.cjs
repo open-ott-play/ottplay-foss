@@ -256,6 +256,7 @@ const { gzipSync } = require("node:zlib");
 // reserve 1024 raw bytes, no gzip increase. Final per-slot ownership guards and
 // the upstream scan counter measure 934945 raw / 289057 gzip (native 289115);
 // reserve another 1024 raw bytes, keeping gzip and optional-provider caps fixed.
+// This already includes upstream 2e025742 counter headroom; do not add it twice.
 const BUDGET = Object.freeze({ bytes: 935335, gzipBytes: 289918 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
