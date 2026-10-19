@@ -8,7 +8,9 @@
     "container-validation.yml"
   ],
   "channel_validation_workflows": {
-    "beta": ["beta-checks.yml"]
+    "beta": [
+      "beta-checks.yml"
+    ]
   },
   "artifact_pattern": "release-assets*",
   "local_checks": [
@@ -154,7 +156,11 @@
       {
         "path": "ottplay-foss-container.oci.tar",
         "format": "oci",
-        "field": ["config", "Labels", "org.opencontainers.image.version"],
+        "field": [
+          "config",
+          "Labels",
+          "org.opencontainers.image.version"
+        ],
         "value": "package"
       },
       {
@@ -190,7 +196,9 @@
   },
   "asset_restrictions": [
     {
-      "suffixes": [".aab"],
+      "suffixes": [
+        ".aab"
+      ],
       "reason": "Play Store AAB publication belongs to open-ott-play/ottplay-android"
     }
   ],
@@ -210,13 +218,19 @@
   ],
   "single_entry_ci": true,
   "change_scope": {
-    "documentation_paths": ["vendor/README.md"],
-    "required_paths": ["docs/privacy-policy.md"],
-    "always_validate_workflows": ["codeql.yml"]
+    "documentation_paths": [
+      "vendor/README.md"
+    ],
+    "required_paths": [
+      "docs/privacy-policy.md"
+    ],
+    "always_validate_workflows": [
+      "codeql.yml"
+    ]
   },
   "release_notes": "CHANGELOG.md",
   "fuzzing": {
-    "toolkit_ref": "21a366f200f0371a10a6de7ad6ca263af230b842"
+    "toolkit_ref": "6b2d99519d513d2b871d2a845ddd6134dea4af2c"
   },
   "toolkit_revision": "5e413f80a4353d328b4529eae57992ac3987e2dd"
 }
