@@ -558,6 +558,8 @@ export function dispatchKey(keyCode: number, event?: Event): void {
 export function keyFun(fn: number): void {
     var w = window as any;
     var id = w.__ottInputRouter.binding(fn);
+    // Local videos are finite media, but these bindings still change files.
+    var localVideos = w.__ottActiveProviderDriver?.id === "offline";
     function call(name: string, ...args: any[]) {
         if (typeof w[name] === "function") return w[name].apply(w, args);
     }
@@ -599,11 +601,11 @@ export function keyFun(fn: number): void {
             call("popupList");
         },
         "navigation.backward": function () {
-            if (w.playType) call("shiftArchiveSelect", 0);
+            if (w.playType && !localVideos) call("shiftArchiveSelect", 0);
             else call("minusProg");
         },
         "navigation.forward": function () {
-            if (w.playType) call("shiftArchiveSelect", 60);
+            if (w.playType && !localVideos) call("shiftArchiveSelect", 60);
             else call("plusProg");
         },
         "navigation.quick": function () {
