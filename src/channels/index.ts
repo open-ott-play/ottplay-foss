@@ -1428,6 +1428,7 @@ export function onChannelsLoaded(): void {
     // Dismiss the old loading dialog before playback can open a PIN or resume
     // prompt. Hiding it afterwards would close the newly created prompt.
     $("#dialogbox").hide();
+    var localRecovery: any = null;
     try {
         var driver = (window as any).__ottActiveProviderDriver;
         var libraryOnly = Boolean(
@@ -1507,37 +1508,36 @@ export function onChannelsLoaded(): void {
                     var selectedLocal = localProfiles.selection();
                     if (selectedLocal !== null) {
                         var localIndex = cList.indexOf(selectedLocal);
-                        if (localIndex < 0) {
-                            (window as any).__ottLocalMedia.resume(true);
-                            return;
-                        }
-                        window.setCurrent(0, localIndex);
+                        if (localIndex < 0) localRecovery = driver;
+                        else window.setCurrent(0, localIndex);
                     }
                 }
-                // Start playback: restore continue-watching bookmark if available.
-                // If no archive bookmark is offered, fall back to the normal
-                // live playChannel path (live bookmarks are already encoded in
-                // catIndex/primaryIndex persisted by setCurrent).
-                var el = document.getElementById("launch");
-                if (el) el.innerHTML += "<br/>Start playback...";
-                if (!restoreContinueWatch()) {
-                    try {
-                        window.playChannel(catIndex, primaryIndex);
-                    } catch (e) {
-                        console.error(e);
-                        primaryIndex = 0;
-                        catIndex = sFavorites ? 1 : 0;
+                if (!localRecovery) {
+                    // Start playback: restore continue-watching bookmark if available.
+                    // If no archive bookmark is offered, fall back to the normal
+                    // live playChannel path (live bookmarks are already encoded in
+                    // catIndex/primaryIndex persisted by setCurrent).
+                    var el = document.getElementById("launch");
+                    if (el) el.innerHTML += "<br/>Start playback...";
+                    if (!restoreContinueWatch()) {
                         try {
                             window.playChannel(catIndex, primaryIndex);
-                        } catch (e2) {
-                            console.error(e2);
+                        } catch (e) {
+                            console.error(e);
+                            primaryIndex = 0;
+                            catIndex = sFavorites ? 1 : 0;
+                            try {
+                                window.playChannel(catIndex, primaryIndex);
+                            } catch (e2) {
+                                console.error(e2);
+                            }
                         }
                     }
-                }
-                try {
-                    window.loadEpgTimers();
-                } catch (e) {
-                    console.error(e);
+                    try {
+                        window.loadEpgTimers();
+                    } catch (e) {
+                        console.error(e);
+                    }
                 }
                 // List must be hidden so main key handler gets events (ENTER, Q, C, etc.)
                 window.isListVisible = false;
@@ -1581,6 +1581,11 @@ export function onChannelsLoaded(): void {
     if (typeof (window as any).clearBootHide === "function")
         (window as any).clearBootHide();
     console.log("player ready!");
+    if (
+        localRecovery &&
+        localRecovery === (window as any).__ottActiveProviderDriver
+    )
+        (window as any).__ottLocalMedia.resume(true);
 }
 
 /**

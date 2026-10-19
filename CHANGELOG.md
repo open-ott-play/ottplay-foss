@@ -9,7 +9,9 @@
   restores preserve rather than replace the installation's private bindings.
   Saving and binding wait up to ten seconds for a complete progressive scan
   without cancelling playback; timed-out requests never save later, and stale
-  results cannot replace another profile's source selection.
+  results cannot replace another profile's source selection. Missing-file recovery
+  clears startup overlays, and JSON settings backups restore the imported active
+  slot with its channel and favorites documents.
 - Synchronize the standalone fuzz lockfile with the existing Local videos core
   dependencies so baseline regression-corpus checks work with `--locked`.
 

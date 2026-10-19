@@ -1244,6 +1244,25 @@ async function builtUi(devicePath) {
                 [],
                 "later batch emits no play or reload events"
             );
+            await page.evaluate(() => {
+                const fixture = window.__progressiveCatalogFixture;
+                fixture.api.list = async () => ({
+                    ...fixture.catalog,
+                    items: fixture.catalog.items.filter(
+                        (item) => item.id !== fixture.first.id
+                    ),
+                    scanning: false,
+                });
+                window.loadProv();
+            });
+            await action("resume").waitFor({ state: "visible" });
+            assert.equal(await page.locator("#launch").isVisible(), false);
+            assert.equal(await page.locator("#buffering").isVisible(), false);
+            assert.equal(
+                await page.evaluate(() => window.isListVisible),
+                true,
+                "missing selected file leaves recovery interactive after boot cleanup"
+            );
         } finally {
             await page.evaluate(() => {
                 const fixture = window.__progressiveCatalogFixture;

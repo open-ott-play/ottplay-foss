@@ -345,15 +345,35 @@ test("saved offline profile selection overrides a different playback cursor", ()
     assert.deepEqual(f.plays, [[0, 1]]);
 });
 
-test("missing saved offline selection requests local recovery instead of playing another file", () => {
-    const f = startupFixture("offline");
-    let recovery = 0;
-    f.host.cList = ["local-other"];
-    f.host.__ottOfflineProfiles = { selection: () => "" };
-    f.host.__ottLocalMedia = { resume: () => recovery++ };
-    f.host.onChannelsLoaded();
-    assert.equal(recovery, 1);
-    assert.deepEqual(f.plays, []);
+test("missing saved offline selection opens recovery after startup cleanup without playing another file", () => {
+    for (const selected of ["", "local-missing"]) {
+        const f = startupFixture("offline");
+        const events = [];
+        f.host.cList = ["local-other"];
+        f.host.isListVisible = true;
+        f.host.__ottOfflineProfiles = { selection: () => selected };
+        f.host.$ = (selector) => ({ hide: () => events.push(selector) });
+        f.host.clearBootHide = () => events.push("boot-cleared");
+        f.host.__ottLocalMedia = {
+            resume: (skipScan) => {
+                assert.equal(skipScan, true);
+                assert.equal(f.host.isListVisible, false);
+                events.push("recovery");
+                f.host.isListVisible = true;
+            },
+        };
+        f.host.onChannelsLoaded();
+        assert.deepEqual(events, [
+            "#dialogbox",
+            "#launch",
+            "#buffering",
+            "boot-cleared",
+            "recovery",
+        ]);
+        assert.equal(f.host.isListVisible, true);
+        assert.equal(f.writes(), 0);
+        assert.deepEqual(f.plays, []);
+    }
 });
 
 test("offline catalog cannot publish sources for a replaced profile", async () => {
