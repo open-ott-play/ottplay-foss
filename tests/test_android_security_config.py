@@ -55,4 +55,43 @@ class NativeSecurityConfig(unittest.TestCase):
         self.assertEqual(service.get(NS+'exported'), 'false')
         self.assertEqual(service.get(NS+'foregroundServiceType'), 'mediaPlayback')
 
+    def test_home_requires_explicit_enablement_and_keeps_normal_launcher(self):
+        intent = 'android.intent.'
+        components = list(self.app.findall('activity')) + list(self.app.findall('activity-alias'))
+
+        def resolve(category, enabled=()):
+            matches = []
+            for component in components:
+                name = component.get(NS+'name')
+                if component.get(NS+'enabled', 'true') == 'false' and name not in enabled:
+                    continue
+                if component.get(NS+'exported') != 'true':
+                    continue
+                for rule in component.findall('intent-filter'):
+                    actions = {node.get(NS+'name') for node in rule.findall('action')}
+                    categories = {node.get(NS+'name') for node in rule.findall('category')}
+                    required = {intent+'category.'+category}
+                    if category == 'HOME':
+                        required.add(intent+'category.DEFAULT')
+                    if intent+'action.MAIN' in actions and required <= categories:
+                        matches.append(name)
+            return matches
+
+        self.assertEqual(resolve('HOME'), [])
+        self.assertEqual(resolve('LAUNCHER'), ['.MainActivity'])
+        self.assertEqual(resolve('HOME', enabled=['.HomeActivity']), ['.HomeActivity'])
+        self.assertEqual(resolve('LAUNCHER', enabled=['.HomeActivity']), ['.MainActivity'])
+        alias = next(node for node in self.app.findall('activity-alias')
+                     if node.get(NS+'name') == '.HomeActivity')
+        target = next(node for node in self.app.findall('activity')
+                      if node.get(NS+'name') == alias.get(NS+'targetActivity'))
+        self.assertEqual(target.get(NS+'name'), '.MainActivity')
+        self.assertLess(list(self.app).index(target), list(self.app).index(alias))
+        self.assertEqual(target.get(NS+'launchMode'), 'singleTask')
+        permissions = {node.get(NS+'name') for node in self.manifest.findall('uses-permission')}
+        self.assertTrue(permissions.isdisjoint({
+            'android.permission.RECEIVE_BOOT_COMPLETED',
+            'android.permission.SYSTEM_ALERT_WINDOW',
+        }))
+
 if __name__ == '__main__': unittest.main()

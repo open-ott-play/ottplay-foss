@@ -1,0 +1,147 @@
+# Автозапуск OTTPlay как домашнего экрана Android
+
+[English instructions](android-distributions.md#optional-startup-as-the-android-home-app)
+· [Сборка Android](../android/README.md)
+
+В Capacitor APK предусмотрен дополнительный компонент
+`play.ott.foss/.HomeActivity`, который открывает существующий `MainActivity`.
+По умолчанию он выключен. После его включения и назначения домашним экраном
+Android сможет открывать OTTPlay при запуске Home. **Кнопка «Домой» тоже будет
+возвращать в OTTPlay.** Это не режим «один раз открыть плеер при загрузке,
+оставив штатный лаунчер домашним экраном». Если прошивка имеет собственный
+проверенный выбор приложения для автозапуска, для такого сценария удобнее он.
+
+Для этого режима не нужны boot receiver, постоянная фоновая служба, разрешение
+на показ поверх других приложений, служба специальных возможностей или
+назначение приложения администратором устройства. Начиная с Android 10 запуск
+Activity из фона ограничен: возможность получить `BOOT_COMPLETED` сама по себе
+не разрешает открыть интерфейс. Официальная документация:
+[домашнее приложение](https://developer.android.com/work/dpc/dedicated-devices/cookbook#be-the-home-app),
+[ограничения фонового запуска](https://developer.android.com/about/versions/10/privacy/changes#background-activity-starts),
+[исключения для broadcast](https://developer.android.com/develop/background-work/background-tasks/broadcasts/broadcast-exceptions).
+
+Ниже — порядок настройки и проверки для Android 11. Наличие компонента в коде
+или успешная сборка **не подтверждают автозапуск на конкретном проекторе**.
+Результаты настоящей перезагрузки и включения после выключения нужно фиксировать
+отдельно: производитель может менять поведение Home.
+
+## Подготовка и сохранение штатного лаунчера
+
+Нужен APK с новым компонентом, подписанный тем же сертификатом, что установленный
+`play.ott.foss`. В старых APK этого компонента нет. Используйте обычное обновление
+поверх приложения: оно сохраняет данные, профили и регистрацию удалённого
+управления. Не удаляйте приложение, не очищайте его данные и не обходите ошибку
+подписи принудительным понижением версии.
+
+Из `adb devices -l` выберите точное устройство. Вместо заглушки укажите его
+ADB serial; это не готовый сетевой адрес. В примерах используется основной
+пользователь `0`. Если `am get-current-user` показывает другое значение,
+замените номер пользователя во всех последующих командах.
+Если для устройства используется отдельный ADB-сервер, добавляйте его прежний
+параметр `-P PORT` ко всем командам `adb`, включая поиск устройств. Продолжайте
+использовать тот же сервер и авторизованные ключи.
+
+```sh
+adb devices -l
+OTT_ADB_SERIAL='REPLACE_WITH_ADB_DEVICE_SERIAL'
+adb -s "$OTT_ADB_SERIAL" install -r /path/to/ottplay-foss-android-full.apk
+adb -s "$OTT_ADB_SERIAL" shell am get-current-user
+adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
+  -a android.intent.action.MAIN -c android.intent.category.HOME
+```
+
+Запишите выведенный компонент штатного Home в формате `package/activity`
+вне самого плеера и сохраните его в переменной ниже. Не угадывайте имя пакета.
+Если вывод указывает на системный выбор приложений или приложение не найдено,
+сначала назначьте заведомо рабочий штатный Home. Сам лаунчер оставьте
+установленным и включённым.
+
+```sh
+OTT_PREVIOUS_HOME='REPLACE_WITH_RECORDED_HOME_COMPONENT'
+```
+
+## Включение режима Home
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell pm enable --user 0 play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell cmd package set-home-activity --user 0 \
+  play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
+  -a android.intent.action.MAIN -c android.intent.category.HOME
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
+  -a android.intent.action.MAIN -c android.intent.category.HOME
+```
+
+В качестве Home должен определяться alias OTTPlay, а последняя команда должна
+открыть плеер. Если прошивка не принимает `set-home-activity`, используйте её
+системный выбор домашнего приложения и снова проверьте результат. Если штатного
+способа назначить приложение нет, остановитесь: отключать лаунчер производителя
+для принудительного выбора не требуется. Android описывает этот механизм как
+[роль Home](https://developer.android.com/reference/androidx/core/role/RoleManagerCompat#ROLE_HOME).
+
+Ручная команда `am start` выше — только предварительная проверка. Она **не
+доказывает автозапуск**. Проверьте физические кнопки «Домой» и «Назад», возврат
+из другого приложения и запуск обычным значком. Должен работать один сеанс
+плеера с прежними профилем, именем удалённого управления и движком воспроизведения.
+
+Системные настройки и прежний лаунчер можно открыть явно:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 -a android.settings.SETTINGS
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 -n "$OTT_PREVIOUS_HOME"
+```
+
+Вторая команда открывает прежний лаунчер, но не делает его домашним экраном
+по умолчанию.
+
+## Проверка на устройстве
+
+1. Зафиксируйте версию APK, текущий Home и uptime. Выполните обычную перезагрузку
+   либо `adb -s "$OTT_ADB_SERIAL" reboot`, когда воспроизведение можно прервать.
+2. После подключения устройства проверьте завершение загрузки, uptime и
+   foreground Activity. **Во время наблюдения не отправляйте `am start`, нажатие
+   Home или команду удалённого запуска:** иначе тест перестанет проверять
+   автоматическое открытие.
+3. Убедитесь, что OTT появился самостоятельно и удалённая регистрация вернулась
+   после восстановления сети. Запуск интерфейса и воспроизведение канала — разные
+   проверки. Заставка не подтверждает готовность: проверьте изображение, звук
+   и продвижение воспроизведения согласно выбранному режиму плеера.
+4. Отдельно проверьте нормальное выключение и последующее включение, отличая их
+   от standby/resume. Успешная программная перезагрузка не подтверждает холодный
+   старт проектора.
+5. Проверьте включение с задержкой подключения Wi-Fi и восстановление после
+   появления сети. Системные настройки должны оставаться доступными.
+6. После следующего подписанного обновления APK снова проверьте включённость
+   alias, выбранный Home, профиль, удалённое управление и автозапуск. Сообщение
+   установщика об успехе этого не доказывает. Force-stop не заменяет перезагрузку.
+
+Команды для наблюдения после подключения:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell getprop sys.boot_completed
+adb -s "$OTT_ADB_SERIAL" shell cat /proc/uptime
+adb -s "$OTT_ADB_SERIAL" shell dumpsys activity activities
+adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
+  -a android.intent.action.MAIN -c android.intent.category.HOME
+```
+
+## Возврат штатного Home
+
+Сначала восстановите записанный компонент и проверьте, что система выбирает его:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell cmd package set-home-activity --user 0 \
+  "$OTT_PREVIOUS_HOME"
+adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
+  -a android.intent.action.MAIN -c android.intent.category.HOME
+```
+
+Только после восстановления прежнего Home выключите дополнительный alias:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell pm disable --user 0 play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
+  -a android.intent.action.MAIN -c android.intent.category.HOME
+```
+
+Обычный значок OTTPlay остаётся доступным. Удалять данные плеера не нужно.
