@@ -9,6 +9,16 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 
+CI_RUNNER = (
+    "${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == "
+    "'k3s') && ((github.event_name == 'pull_request' && "
+    'github.event.pull_request.head.repo.full_name == github.repository) || '
+    '(contains(fromJSON(\'["push","schedule","workflow_dispatch"]\'), github.event_name) '
+    "&& github.ref == format('refs/heads/{0}', "
+    "github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || "
+    '\'["ubuntu-latest"]\') }}'
+)
+
 
 class BetaChecksTests(unittest.TestCase):
     """Guard the beta workflow without changing the full validation graph."""
@@ -33,7 +43,8 @@ class BetaChecksTests(unittest.TestCase):
         self.assertNotIn("secrets", job)
         self.assertNotIn("if", job)
         self.assertNotIn("continue-on-error", job)
-        self.assertEqual(job["runs-on"], "ubuntu-latest")
+        # Preserve the exact public-PR trust boundary and GitHub-hosted fallback.
+        self.assertEqual(job["runs-on"], CI_RUNNER)
         self.assertGreater(int(job["timeout-minutes"]), 0)
         self.assertLessEqual(int(job["timeout-minutes"]), 15)
 
