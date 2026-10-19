@@ -787,6 +787,7 @@ test("startup scan counter updates one bounded node without exposing source path
     assert.equal(nodes[0].textContent, "Local videos: 1 / 128");
     assert.deepEqual(nodes[0].attrs, {
         "data-local-items": "1",
+        "data-local-phase": "files",
         "data-local-scanned": "128",
         "data-local-waiting": "legacy-index",
     });

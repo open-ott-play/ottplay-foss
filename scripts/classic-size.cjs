@@ -258,7 +258,10 @@ const { gzipSync } = require("node:zlib");
 // (native 289204);
 // reserve another 1024 raw bytes, keeping gzip and optional-provider caps fixed.
 // This already includes upstream 2e025742 counter headroom; do not add it twice.
-const BUDGET = Object.freeze({ bytes: 935335, gzipBytes: 289918 });
+// Recovery cleanup, atomic JSON slot restore and initial scan phases add 861
+// raw bytes (936116 / 289458 gzip, native gzip 289515); reserve 1024 raw once,
+// including upstream phase allowance. Gzip and provider caps stay unchanged.
+const BUDGET = Object.freeze({ bytes: 936359, gzipBytes: 289918 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -385,7 +388,8 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count the same profile, spinner, desktop input and progressive scan allowances once.
 // Every optional provider remains included in the complete-payload measurement.
 // Include the same 2048-byte progressive-profile/counter allowance once.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1056235, gzipBytes: 334818 });
+// Count the same 1024-byte recovery/import/phase allowance once.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1057259, gzipBytes: 334818 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

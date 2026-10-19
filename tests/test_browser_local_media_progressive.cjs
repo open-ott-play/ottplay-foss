@@ -19,10 +19,11 @@ const source = ts.transpileModule(
 ).outputText;
 require("acorn").parse(source, { ecmaVersion: 5 });
 
-function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
+function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
     let reads = 0,
         revoked = 0,
-        nextUrl = 0;
+        nextUrl = 0,
+        permissionRequests = 0;
     const files = Array.from({ length: count }, (_, index) => ({
         getFile: async () => {
             reads++;
@@ -46,14 +47,23 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
         getFileHandle: async (name) => files.find((file) => file.name === name),
         kind: "directory",
         name: "Movies",
-        queryPermission: async () => "granted",
+        queryPermission: async () => {
+            await waits.permission;
+            return "granted";
+        },
+        requestPermission: async () => {
+            permissionRequests++;
+            return "granted";
+        },
         values: () => {
             let index = 0;
             return {
-                next: async () =>
-                    index < files.length
+                next: async () => {
+                    await waits.iterator;
+                    return index < files.length
                         ? { done: false, value: files[index++] }
-                        : { done: true },
+                        : { done: true };
+                },
             };
         },
     };
@@ -68,16 +78,20 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
                     const cursor = {};
                     let index = 0;
                     const advance = () =>
-                        queueMicrotask(() => {
+                        Promise.resolve(waits.records).then(() => {
+                            let continued = false;
                             cursor.result =
                                 index < saved.length
                                     ? {
-                                          continue: advance,
+                                          continue: () => {
+                                              continued = true;
+                                              advance();
+                                          },
                                           value: saved[index++],
                                       }
                                     : null;
                             cursor.onsuccess();
-                            if (!cursor.result) tx.oncomplete();
+                            if (!continued) tx.oncomplete();
                         });
                     advance();
                     return cursor;
@@ -88,6 +102,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
     };
     const w = {
         addEventListener: () => {},
+        clearTimeout,
         indexedDB: {
             open: () => {
                 const request = {};
@@ -119,6 +134,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
     vm.runInContext(source, context);
     return {
         api: context.installBrowserLocalMedia(w),
+        permissionRequests: () => permissionRequests,
         reads: () => reads,
         revoked: () => revoked,
     };
@@ -135,7 +151,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
     const full = await f.api.list((snapshot) => {
         publications++;
         assert.equal(snapshot.scanning, true);
-        if (!firstReads) {
+        if (!firstReads && snapshot.items.length) {
             firstReads = f.reads();
             immutable = snapshot;
         }
@@ -160,7 +176,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
     const firstUrl = full.items[0].url;
     let preferredFirst;
     const resumed = await f.api.list((snapshot) => {
-        preferredFirst ||= snapshot.items[0].id;
+        if (snapshot.items.length) preferredFirst ||= snapshot.items[0].id;
     }, "source-movies:movie-9999.mp4");
     assert.equal(
         preferredFirst,
@@ -178,7 +194,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
     assert.equal(cancelled.cancelled, true);
     assert.equal(
         f.reads() - beforeCancel,
-        1,
+        0,
         "consumer cancellation stops traversal"
     );
     assert.equal(
@@ -227,6 +243,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
     assert.equal(changed.sources[0].available, true);
     let grantFirst;
     await f.api.requestAccess((snapshot) => {
+        if (!snapshot.items.length) return;
         grantFirst = snapshot.items[0].id;
         return false;
     }, "source-movies:movie-9999.mp4");
@@ -235,6 +252,41 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime) {
         "source-movies:movie-9999.mp4",
         "permission recovery supports immediate preferred playback"
     );
+    for (const [gateName, expectedPhase] of [
+        ["records", "sources"],
+        ["permission", "permission"],
+        ["iterator", "files"],
+    ]) {
+        let release;
+        const gate = new Promise((resolve) => {
+            release = resolve;
+        });
+        const delayed = fixture(1, "mp4", -1, undefined, { [gateName]: gate });
+        const phases = [];
+        const pending = delayed.api.list((snapshot) => {
+            phases.push(snapshot.phase);
+        });
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+        assert.equal(
+            phases.filter((phase) => phase === expectedPhase).length,
+            1,
+            "one real phase transition, no artificial progress while awaiting " +
+                gateName
+        );
+        assert.equal(delayed.reads(), 0);
+        if (gateName === "permission") {
+            const recovery = delayed.api.requestAccess(() => false);
+            assert.equal(
+                delayed.permissionRequests(),
+                1,
+                "unknown permission is requested synchronously on recovery click"
+            );
+            await recovery;
+        } else await delayed.api.list(() => false);
+        release();
+        assert.equal((await pending).cancelled, true);
+        assert.equal(delayed.revoked(), 0);
+    }
     console.log(
         "PASS progressive local media: 10,000 entries, early playback, bounded immutable batches, yielding, direct saved-file lookup, stable URLs, cancellation, and nonmedia heartbeats"
     );

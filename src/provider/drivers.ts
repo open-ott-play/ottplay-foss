@@ -415,6 +415,10 @@ function createOfflineDriver(
                             String(catalog.ids.length)
                         );
                         progress.setAttribute("data-local-waiting", waiting);
+                        progress.setAttribute(
+                            "data-local-phase",
+                            value.phase || "files"
+                        );
                         progress.textContent =
                             ports.translate("Local videos") +
                             ": " +

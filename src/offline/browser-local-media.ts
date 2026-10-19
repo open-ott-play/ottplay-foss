@@ -44,7 +44,9 @@ export function installBrowserLocalMedia(w: any): any {
             });
         return dbPromise;
     }
-    function records(): Promise<any[]> {
+    function records(
+        onRecord?: (record: any, count: number) => boolean
+    ): Promise<any[]> {
         return open().then(function (db) {
             return new Promise<any[]>(function (resolve, reject) {
                 var result: any[] = [],
@@ -54,7 +56,8 @@ export function installBrowserLocalMedia(w: any): any {
                     var c = cursor.result;
                     if (c) {
                         result.push(c.value);
-                        c.continue();
+                        if (!onRecord || onRecord(c.value, result.length))
+                            c.continue();
                     }
                 };
                 tx.oncomplete = function () {
@@ -125,6 +128,7 @@ export function installBrowserLocalMedia(w: any): any {
             lastPublish = Date.now();
         var stopped = false,
             firstPlayable = false;
+        var phase = "sources";
         function active(): boolean {
             return !stopped && generation === scanGeneration;
         }
@@ -142,6 +146,7 @@ export function installBrowserLocalMedia(w: any): any {
                     )
                 ),
                 persistent: false,
+                phase: scanning ? phase : "complete",
                 scanned: scanned,
                 scanning: scanning,
                 sources: sources.map(function (source) {
@@ -282,7 +287,17 @@ export function installBrowserLocalMedia(w: any): any {
                 });
         }
         if (!available) return Promise.resolve(catalog(false));
-        return records()
+        progress(true);
+        if (!active()) {
+            return Promise.resolve(catalog(false));
+        }
+        knownSources = [];
+        return records(function (record, count) {
+            scanned++;
+            if (record.handle) knownSources.push(record);
+            progress(count % 64 === 0);
+            return active();
+        })
             .then(function (saved) {
                 if (!active()) return;
                 knownSources = saved.filter(function (record) {
@@ -311,8 +326,8 @@ export function installBrowserLocalMedia(w: any): any {
                             return visit();
                         }
                         var source = {
-                            access: "granted",
-                            available: true,
+                            access: "unknown",
+                            available: false,
                             id: record.id,
                             kind:
                                 record.handle.kind === "directory"
@@ -321,6 +336,10 @@ export function installBrowserLocalMedia(w: any): any {
                             name: record.name,
                         };
                         sources.push(source);
+                        phase = "permission";
+                        record.access = "unknown";
+                        progress(true);
+                        if (!active()) return;
                         return Promise.resolve(
                             record.handle.queryPermission({ mode: "read" })
                         )
@@ -330,6 +349,12 @@ export function installBrowserLocalMedia(w: any): any {
                                     source.access = "permission-required";
                                     return;
                                 }
+                                source.access = "granted";
+                                source.available = true;
+                                record.access = "granted";
+                                phase = "files";
+                                progress(true);
+                                if (!active()) return;
                                 if (record.handle.kind === "directory")
                                     return preferred(record).then(function () {
                                         return walk(
@@ -488,7 +513,7 @@ export function installBrowserLocalMedia(w: any): any {
         // Request just one in this click: parallel prompts can consume activation
         // and dismiss each other. list() then observes the grant on every source.
         var pending = knownSources.filter(function (record) {
-            return record.access === "permission-required";
+            return record.access !== "granted";
         });
         if (!pending.length) return resume();
         try {
