@@ -261,7 +261,11 @@ const { gzipSync } = require("node:zlib");
 // Recovery cleanup, atomic JSON slot restore and initial scan phases add 861
 // raw bytes (936116 / 289458 gzip, native gzip 289515); reserve 1024 raw once,
 // including upstream phase allowance. Gzip and provider caps stay unchanged.
-const BUDGET = Object.freeze({ bytes: 936359, gzipBytes: 289918 });
+// CI uses Node 22.23.3 / zlib 1.3.1-e00f703: identical final sources measure
+// 290440 gzip web / 290499 native versus Node 26's 289458 / 289515.
+// Reserve 1024 compressed bytes for this measured compressor difference and
+// native/release variation; raw and optional-provider budgets stay unchanged.
+const BUDGET = Object.freeze({ bytes: 936359, gzipBytes: 290942 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -389,7 +393,9 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Every optional provider remains included in the complete-payload measurement.
 // Include the same 2048-byte progressive-profile/counter allowance once.
 // Count the same 1024-byte recovery/import/phase allowance once.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1057259, gzipBytes: 334818 });
+// Node 22 measures complete web 335333 / native 335392 gzip bytes. Include
+// the same 1024 compressed-byte allowance once, keeping every provider included.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1057259, gzipBytes: 335842 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
