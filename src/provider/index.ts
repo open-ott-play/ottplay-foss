@@ -1313,6 +1313,10 @@ export function loadChannels(): void {
     var driver = (window as any).__ottActiveProviderDriver;
     var driverOwned = !!driver;
     var libraryOnly = !!(driver && driver.capabilities.libraryOnly);
+    // A restored local folder can take time to enumerate. Its catalog still
+    // produces channels, but boot must reveal the normal loading UI before
+    // waiting for filesystem access, just as for a remote media library.
+    var libraryLoading = libraryOnly || !!(driver && driver.id === "offline");
     var catalogSession = (
         window as any
     ).__ottProviderRuntime.classic.beginCatalog(driverOwned);
@@ -1320,7 +1324,7 @@ export function loadChannels(): void {
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
-    if (libraryOnly || !$("#launch").is(":visible")) {
+    if (libraryLoading || !$("#launch").is(":visible")) {
         if (stbIsPlaying()) stbStop();
         $("#dialogbox")
             .html(
@@ -1329,7 +1333,7 @@ export function loadChannels(): void {
             .show();
         launch_id = "#dialogbox";
         closeList();
-        if (libraryOnly) {
+        if (libraryLoading) {
             $("#launch").hide();
             if (typeof (window as any).clearBootHide === "function")
                 (window as any).clearBootHide();
@@ -1365,7 +1369,7 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append(
-        libraryOnly
+        libraryLoading
             ? "<br/>" + _("Loading. Please wait...") + "<br/>"
             : "<br/>Loading channel list..."
     );

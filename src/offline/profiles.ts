@@ -497,7 +497,8 @@ export function installOfflineProfiles(w: any, media: any): any {
                 )
                     throw profileFailure("Invalid local profile name");
                 var selectionBefore = selectedId();
-                return media.list().then(function (catalog: any) {
+                return scanCatalog().then(function (catalog: any) {
+                    completeCatalog(catalog);
                     if (!current() || selectedId() !== selectionBefore)
                         throw profileFailure(
                             "Local profile changed while reading sources"
@@ -656,7 +657,22 @@ export function installOfflineProfiles(w: any, media: any): any {
                 }
             );
     }
+    function scanCatalog(): Promise<any> {
+        return media.snapshot ? media.snapshot() : media.list();
+    }
+    function completeCatalog(catalog: any): void {
+        if (
+            !catalog ||
+            !Array.isArray(catalog.items) ||
+            catalog.scanning ||
+            catalog.cancelled
+        )
+            throw profileFailure(
+                "Wait for the local catalog to finish before saving or binding a profile"
+            );
+    }
     function bind(catalog: any): void {
+        completeCatalog(catalog);
         if (busy || locked() || !active())
             throw profileFailure(
                 "Unlock Local videos before binding a profile"
@@ -746,8 +762,7 @@ export function installOfflineProfiles(w: any, media: any): any {
                     "Unlock Local videos before binding a profile"
                 );
             busy = true;
-            return media
-                .list()
+            return scanCatalog()
                 .then(function (catalog: any) {
                     if (
                         locked() ||
@@ -793,6 +808,34 @@ export function installOfflineProfiles(w: any, media: any): any {
                       version: 1,
                   }
                 : null;
+        },
+        catalogGuard: function () {
+            function selectionContext(): string {
+                var store = read(),
+                    profile =
+                        store.active < 0 ? null : store.profiles[store.active];
+                return JSON.stringify([
+                    store.active,
+                    profile,
+                    profile
+                        ? localBindings()[profile.binding_id] || null
+                        : null,
+                ]);
+            }
+            var readPort = w.stbGetItem,
+                writePort = w.stbSetItem,
+                selection = selectionContext(),
+                library = media.libraryIdentity(),
+                driver = w.__ottActiveProviderDriver;
+            return function () {
+                return (
+                    readPort === w.stbGetItem &&
+                    writePort === w.stbSetItem &&
+                    driver === w.__ottActiveProviderDriver &&
+                    selection === selectionContext() &&
+                    library === media.libraryIdentity()
+                );
+            };
         },
         current: currentProfile,
         filter: filter,

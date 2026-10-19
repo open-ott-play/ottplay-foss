@@ -348,8 +348,9 @@ test("all managed provider kinds settle loader only on a terminal catalog result
     assert.equal(representatives.size, 13);
     for (const [kind, id] of representatives) {
         const f = integrationFixture(id);
-        const loadingPanel =
-            kind === "plex" || kind === "vportal" ? "#dialogbox" : "#launch";
+        const loadingPanel = ["plex", "vportal", "offline"].includes(kind)
+            ? "#dialogbox"
+            : "#launch";
         f.host.infoBox = () => {};
         let settingsOpened = 0;
         f.host.showPage = () => {

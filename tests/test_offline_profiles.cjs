@@ -460,3 +460,236 @@ test("saving an unbound imported profile never turns description placeholders in
     assert.equal(f.api.read().profiles[1], null);
     assert.equal(f.data.has("offlineProfileBindings"), false);
 });
+
+test("save and binding reject partial or cancelled catalogs before granting source access", async () => {
+    for (const flags of [{ scanning: true }, { cancelled: true }]) {
+        const profile = await saved(fixture());
+        const f = fixture();
+        await f.call("profile_import", { number: 1, profile });
+        await f.call("profile", { number: 1 });
+        const before = Array.from(f.data.entries());
+        f.setCatalog({ ...f.catalog(), ...flags });
+        assert.throws(() => f.api.bind(f.catalog()), /catalog to finish/);
+        await assert.rejects(f.api.bindCurrent(), /catalog to finish/);
+        assert.deepEqual(Array.from(f.data.entries()), before);
+        assert.equal(f.data.has("offlineProfileBindings"), false);
+        const fresh = fixture();
+        fresh.host.curList = [];
+        fresh.setCatalog({ ...fresh.catalog(), ...flags });
+        const result = await fresh.call("profile_save", { number: 1 });
+        assert.equal(result.status, "rejected");
+        assert.match(result.data.error, /catalog to finish/);
+        assert.equal(fresh.data.size, 0);
+    }
+});
+
+test("profile catalog ownership ignores other slots but retains active binding and endpoint guards", async () => {
+    const f = fixture();
+    const profile = await saved(f);
+    await f.call("profile", { number: 1 });
+    const guard = f.api.catalogGuard();
+    assert.equal(guard(), true);
+    assert.equal(
+        (await f.call("profile_import", { number: 2, profile })).status,
+        "ok"
+    );
+    assert.equal(
+        guard(),
+        true,
+        "inactive import must not truncate the active scan"
+    );
+    const before = f.data.get("offlineProfileBindings");
+    const bindings = JSON.parse(before);
+    bindings["11111111-1111-4111-8111-111111111111"] = clone(
+        bindings[profile.binding_id]
+    );
+    f.data.set("offlineProfileBindings", JSON.stringify(bindings));
+    assert.equal(
+        guard(),
+        true,
+        "unrelated binding must not truncate the active scan"
+    );
+    bindings[profile.binding_id].selected = "OTHER-ITEM";
+    f.data.set("offlineProfileBindings", JSON.stringify(bindings));
+    assert.equal(guard(), false);
+    f.data.set("offlineProfileBindings", before);
+    assert.equal(guard(), true);
+    f.media.libraryIdentity = () => "browser:https://different.invalid/library";
+    assert.equal(guard(), false);
+});
+
+function sharedScanFixture() {
+    const f = fixture();
+    delete f.host.__ottOfflineProfiles;
+    let now = 0,
+        timerId = 0,
+        calls = 0,
+        progress,
+        finish;
+    const timers = new Map();
+    const scans = [];
+    f.host.setTimeout = (fn, delay) => {
+        timers.set(++timerId, { due: now + delay, fn });
+        return timerId;
+    };
+    f.host.clearTimeout = (id) => timers.delete(id);
+    const browser = {
+        list: (callback) => {
+            calls++;
+            progress = callback;
+            return new Promise((resolve) => {
+                finish = resolve;
+                scans.push({ finish: resolve, progress: callback });
+            });
+        },
+    };
+    const exports = {};
+    const compiled = require("typescript").transpileModule(
+        require("node:fs").readFileSync(
+            require("node:path").join(
+                __dirname,
+                "../src/plugins/local-media.ts"
+            ),
+            "utf8"
+        ),
+        {
+            compilerOptions: {
+                module: require("typescript").ModuleKind.CommonJS,
+                target: require("typescript").ScriptTarget.ES5,
+            },
+        }
+    ).outputText;
+    vm.runInNewContext(compiled, {
+        exports,
+        require: (name) => {
+            if (name.includes("native-bridge"))
+                return { resolveNativePlugin: () => browser };
+            if (name.includes("browser-local-media"))
+                return {
+                    installBrowserLocalMedia: () => browser,
+                    installOfflineShell() {},
+                };
+            if (name.includes("offline/profiles"))
+                return {
+                    installOfflineProfiles: f.host.installOfflineProfiles,
+                };
+            throw new Error(name);
+        },
+    });
+    f.media = exports.installLocalMedia(f.host);
+    f.api = f.host.__ottOfflineProfiles;
+    f.call = async (action, params = {}) =>
+        clone(await f.api.request({ action, params }));
+    f.calls = () => calls;
+    f.progress = (value) => progress(value);
+    f.finish = (value) => finish(value);
+    f.finishAt = (index, value) => scans[index].finish(value);
+    f.advance = (amount) => {
+        now += amount;
+        for (const [id, timer] of Array.from(timers))
+            if (timer.due <= now) {
+                timers.delete(id);
+                timer.fn();
+            }
+    };
+    return f;
+}
+
+test("save shares a playback scan and persists only its complete source set", async () => {
+    const f = sharedScanFixture();
+    const scanning = f.media.list(() => true);
+    await Promise.resolve();
+    f.progress({ ...f.catalog(), scanning: true });
+    let reply;
+    const save = f.call("profile_save", { number: 1 }).then((value) => {
+        reply = value;
+        return value;
+    });
+    await Promise.resolve();
+    assert.equal(f.calls(), 1);
+    assert.equal(reply, undefined);
+    assert.equal(f.data.size, 0);
+    f.advance(59000);
+    f.progress({ ...f.catalog(), scanning: true });
+    f.advance(59000);
+    await Promise.resolve();
+    assert.equal(
+        reply,
+        undefined,
+        "ongoing progress refreshes the shared scan deadline"
+    );
+    f.catalog().sources.push({ id: "SECOND", kind: "folder", name: "Second" });
+    f.finish({ ...f.catalog(), scanning: false });
+    await scanning;
+    assert.equal((await save).status, "ok");
+    assert.equal(f.api.read().profiles[0].sources.length, 2);
+});
+
+test("binding shares a scan and rejects ambiguity discovered after its first batch", async () => {
+    const profile = await saved(fixture()),
+        f = sharedScanFixture();
+    await f.call("profile_import", { number: 1, profile });
+    await f.call("profile", { number: 1 });
+    const scanning = f.media.list(() => true);
+    await Promise.resolve();
+    f.progress({ ...f.catalog(), scanning: true });
+    const binding = f.api.bindCurrent();
+    const rejected = assert.rejects(binding, /ambiguous|exactly|unique/i);
+    await Promise.resolve();
+    assert.equal(f.calls(), 1);
+    assert.equal(f.data.has("offlineProfileBindings"), false);
+    f.catalog().sources.push({
+        id: "DUPLICATE",
+        kind: "folder",
+        name: "Cartoons",
+    });
+    f.finish({ ...f.catalog(), scanning: false });
+    await scanning;
+    await rejected;
+    assert.equal(f.data.has("offlineProfileBindings"), false);
+});
+
+test("stalled shared scan releases profile operation and ignores a late result", async () => {
+    const f = sharedScanFixture();
+    const scanning = f.media.list(() => true);
+    const rejected = assert.rejects(scanning, /did not respond/);
+    await Promise.resolve();
+    const save = f.call("profile_save", { number: 1 });
+    await new Promise((resolve) => setImmediate(resolve));
+    f.advance(60000);
+    await rejected;
+    assert.equal((await save).status, "rejected");
+    assert.equal(f.data.size, 0);
+    f.finish({ ...f.catalog(), scanning: false });
+    await Promise.resolve();
+    assert.equal(f.data.size, 0);
+    const retry = f.call("profile_save", { number: 1 });
+    await new Promise((resolve) => setImmediate(resolve));
+    f.finish({ ...f.catalog(), scanning: false });
+    assert.equal((await retry).status, "ok");
+});
+
+test("superseded full catalog cannot save a stale profile even without a cancellation flag", async () => {
+    const f = sharedScanFixture();
+    const save = f.call("profile_save", { number: 1 });
+    await new Promise((resolve) => setImmediate(resolve));
+    const staleRejected = assert.rejects(
+        f.media.snapshot(),
+        /catalog was replaced/
+    );
+    const current = f.media.list();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(f.calls(), 2);
+    f.finishAt(0, f.catalog());
+    const rejected = await save;
+    assert.equal(rejected.status, "rejected");
+    assert.match(rejected.data.error, /Local profile operation failed/);
+    await staleRejected;
+    assert.equal(f.data.size, 0);
+    f.finishAt(1, f.catalog());
+    assert.equal((await current).items.length, 1);
+    const retry = f.call("profile_save", { number: 1 });
+    await new Promise((resolve) => setImmediate(resolve));
+    f.finishAt(2, f.catalog());
+    assert.equal((await retry).status, "ok");
+});

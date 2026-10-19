@@ -649,6 +649,22 @@ for (let slot = 0; slot < 15; slot++) {
         "large lock lists must not require quadratic membership scans"
     );
 }
+{
+    const incremental = library(rows.slice());
+    assert(incremental.select("genre:7", 12));
+    const before = plain(incremental.snapshot().selected);
+    const newRow = {
+        groupId: "genre:7",
+        groupLabel: "News",
+        id: 99,
+        itemId: "stream:99",
+        label: "Added",
+    };
+    incremental.append([newRow, newRow]);
+    assert.deepEqual(plain(incremental.snapshot().selected), before);
+    assert.deepEqual(plain(incremental.snapshot().all), [11, 12, 13, 99]);
+    assert.equal(incremental.itemId(99), "stream:99");
+}
 console.log(
     "Channel library: stable identity, catalog/user separation, migration, account isolation, storage failures PASS"
 );

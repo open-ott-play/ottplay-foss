@@ -33,6 +33,13 @@ file; import saves it into an inactive slot without starting playback. Loading
 reloads the local catalogue and restores the saved file when it is available.
 The dispatch receipt is not confirmation that a decoder is playing.
 
+Large folders load progressively. Playback waits for the profile's selected file;
+later batches extend the channel list without restarting it. Save and local
+binding wait for the complete scan and share an existing scan rather than
+cancelling playback enumeration. Cancelled or incomplete scans never create a
+profile or grant access. A scan with no progress for one minute fails so it can
+be retried after reconnecting the source.
+
 `ott d1 stop` stops playback while retaining remote control. `ott d1 start`
 runs the player's configured startup flow. Profile operations do not grant
 file access or bypass kiosk/parental restrictions. Profile listing is available

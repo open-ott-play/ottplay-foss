@@ -24,6 +24,15 @@ unavailable. Reconnect the source or grant access again; an unavailable source
 is not silently copied or substituted. **Disconnect** removes the library
 reference and leaves the original media untouched.
 
+When Local videos is restored at startup, the player leaves its splash screen
+before reading the saved directory. Scanning uses the normal in-player loading
+indicator. Browser folders stream their catalog: a new selection can play the
+first available video immediately, while remaining files are appended in the
+background. The last selected file is looked up directly before enumerating a
+large folder. Later batches do not restart playback or reset the selection. If a source fails or does not respond, recovery offers **Continue
+playback** without immediately repeating the stalled scan. Menu navigation and
+saved source/video selection remain available; retrying does not copy media.
+
 Libraries made by the earlier copy-based version remain readable. Their entries
 are marked as imported copies and expose **Remove copy**. This deletes OTT's
 stored copy, not the original file selected during the old import. OTT cannot

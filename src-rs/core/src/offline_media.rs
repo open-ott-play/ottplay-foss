@@ -258,10 +258,12 @@ impl Library {
             "Native sources are unavailable on this server"
         );
         let _lock = self.mutation.lock().await;
-        let mut records = self
+        let records = self
             .records()
             .await
             .map_err(|_| anyhow::anyhow!("Cannot read media metadata"))?;
+        let mut known_paths: std::collections::HashSet<PathBuf> = records.iter()
+            .filter_map(|record| record.linked_path.clone()).collect();
         let sources = self
             .source_records()
             .await
@@ -293,19 +295,38 @@ impl Library {
                 kind: if folder { "folder" } else { "file" }.into(),
                 path: root.clone(),
             };
-            let mut pending = vec![root];
+            // Fail an inaccessible selected root, but keep a valid source record
+            // before discovering children so a partial scan remains refreshable.
+            if folder {
+                drop(fs::read_dir(&root).await?);
+            } else {
+                fs::File::open(&root).await?;
+            }
+            let destination = self.root.join("sources").join(format!("{id}.json"));
+            let temporary = destination.with_extension("part");
+            fs::write(&temporary, serde_json::to_vec(&source)?).await?;
+            fs::rename(temporary, destination).await?;
+            let mut pending = vec![root.clone()];
             let mut count = 0;
             while let Some(path) = pending.pop() {
                 count += 1;
                 anyhow::ensure!(count <= 20000, "Selected source contains too many entries");
-                let metadata = fs::symlink_metadata(&path).await?;
+                let metadata = match fs::symlink_metadata(&path).await {
+                    Ok(metadata) => metadata,
+                    Err(error) if path == root => return Err(error.into()),
+                    Err(_) => continue,
+                };
                 // Do not traverse symlinks out of the user's selected tree.
                 if metadata.file_type().is_symlink() {
                     continue;
                 }
                 if metadata.is_dir() {
-                    let mut children = fs::read_dir(path).await?;
-                    while let Some(entry) = children.next_entry().await? {
+                    let mut children = match fs::read_dir(&path).await {
+                        Ok(children) => children,
+                        Err(error) if path == root => return Err(error.into()),
+                        Err(_) => continue,
+                    };
+                    while let Ok(Some(entry)) = children.next_entry().await {
                         pending.push(entry.path());
                     }
                     continue;
@@ -321,10 +342,11 @@ impl Library {
                 let Some(mime) = media_type(&extension) else {
                     continue;
                 };
-                if records
-                    .iter()
-                    .any(|r| r.linked_path.as_ref() == Some(&path))
-                {
+                if known_paths.contains(&path) {
+                    continue;
+                }
+                if let Err(error) = fs::File::open(&path).await {
+                    if path == root { return Err(error.into()); }
                     continue;
                 }
                 let record = Record {
@@ -337,19 +359,15 @@ impl Library {
                     size: metadata.len(),
                     mime: mime.into(),
                     extension,
-                    linked_path: Some(path),
+                    linked_path: Some(path.clone()),
                     source_id: Some(id.clone()),
                 };
                 let destination = self.root.join(format!("{}.json", record.id));
                 let temporary = destination.with_extension("part");
                 fs::write(&temporary, serde_json::to_vec(&record)?).await?;
                 fs::rename(temporary, destination).await?;
-                records.push(record);
+                known_paths.insert(path);
             }
-            let destination = self.root.join("sources").join(format!("{id}.json"));
-            let temporary = destination.with_extension("part");
-            fs::write(&temporary, serde_json::to_vec(&source)?).await?;
-            fs::rename(temporary, destination).await?;
         }
         Ok(())
     }
@@ -1085,6 +1103,139 @@ mod tests {
         )
         .await;
         assert_eq!(result.status(), StatusCode::NOT_FOUND);
+        fs::remove_dir_all(root).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn request_ids_cannot_escape_library_or_delete_originals() {
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let outside = root.with_extension("mp4");
+        fs::write(&outside, "original outside library")
+            .await
+            .unwrap();
+        let token = "j".repeat(32);
+        let library = Library::new(root.clone(), token.clone(), "device")
+            .await
+            .unwrap();
+        let saved = import_inner(&library, &token, "saved.mp4", Body::from("saved media"))
+            .await
+            .unwrap();
+        let saved_id = saved.items[0].id.clone();
+        for id in [
+            "../outside",
+            "..\\outside",
+            "/tmp/outside",
+            "C:\\outside",
+            "%2e%2e%2foutside",
+            "0123456789abcdef0123456789abcde/..",
+            "gggggggggggggggggggggggggggggggg",
+            "",
+        ] {
+            let response =
+                remove(State(library.clone()), Path((token.clone(), id.to_owned()))).await;
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "id={id}");
+            assert!(library.disconnect_source(id).await.is_err(), "id={id}");
+        }
+        assert_eq!(
+            fs::read(&outside).await.unwrap(),
+            b"original outside library"
+        );
+        assert_eq!(library.catalog().await.unwrap().items[0].id, saved_id);
+        fs::remove_dir_all(root).await.unwrap();
+        fs::remove_file(outside).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn malformed_metadata_cannot_introduce_path_components() {
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(root.clone(), "k".repeat(32), "device")
+            .await
+            .unwrap();
+        for (index, (id, extension)) in [
+            ("../outside", "mp4"),
+            ("0123456789abcdef0123456789abcdef", "../../outside.mp4"),
+            ("0123456789abcdef0123456789abcdef", "mp4/../../outside"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let record = Record {
+                id: id.into(),
+                name: "Untrusted metadata".into(),
+                size: 1,
+                mime: "video/mp4".into(),
+                extension: extension.into(),
+                linked_path: None,
+                source_id: None,
+            };
+            fs::write(
+                root.join(format!("malformed-{index}.json")),
+                serde_json::to_vec(&record).unwrap(),
+            )
+            .await
+            .unwrap();
+        }
+        assert!(library.catalog().await.unwrap().items.is_empty());
+        fs::remove_dir_all(root).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn folder_scan_skips_unreadable_children_and_retains_refreshable_source() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = root.join("originals");
+        let denied = originals.join("denied");
+        fs::create_dir_all(&denied).await.unwrap();
+        fs::write(originals.join("good.mp4"), b"movie").await.unwrap();
+        fs::write(denied.join("hidden.mp4"), b"movie").await.unwrap();
+        fs::set_permissions(&denied, std::fs::Permissions::from_mode(0o000)).await.unwrap();
+        let permission_is_enforced = fs::read_dir(&denied).await.is_err();
+        let library = Library::new(root.join("library"), "k".repeat(32), "device").await.unwrap();
+        let result = library.link_paths(vec![originals.clone()], true).await;
+        fs::set_permissions(&denied, std::fs::Permissions::from_mode(0o700)).await.unwrap();
+        result.unwrap();
+        let sources = library.source_records().await.unwrap();
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].kind, "folder");
+        let records = library.records().await.unwrap();
+        assert!(records.iter().any(|record| record.name == "good.mp4"));
+        if permission_is_enforced {
+            assert!(!records.iter().any(|record| record.name == "hidden.mp4"));
+        }
+        library.refresh_sources().await;
+        assert!(library.records().await.unwrap().iter().any(|record| record.name == "hidden.mp4"));
+        fs::remove_dir_all(root).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn unreadable_selected_root_fails_without_creating_source() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = root.join("originals");
+        fs::create_dir_all(&originals).await.unwrap();
+        let library = Library::new(root.join("library"), "k".repeat(32), "device").await.unwrap();
+        fs::set_permissions(&originals, std::fs::Permissions::from_mode(0o000)).await.unwrap();
+        let permission_is_enforced = fs::read_dir(&originals).await.is_err();
+        let result = library.link_paths(vec![originals.clone()], true).await;
+        fs::set_permissions(&originals, std::fs::Permissions::from_mode(0o700)).await.unwrap();
+        if permission_is_enforced {
+            assert!(result.is_err());
+            assert!(library.source_records().await.unwrap().is_empty());
+        }
+        fs::remove_dir_all(root).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn server_cannot_link_a_filesystem_source() {
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(root.clone(), "l".repeat(32), "server")
+            .await
+            .unwrap();
+        assert!(library.link_paths(vec![root.clone()], true).await.is_err());
+        assert!(!library.catalog().await.unwrap().direct_sources);
+        assert!(library.catalog().await.unwrap().items.is_empty());
         fs::remove_dir_all(root).await.unwrap();
     }
     #[cfg(unix)]

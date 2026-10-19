@@ -4,6 +4,7 @@ export function installBrowserLocalMedia(w: any): any {
     var dbPromise: Promise<any> | null = null;
     var urls: any = {};
     var knownSources: any[] = [];
+    var scanGeneration = 0;
     var urlApi = w.URL || w.webkitURL;
     var available = !!(w.indexedDB && urlApi && urlApi.createObjectURL);
 
@@ -108,163 +109,282 @@ export function installBrowserLocalMedia(w: any): any {
             url: (urls[id] as any).url,
         };
     }
-    // Manual async iteration keeps the shipped bundle ES5 compatible.
-    function walk(
-        handle: any,
-        prefix: string,
-        sourceId: string,
-        live: any
-    ): Promise<any[]> {
-        var iterator = handle.values(),
-            result: any[] = [];
-        function next(): Promise<any[]> {
-            return Promise.resolve(iterator.next()).then(function (step) {
-                if (step.done) return result;
-                var child = step.value,
-                    name = prefix + child.name;
-                var work =
-                    child.kind === "directory"
-                        ? walk(child, name + "/", sourceId, live)
-                        : child.getFile().then(function (file) {
-                              return media(file)
-                                  ? [
-                                        item(
-                                            sourceId + ":" + name,
-                                            file,
-                                            name,
-                                            sourceId,
-                                            live
-                                        ),
-                                    ]
-                                  : [];
-                          });
-                return work.then(function (items) {
-                    result = result.concat(items);
-                    return next();
+    // Snapshots are cumulative. A false callback or newer scan cancels traversal;
+    // cancelling never prunes URLs that the current player may still be using.
+    function list(
+        onProgress?: (catalog: any) => boolean | void,
+        preferredId?: string
+    ): Promise<any> {
+        if (typeof onProgress !== "function") onProgress = undefined;
+        var generation = ++scanGeneration;
+        var items: any[] = [],
+            sources: any[] = [],
+            live: any = {};
+        var scanned = 0,
+            published = 0,
+            lastPublish = Date.now();
+        var stopped = false,
+            firstPlayable = false;
+        function active(): boolean {
+            return !stopped && generation === scanGeneration;
+        }
+        function catalog(scanning: boolean): any {
+            return {
+                available: available,
+                cancelled: !active(),
+                directSources: !!w.showDirectoryPicker,
+                items: items.slice(),
+                offlineReady: !!(
+                    w.navigator.serviceWorker &&
+                    w.navigator.serviceWorker.controller &&
+                    /\/offline-worker\.js(?:[?#]|$)/.test(
+                        w.navigator.serviceWorker.controller.scriptURL
+                    )
+                ),
+                persistent: false,
+                scanned: scanned,
+                scanning: scanning,
+                sources: sources.map(function (source) {
+                    return Object.assign({}, source);
+                }),
+                storage: "browser",
+            };
+        }
+        function progress(force = false): void {
+            if (!active() || !onProgress) return;
+            if (
+                !force &&
+                scanned - published < 64 &&
+                Date.now() - lastPublish < 100
+            )
+                return;
+            published = scanned;
+            lastPublish = Date.now();
+            if (onProgress(catalog(true)) === false) stopped = true;
+        }
+        function add(
+            id: string,
+            file: any,
+            name: string,
+            sourceId: string
+        ): void {
+            if (!active() || live[id]) return;
+            items.push(item(id, file, name, sourceId, live));
+            if (!firstPlayable) {
+                firstPlayable = true;
+                progress(true);
+            }
+        }
+        function visit(): Promise<void> {
+            scanned++;
+            progress();
+            return scanned % 64 === 0
+                ? new Promise(function (resolve) {
+                      w.setTimeout(resolve, 0);
+                  })
+                : Promise.resolve();
+        }
+        // Manual async iteration keeps legacy ES5 bundles compatible. Push into
+        // one result array instead of copying a growing array for every file.
+        function walk(
+            handle: any,
+            prefix: string,
+            sourceId: string
+        ): Promise<void> {
+            var iterator = handle.values();
+            function next(): Promise<void> {
+                if (!active()) return Promise.resolve();
+                return Promise.resolve(iterator.next()).then(function (step) {
+                    if (step.done || !active()) return;
+                    var child = step.value,
+                        name = prefix + child.name;
+                    var work: Promise<any>;
+                    if (child.kind === "directory")
+                        work = Promise.resolve().then(function () {
+                            return walk(child, name + "/", sourceId);
+                        });
+                    // A known non-media extension cannot become playable by
+                    // reading its bytes. Unknown extensions still use MIME.
+                    else if (
+                        /\.(txt|json|xml|csv|log|md|srt|vtt|jpg|jpeg|png|gif|webp|pdf|zip|rar)$/i.test(
+                            child.name
+                        )
+                    )
+                        work = Promise.resolve();
+                    else
+                        work = Promise.resolve()
+                            .then(function () {
+                                return child.getFile();
+                            })
+                            .then(function (file) {
+                                if (media(file))
+                                    add(
+                                        sourceId + ":" + name,
+                                        file,
+                                        name,
+                                        sourceId
+                                    );
+                            });
+                    return work
+                        .catch(function (error) {
+                            // Files can disappear or have narrower permissions than
+                            // their parent. Keep scanning readable siblings.
+                            if (
+                                !error ||
+                                !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError)$/.test(
+                                    error.name
+                                )
+                            )
+                                throw error;
+                        })
+                        .then(visit)
+                        .then(next);
+                });
+            }
+            return next();
+        }
+        function preferred(record: any): Promise<void> {
+            var prefix = record.id + ":";
+            if (
+                !preferredId ||
+                preferredId.indexOf(prefix) !== 0 ||
+                record.handle.kind !== "directory"
+            )
+                return Promise.resolve();
+            var path = preferredId.slice(prefix.length),
+                parts = path.split("/");
+            if (
+                parts.some(function (part) {
+                    return !part || part === "." || part === "..";
+                })
+            )
+                return Promise.resolve();
+            var handle = Promise.resolve(record.handle);
+            parts.slice(0, -1).forEach(function (part) {
+                handle = handle.then(function (directory) {
+                    return active()
+                        ? directory.getDirectoryHandle(part)
+                        : Promise.reject();
                 });
             });
+            return handle
+                .then(function (directory) {
+                    return directory.getFileHandle(parts[parts.length - 1]);
+                })
+                .then(function (fileHandle) {
+                    return fileHandle.getFile();
+                })
+                .then(function (file) {
+                    if (media(file)) add(preferredId!, file, path, record.id);
+                })
+                .catch(function () {
+                    /* Missing paths fall back to the full scan. */
+                });
         }
-        return next();
-    }
-    function list(): Promise<any> {
-        if (!available)
-            return Promise.resolve({
-                available: false,
-                directSources: false,
-                items: [],
-                offlineReady: false,
-                sources: [],
-                storage: "browser",
-            });
-        return records().then(function (saved) {
-            knownSources = saved.filter(function (r) {
-                return !!r.handle;
-            });
-            var live: any = {},
-                sources: any[] = [];
-            return Promise.all(
-                saved.map(function (record): Promise<any[]> {
-                    if (record.blob)
-                        return Promise.resolve([
-                            item(
-                                record.id,
-                                record.blob,
-                                record.name,
-                                record.id,
-                                live
-                            ),
-                        ]);
-                    var source = {
-                        access: "granted",
-                        available: true,
-                        id: record.id,
-                        kind:
-                            record.handle.kind === "directory"
-                                ? "folder"
-                                : "file",
-                        name: record.name,
-                    };
-                    sources.push(source);
-                    return Promise.resolve(
-                        record.handle.queryPermission({ mode: "read" })
-                    )
-                        .then(function (access) {
-                            if (access !== "granted") {
-                                source.access = "permission-required";
-                                return [];
-                            }
-                            if (record.handle.kind === "directory")
-                                return walk(record.handle, "", record.id, live);
-                            return record.handle
-                                .getFile()
-                                .then(function (file) {
-                                    return [
-                                        item(
+        if (!available) return Promise.resolve(catalog(false));
+        return records()
+            .then(function (saved) {
+                if (!active()) return;
+                knownSources = saved.filter(function (record) {
+                    return !!record.handle;
+                });
+                // Resolve the saved item before enumeration, even in a later source.
+                if (preferredId)
+                    saved.sort(function (a, b) {
+                        return (
+                            Number(
+                                preferredId === b.id ||
+                                    preferredId!.indexOf(b.id + ":") === 0
+                            ) -
+                            Number(
+                                preferredId === a.id ||
+                                    preferredId!.indexOf(a.id + ":") === 0
+                            )
+                        );
+                    });
+                var chain = Promise.resolve();
+                saved.forEach(function (record) {
+                    chain = chain.then(function () {
+                        if (!active()) return;
+                        if (record.blob) {
+                            add(record.id, record.blob, record.name, record.id);
+                            return visit();
+                        }
+                        var source = {
+                            access: "granted",
+                            available: true,
+                            id: record.id,
+                            kind:
+                                record.handle.kind === "directory"
+                                    ? "folder"
+                                    : "file",
+                            name: record.name,
+                        };
+                        sources.push(source);
+                        return Promise.resolve(
+                            record.handle.queryPermission({ mode: "read" })
+                        )
+                            .then(function (access) {
+                                if (!active()) return;
+                                if (access !== "granted") {
+                                    source.access = "permission-required";
+                                    return;
+                                }
+                                if (record.handle.kind === "directory")
+                                    return preferred(record).then(function () {
+                                        return walk(
+                                            record.handle,
+                                            "",
+                                            record.id
+                                        );
+                                    });
+                                return record.handle
+                                    .getFile()
+                                    .then(function (file) {
+                                        add(
                                             record.id,
                                             file,
                                             file.name,
-                                            record.id,
-                                            live
-                                        ),
-                                    ];
-                                });
-                        })
-                        .catch(function (error) {
-                            source.access =
-                                error && error.name === "NotAllowedError"
-                                    ? "permission-required"
-                                    : "missing";
-                            return [];
-                        })
-                        .then(function (items) {
-                            source.available = source.access === "granted";
-                            // Keep permission state beside the live handle so the next
-                            // click can request access before its activation expires.
-                            record.access = source.access;
-                            return source.available
-                                ? items
-                                : [
-                                      {
-                                          access: source.access,
-                                          available: false,
-                                          id: record.id,
-                                          name: record.name,
-                                          size: 0,
-                                          source: "linked",
-                                          sourceId: record.id,
-                                          url: "",
-                                      },
-                                  ];
-                        });
-                })
-            ).then(function (groups) {
-                var items: any[] = [];
-                groups.forEach(function (group) {
-                    items = items.concat(group);
+                                            record.id
+                                        );
+                                    });
+                            })
+                            .catch(function (error) {
+                                source.access =
+                                    error && error.name === "NotAllowedError"
+                                        ? "permission-required"
+                                        : "missing";
+                            })
+                            .then(function () {
+                                source.available = source.access === "granted";
+                                record.access = source.access;
+                                if (!source.available && active())
+                                    items.push({
+                                        access: source.access,
+                                        available: false,
+                                        id: record.id,
+                                        name: record.name,
+                                        size: 0,
+                                        source: "linked",
+                                        sourceId: record.id,
+                                        url: "",
+                                    });
+                                return visit();
+                            });
+                    });
                 });
-                Object.keys(urls).forEach(function (id) {
-                    if (!live[id]) {
-                        urlApi.revokeObjectURL((urls[id] as any).url);
-                        delete urls[id];
-                    }
-                });
-                return {
-                    available: true,
-                    directSources: !!w.showDirectoryPicker,
-                    items: items,
-                    offlineReady: !!(
-                        w.navigator.serviceWorker &&
-                        w.navigator.serviceWorker.controller &&
-                        /\/offline-worker\.js(?:[?#]|$)/.test(
-                            w.navigator.serviceWorker.controller.scriptURL
-                        )
-                    ),
-                    persistent: false,
-                    sources: sources,
-                    storage: "browser",
-                };
+                return chain;
+            })
+            .then(function () {
+                if (active())
+                    Object.keys(urls).forEach(function (id) {
+                        if (!live[id]) {
+                            urlApi.revokeObjectURL((urls[id] as any).url);
+                            delete urls[id];
+                        }
+                    });
+                return catalog(false);
             });
-        });
     }
     function save(handles: any[]): Promise<any> {
         return open()
@@ -357,20 +477,26 @@ export function installBrowserLocalMedia(w: any): any {
             })
             .catch(cancelled);
     }
-    function requestAccess(): Promise<any> {
+    function requestAccess(
+        onProgress?: (catalog: any) => boolean | void,
+        preferredId?: string
+    ): Promise<any> {
+        function resume(): Promise<any> {
+            return list(onProgress, preferredId);
+        }
         // A restored Chrome grant can cover all previously connected handles.
         // Request just one in this click: parallel prompts can consume activation
         // and dismiss each other. list() then observes the grant on every source.
         var pending = knownSources.filter(function (record) {
             return record.access === "permission-required";
         });
-        if (!pending.length) return list();
+        if (!pending.length) return resume();
         try {
             return Promise.resolve(
                 pending[0].handle.requestPermission({ mode: "read" })
-            ).then(list, list);
+            ).then(resume, resume);
         } catch (_) {
-            return list();
+            return resume();
         }
     }
     function remove(id: string): Promise<any> {

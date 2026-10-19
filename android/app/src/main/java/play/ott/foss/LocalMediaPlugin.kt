@@ -254,7 +254,9 @@ class LocalMediaPlugin : Plugin() {
         context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-    private fun link(uri: Uri, grantUri: Uri, knownName: String? = null, knownMime: String? = null): Boolean {
+    private class UnavailableDocument(cause: Exception) : IOException(cause)
+
+    private fun link(uri: Uri, grantUri: Uri, known: MutableSet<String>, knownName: String? = null, knownMime: String? = null): Boolean {
         var name = knownName ?: "Local media"
         if (knownName == null) context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
             if (it.moveToFirst()) name = it.getString(0).orEmpty().take(256)
@@ -262,16 +264,20 @@ class LocalMediaPlugin : Plugin() {
         val declaredMime = knownMime ?: context.contentResolver.getType(uri).orEmpty()
         val mime = if (declaredMime.isEmpty() || declaredMime == "application/octet-stream") LocalMediaRange.mime(name) else declaredMime
         if (!mime.startsWith("video/") && !mime.startsWith("audio/")) return false
-        if (metadata().any { it.optString("uri") == uri.toString() }) return false
+        if (uri.toString() in known) return false
         val id = UUID.randomUUID().toString()
         val item = JSONObject().put("id", id).put("name", name).put("mime", mime)
             .put("uri", uri.toString()).put("grantUri", grantUri.toString()).put("sourceId", sourceId(grantUri))
-        openSource(item).use { item.put("size", it.size) }
+        try { openSource(item).use { item.put("size", it.size) } }
+        catch (error: IOException) { throw UnavailableDocument(error) }
+        catch (error: SecurityException) { throw UnavailableDocument(error) }
+        catch (error: IllegalArgumentException) { throw UnavailableDocument(error) }
         val partial = File(directory, "$id.json.part")
         try {
             partial.writeText(item.toString())
             check(partial.renameTo(File(directory, "$id.json")))
         } finally { partial.delete() }
+        known.add(uri.toString())
         return true
     }
 
@@ -285,10 +291,11 @@ class LocalMediaPlugin : Plugin() {
                     result.data?.clipData?.let { clip -> for (index in 0 until clip.itemCount) uris.add(clip.getItemAt(index).uri) }
                     if (uris.isEmpty()) result.data?.data?.let { uris.add(it) }
                     require(uris.size <= 128) { "Select at most 128 files at once" }
+                    val known = metadata().mapTo(HashSet<String>()) { it.optString("uri") }
                     for (uri in uris.distinct()) {
                         grant(uri)
                         try {
-                            link(uri, uri)
+                            link(uri, uri, known)
                             val item = metadata().find { it.optString("uri") == uri.toString() }
                             if (item != null) saveSource(uri, item.getString("name"), "file")
                             else releaseUnusedGrant(uri.toString())
@@ -307,6 +314,7 @@ class LocalMediaPlugin : Plugin() {
             if (it.moveToFirst()) folderName = it.getString(0).orEmpty().take(256)
         }
         saveSource(tree, folderName, "folder")
+        val known = metadata().mapTo(HashSet<String>()) { it.optString("uri") }
         val pending = java.util.ArrayDeque<String>()
         val seen = mutableSetOf<String>()
         pending.add(DocumentsContract.getTreeDocumentId(tree))
@@ -325,7 +333,11 @@ class LocalMediaPlugin : Plugin() {
                     val name = cursor.getString(1).orEmpty().take(256)
                     val mime = cursor.getString(2).orEmpty()
                     if (mime == DocumentsContract.Document.MIME_TYPE_DIR) pending.add(document)
-                    else link(DocumentsContract.buildDocumentUriUsingTree(tree, document), tree, name, mime)
+                    else try {
+                        link(DocumentsContract.buildDocumentUriUsingTree(tree, document), tree, known, name, mime)
+                    } catch (_: UnavailableDocument) {
+                        // A revoked/non-seekable document must not hide readable siblings.
+                    }
                 }
             } ?: throw IOException("Folder unavailable")
         }

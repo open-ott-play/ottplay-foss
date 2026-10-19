@@ -485,6 +485,27 @@ function createChannelLibrary(
     }
     return {
         active: ports.current,
+        append: function (rows: LibraryChannel[]): void {
+            if (!ports.current()) return;
+            rows.forEach(function (row) {
+                if (items[row.itemId]) return;
+                catalog.push(row);
+                items[row.itemId] = { id: row.id };
+                ids[String(row.id)] = row.itemId;
+                var group = providerById[row.groupId];
+                if (!group) {
+                    group = {
+                        id: row.groupId,
+                        label: row.groupLabel,
+                        members: [],
+                    };
+                    providerById[row.groupId] = group;
+                    provider.push(group);
+                }
+                group.members.push(row.itemId);
+                providerById["system:all"].members.push(row.itemId);
+            });
+        },
         changeMember: function (
             groupId: string,
             channelId: number,

@@ -124,6 +124,27 @@ function mountChannelLibrary(host: any): void {
     channelLibraryPublish(host);
 }
 
+function appendChannelLibrary(host: any, ids: any[]): void {
+    if (!channelLibraryInstance || !channelLibraryInstance.active()) return;
+    channelLibraryInstance.append(
+        ids.map(function (id: any) {
+            var channel = host.channels[id];
+            var category = channel.category || {};
+            return {
+                groupId: String(
+                    channel.groupId || "provider:" + (category.name || "Other")
+                ),
+                groupLabel: String(category.name || "Other"),
+                id: id,
+                itemId: String(channel.itemId || "channel:" + id),
+                label: String(channel.channel_name || ""),
+                locked: false,
+            };
+        })
+    );
+    channelLibraryPublish(host);
+}
+
 function channelLibraryChange(action: string, value?: any, extra?: any): any {
     var host = window as any;
     var library = channelLibraryInstance;
@@ -146,6 +167,9 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
 }
 
 (window as any).__ottChannels = {
+    append: function (ids: any[]): void {
+        appendChannelLibrary(window, ids);
+    },
     capture: function (category: number) {
         var host = window as any;
         var library = channelLibraryInstance;

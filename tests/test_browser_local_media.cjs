@@ -445,6 +445,30 @@ async function builtUi(devicePath) {
                 ""
             );
         }
+        // Recovery after a startup timeout must be actionable without starting
+        // another automatic scan of the same stalled filesystem.
+        await page.evaluate(() => {
+            const api = window.__ottBrowserLocalMedia;
+            window.__originalLocalList = api.list;
+            window.__recoveryScans = 0;
+            api.list = () => {
+                window.__recoveryScans++;
+                return new Promise(() => {});
+            };
+            window.__ottLocalMedia.resume(true);
+        });
+        await action("resume").waitFor({ state: "visible" });
+        assert.equal(await page.evaluate(() => window.__recoveryScans), 0);
+        assert.equal(
+            await page.locator("#dialogbox .ott-spinner").isVisible(),
+            false
+        );
+        await page.evaluate(() => {
+            window.__ottBrowserLocalMedia.list = window.__originalLocalList;
+            delete window.__originalLocalList;
+            window.__ottLocalMedia.open();
+        });
+        await page.locator("#dialogbox").waitFor({ state: "hidden" });
         // Completing an older refresh while the editor is open cannot steal
         // its owner or leave a visible editor that no longer receives keys.
         await page.evaluate(() => {
@@ -910,7 +934,11 @@ async function builtUi(devicePath) {
             urls: Object.values(window.chanels || {}).map((c) => c.url),
         }));
         assert.equal(after.provider, "offline");
-        assert.deepEqual(after.catalog, before.catalog);
+        assert.deepEqual(
+            after.catalog.slice().sort(),
+            before.catalog.slice().sort(),
+            "progressive resume preserves catalog membership"
+        );
         assert.notDeepEqual(
             after.urls,
             before.urls,
@@ -950,6 +978,9 @@ async function builtUi(devicePath) {
         // External folder grants may become prompt after browser restart.
         // The player must focus one explicit recovery action and continue the
         // previously selected video once that click restores access.
+        const savedPrimaryIndex = await page.evaluate(() =>
+            Number(window.providerGetItem("primaryIndex"))
+        );
         await page.evaluate(() =>
             localStorage.setItem("fixture-source-permission", "prompt")
         );
@@ -967,8 +998,8 @@ async function builtUi(devicePath) {
                     window.providerGetItem("primaryIndex")
                 )
             ),
-            1,
-            "permission-blocked startup must not overwrite the second-channel bookmark"
+            savedPrimaryIndex,
+            "permission-blocked startup must not overwrite the channel bookmark"
         );
         await selectAction("resume");
         await page.waitForFunction(
@@ -1051,11 +1082,186 @@ async function builtUi(devicePath) {
                 (v) => v.currentSrc && !v.error
             )
         );
+        // Exercise the real driver/mount path: play an initial batch while the
+        // browser catalog's final result remains pending, then append the rest
+        // without restarting or unpausing the same video element.
+        await page.evaluate(async () => {
+            const api = window.__ottBrowserLocalMedia;
+            const original = api.list;
+            const catalog = await original.call(api);
+            const selected = String(window.curList[window.primaryIndex]);
+            const first = catalog.items.find(
+                (item) => "local-" + item.id === selected
+            );
+            if (!first || catalog.items.length < 2)
+                throw new Error("Need selected and later batch fixtures");
+            window.__progressiveCatalogFixture = {
+                api,
+                catalog,
+                first,
+                original,
+            };
+            window.__progressiveListCalls = 0;
+            api.list = function (onProgress, preferredId) {
+                window.__progressiveListCalls++;
+                if (typeof onProgress !== "function")
+                    return original.call(api, onProgress, preferredId);
+                return new Promise((resolve) => {
+                    window.__finishProgressiveCatalog = () =>
+                        resolve({ ...catalog, scanning: false });
+                    Promise.resolve().then(() =>
+                        onProgress({
+                            ...catalog,
+                            items: [first],
+                            scanned: 1,
+                            scanning: true,
+                        })
+                    );
+                });
+            };
+            window.loadProv();
+        });
+        try {
+            await page.waitForFunction(
+                () =>
+                    window.cList.length === 1 &&
+                    window.commandChannelsReady &&
+                    document.querySelector("video").currentTime > 0.1 &&
+                    !document.querySelector("video").paused
+            );
+            const firstBatch = await page.evaluate(() => {
+                const video = document.querySelector("video");
+                video.pause();
+                video.currentTime = 8;
+                window.__progressiveVideo = video;
+                window.__progressiveMediaEvents = [];
+                for (const name of ["play", "loadstart", "emptied"])
+                    video.addEventListener(name, () =>
+                        window.__progressiveMediaEvents.push(name)
+                    );
+                return {
+                    channel: window.curList[window.primaryIndex],
+                    count: window.cList.length,
+                    src: video.currentSrc,
+                };
+            });
+            assert.equal(
+                firstBatch.count,
+                1,
+                "first batch starts before final catalog resolves"
+            );
+            const inactiveImport = await page.evaluate(async () => {
+                const exported = await window.__ottOfflineProfiles.request({
+                    action: "profile_export",
+                    params: { number: 2 },
+                });
+                return window.__ottOfflineProfiles.request({
+                    action: "profile_import",
+                    params: { number: 4, profile: exported.data.profile },
+                });
+            });
+            assert.equal(
+                inactiveImport.status,
+                "ok",
+                "inactive profile import remains available during playback scan"
+            );
+            await page.evaluate(() => {
+                window.__progressiveProfileSave = window.__ottOfflineProfiles
+                    .request({
+                        action: "profile_save",
+                        params: {
+                            name: "Complete progressive catalog",
+                            number: 3,
+                        },
+                    })
+                    .then((result) => {
+                        window.__progressiveProfileResult = result;
+                        return result;
+                    });
+            });
+            assert.equal(
+                await page.evaluate(() => window.__progressiveListCalls),
+                1,
+                "saving a profile shares the ongoing scan without cancelling playback enumeration"
+            );
+            assert.equal(
+                await page.evaluate(() => window.__progressiveProfileResult),
+                undefined,
+                "saving must wait for the complete catalog"
+            );
+            await page.waitForFunction(() => {
+                const video = document.querySelector("video");
+                return (
+                    video.paused &&
+                    !video.seeking &&
+                    Math.abs(video.currentTime - 8) < 0.1
+                );
+            });
+            await page.evaluate(() => window.__finishProgressiveCatalog());
+            const profileSave = await page.evaluate(
+                () => window.__progressiveProfileSave
+            );
+            assert.equal(profileSave.status, "ok");
+            assert.equal(profileSave.data.profile.source_count, 2);
+            await page.waitForFunction(
+                () =>
+                    window.cList.length ===
+                    window.__progressiveCatalogFixture.catalog.items.length
+            );
+            const appended = await page.evaluate(() => {
+                const video = document.querySelector("video");
+                return {
+                    channel: window.curList[window.primaryIndex],
+                    events: window.__progressiveMediaEvents,
+                    paused: video.paused,
+                    sameElement: video === window.__progressiveVideo,
+                    src: video.currentSrc,
+                    time: video.currentTime,
+                };
+            });
+            assert.equal(
+                appended.channel,
+                firstBatch.channel,
+                "later batch preserves selected channel"
+            );
+            assert.equal(
+                appended.src,
+                firstBatch.src,
+                "later batch does not reload its media URL"
+            );
+            assert.equal(appended.sameElement, true);
+            assert.equal(
+                appended.paused,
+                true,
+                "later batch preserves explicit pause"
+            );
+            assert.ok(
+                Math.abs(appended.time - 8) < 0.1,
+                "later batch preserves playback clock"
+            );
+            assert.deepEqual(
+                appended.events,
+                [],
+                "later batch emits no play or reload events"
+            );
+        } finally {
+            await page.evaluate(() => {
+                const fixture = window.__progressiveCatalogFixture;
+                fixture.api.list = fixture.original;
+                delete window.__progressiveCatalogFixture;
+                delete window.__finishProgressiveCatalog;
+                delete window.__progressiveVideo;
+                delete window.__progressiveMediaEvents;
+                delete window.__progressiveListCalls;
+                delete window.__progressiveProfileSave;
+                delete window.__progressiveProfileResult;
+            });
+        }
         assert.deepEqual(errors, []);
         console.log(
             "PASS built UI " +
                 devicePath +
-                ": editor escape/cancel/back, validation/save, pending request ownership, cancelled/error pickers, file and folder links, fullscreen video-focused Alt/Ctrl/Meta seek and plain PC arrow volume with pause preserved, menu/editor shortcut exclusion, playback, offline reload, page close/reopen, second-channel restoration, real profile save/export/import/load via generic catalogue lifecycle, and permission recovery (controlled permission policy)"
+                ": editor escape/cancel/back, validation/save, pending request ownership, cancelled/error pickers, file and folder links, fullscreen video-focused Alt/Ctrl/Meta seek and plain PC arrow volume with pause preserved, menu/editor shortcut exclusion, playback, offline reload, page close/reopen, second-channel restoration, real profile save/export/import/load via generic catalogue lifecycle, permission recovery (controlled permission policy), progressive profile playback and append without restart/pause loss"
         );
     } finally {
         await browser.close();

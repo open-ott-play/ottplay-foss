@@ -1508,7 +1508,7 @@ export function onChannelsLoaded(): void {
                     if (selectedLocal !== null) {
                         var localIndex = cList.indexOf(selectedLocal);
                         if (localIndex < 0) {
-                            (window as any).__ottLocalMedia.resume();
+                            (window as any).__ottLocalMedia.resume(true);
                             return;
                         }
                         window.setCurrent(0, localIndex);

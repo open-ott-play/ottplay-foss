@@ -10,6 +10,25 @@
 - Synchronize the standalone fuzz lockfile with the existing Local videos core
   dependencies so baseline regression-corpus checks work with `--locked`.
 
+## [1.1.58] - 2026-10-19
+
+### Changes
+
+- Play local videos from browser folder handles, Android document sources, iOS bookmarks, and desktop file references without creating another media copy. Retain the original source and selected video across restart; sources that need permission offer explicit recovery.
+- Stream large browser-folder catalogs in batches, resume the saved file directly, and append remaining entries without restarting playback. Avoid repeated metadata scans on Android; skip unreadable children without losing the source.
+- Use the standard player settings and loading dialog for local media. Open the player before scanning a saved folder, and offer recovery when a source fails or stops responding.
+- On PC, plain Left/Right adjusts volume even with fullscreen video focus. Alt/Option, Ctrl, or Command with Left/Right seeks by ten seconds in local video, VOD, and supported channel archives.
+- Serve the offline worker and hosted runtime assets from the local server, and use content-hashed bootstrap URLs to refresh same-version hosted bundles.
+
+### Upgrade
+
+- Saved folder references are device-specific. Reconnect moved/removable sources and grant filesystem access when the operating system or browser asks. Access to a server library requires a network connection.
+- Existing imported media copies remain readable. Connecting a new direct source does not automatically remove old copies.
+
+### Security
+
+- Keep source media read-only when disconnecting a linked folder. Validate media/source IDs and restrict HTTP imports to generated identifiers and supported extensions; add adversarial path and deletion regression tests.
+
 ## [1.1.57] - 2026-10-18
 
 ### Changes

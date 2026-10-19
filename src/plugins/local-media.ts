@@ -19,6 +19,9 @@ export function installLocalMedia(w: any): any {
     var owner: any = null;
     var loading: any = null;
     var catalogRevision = 0;
+    var pendingList: Promise<any> | null = null;
+    var pendingListRevision = 0;
+    var pendingListLibrary = "";
     var resuming = false;
     var last: any = null;
     var endpoint = "";
@@ -78,13 +81,91 @@ export function installLocalMedia(w: any): any {
             return value;
         });
     }
-    function list(): Promise<any> {
-        if (isNative()) return remember(native.list());
-        return remember(
-            getEndpoint().then(function (base) {
-                return base ? http(base) : browser.list();
-            })
-        );
+    function list(
+        onProgress?: (value: any) => boolean | void,
+        preferredId?: string,
+        reuseCurrent = false
+    ): Promise<any> {
+        var library = isNative()
+            ? "capacitor"
+            : isTauri()
+              ? "tauri"
+              : "browser:" + remoteEndpoint();
+        // Profile snapshots wait for an existing scan instead of cancelling
+        // playback's progressive catalog and leaving its visible list truncated.
+        if (
+            reuseCurrent &&
+            pendingList &&
+            pendingListRevision === catalogRevision &&
+            pendingListLibrary === library
+        )
+            return pendingList;
+        var request = ++catalogRevision;
+        var timer: any = null;
+        var expired = false;
+        var expire: (error: Error) => void;
+        function clearTimer(): void {
+            if (timer !== null) w.clearTimeout(timer);
+            timer = null;
+        }
+        function heartbeat(): void {
+            clearTimer();
+            if (typeof w.setTimeout === "function")
+                timer = w.setTimeout(function () {
+                    expired = true;
+                    if (request === catalogRevision) catalogRevision++;
+                    expire(new Error("Local source did not respond"));
+                }, 60000);
+        }
+        function accept(value: any): boolean {
+            if (expired || request !== catalogRevision) return false;
+            if (!value || !Array.isArray(value.items))
+                throw new Error("Invalid local media catalog");
+            heartbeat();
+            last = value;
+            return !onProgress || onProgress(value) !== false;
+        }
+        var pending = isNative()
+            ? native.list()
+            : getEndpoint().then(function (base) {
+                  return base ? http(base) : browser.list(accept, preferredId);
+              });
+        var result = new Promise<any>(function (resolve, reject) {
+            expire = reject;
+            heartbeat();
+            pending.then(
+                function (value: any) {
+                    clearTimer();
+                    if (expired) return;
+                    if (request !== catalogRevision) {
+                        reject(
+                            new Error(
+                                "Local catalog was replaced while scanning"
+                            )
+                        );
+                        return;
+                    }
+                    if (!value || !Array.isArray(value.items)) {
+                        reject(new Error("Invalid local media catalog"));
+                        return;
+                    }
+                    if (request === catalogRevision) last = value;
+                    resolve(value);
+                },
+                function (error: any) {
+                    clearTimer();
+                    reject(error);
+                }
+            );
+        });
+        pendingList = result;
+        pendingListRevision = request;
+        pendingListLibrary = library;
+        function clear(): void {
+            if (pendingList === result) pendingList = null;
+        }
+        result.then(clear, clear);
+        return result;
     }
     function importFiles(folder = false): Promise<any> {
         if (locked() || settingsLocked())
@@ -134,7 +215,9 @@ export function installLocalMedia(w: any): any {
             );
         return remember(browser.removeSource(id));
     }
-    function requestAccess(): Promise<any> {
+    function requestAccess(
+        onProgress?: (value: any) => boolean | void
+    ): Promise<any> {
         if (locked() || settingsLocked())
             return Promise.reject(new Error("Unlock settings to grant access"));
         if (isNative()) return remember(native.requestAccess());
@@ -146,8 +229,22 @@ export function installLocalMedia(w: any): any {
                 })[0];
             return importFiles(!!missing && missing.kind === "folder");
         }
-        if (remoteEndpoint()) return list();
-        return remember(browser.requestAccess());
+        if (remoteEndpoint()) return list(onProgress);
+        var request = ++catalogRevision;
+        return browser
+            .requestAccess(
+                onProgress
+                    ? function (value: any) {
+                          if (request !== catalogRevision) return false;
+                          last = value;
+                          return onProgress(value);
+                      }
+                    : undefined
+            )
+            .then(function (value: any) {
+                if (request === catalogRevision) last = value;
+                return value;
+            });
     }
     function remove(id: string): Promise<any> {
         if (locked())
@@ -260,7 +357,12 @@ export function installLocalMedia(w: any): any {
     }
     function restorePlayback(): void {
         run(function () {
-            return requestAccess().then(function (value) {
+            return requestAccess(function () {
+                if (!resuming || !current()) return false;
+                if (!playable()) return true;
+                activate();
+                return false;
+            }).then(function (value) {
                 if (resuming && current() && playable()) activate();
                 return value;
             });
@@ -489,7 +591,7 @@ export function installLocalMedia(w: any): any {
             }
         );
     }
-    function open(recovery = false): void {
+    function open(recovery = false, skipScan = false): void {
         if (locked()) return;
         if (settingsLocked()) {
             if (typeof w.enterPinAndSetAccess === "function")
@@ -502,8 +604,9 @@ export function installLocalMedia(w: any): any {
         handler = null;
         owner = null;
         w.selIndex = 0;
+        if (skipScan) catalogRevision++;
         render();
-        run(list);
+        if (!skipScan) run(list);
     }
     var api = {
         activate: activate,
@@ -546,8 +649,11 @@ export function installLocalMedia(w: any): any {
         list: list,
         open: open,
         remove: remove,
-        resume: function () {
-            open(true);
+        resume: function (skipScan = false) {
+            open(true, skipScan);
+        },
+        snapshot: function () {
+            return list(undefined, undefined, true);
         },
         title: title,
     };
