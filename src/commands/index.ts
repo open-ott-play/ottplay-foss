@@ -336,6 +336,12 @@ function setVolume(level?: number, step?: number): void {
 export function handleCommand(cmd: Command): string {
     if (!validPlayerCommand(cmd)) return "rejected";
     if (
+        cmd.command === "channel_by_name" &&
+        cmd.channel_name &&
+        !cmd.channel_name.trim()
+    )
+        return "rejected";
+    if (
         window.__ottKiosk &&
         window.__ottKiosk.enabled() &&
         cmd.command !== "set_volume" &&
