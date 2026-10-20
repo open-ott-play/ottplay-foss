@@ -26,6 +26,17 @@ assert.equal(
 );
 console.log("Tauri updater npm/Rust release versions match");
 const ts = require(require.resolve("typescript", { paths: [process.cwd()] }));
+const standbyContext = { exports: {}, Promise };
+vm.runInNewContext(
+    ts.transpileModule(
+        fs.readFileSync(
+            path.join(repositoryRoot, "src/core/standby.ts"),
+            "utf8"
+        ),
+        { compilerOptions: { module: ts.ModuleKind.CommonJS } }
+    ).outputText,
+    standbyContext
+);
 const source = fs.readFileSync(
     process.argv[2] || path.join(__dirname, "../src/index.ts"),
     "utf8"
@@ -48,10 +59,18 @@ function fixture(options = {}) {
         alert: () => {
             throw new Error("Native alert must not be used");
         },
+        clearInterval,
+        clearTimeout,
         confirm: () => {
             throw new Error("Native confirm must not be used");
         },
+        setTimeout,
     };
+    const standby = standbyContext.exports.installStandby(
+        window,
+        () => "0",
+        () => {}
+    );
     if (!options.browser)
         window.__TAURI__ = { core: { Channel: class Channel {} } };
     if (options.noChannel) delete window.__TAURI__.core.Channel;
@@ -72,8 +91,12 @@ function fixture(options = {}) {
         tauriInvoke: async (command, args) => {
             calls.push({ args, command });
             if (command === "plugin:updater|check")
-                return options.noUpdate ? null : { rid: 42, version: "1.1.41" };
+                return (
+                    options.checkPromise ||
+                    (options.noUpdate ? null : { rid: 42, version: "1.1.41" })
+                );
             if (options.installFails) throw new Error("Download failed");
+            return options.installPromise;
         },
         window,
     };
@@ -86,7 +109,7 @@ function fixture(options = {}) {
     );
     const start = () => context.checkTauriUpdatesAfterLanguage();
     if (!options.deferLanguage) start();
-    return { calls, confirmations, errors, notices, start };
+    return { calls, confirmations, errors, notices, standby, start };
 }
 (async () => {
     const delayedOptions = { deferLanguage: true };
@@ -197,7 +220,100 @@ function fixture(options = {}) {
     assert.deepEqual(localized.notices, [
         "Обновление установлено. Перезапустите OttPlay FOSS.",
     ]);
-    console.log("Tauri updater DOM dialog contracts passed (9 scenarios)");
+    const blocked = fixture({ deferLanguage: true });
+    blocked.standby.set(true);
+    blocked.start();
+    await settle();
+    assert.equal(
+        blocked.calls.length,
+        0,
+        "Standby prevents new native update checks"
+    );
+    let completeCheck;
+    const checking = fixture({
+        checkPromise: new Promise((resolve) => {
+            completeCheck = resolve;
+        }),
+    });
+    checking.standby.set(true);
+    assert.equal(checking.standby.snapshot().pending, 1);
+    assert.equal(checking.standby.snapshot().state, "suspending");
+    completeCheck({ rid: 42, version: "1.1.41" });
+    await settle();
+    assert.equal(checking.standby.snapshot().pending, 0);
+    assert.equal(
+        checking.confirmations.length,
+        0,
+        "Late native check cannot open a prompt"
+    );
+    let rejectCheck;
+    const timedCheck = fixture({
+        checkPromise: new Promise((_, reject) => {
+            rejectCheck = reject;
+        }),
+    });
+    assert.equal(timedCheck.calls.length, 1);
+    assert.equal(timedCheck.calls[0].command, "plugin:updater|check");
+    assert.equal(
+        timedCheck.calls[0].args.timeout,
+        10000,
+        "The native updater must bound its metadata request, not only a JS waiter"
+    );
+    timedCheck.standby.set(true);
+    await settle();
+    assert.equal(
+        timedCheck.standby.snapshot().pending,
+        1,
+        "Standby must retain the request until native settlement"
+    );
+    assert.equal(timedCheck.standby.snapshot().state, "suspending");
+    rejectCheck(new Error("Native updater request timed out"));
+    await settle();
+    assert.equal(timedCheck.standby.snapshot().pending, 0);
+    assert.equal(timedCheck.standby.snapshot().state, "suspended");
+    assert.equal(timedCheck.errors.length, 1);
+    assert.equal(timedCheck.confirmations.length, 0);
+    assert.equal(timedCheck.notices.length, 0);
+    assert.equal(
+        timedCheck.calls.length,
+        1,
+        "A failed metadata check is not retried or converted to an installation"
+    );
+    const lateConsent = fixture();
+    await settle();
+    lateConsent.standby.set(true);
+    lateConsent.confirmations[0].yes();
+    await settle();
+    assert.equal(
+        lateConsent.calls.length,
+        1,
+        "Old confirmation cannot start a download"
+    );
+    let completeInstall;
+    const installing = fixture({
+        installPromise: new Promise((resolve) => {
+            completeInstall = resolve;
+        }),
+        relaunch: async () => {
+            throw new Error("Must not relaunch");
+        },
+    });
+    await settle();
+    installing.confirmations[0].yes();
+    await settle();
+    installing.standby.set(true);
+    assert.equal(installing.standby.snapshot().pending, 1);
+    assert.equal(installing.standby.snapshot().state, "suspending");
+    completeInstall();
+    await settle();
+    assert.equal(installing.standby.snapshot().state, "suspended");
+    assert.equal(installing.notices.length, 0);
+    assert.equal(
+        installing.errors.length,
+        0,
+        "Late download cannot trigger relaunch"
+    );
+    console.log("Tauri updater DOM dialog contracts passed (14 scenarios)");
 })().catch((error) => {
     console.error(error);
     process.exitCode = 1;

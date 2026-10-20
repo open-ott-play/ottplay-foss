@@ -7,6 +7,7 @@ import CryptoKit
 public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     /// Optional host transport for authenticated sources; install before loading EPG.
     public static var requestHandler: ((URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> Void)?
+    public static var cancellableRequestHandler: ((URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> (() -> Void))?
     public let identifier = "MobileXmltvEpgPlugin"
     public let jsName = "MobileXmltvEpg"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -70,26 +71,31 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
     private var assemblyRevision: UInt64 = 0
     private var assembled: (revision: UInt64, sources: [String], parts: [Parsed?], data: Parsed)?
 
-    private func assemble(_ sources: [String], _ parts: [Parsed?], revision: UInt64) throws -> Parsed {
+    private func assemble(_ sources: [String], _ parts: [Parsed?], revision: UInt64, ticket: NativeWork.Ticket? = nil) throws -> Parsed {
         assemblyLock.lock()
         defer { assemblyLock.unlock() }
+        try ticket?.check()
         if let cached = assembled, cached.sources == sources,
            zip(cached.parts, parts).allSatisfy({ $0.0 === $0.1 }) {
-            assembled = (max(revision, cached.revision), sources, parts, cached.data)
+            let publish = { self.assembled = (max(revision, cached.revision), sources, parts, cached.data) }
+            if let ticket { try ticket.commit(publish) } else { publish() }
             return cached.data
         }
         var channels: [String: String] = [:], icons: [String: String] = [:], names: [String: [String]] = [:]
         var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
         for parsed in parts.compactMap({ $0 }) {
+            try ticket?.check()
             let ids = try withPolicy { try $0.unowned(Array(channels.keys), incoming: Array(parsed.channels.keys)) }
             for id in ids {
+                try ticket?.check()
                 channels[id] = parsed.channels[id]; programs[id] = parsed.programs[id]
                 icons[id] = parsed.icons[id]; names[id] = parsed.names[id]
             }
         }
         let data = Parsed(channels, programs, icons, names)
         // An older asynchronous batch may finish after a newer one was assembled.
-        if assembled == nil || revision > assembled!.revision { assembled = (revision, sources, parts, data) }
+        let publish = { if self.assembled == nil || revision > self.assembled!.revision { self.assembled = (revision, sources, parts, data) } }
+        if let ticket { try ticket.commit(publish) } else { publish() }
         return data
     }
     // The host transport must apply the delivered-body limit while receiving.
@@ -113,28 +119,43 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             completion(.failure(NSError(domain: "MobileXmltvEpg", code: -3, userInfo: [NSLocalizedDescriptionKey: "invalid XMLTV URL"])))
             return
         }
+        guard let ticket = NativeWork.shared.begin() else { completion(.failure(URLError(.cancelled))); return }
+        let complete: (Result<Parsed, Error>) -> Void = { result in
+            defer { ticket.finish() }
+            let checked: Result<Parsed, Error>
+            do { try ticket.check(); checked = result } catch { checked = .failure(error) }
+            completion(checked)
+        }
         sourceLock.lock()
         let action: String
         do { action = try withPolicy { try $0.lookup(now: Date().timeIntervalSince1970, fetched: parsedCache[source]?.fetched,
             force: force, pending: pendingSources[source] != nil) } }
-        catch { sourceLock.unlock(); completion(.failure(error)); return }
+        catch { sourceLock.unlock(); complete(.failure(error)); return }
         if action == "CACHE", let cached = parsedCache[source] {
-            sourceLock.unlock(); completion(.success(cached.data)); return
+            sourceLock.unlock(); complete(.success(cached.data)); return
         }
         if action == "JOIN" {
-            pendingSources[source]!.append(completion); sourceLock.unlock(); return
+            pendingSources[source]!.append(complete); sourceLock.unlock(); return
         }
-        pendingSources[source] = [completion]
+        pendingSources[source] = [complete]
         sourceLock.unlock()
         var network: (data: Data, xml: XmltvDocument)?
+        var finished = false
         func finish(_ result: Result<Parsed, Error>) {
+            sourceLock.lock()
+            guard !finished else { sourceLock.unlock(); return }
+            finished = true
+            sourceLock.unlock()
             network?.xml.remove()
             network = nil
             sourceLock.lock()
-            if case .success(let parsed) = result { parsedCache[source] = (Date().timeIntervalSince1970, parsed) }
+            var outcome = result
+            do { try ticket.commit {
+                if case .success(let parsed) = result { parsedCache[source] = (Date().timeIntervalSince1970, parsed) }
+            } } catch { outcome = .failure(error) }
             let callbacks = pendingSources.removeValue(forKey: source) ?? []
             sourceLock.unlock()
-            callbacks.forEach { $0(result) }
+            callbacks.forEach { $0(outcome) }
         }
         var disk: Parsed?
         var memory: Parsed?
@@ -146,19 +167,21 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         }
         func perform(_ action: String) {
             do {
+                try ticket.check()
                 switch action {
                 case "READ_FRESH_DISK", "READ_STALE_DISK":
-                    let xml = try? self.readCache(for: url, allowStale: action == "READ_STALE_DISK")
-                    disk = xml.flatMap { try? self.parseXmltv($0) }
+                    let xml = try? self.readCache(for: url, allowStale: action == "READ_STALE_DISK", ticket: ticket)
+                    disk = xml.flatMap { try? self.parseXmltv($0, ticket: ticket) }
                     perform(try next(action, disk != nil, disk?.channels.count ?? 0))
                 case "FETCH":
-                    self.fetchXmltv(url) { result in
+                    self.fetchXmltv(url, ticket: ticket) { result in
                         do {
+                            try ticket.check()
                             switch result {
                             case .success(let response):
                                 network = response
                                 // The first parse historically maps parser failure to the invalid-XMLTV error.
-                                parsedNetwork = try? self.parseXmltv(response.xml)
+                                parsedNetwork = try? self.parseXmltv(response.xml, ticket: ticket)
                                 perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
                             case .failure(let error):
                                 failure = error
@@ -168,14 +191,14 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                     }
                 case "WRITE_DISK":
                     var written = false
-                    do { try self.writeCache(network!.data, for: url); written = true }
+                    do { try self.writeCache(network!.data, for: url, ticket: ticket); written = true }
                     catch { failure = error }
                     perform(try next(action, written))
                 case "REPARSE_NETWORK":
                     // Keep the shared policy's second parse, but release its first
                     // result before building another complete programme graph.
                     parsedNetwork = nil
-                    do { parsedNetwork = try self.parseXmltv(network!.xml) }
+                    do { parsedNetwork = try self.parseXmltv(network!.xml, ticket: ticket) }
                     catch { parsedNetwork = nil; failure = error }
                     perform(try next(action, parsedNetwork != nil, parsedNetwork?.channels.count ?? 0))
                 case "READ_MEMORY":
@@ -198,6 +221,13 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // Source order is significant: the first feed defining an ID owns its programs.
     private func loadSources(_ sources: [String], force: Bool = false, completion: @escaping (Result<Parsed, Error>) -> Void) {
+        guard let ticket = NativeWork.shared.begin() else { completion(.failure(URLError(.cancelled))); return }
+        let complete: (Result<Parsed, Error>) -> Void = { result in
+            defer { ticket.finish() }
+            let checked: Result<Parsed, Error>
+            do { try ticket.check(); checked = result } catch { checked = .failure(error) }
+            completion(checked)
+        }
         assemblyLock.lock()
         assemblyRevision &+= 1
         let revision = assemblyRevision
@@ -206,14 +236,15 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         var errors: [Int: Error] = [:]
         let batch: JavaScriptCore.JSValue
         do { batch = try withPolicy { try $0.sourceBatch(sources.count) } }
-        catch { completion(.failure(error)); return }
+        catch { complete(.failure(error)); return }
         func next() {
             do {
+                try ticket.check()
                 let index = try self.withPolicy { try $0.batchNext(batch) }
                 if index < 0 {
                     let failed = try self.withPolicy { try $0.batchFailure(batch) }
-                    if failed >= 0 { completion(.failure(errors[failed]!)) }
-                    else { completion(.success(try self.assemble(sources, parts, revision: revision))) }
+                    if failed >= 0 { complete(.failure(errors[failed]!)) }
+                    else { complete(.success(try self.assemble(sources, parts, revision: revision, ticket: ticket))) }
                     return
                 }
                 loadSource(sources[index], force: force) { result in
@@ -227,9 +258,9 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                             try self.withPolicy { try $0.batchAdvance(batch, succeeded: false, channels: 0) }
                         }
                         next()
-                    } catch { completion(.failure(error)) }
+                    } catch { complete(.failure(error)) }
                 }
-            } catch { completion(.failure(error)) }
+            } catch { complete(.failure(error)) }
         }
         next()
     }
@@ -274,21 +305,23 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - Cache
 
-    private func readCache(for url: URL, allowStale: Bool = false) throws -> XmltvDocument? {
+    private func readCache(for url: URL, allowStale: Bool = false, ticket: NativeWork.Ticket? = nil) throws -> XmltvDocument? {
         cacheLock.lock()
         defer { cacheLock.unlock() }
-        guard let meta = String(data: try readBounded(metaURL, limit: metadataByteLimit), encoding: .utf8) else { return nil }
+        try ticket?.check()
+        guard let meta = String(data: try readBounded(metaURL, limit: metadataByteLimit, ticket: ticket), encoding: .utf8) else { return nil }
         let fields = meta.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         // Timestamp-only metadata predates source tracking and cannot be trusted.
         guard fields.count == 2, let fetched = Double(fields[0]),
               try withPolicy({ try $0.disk(source: url.absoluteString, storedSource: String(fields[1]),
                   now: Date().timeIntervalSince1970, fetched: fetched, stale: allowStale) }) else { return nil }
-        return try prepareXmltv(readBounded(cacheURL, limit: inputByteLimit))
+        return try prepareXmltv(readBounded(cacheURL, limit: inputByteLimit, ticket: ticket), ticket: ticket)
     }
 
-    private func writeCache(_ data: Data, for url: URL) throws {
+    private func writeCache(_ data: Data, for url: URL, ticket: NativeWork.Ticket? = nil) throws {
         cacheLock.lock()
         defer { cacheLock.unlock() }
+        try ticket?.check()
         guard data.count <= inputByteLimit else { throw Self.sizeFailure("delivered body") }
         let meta = "\(Date().timeIntervalSince1970)\n\(url.absoluteString)"
         guard meta.utf8.count <= metadataByteLimit else { throw Self.sizeFailure("cache metadata") }
@@ -297,11 +330,13 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
             try FileManager.default.removeItem(at: metaURL)
         }
         try data.write(to: cacheURL, options: .atomic)
-        try meta.write(to: metaURL, atomically: true, encoding: .utf8)
+        let publish = { try meta.write(to: self.metaURL, atomically: true, encoding: .utf8) }
+        if let ticket { try ticket.commit(publish) } else { try publish() }
     }
 
-    private func fetchXmltv(_ url: URL, completion: @escaping (Result<(data: Data, xml: XmltvDocument), Error>) -> Void) {
+    private func fetchXmltv(_ url: URL, ticket: NativeWork.Ticket? = nil, completion: @escaping (Result<(data: Data, xml: XmltvDocument), Error>) -> Void) {
         let completionHandler: (Data?, URLResponse?, Error?) -> Void = { data, response, err in
+            do { try ticket?.check() } catch { completion(.failure(error)); return }
             if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: response.statusCode))); return
             }
@@ -310,11 +345,17 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 completion(.failure(NSError(domain: "MobileXmltvEpg", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])))
                 return
             }
-            do { completion(.success((data, try self.prepareXmltv(data)))) }
+            do { completion(.success((data, try self.prepareXmltv(data, ticket: ticket)))) }
             catch { completion(.failure(error)) }
         }
-        if let handler = Self.requestHandler { handler(URLRequest(url: url), completionHandler) }
-        else { XmltvDownload.start(URLRequest(url: url), limit: inputByteLimit, completion: completionHandler) }
+        if let handler = Self.cancellableRequestHandler {
+            let cancel = handler(URLRequest(url: url), completionHandler)
+            ticket?.cancelWith(cancel)
+        } else if let handler = Self.requestHandler { handler(URLRequest(url: url), completionHandler) }
+        else {
+            let cancel = XmltvDownload.start(URLRequest(url: url), limit: inputByteLimit, completion: completionHandler)
+            ticket?.cancelWith(cancel)
+        }
     }
 
     fileprivate static func sizeFailure(_ resource: String) -> NSError {
@@ -322,13 +363,15 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 userInfo: [NSLocalizedDescriptionKey: "XMLTV \(resource) exceeds size limit"])
     }
 
-    private func readBounded(_ url: URL, limit: Int) throws -> Data {
+    private func readBounded(_ url: URL, limit: Int, ticket: NativeWork.Ticket? = nil) throws -> Data {
+        try ticket?.check()
         let file = try FileHandle(forReadingFrom: url)
         defer { try? file.close() }
         guard try file.seekToEnd() <= UInt64(limit) else { throw Self.sizeFailure("cache input") }
         try file.seek(toOffset: 0)
         var result = Data()
         while let chunk = try file.read(upToCount: min(64 * 1024, limit - result.count + 1)), !chunk.isEmpty {
+            try ticket?.check()
             guard chunk.count <= limit - result.count else { throw Self.sizeFailure("cache input") }
             result.append(chunk)
         }
@@ -349,7 +392,8 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         deinit { remove() }
     }
 
-    private func prepareXmltv(_ data: Data) throws -> XmltvDocument {
+    private func prepareXmltv(_ data: Data, ticket: NativeWork.Ticket? = nil) throws -> XmltvDocument {
+        try ticket?.check()
         guard data.count <= inputByteLimit else { throw Self.sizeFailure("delivered body") }
         let invalid = NSError(domain: "MobileXmltvEpg", code: -2,
                               userInfo: [NSLocalizedDescriptionKey: "gunzip failed"])
@@ -363,6 +407,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         var utf8Tail = Data()
         var foundXMLPrefix = gzip
         func write(_ chunk: Data) throws {
+            try ticket?.check()
             guard chunk.count <= expandedByteLimit - written else { throw Self.sizeFailure("expanded document") }
             // Preserve strict UTF-8 decoding without making a whole-document String.
             // A UTF-8 scalar can straddle two chunks by at most three bytes.
@@ -398,6 +443,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
                 stream.avail_in = uInt(raw.count)
                 var ret: Int32 = Z_OK
                 repeat {
+                    try ticket?.check()
                     stream.next_out = dstBuffer
                     stream.avail_out = uInt(bufferSize)
                     ret = inflate(&stream, Z_NO_FLUSH)
@@ -421,13 +467,14 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - XMLTV Parse
 
-    private func parseXmltv(_ xml: XmltvDocument) throws -> Parsed {
+    private func parseXmltv(_ xml: XmltvDocument, ticket: NativeWork.Ticket? = nil) throws -> Parsed {
         try autoreleasepool {
+            try ticket?.check()
             guard let stream = InputStream(url: xml.url) else {
                 throw NSError(domain: "MobileXmltvEpg", code: -6, userInfo: [NSLocalizedDescriptionKey: "Cannot read XMLTV document"])
             }
             defer { stream.close() }
-            let parser = try XmltvParser(core: ())
+            let parser = try XmltvParser(core: (), check: { try ticket?.check() })
             try parser.parse(stream)
             return Parsed(parser.channels, parser.programs, parser.icons, parser.names)
         }
@@ -439,8 +486,10 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         private var coreError: Error?
         private var tokens: [[String]] = []
         private var tokenBytes = 0
+        private let check: () throws -> Void
 
-        init(core: Void) throws {
+        init(core: Void, check: @escaping () throws -> Void = {}) throws {
+            self.check = check
             let guide = try SharedGuide()
             self.guide = guide
             records = try guide.xmltvRecords()
@@ -452,11 +501,13 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         var programs: [String: [(start: Int, stop: Int, title: String, desc: String)]] = [:]
 
         func parse(_ stream: InputStream) throws {
+            try check()
             let parser = XMLParser(stream: stream)
             parser.shouldResolveExternalEntities = false
             parser.externalEntityResolvingPolicy = .never
             parser.delegate = self
             let succeeded = parser.parse()
+            try check()
             if let error = coreError { throw error }
             // Preserve completed metadata even when Foundation rejects a later XML token.
             try flush()
@@ -464,6 +515,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         }
 
         private func flush() throws {
+            try check()
             guard !tokens.isEmpty else { return }
             // Drain bridge temporaries per batch, not after the entire guide.
             try autoreleasepool {
@@ -490,6 +542,7 @@ public class MobileXmltvEpg: CAPPlugin, CAPBridgedPlugin {
         }
 
         private func enqueue(_ row: [String], parser: XMLParser) {
+            do { try check() } catch { coreError = error; parser.abortParsing(); return }
             guard coreError == nil else { return }
             tokens.append(row)
             tokenBytes += row.reduce(0) { $0 + $1.utf8.count }
@@ -552,13 +605,15 @@ private final class XmltvDownload: NSObject, URLSessionDataDelegate {
         self.limit = limit
         self.completion = completion
     }
-    static func start(_ request: URLRequest, limit: Int,
+    @discardableResult static func start(_ request: URLRequest, limit: Int,
                       configuration: URLSessionConfiguration = .default,
-                      completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
+                      completion: @escaping (Data?, URLResponse?, Error?) -> Void) -> (() -> Void) {
         let owner = XmltvDownload(limit: limit, completion: completion)
         let session = Foundation.URLSession(configuration: configuration, delegate: owner, delegateQueue: nil)
         owner.session = session
-        session.dataTask(with: request).resume()
+        let task = session.dataTask(with: request)
+        task.resume()
+        return { task.cancel() }
     }
     func urlSession(_ session: Foundation.URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (Foundation.URLSession.ResponseDisposition) -> Void) {

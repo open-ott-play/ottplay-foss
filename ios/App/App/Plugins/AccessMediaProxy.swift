@@ -179,10 +179,29 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
     private var deadline: DispatchWorkItem?
 
     init(connection: NWConnection, proxy: AccessMediaProxy) { self.connection = connection; self.proxy = proxy }
+    private var work: NativeWork.Ticket?
+    private var authorizationCount = 0
+    private var transportCount = 0
+    private var connectionStopped = false
+    private func finishIfDrained() {
+        guard closed, connectionStopped, authorizationCount == 0, transportCount == 0 else { return }
+        work?.finish(); work = nil
+        proxy.finished(self)
+    }
     func start() {
+        guard let ticket = NativeWork.shared.begin() else { close(); return }
+        work = ticket
+        ticket.cancelWith { [weak self] in
+            guard let self else { return }
+            self.proxy.queue.async { self.close() }
+        }
         connection.stateUpdateHandler = { [weak self] state in
             if case .failed = state { self?.close() }
-            if case .cancelled = state { self?.close() }
+            if case .cancelled = state {
+                self?.connectionStopped = true
+                self?.close()
+                self?.finishIfDrained()
+            }
         }
         connection.start(queue: proxy.queue)
         armDeadline(10)
@@ -211,7 +230,12 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
         // User interaction can take longer than a segment download.
         armDeadline(180)
         let rejectedRequest = renew ? authorized : nil
+        authorizationCount += 1
         authorizationTask = Task {
+            defer { proxy.queue.async {
+                self.authorizationCount -= 1
+                self.finishIfDrained()
+            } }
             do {
                 try Task.checkCancellation()
                 let authorized = try await AccessMedia.shared.routed(request, config: config,
@@ -223,6 +247,7 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
                     self.authorized = authorized
                     self.retrying = false
                     self.task = self.proxy.task(for: authorized, delegate: self)
+                    self.transportCount += 1
                     self.armDeadline(); self.task?.resume()
                 }
             } catch {
@@ -315,6 +340,8 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
         })
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        transportCount -= 1
+        finishIfDrained()
         guard !closed, !finishing, self.task === task, !retrying else { return }
         if error != nil { fail(502); return }
         if isManifest, original?.httpMethod != "HEAD" {
@@ -350,6 +377,8 @@ private final class AccessMediaConnection: NSObject, URLSessionDataDelegate {
         closed = true; deadline?.cancel(); deadline = nil
         authorizationTask?.cancel(); authorizationTask = nil
         task?.cancel(); task = nil
-        connection.cancel(); proxy.finished(self)
+        connection.cancel()
+        if work == nil { proxy.finished(self) }
+        else { finishIfDrained() }
     }
 }

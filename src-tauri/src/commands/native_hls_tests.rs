@@ -516,7 +516,7 @@ async fn upstream_auth_challenges_are_not_collapsed_into_loopback_origin() {
 
 #[tokio::test]
 async fn manifest_parser_rejects_unsupported_extensions_and_enforces_finite_resources() {
-    let session = Session::new(None).unwrap();
+    let session = Session::new(None, None).unwrap();
     let base = Url::parse("https://media.example/path/master.m3u8?key=synthetic").unwrap();
     for manifest in [
         "not m3u",
@@ -549,7 +549,7 @@ async fn manifest_parser_rejects_unsupported_extensions_and_enforces_finite_reso
 
 #[tokio::test]
 async fn media_identity_survives_duration_corrections_and_distinguishes_discontinuities() {
-    let session = Session::new(None).unwrap();
+    let session = Session::new(None, None).unwrap();
     let base = Url::parse("https://media.example/list.m3u8").unwrap();
     for (duration, disc) in [(2, 0), (3, 0), (2, 1)] {
         let text=format!("#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:5\n#EXT-X-DISCONTINUITY-SEQUENCE:{disc}\n#EXTINF:{duration},\nsegment.ts\n");
@@ -565,7 +565,7 @@ async fn media_identity_survives_duration_corrections_and_distinguishes_disconti
 
 #[tokio::test]
 async fn delta_playlist_skip_advances_sample_sequence() {
-    let session = Session::new(None).unwrap();
+    let session = Session::new(None, None).unwrap();
     let base = Url::parse("https://media.example/list.m3u8").unwrap();
     for skip in ["", "#EXT-X-SKIP:SKIPPED-SEGMENTS=3\n"] {
         let text = format!("#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n{skip}#EXTINF:2,\nsegment.ts\n");
@@ -598,7 +598,7 @@ async fn saved_cookies_keep_exact_host_path_and_secure_scope_without_stale_reimp
     .into_owned();
     let (seeds, _) = playback_cookie_seeds(vec![cookie]).unwrap();
     assert!(!seeds[0].1.contains("Domain="));
-    let mut session = Session::new(None).unwrap();
+    let mut session = Session::new(None, None).unwrap();
     Arc::get_mut(&mut session).unwrap().seeds = seeds;
     let child = Url::parse("https://child.media.example/private/video.m3u8").unwrap();
     session.import_cookies(&child).await.unwrap();
@@ -620,4 +620,25 @@ async fn saved_cookies_keep_exact_host_path_and_secure_scope_without_stale_reimp
         .add_cookie_str("session=fresh; Path=/private; Secure", &exact);
     session.import_cookies(&exact).await.unwrap();
     assert_eq!(session.jar.cookies(&exact).unwrap(), "session=fresh");
+}
+#[tokio::test]
+async fn standby_hls_lease_remains_pending_until_last_relay_owner_exits() {
+    let background = ottplay_core::background_work::BackgroundWork::default();
+    let work = background.enter().unwrap();
+    let old = work.clone();
+    let state = NativeHlsState::default();
+    state.start_tracked("http://127.0.0.1/video.m3u8".into(), None, Some(work)).await.unwrap();
+    let router_map = state.server.lock().await.as_ref().unwrap().sessions.clone();
+    let held = router_map.lock().unwrap().values().next().unwrap().clone();
+    drop(old);
+    background.set_standby(true);
+    state.stop_all().await;
+    assert!(router_map.lock().unwrap().is_empty());
+    assert_eq!(background.status().pending, 1);
+    assert!(!background.status().quiescent);
+    drop(held);
+    // Aborting the listener schedules its future for destruction on the runtime.
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while !background.status().quiescent { tokio::task::yield_now().await; }
+    }).await.unwrap();
 }

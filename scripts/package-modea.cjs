@@ -5,6 +5,7 @@ const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { stageOfflineShell } = require("./offline-shell.cjs");
 const { CLASSIC_PROVIDER_BUNDLES } = require("./classic-bundle.cjs");
 
 const root = path.resolve(__dirname, "..");
@@ -120,6 +121,7 @@ try {
             recursive: true,
         });
     });
+    stageOfflineShell(webRoot);
     const metadata = {
         bundleSha256: sha256(path.join(webRoot, "dist", "player.js")),
         providerBundles: providerMetadata,

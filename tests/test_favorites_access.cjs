@@ -306,6 +306,7 @@ for (const key of ["PIP", "STOP", "N5"])
             " playback or state changes",
         (f) => {
             f.w.parentalArray = [1];
+            f.w.$("#listPopUp").hide();
             f.w.channelsKeyHandler(f.w.keys[key]);
             assert.equal(f.pending.length, 1);
             assert.deepEqual(f.calls, []);

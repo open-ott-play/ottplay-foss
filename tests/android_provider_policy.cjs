@@ -418,7 +418,15 @@ function test(name, run) {
     cases++;
     console.log("PASS Android provider policy: " + name);
 }
-const permitted = ["m3u", "stalker", "xtream", "plex", "vportal", "demo"];
+const permitted = [
+    "m3u",
+    "stalker",
+    "xtream",
+    "plex",
+    "vportal",
+    "demo",
+    "offline",
+];
 const fullIds = Array.from(fixture("full").w.arrayProvaiders).filter(Boolean);
 const excluded = fullIds.filter((id) => !permitted.includes(id));
 
@@ -787,6 +795,7 @@ test("settings restored after startup still pass policy at the script boundary",
         "vportal",
         "",
         "demo",
+        "offline",
     ]);
     f.w.listKeyHandlerFn(f.w.keys.GREEN);
     assert.deepEqual(f.scripts, []);

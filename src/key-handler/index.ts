@@ -87,6 +87,98 @@ export var keys: Record<string, number> = {
  * Main key dispatch
  * --------------------------------------------------------------------------- */
 
+/** Own desktop playback arrows before native video controls can seek. */
+export function tryKeyboardSeek(event: KeyboardEvent): boolean {
+    var w = window as any;
+    if (
+        !event ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.keyCode === 229 ||
+        event.shiftKey ||
+        Number(!!event.altKey) +
+            Number(!!event.ctrlKey) +
+            Number(!!event.metaKey) >
+            1
+    )
+        return false;
+    var direction =
+        event.key === "ArrowLeft" || event.code === "ArrowLeft"
+            ? -1
+            : event.key === "ArrowRight" || event.code === "ArrowRight"
+              ? 1
+              : event.keyCode === 37
+                ? -1
+                : event.keyCode === 39
+                  ? 1
+                  : 0;
+    if (!direction) return false;
+    var seek = !!(event.altKey || event.ctrlKey || event.metaKey);
+    if (!seek && !/^pc(?:2)?$/.test(w.ott_device || "")) return false;
+    function editable(element: any): boolean {
+        while (element) {
+            if (
+                /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName || "") ||
+                element.isContentEditable ||
+                (element.getAttribute &&
+                    element.hasAttribute("contenteditable") &&
+                    /^(|true|plaintext-only)$/i.test(
+                        element.getAttribute("contenteditable")
+                    ))
+            )
+                return true;
+            element = element.parentElement;
+        }
+        return false;
+    }
+    if (editable(event.target) || editable(document.activeElement))
+        return false;
+    var kiosk = w.__ottKiosk;
+    if (
+        kiosk &&
+        ((typeof kiosk.strict === "function" && kiosk.strict()) ||
+            (typeof kiosk.locked === "function" && kiosk.locked()))
+    )
+        return false;
+    var port = w.__ottClassicScreenPort;
+    if (!port || !port.screens || typeof port.reconcile !== "function")
+        return false;
+    port.reconcile();
+    if (port.screens.current()) return false;
+    var playback = w.__ottClassicPlayback;
+    if (
+        !playback ||
+        typeof playback.snapshot !== "function" ||
+        typeof w[seek ? "shiftArchive" : "changeVolume"] !== "function"
+    )
+        return false;
+    var state = playback.snapshot();
+    if (
+        !state ||
+        !state.target ||
+        (state.phase !== "playing" && state.phase !== "paused")
+    )
+        return false;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
+    if (seek) w.shiftArchive(direction * 10);
+    else w.changeVolume(direction * w.sVolumeStep);
+    return true;
+}
+
+/** Capture video-focused keys too; the regular bubble handler remains intact. */
+export function installKeyboardSeek(): void {
+    var w = window as any;
+    w.__ottTryKeyboardSeek = tryKeyboardSeek;
+    if (w.__ottKeyboardSeekCapture || !document.addEventListener) return;
+    w.__ottKeyboardSeekCapture = function (event: KeyboardEvent): void {
+        tryKeyboardSeek(event);
+    };
+    document.addEventListener("keydown", w.__ottKeyboardSeekCapture, true);
+}
+
 /**
  * Main entry point for keyboard and remote-control key events.
  * Routes the event through a priority chain: dialog box → about/list → edit → select box → list → main.
@@ -104,6 +196,11 @@ export function keyHandler(event: KeyboardEvent): void {
         kiosk.strictKey(event);
         return;
     }
+    if (
+        typeof (window as any).__ottTryKeyboardSeek === "function" &&
+        (window as any).__ottTryKeyboardSeek(event)
+    )
+        return;
     // If an input, textarea, or contenteditable is focused, let the browser handle
     // printable typing. But when #listEdit is open (native playlist-name editor),
     // still route accept/cancel so TV Back also reaches handleEditKey → editKey2.
@@ -235,7 +332,7 @@ function toggleMainPlayback(): void {
  * @returns void
  * @sideeffect Calls any of the following on `window`: numberProg, keyFun, channelsList, infoBarHide, exitPortal,
  *             popupList, prevProg, stbPause/stbContinue, playChannel, stbToggleMute, stbSetVolume,
- *             showShift, showChannelInfo, epgList, togglePip, toggleStandby, stbExit, etc.
+ *             showShift, showChannelInfo, epgList, togglePip, stbStop/stbStopPip, stbExit, etc.
  *             Sets `window.isListVisible` for CH_LIST and SETUP.
  * @analysis Digits 0-9 are handled before the switch. Color keys are skipped when settings.noColorKeys is set.
  *             RETURN dispatches based on settings.eFun (0-4). The PLAY/PAUSE toggle uses stbIsPlaying().
@@ -285,7 +382,11 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     if (w.playType < 0 && /^(up|down|left|right)$/.test(command.id)) {
         var media = w.__ottMedia && w.__ottMedia.current();
         // A remote Plex queue keeps the selected TV provider unchanged.
-        if (media && /^plex(?:@|$)/.test(media.ref.sourceId)) {
+        if (
+            media &&
+            (/^plex(?:@|$)/.test(media.ref.sourceId) ||
+                (media.sequence && media.sequence.channel))
+        ) {
             if (command.id === "left" || command.id === "right")
                 call("shiftArchive", command.id === "left" ? -10 : 10);
             else w.__ottMedia.skip(command.id === "up" ? 1 : -1);
@@ -371,8 +472,21 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         },
         play: toggleMainPlayback,
         power: function () {
+            try {
+                call("body_onUnload");
+            } catch (_) {
+                // Persistence must not prevent the user's explicit exit.
+            }
+            // Exit preserves the next launch's playback intent. A denied or
+            // asynchronous window close must not become persistent standby.
+            ["stbStop", "stbStopPip"].forEach(function (name) {
+                try {
+                    call(name);
+                } catch (_) {
+                    // Retire the other lane and exit even if cleanup fails.
+                }
+            });
             call("stbExit");
-            call("toggleStandby");
         },
         "previous-channel": function () {
             call("prevProg");
@@ -456,6 +570,8 @@ export function dispatchKey(keyCode: number, event?: Event): void {
 export function keyFun(fn: number): void {
     var w = window as any;
     var id = w.__ottInputRouter.binding(fn);
+    // Local videos are finite media, but these bindings still change files.
+    var localVideos = w.__ottActiveProviderDriver?.id === "offline";
     function call(name: string, ...args: any[]) {
         if (typeof w[name] === "function") return w[name].apply(w, args);
     }
@@ -497,11 +613,11 @@ export function keyFun(fn: number): void {
             call("popupList");
         },
         "navigation.backward": function () {
-            if (w.playType) call("shiftArchiveSelect", 0);
+            if (w.playType && !localVideos) call("shiftArchiveSelect", 0);
             else call("minusProg");
         },
         "navigation.forward": function () {
-            if (w.playType) call("shiftArchiveSelect", 60);
+            if (w.playType && !localVideos) call("shiftArchiveSelect", 60);
             else call("plusProg");
         },
         "navigation.quick": function () {
@@ -1510,3 +1626,4 @@ document.body.addEventListener("touchcancel", handleTouchCancel);
 // capture-phase video-surface listener in src/index.ts because WKWebView
 // <video> clicks often never reach body.onclick.
 document.body.onclick = body_onClick;
+installKeyboardSeek();

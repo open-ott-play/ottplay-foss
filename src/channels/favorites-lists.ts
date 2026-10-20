@@ -112,6 +112,7 @@ var favoritesOwner: (() => boolean) | null = null;
 interface FavoriteReferenceList {
     bindings: Record<string, ChannelReference>;
     references: ChannelReference[];
+    shuffleBefore?: ChannelReference[];
     view: number[];
 }
 var favoritesReferences: FavoriteReferenceList[] = [];
@@ -261,20 +262,34 @@ function currentFavoritesSource(): string {
     return (window as any).__ottSourceIdentity.current(window);
 }
 
-function favoriteLibrarySnapshot(index: any): any {
+function favoriteLibrarySnapshot(
+    index: any,
+    replacement?: { name: string; record: FavoriteReferenceList }
+): any {
     var lists: Record<string, ChannelReference[]> = Object.create(null);
     var records: FavoriteReferenceList[] = [];
+    var shuffleBefore: Record<string, ChannelReference[]> = Object.create(null);
     Object.keys(favoritesLists.lists).forEach(function (name) {
         var view = favoritesLists.lists[name];
         var prior: FavoriteReferenceList | undefined;
         favoritesReferences.forEach(function (record) {
             if (record.view === view) prior = record;
         });
-        var references = mergeFavoriteReferences(view, prior, index);
-        lists[name] = references;
-        records.push(
-            favoriteReferenceRecord(view, references, index, prior, true)
-        );
+        var record =
+            replacement && replacement.name === name
+                ? replacement.record
+                : favoriteReferenceRecord(
+                      view,
+                      mergeFavoriteReferences(view, prior, index),
+                      index,
+                      prior,
+                      true
+                  );
+        if (!(replacement && replacement.name === name) && prior)
+            record.shuffleBefore = prior.shuffleBefore;
+        lists[name] = record.references;
+        records.push(record);
+        if (record.shuffleBefore) shuffleBefore[name] = record.shuffleBefore;
     });
     return {
         document: {
@@ -285,6 +300,9 @@ function favoriteLibrarySnapshot(index: any): any {
                 order: favoritesLists.order.slice(),
                 v: 1,
             },
+            shuffleBefore: Object.keys(shuffleBefore).length
+                ? shuffleBefore
+                : undefined,
             sourceId: favoritesSource,
             version: 2,
         },
@@ -315,6 +333,13 @@ if (typeof window !== "undefined")
     };
 
 export function saveFavoritesLists(): boolean {
+    return persistFavoriteSnapshot();
+}
+
+function persistFavoriteSnapshot(replacement?: {
+    name: string;
+    record: FavoriteReferenceList;
+}): boolean {
     var w = window as any;
     if (!favoritesWritable || !favoritesOwner || !favoritesOwner())
         return false;
@@ -336,7 +361,7 @@ export function saveFavoritesLists(): boolean {
     try {
         var index = favoritesReferenceIndex();
         if (!current()) return false;
-        var snapshot = favoriteLibrarySnapshot(index);
+        var snapshot = favoriteLibrarySnapshot(index, replacement);
         var text = JSON.stringify(snapshot.document);
         var key = "favoritesLibrary:" + source;
         var prior = get.call(w, key);
@@ -383,6 +408,7 @@ export function loadFavoritesLists(): void {
     var scoped: any;
     var origin: "raw" | "canonical" | "reference" = "raw";
     var defaultList: string | undefined;
+    var savedShuffle: any;
     try {
         scoped = get.call(w, "favoritesLibrary:" + source);
         if (scoped) {
@@ -405,6 +431,7 @@ export function loadFavoritesLists(): void {
                 ) {
                     raw = envelope.lists;
                     defaultList = envelope.defaultList;
+                    savedShuffle = envelope.shuffleBefore;
                     origin = envelope.version === 2 ? "reference" : "canonical";
                     writable = true;
                 }
@@ -443,7 +470,18 @@ export function loadFavoritesLists(): void {
             if (id !== null) view.push(id);
         });
         loaded.lists[name] = view;
-        records.push(favoriteReferenceRecord(view, references, index));
+        var record = favoriteReferenceRecord(view, references, index);
+        if (
+            savedShuffle &&
+            Object.prototype.hasOwnProperty.call(savedShuffle, name) &&
+            isFavoriteReferenceBlob({ lists: { baseline: savedShuffle[name] } })
+        )
+            record.shuffleBefore = savedShuffle[name].map(function (
+                value: any
+            ) {
+                return restoreFavoriteReference(value, "reference", index);
+            });
+        records.push(record);
     });
     if (!current()) return;
     favoritesSource = source;
@@ -454,6 +492,67 @@ export function loadFavoritesLists(): void {
     favoritesReferences = records;
     saveFavoritesLists();
     if (current()) syncFavoritesArrayFromActive();
+}
+
+/** Shuffle the active list, or restore its first saved order, without copying media. */
+export function shuffleFavoritesList(reset = false): boolean {
+    if (!favoritesWritable || !favoritesOwner || !favoritesOwner())
+        return false;
+    var generation = favoritesGeneration;
+    var owner = favoritesOwner;
+    var name = favoritesLists.active;
+    var original = activeFavoritesList();
+    var index = favoritesReferenceIndex();
+    var prior: FavoriteReferenceList | undefined;
+    favoritesReferences.forEach(function (record) {
+        if (record.view === original) prior = record;
+    });
+    var references = mergeFavoriteReferences(original, prior, index);
+    var baseline = prior && prior.shuffleBefore;
+    var view = original.slice();
+    if (reset) {
+        if (!baseline) return false;
+        var available: Record<string, ChannelReference> = Object.create(null);
+        references.forEach(function (reference) {
+            available[favoriteReferenceKey(reference)] = reference;
+        });
+        var ordered: ChannelReference[] = [];
+        baseline.concat(references).forEach(function (reference) {
+            var key = favoriteReferenceKey(reference);
+            if (available[key]) {
+                ordered.push(available[key]);
+                delete available[key];
+            }
+        });
+        references = ordered;
+        view = [];
+        references.forEach(function (reference) {
+            var id = index.project(reference);
+            if (id !== null) view.push(id);
+        });
+    } else {
+        if (view.length < 2) return false;
+        for (var i = view.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var value = view[i];
+            view[i] = view[j];
+            view[j] = value;
+        }
+        baseline = baseline || references.slice();
+        references = mergeFavoriteReferences(view, prior, index);
+    }
+    var record = favoriteReferenceRecord(view, references, index, prior, true);
+    if (!reset) record.shuffleBefore = baseline;
+    if (!persistFavoriteSnapshot({ name: name, record: record })) return false;
+    if (
+        generation !== favoritesGeneration ||
+        owner !== favoritesOwner ||
+        !owner()
+    )
+        return false;
+    favoritesLists.lists[name] = view;
+    syncFavoritesArrayFromActive();
+    return true;
 }
 
 function applyFavoriteListChange(

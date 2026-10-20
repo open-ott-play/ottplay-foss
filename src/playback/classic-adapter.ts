@@ -235,6 +235,13 @@ function classicPlaybackCommand(command: any): void {
         type === "vod" ||
         type === "finite-channel"
     ) {
+        // Local catalog entries use channel navigation, but their decoder is
+        // finite media from the outset. Do not wait for the one-shot metadata
+        // probe: a slow disk can supply duration only after that probe ran.
+        var localChannel =
+            type === "live" && w.__ottActiveProviderDriver?.id === "offline";
+        var finiteChannel = type === "finite-channel" || localChannel;
+        var mediaChannel = type === "vod" && command.channelSelection != null;
         var id =
             command.channelId !== undefined
                 ? command.channelId
@@ -288,20 +295,35 @@ function classicPlaybackCommand(command: any): void {
                     ? command.sourceId || w.__ottMedia.sourceId()
                     : classicPlaybackSource(w),
         };
-        var target: PlaybackVisit =
-            type === "finite-channel"
-                ? {
-                      channelId: "channel:" + id,
-                      kind: "vod",
-                      sourceId: history.sourceId,
-                  }
-                : history;
+        var target: PlaybackVisit = finiteChannel
+            ? {
+                  channelId: "channel:" + id,
+                  kind: "vod",
+                  sourceId: history.sourceId,
+              }
+            : history;
+        if (mediaChannel) {
+            // Resolve and checkpoint the real media ID, while the channel
+            // list retains its ordinary stable selection and history.
+            history = {
+                channelId: String(command.channelSelection),
+                kind: "live",
+                payload: {
+                    c: w.catIndex,
+                    ci: command.channelSelection,
+                    i: w.primaryIndex,
+                },
+                sourceId: classicPlaybackSource(w),
+            };
+        }
         w.playType =
             type === "archive"
                 ? history.archiveStart
                 : type === "vod"
-                  ? -1e11
-                  : type === "finite-channel"
+                  ? mediaChannel
+                      ? -99999999999
+                      : -1e11
+                  : finiteChannel
                     ? -99999999999
                     : 0;
         w.playTime =
@@ -654,7 +676,14 @@ function classicPlaybackImportJournalValue(key: string, raw: any): any {
             value.forEach(function (row: any): void {
                 if (row) row.ci = reference(row.ci);
             });
-        } else if (key === "continueWatch" && value && value.mode !== "vod") {
+        } else if (key === "continueWatch" && value) {
+            if (
+                value.mode === "vod" &&
+                value.playType === -99999999999 &&
+                w.__ottActiveProviderDriver?.id === "offline"
+            )
+                value.mode = "live";
+            if (value.mode === "vod") return raw;
             value.channelId = reference(value.channelId);
         } else return raw;
         return JSON.stringify(value);
@@ -676,8 +705,11 @@ function classicPlaybackJournal(): any {
     var set = w.providerSetItem;
     var source = classicPlaybackSource(w);
     var legacy = w.__ottSourceIdentity.legacy(w);
+    var localProfile = /^offline:\d+$/.test(legacy);
     var storageKey =
-        source === legacy ? "playbackJournal" : "playbackJournal:" + source;
+        source === legacy && !localProfile
+            ? "playbackJournal"
+            : "playbackJournal:" + source;
     function current(): boolean {
         return (
             source === classicPlaybackSource(w) &&
@@ -694,11 +726,17 @@ function classicPlaybackJournal(): any {
     var allowLegacy = false;
     try {
         var claim = read("playbackJournalSource");
-        if (!claim) {
+        var canClaim = !localProfile;
+        if (localProfile && !claim) {
+            // A slot must not claim an older unprofiled or another slot's data.
+            var previous = read("playbackJournal");
+            canClaim = !!previous && JSON.parse(previous).sourceId === source;
+        }
+        if (!claim && canClaim) {
             set.call(w, "playbackJournalSource", source);
         }
         allowLegacy =
-            (!claim || claim === source) &&
+            ((!claim && canClaim) || claim === source) &&
             read("playbackJournalSource") === source;
     } catch (_) {}
     return w.__ottPlaybackJournal.create({
@@ -948,6 +986,15 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     )
         return;
     var payload = target.payload || {};
+    var position = snapshot.position;
+    if (
+        w.__ottActiveProviderDriver?.id === "offline" &&
+        snapshot.target?.kind === "vod" &&
+        snapshot.duration > 0 &&
+        isFinite(snapshot.duration) &&
+        position >= snapshot.duration - 0.25
+    )
+        position = 0;
     var saved = journal.update({
         bookmark: {
             archiveStart: target.archiveStart,
@@ -957,7 +1004,7 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
                 (w.__ottChannels && w.__ottChannels.group(payload.c)) ||
                 (w.catsArray || [])[payload.c],
             kind: target.kind,
-            position: snapshot.position,
+            position: position,
         },
     });
     if (saved) {

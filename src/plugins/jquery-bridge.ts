@@ -6,10 +6,18 @@ export function nativePromiseToJq<T>(
     fallbackMessage: string
 ): any {
     const dfd = $.Deferred();
+    const admission =
+        typeof window !== "undefined" && (window as any).__ottStandby;
+    const generation = admission ? admission.generation() : 0;
+    const current = () => !admission || admission.current(generation);
     // Subscribe directly: native Promises stay asynchronous, while an existing
     // synchronous thenable retains its original timing and thrown errors.
     promise.then(
         (value: T) => {
+            if (!current()) {
+                dfd.reject("standby");
+                return;
+            }
             try {
                 if (typeof opts.success === "function") {
                     opts.success(value, "success", dfd);
@@ -23,6 +31,10 @@ export function nativePromiseToJq<T>(
             dfd.resolve(value);
         },
         (error: any) => {
+            if (!current()) {
+                dfd.reject("standby");
+                return;
+            }
             const message = error != null ? String(error) : fallbackMessage;
             try {
                 if (typeof opts.error === "function") {

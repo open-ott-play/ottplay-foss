@@ -131,6 +131,7 @@ function fixture(config = {}, capabilities = {}) {
         },
         setTimeout(run, delay) {
             timerDelays.push(delay);
+            run.fixtureDelay = delay;
             timers.set(++next, run);
             return next;
         },
@@ -170,10 +171,12 @@ function fixture(config = {}, capabilities = {}) {
         retire() {
             active = false;
         },
-        tick() {
-            const pending = [...timers.values()];
-            timers.clear();
-            pending.forEach((run) => run());
+        tick(maxDelay = Infinity) {
+            const pending = [...timers.entries()].filter(
+                ([, run]) => run.fixtureDelay <= maxDelay
+            );
+            pending.forEach(([id]) => timers.delete(id));
+            pending.forEach(([, run]) => run());
         },
         timerDelays,
         timers,
@@ -1899,6 +1902,349 @@ test("page abort reentry preserves the newer page and never dispatches the inter
     assert.equal(parsed(f).searchParams.get("X-Plex-Container-Start"), "600");
     last(f).reply({ MediaContainer: { offset: 600, size: 0, totalSize: 600 } });
     assert.equal(latest.items.length, 0);
+});
+
+test("profile folders reject unsafe roots and normalize duplicate selections", () => {
+    const f = fixture();
+    const base = { address: "https://plex.invalid", token };
+    for (const path of [
+        "/library/sections",
+        "https://other.invalid/x",
+        "/library/parts/1/file",
+        "/library/sections/1/all?X-Plex-Token=secret",
+        "/library/sections/1/all?type=11",
+        "/library/sections/1/all?type=100",
+        "/library/sections/1/folder?parent=../2",
+        "/library/metadata/4",
+    ]) {
+        assert.equal(
+            f.api.normalizePlexConfig({
+                ...base,
+                folders: [{ path, title: "A" }],
+            }),
+            null
+        );
+    }
+    const root = { path: "/library/sections/1/all?type=4", title: " A\nB " };
+    const normalized = f.api.normalizePlexConfig({
+        ...base,
+        folders: [root, root],
+    });
+    assert.deepEqual(JSON.parse(JSON.stringify(normalized.folders)), [
+        { ...root, title: "A B" },
+    ]);
+    for (const type of [1, 3, 4, 10]) {
+        const path = "/library/sections/1/all?type=" + type;
+        assert.equal(
+            f.api.normalizePlexConfig({
+                ...base,
+                folders: [{ path, title: "Selected" }],
+            }).folders[0].path,
+            path
+        );
+    }
+    assert.equal(f.api.normalizePlexConfig({ ...base, folders: "all" }), null);
+});
+
+function scanRow(id, title = "Film " + id) {
+    return { ratingKey: String(id), title, type: "episode" };
+}
+
+test("selected folders publish before traversal finishes, flatten descendants and deduplicate overlapping roots", () => {
+    const f = fixture(),
+        batches = [],
+        errors = [];
+    f.client.scanFolders(
+        [
+            { path: "/library/sections/1/folder?parent=10", title: "Selected" },
+            {
+                path: "/library/metadata/20/children",
+                title: "Overlapping child",
+            },
+        ],
+        (rows, scanned) => batches.push({ rows, scanned }),
+        (error) => errors.push(error)
+    );
+    assert.equal(parsed(f).pathname, "/library/sections/1/folder");
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                { ...scanRow(1), adult: "1" },
+                {
+                    key: "/library/metadata/20/children",
+                    title: "Child",
+                    type: "season",
+                },
+            ],
+            size: 2,
+            totalSize: 2,
+        },
+    });
+    assert.equal(batches.length, 1);
+    assert.equal(batches[0].rows[0].request.path, "/library/metadata/1");
+    assert.equal(batches[0].rows[0].adult, 1);
+    assert.equal(
+        errors.length,
+        0,
+        "first playable file is available while descendants are pending"
+    );
+    f.tick(5000);
+    assert.equal(parsed(f).pathname, "/library/metadata/20/children");
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [scanRow(1), scanRow(2)],
+            size: 2,
+            totalSize: 2,
+        },
+    });
+    f.tick(5000);
+    assert.equal(
+        f.requests.length,
+        2,
+        "overlapping selected child is fetched once"
+    );
+    assert.deepEqual(
+        batches.flatMap((batch) =>
+            Array.from(batch.rows, (row) => row.request.path)
+        ),
+        ["/library/metadata/1", "/library/metadata/2"]
+    );
+    assert.deepEqual(errors, [undefined]);
+    assert.equal(batches[1].rows[0].adult, 0);
+    assert(
+        !f.requests.some(
+            (request) =>
+                new URL(request.options.url).pathname === "/library/sections"
+        ),
+        "unselected libraries are never enumerated"
+    );
+});
+
+test("profile scan pagination and playback resolution have independent ownership", () => {
+    const f = fixture({ playback: "original" }),
+        rows = [],
+        complete = [];
+    f.client.scanFolders(
+        [{ path: "/library/sections/1/all?type=4", title: "Shows" }],
+        (items) => rows.push(...items),
+        (error) => complete.push(error)
+    );
+    const scan = last(f);
+    let playback;
+    f.client.resolve(film, (result) => (playback = result));
+    const resolution = last(f);
+    assert.equal(scan.aborted, false);
+    scan.reply({
+        MediaContainer: {
+            Metadata: Array.from({ length: 200 }, (_, index) =>
+                scanRow(index + 1)
+            ),
+            size: 200,
+            totalSize: 201,
+        },
+    });
+    assert.equal(rows.length, 200);
+    assert.equal(resolution.aborted, false);
+    resolution.reply(metadata());
+    assert(playback.stream_url);
+    f.tick(5000);
+    assert.equal(parsed(f).searchParams.get("X-Plex-Container-Start"), "200");
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [scanRow(201)],
+            offset: 200,
+            size: 1,
+            totalSize: 201,
+        },
+    });
+    f.tick(5000);
+    assert.equal(rows.length, 201);
+    assert.deepEqual(complete, [undefined]);
+});
+
+test("missing roots and malformed repeated pages surface errors without admitting unselected content", () => {
+    const f = fixture(),
+        rows = [],
+        errors = [];
+    f.client.scanFolders(
+        [{ path: "/library/sections/9/all?type=1", title: "Deleted" }],
+        (batch) => rows.push(...batch),
+        (error) => errors.push(error)
+    );
+    last(f).fail(404);
+    assert.deepEqual(errors, ["Plex connection failed"]);
+    assert.equal(rows.length, 0);
+    f.client.scanFolders(
+        [{ path: "/library/sections/1/all?type=4", title: "A" }],
+        (batch) => rows.push(...batch),
+        (error) => errors.push(error)
+    );
+    const page = Array.from({ length: 200 }, (_, index) => scanRow(index + 1));
+    last(f).reply({ MediaContainer: { Metadata: page, size: 200 } });
+    f.tick(5000);
+    last(f).reply({
+        MediaContainer: { Metadata: page, offset: 200, size: 200 },
+    });
+    assert.equal(rows.length, 200);
+    assert.equal(errors.at(-1), "Invalid Plex response");
+});
+
+test("profile scan replacement, disposal, retirement and retry cancellation suppress old batches", () => {
+    for (const action of ["replace", "dispose", "retire", "cancel"]) {
+        const f = fixture();
+        let calls = 0;
+        const args = [
+            [{ path: "/library/sections/1/all?type=4", title: "A" }],
+            () => calls++,
+            () => calls++,
+        ];
+        const cancel = f.client.scanFolders(...args);
+        const pending = last(f);
+        if (action === "replace") f.client.scanFolders(...args);
+        else if (action === "dispose") f.client.dispose();
+        else if (action === "retire") f.retire();
+        else cancel();
+        pending.reply({ MediaContainer: { Metadata: [scanRow(1)], size: 1 } });
+        assert.equal(calls, 0, action);
+    }
+    const f = fixture();
+    let calls = 0;
+    const cancel = f.client.scanFolders(
+        [{ path: "/library/sections/1/all?type=4", title: "A" }],
+        () => calls++,
+        () => calls++
+    );
+    last(f).fail(503);
+    cancel();
+    f.tick(5000);
+    assert.equal(f.requests.length, 1);
+    assert.equal(calls, 0);
+});
+
+test("profile folder picker separates selecting a library from browsing its filesystem roots", () => {
+    const f = fixture();
+    f.client.connect(() => {});
+    last(f).reply({
+        MediaContainer: {
+            Directory: [
+                { key: "1", title: "Shows", type: "show" },
+                { key: "2", title: "Movies", type: "movie" },
+            ],
+        },
+    });
+    let result;
+    f.client.folderChoices(null, (value) => (result = value));
+    if (!result)
+        last(f).reply({
+            MediaContainer: {
+                Directory: [
+                    { key: "1", title: "Shows", type: "show" },
+                    { key: "2", title: "Movies", type: "movie" },
+                ],
+            },
+        });
+    assert.equal(result.items[0].path, "/library/sections/1/all?type=4");
+    assert.equal(result.items[0].browse.path, "/library/sections/1/folder");
+    assert.equal(result.items[1].path, "/library/sections/2/all?type=1");
+    assert.equal(
+        result.items.length,
+        2,
+        "search is supplied by the standard channel Actions menu"
+    );
+});
+
+test("selecting an artist library saves a track root and scans playable tracks in JSON and XML", () => {
+    for (const response of [
+        {
+            MediaContainer: {
+                Metadata: [{ ratingKey: "42", title: "Song", type: "track" }],
+                size: 1,
+                totalSize: 1,
+            },
+        },
+        '<MediaContainer size="1" totalSize="1"><Track ratingKey="42" title="Song" type="track"/></MediaContainer>',
+    ]) {
+        const f = fixture();
+        const libraries = {
+            MediaContainer: {
+                Directory: [{ key: "3", title: "Music", type: "artist" }],
+            },
+        };
+        f.client.connect(() => {});
+        last(f).reply(libraries);
+        let choice;
+        f.client.folderChoices(null, (result) => (choice = result.items[0]));
+        if (!choice) last(f).reply(libraries);
+        assert.equal(choice.path, "/library/sections/3/all?type=10");
+        assert.equal(choice.browse.path, "/library/sections/3/folder");
+        const config = f.api.normalizePlexConfig({
+            address: "https://plex.invalid",
+            folders: [choice],
+            token,
+        });
+        assert(
+            config,
+            "a selected music library must survive profile validation"
+        );
+        const tracks = [],
+            completions = [];
+        f.client.scanFolders(
+            config.folders,
+            (rows) => tracks.push(...rows),
+            (error) => completions.push(error)
+        );
+        assert.equal(parsed(f).pathname, "/library/sections/3/all");
+        assert.equal(parsed(f).searchParams.get("type"), "10");
+        last(f).reply(response);
+        f.tick(5000);
+        assert.deepEqual(completions, [undefined]);
+        assert.equal(tracks.length, 1);
+        assert.equal(tracks[0].request.path, "/library/metadata/42");
+        assert.equal(tracks[0].stream_url, "plex:request");
+        assert.equal(tracks[0].__ottMediaSequence, true);
+        assert.equal(tracks[0].title, "Song");
+    }
+});
+
+test("profile scan follows capped short pages without totals until an empty terminal page", () => {
+    const f = fixture(),
+        rows = [],
+        completions = [];
+    f.client.scanFolders(
+        [{ path: "/library/sections/1/all?type=4", title: "A" }],
+        (batch) => rows.push(...batch),
+        (error) => completions.push(error)
+    );
+    last(f).reply({
+        MediaContainer: { Metadata: [scanRow(1), scanRow(2)], size: 2 },
+    });
+    f.tick(5000);
+    assert.equal(parsed(f).searchParams.get("X-Plex-Container-Start"), "2");
+    last(f).reply({ MediaContainer: { Metadata: [scanRow(3)], size: 1 } });
+    assert.equal(completions.length, 0);
+    f.tick(5000);
+    assert.equal(parsed(f).searchParams.get("X-Plex-Container-Start"), "3");
+    last(f).reply({ MediaContainer: { Metadata: [], size: 0 } });
+    f.tick(5000);
+    assert.equal(rows.length, 3);
+    assert.deepEqual(completions, [undefined]);
+});
+
+test("profile scan watchdog aborts a stalled transport and late responses cannot revive it", () => {
+    const f = fixture();
+    let batches = 0;
+    const errors = [];
+    f.client.scanFolders(
+        [{ path: "/library/sections/1/all?type=4", title: "A" }],
+        () => batches++,
+        (error) => errors.push(error)
+    );
+    const pending = last(f);
+    f.tick(60000);
+    assert.equal(pending.aborted, true);
+    assert.deepEqual(errors, ["Plex source did not respond"]);
+    pending.reply({ MediaContainer: { Metadata: [scanRow(1)], size: 1 } });
+    assert.equal(batches, 0);
 });
 
 console.log(`PASS Plex client (${passed} scenarios)`);

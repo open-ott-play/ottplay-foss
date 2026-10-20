@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: open-ott-play/ottplay-control-server
-          ref: 777fb384dfb5f1224a440af638ce38c1cfebf34b
+          ref: bdbce12256528bef061ed96fff0a2f26bbb4157b
           path: .control-current
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -89,17 +89,24 @@ jobs:
         run: go build -o "$RUNNER_TEMP/ottplay-control-server" ./cmd/ottplay-control-server
       - name: Exercise real HTTPS diagnostics and legacy repairs
         env:
+          OTT_OFFLINE_PROFILES: unsupported-controller
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
           OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
           OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
         run: |
           node scripts/smoke-diagnostics.cjs
-          node scripts/smoke-remote-cli.cjs
+          # M3U metadata uses the current CLI; keep the old server and its negative capability probes.
+          OTT_CLI="$GITHUB_WORKSPACE/.control-current/cli/ott.py" node scripts/smoke-remote-cli.cjs
           node scripts/smoke-workbench.cjs
-          node .control-integration/scripts/smoke_foss_roadmap.cjs .
+          # Exact M3U settings comparison uses the current contract in the roadmap step below.
       - name: Build the engine-aware control server
         working-directory: .control-current
         run: go build -o "$RUNNER_TEMP/ottplay-control-server-current" ./cmd/ottplay-control-server
+      - name: Exercise local profiles with the current controller
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+        run: node scripts/smoke-remote-cli.cjs --offline-profiles-only
       - name: Keep the legacy CLI compatible with the current server
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
@@ -225,6 +232,11 @@ jobs:
 
       - name: Install browsers for device and native UI checks
         run: npx playwright install --with-deps chromium webkit
+
+      - name: Test local browser media and offline app shell
+        run: |
+          node tests/test_browser_direct_media.cjs
+          node tests/test_browser_local_media.cjs --built-ui
 
       - name: Test hosted EPG worker and persistent cache
         run: npm run test:hosted:browser

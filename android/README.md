@@ -29,6 +29,24 @@ included directly in the Gradle source set. Do not add another copy.
 
 See [Android distributions and remote updates](../docs/android-distributions.md).
 
+## Optional Home startup
+
+`play.ott.foss/.HomeActivity` is an alias of `MainActivity`, disabled by default.
+It allows an operator to select OTTPlay as the Android Home app on a dedicated
+player. This makes the physical Home button return to OTTPlay as well as allowing
+Android to open it at startup. It adds no boot receiver or background service.
+Installing an APK does not enable or select this mode automatically.
+The explicit native `play.ott.foss/.HomeSetupActivity` screen enables the alias
+after confirmation and opens Android's Home selector. This works without asking
+the ADB shell to change another application's component state.
+
+Follow the [setup, rollback and hardware verification procedure](../docs/android-distributions.md#optional-startup-as-the-android-home-app)
+or the [Russian instructions](../docs/android-autostart-RU.md). Keep the existing
+launcher installed, record its exact component and use the normal signed update
+path to preserve player data. Source/build checks alone do not verify startup on
+vendor firmware; record reboot and cold-start results separately from manual
+launch tests.
+
 ## Android 5.1 compatibility APK
 
 `npm run android:api22:release` builds the same Full interface and native plugins

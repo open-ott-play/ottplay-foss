@@ -32,11 +32,14 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        NativeWork.INSTANCE.setStandby(getSharedPreferences("ott-background", 0).getBoolean("standby", false));
         // These local Kotlin plugins are not in Capacitor's generated npm plugin list.
         // BridgeActivity creates the bridge in super.onCreate(), so add them first.
         registerPlugin(MobileNativeMediaPlugin.class);
+        registerPlugin(NativeBackgroundPlugin.class);
         registerPlugin(MobileXmltvEpgPlugin.class);
         registerPlugin(M3UProxyPlugin.class);
+        registerPlugin(LocalMediaPlugin.class);
         registerPlugin(StalkerPortalPlugin.class);
         registerPlugin(MobileCommandQueuePlugin.class);
         registerPlugin(DashExoPlayerPlugin.class);

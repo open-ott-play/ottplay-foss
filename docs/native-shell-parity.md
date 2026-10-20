@@ -17,6 +17,13 @@ backgrounding and external selection changes. Other swipes retain remote-key
 gestures. A moved gesture cannot activate its
 initial target on release, even if it returns to its starting point.
 
+An attached hardware keyboard uses the shared main-view seek shortcuts:
+**Alt/Option + Left/Right**, **Ctrl + Left/Right**, or **Command + Left/Right** on macOS, moves the main
+playback backward/forward by ten seconds. The same bindings work in fullscreen
+and the normal player view for local video, VOD and supported archive playback.
+Menus/editors keep their own input routing and kiosk locks remain authoritative.
+See [playback keyboard shortcuts](browser-window-controls.md#playback-keyboard-shortcuts).
+
 Native media Next/Previous resolve the active device keymap at event time.
 Explicit Play/Pause/Stop go through the shared playback lifecycle. Explicit Play
 checks the current state before calling the legacy toggle-style `stbContinue`,

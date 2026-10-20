@@ -47,6 +47,9 @@ function checkDocumentation(repository = root) {
     const files = [
         "README.md",
         "README.ru.md",
+        "android/README.md",
+        "docs/android-distributions.md",
+        "docs/android-autostart-RU.md",
         "docs/wiki/Home.md",
         "docs/wiki/Home.ru.md",
         "docs/wiki/_Sidebar.md",

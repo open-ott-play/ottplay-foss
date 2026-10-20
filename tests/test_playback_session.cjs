@@ -181,6 +181,295 @@ function include(c, file, names) {
     assert.equal(c.stored.medHistory, undefined);
 }
 
+// Local/finite channel files seek as media without borrowing the channel archive.
+{
+    const c = fixture();
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.stbGetLen = () => NaN; // Metadata arrived after the one-shot probe.
+    let position = 125;
+    c.stbGetPosTime = () => position;
+    c.stbSetPosTime = (value) => {
+        position = value;
+        c.effects.push(["seek", value]);
+    };
+    c.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+    c.__ottClassicPlayback.command({ type: "playing" });
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "vod");
+    assert.equal(c.__ottClassicPlayback.snapshot().historyTarget.kind, "live");
+    c.__ottClassicPlayback.shift(10);
+    c.flush();
+    assert.equal(position, 135);
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+    c.__ottClassicPlayback.command({ type: "pause" });
+    c.stbGetLen = () => 600;
+    c.__ottClassicPlayback.shift(-10);
+    c.flush();
+    assert.equal(position, 125);
+    c.__ottClassicPlayback.shift(-1000);
+    c.flush();
+    assert.equal(position, 0);
+    c.__ottClassicPlayback.shift(1000);
+    c.flush();
+    assert.equal(
+        position,
+        0,
+        "an out-of-range seek does not restart the media"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "paused");
+    assert.equal(c.__ottClassicPlayback.snapshot().generation, generation);
+    assert.equal(
+        c.effects.some((row) =>
+            ["archive", "timeshift", "live"].includes(row[0])
+        ),
+        false,
+        "offline channels never restart or request IPTV catch-up while seeking"
+    );
+}
+
+// Other providers retain live-stream behavior even with a finite decoder length.
+{
+    const c = fixture();
+    c.__ottActiveProviderDriver = { id: "m3u" };
+    c.__ottClassicPlayback.command({ channelId: 303, type: "live" });
+    assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "live");
+    assert.equal(c.playType, 0);
+}
+
+// Explicit finite detection remains available to non-local channel adapters.
+{
+    const c = fixture();
+    c.p_pref = "offline";
+    c.__ottActiveProviderDriver = { id: "offline" };
+    let slot = -1;
+    c.__ottOfflineProfiles = {
+        namespace: () => (slot < 0 ? "offline" : "offline:" + slot),
+    };
+    function save(position) {
+        c.__ottClassicPlayback.command({
+            channelId: 101,
+            position,
+            type: "live",
+        });
+        c.__ottClassicPlayback.checkpoint(
+            c.__ottClassicPlayback.snapshot(),
+            true
+        );
+    }
+    save(23);
+    const original = c.stored.playbackJournal;
+    slot = 0;
+    save(17);
+    slot = 1;
+    save(41);
+    slot = 0;
+    assert.equal(c.__ottClassicPlayback.bookmark().playTime, 17);
+    slot = 1;
+    assert.equal(c.__ottClassicPlayback.bookmark().playTime, 41);
+    slot = -1;
+    assert.equal(c.__ottClassicPlayback.bookmark().playTime, 23);
+    assert.equal(
+        c.stored.playbackJournal,
+        original,
+        "profile writes preserve the unprofiled journal"
+    );
+    assert.equal(
+        JSON.parse(c.stored["playbackJournal:offline:0"]).sourceId,
+        "offline:0"
+    );
+    assert.equal(
+        JSON.parse(c.stored["playbackJournal:offline:1"]).sourceId,
+        "offline:1"
+    );
+    const unclaimed = fixture();
+    unclaimed.p_pref = "offline";
+    unclaimed.__ottActiveProviderDriver = { id: "offline" };
+    unclaimed.stored.playbackJournal = original;
+    unclaimed.__ottOfflineProfiles = { namespace: () => "offline:0" };
+    assert.equal(unclaimed.__ottClassicPlayback.bookmark(), null);
+    unclaimed.__ottClassicPlayback.command({
+        channelId: 101,
+        position: 9,
+        type: "live",
+    });
+    unclaimed.__ottClassicPlayback.checkpoint(
+        unclaimed.__ottClassicPlayback.snapshot(),
+        true
+    );
+    assert.equal(unclaimed.__ottClassicPlayback.bookmark().playTime, 9);
+    assert.equal(unclaimed.stored.playbackJournal, original);
+    assert.equal(
+        unclaimed.stored.playbackJournalSource,
+        undefined,
+        "a slot cannot claim an unowned foreign journal"
+    );
+    const claimed = fixture();
+    claimed.p_pref = "offline";
+    claimed.__ottActiveProviderDriver = { id: "offline" };
+    claimed.__ottOfflineProfiles = { namespace: () => "offline:0" };
+    claimed.stored.playbackJournalSource = "offline:0";
+    const legacyProfile = JSON.parse(original);
+    legacyProfile.sourceId = "offline:0";
+    claimed.stored.playbackJournal = JSON.stringify(legacyProfile);
+    assert.equal(
+        claimed.__ottClassicPlayback.bookmark().playTime,
+        23,
+        "an explicitly owned old profile journal remains readable"
+    );
+}
+
+{
+    for (const provider of ["offline", "m3u"]) {
+        const c = fixture();
+        c.p_pref = provider;
+        c.__ottActiveProviderDriver = { id: provider };
+        c.stored.continueWatch = JSON.stringify({
+            catIndex: 0,
+            channelId: 101,
+            mode: "vod",
+            playTime: 64,
+            playType: -99999999999,
+            updatedAt: c.Date.now(),
+            v: 1,
+        });
+        const bookmark = c.__ottClassicPlayback.bookmark();
+        if (provider === "offline") {
+            assert.equal(bookmark.mode, "live");
+            assert.equal(
+                bookmark.playTime,
+                64,
+                "old finite-local bookmarks migrate without losing position"
+            );
+        } else
+            assert.equal(
+                bookmark,
+                null,
+                "legacy TV/VOD import semantics remain unchanged"
+            );
+    }
+}
+
+{
+    const c = fixture();
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+    c.__ottClassicPlayback.command({ type: "playing" });
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 125,
+        type: "position",
+    });
+    include(c, "src/channels/index.ts", ["restoreContinueWatch"]);
+    include(c, "src/index.ts", ["body_onUnload"]);
+    let active = true;
+    c.__ottCoreBackendPeek = () => ({
+        current: () => ({
+            active: () => active,
+            sample: () =>
+                c.__ottClassicPlayback.command({
+                    duration: 600,
+                    position: 127,
+                    type: "position",
+                }),
+        }),
+    });
+    c.body_onUnload();
+    assert.equal(
+        c.__ottClassicPlayback.bookmark().playTime,
+        127,
+        "exit samples the decoder before saving"
+    );
+    c.__ottCoreBackendPeek = () => {
+        throw new Error("Decoder retired");
+    };
+    c.body_onUnload();
+    assert.equal(
+        c.__ottClassicPlayback.bookmark().playTime,
+        127,
+        "a failed fresh sample still saves the last known clock"
+    );
+    c.__ottClassicPlayback.command({ type: "stop" });
+    active = false;
+    c.body_onUnload();
+    assert.equal(
+        c.__ottClassicPlayback.bookmark().playTime,
+        127,
+        "later unload after Q/Stop retains the saved position"
+    );
+    const calls = [];
+    c.playChannel = (...args) => {
+        calls.push(args);
+        return true;
+    };
+    c.Date.now = () => 1000000000 + 8 * 86400000;
+    assert.equal(
+        c.restoreContinueWatch(),
+        true,
+        "local positions do not expire like TV archives"
+    );
+    assert.equal(calls[0][4].position, 127);
+    assert.equal(calls[0][4].channelId, "101");
+    c.primaryIndex = 1;
+    assert.equal(
+        c.restoreContinueWatch(),
+        false,
+        "a selected profile/file cannot be replaced by an old bookmark"
+    );
+    c.primaryIndex = 0;
+    c.__ottActiveProviderDriver = { id: "m3u" };
+    assert.equal(
+        c.restoreContinueWatch(),
+        false,
+        "live TV never restores a local media offset"
+    );
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+    assert.equal(
+        c.__ottClassicPlayback.snapshot().position,
+        0,
+        "a manual channel selection starts from zero"
+    );
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 600,
+        type: "position",
+    });
+    c.__ottClassicPlayback.checkpoint(c.__ottClassicPlayback.snapshot(), true);
+    assert.equal(
+        c.__ottClassicPlayback.bookmark().playTime,
+        0,
+        "completed local files restart instead of immediately reaching EOF"
+    );
+}
+
+{
+    const c = fixture();
+    c.p_pref = "offline";
+    c.channels[101].rec = 0;
+    c.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+    c.__ottClassicPlayback.command({ duration: 600, type: "finite-channel" });
+    c.__ottClassicPlayback.command({
+        duration: 600,
+        position: 125.9,
+        type: "position",
+    });
+    c.__ottClassicPlayback.shift(10);
+    c.flush();
+    assert.deepEqual(
+        c.effects.filter((row) => row[0] === "seek"),
+        [["seek", 135.9]]
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "vod");
+    assert.equal(c.__ottClassicPlayback.snapshot().historyTarget.kind, "live");
+    assert.equal(
+        c.effects.some((row) =>
+            ["archive", "timeshift", "live"].includes(row[0])
+        ),
+        false,
+        "A local file never asks a TV provider for catch-up"
+    );
+}
+
 // Archive history stores an absolute resume time and preserves old input objects.
 {
     const c = fixture();
@@ -248,6 +537,45 @@ function include(c, file, names) {
     c.__ottClassicPlayback.shift(200);
     c.flush();
     assert(c.effects.some((row) => row[0] === "live"));
+}
+
+// Plain live TV has no synthetic seek, and archive bounds keep their epoch semantics.
+{
+    const c = fixture();
+    c.primaryIndex = 2; // This channel advertises no archive.
+    c.__ottClassicPlayback.shift(-10);
+    c.flush();
+    assert.equal(
+        c.effects.some((row) =>
+            ["seek", "archive", "timeshift", "live"].includes(row[0])
+        ),
+        false
+    );
+}
+{
+    const c = fixture();
+    c.playType = 999900;
+    c.playTime = 90;
+    c.__ottClassicPlayback.shift(10); // Exactly now, not ten seconds into a file.
+    c.flush();
+    assert(c.effects.some((row) => row[0] === "live"));
+    assert.equal(
+        c.effects.some((row) => row[0] === "seek"),
+        false
+    );
+}
+{
+    const c = fixture();
+    c.channels[101].rec = 1; // Earliest retained epoch is 996400.
+    c.playType = 996405;
+    c.playTime = 0;
+    c.__ottClassicPlayback.shift(-10);
+    c.flush();
+    assert.deepEqual(
+        c.effects.filter((row) => row[0] === "archive"),
+        [["archive", 996400]],
+        "Archive rewind stops at the earliest retained broadcast instant"
+    );
 }
 
 // Delayed callbacks cannot survive cancellation even if a timer fires after clearTimeout.

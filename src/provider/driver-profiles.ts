@@ -6,6 +6,12 @@
         prefix: "demo",
         title: "Demo — moving test pattern",
     },
+    {
+        id: "offline",
+        kind: "offline",
+        prefix: "offline",
+        title: "Local videos",
+    },
     { id: "xtream", kind: "xtream", prefix: "xtream", title: "Xtream Codes" },
     {
         id: "stalker",

@@ -397,6 +397,49 @@ function fixture({
             f.close();
         }
     }
+    for (const favorites of [0, 1]) {
+        const f = fixture({ protectedChannel: false });
+        try {
+            const opened = [];
+            const notices = [];
+            f.w.sFavorites = favorites;
+            f.w.favoritesArray = [];
+            f.w.__ottActiveProviderDriver = {
+                capabilities: { mediaPlaylist: true },
+                id: "vportal",
+            };
+            f.w.__ottMissingCatalogSelection = true;
+            f.w.channelsList = (category, index) => {
+                opened.push({ category, index });
+                assert.equal(f.w.$("#launch").is(":visible"), false);
+                assert.equal(f.w.$("#buffering").is(":visible"), false);
+                assert.equal(
+                    f.w.__ottChannels.group(category),
+                    "system:all",
+                    "missing saved media opens All even when Favorites is first"
+                );
+                assert.deepEqual(
+                    Array.from(f.w.cats[f.w.catsArray[category]]),
+                    [101, 202],
+                    "recovery exposes the available files"
+                );
+            };
+            f.w.infoBox = (message) => notices.push(message);
+            f.start();
+            assert.deepEqual(opened, [
+                { category: favorites ? 1 : 0, index: 0 },
+            ]);
+            assert.deepEqual(
+                f.played,
+                [],
+                "missing media never starts a replacement file silently"
+            );
+            assert.deepEqual(notices, [f.w._("Channel is not available!!!")]);
+            assert.equal(f.prompts(), 0);
+        } finally {
+            f.close();
+        }
+    }
     for (const options of [
         { protectedChannel: false },
         { enabled: false },

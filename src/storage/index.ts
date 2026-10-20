@@ -1023,7 +1023,12 @@ export const stbClearAllItems = storage.clear;
 export function stbGetAllItems(): Record<string, string> {
     var items = storage.dump();
     Object.keys(items).forEach(function (key) {
-        if (key === "__ottKioskV1" || isStorageMetadataKey(key))
+        if (
+            key === "__ottKioskV1" ||
+            key === "offlineProfileBindings" ||
+            key === "__ottStandbyV1" ||
+            isStorageMetadataKey(key)
+        )
             delete items[key];
     });
     return items;
@@ -1033,6 +1038,8 @@ export function stbGetAllItems(): Record<string, string> {
 export function isPortableSettingsKey(key: string): boolean {
     return (
         key !== "__ottKioskV1" &&
+        key !== "offlineProfileBindings" &&
+        key !== "__ottStandbyV1" &&
         !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
     );
@@ -1047,9 +1054,24 @@ export function portableSettingsSnapshot(
         true
     );
     Object.keys(result).forEach(function (key) {
-        if (key === "__ottKioskV1" || isStorageMetadataKey(key))
+        if (
+            key === "__ottKioskV1" ||
+            key === "offlineProfileBindings" ||
+            key === "__ottStandbyV1" ||
+            isStorageMetadataKey(key)
+        )
             delete result[key];
     });
+    if (Object.prototype.hasOwnProperty.call(result, "offlineProfiles")) {
+        var offline = (window as any).__ottOfflineProfiles;
+        if (
+            !offline ||
+            typeof offline.validateStore !== "function" ||
+            typeof result.offlineProfiles !== "string" ||
+            !offline.validateStore(JSON.parse(result.offlineProfiles))
+        )
+            throw new Error("Invalid local video profiles");
+    }
     if (Object.prototype.hasOwnProperty.call(result, "parentPIN"))
         result.parentPIN = (window as any).__ottPinSecurity.prepare(
             result.parentPIN
@@ -1088,7 +1110,12 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
     });
     var writes = keys
         .filter(function (key) {
-            return !isStorageMetadataKey(key);
+            // A backup cannot replace or erase this installation's grants.
+            return (
+                key !== "offlineProfileBindings" &&
+                key !== "__ottStandbyV1" &&
+                !isStorageMetadataKey(key)
+            );
         })
         .map(function (key) {
             var before = read.call(w, key);

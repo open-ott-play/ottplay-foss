@@ -30,6 +30,10 @@ try {
         path.join(__dirname, "../scripts/package-modea.cjs"),
         path.join(root, "scripts/package-modea.cjs")
     );
+    fs.copyFileSync(
+        path.join(__dirname, "../scripts/offline-shell.cjs"),
+        path.join(root, "scripts/offline-shell.cjs")
+    );
     fs.writeFileSync(
         path.join(root, "scripts/classic-bundle.cjs"),
         "module.exports = " +

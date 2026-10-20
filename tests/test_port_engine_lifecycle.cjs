@@ -6,6 +6,7 @@ const ts = require("typescript");
 const ActualHls = require("hls.js");
 const root = path.resolve(__dirname, "..");
 const source = [
+    "src/core/standby.ts",
     "src/plugins/access-media.ts",
     "src/core/native-hls.ts",
     "src/playback/stream-policy.ts",
@@ -79,6 +80,7 @@ function media() {
             listeners[name] = (listeners[name] || []).filter((x) => x !== cb);
         },
         seekWrites: [],
+        selectedResource: "",
         get src() {
             return src;
         },
@@ -238,6 +240,36 @@ const cases = [];
 function test(name, fn) {
     cases.push([name, fn]);
 }
+test("asynchronous Shaka teardown stays pending through standby and reports failure", async () => {
+    for (const fail of [false, true]) {
+        const { w, shakas } = fixture();
+        w.Promise = Promise;
+        w.document.getElementById = () => null;
+        w.installStandby(
+            w,
+            () => "0",
+            () => {}
+        );
+        w.playerMode = 2;
+        w.stbPlay("movie.mpd");
+        shakas[0].attached.resolve();
+        await tick();
+        shakas[0].loaded.resolve();
+        await tick();
+        w.stbSetStandby(true);
+        assert.equal(w.__ottStandby.snapshot().state, "suspending");
+        assert.equal(w.__ottStandby.snapshot().pending, 1);
+        if (fail)
+            shakas[0].destroyed.reject(new Error("Decoder teardown failed"));
+        else shakas[0].destroyed.resolve();
+        await tick();
+        assert.equal(w.__ottStandby.snapshot().pending, 0);
+        assert.equal(
+            w.__ottStandby.snapshot().state,
+            fail ? "error" : "suspended"
+        );
+    }
+});
 for (const mode of [0, 1, 2]) {
     test(
         "screen suspension destroys the active transport: engine " + mode,
@@ -386,7 +418,7 @@ test("standby teardown continues after an overlay, queue or native cleanup failu
         assert.equal(w.__ottCoreBackend().current("pip"), null, failure);
     }
 });
-test("setting standby again stops explicitly restarted media without waking", () => {
+test("standby blocks explicit playback until one idempotent wake", () => {
     const { w } = fixture();
     w.document.getElementById = () => null;
     w.playerMode = 0;
@@ -396,8 +428,9 @@ test("setting standby again stops explicitly restarted media without waking", ()
     w.stbPlay("explicit-main.mp4");
     w.stbPlayPip("explicit-pip.mp4");
     assert.equal(w.stbIsStandby(), true);
-    assert.equal(w.video.paused, false);
-    assert.equal(w.videoPip.paused, false);
+    assert.equal(w.video.paused, true);
+    assert.equal(w.videoPip.paused, true);
+    assert.equal(w.__ottCoreBackend().open({ url: "bypass.mp4" }), null);
     w.stbSetStandby(true);
     assert.equal(starts, 0);
     assert.equal(w.stbIsStandby(), true);
@@ -799,6 +832,23 @@ for (const mode of [0, 1, 2]) {
         );
     }
 }
+test("local startup offset waits for metadata and resets only when beyond the new file end", () => {
+    const { w } = fixture();
+    w.__ottActiveProviderDriver = { id: "offline" };
+    w.video.blockEarlySeek = true;
+    w.stbPlay("local.mp4", 37);
+    assert.equal(w.video.currentTime, 0);
+    w.video.duration = 100;
+    w.video.metadata();
+    assert.equal(w.video.currentTime, 37);
+    w.video.readyState = 0;
+    w.video.duration = NaN;
+    w.stbPlay("replaced-local.mp4", 137);
+    w.video.duration = 100;
+    w.video.metadata();
+    assert.equal(w.video.currentTime, 0);
+});
+
 test("native and HLS recovery preserve seek on engines rejecting pre-metadata currentTime", () => {
     const { w, players } = fixture();
     w.video.blockEarlySeek = true;

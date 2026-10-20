@@ -1226,6 +1226,17 @@ function checkRemoteEpgCatalog() {
     r = await call("play", { query: "Первый" });
     assert.equal(r.status, "ok");
     assert.equal(JSON.stringify(played), "[1,0,true]");
+    const acceptedPlayChannel = host.playChannel;
+    host.playChannel = () => false;
+    r = await call("play", { query: "Первый" });
+    assert.equal(
+        r.status,
+        "rejected",
+        "closed playback admission is not dispatched"
+    );
+    assert.equal(r.data.dispatched, undefined);
+    assert.match(r.data.error, /rejected by the player/);
+    host.playChannel = acceptedPlayChannel;
     r = await call("play", { query: "ПЕРВ" });
     assert.equal(r.status, "rejected");
     assert.equal(r.data.matches.length, 2);

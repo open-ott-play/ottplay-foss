@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 #[path = "xmltv_fetch_tests.rs"]
 mod fetch_tests;
-mod server_records;
 mod hosted_records;
+mod server_records;
 
 #[derive(Clone, Debug, Default)]
 pub struct Channel {
@@ -45,15 +45,27 @@ pub type Programs = HashMap<String, Vec<Programme>>;
 
 /// Fetch + parse one XMLTV source. Supports http(s), .gz, plain .xml.
 pub async fn fetch_single(source: &str) -> anyhow::Result<(Channels, Programs)> {
-    fetch_single_impl(source, false).await
+    fetch_single_impl(source, false, None).await
 }
 
 /// Native custom feeds retain aliases and chronological programme order.
 pub async fn fetch_single_native(source: &str) -> anyhow::Result<(Channels, Programs)> {
-    fetch_single_impl(source, true).await
+    fetch_single_impl(source, true, None).await
 }
 
-async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
+pub(crate) async fn fetch_single_tracked(
+    source: &str,
+    native: bool,
+    work: crate::background_work::WorkLease,
+) -> anyhow::Result<(Channels, Programs)> {
+    fetch_single_impl(source, native, Some(work)).await
+}
+
+async fn fetch_single_impl(
+    source: &str,
+    native: bool,
+    work: Option<crate::background_work::WorkLease>,
+) -> anyhow::Result<(Channels, Programs)> {
     let content: Vec<u8> = if source.starts_with("http://") || source.starts_with("https://") {
         let client = Client::builder()
             .user_agent("OTT-play-FOSS/1.0")
@@ -73,19 +85,38 @@ async fn fetch_single_impl(source: &str, native: bool) -> anyhow::Result<(Channe
     // XMLTV feeds can contain hundreds of megabytes of XML. Decompression and
     // synchronous record reduction must not occupy an async request worker.
     tokio::task::spawn_blocking(move || {
+        // Keep this lease counted until a synchronous parser actually exits.
+        if let Some(work) = &work {
+            work.check().map_err(anyhow::Error::msg)?;
+        }
         let is_gz = (!native && source_has_gz_extension) || content.starts_with(&[0x1f, 0x8b]);
         let raw: Vec<u8> = if is_gz {
             let mut d = GzDecoder::new(&content[..]);
             let mut out = Vec::new();
-            d.read_to_end(&mut out)
-                .map_err(|error| fetch_failure(native, "gzip decode failed", error.into()))?;
+            let mut chunk = [0; 64 * 1024];
+            loop {
+                if let Some(work) = &work {
+                    work.check().map_err(anyhow::Error::msg)?;
+                }
+                let read = d
+                    .read(&mut chunk)
+                    .map_err(|error| fetch_failure(native, "gzip decode failed", error.into()))?;
+                if read == 0 {
+                    break;
+                }
+                out.extend_from_slice(&chunk[..read]);
+            }
             out
         } else {
             content
         };
         let text = String::from_utf8_lossy(&raw);
-        parse_xmltv_impl(&text, native)
-            .map_err(|error| fetch_failure(native, "XMLTV parse failed", error))
+        let result = parse_xmltv_guarded(&text, native, work.as_ref())
+            .map_err(|error| fetch_failure(native, "XMLTV parse failed", error));
+        if let Some(work) = &work {
+            work.check().map_err(anyhow::Error::msg)?;
+        }
+        result
     })
     .await
     .map_err(|error| fetch_failure(native, "XMLTV worker failed", error.into()))?
@@ -139,7 +170,7 @@ pub fn parse_xmltv_native(xml: &str) -> anyhow::Result<(Channels, Programs)> {
 pub fn parse_xmltv_hosted(xml: &str) -> anyhow::Result<(Channels, Programs, Vec<Vec<String>>)> {
     anyhow::ensure!(xml.len() <= 512 * 1024 * 1024, "EPG_XML_LIMIT");
     let mut records = Records::Hosted(hosted_records::HostedRecords::default());
-    let (channels, mut programs) = parse_xmltv_with_records(xml, false, &mut records)?;
+    let (channels, mut programs) = parse_xmltv_with_records(xml, false, &mut records, None)?;
     for rows in programs.values_mut() {
         rows.sort_by_key(|row| (row.start, row.stop));
     }
@@ -148,18 +179,27 @@ pub fn parse_xmltv_hosted(xml: &str) -> anyhow::Result<(Channels, Programs, Vec<
 }
 
 fn parse_xmltv_impl(xml: &str, native: bool) -> anyhow::Result<(Channels, Programs)> {
+    parse_xmltv_guarded(xml, native, None)
+}
+
+fn parse_xmltv_guarded(
+    xml: &str,
+    native: bool,
+    work: Option<&crate::background_work::WorkLease>,
+) -> anyhow::Result<(Channels, Programs)> {
     let mut records = if native {
         Records::Shared(RecordTokens::new(true)?)
     } else {
         Records::Server(server_records::ServerRecords::default())
     };
-    parse_xmltv_with_records(xml, native, &mut records)
+    parse_xmltv_with_records(xml, native, &mut records, work)
 }
 
 fn parse_xmltv_with_records(
     xml: &str,
     native: bool,
     records: &mut Records,
+    work: Option<&crate::background_work::WorkLease>,
 ) -> anyhow::Result<(Channels, Programs)> {
     let mut reader = Reader::from_str(xml);
     // quick-xml 0.41 emits references separately. Preserve whitespace between
@@ -174,7 +214,14 @@ fn parse_xmltv_with_records(
     let mut root_seen = false;
     let mut root_closed = false;
     let hosted = matches!(records, Records::Hosted(_));
+    let mut work_events = 0u32;
     loop {
+        work_events = work_events.wrapping_add(1);
+        if work_events % 128 == 0 {
+            if let Some(work) = work {
+                work.check().map_err(anyhow::Error::msg)?;
+            }
+        }
         let event = reader.read_event_into(&mut buf);
         let validation = (|| -> anyhow::Result<()> {
             if native || hosted {
@@ -559,7 +606,7 @@ pub fn extract_time_shift(name: &str) -> anyhow::Result<i64> {
 
 #[cfg(test)]
 fn parse_xmltv_shared_reference(xml: &str) -> anyhow::Result<(Channels, Programs)> {
-    parse_xmltv_with_records(xml, false, &mut Records::Shared(RecordTokens::new(false)?))
+    parse_xmltv_with_records(xml, false, &mut Records::Shared(RecordTokens::new(false)?), None)
 }
 
 #[cfg(test)]

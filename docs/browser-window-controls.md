@@ -24,6 +24,29 @@ system controls. Its current desktop fullscreen bindings stay in place: **L**
 toggles fullscreen, and **Esc** leaves fullscreen. The overlay's drag area and
 layout adjustments are inactive during fullscreen.
 
+## Playback keyboard shortcuts
+
+In the main video view, press **Option + Left/Right** on macOS or
+**Alt + Left/Right** on Windows/Linux to seek backward/forward by ten seconds.
+**Ctrl + Left/Right** is also supported, as is **Command + Left/Right** on macOS. These shortcuts work in
+both the page/window view and fullscreen; entering fullscreen is not required.
+They use the same playback controller in the hosted/server player, installed
+browser app, Tauri and Capacitor with an attached hardware keyboard.
+
+The shortcuts seek local videos and other seekable VOD. For an M3U channel with
+archive/catch-up support, Left can move from live into the archive, and either
+arrow can seek while watching it. Reaching the live edge returns to live.
+Ordinary live streams without archive support cannot be rewound. Media support
+and the provider's available archive window still limit where playback can go.
+
+Repeated presses accumulate; the player applies the seek after a short pause
+(500 ms) and shows its usual seek feedback. On PC, plain **Left/Right** decreases/increases volume, including when the native video element has focus in fullscreen. Other devices retain their arrow mappings.
+Local videos keep the same playback session when seeking, including when file metadata arrives late. The timeline becomes available once the decoder reports a usable duration.
+Menus, lists, dialogs and text editors retain their normal keyboard behavior,
+and kiosk restrictions still take priority. The shortcuts do not change the
+second-channel PiP video or override shortcuts intercepted by the operating
+system before they reach the player.
+
 ## Installation identity and supported URLs
 
 The optional browser bootstrap supports exactly `/`, `/index.html`, `/f/pc`, and

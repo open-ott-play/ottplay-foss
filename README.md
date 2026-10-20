@@ -1,5 +1,7 @@
 # OTT-play FOSS
 
+Local files without Internet: see [Local videos and offline playback](docs/offline-media.md).
+
 [![OTT-play FOSS channel browser in a perspective view](docs/images/hero.png)](docs/images/studio-2026-default.png)
 
 *Existing Studio 2026 interface screenshot with synthetic channel and programme fixtures.
@@ -58,6 +60,11 @@ the player. Open the installed app and choose **Hide title bar** when Chrome
 offers it; **Show title bar** restores the usual frame. Ordinary tabs and TV/native
 shell layouts keep their existing behavior. See [browser window controls](docs/browser-window-controls.md)
 for supported installation URLs, updating an existing shortcut, and verification.
+
+For ten-second seeking in the main video view, use **Alt/Option + Left/Right**
+(**Command + Left/Right** also works on macOS), in fullscreen or the normal view.
+Local videos, VOD and supported channel archives use the same controls across
+web, Tauri and Capacitor. See [keyboard shortcuts and limits](docs/browser-window-controls.md#playback-keyboard-shortcuts).
 
 The synthetic test pattern can be regenerated with `scripts/generate-demo-media.sh`
 (requires FFmpeg); generated media stays in the ignored `.local-artifacts` directory.
@@ -889,16 +896,31 @@ Silently ignored on clients without volume control support.
 | `volume` | number | — | Absolute level 0-100 |
 | `volume_step` | number | — | Relative change, e.g. +10 or -5 |
 
-#### `exit_player` — Exit / shutdown player
+#### Player standby, restart and exit
 
-```bash
-curl -X POST http://192.168.1.50:8081/api/webhook/commands \
-  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command":"exit_player"}'
+The local proxy's unacknowledged webhook queue does not support `exit_player`
+or typed standby/wake requests. Connect the player to the
+[command server](docs/remote-command-server.md) and use its CLI:
+
+```sh
+ott d1 standby        # Stop playback and tracked player work; remain connected
+ott d1 go             # Leave standby and resume configured provider/profile startup
+ott d1 restart stream # Reconnect the current stream
+ott d1 restart        # Reload the player; preserve standby if it is set
+ott d1 exit           # Exit a supported native app; never enters standby
 ```
 
-Tries standby mode first (if supported), otherwise exits the player. No fields needed.
+Replace `d1` with your registered player alias. `stop` is an alias for `standby`;
+`start` and `wake` are aliases for `go`. Go requires a running, connected player;
+it cannot launch a closed app or wake an offline device. A browser or TV without
+native app exit reports that exit is unsupported. Standby keeps remote polling
+active and does not suspend unrelated host or shared-server work.
+
+After standby/go, check `ott d1 status` for the standby/background state and
+verify resumed playback separately. After a player reload, confirm a new runtime
+with `ott d1 doctor`. After exit, confirm through the OS that the app process
+closed; a remote timeout does not prove exit. Command acceptance alone does not
+confirm these outcomes.
 
 ## Local Proxy Server
 
@@ -980,7 +1002,17 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ### Home Assistant automation examples
 
-Set `ottplay_device_authorization` in Home Assistant `secrets.yaml` to `Bearer <device-code>` using the code shown by the enabled player.
+The popup, channel and volume examples use the local proxy. Set
+`ottplay_device_authorization` in Home Assistant `secrets.yaml` to
+`Bearer <device-code>` using the code shown by the enabled player.
+
+Night standby uses the separate [command server](docs/remote-command-server.md).
+Replace its example URL and `DEVICE_UUID` below with your controller address and
+registered device ID; the local CLI alias `d1` is not a device ID.
+Set `ottplay_control_authorization` to `Bearer <controller-admin-token>` in
+`secrets.yaml`. This credential is separate from the local proxy's device code.
+See Home Assistant's [RESTful Command](https://www.home-assistant.io/integrations/rest_command/)
+and [secrets](https://www.home-assistant.io/docs/configuration/secrets/) documentation.
 
 ```yaml
 rest_command:
@@ -992,6 +1024,13 @@ rest_command:
       Authorization: !secret ottplay_device_authorization
     payload: >-
       {{ {'command': command} | combine(payload | default({})) | tojson }}
+  tv_standby:
+    url: "https://controller.example.com/ott-control/api/requests?device_id=DEVICE_UUID"
+    method: POST
+    headers:
+      Authorization: !secret ottplay_control_authorization
+    content_type: "application/json"
+    payload: '{"action":"lifecycle","params":{"operation":"standby"}}'
 
 automation:
   # Show popup when door opens
@@ -1032,16 +1071,26 @@ automation:
           payload:
             volume_step: 10
 
-  # Put TV to standby at night
+  # Put the player in standby at night; keep remote control connected
   - alias: "TV: Night standby"
     trigger:
       platform: time
       at: "23:00:00"
     action:
-      - service: rest_command.tv_command
-        data:
-          command: exit_player
+      - service: rest_command.tv_standby
+        response_variable: standby_request
 ```
+
+`standby_request` contains the HTTP response for the automation trace. HTTP 202
+only means queued: retain its `content.id`, then poll
+`GET /api/requests?device_id=DEVICE_UUID&id=REQUEST_ID` with the same controller
+credential for the player's reply. A new `status` request observes
+`player.standby` and `player.background`; standby on with `suspended` and zero
+pending confirms the player's tracked work has drained. To leave standby, use
+the same typed request with `"operation":"wake"` (`ott d1 go`).
+Do not repeat a mutation blindly after a timeout. See the controller's
+[request/response API](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/api.md#requestresponse-extension-protocol-1)
+and [standby semantics](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/api.md#player-standby-and-wake).
 
 ## Server API Reference
 
@@ -1156,7 +1205,7 @@ demonstration recordings. The helper keeps all generated media outside Git.
 
 ## Plex media library
 
-Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
+Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. Select folders in the profile to populate the ordinary channel list. Playback starts from the first usable batch, with background loading, standard search and Actions for shuffle/repeat, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
 
 ![Plex loading, file navigation and shutdown lifecycle](docs/images/plex-playback-lifecycle.svg)
 

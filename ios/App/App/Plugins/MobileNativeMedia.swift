@@ -48,7 +48,20 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     /// Read by MainViewController for status-bar / home-indicator chrome.
     var isFullscreenActive: Bool { fullscreenActive }
 
+    private var removeStandbyObserver: (() -> Void)?
     public override func load() {
+        removeStandbyObserver = NativeWork.shared.onStandbyAsync { [weak self] done in
+            DispatchQueue.main.async { [weak self] in
+                defer { done() }
+                guard let self else { return }
+                self.teardownPip(keepCall: false)
+                self.artworkLoadID += 1
+                self.artworkTask?.cancel(); self.artworkTask = nil
+                self.artworkURLString = nil
+                self.backgroundAudioActive = false
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            }
+        }
         // Configure playback session early so WKWebView HLS/<video> can continue
         // when backgrounded (pairs with Info.plist UIBackgroundModes: audio).
         _ = configurePlaybackSession()
@@ -175,6 +188,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func playPip(_ call: CAPPluginCall) {
+        guard !NativeWork.shared.isStandby else { call.reject("Player is in standby", "standby"); return }
         guard let urlString = call.getString("url"), !urlString.isEmpty else {
             call.resolve([
                 "ok": false,
@@ -203,6 +217,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            guard !NativeWork.shared.isStandby else { call.reject("Player is in standby", "standby"); return }
 
             self.teardownPip(keepCall: false)
             self.pendingPipCall = call
@@ -342,6 +357,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     /// Activate AVAudioSession category `.playback` and publish Now Playing metadata
     /// so WKWebView video audio can continue in background (UIBackgroundModes: audio).
     @objc func startBackgroundAudio(_ call: CAPPluginCall) {
+        guard !NativeWork.shared.isStandby else { call.reject("Player is in standby", "standby"); return }
         applyBackgroundAudio(call: call, rate: 1.0, requireSession: true)
     }
 
@@ -356,6 +372,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func resumeBackgroundAudio(_ call: CAPPluginCall) {
+        guard !NativeWork.shared.isStandby else { call.reject("Player is in standby", "standby"); return }
         applyBackgroundAudio(call: call, rate: 1.0, requireSession: true)
     }
 
@@ -463,6 +480,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func maybeLoadArtwork(_ artworkUrl: String?) {
+        guard !NativeWork.shared.isStandby else { return }
         guard let artworkUrl else { return }
         if artworkUrl.isEmpty {
             artworkLoadID += 1
@@ -482,22 +500,31 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         let loadID = artworkLoadID
 
         if artworkUrl.hasPrefix("data:"), let comma = artworkUrl.firstIndex(of: ",") {
+            guard let ticket = NativeWork.shared.begin() else { return }
+            defer { ticket.finish() }
             guard artworkUrl.utf8.count <= 2 * 1024 * 1024 * 4 / 3 + 1024 else { return }
             let b64 = String(artworkUrl[artworkUrl.index(after: comma)...])
             if let data = Data(base64Encoded: b64), data.count <= 2 * 1024 * 1024, let image = UIImage(data: data) {
+                guard (try? ticket.check()) != nil else { return }
                 applyArtwork(image, loadID: loadID)
             }
             return
         }
         guard let url = URL(string: artworkUrl) else { return }
         guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
-        artworkTask = URLSession.shared.dataTask(with: URLRequest(url: url, timeoutInterval: 10)) { [weak self] data, _, _ in
-            guard let data, data.count <= 2 * 1024 * 1024, let image = UIImage(data: data) else { return }
+        guard let ticket = NativeWork.shared.begin() else { return }
+        let task = URLSession.shared.dataTask(with: URLRequest(url: url, timeoutInterval: 10)) { [weak self] data, _, _ in
+            guard (try? ticket.check()) != nil,
+                  let data, data.count <= 2 * 1024 * 1024, let image = UIImage(data: data) else { ticket.finish(); return }
             DispatchQueue.main.async { [weak self] in
+                defer { ticket.finish() }
+                guard (try? ticket.check()) != nil else { return }
                 self?.applyArtwork(image, loadID: loadID)
             }
         }
-        artworkTask?.resume()
+        ticket.cancelWith { task.cancel() }
+        artworkTask = task
+        task.resume()
     }
 
     private func applyArtwork(_ image: UIImage, loadID: Int) {
@@ -528,6 +555,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
         center.previousTrackCommand.isEnabled = true
 
         center.playCommand.addTarget { [weak self] _ in
+            guard !NativeWork.shared.isStandby else { return .noActionableNowPlayingItem }
             guard let self = self else { return .commandFailed }
             if self.controlNativePipPlayer(play: true) {
                 self.updateNowPlayingRate(1.0)
@@ -548,6 +576,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             return .success
         }
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            guard !NativeWork.shared.isStandby else { return .noActionableNowPlayingItem }
             guard let self = self else { return .commandFailed }
             if let player = self.pipPlayer, self.isNativePipControllable {
                 let shouldPlay = player.rate == 0
@@ -576,16 +605,19 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
             return .success
         }
         center.nextTrackCommand.addTarget { [weak self] _ in
+            guard !NativeWork.shared.isStandby else { return .noActionableNowPlayingItem }
             self?.evalVideoJS("(function(){if(window._doKey&&window.keys)window._doKey(window.keys.NEXT);})();")
             return .success
         }
         center.previousTrackCommand.addTarget { [weak self] _ in
+            guard !NativeWork.shared.isStandby else { return .noActionableNowPlayingItem }
             self?.evalVideoJS("(function(){if(window._doKey&&window.keys)window._doKey(window.keys.PREV);})();")
             return .success
         }
         // Live: leave disabled. VOD/archive: scrub via <video>/stbSetPosTime.
         center.changePlaybackPositionCommand.isEnabled = false
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard !NativeWork.shared.isStandby else { return .noActionableNowPlayingItem }
             guard let self = self else { return .commandFailed }
             guard self.mediaSeekable else {
                 // Honest live behavior: do not claim success.
@@ -622,6 +654,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     /// Play/pause the native PiP AVPlayer when present. Returns false if web path should be used.
     @discardableResult
     private func controlNativePipPlayer(play: Bool) -> Bool {
+        guard !play || !NativeWork.shared.isStandby else { return false }
         guard let player = pipPlayer else { return false }
         if play {
             player.play()
@@ -638,15 +671,15 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func evalVideoJS(_ script: String) {
+        guard let ticket = NativeWork.shared.begin() else { return }
         DispatchQueue.main.async { [weak self] in
-            guard let bridge = self?.bridge else { return }
-            if let webView = bridge.webView {
-                webView.evaluateJavaScript(script, completionHandler: nil)
-            }
+            guard (try? ticket.check()) != nil, let webView = self?.bridge?.webView else { ticket.finish(); return }
+            webView.evaluateJavaScript(script) { _, _ in ticket.finish() }
         }
     }
 
     private func tryStartPip() {
+        guard !NativeWork.shared.isStandby else { return }
         guard !pipResolved else { return }
         guard let controller = pipController, controller.isPictureInPicturePossible else { return }
         guard let player = pipPlayer, player.currentItem?.status == .readyToPlay else { return }
@@ -691,6 +724,7 @@ public class MobileNativeMedia: CAPPlugin, CAPBridgedPlugin {
     }
 
     deinit {
+        removeStandbyObserver?()
         artworkTask?.cancel()
         if backgroundAudioActive { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
         teardownPip(keepCall: false)

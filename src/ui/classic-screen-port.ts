@@ -578,8 +578,7 @@ function createClassicScreenPort(host: any) {
     var router = host.__ottInputRouter.create({
         global: function (command: ScreenCommand) {
             if (command.id === "power") {
-                call("stbExit");
-                call("toggleStandby");
+                if (mainInput) mainInput(command);
                 return true;
             }
             if (command.id === "mute") {

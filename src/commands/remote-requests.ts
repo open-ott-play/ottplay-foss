@@ -167,6 +167,9 @@ export function executeRemoteRequest(
                   !w.parentAccess;
     }
     if (
+        request.action === "profile_save" ||
+        request.action === "profile_export" ||
+        request.action === "profile_import" ||
         request.action === "profiles" ||
         request.action === "profile" ||
         request.action === "profile_settings" ||
@@ -817,7 +820,10 @@ export function executeRemoteRequest(
                         reject("Playback is unavailable.");
                         return;
                     }
-                    w.playChannel(c, i, true);
+                    if (w.playChannel(c, i, true) === false) {
+                        reject("Playback was rejected by the player.");
+                        return;
+                    }
                     reply({ channel: matches[0], dispatched: true });
                     return;
                 }

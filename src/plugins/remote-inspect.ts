@@ -14,6 +14,8 @@ export function installRemoteInspection(w: any): any {
         "provider",
         "profile",
         "profile_settings",
+        "profile_save",
+        "profile_import",
         "provider_settings",
         "kiosk",
         "restart",

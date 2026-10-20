@@ -17,6 +17,7 @@ export interface CommandServerRequest {
     body?: string;
     headers: Record<string, string>;
     method: string;
+    remoteControl?: boolean;
     requestId?: string;
     screenshotControl?: boolean;
     secureControl?: boolean;
@@ -846,6 +847,7 @@ export function createCommandServerTransport(
         request: CommandServerRequest,
         complete: (response?: CommandServerResponse) => void
     ): () => void {
+        request.remoteControl = true;
         var done = false;
         var xhr: any = null;
         var requestId =
@@ -927,6 +929,7 @@ export function createCommandServerTransport(
                             status: 0,
                         });
                     } else {
+                        (fetchRequest as any).__ottRemoteControl = true;
                         w.fetch(fetchRequest)
                             .then(function (response: any) {
                                 return response.text().then(function (
@@ -949,6 +952,7 @@ export function createCommandServerTransport(
         } else {
             try {
                 xhr = new w.XMLHttpRequest();
+                xhr.__ottRemoteControl = true;
                 xhr.open(request.method, request.url, true);
                 xhr.timeout = request.timeoutMs;
                 for (var name in request.headers)

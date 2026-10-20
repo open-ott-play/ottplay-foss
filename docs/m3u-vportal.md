@@ -1,12 +1,14 @@
-# VPortal with an M3U TV playlist
+# VPortal profiles
 
 ## Standalone VPortal provider
 
 Choose **VPortal** beside Plex in **Change provider** to use the media library
 without a TV playlist. **VPortal profiles** contains 15 independently named
-slots. Enter the complete cabinet link and select **Save and open library**.
-Links are masked in summaries. These slots use their own storage; existing
-VPortal links in M3U profiles are preserved and do not change with these slots.
+slots. Enter the complete cabinet link, open **Category selection**, mark the sections to include, and save the profile. Only those sections and their descendants form one flat channel playlist. Existing profiles without a selection open setup instead of scanning every section.
+Links are masked in summaries. These slots use their own storage. VPortal is
+configured only in its standalone provider; M3U is reserved for television.
+
+The standard channel list provides search, favorites, ordering and Actions. Videos can start from the first usable batch while the rest of the selected sections load in the background. Selecting a file shows an owned loading dialog; Back cancels it. **Actions → Repeat** controls All / One / Off; **Shuffle / Reset order** uses the existing channel-list actions. See the [shared playlist flow](plex-provider.md).
 
 The current provider determines which profiles the remote CLI manages:
 
@@ -23,25 +25,23 @@ slot numbers and configuration flags; they never return the cabinet link/key.
 
 ### VPortal kiosk
 
-Start a film, series or remote VPortal queue, then run `ott a1 kiosk on` without
-a channel query. The kiosk locks that video's existing episode queue, repeats
-it, blocks local navigation/settings and preserves the current episode and
-position across player reloads. Media addresses are resolved from the saved
+Run `ott a1 kiosk on "VIDEO TITLE"` (or a channel number) to pin an entry from the profile’s channel list. Without a channel argument, `ott a1 kiosk on` arms the next channel selection. An explicitly started remote VPortal search queue remains a media queue; `kiosk on` without a channel argument captures that active queue. The kiosk repeats the pinned selection, blocks local navigation/settings and restores it across player reloads. Media addresses are resolved from the saved
 provider requests on recovery; signed stream URLs are not kept in the policy.
 The policy is bound to the exact VPortal profile/account, including after a
 reload. Switching to another profile cannot play identically numbered videos.
 
-VPortal gets a 60-second startup allowance for slow devices; after playback
-starts, ten seconds without progress triggers recovery. `ott a1 kiosk off`
-releases the lock. To replace the selection, unlock, choose the next film or
-queue, then lock again. `kiosk set CHANNEL` remains the live-TV command.
+VPortal gets a 60-second allowance for initial playback, loop transitions and
+recovery attempts on slow devices. After playback starts, ten seconds without
+progress triggers recovery. `ott a1 kiosk off`
+releases the lock. Use `ott a1 kiosk set "VIDEO TITLE"` to replace a pinned
+channel-list entry. To replace a remote search queue, unlock, start the next
+queue, then lock again.
 This requires the updated player and CLI. Actual provider access and device
 codec support remain separate from profile/kiosk configuration.
 
 For child-facing playback on a web player, use the same active VPortal profile
-and add the strict kiosk flag. The `vp` command works with both an M3U profile's
-VPortal link and the standalone VPortal provider; no different command name is
-required. Select the provider and its configured slot first. If a lock already
+and add the strict kiosk flag. Select the standalone VPortal provider and its
+configured slot before running `vp`. If a lock already
 exists, release it before changing the source:
 
 ```sh
@@ -61,33 +61,31 @@ Legacy wrappers that intercept touch without forwarding timeline gestures
 retain a read-only footer, even with an updated web player. See
 [kiosk mode](remote-command-server.md#kiosk-mode) for input and Android
 limitations. `vp` collects matching titles into a queue, subject to catalog
-limits; the first-match rule of `kiosk on/set CHANNEL` applies only to live TV,
-not VPortal search.
+limits; the first-match rule of `kiosk on/set CHANNEL` applies to the normal
+channel list, including the selected VPortal sections. It does not perform
+VPortal search.
 
-## VPortal alongside television
+## Moving from an old M3U profile
 
-The M3U provider can use a VPortal media library independently of its TV
-playlist. In the selected playlist's settings, enter the ordinary M3U/M3U8
-channel URL in **Playlist URL** and the full portal value in **VPortal link**:
+VPortal links are no longer configured or used inside M3U profiles. Television
+stays in M3U; select **VPortal** and configure its own profile to watch portal
+videos. Enter the complete cabinet link there:
 
 ```text
 portal::[key:YOUR_KEY]http://your-portal.example/api/v1/
 ```
 
-Save it, return to the player menu, and open **Show Media Library**. The portal
-provides its categories, videos, search, filters, and subsequent pages. Videos
-with multiple quality variants offer a selection before playback. Portal content
-does not become TV channels.
+Choose the sections to include in that profile's channel list. Old M3U `medUrl`
+and `medSourceId` values are left in device storage, but portal links do not
+start a catalog request, appear in M3U settings, or affect TV profile selection.
+They are not automatically copied into standalone profiles. Ordinary nonportal
+Dune media catalogs retain their existing behavior.
 
-The link is stored separately for each M3U slot using the existing `medUrl`
-setting. Previously saved VPortal links in that setting work without re-entry.
-The key is masked in the playlist summary; the editor still shows the full
-value. Entering a portal value in **Playlist URL** displays an explanation
-instead of trying to fetch it as a playlist.
-
-Existing ordinary media catalogs on Dune are retained for compatibility. The
-new setting accepts VPortal links or an empty value; it does not advertise a
-general catalog editor.
+The CLI's M3U settings now accept only `name`, `playlist` and `history_hours`.
+Use `ott PLAYER provider vportal` before `profile N vportal LINK` or a VPortal
+`profile-config` update. Old M3U fields in named setup files are ignored by the
+updated CLI and never sent to the player. Update the player, controller and CLI
+together so profile metadata and settings comparisons use the same contract.
 
 ## OTT server and native apps
 

@@ -65,6 +65,60 @@ function android() {
 }
 
 (async () => {
+    await test("local native exit checkpoints before either platform tears down playback", async () => {
+        const entry = ts.createSourceFile(
+            "index.ts",
+            fs.readFileSync(path.join(root, "src/index.ts"), "utf8"),
+            ts.ScriptTarget.Latest,
+            true
+        );
+        for (const platform of ["Capacitor", "__TAURI__"]) {
+            const block = entry.statements.find(
+                (node) =>
+                    ts.isIfStatement(node) &&
+                    node.getText(entry).includes("window.stbExit = function") &&
+                    node.expression.getText(entry).includes(platform)
+            );
+            assert.ok(block);
+            const events = [];
+            const w = {
+                [platform]:
+                    platform === "Capacitor"
+                        ? {
+                              Plugins: {
+                                  App: {
+                                      exitApp: async () => events.push("exit"),
+                                  },
+                                  MobileNativeMedia: {
+                                      stopBackgroundAudio: async () =>
+                                          events.push("background"),
+                                  },
+                              },
+                          }
+                        : {},
+                stbStop: () => events.push("stop"),
+            };
+            vm.runInNewContext(
+                ts.transpileModule(block.getText(entry), {
+                    compilerOptions: { target: ts.ScriptTarget.ES2018 },
+                }).outputText,
+                {
+                    body_onUnload: () => events.push("checkpoint"),
+                    console,
+                    tauriInvoke: async () => events.push("exit"),
+                    window: w,
+                }
+            );
+            w.stbExit();
+            await tick();
+            assert.deepEqual(
+                events,
+                platform === "Capacitor"
+                    ? ["checkpoint", "stop", "background", "exit"]
+                    : ["checkpoint", "exit"]
+            );
+        }
+    });
     await test("browser, browser shim and iOS never claim native exit or reboot", () => {
         for (const w of [
             {},

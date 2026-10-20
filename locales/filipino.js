@@ -617,6 +617,7 @@ var keyStrings = {
     "Loading...": "Naglo-load…",
     "Local HTTP remote control": "Lokal na HTTP remote control",
     "Local URL": "Lokal URL",
+    "Local videos": "Mga lokal na video",
     Login: "Pangalan ng gumagamit",
     lang: "Filipino",
     large: "malaki",
@@ -845,6 +846,7 @@ var keyStrings = {
     "Repeat: One": "Ulitin: Isa",
     "Request sended!": "Ipinadala ang kahilingan!",
     "Requesting approval for %1": "Humihiling ng pag-apruba para sa %1",
+    "Reset order": 'Pagbukud-bukurin ang mga channel: "Gaya ng"',
     "Restart player": "I-restart ang media player",
     "Restart stream": "I-restart ang stream",
     "Restart stream / Live":
@@ -983,6 +985,7 @@ var keyStrings = {
     "Show when changing program": "Ipakita kapag nagbago ang programa",
     "Show when rewind": "Ipakita kapag nagre-rewind",
     "Show when switching": "Ipakita kapag lumipat ng channel",
+    Shuffle: "Random na ayos",
     "Shuffle and play": "Paghaluin ang pagkakasunod at i-play",
     "Shuffle: Loading...": "Random na ayos: Naglo-load…",
     "Shuffle: Off": "Random na ayos: Naka-off",

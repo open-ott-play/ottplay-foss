@@ -18,6 +18,7 @@ for (const provider of ["m3u", "vportal"]) {
         const origin = new URL(baseURL).origin;
         const pending = [],
             replies = [],
+            portalRequests = [],
             errors = [];
         let sequence = 0;
         page.on("pageerror", (error) => errors.push(error.message));
@@ -50,6 +51,7 @@ for (const provider of ["m3u", "vportal"]) {
             }
             if (url.pathname.endsWith("/vportal/api")) {
                 const body = request.postDataJSON();
+                portalRequests.push(body);
                 if (body.params.cmd === "play")
                     return route.fulfill({
                         json: {
@@ -152,6 +154,8 @@ for (const provider of ["m3u", "vportal"]) {
                                       ".fixture/api/"
                                     : "",
                             name: "VPortal fixture " + (i + 1),
+                            sections:
+                                i < 2 ? [{ request: {}, title: "Root" }] : [],
                         })),
                     })
                 );
@@ -165,10 +169,24 @@ for (const provider of ["m3u", "vportal"]) {
         );
         await page.goto("/f/pc/");
         await page.waitForFunction(
-            () =>
+            (provider) =>
                 window.commandChannelsReady === true &&
-                !!window.providerMediaClient
+                (provider === "m3u" || !!window.providerMediaClient),
+            provider
         );
+        if (provider === "m3u") {
+            expect(portalRequests).toHaveLength(0);
+            expect(
+                await page.evaluate(() => window.providerMediaClient)
+            ).toBeFalsy();
+            expect(
+                await page.evaluate(
+                    () =>
+                        JSON.parse(localStorage.getItem("m3um3uArr")).M3Us[0]
+                            .medUrl
+                )
+            ).toBe("portal::[key:FIXTURE_M3U]https://m3u.fixture/api/");
+        }
         await page.evaluate(() =>
             window.__ottCommandServer.configure({
                 address: location.origin + "/fixture-control",
@@ -344,6 +362,7 @@ for (const provider of ["m3u", "vportal"]) {
         await expect(page.locator("html")).not.toHaveClass(/ott-kiosk-strict/);
         await page.touchscreen.tap(195, 10);
         await expect(page.locator("#list")).toBeVisible();
+        if (provider === "m3u") expect(portalRequests).toHaveLength(0);
         expect(errors).toEqual([]);
     });
 }

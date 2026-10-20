@@ -240,7 +240,7 @@ Boolean replaces all required hooks. M3U has 15 slots and native XMLTV metadata;
 Stalker has MAC authentication; ITV/OTTCLUB/Shura have distinct catalog/guide
 phases; media families have origin, cancellation and lazy-page contracts.
 See the driver sections of [Playback and providers](playback-session-architecture.md)
-and [M3U/VPortal](m3u-vportal.md).
+and [VPortal profiles](m3u-vportal.md).
 
 [provider-assets.cjs](../scripts/provider-assets.cjs) derives managed IDs from
 that same inventory. [runtime-assets.cjs](../scripts/runtime-assets.cjs) excludes

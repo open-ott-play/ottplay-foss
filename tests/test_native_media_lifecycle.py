@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from native_standby_work_cases import KOTLIN_SOURCE, run_native_work
 
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID = (ROOT / "android/app/src/main/java/play/ott/foss/MediaPlaybackService.kt").read_text()
@@ -30,8 +31,12 @@ def method(source, signature):
 
 
 KOTLIN = r"""
+import play.ott.foss.NativeWork
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.FutureTask
+import java.util.concurrent.Future
 class Intent(val action: String?, val extras: Map<String, Any> = emptyMap()) {
     fun hasExtra(key: String) = extras.containsKey(key)
     fun getLongExtra(key: String, fallback: Long) = extras[key] as? Long ?: fallback
@@ -41,8 +46,7 @@ class Intent(val action: String?, val extras: Map<String, Any> = emptyMap()) {
 class WebView
 class Bitmap(val name: String)
 class Connection { var closed = false; fun disconnect() { closed = true } }
-class Task(val block: () -> Unit) { var canceled = false; fun cancel(interrupt: Boolean) { canceled = true } }
-class Executor { val tasks = mutableListOf<Task>(); fun submit(block: () -> Unit): Task { val task = Task(block); tasks.add(task); return task } }
+class Executor { val tasks = mutableListOf<FutureTask<Unit>>(); fun execute(task: FutureTask<Unit>) { tasks.add(task) } }
 class Handler {
     val callbacks = mutableListOf<() -> Unit>()
     fun post(block: () -> Unit) { callbacks.add(block) }
@@ -60,7 +64,7 @@ class MediaPlaybackService {
     private val artworkGeneration = AtomicLong()
     private val mainHandler = Handler()
     private val artworkExecutor = Executor()
-    private var artworkTask: Task? = null
+    private var artworkTask: Future<*>? = null
     private var artworkConnection: Connection? = null
     private var artworkBitmap: Bitmap? = null
     private var artworkUrl: String? = null
@@ -82,7 +86,7 @@ class MediaPlaybackService {
     private fun driveStop() { stopCalls++ }
     private fun driveNext() {}
     private fun drivePrev() {}
-    private fun decodeArtwork(url: String) = Bitmap(url)
+    private fun decodeArtwork(url: String, ticket: NativeWork.Ticket): Bitmap { ticket.check(); return Bitmap(url) }
     private fun canControl(): Boolean = !stopped && isPlaybackAllowed()
     fun currentGeneration(): Long = playbackGeneration.get()
     fun isPlaybackAllowed() = playbackAllowed && webViewRef?.get() != null
@@ -98,7 +102,7 @@ class MediaPlaybackService {
         // A queued bitmap is held independently of Handler cancellation to model
         // a callback already obtained by the main loop when Stop runs.
         loadArtworkAsync("old")
-        artworkExecutor.tasks.last().block()
+        artworkExecutor.tasks.last().run()
         val late = mainHandler.callbacks.last()
         onStartCommand(Intent(ACTION_STOP, mapOf(EXTRA_SESSION_ONLY to true)), 0, 4)
         val notices = manager.notices; val states = stateUpdates
@@ -114,15 +118,15 @@ class MediaPlaybackService {
         val activeStops = stops
         onStartCommand(Intent(ACTION_STOP, mapOf(EXTRA_GENERATION to oldEpoch)), 0, 7)
         check(stops == activeStops && canControl())
-        loadArtworkAsync("A"); artworkExecutor.tasks.last().block()
+        loadArtworkAsync("A"); artworkExecutor.tasks.last().run()
         val oldArt = mainHandler.callbacks.last()
-        loadArtworkAsync("B"); artworkExecutor.tasks.last().block()
+        loadArtworkAsync("B"); artworkExecutor.tasks.last().run()
         mainHandler.callbacks.last()(); oldArt()
         check(artworkBitmap?.name == "B")
         loadArtworkAsync("decoder-still-running")
         val inFlight = artworkExecutor.tasks.last()
-        retirePlayback(); inFlight.block()
-        check(mainHandler.callbacks.isEmpty() && inFlight.canceled)
+        retirePlayback(); inFlight.run()
+        check(mainHandler.callbacks.isEmpty() && inFlight.isCancelled)
         allowPlayback(owner)
         onStartCommand(null, 0, 8)
         check(!isPlaybackAllowed())
@@ -130,6 +134,10 @@ class MediaPlaybackService {
         check(!clearWebView(owner) && isPlaybackAllowed())
         check(clearWebView(newOwner) && !isPlaybackAllowed())
         val before = foregrounds
+        NativeWork.setStandby(true)
+        onStartCommand(Intent(ACTION_START), 0, 9)
+        check(foregrounds == before && !canControl())
+        NativeWork.setStandby(false)
         onStartCommand(Intent(ACTION_START), 0, 9)
         check(foregrounds == before && !canControl())
         println("PASS Android service: nonsticky/no-backend/null-intent; pause/resume; old command epochs; stop and late/current artwork; owner replacement/destroy")
@@ -153,7 +161,7 @@ constants = "\n".join(
 KOTLIN += (
     constants.replace("const val", "val")
     + "\n"
-    + "\n".join(method(ANDROID, name).replace("override fun", "fun") for name in functions)
+    + "\n".join(method(ANDROID, name).replace("override fun", "fun", 1) if name.startswith("override ") else method(ANDROID, name) for name in functions)
 )
 KOTLIN += "\n}\nfun main() { MediaPlaybackService().run() }\n"
 
@@ -223,9 +231,10 @@ with tempfile.TemporaryDirectory(prefix="ott-native-media-") as directory:
         (temp / "Main.kt").write_text(KOTLIN)
         java = str(Path(os.environ["JAVA_HOME"]) / "bin/java") if os.environ.get("JAVA_HOME") else "java"
         subprocess.run(
-            ["kotlinc", str(temp / "Main.kt"), "-include-runtime", "-d", str(temp / "media.jar")], check=True
+            ["kotlinc", str(KOTLIN_SOURCE), str(temp / "Main.kt"), "-include-runtime", "-d", str(temp / "media.jar")], check=True
         )
         subprocess.run([java, "-jar", str(temp / "media.jar")], check=True)
+        run_native_work("android", temp, java)
     if platform in ["ios", "all"]:
         (temp / "main.swift").write_text(SWIFT)
         subprocess.run(
@@ -242,3 +251,4 @@ with tempfile.TemporaryDirectory(prefix="ott-native-media-") as directory:
             check=True,
         )
         subprocess.run([str(temp / "media")], check=True)
+        run_native_work("ios", temp)

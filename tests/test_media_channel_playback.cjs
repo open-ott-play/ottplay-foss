@@ -1,0 +1,595 @@
+const assert = require("node:assert/strict");
+const { fixture, sourceFunctions } = require("./test_port_vod.cjs");
+const vm = require("node:vm");
+
+function setup(provider = "plex") {
+    const c = fixture();
+    const pending = [];
+    c.p_pref = provider;
+    c.__ottActiveProviderDriver = {
+        capabilities: { mediaPlaylist: true },
+        id: provider,
+    };
+    c.channels = {};
+    c.cats = { All: [101, 102, 103] };
+    c.catsArray = ["All"];
+    c.curList = c.cats.All;
+    c.cList = c.curList;
+    c.__ottChannels = {
+        capture: () => ({
+            active: () => c.__ottActiveProviderDriver.id === provider,
+            category: () => 0,
+            members: () => c.cats.All.slice(),
+        }),
+        group: () => "system:all",
+        select() {},
+    };
+    for (const id of c.cats.All)
+        c.channels[id] = {
+            __ottMediaItem: {
+                id,
+                request: { id },
+                title: "Film " + id,
+            },
+            channel_name: "Film " + id,
+        };
+    c.ifParentalAccessChId = () => false;
+    c.getChannelUrl = () => "";
+    c.channelsList = () => c.calls.push(["channels"]);
+    c.playChannel = c._playChannel;
+    c.stbPlay = (url, position) => {
+        c.calls.push(["play", url, position]);
+        c.__ottClassicPlayback.command({ type: "playing" });
+    };
+    c.providerMediaClient = {
+        cancel() {},
+        cancelAutomatic() {},
+        resolve(item, done) {
+            pending.push({ done, item });
+        },
+        stableRequests: true,
+    };
+    function resolve(index = pending.length - 1) {
+        const { item, done } = pending[index];
+        done({ ...item, stream_url: "film-" + item.id + ".mp4" });
+    }
+    function end() {
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    }
+    return { c, end, pending, resolve };
+}
+
+// Real VPortal resolution must settle the bridge's owned loading transaction.
+function setupVPortal() {
+    const { c } = setup("vportal");
+    vm.runInContext(
+        sourceFunctions("src/plugins/vportal.ts", [
+            "parseVPortalLink",
+            "hostedVPortalRoute",
+            "createVPortalClient",
+        ]),
+        c
+    );
+    const requests = [];
+    c.$.ajax = (options) => {
+        const request = {
+            abort() {
+                options.error({}, "abort");
+                options.complete();
+            },
+            fail() {
+                options.error({}, "error");
+                options.complete();
+            },
+            receive(value) {
+                options.success(value);
+                options.complete();
+            },
+        };
+        requests.push(request);
+        return request;
+    };
+    c.providerMediaClient = c.createVPortalClient(
+        "portal::[key:fixture]https://portal.example/api/"
+    );
+    c.alert = () => assert.fail("Channel playback reports a nonmodal failure");
+    c.showShift = (text) => {
+        assert.equal(
+            c.elements["#dialogbox"].style.display,
+            "none",
+            "owned loading closes before showing a resolution error"
+        );
+        c.calls.push(["shift", text]);
+    };
+    return { c, requests };
+}
+for (const direct of [false, true]) {
+    for (const failure of [
+        "network",
+        "throw",
+        "null",
+        "malformed",
+        "missing",
+    ]) {
+        const { c, requests } = setupVPortal();
+        if (direct)
+            c.channels[101].__ottMediaItem = {
+                __ottMediaOrigin: {
+                    target: { request: { cmd: "season", id: 3 } },
+                },
+                __ottVPortalDirect: { id: { field: "id", value: "101" } },
+                id: 101,
+                stream_url: "https://cdn.example/expired.mp4",
+                title: "Film 101",
+            };
+        const ajax = c.$.ajax;
+        if (failure === "throw")
+            c.$.ajax = () => {
+                throw Error("fixture-private-key");
+            };
+        c._playChannel(0, 0);
+        if (failure !== "throw") {
+            assert.match(c.elements["#dialogbox"].innerHTML, /ott-spinner/);
+            assert.equal(c.elements["#dialogbox"].style.display, "");
+            if (failure === "network") requests[0].fail();
+            else
+                requests[0].receive(
+                    failure === "null"
+                        ? null
+                        : {
+                              items: [],
+                              type:
+                                  failure === "missing"
+                                      ? "category"
+                                      : "invalid",
+                          }
+                );
+        }
+        assert.equal(c.elements["#dialogbox"].style.display, "none");
+        assert.equal(c.calls.filter(([kind]) => kind === "shift").length, 1);
+        assert.equal(c.calls.filter(([kind]) => kind === "channels").length, 1);
+        assert.equal(c.calls.filter(([kind]) => kind === "play").length, 0);
+        c.$.ajax = ajax;
+        c._playChannel(0, 0);
+        const retry = requests.at(-1);
+        if (requests.length > 1) {
+            requests[0].fail();
+            requests[0].receive({ url: "https://cdn.example/stale.mp4" });
+            assert.equal(
+                c.calls.filter(([kind]) => kind === "shift").length,
+                1
+            );
+            assert.equal(c.elements["#dialogbox"].style.display, "");
+        }
+        retry.receive(
+            direct
+                ? {
+                      items: [
+                          {
+                              id: 101,
+                              type: "stream",
+                              url: "https://cdn.example/retry.mp4",
+                          },
+                      ],
+                      type: "category",
+                  }
+                : { url: "https://cdn.example/retry.mp4" }
+        );
+        assert.equal(c.elements["#dialogbox"].style.display, "none");
+        assert.equal(c.calls.filter(([kind]) => kind === "play").length, 1);
+        assert.equal(
+            c.__ottMedia.current().payload.stream_url,
+            "https://cdn.example/retry.mp4"
+        );
+    }
+}
+{
+    const { c, requests } = setupVPortal();
+    c._playChannel(0, 0);
+    c.dialogBoxKeyHandler(c.keys.RETURN);
+    c._playChannel(0, 1);
+    requests[0].fail();
+    requests[0].receive({ url: "https://cdn.example/cancelled.mp4" });
+    assert.equal(c.calls.filter(([kind]) => kind === "shift").length, 0);
+    assert.equal(c.calls.filter(([kind]) => kind === "play").length, 0);
+    assert.equal(c.elements["#dialogbox"].style.display, "");
+    requests[1].receive({ url: "https://cdn.example/current.mp4" });
+    assert.equal(c.__ottMedia.current().payload.id, 102);
+}
+console.log(
+    "PASS VPortal resolution failures close owned loading, retry, and ignore stale callbacks"
+);
+
+for (const provider of ["plex", "vportal"]) {
+    const { c, pending, resolve, end } = setup(provider);
+    assert.equal(c._playChannel(0, 1), true);
+    assert.equal(pending.length, 1);
+    assert.match(c.elements["#dialogbox"].innerHTML, /ott-spinner/);
+    assert.equal(c.calls.filter(([kind]) => kind === "play").length, 0);
+    resolve();
+    assert.equal(c.elements["#dialogbox"].style.display, "none");
+    assert.equal(c.primaryIndex, 1);
+    assert.equal(c.curList[c.primaryIndex], 102);
+    const state = c.__ottClassicPlayback.snapshot();
+    assert.equal(state.target.kind, "vod");
+    assert.equal(state.target.channelId, "provider:102");
+    assert.equal(state.historyTarget.kind, "live");
+    assert.equal(state.historyTarget.channelId, "102");
+    assert.equal(c.playType, -99999999999);
+    assert.equal(c.__ottMedia.kioskSelection(), null);
+    vm.runInContext(
+        sourceFunctions("src/key-handler/index.ts", [
+            "handleMainKey",
+            "keyFun",
+            "toggleMainPlayback",
+        ]),
+        c
+    );
+    const seeks = [];
+    c.shiftArchive = (seconds) => seeks.push(seconds);
+    c.settings.alFun = 14;
+    c.settings.arFun = 13;
+    for (const key of [c.keys.LEFT, c.keys.RIGHT])
+        c.handleMainKey(key, { preventDefault() {}, stopPropagation() {} });
+    assert.deepEqual(seeks, [-10, 10]);
+
+    // The same list owns reshuffling and incrementally published entries.
+    c.cats.All = [102, 103, 101, 104];
+    c.curList = c.cats.All;
+    c.primaryIndex = 0;
+    c.channels[104] = {
+        __ottMediaItem: { id: 104, request: { id: 104 }, title: "Added film" },
+    };
+    c.handleMainKey(c.keys.UP, { preventDefault() {}, stopPropagation() {} });
+    assert.equal(pending.at(-1).item.id, 103);
+    resolve();
+    assert.equal(c.primaryIndex, 1);
+    c.handleMainKey(c.keys.DOWN, { preventDefault() {}, stopPropagation() {} });
+    assert.equal(pending.at(-1).item.id, 102);
+    resolve();
+    c._playChannel(0, 2);
+    resolve();
+    c.isListVisible = true;
+    const closes = c.calls.filter(([kind]) => kind === "close").length;
+    end();
+    assert.equal(
+        c.calls.filter(([kind]) => kind === "close").length,
+        closes,
+        "natural completion leaves a reopened channel list open"
+    );
+    c.isListVisible = false;
+    assert.equal(
+        pending.at(-1).item.id,
+        104,
+        "EOS observes newly appended rows"
+    );
+    resolve();
+    end();
+    assert.equal(pending.at(-1).item.id, 102, "repeat all wraps current order");
+    resolve();
+    c.__ottMedia.cycleRepeat();
+    assert.equal(c.__ottMedia.repeatMode(), "one");
+    end();
+    assert.equal(pending.at(-1).item.id, 102);
+    resolve();
+    c.__ottMedia.cycleRepeat();
+    assert.equal(c.__ottMedia.repeatMode(), "off");
+    c._playChannel(0, 3);
+    resolve();
+    const count = pending.length;
+    end();
+    assert.equal(pending.length, count, "repeat off stops at final row");
+    console.log(
+        "PASS " +
+            provider +
+            " channel playback, loading, selection, dynamic order and repeat"
+    );
+}
+
+for (const provider of ["plex", "vportal"]) {
+    for (const mode of ["all", "one", "off"]) {
+        const { c, pending, resolve, end } = setup(provider);
+        while (c.__ottMedia.repeatMode() !== mode) c.__ottMedia.cycleRepeat();
+        c._playChannel(0, mode === "one" ? 2 : 0);
+        resolve();
+        c.isListVisible = true;
+        const handler = () => {};
+        const owner = c.__ottClassicScreenPort.setOwnedCallback(
+            "dialog",
+            handler
+        ).owner;
+        const ownedHandler = c.dialogBoxKeyHandler;
+        c.$("#dialogbox").html("Actions").show();
+        const closes = c.calls.filter(([kind]) => kind === "close").length;
+        end();
+        assert.equal(pending.length, 2);
+        c.__ottMedia.cycleRepeat();
+        assert.equal(
+            pending.length,
+            mode === "one" ? 2 : 3,
+            "Repeat restarts pending EOS with its new mode, except Off at the final file"
+        );
+        resolve(1);
+        assert.equal(
+            c.calls.filter(([kind]) => kind === "play").length,
+            1,
+            "The cancelled pre-change resolver cannot start its old choice"
+        );
+        if (mode !== "one") {
+            assert.equal(pending[2].item.id, mode === "all" ? 101 : 102);
+            resolve(2);
+            assert.equal(c.calls.filter(([kind]) => kind === "play").length, 2);
+            assert.equal(
+                c.__ottMedia.current().payload.id,
+                mode === "all" ? 101 : 102
+            );
+        } else assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+        assert(
+            owner.active() && owner.foreground(),
+            "Actions keeps screen ownership"
+        );
+        assert.equal(c.dialogBoxKeyHandler, ownedHandler);
+        assert.equal(c.elements["#dialogbox"].innerHTML, "Actions");
+        assert.equal(
+            c.calls.filter(([kind]) => kind === "close").length,
+            closes
+        );
+    }
+    console.log(
+        "PASS " +
+            provider +
+            " repeat changes re-admit pending channel EOS without replacing Actions"
+    );
+}
+for (const retire of ["cancel", "source", "manual"]) {
+    const { c, pending, resolve, end } = setup();
+    c._playChannel(0, 0);
+    resolve();
+    end();
+    if (retire === "cancel") c.__ottMedia.cancelAuto();
+    else if (retire === "manual") c._playChannel(0, 2);
+    else
+        c.providerMediaClient.cancelAutomatic = () => {
+            c.p_pref = "changed";
+            c.__ottActiveProviderDriver = { capabilities: {}, id: "changed" };
+        };
+    const count = pending.length;
+    c.__ottMedia.cycleRepeat();
+    assert.equal(
+        pending.length,
+        count,
+        "A repeat change cannot re-admit a cancelled, replaced or foreign-source transition"
+    );
+    for (let index = 1; index < pending.length; index++) resolve(index);
+    assert.equal(c.calls.filter(([kind]) => kind === "play").length, 1);
+}
+console.log(
+    "PASS repeat changes preserve cancellation, source and manual-selection ownership"
+);
+
+{
+    const { c, pending, resolve } = setup();
+    c._playChannel(0, 0);
+    c.dialogBoxKeyHandler(c.keys.RETURN);
+    resolve();
+    assert.equal(c.calls.filter(([kind]) => kind === "play").length, 0);
+    assert(c.calls.some(([kind]) => kind === "channels"));
+    c._playChannel(0, 1);
+    c._playChannel(0, 2);
+    resolve(1);
+    assert.equal(c.calls.filter(([kind]) => kind === "play").length, 0);
+    resolve(2);
+    assert.equal(c.calls.filter(([kind]) => kind === "play").length, 1);
+    assert.equal(c.__ottMedia.current().payload.id, 103);
+    assert.equal(pending.length, 3);
+    console.log(
+        "PASS channel cancellation and replacement reject stale resolvers"
+    );
+}
+
+{
+    const { c, pending, resolve, end } = setup();
+    c._playChannel(0, 0);
+    resolve();
+    c._playChannel(0, 1);
+    end();
+    assert.equal(
+        pending.length,
+        2,
+        "old EOS does not replace pending selection"
+    );
+    resolve();
+    assert.equal(c.__ottMedia.current().payload.id, 102);
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+    console.log("PASS old decoder EOS preserves selected pending channel");
+}
+
+{
+    const { c, resolve } = setup();
+    c.parentalArray = [];
+    const priorIndex = c.primaryIndex;
+    assert.equal(
+        c._playChannel(0, 1, true, () => c.primaryIndex === priorIndex),
+        true
+    );
+    resolve();
+    assert.equal(
+        c.__ottMedia.current().payload.id,
+        102,
+        "relative command admission applies before committing its new selection"
+    );
+    console.log(
+        "PASS relative channel admission is not reused after selection commits"
+    );
+}
+
+{
+    const { c, resolve, end, pending } = setup();
+    c.__ottKiosk = {
+        admit: (id) => id === 102,
+        allowed: (id) => id === 102,
+        allowedMedia: () => false,
+        enabled: () => true,
+        locked: () => true,
+    };
+    assert.equal(c._playChannel(0, 1), true);
+    resolve();
+    assert.equal(c.__ottMedia.current().payload.id, 102);
+    assert.equal(c._playChannel(0, 0), undefined);
+    end();
+    assert.equal(
+        pending.at(-1).item.id,
+        102,
+        "pinned channel loops without attempting another file"
+    );
+    resolve();
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+    console.log("PASS channel kiosk admission and immediate pinned replay");
+}
+
+for (const provider of ["plex", "vportal"]) {
+    const seed = setup(provider);
+    const positions = [137.25, 248.5, 369.75];
+    for (let index = 0; index < positions.length; index++) {
+        seed.c._playChannel(0, index);
+        seed.resolve();
+        seed.c.__ottClassicPlayback.command({
+            position: positions[index],
+            type: "position",
+        });
+        seed.c.__ottMedia.checkpoint(
+            seed.c.__ottMedia.current().ref,
+            positions[index],
+            true
+        );
+    }
+    const cold = setup(provider);
+    Object.assign(cold.c.stored, seed.c.stored);
+    cold.c.commandChannelsReady = false;
+    cold.c._playChannel(0, 1);
+    cold.resolve();
+    assert.equal(
+        cold.c.calls.filter(([kind]) => kind === "play").at(-1)[2],
+        positions[1],
+        "startup resumes the selected file at its exact persisted position"
+    );
+    assert.equal(cold.c.calls.filter(([kind]) => kind === "confirm").length, 0);
+
+    const kiosk = setup(provider);
+    Object.assign(kiosk.c.stored, seed.c.stored);
+    kiosk.c.commandChannelsReady = true;
+    kiosk.c.__ottKiosk = {
+        admit: (id) => id === 102,
+        allowed: (id) => id === 102,
+        allowedMedia: () => false,
+        enabled: () => true,
+        locked: () => true,
+    };
+    kiosk.c._playChannel(0, 1);
+    kiosk.resolve();
+    assert.equal(
+        kiosk.c.calls.filter(([kind]) => kind === "play").at(-1)[2],
+        positions[1],
+        "kiosk recovery resumes its pinned file at the exact saved position"
+    );
+    assert.equal(
+        kiosk.c.calls.filter(([kind]) => kind === "confirm").length,
+        0
+    );
+    kiosk.end();
+    kiosk.resolve();
+    assert.equal(
+        kiosk.c.calls.filter(([kind]) => kind === "play").at(-1)[2],
+        0,
+        "natural kiosk replay starts at zero instead of restoring position"
+    );
+    assert.equal(
+        kiosk.c.calls.filter(([kind]) => kind === "confirm").length,
+        0
+    );
+
+    const manual = setup(provider);
+    Object.assign(manual.c.stored, seed.c.stored);
+    manual.c.commandChannelsReady = true;
+    let confirm;
+    let prompts = 0;
+    manual.c.confirmBox = (_message, yes) => {
+        confirm = yes;
+        prompts++;
+    };
+    manual.c._playChannel(0, 1);
+    manual.resolve();
+    assert.equal(prompts, 1, "ordinary selection retains Continue watching");
+    confirm();
+    assert.equal(
+        manual.c.calls.filter(([kind]) => kind === "seek").at(-1)[1],
+        manual.c.OttPlayCore.mediaResumePosition(positions[1], 60)
+    );
+    manual.c.__ottMedia.skip(1);
+    manual.resolve();
+    assert.equal(prompts, 1, "next file never opens a resume prompt");
+    assert.equal(
+        manual.c.calls.filter(([kind]) => kind === "play").at(-1)[2],
+        0,
+        "next file starts at zero despite its saved history"
+    );
+    manual.end();
+    manual.resolve();
+    assert.equal(prompts, 1, "natural completion never opens a resume prompt");
+    assert.equal(
+        manual.c.calls.filter(([kind]) => kind === "play").at(-1)[2],
+        0
+    );
+
+    for (const natural of [true, false]) {
+        const locked = setup(provider);
+        Object.assign(locked.c.stored, seed.c.stored);
+        locked.c.commandChannelsReady = false;
+        locked.c._playChannel(0, 0);
+        locked.resolve();
+        locked.c.commandChannelsReady = true;
+        locked.c.isListVisible = true;
+        let unlock;
+        locked.c.ifParentalAccessChId = (_id, next) => {
+            unlock = next;
+            return true;
+        };
+        const closes = locked.c.calls.filter(
+            ([kind]) => kind === "close"
+        ).length;
+        if (natural) locked.end();
+        else locked.c.__ottMedia.skip(1);
+        assert.equal(locked.pending.length, 1, "PIN defers the next file");
+        assert.equal(typeof unlock, "function");
+        locked.c.ifParentalAccessChId = () => false;
+        unlock();
+        assert.equal(locked.pending.at(-1).item.id, 102);
+        locked.resolve();
+        assert.equal(
+            locked.c.calls.filter(([kind]) => kind === "play").at(-1)[2],
+            0,
+            "PIN continuation preserves start-at-zero for the next file"
+        );
+        assert.equal(
+            locked.c.calls.filter(([kind]) => kind === "confirm").length,
+            0,
+            "PIN continuation must not turn an advance into a resume prompt"
+        );
+        const after = locked.c.calls.filter(
+            ([kind]) => kind === "close"
+        ).length;
+        if (natural)
+            assert.equal(
+                after,
+                closes,
+                "background advance keeps the list open after PIN"
+            );
+        else assert(after > closes, "arrow advance opens fullscreen after PIN");
+    }
+    console.log(
+        "PASS " +
+            provider +
+            " exact startup resume, manual resume prompt, and fresh automatic/arrow playback"
+    );
+}

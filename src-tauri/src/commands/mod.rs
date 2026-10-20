@@ -1,3 +1,4 @@
+pub mod background;
 pub mod native_hls;
 pub mod runtime_diagnostics;
 pub mod lifecycle;
@@ -13,3 +14,5 @@ pub mod queue;
 pub mod stalker;
 pub mod tauri_commands;
 pub mod tmdb;
+
+pub mod offline_media;

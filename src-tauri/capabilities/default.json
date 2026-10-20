@@ -28,6 +28,7 @@
     "core:window:default",
     "core:window:allow-start-dragging",
     "allow-ping",
+    "allow-offline-media",
     "allow-get-epg",
     "allow-proxy-fetch",
     "allow-proxy-http",
@@ -58,6 +59,7 @@
     "allow-stop-media-session",
     "allow-update-media-session",
     "updater:default",
-    "window-state:default"
+    "window-state:default",
+    "allow-background-standby"
   ]
 }

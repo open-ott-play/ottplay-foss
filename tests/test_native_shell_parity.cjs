@@ -1064,6 +1064,7 @@ const coreControls = functions("src/core/index.ts", [
     "openCoreEngineLease",
     "stopCoreEngine",
     "stbIsPlaying",
+    "stbIsStandby",
 ]);
 for (const platform of Object.keys(nativeSources)) {
     let destroyed = 0,
@@ -1083,6 +1084,7 @@ for (const platform of Object.keys(nativeSources)) {
         _coreShakaTeardown: null,
         _coreTransientPlayback: false,
         _playSession: 0,
+        _standby: false,
         $: () => ({ hide() {} }),
         clearInterval() {},
         clearPlayTimeInterval() {},
@@ -1155,6 +1157,12 @@ for (const platform of Object.keys(nativeSources)) {
     assert.equal(w.video.paused, true, platform + " explicit Pause");
     assert.equal(w.forcePlay, false);
     assert.equal(cancelled, 0, platform + " Pause keeps pending preparation");
+
+    w._standby = true;
+    vm.runInContext(nativeScript(platform, "play"), w);
+    w.stbContinue();
+    assert.equal(w.video.paused, true, platform + " Play cannot wake standby");
+    w._standby = false;
 
     // Exercise the actual retry owner through each shipped native media action.
     // Pause retains retry intent; repeated Play schedules one attempt; Stop retires it.

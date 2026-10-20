@@ -90,6 +90,8 @@ function stageNativeFonts(directory) {
 }
 
 function stageNativeRuntime(directory, platform) {
+    // Native shells bundle their UI and must not ship the web-only cache manifest.
+    fs.rmSync(path.join(directory, "offline-worker.js"), { force: true });
     assert(
         ["tauri", "capacitor"].includes(platform),
         "Unknown native platform"

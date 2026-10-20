@@ -892,10 +892,16 @@ function settingsBackupContext(): any {
     var source = w.__ottSourceIdentity.current(w);
     var get = w.providerGetItem,
         set = w.providerSetItem,
-        del = w.providerDelItem;
-    function current(): boolean {
+        del = w.providerDelItem,
+        driver = w.__ottActiveProviderDriver,
+        prefix = w.p_pref;
+    function current(expectedSource?: string): boolean {
+        var actualSource = w.__ottSourceIdentity.current(w);
         return (
-            source === w.__ottSourceIdentity.current(w) &&
+            (expectedSource === undefined ? source : expectedSource) ===
+                actualSource &&
+            driver === w.__ottActiveProviderDriver &&
+            prefix === w.p_pref &&
             get === w.providerGetItem &&
             set === w.providerSetItem &&
             del === w.providerDelItem
@@ -972,6 +978,9 @@ export function exportSettings(): string {
     if (!context.current()) throw new Error("Settings source changed");
     return JSON.stringify(
         {
+            offline_profiles: w.__ottOfflineProfiles
+                ? w.__ottOfflineProfiles.read()
+                : undefined,
             settings: writeLegacySettingsFields(
                 w.__ottPinSecurity.protectSnapshot(
                     w.OttPlayCore.classicPortableSnapshot(settings, false),
@@ -996,19 +1005,21 @@ export function importSettings(
         request = settingsStore.begin(true),
         context: any,
         writes: any[] = [];
-    var settled = false;
+    var settled = false,
+        applying = false;
     function complete(accept: boolean): void {
         if (settled) return;
         settled = true;
         var applied = false;
         try {
-            applied =
-                accept &&
-                request.active() &&
-                context.current() &&
-                applyImport(request, writes, context.current);
+            if (accept && request.active() && context.current()) {
+                applying = true;
+                applied = applyImport(request, writes, context.current);
+            }
         } catch (_error) {
             /* A rejected import must never report success. */
+        } finally {
+            applying = false;
         }
         request.cancel();
         if (onConfirm) onConfirm(applied);
@@ -1038,6 +1049,23 @@ export function importSettings(
             throw new Error("Invalid timestamp");
         context = settingsBackupContext();
         var current = context.document();
+        var targetSource = context.source;
+        if (env.offline_profiles !== undefined) {
+            if (
+                !w.__ottOfflineProfiles ||
+                !w.__ottOfflineProfiles.validateStore(env.offline_profiles)
+            )
+                throw new Error("Invalid local video profiles");
+            if (
+                w.__ottActiveProviderDriver &&
+                w.__ottActiveProviderDriver.id === "offline" &&
+                context.source === w.__ottSourceIdentity.legacy(w)
+            )
+                targetSource =
+                    env.offline_profiles.active < 0
+                        ? "offline"
+                        : "offline:" + env.offline_profiles.active;
+        }
         var tv =
             env.version === 1
                 ? w.__ottLibraryBackup.legacy(
@@ -1052,7 +1080,7 @@ export function importSettings(
                       w.__ottChannelReferences.create
                   )
                 : env.tv;
-        if (!w.__ottLibraryBackup.validate(tv, context.source))
+        if (!w.__ottLibraryBackup.validate(tv, targetSource))
             throw new Error("Invalid library");
         var input = readLegacySettingsFields(env.settings);
         var installation = w.OttPlayCore.classicInstallationState(
@@ -1069,12 +1097,62 @@ export function importSettings(
             )
                 throw new Error("Invalid setting");
         });
+        if (env.offline_profiles !== undefined) {
+            var profileRead = w.stbGetItem,
+                profileWrite = w.stbSetItem,
+                profileRemove = w.stbDelItem;
+            if (!profileRead || !profileWrite || !profileRemove)
+                throw new Error("Local profile storage unavailable");
+            var profileContext = context.current,
+                profileBefore = profileRead("offlineProfiles"),
+                profileAfter = JSON.stringify(env.offline_profiles),
+                profilePublished = false;
+            context.current = function () {
+                var bytes = profileRead("offlineProfiles");
+                // Once our write is visible, restoring even the exact old bytes
+                // belongs to another writer. Do not publish settings or effects.
+                if (applying && bytes === profileAfter) profilePublished = true;
+                return (
+                    ((!profilePublished && bytes === profileBefore) ||
+                        (applying && bytes === profileAfter)) &&
+                    profileContext(
+                        applying && bytes === profileAfter
+                            ? targetSource
+                            : undefined
+                    ) &&
+                    profileRead === w.stbGetItem &&
+                    profileWrite === w.stbSetItem &&
+                    profileRemove === w.stbDelItem
+                );
+            };
+            writes.push({
+                after: profileAfter,
+                before: profileBefore,
+                storage: {
+                    key: "offlineProfiles",
+                    read: function () {
+                        return profileRead("offlineProfiles");
+                    },
+                    remove: function () {
+                        profileRemove("offlineProfiles");
+                    },
+                    transaction:
+                        profileRead === storage.get &&
+                        profileWrite === storage.set
+                            ? storage.transaction
+                            : undefined,
+                    write: function (value: string) {
+                        profileWrite("offlineProfiles", value);
+                    },
+                },
+            });
+        }
         ["channels", "favorites"].forEach(function (name) {
             if (tv[name] === null) return;
             var port = context.port(
                 (name === "channels"
                     ? "channelLibrary:"
-                    : "favoritesLibrary:") + context.source
+                    : "favoritesLibrary:") + targetSource
             );
             writes.push({
                 after: JSON.stringify(tv[name]),
