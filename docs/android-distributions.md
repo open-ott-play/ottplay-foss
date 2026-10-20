@@ -80,6 +80,10 @@ outside the app and in `OTT_PREVIOUS_HOME`. Use the actual `package/activity`
 component, not a guessed package name. If the result is a resolver/chooser or no
 activity, establish a known working manufacturer Home choice first. Keep that
 launcher installed and enabled.
+On some projector firmware, the chooser also lists Android's `FallbackHome` as
+“Settings”. This is a boot placeholder, not a usable launcher. Choose the actual
+manufacturer launcher for rollback; the setup screen will not accept
+`com.android.settings/.FallbackHome` as a safe replacement.
 
 ```sh
 OTT_PREVIOUS_HOME='REPLACE_WITH_RECORDED_HOME_COMPONENT'
@@ -125,6 +129,17 @@ do not disable the manufacturer's launcher to force selection. The Android
 is the supported association. The manual `am start` above is only a preflight
 check, not evidence that boot startup works.
 
+After changing Home, **wait at least 30 seconds before `adb reboot`**, then check
+the effective Home component again. A `Success` response and a held Home role do
+not confirm that the preference has reached disk. AOSP Android 11
+[delays PackageManager preference writes by 10 seconds](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-11.0.0_r48/services/core/java/com/android/server/pm/PackageManagerService.java);
+an immediate ADB reboot can bypass orderly Android shutdown. Allow this delay
+when restoring the previous Home as well.
+This settling interval does not guarantee the behavior of every firmware.
+If OTT already holds the role but Home resolves to another app, confirming
+**Enable** again opens the system Home selector. Check the effective component
+and a real reboot instead of relying on role ownership alone.
+
 Before rebooting, check the physical Home and Back buttons, return from another
 app and normal launch from the app icon. Confirm there is one functioning
 player session, with the existing profile, remote name and playback engine.
@@ -141,11 +156,12 @@ verified settings component for that device; do not assume a vendor package name
 
 ### Verify startup on the actual device
 
-1. Record the installed APK version, current Home resolution and uptime. Reboot
-   the device normally, or use `adb -s "$OTT_ADB_SERIAL" reboot` while it is safe
-   to interrupt playback.
+1. Record the installed APK version, current Home resolution, boot ID and uptime.
+   After the settling interval above, reboot the device normally, or use
+   `adb -s "$OTT_ADB_SERIAL" reboot` while it is safe to interrupt playback.
 2. After the device reconnects, inspect `sys.boot_completed`, uptime and the
-   foreground activity. **Do not send `am start`, a Home key event or a remote
+   foreground activity. Confirm the boot ID differs from the recorded pre-reboot
+   value. **Do not send `am start`, a Home key event or a remote
    launch command during this observation.** Those would invalidate the
    automatic-start test.
 3. Confirm that OTT appears by itself, then that the existing remote registration
@@ -164,6 +180,7 @@ Useful read-only observations after reconnecting:
 
 ```sh
 adb -s "$OTT_ADB_SERIAL" shell getprop sys.boot_completed
+adb -s "$OTT_ADB_SERIAL" shell cat /proc/sys/kernel/random/boot_id
 adb -s "$OTT_ADB_SERIAL" shell cat /proc/uptime
 adb -s "$OTT_ADB_SERIAL" shell dumpsys activity activities
 adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
@@ -218,6 +235,29 @@ secure screensaver_enabled` if the original value was absent (`null`). This
 setting is separate from selecting the Home app. The tested installation kept
 its original screen-off timeout: OTT's active playback window already held
 `KEEP_SCREEN_ON`. Do not assume every vendor screen saver follows this setting.
+
+### Hardware validation: X1BQ, October 19, 2026
+
+Tested on Android 11 with LuminaOS 1.0.73. The existing app was updated in place
+with a signed derivative of stable 1.1.57 containing the Home changes:
+`1.1.57-local.projector.dcd399cbed0d` (versionCode `10434`). This is a local test
+build, not a separately published release.
+
+After assigning Home and allowing at least 30 seconds for persistence, two
+successive software reboots opened OTT automatically, on the preceding and
+final builds. Both changed the boot ID, completed Android startup, and brought
+`play.ott.foss/.HomeActivity` to the foreground at approximately 30 and 33 seconds
+of uptime. No app-launch commands or Home key events were sent after reboot.
+The update preserved the Home profile and existing remote-control registration.
+
+An earlier `adb reboot` about two seconds after Home selection retained OTT's
+role but reverted the effective Home to LuminaOS. The retry with the settling
+interval passed. This is consistent with Android's delayed persistence, but is
+not proof that every firmware behaves identically. The manufacturer's launcher
+and settings remain installed and accessible.
+
+A normal power-off/power-on cycle and startup with delayed Wi-Fi need separate
+validation; a successful ADB reboot does not cover them.
 
 ## Release identity
 

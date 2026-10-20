@@ -127,10 +127,18 @@ try {
                 if(failRead)throw new SecurityException();
             }
             public ResolveInfo resolveActivity(android.content.Intent i,int flags){check(i,flags);return selected;}
-            public java.util.List<ResolveInfo> queryIntentActivities(android.content.Intent i,int flags){check(i,flags);return candidates;}
+            public java.util.List<ResolveInfo> queryIntentActivities(android.content.Intent i,int flags){
+                check(i,flags);
+                java.util.List<ResolveInfo> result=new java.util.ArrayList<>();
+                for(ResolveInfo candidate:candidates)if(candidate.runtimeEnabled)result.add(candidate);
+                return result;
+            }
         }`,
         "android/content/pm/ResolveInfo.java": `package android.content.pm; public class ResolveInfo {
             public ActivityInfo activityInfo=new ActivityInfo();
+            public int priority;
+            // Android resolves the runtime override before the manifest flag.
+            public boolean runtimeEnabled=true;
             public ResolveInfo(String p,String n){activityInfo.packageName=p;activityInfo.name=n;}
         }`,
         "android/content/res/Resources.java": `package android.content.res; public class Resources {
@@ -228,6 +236,11 @@ try {
             }
             throw new AssertionError("Button missing");
         }
+        static boolean shows(HomeSetupActivity a,int text){
+            for(android.view.View v:((LinearLayout)((ScrollView)a.content).child).children)
+                if(v instanceof TextView && ((TextView)v).text==text)return true;
+            return false;
+        }
         static void otherHome(HomeSetupActivity a){
             a.pm.selected=new ResolveInfo("vendor.home","vendor.home.Launcher");
             a.pm.candidates.clear();a.pm.candidates.add(a.pm.selected);a.roles.held=false;
@@ -246,13 +259,21 @@ try {
             check(a.pm.writes==0 && a.starts.isEmpty(),"Cancel must not enable or request Home");
             a=enabled();check(a.pm.state==1 && a.pm.writes==1 && a.roles.requests==1,"Confirmed enable/request");
             a.onResume();check(a.pm.state==1 && a.pm.writes==1,"Cancelled role selection must not silently change alias");
+            a.pm.selected=new ResolveInfo("play.ott.foss","play.ott.foss.HomeActivity");
+            a.pm.selected.activityInfo.enabled=false; // Manifest default remains false.
+            a.pm.candidates.add(a.pm.selected);a.roles.held=true;a.onResume();
+            check(shows(a,R.string.home_setup_selected),"Runtime-enabled manifest-disabled alias is selected Home");
+            a.roles.held=false;a.pm.selected=null;a.pm.candidates.clear();
             click(a,R.string.home_setup_disable);AlertDialog.last.cancel();
             check(a.pm.writes==1,"Cancel disable must not mutate");
             blockedDisable(a); // No default.
             a.pm.selected=new ResolveInfo("android","ResolverActivity");blockedDisable(a);
+            a.pm.selected=new ResolveInfo("com.android.settings","com.android.settings.FallbackHome");
+            a.pm.candidates.add(a.pm.selected);blockedDisable(a); // Boot placeholder is not a usable launcher.
             otherHome(a);a.pm.candidates.clear();blockedDisable(a); // Hidden/not a HOME candidate.
             otherHome(a);a.pm.selected.activityInfo.exported=false;blockedDisable(a);
-            otherHome(a);a.pm.selected.activityInfo.enabled=false;blockedDisable(a);
+            otherHome(a);a.pm.selected.activityInfo.enabled=false;a.pm.selected.runtimeEnabled=false;blockedDisable(a);
+            otherHome(a);a.pm.selected.runtimeEnabled=false;blockedDisable(a); // Runtime-disabled manifest-enabled.
             otherHome(a);a.pm.selected.activityInfo.applicationInfo.enabled=false;blockedDisable(a);
             otherHome(a);a.roles.held=true;blockedDisable(a); // Role/resolver disagreement.
             otherHome(a);a.roles.fail=true;blockedDisable(a);a.roles.fail=false;
@@ -260,7 +281,9 @@ try {
             a.pm.selected=new ResolveInfo("play.ott.foss","play.ott.foss.HomeActivity");
             a.pm.candidates.clear();a.pm.candidates.add(a.pm.selected);AlertDialog.last.yes();
             check(a.pm.writes==1,"Home changed while confirmation open");
-            otherHome(a);click(a,R.string.home_setup_disable);AlertDialog.last.yes();
+            otherHome(a);a.pm.selected.activityInfo.enabled=false; // Alternate launcher explicitly enabled.
+            a.pm.selected.priority=-1000; // Low priority alone does not invalidate a real launcher.
+            click(a,R.string.home_setup_disable);AlertDialog.last.yes();
             check(a.pm.state==2 && a.pm.writes==2,"Confirmed alternate Home permits disable");
             a=fresh();a.roles.available=false;click(a,R.string.home_setup_enable);AlertDialog.last.yes();
             check(a.starts.contains("home-settings") && a.roles.requests==0,"Unavailable role fallback");
@@ -274,6 +297,29 @@ try {
             check(a.pm.state==1 && Toast.shown>shown,"Missing settings must report without disabling alias");
             a=fresh();a.pm.failWrite=true;click(a,R.string.home_setup_enable);AlertDialog.last.yes();
             check(a.pm.writes==0 && a.starts.isEmpty(),"Failed enable must not request Home");
+            a=fresh();otherHome(a);a.roles.held=true;
+            click(a,R.string.home_setup_enable);AlertDialog.last.cancel();
+            check(a.pm.writes==0 && a.starts.isEmpty(),"Role mismatch still requires confirmation");
+            click(a,R.string.home_setup_enable);AlertDialog.last.yes();
+            check(a.roles.requests==0 && a.starts.size()==1 && a.starts.contains("home-settings"),
+                "Held role with another selected Home must offer the system selector");
+            check(a.pm.state==1 && a.pm.writes==1 &&
+                a.pm.selected.activityInfo.packageName.equals("vendor.home"),
+                "Recovery must not disable the alias or silently replace another Home");
+            a=fresh();a.roles.held=true;click(a,R.string.home_setup_enable);AlertDialog.last.yes();
+            check(a.roles.requests==0 && a.starts.contains("home-settings"),
+                "Held role without a resolved Home must offer the system selector");
+            a=fresh();a.roles.held=true;
+            a.pm.selected=new ResolveInfo("com.android.settings","com.android.settings.FallbackHome");
+            a.pm.candidates.add(a.pm.selected);click(a,R.string.home_setup_enable);AlertDialog.last.yes();
+            check(a.roles.requests==0 && a.starts.contains("home-settings"),
+                "Boot placeholder must not satisfy held-role recovery");
+            a=fresh();a.roles.held=true;
+            a.pm.selected=new ResolveInfo("play.ott.foss","play.ott.foss.HomeActivity");
+            a.pm.selected.activityInfo.enabled=false;a.pm.candidates.add(a.pm.selected);
+            click(a,R.string.home_setup_enable);AlertDialog.last.yes();
+            check(a.roles.requests==0 && a.starts.isEmpty(),
+                "Confirmed own Home does not need another chooser or role request");
             android.os.Build.VERSION.SDK_INT=24;a=enabled();
             check(a.roles.requests==0 && a.starts.contains("home-settings"),"API24 has no RoleManager request");
             android.os.Build.VERSION.SDK_INT=29;

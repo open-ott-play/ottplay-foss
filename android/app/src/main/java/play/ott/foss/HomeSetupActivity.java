@@ -76,11 +76,17 @@ public final class HomeSetupActivity extends Activity {
         PackageManager pm = getPackageManager();
         ResolveInfo selected = pm.resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
         if (selected == null || selected.activityInfo == null) return null;
+        // AOSP's boot placeholder only waits for a real launcher to become
+        // available. Some firmware exposes it in the Home chooser as "Settings".
+        if ("com.android.settings".equals(selected.activityInfo.packageName)
+                && "com.android.settings.FallbackHome".equals(selected.activityInfo.name)) return null;
         // A system resolver/chooser is not a selected Home. Require a real,
         // enabled HOME candidate, visible through the narrow manifest query.
+        // The query excludes runtime-disabled components. ActivityInfo.enabled
+        // retains the manifest default even after an explicit runtime enable.
         for (ResolveInfo candidate : pm.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY)) {
             ActivityInfo info = candidate.activityInfo;
-            if (info != null && info.enabled && info.exported
+            if (info != null && info.exported
                     && info.applicationInfo != null && info.applicationInfo.enabled
                     && info.packageName.equals(selected.activityInfo.packageName)
                     && info.name.equals(selected.activityInfo.name)) {
@@ -147,7 +153,14 @@ public final class HomeSetupActivity extends Activity {
             try {
                 RoleManager roles = getSystemService(RoleManager.class);
                 if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_HOME)) {
-                    if (roles.isRoleHeld(RoleManager.ROLE_HOME)) return;
+                    if (roles.isRoleHeld(RoleManager.ROLE_HOME)) {
+                        // The role and effective Home can disagree on vendor firmware.
+                        ComponentName home = selectedHome();
+                        if (home == null || !home.getPackageName().equals(getPackageName())) {
+                            openHomeSettings();
+                        }
+                        return;
+                    }
                     startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_HOME), 1);
                     return;
                 }
