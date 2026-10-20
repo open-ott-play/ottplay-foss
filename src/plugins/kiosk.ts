@@ -18,6 +18,8 @@ export function createKiosk(w: any): any {
     var screenAwake = true;
     var sleepingHandle: any = null;
     var sleepingPolicy: any = null;
+    var sleepingSource: string | null = null;
+    var screenEnd: (() => void) | null = null;
     var deferredPolicy: any = null;
     var sleepBackend: any = null;
     var sleepUnsubscribe: any = null;
@@ -95,8 +97,14 @@ export function createKiosk(w: any): any {
                 : source() === policy.source)
         );
     }
+    function screenManaged(): boolean {
+        return locked() || provider() === "offline";
+    }
+    function screenBlocked(): boolean {
+        return !screenAwake && screenManaged();
+    }
     function pauseForScreen(): void {
-        if (screenAwake || !locked() || applyingScreenPause) return;
+        if (!screenBlocked() || applyingScreenPause) return;
         applyingScreenPause = true;
         try {
             var backend = w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
@@ -134,6 +142,7 @@ export function createKiosk(w: any): any {
         if (screenAwake === awake) return;
         screenAwake = awake;
         if (!awake) {
+            sleepingSource = provider() === "offline" ? source() : null;
             var currentBackend =
                 w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
             var currentHandle = currentBackend && currentBackend.current();
@@ -149,11 +158,26 @@ export function createKiosk(w: any): any {
         var handle = sleepingHandle;
         var selected = sleepingPolicy;
         var deferred = deferredPolicy;
+        var selectedSource = sleepingSource;
+        var end = screenEnd;
+        screenEnd = null;
+        sleepingSource = null;
         sleepingHandle = sleepingPolicy = deferredPolicy = null;
         reset();
-        if (!locked() || !currentSource()) return;
+        if (
+            w.__ottStandby?.blocked() ||
+            !(
+                (locked() && currentSource()) ||
+                (provider() === "offline" && source() === selectedSource)
+            )
+        )
+            return;
+        if (end) {
+            end();
+            return;
+        }
         var backend = w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
-        if (policy === deferred) {
+        if (locked() && policy === deferred) {
             play();
         } else if (
             handle &&
@@ -168,6 +192,7 @@ export function createKiosk(w: any): any {
             var state =
                 w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
             if (
+                policy &&
                 policy.channel &&
                 state &&
                 state.target &&
@@ -209,7 +234,7 @@ export function createKiosk(w: any): any {
             provider: policy ? policy.provider : null,
             retries: retries,
             retry_seconds: 10,
-            screen_suspended: locked() && !screenAwake,
+            screen_suspended: screenBlocked(),
             state: locked() ? "locked" : policy ? "waiting" : "off",
             strict: !!(policy && policy.strict),
             video_progress: videoProgress.snapshot(),
@@ -467,7 +492,10 @@ export function createKiosk(w: any): any {
     }
     function tick(): void {
         if (w.__ottStandby?.blocked()) return;
-        if (!locked()) return;
+        if (!locked()) {
+            pauseForScreen();
+            return;
+        }
         var time = now();
         if (time < lastProgress) lastProgress = time;
         var mediaAdmitted = false;
@@ -1140,6 +1168,9 @@ export function createKiosk(w: any): any {
         allowed: allowed,
         allowedMedia: allowedMedia,
         beginSeek: beginSeek,
+        deferScreenEnd: function (end: () => void): void {
+            if (screenBlocked()) screenEnd = end;
+        },
         enabled: enabled,
         folderLoop: folderLoop,
         folderNext: folderNext,
@@ -1152,6 +1183,7 @@ export function createKiosk(w: any): any {
             play();
             return true;
         },
+        screenBlocked: screenBlocked,
         setScreenAwake: setScreenAwake,
         snapshot: snapshot,
         stopDiagnostics: stopDiagnostics,

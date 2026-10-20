@@ -1122,6 +1122,24 @@ function classicMediaRuntime(): any {
         project(library.snapshot("none"), false);
         return true;
     }
+    function deferLocalEnd(generation: number): boolean {
+        if (
+            w.__ottActiveProviderDriver?.id !== "offline" ||
+            !w.__ottKiosk?.screenBlocked?.()
+        )
+            return false;
+        w.__ottKiosk.deferScreenEnd(function () {
+            if (
+                current() &&
+                w.__ottClassicPlayback.snapshot().generation === generation
+            ) {
+                if (completedLocalGeneration === generation)
+                    completedLocalGeneration = -1;
+                api.ended(generation);
+            }
+        });
+        return true;
+    }
     /** Channel order remains owned by the standard list, including live appends. */
     function movePlaylistEntry(
         playback: any,
@@ -1129,6 +1147,12 @@ function classicMediaRuntime(): any {
         natural: boolean,
         admit?: () => boolean
     ) {
+        if (
+            natural &&
+            (w.__ottStandby?.blocked() ||
+                deferLocalEnd(w.__ottClassicPlayback.snapshot().generation))
+        )
+            return;
         var channel = playback.sequence && playback.sequence.channel;
         if (!channel || !channel.list || !channel.list.active()) return;
         var members = channel.list.members();
@@ -1538,6 +1562,7 @@ function classicMediaRuntime(): any {
             }
         },
         ended: function (generation: number) {
+            if (w.__ottStandby?.blocked() || deferLocalEnd(generation)) return;
             // Local files use the channel catalog, not a media-library queue.
             // Their finite target therefore has no mediaClassicPlayback owner.
             var state = w.__ottClassicPlayback.snapshot();
@@ -1570,6 +1595,8 @@ function classicMediaRuntime(): any {
                 completedLocalGeneration = generation;
                 var revision = automaticGeneration;
                 function localAdmitted(): boolean {
+                    if (w.__ottStandby?.blocked() || deferLocalEnd(generation))
+                        return false;
                     var latest = w.__ottClassicPlayback.snapshot();
                     return (
                         current() &&

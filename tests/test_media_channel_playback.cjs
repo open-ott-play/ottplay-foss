@@ -1036,6 +1036,76 @@ console.log(
 console.log(
     "PASS Local folder kiosk natural completion wraps within the folder"
 );
+for (const folder of [false, true]) {
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c._playChannel(0, 0);
+    let asleep = true,
+        deferred;
+    c.__ottKiosk = {
+        allowed: () => true,
+        deferScreenEnd: (fn) => {
+            deferred = fn;
+        },
+        folderLoop: () => folder,
+        folderNext: () => 103,
+        locked: () => folder,
+        screenBlocked: () => asleep,
+    };
+    const moves = [];
+    c.playChannel = (...args) => moves.push(args);
+    end();
+    assert.equal(
+        moves.length,
+        0,
+        "screen-off EOF never opens another local file"
+    );
+    assert.equal(typeof deferred, "function");
+    asleep = false;
+    deferred();
+    assert.equal(moves.length, 1, "wake advances deferred completion once");
+    assert.equal(moves[0][1], folder ? 2 : 1);
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(moves.length, 1, "duplicate EOF cannot advance twice");
+}
+{
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c._playChannel(0, 0);
+    let asleep = false,
+        deferred;
+    c.__ottKiosk = {
+        allowed: () => true,
+        deferScreenEnd: (fn) => {
+            deferred = fn;
+        },
+        locked: () => false,
+        screenBlocked: () => asleep,
+    };
+    const moves = [];
+    c.playChannel = (...args) => moves.push(args);
+    end();
+    assert.equal(moves.length, 1);
+    asleep = true;
+    assert.equal(
+        moves[0][3](),
+        false,
+        "late async local admission blocked by screen off"
+    );
+    asleep = false;
+    deferred();
+    assert.equal(moves.length, 2);
+    assert.equal(moves[1][3](), true, "wake retries the retired admission");
+}
+console.log(
+    "PASS local EOF and delayed admission wait for screen wake with or without kiosk"
+);
 {
     const { c } = setup("offline");
     c.checkMedia = () => {};

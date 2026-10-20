@@ -1940,6 +1940,88 @@ function screenRig() {
     };
     return { ...r, calls, publish: () => subscriber({ handle: r.handle }) };
 }
+function localScreenRig(mode = "off") {
+    const r = screenRig();
+    r.request({ mode: "off" });
+    r.w.__ottActiveProviderDriver = { id: "offline" };
+    r.source("offline:device");
+    if (mode === "waiting") r.request({ mode: "on" });
+    if (mode === "folder") {
+        Object.assign(r.w.channels.a, {
+            __ottLocalSource: "local-folder",
+            __ottLocalSourceName: "Local",
+        });
+        r.w.__ottLocalMedia = {
+            completedSources: () => [
+                { id: "local-folder", kind: "folder", name: "Local" },
+            ],
+        };
+        assert.equal(
+            r.request({ mode: "on", query: "folder:Local", strict: true })
+                .status,
+            "ok"
+        );
+    }
+    r.calls.length = 0;
+    return r;
+}
+for (const mode of ["off", "waiting", "folder"]) {
+    const r = localScreenRig(mode);
+    r.kiosk.setScreenAwake(false);
+    assert.deepEqual(
+        r.calls,
+        ["suspend"],
+        "local screen off suspends in " + mode
+    );
+    assert.equal(r.kiosk.screenBlocked(), true);
+    r.advance(90);
+    assert.equal(r.kiosk.snapshot().retries, 0);
+    r.sample.phase = "playing";
+    r.publish();
+    assert.deepEqual(
+        r.calls,
+        ["suspend", "suspend"],
+        "late local start remains suspended"
+    );
+    r.kiosk.setScreenAwake(true);
+    r.kiosk.setScreenAwake(true);
+    assert.equal(r.calls.filter((c) => c === "resume").length, 1);
+    assert.equal(r.state.position, 37);
+}
+for (const change of [
+    (r) => r.source("offline:other"),
+    (r) => {
+        r.w.__ottActiveProviderDriver = { id: "plex" };
+    },
+    (r) => {
+        r.backend.current = () => ({ ...r.handle });
+    },
+    (r) => {
+        r.w.__ottStandby = { blocked: () => true };
+    },
+]) {
+    const r = localScreenRig();
+    r.kiosk.setScreenAwake(false);
+    change(r);
+    r.kiosk.setScreenAwake(true);
+    assert.equal(
+        r.calls.includes("resume"),
+        false,
+        "stale/standby local wake is inert"
+    );
+}
+{
+    const r = localScreenRig();
+    let ends = 0;
+    r.kiosk.setScreenAwake(false);
+    r.kiosk.deferScreenEnd(() => {
+        ends++;
+    });
+    assert.equal(ends, 0);
+    r.kiosk.setScreenAwake(true);
+    r.kiosk.setScreenAwake(true);
+    assert.equal(ends, 1, "deferred local completion resumes once on wake");
+}
 {
     const r = screenRig();
     r.kiosk.setScreenAwake(false);
