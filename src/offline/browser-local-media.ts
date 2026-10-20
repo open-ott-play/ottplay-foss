@@ -7,6 +7,7 @@ export function installBrowserLocalMedia(w: any): any {
     var scanGeneration = 0;
     var pendingFiles: any = {};
     var pendingFileCount = 0;
+    var pendingDirectories: any = Object.create(null);
     var urlApi = w.URL || w.webkitURL;
     var available = !!(w.indexedDB && urlApi && urlApi.createObjectURL);
 
@@ -133,6 +134,31 @@ export function installBrowserLocalMedia(w: any): any {
             );
         });
         return entry.result;
+    }
+    function firstDirectoryRead(id: string, handle: any): any {
+        if (pendingDirectories[id]) return pendingDirectories[id];
+        var entry: any = { iterator: handle.values() };
+        pendingDirectories[id] = entry;
+        var pending: Promise<any>;
+        try {
+            pending = Promise.resolve(entry.iterator.next());
+        } catch (error) {
+            pending = Promise.reject(error);
+        }
+        // Only the unresolved first read is shared. Once it settles, a later
+        // scan must start a fresh iterator so it can replay every directory entry.
+        entry.pending = pending.then(
+            function (value) {
+                delete pendingDirectories[id];
+                return value;
+            },
+            function (error) {
+                delete pendingDirectories[id];
+                throw error;
+            }
+        );
+        if (w.__ottStandby) w.__ottStandby.observe(pending);
+        return entry;
     }
     function item(
         id: string,
@@ -314,13 +340,20 @@ export function installBrowserLocalMedia(w: any): any {
         ): Promise<void> {
             if (!active()) return Promise.resolve();
             phase = "enumerating";
-            var iterator = handle.values();
+            var opening: any = null;
             function next(): Promise<void> {
                 if (!active()) return Promise.resolve();
                 return readPhase(
                     "enumerating",
                     function () {
-                        return iterator.next();
+                        if (!opening) {
+                            opening = firstDirectoryRead(
+                                sourceId + ":" + prefix,
+                                handle
+                            );
+                            return opening.pending;
+                        }
+                        return opening.iterator.next();
                     },
                     discovered === 0
                 ).then(function (step) {

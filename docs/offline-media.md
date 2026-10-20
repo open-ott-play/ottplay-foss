@@ -66,8 +66,11 @@ even the first entry to JavaScript. During that stage, **Entries found: 0** does
 not mean that OTT is copying the videos or that the folder is empty. The player
 cannot display an entry which the browser has not returned yet. A previously
 selected file can start through the direct lookup described above; a first-time
-folder selection must wait for that initial browser result. Repeated Refresh or
-page reloads do not bypass this operating-system work.
+folder selection must wait for that initial browser result. Retrying within the
+same page shares an already pending initial directory read instead of starting
+another one. Only the current scan uses its result. Once the first read finishes,
+a later scan starts a fresh directory iterator so no entries are lost. Refresh
+or page reloads do not bypass the operating system's work.
 
 Closing the page, pressing **Q** on a PC, or exiting the native app saves the
 current video position before stopping playback. On the next start, the exact

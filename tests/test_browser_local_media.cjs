@@ -743,6 +743,85 @@ async function builtUi(devicePath) {
             },
             { bytes: Array.from(movie), stalled: stalledFixture }
         );
+        if (process.argv.includes("--initial-retry")) {
+            await page.evaluate(async () => {
+                const media = window.__ottBrowserLocalMedia;
+                await media.importFolder({ deferScan: true });
+                const prototype = FileSystemDirectoryHandle.prototype;
+                const original = prototype.values;
+                window.__initialReadCalls = 0;
+                prototype.values = function () {
+                    const iterator = original.call(this);
+                    if (this.name !== "selected-folder") return iterator;
+                    let first = true;
+                    return {
+                        next: () => {
+                            if (!first) return iterator.next();
+                            first = false;
+                            window.__initialReadCalls++;
+                            return new Promise((resolve) => {
+                                window.__releaseInitialRead = () =>
+                                    resolve(iterator.next());
+                            });
+                        },
+                    };
+                };
+                window.__oldInitialOne = window.__ottLocalMedia.list();
+            });
+            await page.waitForFunction(() => window.__initialReadCalls === 1);
+            await page.evaluate(() => {
+                window.__oldInitialTwo = window.__ottLocalMedia.list();
+            });
+            await page.waitForTimeout(100);
+            await page.evaluate(() => {
+                window.stbSetItem("ottplayprov", "offline");
+                window.loadProv("offline");
+            });
+            await page.waitForTimeout(100);
+            assert.equal(
+                await page.evaluate(() => window.__initialReadCalls),
+                1,
+                "new provider load reuses the pending first directory read after two earlier scans"
+            );
+            await page.evaluate(() => window.__releaseInitialRead());
+            await page.waitForFunction(() => {
+                const video = document.querySelector("video");
+                return (
+                    video &&
+                    !video.error &&
+                    !video.paused &&
+                    video.currentTime > 0.1 &&
+                    video.getVideoPlaybackQuality().totalVideoFrames > 0
+                );
+            });
+            const result = await page.evaluate(async () => ({
+                calls: window.__initialReadCalls,
+                frames: document
+                    .querySelector("video")
+                    .getVideoPlaybackQuality().totalVideoFrames,
+                old: await Promise.all([
+                    window.__oldInitialOne,
+                    window.__oldInitialTwo,
+                ]),
+                selected:
+                    window.channels[window.curList[window.primaryIndex]]
+                        .channel_name,
+            }));
+            assert.equal(result.calls, 1);
+            assert.ok(
+                result.old.every(
+                    (value) => value.cancelled && !value.items.length
+                )
+            );
+            assert.equal(result.selected, "folder-video.mp4");
+            assert.ok(result.frames > 0);
+            console.log(
+                "PASS shared first directory read " +
+                    devicePath +
+                    ": latest provider decoded video after one pending native call"
+            );
+            return;
+        }
         async function blockOlderSource() {
             await page.evaluate(async () => {
                 const root = await navigator.storage.getDirectory();
