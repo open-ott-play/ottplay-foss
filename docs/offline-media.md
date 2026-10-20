@@ -42,9 +42,14 @@ large folder. Later batches do not restart playback or reset the selection. If a
 playback** without immediately repeating the stalled scan. Menu navigation and
 saved source/video selection remain available; retrying does not copy media.
 The browser's file picker is allowed to remain open while you choose a source.
-After selection, a scan that stops making progress reaches the existing
-60-second inactivity limit and returns control with an error instead of leaving
-the loading dialog open indefinitely.
+The loading dialog distinguishes the browser folder picker, directory enumeration,
+and file metadata reads. It shows entries discovered separately from playable
+videos; neither counter measures copied or downloaded media. Before the first
+playable video, directory enumeration may take up to ten minutes, including
+nested folders on a network drive. An unchanged status does not extend this
+deadline. File metadata reads and later stalled reads retain the 60-second
+inactivity limit. Cancel remains available while waiting; expired or cancelled
+reads cannot revive the old dialog or replace a newer selection.
 
 Closing the page, pressing **Q** on a PC, or exiting the native app saves the
 current video position before stopping playback. On the next start, the exact

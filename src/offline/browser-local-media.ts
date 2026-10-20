@@ -145,6 +145,7 @@ export function installBrowserLocalMedia(w: any): any {
             sources: any[] = [],
             live: any = {};
         var scanned = 0,
+            discovered = 0,
             published = 0,
             lastPublish = Date.now();
         var stopped = false,
@@ -158,6 +159,7 @@ export function installBrowserLocalMedia(w: any): any {
                 available: available,
                 cancelled: !active(),
                 directSources: !!w.showDirectoryPicker,
+                discovered: discovered,
                 items: items.slice(),
                 offlineReady: !!(
                     w.navigator.serviceWorker &&
@@ -201,14 +203,42 @@ export function installBrowserLocalMedia(w: any): any {
                 progress(true);
             }
         }
-        function visit(): Promise<void> {
+        function visit(force = false): Promise<void> {
             scanned++;
-            progress();
+            progress(force);
             return scanned % 64 === 0
                 ? new Promise(function (resolve) {
                       w.setTimeout(resolve, 0);
                   })
                 : Promise.resolve();
+        }
+        function readPhase(
+            name: string,
+            read: () => any,
+            force = false
+        ): Promise<any> {
+            phase = name;
+            progress(force);
+            if (!active()) return Promise.resolve(null);
+            // Fast reads keep batch publication cheap. A pending browser call
+            // exposes its real phase once, without inventing scan progress.
+            var timer = w.setTimeout(function () {
+                progress(true);
+            }, 100);
+            return Promise.resolve()
+                .then(function () {
+                    return active() ? read() : null;
+                })
+                .then(
+                    function (value) {
+                        w.clearTimeout(timer);
+                        return value;
+                    },
+                    function (error) {
+                        w.clearTimeout(timer);
+                        throw error;
+                    }
+                );
         }
         // Manual async iteration keeps legacy ES5 bundles compatible. Push into
         // one result array instead of copying a growing array for every file.
@@ -221,13 +251,21 @@ export function installBrowserLocalMedia(w: any): any {
             var iterator = handle.values();
             function next(): Promise<void> {
                 if (!active()) return Promise.resolve();
-                return Promise.resolve(iterator.next()).then(function (step) {
-                    if (step.done || !active()) return;
+                return readPhase(
+                    "enumerating",
+                    function () {
+                        return iterator.next();
+                    },
+                    discovered === 0
+                ).then(function (step) {
+                    if (!step || step.done || !active()) return;
                     var child = step.value,
                         name = prefix + child.name;
+                    discovered++;
+                    var visited = visit(discovered === 1);
                     var work: Promise<any>;
                     if (child.kind === "directory")
-                        work = Promise.resolve().then(function () {
+                        work = visited.then(function () {
                             return walk(child, name + "/", sourceId);
                         });
                     // A known non-media extension cannot become playable by
@@ -237,11 +275,13 @@ export function installBrowserLocalMedia(w: any): any {
                             child.name
                         )
                     )
-                        work = Promise.resolve();
+                        work = visited;
                     else
-                        work = Promise.resolve()
+                        work = visited
                             .then(function () {
-                                return active() ? child.getFile() : null;
+                                return readPhase("metadata", function () {
+                                    return active() ? child.getFile() : null;
+                                });
                             })
                             .then(function (file) {
                                 if (active() && file && media(file))
@@ -264,7 +304,6 @@ export function installBrowserLocalMedia(w: any): any {
                             )
                                 throw error;
                         })
-                        .then(visit)
                         .then(next);
                 });
             }
@@ -290,21 +329,32 @@ export function installBrowserLocalMedia(w: any): any {
             parts.slice(0, -1).forEach(function (part) {
                 handle = handle.then(function (directory) {
                     return active()
-                        ? directory.getDirectoryHandle(part)
+                        ? readPhase("metadata", function () {
+                              return directory.getDirectoryHandle(part);
+                          })
                         : Promise.reject();
                 });
             });
             return handle
                 .then(function (directory) {
                     return active()
-                        ? directory.getFileHandle(parts[parts.length - 1])
+                        ? readPhase("metadata", function () {
+                              return directory.getFileHandle(
+                                  parts[parts.length - 1]
+                              );
+                          })
                         : Promise.reject();
                 })
                 .then(function (fileHandle) {
-                    return active() ? fileHandle.getFile() : Promise.reject();
+                    return active() && fileHandle
+                        ? readPhase("metadata", function () {
+                              return fileHandle.getFile();
+                          })
+                        : Promise.reject();
                 })
                 .then(function (file) {
-                    if (media(file)) add(preferredId!, file, path, record.id);
+                    if (file && media(file))
+                        add(preferredId!, file, path, record.id);
                 })
                 .catch(function () {
                     /* Missing paths fall back to the full scan. */
@@ -396,17 +446,22 @@ export function installBrowserLocalMedia(w: any): any {
                                             record.id
                                         );
                                     });
-                                return record.handle
-                                    .getFile()
-                                    .then(function (file) {
-                                        if (media(file))
-                                            add(
-                                                record.id,
-                                                file,
-                                                file.name,
-                                                record.id
-                                            );
-                                    });
+                                discovered++;
+                                return readPhase(
+                                    "metadata",
+                                    function () {
+                                        return record.handle.getFile();
+                                    },
+                                    true
+                                ).then(function (file) {
+                                    if (active() && file && media(file))
+                                        add(
+                                            record.id,
+                                            file,
+                                            file.name,
+                                            record.id
+                                        );
+                                });
                             })
                             .catch(function (error) {
                                 source.access =

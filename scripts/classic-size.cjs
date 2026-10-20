@@ -295,7 +295,10 @@ const { gzipSync } = require("node:zlib");
 // Deferred browser import, source priority and one-shot provider handoff add
 // 1107 raw bytes on Node 22; reserve 1280 for the feature and version suffix.
 // Web gzip is 302279 bytes; allow the measured native and release suffix delta.
-const BUDGET = Object.freeze({ bytes: 976823, gzipBytes: 302412 });
+// Browser enumeration phases, honest counters and cold-directory deadlines add
+// 1337 raw entry bytes on Node 22; reserve 1536 including release identity room.
+// Web gzip is 302703 bytes; retain 448 extra bytes for native/release variation.
+const BUDGET = Object.freeze({ bytes: 978359, gzipBytes: 302860 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -440,7 +443,7 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Node 22 beta output totals 350370 gzip bytes for native builds; the observed
 // CI entry variation leaves only 47 bytes. Retain 128 bytes of aggregate margin.
 // Integrated Node 22 native output is 350730 gzip bytes; retain suffix room.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1109079, gzipBytes: 350778 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1110615, gzipBytes: 351226 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

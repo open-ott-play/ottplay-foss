@@ -4,7 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 
-module.exports = async function browserImportRegression(
+async function browserImportRegression(
     root = path.resolve(__dirname, "../..")
 ) {
     function load(relative, requireModule = require) {
@@ -114,16 +114,28 @@ module.exports = async function browserImportRegression(
             values() {
                 enumerations++;
                 let index = 0;
+                const entries = options.nestedBlocked
+                    ? [
+                          {
+                              kind: "directory",
+                              name: "Nested",
+                              values: () => ({ next: () => blocked.promise }),
+                          },
+                      ]
+                    : [first, second];
                 return {
                     next: () =>
-                        Promise.resolve(
-                            index < 2
-                                ? {
-                                      done: false,
-                                      value: [first, second][index++],
-                                  }
-                                : { done: true }
-                        ),
+                        options.blockIterator ||
+                        (options.blockAfterFirst && index > 0)
+                            ? blocked.promise
+                            : Promise.resolve(
+                                  index < entries.length
+                                      ? {
+                                            done: false,
+                                            value: entries[index++],
+                                        }
+                                      : { done: true }
+                              ),
                 };
             },
         };
@@ -224,6 +236,7 @@ module.exports = async function browserImportRegression(
                 },
             }),
             addEventListener() {},
+            clearTimeout: ownClock.clear.bind(ownClock),
             closeList() {
                 if (options.realisticClose) w.__ottLocalMedia.suspend();
             },
@@ -292,15 +305,22 @@ module.exports = async function browserImportRegression(
             played: () => played,
             progress: () => progressNode.textContent,
             reads: () => reads,
+            releaseEnumeration: () =>
+                blocked.resolve({ done: false, value: first }),
             spinner: () => !!dialog,
             async tick(ms) {
-                now += ms;
-                for (const task of Array.from(tasks)) {
-                    if (task.at <= now) {
-                        tasks.delete(task);
-                        task.fn();
-                    }
+                const target = now + ms;
+                for (;;) {
+                    const next = Array.from(tasks)
+                        .filter((task) => task.at <= target)
+                        .sort((left, right) => left.at - right.at)[0];
+                    if (!next) break;
+                    now = next.at;
+                    tasks.delete(next);
+                    next.fn();
+                    await flush();
                 }
+                now = target;
                 await flush();
             },
             timers: () => tasks.size,
@@ -423,11 +443,83 @@ module.exports = async function browserImportRegression(
     );
     assert.equal(unusual.reads(), 1);
 
+    for (const options of [{ blockIterator: true }, { nestedBlocked: true }]) {
+        const delayedFolder = fixture(options);
+        delayedFolder.click("add-folder");
+        delayedFolder.grant("add-folder");
+        await flush();
+        await delayedFolder.tick(120000);
+        assert.equal(
+            delayedFolder.spinner(),
+            true,
+            "a two-minute initial enumeration remains pending"
+        );
+        delayedFolder.releaseEnumeration();
+        await flush();
+        assert.equal(
+            delayedFolder.played(),
+            1,
+            "root and nested initial enumeration can still start playback after two minutes"
+        );
+        assert.equal(delayedFolder.spinner(), false);
+        assert.equal(delayedFolder.timers(), 0);
+
+        const enumerating = fixture(options);
+        enumerating.click("add-folder");
+        enumerating.grant("add-folder");
+        await flush();
+        await enumerating.tick(60000);
+        assert.equal(
+            enumerating.spinner(),
+            true,
+            "initial enumeration, including nested directories, gets more than one minute"
+        );
+        assert.equal(enumerating.reads(), 0);
+        await enumerating.tick(600000);
+        assert.equal(
+            enumerating.spinner(),
+            false,
+            "initial enumeration still has a deadline"
+        );
+        assert.equal(enumerating.played(), 0);
+        enumerating.blocked.resolve({ done: true });
+        await flush();
+        assert.equal(enumerating.played(), 0);
+    }
+    const laterEnumeration = fixture({ blockAfterFirst: true, existing: true });
+    let laterError;
+    const laterResult = laterEnumeration.api.list().then(
+        () =>
+            assert.fail(
+                "stalled enumeration after a playable item must expire"
+            ),
+        (error) => {
+            laterError = error;
+            return error;
+        }
+    );
+    await flush();
+    assert.equal(laterEnumeration.reads(), 1);
+    await laterEnumeration.tick(100);
+    await laterEnumeration.tick(60000);
+    assert.ok(
+        laterError,
+        "the deadline settles even while native enumeration stays pending"
+    );
+    assert.match((await laterResult).message, /did not respond/);
+    laterEnumeration.blocked.resolve({ done: true });
+    await flush();
+
     const waiting = fixture({ blockFirst: true });
     waiting.click("add-folder");
     waiting.grant("add-folder");
     await flush();
-    assert.equal(waiting.progress(), "Local videos: 0");
+    await waiting.tick(100);
+    assert.equal(
+        waiting.progress(),
+        "Local videos: 0 · Entries found: 1 · Reading file information",
+        "a discovered file remains visible while its metadata read is pending"
+    );
     await waiting.tick(60000);
     assert.equal(
         waiting.spinner(),
@@ -552,4 +644,26 @@ module.exports = async function browserImportRegression(
     console.log(
         "PASS browser import UI: first-file playback, synchronous picker, bounded stalled reads, cancellation and stale completion"
     );
+}
+
+module.exports = async function (...args) {
+    let timer;
+    try {
+        await Promise.race([
+            browserImportRegression(...args),
+            new Promise((_, reject) => {
+                timer = setTimeout(
+                    () =>
+                        reject(
+                            new Error(
+                                "Browser import regression did not complete"
+                            )
+                        ),
+                    10000
+                );
+            }),
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
 };

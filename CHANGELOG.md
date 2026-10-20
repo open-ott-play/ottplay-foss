@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep waiting for a large browser folder's initial directory batch instead of
+  expiring after 60 seconds. Show the picker, enumeration and metadata phases
+  with discovered-entry and playable-video counts; preserve immediate cancel
+  and bounded metadata reads.
+
 - Start browser Add folder/Add files playback from the first readable video
   instead of waiting for the whole source to scan. Report progress, bound stalled
   reads, and ignore cancelled or superseded picker results without copying media.

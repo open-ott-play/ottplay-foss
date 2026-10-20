@@ -318,6 +318,11 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
         assert.equal(foreign.selected, "");
         await foreignContext.close();
         await profileContext.close();
+        if (process.argv.includes("--large-folder"))
+            await require("./helpers/browser-large-folder.cjs")(
+                browser,
+                "http://127.0.0.1:" + server.address().port
+            );
         console.log(
             "PASS offline profiles: real IndexedDB handles survive closed-page save/export/import/load; exact selected original read; foreign context requires binding"
         );

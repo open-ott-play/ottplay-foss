@@ -333,12 +333,12 @@ function createOfflineDriver(
                         media.resume(true);
                 }
             }
-            function heartbeat(): void {
+            function heartbeat(timeout = 60000): void {
                 clearLoadTimer();
                 if (typeof (window as any).setTimeout === "function")
                     loadTimer = (window as any).setTimeout(function () {
                         recover("Local source did not respond");
-                    }, 60000);
+                    }, timeout);
             }
             function publish(value: any, final: boolean): boolean {
                 if (!current()) return false;
@@ -381,7 +381,11 @@ function createOfflineDriver(
                 // Polling the same stalled native scan is not progress.
                 if (stamp !== progressStamp) {
                     progressStamp = stamp;
-                    heartbeat();
+                    heartbeat(
+                        media.progressTimeout
+                            ? media.progressTimeout(value)
+                            : 60000
+                    );
                 }
                 (value.items || []).forEach(function (item: any) {
                     if (item.available === false || !item.url) return;
@@ -455,10 +459,11 @@ function createOfflineDriver(
                             "data-local-phase",
                             value.phase || "files"
                         );
-                        progress.textContent =
-                            ports.translate("Local videos") +
-                            ": " +
-                            catalog.ids.length;
+                        progress.textContent = media.progressText
+                            ? media.progressText(value)
+                            : ports.translate("Local videos") +
+                              ": " +
+                              catalog.ids.length;
                     }
                 }
                 if (final) clearLoadTimer();

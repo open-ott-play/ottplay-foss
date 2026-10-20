@@ -2,7 +2,10 @@ import {
     installBrowserLocalMedia,
     installOfflineShell,
 } from "../offline/browser-local-media";
-import { formatLocalMediaProgress } from "../offline/local-media-progress";
+import {
+    formatLocalMediaProgress,
+    localMediaProgressTimeout,
+} from "../offline/local-media-progress";
 import { installOfflineProfiles } from "../offline/profiles";
 import { resolveNativePlugin, tauriInvoke } from "./native-bridge";
 
@@ -19,6 +22,7 @@ export function installLocalMedia(w: any): any {
     var handler: any = null;
     var owner: any = null;
     var loading: any = null;
+    var progressState: any = null;
     var catalogRevision = 0;
     var resuming = false;
     var last: any = null;
@@ -173,7 +177,7 @@ export function installLocalMedia(w: any): any {
                     if (timer !== null) clearTimeout(timer);
                     timer = null;
                 }
-                function heartbeat(): void {
+                function heartbeat(timeout = 60000): void {
                     clear();
                     timer = setTimeout(function () {
                         if (settled) return;
@@ -184,7 +188,7 @@ export function installLocalMedia(w: any): any {
                             last = null;
                         }
                         reject(new Error("Local source did not respond"));
-                    }, 60000);
+                    }, timeout);
                 }
                 function finish(error: any, value?: any): void {
                     if (settled) return;
@@ -209,7 +213,7 @@ export function installLocalMedia(w: any): any {
                         ]);
                         if (next !== signature) {
                             signature = next;
-                            heartbeat();
+                            heartbeat(localMediaProgressTimeout(value));
                         }
                         return admitted;
                     }).then(
@@ -350,6 +354,10 @@ export function installLocalMedia(w: any): any {
                     "Connect folders on the server itself, or select this device's library."
                 )
             );
+        progressState = {
+            items: [],
+            phase: folder ? "picker-folder" : "picker-files",
+        };
         return (
             folder
                 ? browser.importFolder({ deferScan: true })
@@ -451,6 +459,7 @@ export function installLocalMedia(w: any): any {
         );
     }
     function updateLoading(value: any): void {
+        progressState = value;
         if (!loading || !current()) return;
         var node =
             w.document && w.document.getElementById("local-media-progress");
@@ -728,6 +737,7 @@ export function installLocalMedia(w: any): any {
     function run(action: () => Promise<any>, startPlayback = false): void {
         var request = ++revision;
         finishLoading();
+        progressState = null;
         // Start the picker inside the user gesture, before rendering or awaiting.
         var pending: Promise<any>;
         try {
@@ -752,7 +762,12 @@ export function installLocalMedia(w: any): any {
                     '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
                         text(w._("Loading. Please wait...")) +
                         '<div id="local-media-progress">' +
-                        text(formatLocalMediaProgress({ items: [] }, w._)) +
+                        text(
+                            formatLocalMediaProgress(
+                                progressState || { items: [] },
+                                w._
+                            )
+                        ) +
                         "</div><br/><br/>" +
                         w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Cancel")
                 )
@@ -836,6 +851,10 @@ export function installLocalMedia(w: any): any {
         },
         list: list,
         open: open,
+        progressText: function (value: any) {
+            return formatLocalMediaProgress(value, w._);
+        },
+        progressTimeout: localMediaProgressTimeout,
         remove: remove,
         resume: function (skipScan = false) {
             open(true, skipScan);
