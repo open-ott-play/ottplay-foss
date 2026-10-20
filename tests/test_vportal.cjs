@@ -1427,6 +1427,11 @@ for (const response of [
         Array.from(batches.at(-1).items, (x) => x.title),
         ["First", "Season - Episode", "Last"]
     );
+    assert.deepEqual(
+        Array.from(batches.at(-1).items, (x) => x.__ottMediaCollection),
+        ["Chosen", "Season", "Chosen"],
+        "collection follows the selected section and nested folder, not the profile or pagination label"
+    );
     assert.equal(
         f.requests.length,
         3,

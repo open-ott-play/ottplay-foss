@@ -297,6 +297,10 @@ function createVPortalProviderDriver(
                                     Number(items[index].adult) === 1 ? 1 : 0;
                                 catalog.channels[id].__ottMediaItem =
                                     items[index];
+                                catalog.channels[id].__ottMediaCollection =
+                                    items[index].__ottMediaCollection ||
+                                    row.name ||
+                                    "VPortal";
                                 catalog.channels[id].__ottMediaProvider =
                                     "vportal";
                             });

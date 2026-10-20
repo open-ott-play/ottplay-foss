@@ -1276,6 +1276,7 @@ export function createVPortalClient(
                                 )
                                     throw new Error();
                                 cursor.__ottVPortalContext = context;
+                                cursor.mediaName = task.title;
                                 if (visited[identity(cursor.request)])
                                     throw new Error();
                                 enqueue(cursor);
@@ -1307,6 +1308,11 @@ export function createVPortalClient(
                                 if (known[key]) return;
                                 known[key] = true;
                                 record.__ottPlaylistId = key;
+                                record.__ottMediaCollection =
+                                    task.title ||
+                                    context.title ||
+                                    options.title ||
+                                    "VPortal";
                                 if (direct && options.sourceId)
                                     record.__ottMediaRef = {
                                         itemId: "direct:" + key,
