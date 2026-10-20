@@ -107,6 +107,9 @@ export function createKiosk(w: any): any {
         if (!screenBlocked() || applyingScreenPause) return;
         applyingScreenPause = true;
         try {
+            // The native initial sleep state may precede provider startup.
+            if (sleepingSource === null && provider() === "offline")
+                sleepingSource = source();
             var backend = w.__ottCoreBackendPeek && w.__ottCoreBackendPeek();
             if (backend !== sleepBackend) {
                 if (sleepUnsubscribe) sleepUnsubscribe();

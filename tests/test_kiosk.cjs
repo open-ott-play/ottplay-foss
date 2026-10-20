@@ -1988,6 +1988,21 @@ for (const mode of ["off", "waiting", "folder"]) {
     assert.equal(r.calls.filter((c) => c === "resume").length, 1);
     assert.equal(r.state.position, 37);
 }
+{
+    const r = screenRig();
+    r.request({ mode: "off" });
+    r.kiosk.setScreenAwake(false);
+    r.w.__ottActiveProviderDriver = { id: "offline" };
+    r.source("offline:device");
+    r.events.play();
+    assert.deepEqual(r.calls, ["suspend"]);
+    r.kiosk.setScreenAwake(true);
+    assert.deepEqual(
+        r.calls,
+        ["suspend", "resume"],
+        "provider loaded while asleep owns its wake"
+    );
+}
 for (const change of [
     (r) => r.source("offline:other"),
     (r) => {
