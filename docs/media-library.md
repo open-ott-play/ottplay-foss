@@ -225,3 +225,20 @@ flags. It confirms that playback was dispatched, not that the video decoded or
 became visible. Credentials, provider request objects and stream URLs remain on the
 player. A headless browser regression drives the shipped command-server transport
 and real media-ended events through a multi-page movie/series queue and its wrap.
+
+## Finite-media footer
+
+`__ottClassicPlayback.programme()` publishes the owned active media's collection,
+current/next titles, playback-start wall clock, duration and relative position.
+The start clock is latched on the first real playing event of each playback open;
+subsequent buffering, seeking and pausing retain it. A new open receives a new
+clock, including startup resume. The next start is a nominal estimate computed
+from that fixed clock and full duration, not the remaining playhead duration.
+Unknown times remain absent. The footer keeps relative position for its progress
+bar while displaying programme clocks separately.
+
+Collection metadata follows the playing item's origin rather than the current
+browser selection. Local sources supply the immediate containing folder when
+available; provider media supplies its folder/collection label. Footer reads do
+not rescan a directory or resolve another provider URL. The predicted successor
+must follow playback order and repeat/kiosk policy without changing selection.

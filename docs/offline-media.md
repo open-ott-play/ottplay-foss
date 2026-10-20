@@ -53,7 +53,15 @@ channel-list order, including a shuffled order. The playlist repeat setting
 controls what happens at the end of the list; repeat-one plays the same file
 again. A channel pinned by kiosk mode stays pinned. Automatic transitions start
 the next file at zero rather than restoring an old position. The standard player
-footer displays the current file name and updates it when the file changes.
+footer shows the playing file's containing folder as the channel title. Its
+programme rows show the current filename and the next filename in playback order,
+including shuffle, repeat and kiosk rules. Each row updates when playback changes.
+The current row's clock is the local time when this playback actually started,
+including seconds, rather than elapsed minutes. The next row's clock is that start
+time plus the current file's full duration. It is a nominal estimate: pausing or
+seeking does not rewrite the start time, and can change the actual transition time.
+Unknown duration leaves the next clock blank; no successor leaves the next row
+blank. If the source cannot expose a containing folder, its source label is used.
 These controls are shared by browser/server, Tauri and Capacitor players.
 
 Libraries made by the earlier copy-based version remain readable. Their entries

@@ -14,6 +14,15 @@ The player connects under the standard animated loading dialog and reports proce
 
 **Actions → Repeat** cycles through **All**, **One** and **Off**. All wraps the selected channel group, One repeats its current video, and Off stops after the final video. The Play key changes this setting while Actions is open. Changing the order or receiving another batch affects subsequent file transitions without restarting the current file.
 
+The standard playback footer uses the playing video's folder or collection as
+its channel title. The current programme row shows the video title and the local
+clock time when playback started (`HH:mm:ss`). The next row shows the actual next
+item in the current order and a nominal start time: current start plus full video
+duration. Pause, seek and buffering do not reset the current start clock. Unknown
+duration leaves the next time blank; no successor leaves the next row blank.
+The same layout applies to Local videos and VPortal in browser/server, Tauri and
+Capacitor builds.
+
 Selecting a video opens the standard loading dialog immediately while its playable URL is resolved. **Back** cancels and returns to the list. Late replies cannot launch a cancelled selection. The decoder's normal buffering indicator follows stream preparation.
 
 During full-screen Plex playback, **Left/Right** seek backward/forward by ten seconds and **Up/Down** play the previous/next file in the current list. Dedicated volume keys still adjust volume. Open lists and dialogs retain their own navigation. Explicit remote Plex queues keep their own requested order and completion policy.

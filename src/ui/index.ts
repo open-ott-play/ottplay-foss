@@ -1951,7 +1951,7 @@ export function updateMediaInfo(): void {
             );
             $("#nend_time").text("");
             $("#programm_duration").text("");
-            if (w.__ottActiveProviderDriver?.id === "offline")
+            if (!programme || w.__ottActiveProviderDriver?.id === "offline")
                 $("#programm_descr").text("");
             w._prog100 = 0;
         }

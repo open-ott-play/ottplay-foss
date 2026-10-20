@@ -10,6 +10,14 @@ configured only in its standalone provider; M3U is reserved for television.
 
 The standard channel list provides search, favorites, ordering and Actions. Videos can start from the first usable batch while the rest of the selected sections load in the background. Selecting a file shows an owned loading dialog; Back cancels it. **Actions → Repeat** controls All / One / Off; **Shuffle / Reset order** uses the existing channel-list actions. See the [shared playlist flow](plex-provider.md).
 
+The playback footer shows the playing item's folder or collection above its
+current and next titles. Current time is the actual local playback-start clock,
+including seconds; next time is that clock plus the current item's full duration.
+It is an estimate and stays fixed through pause and seek. Unknown duration leaves
+the next time blank. The next title follows the active order, repeat and kiosk
+policy. See [Plex footer behavior](plex-provider.md) for the shared layout across
+browser/server, Tauri and Capacitor builds.
+
 The current provider determines which profiles the remote CLI manages:
 
 ```sh

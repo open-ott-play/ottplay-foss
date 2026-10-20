@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Advance Local videos to the next file after playback ends, honoring playlist order, repeat and kiosk pinning. Show the current local file name in the standard player footer instead of leaving it blank or retaining television programme details.
+- Show the playing folder or collection in the finite-media footer, with current
+  and next file titles below it. Display actual playback-start time and the next
+  item's estimated start time instead of elapsed minutes, across Local videos,
+  Plex and VPortal in all player builds.
+
+- Advance Local videos to the next file after playback ends, honoring playlist order, repeat and kiosk pinning. Populate the standard local-media footer instead of leaving it blank or retaining television programme details.
 
 - When a valid interface language is already loaded, resume the configured provider and channel after repeated standby/go without reopening language settings. Retain the resolved system language and original popup menu, including hidden provider settings, and ignore stale language callbacks from an earlier startup. Avoid duplicate playback listeners and polling timers, and bound Tauri update checks. Cancel local metadata scans and abandoned media requests between filesystem operations while keeping in-flight reads counted until they actually finish.
 
