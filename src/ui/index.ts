@@ -1622,6 +1622,13 @@ export function updateChannelInfo(channelId: number): void {
     var localFile =
         host.__ottActiveProviderDriver?.id === "offline" && host.playType < 0;
     if (channelId == null || (host.playType && !localFile)) return;
+    if (
+        localFile &&
+        typeof host.__ottClassicPlayback?.programme === "function"
+    ) {
+        updateMediaInfo();
+        return;
+    }
     if (localFile) {
         var playback = host.__ottClassicPlayback;
         var state = playback && playback.snapshot();
@@ -1900,28 +1907,81 @@ export function initBackgroundIntervals(): void {
     }, 30000);
 }
 
-/**
- * Refresh VOD progress through the active STB adapter, plus video resolution/audio badges.
- * Progress is refreshed even while paused so a seek is reflected immediately.
- */
+/** Keep clock labels separate from decoder-relative seek/progress coordinates. */
+function finiteProgrammeClock(timestamp: number | null): string {
+    if (typeof timestamp !== "number" || !isFinite(timestamp) || timestamp <= 0)
+        return "";
+    var date = new Date(timestamp * 1000);
+    if (!isFinite(date.getTime())) return "";
+    return (
+        formatTwoDigits(date.getHours()) +
+        ":" +
+        formatTwoDigits(date.getMinutes()) +
+        ":" +
+        formatTwoDigits(date.getSeconds())
+    );
+}
+
+/** Render owned current/next metadata and decoder-relative progress in the shared footer. */
 export function updateMediaInfo(): void {
     var w = window as any;
-    if (
-        w.playType < 0 &&
-        typeof w.stbGetPosTime === "function" &&
-        typeof w.stbGetLen === "function"
-    ) {
-        var position = Math.max(0, Number(w.stbGetPosTime()) || 0);
-        var duration = Number(w.stbGetLen());
-        if (duration > 0 && isFinite(duration)) {
+    if (w.playType < 0) {
+        var ownedProgramme =
+            typeof w.__ottClassicPlayback?.programme === "function";
+        var programme = ownedProgramme
+            ? w.__ottClassicPlayback.programme()
+            : null;
+        if (ownedProgramme) {
+            // Null means the old source/selection no longer owns the footer.
+            $("#channel_name").text(programme ? programme.collection : "");
+            $("#programm_name").text(programme ? programme.title : "");
+            $("#programm_name2").text(programme ? programme.title : "");
+            $("#nprogramm_name").text(
+                programme ? programme.nextTitle || "" : ""
+            );
+            $("#begin_time").text(
+                finiteProgrammeClock(programme && programme.startedAt)
+            );
+            $("#nbegin_time").text(
+                finiteProgrammeClock(
+                    programme && programme.nextTitle
+                        ? programme.nextStartedAt
+                        : null
+                )
+            );
+            $("#nend_time").text("");
+            $("#programm_duration").text("");
+            if (w.__ottActiveProviderDriver?.id === "offline")
+                $("#programm_descr").text("");
+            w._prog100 = 0;
+        }
+        var position = programme
+            ? Math.max(0, Number(programme.position) || 0)
+            : typeof w.stbGetPosTime === "function"
+              ? Math.max(0, Number(w.stbGetPosTime()) || 0)
+              : 0;
+        var duration = programme
+            ? Number(programme.duration)
+            : typeof w.stbGetLen === "function"
+              ? Number(w.stbGetLen())
+              : 0;
+        if (
+            (!ownedProgramme || programme) &&
+            duration > 0 &&
+            isFinite(duration)
+        ) {
             $("#progress").css(
                 "width",
                 Math.min(100, (position / duration) * 100) + "%"
             );
-            $("#begin_time").text(Math.round(position / 60));
+            if (!ownedProgramme)
+                $("#begin_time").text(Math.round(position / 60));
             $("#end_time").text(
                 "+" + Math.round(Math.max(0, duration - position) / 60)
             );
+        } else if (ownedProgramme) {
+            $("#progress").css("width", "0%");
+            $("#end_time").text("");
         }
     }
     updateCoreVideoInfo();

@@ -248,6 +248,7 @@ function fixture() {
             "metadataCssUrl",
             "metadataHtml",
             "hasTmdbService",
+            "formatTwoDigits",
         ]) +
             sourceFunctions("src/channels/index.ts", [
                 "rememberMediaView",
@@ -270,6 +271,7 @@ function fixture() {
                 "mediaList",
                 "showSelectBox",
                 "updateMediaInfo",
+                "finiteProgrammeClock",
                 "updateChannelInfo",
                 "virtualTimeshiftProg",
                 "initBackgroundIntervals",
@@ -707,6 +709,88 @@ if (require.main === module) {
             c.elements["#listPodval"].innerHTML.includes("Add to favorites"),
             "Favorites hint remains when a favoriteable media row is present"
         );
+    }
+    // Finite media shares the default current/next programme layout on every provider.
+    for (const provider of ["offline", "plex", "vportal"]) {
+        const c = fixture();
+        c.__ottActiveProviderDriver = { id: provider };
+        c.playType = -1e11;
+        const startedAt = new Date(2026, 9, 20, 4, 11, 52).getTime() / 1000;
+        let programme = {
+            collection: "Collection <one>",
+            duration: 70,
+            nextStartedAt: startedAt + 70,
+            nextTitle: "Next & last.mkv",
+            position: 10,
+            startedAt,
+            title: "Current <file>.mp4",
+        };
+        c.__ottClassicPlayback.programme = () => programme;
+        c.updateMediaInfo();
+        assert.equal(
+            c.elements["#channel_name"].textContent,
+            "Collection <one>"
+        );
+        assert.equal(
+            c.elements["#programm_name"].textContent,
+            "Current <file>.mp4"
+        );
+        assert.equal(
+            c.elements["#programm_name2"].textContent,
+            "Current <file>.mp4"
+        );
+        assert.equal(
+            c.elements["#nprogramm_name"].textContent,
+            "Next & last.mkv"
+        );
+        assert.equal(c.elements["#begin_time"].textContent, "04:11:52");
+        assert.equal(c.elements["#nbegin_time"].textContent, "04:13:02");
+        assert.equal(c.elements["#end_time"].textContent, "+1");
+        assert.equal(c.elements["#nend_time"].textContent, "");
+        assert(
+            Math.abs(
+                parseFloat(c.elements["#progress"].style.width) - 100 / 7
+            ) < 0.0001
+        );
+        programme.position = 60; // Seek/progress must not turn start into an invented clock.
+        c.updateMediaInfo();
+        assert.equal(c.elements["#begin_time"].textContent, "04:11:52");
+        assert.equal(c.elements["#nbegin_time"].textContent, "04:13:02");
+        programme.duration = 0;
+        programme.nextStartedAt = null;
+        c.updateMediaInfo();
+        assert.equal(c.elements["#nbegin_time"].textContent, "");
+        assert.equal(
+            c.elements["#nprogramm_name"].textContent,
+            "Next & last.mkv"
+        );
+        programme.startedAt = null;
+        c.updateMediaInfo();
+        assert.equal(c.elements["#begin_time"].textContent, "");
+        programme.startedAt =
+            new Date(2026, 9, 20, 23, 59, 40).getTime() / 1000;
+        programme.duration = 70;
+        programme.nextStartedAt = programme.startedAt + 70;
+        c.updateMediaInfo();
+        assert.equal(c.elements["#begin_time"].textContent, "23:59:40");
+        assert.equal(c.elements["#nbegin_time"].textContent, "00:00:50");
+        programme.nextTitle = "";
+        programme.nextStartedAt = startedAt + 70;
+        c.updateMediaInfo();
+        assert.equal(c.elements["#nprogramm_name"].textContent, "");
+        assert.equal(c.elements["#nbegin_time"].textContent, "");
+        programme = null; // Source/selection was replaced while an old timer was queued.
+        c.updateMediaInfo();
+        for (const selector of [
+            "#channel_name",
+            "#programm_name",
+            "#programm_name2",
+            "#nprogramm_name",
+            "#begin_time",
+            "#nbegin_time",
+            "#end_time",
+        ])
+            assert.equal(c.elements[selector].textContent, "", selector);
     }
     // Local files become finite playback before their first channel-info paint.
     // Only the owned file/source may supply the footer, including after EOF.

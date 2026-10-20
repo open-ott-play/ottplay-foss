@@ -1133,7 +1133,8 @@ function setFontSize(): void {
         var a2 = n2.width();
         n2.text("").css("font-size", i2);
         if (a2) {
-            var w = a2 * 6;
+            // Finite-media programme clocks include seconds (HH:mm:ss).
+            var w = a2 * 8;
             // ~2 inline-block HTML whitespace gaps between begin/name/end
             var gap = Math.max(8, Math.round(a2));
             $("#channel_number").css({ width: w + "px" });
@@ -2914,6 +2915,8 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
             type: "vod",
         });
     stbPlay(streamUrl, startupPosition);
+    if (typeof (window as any).__ottClassicPlayback?.programme === "function")
+        updateMediaInfo();
     if (resumePos && !media.resumeStartup)
         confirmBox(
             _("Continue watching?") + "<br><br>" + formatSeekOffset(resumePos),
