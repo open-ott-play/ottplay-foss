@@ -198,19 +198,37 @@ internal object AppUpdates {
     @Synchronized fun install(context: Context, hash: String): JSObject {
         val p = prefs(context)
         require(validHash(hash) && p.getString("sha256", "") == hash)
-        require(!downloading && p.getString("phase", "") in listOf("ready", "awaiting_permission"))
+        val phase = p.getString("phase", "") ?: ""
+        require(!downloading && phase in listOf("ready", "awaiting_permission", "awaiting_confirmation"))
         var id = -1
         try {
             val file = stage(context)
-            require(fileDigest(file) == hash)
-            verify(context, file)
+            val installer = context.packageManager.packageInstaller
+            val verifyStage = {
+                require(fileDigest(file) == hash)
+                verify(context, file)
+                Unit
+            }
+            if (phase == "awaiting_confirmation") {
+                // A lost/dismissed Android prompt is retried only on an explicit
+                // authenticated install command. Never trust a persisted session ID.
+                AppUpdateRecovery.retry(
+                    p.getInt("sessionId", -1), context.packageName, verifyStage,
+                    { sessionId -> installer.getSessionInfo(sessionId)?.let {
+                        AppUpdateRecovery.Session(it.installerPackageName, it.appPackageName)
+                    } },
+                    { check(p.edit().remove("sessionId").commit()) },
+                    { sessionId -> installer.abandonSession(sessionId) }
+                )
+            } else {
+                verifyStage()
+            }
             if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
                 state(context, "awaiting_permission")
                 context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + context.packageName))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 return status(context)
             }
-            val installer = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
             params.setAppPackageName(context.packageName)
             id = installer.createSession(params)

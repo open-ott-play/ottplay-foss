@@ -318,6 +318,16 @@ promise silent installation on an unmanaged Fire tablet.
 `update status` distinguishes downloading, ready, awaiting_permission,
 installing, awaiting_confirmation, installed and failed. An accepted command is
 not proof of installation. Verify the installed version after the app reconnects.
+If Android's confirmation window was dismissed or lost while the old version
+still runs, send `update install SHA256` again explicitly. The player rechecks the
+staged APK hash, signing certificate and strictly newer version before retrying.
+It abandons only the recorded session whose installer and target package both
+match this player; an already removed session needs no cleanup. A failed check or
+cleanup stops the retry. Status checks, preparation and application startup never
+reopen the installer automatically. This recovery requires an APK containing the
+retry support; older APKs stuck at `awaiting_confirmation` may require reopening
+the original Android installer or installing the verified APK through ADB.
+
 The application ID and `https://localhost` WebView origin are retained, preserving
 profiles and controller registration. USB is unnecessary for this update path,
 but it remains useful for recovery if Android or the WebView cannot start.
