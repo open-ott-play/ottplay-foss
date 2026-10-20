@@ -844,7 +844,8 @@ async function builtUi(devicePath) {
                     !window.__ottStandby.blocked() &&
                     video.currentTime > 0.1 &&
                     !video.paused &&
-                    !video.error
+                    !video.error &&
+                    video.getVideoPlaybackQuality().totalVideoFrames > 0
                 );
             });
             const after = await page.evaluate(() => ({
