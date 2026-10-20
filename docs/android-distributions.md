@@ -259,8 +259,9 @@ and settings remain installed and accessible.
 The user then separately powered the projector off and on. That boot again
 changed the boot ID and opened `HomeActivity` automatically; both the Home role
 and effective launcher remained OTT. Normal power-button startup is therefore
-verified separately from ADB reboot. Startup with deliberately delayed Wi-Fi
-was not separately tested.
+verified separately from ADB reboot. The user also confirmed channel picture
+and audio after that power-on. Startup with deliberately delayed Wi-Fi was not
+separately tested.
 
 ## Release identity
 
