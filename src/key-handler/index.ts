@@ -542,6 +542,8 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
  * @analysis Creates a minimal fake event object with preventDefault/stopPropagation no-ops.
  */
 export function dispatchKey(keyCode: number, event?: Event): void {
+    var standby = (window as any).__ottStandby;
+    if (standby && standby.localKey && standby.localKey(event)) return;
     if (event) event.stopPropagation();
     keyHandler({
         keyCode: keyCode,

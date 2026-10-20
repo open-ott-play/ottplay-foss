@@ -196,6 +196,17 @@ export function installStandby(w: any, read: any, write: any): any {
         isStandby: function () {
             return blocked();
         },
+        localKey: function (event?: any): boolean {
+            if (event && /^key/.test(event.type)) {
+                var consumed = blocked() || wakeKey;
+                if (consumed) localInput(event);
+                return consumed;
+            }
+            // Older native shells call _doKey without DOM events or key-up.
+            if (!blocked()) return false;
+            wakeFromInput();
+            return true;
+        },
         native: function (set: any, status: any) {
             nativeSet = set;
             nativeStatus = status;

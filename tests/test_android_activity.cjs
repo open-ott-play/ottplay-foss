@@ -91,6 +91,7 @@ try {
         `package play.ott.foss; public class NativeWork {
         public static final NativeWork INSTANCE=new NativeWork();
         public boolean standby; public int calls;
+        public boolean isStandby(){return standby;}
         public void setStandby(boolean value){standby=value;calls++;}
     }`
     );
@@ -241,6 +242,18 @@ try {
             app.preferences.standby=true;
             app.onCreate(new android.os.Bundle());
             check(NativeWork.INSTANCE.standby && NativeWork.INSTANCE.calls==1);
+            int sleepingVolume=app.audio.volume, sleepingCalls=app.audio.calls;
+            int sleepingScripts=app.bridge.view.scripts.size();
+            check(app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_VOLUME_DOWN,0)));
+            check(app.audio.volume==sleepingVolume && app.audio.calls==sleepingCalls);
+            check(app.bridge.view.scripts.size()==sleepingScripts+1);
+            System.out.println("VOLUME_WAKE_DOWN "+java.util.Base64.getEncoder().encodeToString(app.bridge.view.scripts.get(sleepingScripts).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            NativeWork.INSTANCE.standby=false;
+            check(app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_VOLUME_DOWN,1)));
+            check(app.audio.calls==sleepingCalls && app.bridge.view.scripts.size()==sleepingScripts+1);
+            check(app.dispatchKeyEvent(new KeyEvent(1,KeyEvent.KEYCODE_VOLUME_DOWN,0)));
+            check(app.audio.calls==sleepingCalls);
+            System.out.println("VOLUME_WAKE_UP "+java.util.Base64.getEncoder().encodeToString(app.bridge.view.scripts.get(sleepingScripts+1).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             check(androidx.core.view.WindowInsetsControllerCompat.hides==1);
             check(app.window.cleared==2048);
             androidx.core.view.WindowInsetsCompat.imeVisible=true;
@@ -283,7 +296,7 @@ try {
                 check(app.bridge.view.scripts.size()==previous+(names[i].startsWith("MEDIA_")?1:2));
             }
             check(!app.dispatchKeyEvent(new KeyEvent(0,999,0)));
-            check(!app.dispatchKeyEvent(new KeyEvent(1,KeyEvent.KEYCODE_DPAD_UP,0)));
+            check(app.dispatchKeyEvent(new KeyEvent(1,KeyEvent.KEYCODE_DPAD_UP,0)));
             app.onDestroy();
             check(app.window.decor.observer.listener==null);
             app.bridge.view=null;
@@ -323,6 +336,49 @@ try {
         plugins.sort(),
         "every shipped local plugin must reach bridge construction"
     );
+    const wakeHost = { clearTimeout, setTimeout };
+    wakeHost.window = wakeHost;
+    vm.createContext(wakeHost);
+    vm.runInContext(
+        functions("src/core/standby.ts", ["installStandby"]),
+        wakeHost
+    );
+    let wakes = 0;
+    const gate = wakeHost.installStandby(
+        wakeHost,
+        () => "1",
+        () => {}
+    );
+    wakeHost.stbSetStandby = (value) => gate.set(value, () => wakes++);
+    vm.runInContext(scripts.VOLUME_WAKE_DOWN, wakeHost);
+    assert.equal(
+        wakes,
+        1,
+        "native volume first wakes without a volume adjustment"
+    );
+    assert.equal(gate.blocked(), false);
+    vm.runInContext(scripts.VOLUME_WAKE_UP, wakeHost);
+    assert.equal(wakes, 1);
+    for (const name of ["DPAD_DOWN", "BACK", "MEDIA_PLAY_PAUSE"]) {
+        let actions = 0;
+        wakeHost.keys = { DOWN: 40, RETURN: 27 };
+        wakeHost._doKey = () => actions++;
+        wakeHost.stbIsPlaying = () => true;
+        wakeHost.stbPause = () => actions++;
+        gate.set(true);
+        const before = wakes;
+        vm.runInContext(scripts[name], wakeHost);
+        assert.equal(wakes, before + 1, name + " first wakes");
+        assert.equal(
+            actions,
+            0,
+            name + " wake does not leak into the player action"
+        );
+        gate.localKey({ type: "keyup" });
+        vm.runInContext(scripts[name], wakeHost);
+        assert.equal(actions, 1, name + " works normally after wake");
+        gate.localKey({ type: "keyup" });
+    }
     const mapping = {
         BACK: "RETURN",
         BUTTON_A: "ENTER",

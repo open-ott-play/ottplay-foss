@@ -681,3 +681,52 @@ test("a key held before standby cannot wake it by autorepeat", () => {
     assert.equal(wakes, 1, "a fresh press wakes normally");
     assert.equal(f.gate.blocked(), false);
 });
+
+test("legacy native _doKey wakes before channel or volume dispatch", () => {
+    const f = fixture();
+    const forwarded = [];
+    const ast = ts.createSourceFile(
+        "key-handler.ts",
+        fs.readFileSync("src/key-handler/index.ts", "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const declaration = ast.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) && node.name?.text === "dispatchKey"
+    );
+    assert.ok(declaration);
+    const module = { exports: {} };
+    vm.runInNewContext(
+        ts.transpileModule(declaration.getText(ast), {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }).outputText,
+        {
+            exports: module.exports,
+            keyHandler: (event) => forwarded.push(event.keyCode),
+            window: f.w,
+        }
+    );
+    let wakes = 0;
+    f.w.stbSetStandby = (value) => {
+        wakes++;
+        f.gate.set(value);
+    };
+    f.gate.set(true);
+    module.exports.dispatchKey(40);
+    assert.equal(wakes, 1);
+    assert.deepEqual(
+        forwarded,
+        [],
+        "first native key cannot advance the channel"
+    );
+    module.exports.dispatchKey(40);
+    assert.deepEqual(
+        forwarded,
+        [40],
+        "later deliberate native keys retain normal dispatch"
+    );
+});

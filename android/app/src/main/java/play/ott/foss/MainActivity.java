@@ -20,6 +20,8 @@ import play.ott.foss.plugin.MobileXmltvEpgPlugin;
 public class MainActivity extends BridgeActivity {
     private View playerDecor;
     private boolean keyboardWasVisible;
+    private final java.util.Set<Integer> playerKeys = new java.util.HashSet<>();
+    private final java.util.Set<Integer> standbyVolumeKeys = new java.util.HashSet<>();
     private final ViewTreeObserver.OnGlobalLayoutListener keyboardLayoutListener = () -> {
         if (playerDecor == null) return;
         WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(playerDecor);
@@ -107,10 +109,32 @@ public class MainActivity extends BridgeActivity {
                 + name + "==='number')window._doKey(window.keys." + name + ");})();";
     }
 
+    private static String localKeyScript(KeyEvent event) {
+        return "window.__ottStandby&&window.__ottStandby.localKey&&window.__ottStandby.localKey({type:'"
+                + (event.getAction() == KeyEvent.ACTION_UP ? "keyup" : "keydown")
+                + "',repeat:" + (event.getRepeatCount() > 0) + "})";
+    }
+
+    private WebView playerWebView() {
+        return getBridge() == null ? null : getBridge().getWebView();
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
         if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            WebView view = playerWebView();
+            if (standbyVolumeKeys.contains(code) || (view != null && NativeWork.INSTANCE.isStandby())) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    boolean first = standbyVolumeKeys.add(code);
+                    if (first && event.getRepeatCount() == 0 && view != null)
+                        view.evaluateJavascript(localKeyScript(event), null);
+                } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                    standbyVolumeKeys.remove(code);
+                    if (view != null) view.evaluateJavascript(localKeyScript(event), null);
+                }
+                return true;
+            }
             // Hardware volume must work while the WebView is locked, loading or stalled.
             // Consume key-up too, so the page cannot receive half of this native gesture.
             AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
@@ -121,6 +145,11 @@ public class MainActivity extends BridgeActivity {
                                 ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER,
                         AudioManager.FLAG_SHOW_UI);
             }
+            return true;
+        }
+        if (event.getAction() == KeyEvent.ACTION_UP && playerKeys.remove(code)) {
+            WebView view = playerWebView();
+            if (view != null) view.evaluateJavascript(localKeyScript(event), null);
             return true;
         }
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -190,7 +219,9 @@ public class MainActivity extends BridgeActivity {
                     if (webView != null) {
                         // One media action per press; navigation still repeats.
                         if (!mediaAction || event.getRepeatCount() == 0) {
-                            webView.evaluateJavascript(script, null);
+                            playerKeys.add(code);
+                            webView.evaluateJavascript("(function(){if(" + localKeyScript(event)
+                                    + ")return;" + script + "})();", null);
                         }
                         return true;
                     }
