@@ -303,6 +303,9 @@ function createPlexProviderDriver(
                                         if (catalog.channels[id]) return;
                                         catalog.ids.push(id);
                                         catalog.channels[id] = {
+                                            __ottMediaCollection:
+                                                item.__ottMediaCollection ||
+                                                "Plex",
                                             __ottMediaItem: item,
                                             adult:
                                                 Number(item.adult) === 1

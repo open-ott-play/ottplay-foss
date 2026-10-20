@@ -1031,3 +1031,27 @@ for (const view of ["search", "replacement", "closed", "category"]) {
 console.log(
     "Channel library: stable identity, catalog/user separation, migration, account isolation, storage failures PASS"
 );
+{
+    const f = progressiveListFixture("offline");
+    const list = f.adapter.capture(0);
+    f.w.primaryIndex = 7;
+    f.w.cats.All.slice = () =>
+        assert.fail("scalar footer neighbour must not clone the catalog");
+    assert.deepEqual(JSON.parse(JSON.stringify(list.neighbours("8"))), {
+        id: 8,
+        index: 7,
+        length: 30,
+        nextId: 9,
+    });
+    assert.equal(
+        list.neighbours(30).nextId,
+        1,
+        "last known entry wraps without a list copy"
+    );
+    f.w.channels = {};
+    assert.equal(
+        list.neighbours(8),
+        null,
+        "retired catalog cannot supply stale metadata"
+    );
+}

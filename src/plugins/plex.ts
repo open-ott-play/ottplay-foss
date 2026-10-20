@@ -1056,6 +1056,7 @@ function createPlexClient(
         var watchdog: any = null;
         var roots: string[] = [];
         var paths: any = Object.create(null);
+        var labels: any = Object.create(null);
         var seen: any = Object.create(null);
         var signatures: any = Object.create(null);
         var offset = 0;
@@ -1097,9 +1098,10 @@ function createPlexClient(
                 finish("Plex source did not respond");
             }, 60000);
         }
-        function enqueue(path: string): void {
+        function enqueue(path: string, title: string): void {
             if (!path || paths[path]) return;
             paths[path] = true;
+            labels[path] = title;
             roots.push(path);
         }
         function later(run: () => void, delay = 0): void {
@@ -1178,12 +1180,16 @@ function createPlexClient(
                 var batch: any[] = [];
                 records(data, path, {}, false).forEach(function (record) {
                     if (record.playlist_url) {
-                        enqueue(plexFolderPath(record.playlist_url.path));
+                        enqueue(
+                            plexFolderPath(record.playlist_url.path),
+                            record.title || labels[path]
+                        );
                         return;
                     }
                     var id = record.request && record.request.path;
                     if (!id || seen[id]) return;
                     seen[id] = true;
+                    record.__ottMediaCollection = labels[path] || "Plex";
                     characters += JSON.stringify(record).length;
                     batch.push(record);
                 });
@@ -1239,7 +1245,7 @@ function createPlexClient(
         } else {
             heartbeat();
             folders.forEach(function (folder) {
-                enqueue(plexFolderPath(folder.path));
+                enqueue(plexFolderPath(folder.path), folder.title);
             });
             next();
         }

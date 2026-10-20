@@ -236,6 +236,11 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
         }
     });
     assert.equal(
+        full.items[0].directory,
+        "Movies",
+        "root item carries only its containing folder label"
+    );
+    assert.equal(
         firstReads,
         1,
         "first file is playable before reading the remaining 9,999"

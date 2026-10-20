@@ -6,6 +6,7 @@
 var classicPlaybackController: any = null;
 var classicPlaybackState: any = null;
 var classicPlaybackProjection: any = null;
+var classicPlaybackStartedAt: number | null = null;
 
 function classicPlaybackHost(): any {
     return window as any;
@@ -166,6 +167,7 @@ function classicPlaybackReconcile(): PlaybackStateSnapshot {
             classicPlaybackProjection = value;
             return before;
         }
+        classicPlaybackStartedAt = null;
         store.open(
             target,
             classicPlaybackDecode(w, true),
@@ -229,6 +231,8 @@ function classicPlaybackCommand(command: any): void {
     )
         return;
     var type = command.type;
+    if (type === "playing" && state.target && classicPlaybackStartedAt === null)
+        classicPlaybackStartedAt = Date.now() / 1000;
     if (
         type === "live" ||
         type === "archive" ||
@@ -336,6 +340,7 @@ function classicPlaybackCommand(command: any): void {
         if (classicPlaybackController) classicPlaybackController.cancel();
         if (w.__ottMedia && w.__ottMedia.playbackStop)
             w.__ottMedia.playbackStop(state.target);
+        if (type !== "finite-channel") classicPlaybackStartedAt = null;
         if (type === "finite-channel")
             store.classify(target, history, command.duration);
         else store.open(target, history, w.playTime);
@@ -1013,6 +1018,35 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     }
 }
 
+/** Read-only programme timing; seeks and buffering never move the start clock. */
+function classicPlaybackProgramme(): any {
+    var w = classicPlaybackHost();
+    var state = classicPlaybackSnapshot();
+    if (state.target?.kind !== "vod" || !w.__ottMedia?.programme) return null;
+    var metadata = w.__ottMedia.programme();
+    if (!metadata) return null;
+    var duration =
+        typeof state.duration === "number" &&
+        isFinite(state.duration) &&
+        state.duration > 0
+            ? state.duration
+            : null;
+    return {
+        collection: metadata.collection,
+        duration: duration,
+        nextStartedAt:
+            metadata.nextTitle &&
+            duration !== null &&
+            classicPlaybackStartedAt !== null
+                ? classicPlaybackStartedAt + duration
+                : null,
+        nextTitle: metadata.nextTitle,
+        position: state.position,
+        startedAt: classicPlaybackStartedAt,
+        title: metadata.title,
+    };
+}
+
 (window as any).__ottClassicPlayback = {
     bookmark: classicPlaybackBookmark,
     cancel: function (): void {
@@ -1042,6 +1076,7 @@ function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     },
     hydrate: classicPlaybackHydrate,
     importLegacy: classicPlaybackReconcile,
+    programme: classicPlaybackProgramme,
     reconcile: classicPlaybackReconcile,
     select: classicPlaybackSelect,
     shift: function (delta: number): void {

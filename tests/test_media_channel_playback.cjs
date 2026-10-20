@@ -680,3 +680,147 @@ console.log(
     );
     assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
 }
+
+// Footer is an observation of the playing source, never the open browser view.
+{
+    const { c, resolve } = setup("plex");
+    c.channels[101].__ottMediaCollection = "Selected collection";
+    c._playChannel(0, 0);
+    resolve();
+    let programme = c.__ottClassicPlayback.programme();
+    assert.equal(programme.collection, "Selected collection");
+    assert.equal(programme.title, "Film 101");
+    assert.equal(programme.nextTitle, "Film 102");
+    c.cats.All = [101, 103, 102];
+    assert.equal(
+        c.__ottClassicPlayback.programme().nextTitle,
+        "Film 103",
+        "shuffle uses the live list"
+    );
+    c.__ottMedia.cycleRepeat();
+    assert.equal(
+        c.__ottClassicPlayback.programme().nextTitle,
+        "Film 101",
+        "repeat one projects itself"
+    );
+    c.__ottMedia.cycleRepeat();
+    c.cats.All = [102, 103, 101];
+    assert.equal(
+        c.__ottClassicPlayback.programme().nextTitle,
+        "",
+        "repeat off has no next item at the end"
+    );
+}
+{
+    const { c } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [
+            id,
+            {
+                __ottMediaCollection: "Actual nested folder",
+                channel_name: "Local " + id,
+            },
+        ])
+    );
+    let clock = 1000000;
+    c.Date = class extends Date {
+        static now() {
+            return clock;
+        }
+    };
+    c._playChannel(0, 0);
+    c.__ottClassicPlayback.command({
+        duration: 17.25,
+        position: 2,
+        type: "position",
+    });
+    let programme = c.__ottClassicPlayback.programme();
+    assert.equal(programme.collection, "Actual nested folder");
+    assert.equal(programme.title, "Local 101");
+    assert.equal(programme.nextTitle, "Local 102");
+    assert.equal(programme.startedAt, 1000);
+    assert.equal(
+        programme.nextStartedAt,
+        1017.25,
+        "uses full precise duration"
+    );
+    clock += 5000;
+    c.__ottClassicPlayback.command({ type: "pause" });
+    c.__ottClassicPlayback.command({ position: 12, type: "position" });
+    c.__ottClassicPlayback.command({ type: "playing" });
+    assert.equal(
+        c.__ottClassicPlayback.programme().startedAt,
+        1000,
+        "pause, seek and recovery do not shift the clock"
+    );
+    const oldGeneration = c.__ottClassicPlayback.snapshot().generation;
+    c.__ottClassicPlayback.command({ channelId: 101, type: "live" });
+    c.__ottClassicPlayback.command({
+        generation: oldGeneration,
+        type: "playing",
+    });
+    assert.equal(
+        c.__ottClassicPlayback.programme().startedAt,
+        null,
+        "stale playing cannot stamp a new file"
+    );
+    c.__ottClassicPlayback.command({ type: "playing" });
+    assert.equal(c.__ottClassicPlayback.programme().startedAt, 1005);
+    c._playChannel(0, 0);
+    assert.equal(
+        c.__ottClassicPlayback.programme().startedAt,
+        1005,
+        "a real restart of same file owns a new start clock"
+    );
+    assert.equal(
+        c.__ottClassicPlayback.programme().nextStartedAt,
+        null,
+        "unknown new duration has no invented next clock"
+    );
+    c.primaryIndex = 1;
+    c.__ottClassicPlayback.reconcile();
+    assert.equal(
+        c.__ottClassicPlayback.programme().startedAt,
+        null,
+        "reconciled source selection cannot inherit another file start clock"
+    );
+    c.__ottClassicPlayback.command({ type: "playing" });
+    c.__ottKiosk = { allowed: () => true, locked: () => true };
+    assert.equal(
+        c.__ottClassicPlayback.programme().nextTitle,
+        "Local 102",
+        "kiosk projects pinned repeat"
+    );
+}
+console.log(
+    "PASS finite programme collection, next-item ownership and anchored start clock"
+);
+{
+    const { c, resolve } = setup("vportal");
+    c.__ottClassicPlayback.reconcile();
+    c.__ottMedia.playQueue(
+        [
+            { id: 201, request: { id: 201 }, title: "Queue first" },
+            { id: 202, request: { id: 202 }, title: "Queue second" },
+        ],
+        "Remote collection",
+        () => true,
+        () => {}
+    );
+    resolve();
+    const programme = c.__ottClassicPlayback.programme();
+    assert.equal(programme.collection, "Remote collection");
+    assert.equal(programme.title, "Queue first");
+    assert.equal(
+        programme.nextTitle,
+        "Queue second",
+        "remote queue uses its own successor, not channel list"
+    );
+    c.__ottMedia.open("", "Unrelated browser folder");
+    assert.equal(
+        c.__ottClassicPlayback.programme().collection,
+        "Remote collection",
+        "browsing cannot rename playing collection"
+    );
+}

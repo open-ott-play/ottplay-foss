@@ -383,12 +383,24 @@ function createOfflineDriver(
                     var id = "local-" + item.id;
                     if (catalog.channels[id]) return;
                     catalog.ids.push(id);
+                    var parts = String(item.name || "").split("/");
+                    var source = (value.sources || []).filter(function (
+                        entry: any
+                    ) {
+                        return entry.id === item.sourceId;
+                    })[0];
                     catalog.channels[id] = {
+                        __ottMediaCollection:
+                            item.directory ||
+                            (parts.length > 1 ? parts[parts.length - 2] : "") ||
+                            (source && source.kind === "folder"
+                                ? source.name
+                                : ""),
                         category: {
                             class: 2,
                             name: ports.translate("Local videos"),
                         },
-                        channel_name: item.name,
+                        channel_name: parts[parts.length - 1],
                         logo: "",
                         rec: 0,
                         time: 0,

@@ -103,6 +103,15 @@ export function installBrowserLocalMedia(w: any): any {
         return {
             access: "granted",
             available: true,
+            directory:
+                name.indexOf("/") >= 0
+                    ? name.split("/").slice(-2)[0]
+                    : knownSources.filter(function (source) {
+                          return (
+                              source.id === sourceId &&
+                              source.handle?.kind === "directory"
+                          );
+                      })[0]?.name || "",
             id: id,
             mime: file.type || "application/octet-stream",
             name: name,

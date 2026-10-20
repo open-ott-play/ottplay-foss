@@ -257,6 +257,28 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
                     ? []
                     : (host.cats[host.catsArray[category]] || []).slice();
             },
+            neighbours: function (id: string | number) {
+                var category = locate();
+                if (category < 0) return null;
+                var members = host.cats[host.catsArray[category]] || [];
+                var index = host.primaryIndex;
+                if (String(members[index]) !== String(id)) {
+                    index = -1;
+                    for (var i = 0; i < members.length; i++)
+                        if (String(members[i]) === String(id)) {
+                            index = i;
+                            break;
+                        }
+                }
+                return index < 0
+                    ? null
+                    : {
+                          id: members[index],
+                          index: index,
+                          length: members.length,
+                          nextId: members[(index + 1) % members.length],
+                      };
+            },
             position: function (id: number) {
                 var category = locate();
                 var row = catalog[id];

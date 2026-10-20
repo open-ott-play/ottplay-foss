@@ -99,6 +99,7 @@ pub struct Source {
 pub struct Item {
     pub id: String,
     pub name: String,
+    pub directory: String,
     pub size: u64,
     pub mime: String,
     pub url: String,
@@ -957,6 +958,14 @@ impl Library {
             let size = r.size;
             items.push(Item {
                 id: r.id.clone(),
+                directory: r
+                    .linked_path
+                    .as_ref()
+                    .and_then(|path| path.parent())
+                    .and_then(|path| path.file_name())
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("")
+                    .to_string(),
                 name: r.name,
                 size,
                 mime: r.mime,
@@ -2366,6 +2375,7 @@ mod tests {
         let catalog = library.catalog().await.unwrap();
         assert_eq!(catalog.items.len(), 1);
         assert_eq!(catalog.sources.len(), 1);
+        assert_eq!(catalog.items[0].directory, "subfolder");
         assert_eq!(catalog.items[0].source, "linked");
         assert_eq!(catalog.items[0].source_id, catalog.sources[0].id);
         // App data contains metadata only, never an mp4 copy.

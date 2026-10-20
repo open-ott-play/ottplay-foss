@@ -249,6 +249,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                 let portable = exists ? url.flatMap { bridge?.portablePath(fromLocalURL: $0) } : nil
                 items.append(["id": item.id, "name": item.name, "mime": item.mime, "size": item.size,
                               "url": portable?.absoluteString ?? "", "source": "linked", "sourceId": source.id,
+                              "directory": url?.deletingLastPathComponent().lastPathComponent ?? "",
                               "available": portable != nil, "access": granted ? "granted" : "required"])
             }
         }

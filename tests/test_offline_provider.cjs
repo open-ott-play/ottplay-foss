@@ -879,3 +879,48 @@ test("profile replacement inside a catalog callback stops its old enumeration", 
     assert.equal(progress({ items: [row], scanning: true }), false);
     assert.equal(replies, 1);
 });
+
+test("local footer metadata uses immediate directory and supports legacy source labels", async () => {
+    const f = fixture();
+    f.host.__ottLocalMedia = {
+        list: async () => ({
+            items: [
+                {
+                    directory: "Actual child",
+                    id: "native",
+                    name: "Movie.mp4",
+                    sourceId: "root",
+                    url: "blob:native",
+                },
+                {
+                    id: "legacy",
+                    name: "Old.mp4",
+                    sourceId: "root",
+                    url: "blob:legacy",
+                },
+                {
+                    id: "relative",
+                    name: "Top/Child/Third.mp4",
+                    sourceId: "root",
+                    url: "blob:relative",
+                },
+            ],
+            sources: [{ id: "root", kind: "folder", name: "Root label" }],
+        }),
+    };
+    const driver = f.mount("offline");
+    const catalog = await new Promise((resolve) => driver.load(resolve));
+    assert.equal(
+        catalog.channels["local-native"].__ottMediaCollection,
+        "Actual child"
+    );
+    assert.equal(
+        catalog.channels["local-legacy"].__ottMediaCollection,
+        "Root label"
+    );
+    assert.equal(
+        catalog.channels["local-relative"].__ottMediaCollection,
+        "Child"
+    );
+    assert.equal(catalog.channels["local-relative"].channel_name, "Third.mp4");
+});

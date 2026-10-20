@@ -208,6 +208,7 @@ class LocalMediaPlugin : Plugin() {
             val available = try { openSource(item).use { size = it.size }; true } catch (_: Exception) { false }
             JSObject().apply {
                 put("id", item.getString("id")); put("name", item.getString("name")); put("mime", item.getString("mime"))
+                put("directory", item.optString("directory"))
                 put("size", size); put("sourceId", sourceId(item)); put("source", if (item.has("uri")) "linked" else "imported")
                 put("available", available)
                 if (!available) put("sourceUnavailable", "Original file missing, inaccessible or not seekable; reconnect the folder or file")
@@ -359,7 +360,7 @@ class LocalMediaPlugin : Plugin() {
 
     private class UnavailableDocument(cause: Exception) : IOException(cause)
 
-    private fun link(uri: Uri, grantUri: Uri, known: MutableSet<String>, knownName: String? = null, knownMime: String? = null): Boolean {
+    private fun link(uri: Uri, grantUri: Uri, known: MutableSet<String>, knownName: String? = null, knownMime: String? = null, folderLabel: String = "", existing: JSONObject? = null): Boolean {
         checkWork()
         var name = knownName ?: "Local media"
         if (knownName == null) query(uri, arrayOf(OpenableColumns.DISPLAY_NAME))?.use {
@@ -368,9 +369,23 @@ class LocalMediaPlugin : Plugin() {
         val declaredMime = knownMime ?: context.contentResolver.getType(uri).orEmpty()
         val mime = if (declaredMime.isEmpty() || declaredMime == "application/octet-stream") LocalMediaRange.mime(name) else declaredMime
         if (!mime.startsWith("video/") && !mime.startsWith("audio/")) return false
-        if (uri.toString() in known) return false
+        if (uri.toString() in known) {
+            // Normal tree refresh already visits this parent. Upgrade legacy metadata
+            // without copying media or starting a separate footer scan.
+            if (existing != null && folderLabel.isNotEmpty() && existing.optString("directory") != folderLabel) {
+                val updated = JSONObject(existing.toString()).put("directory", folderLabel)
+                val id = updated.getString("id")
+                val partial = File(this.directory, "$id.json.part")
+                try {
+                    partial.writeText(updated.toString())
+                    val publish = { check(partial.renameTo(File(this.directory, "$id.json"))) }
+                    currentWork.get()?.commit(publish) ?: publish()
+                } finally { partial.delete() }
+            }
+            return false
+        }
         val id = UUID.randomUUID().toString()
-        val item = JSONObject().put("id", id).put("name", name).put("mime", mime)
+        val item = JSONObject().put("id", id).put("name", name).put("mime", mime).put("directory", folderLabel)
             .put("uri", uri.toString()).put("grantUri", grantUri.toString()).put("sourceId", sourceId(grantUri))
         try { openSource(item).use { item.put("size", it.size) } }
         catch (error: IOException) { throw UnavailableDocument(error) }
@@ -425,9 +440,11 @@ class LocalMediaPlugin : Plugin() {
             if (it.moveToFirst()) folderName = it.getString(0).orEmpty().take(256)
         }
         saveSource(tree, folderName, "folder")
-        val known = metadata().mapTo(HashSet<String>()) { it.optString("uri") }
+        val existing = metadata().associateBy { it.optString("uri") }
+        val known = existing.keys.toMutableSet()
         val pending = java.util.ArrayDeque<String>()
         val seen = mutableSetOf<String>()
+        val directoryNames = mutableMapOf(DocumentsContract.getTreeDocumentId(tree) to folderName)
         pending.add(DocumentsContract.getTreeDocumentId(tree))
         var count = 0
         while (!pending.isEmpty()) {
@@ -445,9 +462,13 @@ class LocalMediaPlugin : Plugin() {
                     val document = cursor.getString(0)
                     val name = cursor.getString(1).orEmpty().take(256)
                     val mime = cursor.getString(2).orEmpty()
-                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) pending.add(document)
+                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        pending.add(document)
+                        directoryNames[document] = name
+                    }
                     else try {
-                        link(DocumentsContract.buildDocumentUriUsingTree(tree, document), tree, known, name, mime)
+                        val uri = DocumentsContract.buildDocumentUriUsingTree(tree, document)
+                        link(uri, tree, known, name, mime, directoryNames[parent].orEmpty(), existing[uri.toString()])
                     } catch (_: UnavailableDocument) {
                         // A revoked/non-seekable document must not hide readable siblings.
                     }

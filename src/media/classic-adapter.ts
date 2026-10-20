@@ -93,6 +93,118 @@ function classicMediaSourceId(): string {
         : (window as any).__ottSourceIdentity.media(window);
 }
 
+/** Scalar neighbours avoid cloning large channel lists on every footer tick. */
+function classicMediaNeighbours(list: any, id: any): any {
+    if (list.neighbours) return list.neighbours(id);
+    var members = list.members();
+    var index = -1;
+    for (var i = 0; i < members.length; i++)
+        if (String(members[i]) === String(id)) {
+            index = i;
+            break;
+        }
+    return index < 0
+        ? null
+        : {
+              id: members[index],
+              index: index,
+              length: members.length,
+              nextId: members[(index + 1) % members.length],
+          };
+}
+
+/** Project the playing collection and its already-known successor without I/O. */
+function classicMediaProgramme(): any {
+    var w = window as any;
+    var state = w.__ottClassicPlayback.snapshot();
+    var target = state.target;
+    if (!target || target.kind !== "vod") return null;
+    var playing = mediaClassicPlayback;
+    var local = w.__ottActiveProviderDriver?.id === "offline";
+    var history = state.historyTarget;
+    var sequence: any = null;
+    var payload: any = null;
+    var channel: any = null;
+    var mode = "all";
+    if (
+        history?.kind === "live" &&
+        target.channelId === "channel:" + history.channelId
+    ) {
+        if (target.sourceId !== w.__ottClassicPlayback.sourceId()) return null;
+        var list = w.__ottChannels?.capture(history.payload?.c);
+        if (!list || !list.active()) return null;
+        var neighbour = classicMediaNeighbours(list, history.channelId);
+        if (!neighbour) return null;
+        var id = neighbour.id;
+        if (local) channel = { id: id, list: list };
+        payload = w.channels[id];
+        if (mediaClassicInstance?.active())
+            mode = mediaClassicInstance.repeatMode();
+        else {
+            var saved = w.providerGetItem?.(
+                "mediaRepeat.v1:" + classicMediaSourceId()
+            );
+            if (saved === "one" || saved === "off") mode = saved;
+        }
+    } else {
+        if (
+            !playing ||
+            playing.ref.sourceId !== target.sourceId ||
+            playing.ref.itemId !== target.channelId
+        )
+            return null;
+        payload = playing.payload;
+        sequence = playing.sequence;
+        channel = sequence?.channel;
+        mode = sequence?.repeat || "all";
+    }
+    if (!payload) return null;
+    var collection =
+        payload.__ottMediaCollection ||
+        payload.__ottMediaOrigin?.title ||
+        payload.category?.name ||
+        "";
+    var title = payload.channel_name || payload.title || "";
+    var nextTitle = "";
+    if (channel && channel.list.active()) {
+        var neighbours = classicMediaNeighbours(channel.list, channel.id);
+        if (neighbours) {
+            var pinned =
+                w.__ottKiosk?.locked() && w.__ottKiosk.allowed(channel.id);
+            var repeatOne = pinned || mode === "one";
+            if (
+                repeatOne ||
+                mode !== "off" ||
+                neighbours.index + 1 < neighbours.length
+            ) {
+                var nextRow =
+                    w.channels[repeatOne ? neighbours.id : neighbours.nextId];
+                nextTitle =
+                    nextRow?.channel_name ||
+                    nextRow?.__ottMediaItem?.title ||
+                    "";
+            }
+        }
+        var currentRow = w.channels[channel.id];
+        collection =
+            currentRow?.__ottMediaCollection ||
+            collection ||
+            currentRow?.category?.name ||
+            "";
+    } else if (sequence?.items?.length) {
+        var next = mode === "one" ? sequence.index : sequence.index + 1;
+        if (mode !== "off" || next < sequence.items.length) {
+            var item = sequence.items[next % sequence.items.length];
+            nextTitle = item?.title || item?.payload?.title || "";
+        }
+    }
+    return {
+        collection: String(collection),
+        nextTitle: String(nextTitle),
+        title: String(title),
+    };
+}
+
 function classicMediaClient(): any {
     return mediaClassicContext
         ? mediaClassicContext.client
@@ -2704,6 +2816,9 @@ function classicMediaRuntime(): any {
                 index = i;
             // Persist provider requests/identities, never resolved or expiring media URLs.
             records.push({
+                __ottMediaCollection:
+                    item.payload.__ottMediaCollection ||
+                    item.payload.__ottMediaOrigin?.title,
                 __ottMediaRef: item.ref,
                 __ottMediaSequence: item.payload.__ottMediaSequence,
                 __ottVPortalQueue: w.__ottActiveProviderDriver.id === "vportal",
@@ -2805,6 +2920,7 @@ function classicMediaRuntime(): any {
     prepare: function (item: any, url: string) {
         return classicMediaRuntime().prepare(item, url);
     },
+    programme: classicMediaProgramme,
     repeatMode: function () {
         return classicMediaRuntime().repeatMode();
     },
