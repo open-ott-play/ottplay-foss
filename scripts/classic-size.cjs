@@ -286,7 +286,10 @@ const { gzipSync } = require("node:zlib");
 // Owned Local EOF transitions and filename rendering add ~1368 raw / 458 gzip
 // bytes over afb7e4b9 on Node 26.8.2 (web 968685/298948 before the change).
 // Allocate 1536/512 once, retaining native, Node 22 and release identity room.
-const BUDGET = Object.freeze({ bytes: 970423, gzipBytes: 300428 });
+// Collection/programme clocks and scalar successor reads add 4755 raw / 1481
+// gzip entry bytes on Node 26.8.2 (974808 / 300930 total). Reserve 5120 raw / 1536 gzip for
+// this feature, retaining native/Node 22 and release suffix headroom.
+const BUDGET = Object.freeze({ bytes: 975543, gzipBytes: 301964 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -424,7 +427,8 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count PR820's 768-byte local resume/journal allowance once in the payload.
 // Count the same standby allowance once across the complete payload.
 // Count the same Local EOF/footer allowance once; providers are unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1102423, gzipBytes: 348922 });
+// Count the same collection/programme feature once in the full payload.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1107543, gzipBytes: 350458 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
