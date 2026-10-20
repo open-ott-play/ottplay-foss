@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Advance Local videos to the next file after playback ends, honoring playlist order, repeat and kiosk pinning. Show the current local file name in the standard player footer instead of leaving it blank or retaining television programme details.
+
 - When a valid interface language is already loaded, resume the configured provider and channel after repeated standby/go without reopening language settings. Retain the resolved system language and original popup menu, including hidden provider settings, and ignore stale language callbacks from an earlier startup. Avoid duplicate playback listeners and polling timers, and bound Tauri update checks. Cancel local metadata scans and abandoned media requests between filesystem operations while keeping in-flight reads counted until they actually finish.
 
 - Make remote standby/go suspend playback, provider requests, local scans and EPG work while keeping control connected. Persist the device-local state across reload, block late playback and kiosk watchdog recovery until go, and expose actual background drain status. Allow authenticated standby/go with kiosk/settings locks while retaining other lifecycle restrictions.

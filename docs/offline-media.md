@@ -48,6 +48,14 @@ file also starts it from the beginning; automatic position restoration applies
 to player startup. Closing while a slow file is still opening retains its pending
 resume position.
 
+When a local video finishes, playback advances to the next file in the current
+channel-list order, including a shuffled order. The playlist repeat setting
+controls what happens at the end of the list; repeat-one plays the same file
+again. A channel pinned by kiosk mode stays pinned. Automatic transitions start
+the next file at zero rather than restoring an old position. The standard player
+footer displays the current file name and updates it when the file changes.
+These controls are shared by browser/server, Tauri and Capacitor players.
+
 Libraries made by the earlier copy-based version remain readable. Their entries
 are marked as imported copies and expose **Remove copy**. This deletes OTT's
 stored copy, not the original file selected during the old import. OTT cannot
